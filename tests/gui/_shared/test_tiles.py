@@ -139,7 +139,6 @@ def test_crop_store_rgb_returns_full_res_png(tmp_path: Path) -> None:
         center_rr=20,
         center_cc=20,
         size=16,
-        mtime_ns=store.stat().st_mtime_ns,
     )
     crop = PILImage.open(io.BytesIO(out)).convert("RGB")
     assert crop.size == (16, 16)
@@ -169,7 +168,6 @@ def test_crop_store_rgb_matches_crop_overlay_geometry(tmp_path: Path) -> None:
         center_rr=5,
         center_cc=5,
         size=24,
-        mtime_ns=store.stat().st_mtime_ns,
     )
     assert _decode_rgb(from_store).tolist() == _decode_rgb(from_overlay).tolist()
 
@@ -204,7 +202,6 @@ def test_crop_store_rgb_round_trips_non_rgb_layers(
         center_rr=20,
         center_cc=20,
         size=16,
-        mtime_ns=store.stat().st_mtime_ns,
     )
     crop = PILImage.open(io.BytesIO(out))
     assert crop.size == (16, 16)

@@ -515,3 +515,137 @@ class TestInjectDesignTokens:
         assert css_pos != -1
         assert marker_pos != -1
         assert marker_pos > css_pos
+
+
+class TestSplitterAttrs:
+    """The handle contract ``results_viewer.js`` section H dispatches on."""
+
+    def test_a_right_edge_handle_declares_only_the_two_ids(self) -> None:
+        """The default edge is the one that needs no attribute.
+
+        The QC worklist predates the edge entirely, so emitting a
+        ``data-splitter-edge="right"`` for it would be a change to a
+        working surface's DOM in a fix aimed at a different one.
+        """
+        assert _config.splitter_attrs(target="pane", store="store") == {
+            "data-splitter-target": "pane",
+            "data-splitter-store": "store",
+        }
+
+    def test_a_left_edge_handle_says_so(self) -> None:
+        """A right-docked pane's handle must declare the inverted sign."""
+        attrs = _config.splitter_attrs(
+            target="pane", store="store", edge="left"
+        )
+        assert attrs["data-splitter-edge"] == "left"
+
+    def test_bounds_are_stringified_for_the_dom(self) -> None:
+        """Data attributes are strings; the controller parses them back."""
+        attrs = _config.splitter_attrs(
+            target="pane", store="store", min_width=280, max_width=720
+        )
+        assert attrs["data-splitter-min"] == "280"
+        assert attrs["data-splitter-max"] == "720"
+
+    def test_bounds_are_independent(self) -> None:
+        """Declaring one bound leaves the other on the module default."""
+        attrs = _config.splitter_attrs(
+            target="pane", store="store", max_width=720
+        )
+        assert "data-splitter-min" not in attrs
+        assert attrs["data-splitter-max"] == "720"
+
+    def test_an_inverted_bound_pair_is_refused(self) -> None:
+        """min > max is rejected at the boundary, not passed to the DOM.
+
+        The JS clamp is ``Math.max(lo, Math.min(hi, n))``, which for an
+        inverted pair returns ``lo`` for every input: the pane jumps to
+        the larger number on mousedown and then never moves, keeping its
+        ``col-resize`` cursor the whole time. Nothing raises on either
+        side, so the boundary is the only place this can be caught.
+        """
+        with pytest.raises(ValueError, match="exceeds max_width"):
+            _config.splitter_attrs(
+                target="pane", store="store", min_width=720, max_width=320
+            )
+
+    def test_one_bound_alone_is_never_an_inverted_pair(self) -> None:
+        """The guard must not fire when the other bound is the default."""
+        assert _config.splitter_attrs(
+            target="pane", store="store", min_width=720
+        )["data-splitter-min"] == "720"
+        assert _config.splitter_attrs(
+            target="pane", store="store", max_width=10
+        )["data-splitter-max"] == "10"
+
+
+class TestScatterStyleFields:
+    """Spec section 9's "Sizing" bounds, and the stepper arithmetic."""
+
+    def _defaults(self) -> dict[str, float]:
+        """Every Style field's default, read off ``FigureSpec`` itself."""
+        from phenotypic.gui.results_viewer._scatter_tab._spec import FigureSpec
+
+        spec = FigureSpec(x_col="x", y_col="y")
+        values: dict[str, float] = dict(spec.sizes)
+        values["marker_size"] = spec.marker_size
+        values["marker_opacity"] = spec.marker_opacity
+        values["facet_height"] = spec.facet_height
+        return values
+
+    def test_every_default_lies_inside_its_own_bounds(self) -> None:
+        """A control whose default is out of range jumps on first click.
+
+        Table-driven on purpose: a per-field assertion list would let a
+        ninth field be added without anyone checking it, which is the
+        shape of the mistake this guards.
+        """
+        defaults = self._defaults()
+        for field, (_, low, high, _step) in _config.SCATTER_STYLE_FIELDS.items():
+            assert field in defaults, f"{field} has no FigureSpec default"
+            assert low <= defaults[field] <= high, (
+                f"{field} default {defaults[field]} outside [{low}, {high}]"
+            )
+
+    def test_the_field_table_and_the_dataclass_cover_the_same_fields(
+        self,
+    ) -> None:
+        """Neither may carry a field the other does not.
+
+        A stepper for a field ``FigureSpec`` lacks writes into nothing; a
+        ``FigureSpec`` field with no stepper is the state this whole
+        change existed to end.
+        """
+        assert set(_config.SCATTER_STYLE_FIELDS) == set(self._defaults())
+
+    def test_the_size_fields_are_the_ones_keyed_inside_sizes(self) -> None:
+        """``SCATTER_STYLE_SIZE_FIELDS`` must match ``FigureSpec.sizes``."""
+        from phenotypic.gui.results_viewer._scatter_tab._spec import FigureSpec
+
+        spec = FigureSpec(x_col="x", y_col="y")
+        assert set(_config.SCATTER_STYLE_SIZE_FIELDS) == set(spec.sizes)
+
+    def test_stepping_past_a_bound_clamps_to_it(self) -> None:
+        """Both ends, on a field whose step does not divide its range."""
+        assert _config.step_scatter_style(20, "marker_size", 1) == 20
+        assert _config.step_scatter_style(2, "marker_size", -1) == 2
+        assert _config.step_scatter_style(19, "marker_size", 1) == 20
+
+    def test_repeated_fractional_steps_do_not_drift(self) -> None:
+        """Opacity is the one fractional field, so it is the one that drifts.
+
+        Ten clicks from the default without rounding lands on
+        ``1.0000000000000002``, which then fails a ``<= 1.0`` clamp check
+        written the obvious way.
+        """
+        value = self._defaults()["marker_opacity"]
+        for _ in range(10):
+            value = _config.step_scatter_style(value, "marker_opacity", 1)
+        assert value == 1.0
+
+    def test_an_unknown_field_raises_rather_than_stepping_nothing(
+        self,
+    ) -> None:
+        """A typo must not silently no-op."""
+        with pytest.raises(KeyError):
+            _config.step_scatter_style(8, "not_a_field", 1)

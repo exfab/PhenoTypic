@@ -1,0 +1,87 @@
+[
+  {
+    "name": "foundation-schema",
+    "playwright": false,
+    "paths": [
+      "tests/unit/test_*.py",
+      "tests/unit/abc_",
+      "tests/unit/assets/",
+      "tests/unit/ci/",
+      "tests/unit/core/",
+      "tests/unit/docs/",
+      "tests/unit/resources/",
+      "tests/unit/schema/"
+    ]
+  },
+  {
+    "name": "detection",
+    "playwright": false,
+    "paths": [
+      "tests/unit/detect/"
+    ]
+  },
+  {
+    "name": "preprocessing-grid",
+    "playwright": false,
+    "paths": [
+      "tests/unit/correction/",
+      "tests/unit/enhance/",
+      "tests/unit/grid/"
+    ]
+  },
+  {
+    "name": "measurement-refinement",
+    "playwright": false,
+    "paths": [
+      "tests/unit/measure/",
+      "tests/unit/refine/"
+    ]
+  },
+  {
+    "name": "analysis-qc",
+    "playwright": false,
+    "paths": [
+      "tests/unit/analysis/",
+      "tests/unit/qc/"
+    ]
+  },
+  {
+    "name": "plots-post-viz",
+    "playwright": false,
+    "paths": [
+      "tests/unit/plotting/",
+      "tests/unit/post/",
+      "tests/unit/prefab/",
+      "tests/unit/util/",
+      "tests/unit/viz/"
+    ]
+  },
+  {
+    "name": "cli-packaging",
+    "playwright": false,
+    "paths": [
+      "tests/unit/cli/",
+      "tests/integration/cli/",
+      "tests/integration/packaging/",
+      "tests/smoke/"
+    ]
+  },
+  {
+    "name": "tune-sdk",
+    "playwright": false,
+    "paths": [
+      "tests/unit/sdk_/",
+      "tests/unit/tune/",
+      "tests/integration/tune/"
+    ]
+  },
+  {
+    "name": "gui-browser",
+    "playwright": true,
+    "paths": [
+      "tests/unit/gui/",
+      "tests/integration/gui/",
+      "tests/gui/"
+    ]
+  }
+]

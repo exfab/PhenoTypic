@@ -732,6 +732,27 @@ def build_manifest(
         if marker_completion is None
         else marker_completion
     )
+    if marker_completion and global_completed != total_images:
+        # Two sources of truth, and when markers exist they win outright,
+        # so a counting path that saw less than they did is overridden
+        # rather than reconciled. That is how a shipped manifest came to
+        # read `is_complete: true` beside `completed: 0` -- true on its
+        # marker evidence, zero on an event log a recompile never wrote.
+        #
+        # Reported, not raised. The manifest is progress reporting, not
+        # scientific output, and aborting the finalisation of a run whose
+        # per-image evidence says it completed would trade a wrong
+        # progress number for a failed run. The results viewer's
+        # completion guard is the backstop that refuses to act on the
+        # inconsistency; this is what names it while the numbers are
+        # still in hand.
+        logger.warning(
+            "Manifest completion is inconsistent: per-image markers report "
+            "the run complete, but only %d of %d images were counted as "
+            "completed. The counting path saw less than the markers did.",
+            global_completed,
+            total_images,
+        )
 
     published_count = (
         aggregate_marker.get("source_image_count", 0)

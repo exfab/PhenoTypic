@@ -598,6 +598,7 @@ def capture_workflow_screenshots(base_url: str, headed: bool = False) -> None:
             _capture_run_local(context, base_url)
             _capture_run_slurm(context, base_url)
             _capture_view_results(context, base_url)
+            _capture_scatter(context, base_url)
             _capture_pick_points(context, base_url)
             _capture_analysis(context, base_url)
             _capture_aux_ports(context, base_url)
@@ -1143,6 +1144,213 @@ def _capture_view_results(context, base_url: str) -> None:
             f"snapshot: {snapshot_status.inner_text()!r}"
         )
     _save(page, "view_results", "05_hub_bound_snapshot.png")
+    page.close()
+
+
+# --- scatter ------------------------------------------------------------
+
+#: The JavaScript the Scatter capture uses to bind the tab's plotting
+#: roles. It reads the option lists and current values out of the app's
+#: own ``_dash-layout`` and picks from them, so the capture never spells a
+#: column name that this run may not carry -- the section-group default is
+#: derived from the run at build time and differs between datasets. Only X
+#: and Y are supplied by the caller, and those come from
+#: ``phenotypic.schema`` rather than from a string literal.
+_SCATTER_BIND_ROLES_JS = """
+async ([xCol, yCol]) => {
+    const response = await fetch('_dash-layout');
+    const layout = await response.json();
+    const options = {};
+    const values = {};
+    const walk = node => {
+        if (!node || typeof node !== 'object') return;
+        if (Array.isArray(node)) { node.forEach(walk); return; }
+        const props = node.props || {};
+        if (props.id && Array.isArray(props.options)) {
+            options[props.id] = props.options.map(
+                o => (o && typeof o === 'object') ? o.value : o
+            );
+        }
+        if (props.id && props.value !== undefined) values[props.id] = props.value;
+        walk(props.children);
+    };
+    walk(layout);
+    const section = values['scatter-section-col'] || null;
+    const pick = (id, ...taken) =>
+        (options[id] || []).find(v => v && !taken.includes(v)) || null;
+    const facet = pick('scatter-col-col', section);
+    const hue = pick('scatter-hue-col', section, facet);
+    const bound = {'scatter-x-col': xCol, 'scatter-y-col': yCol};
+    if (facet) bound['scatter-col-col'] = facet;
+    if (hue) bound['scatter-hue-col'] = hue;
+    for (const [id, value] of Object.entries(bound)) {
+        window.dash_clientside.set_props(id, {value});
+    }
+    return {section, ...bound};
+}
+"""
+
+#: True once the on-screen figure holds at least one point carrying the
+#: row index the click path resolves. Waiting on the ``dcc.Graph`` element
+#: would not do -- it exists from the first render, and an all-null X axis
+#: produces a perfectly valid figure with nothing on it.
+_SCATTER_HAS_POINTS_JS = """
+() => {
+    const host = document.getElementById('scatter-graph');
+    const plot = host && (host.querySelector('.js-plotly-plot') || host);
+    const traces = (plot && plot._fullData) || [];
+    return traces.some(t => t.customdata && t.customdata.length);
+}
+"""
+
+#: Click the first point the figure carries, by handing its OWN carried
+#: index back through ``clickData`` exactly as Plotly would deliver it.
+#: A real pointer click cannot be aimed at a point here: the screen figure
+#: draws ``Scattergl`` traces, which paint to a WebGL canvas and leave no
+#: DOM node under a marker. Taking the index from the rendered figure
+#: rather than inventing one is what keeps the screenshot a picture of the
+#: real click path -- a fabricated index resolves to a real but WRONG
+#: colony, which is precisely the failure this tab's index anchoring and
+#: fingerprint guard exist to prevent.
+_SCATTER_CLICK_FIRST_POINT_JS = """
+() => {
+    const host = document.getElementById('scatter-graph');
+    const plot = host && (host.querySelector('.js-plotly-plot') || host);
+    const traces = (plot && plot._fullData) || [];
+    for (const trace of traces) {
+        const custom = trace.customdata;
+        if (!custom || !custom.length) continue;
+        const first = custom[0];
+        const value = Array.isArray(first) ? first[0] : first;
+        window.dash_clientside.set_props('scatter-graph', {
+            clickData: {points: [{customdata: [value]}]},
+        });
+        return value;
+    }
+    return null;
+}
+"""
+
+
+def _scatter_crop_is_loaded(contours: int) -> str:
+    """JS predicate: the inspector's crop has been served with *contours*.
+
+    Asserting on the ``<img>``'s decoded size as well as its ``src`` is
+    what separates "the route answered" from "the callback wrote a URL":
+    a 404 or a 422 leaves the element present with ``naturalWidth`` 0, and
+    a shot taken then shows a broken-image glyph where the colony should
+    be.
+
+    Args:
+        contours: The ``?contours=`` value the src must carry.
+
+    Returns:
+        A JavaScript arrow function source string for ``wait_for_function``.
+    """
+    return (
+        "() => {const img = document.getElementById("
+        "'scatter-inspector-crop');"
+        f" return !!img && (img.getAttribute('src') || '').includes("
+        f"'contours={contours}') && img.complete && img.naturalWidth > 0;}}"
+    )
+
+
+def _capture_scatter(context, base_url: str) -> None:
+    """Capture the Scatter tab: figure, settings, inspector, Raw crop.
+
+    Four shots, in the order the tutorial reads them:
+
+    1. ``01_scatter_tab.png`` — a faceted section with its pager chip.
+    2. ``02_plot_settings.png`` — the configuration popover's role bindings.
+    3. ``03_click_inspector.png`` — a clicked point's colony, contoured crop
+       and measurements grouped by the measurer that emitted them.
+    4. ``04_inspector_raw.png`` — the same colony with Contours switched to
+       Raw, which re-requests the crop rather than re-resolving the click.
+    5. ``05_style_sizing.png`` — the Style section's type/marker steppers,
+       expanded for the shot because the popover opens on Data.
+
+    They are *taken* in the order 02, 01, 03, 04 — the popover has to be
+    open before its dropdowns can be bound, and the figure shot is only
+    worth taking once they are.
+
+    The hub binding is reused when ``_capture_view_results`` has already
+    published it, so the two captures may run in either order.
+    """
+    print("[shot] workflow=scatter")
+    from phenotypic.schema import SHAPE
+
+    page = _new_page(context, base_url, "/results/")
+    if page.locator("#results-viewer-empty-state").count() > 0:
+        _bind_hub_results_asynchronously(page, base_url)
+        page.wait_for_selector(
+                "#results-viewer-empty-state", state="detached", timeout=15_000
+        )
+
+    page.locator("a.nav-link", has_text="Scatter").first.click()
+    page.wait_for_selector("#scatter-graph", state="visible", timeout=15_000)
+
+    # Open the configuration popover BEFORE binding anything. `dbc.Popover`
+    # mounts its body only while open, and `set_props` against an id that
+    # is not in the DOM is a silent no-op -- the figure would then keep its
+    # defaults and the shots would document a state nobody configured.
+    # `trigger="legacy"` means this same toggle closes it again.
+    page.click("#scatter-config-toggle")
+    page.wait_for_selector("#scatter-section-col", state="visible", timeout=10_000)
+
+    # The tab opens on a DERIVED capture-order X axis, which ranks
+    # `Metadata_ImageDatetime` within plate. The synthetic tutorial run is
+    # a single timepoint and carries no such column, so that axis is null
+    # for every row and the default figure is legitimately empty. Bind two
+    # measurements instead -- asked of `phenotypic.schema`, never spelled.
+    # Both come from `MeasureShape`, which `PIPELINE_DOC` above configures,
+    # so they are columns this run really emits. `MeasureSize` would do for
+    # the tutorial dataset but not for the verification run, which does not
+    # configure it; staying inside one measurer keeps the two in step.
+    bound = page.evaluate(
+            _SCATTER_BIND_ROLES_JS, [str(SHAPE.PERIMETER), str(SHAPE.AREA)]
+    )
+    print(f"[shot]   scatter roles: {bound}")
+    page.wait_for_timeout(600)
+    _save(page, "scatter", "02_plot_settings.png")
+
+    # 2b) The Style section, which is collapsed on mount so the role
+    #     dropdowns stay the first thing the popover shows. Expanding it
+    #     for the shot is the only way the tutorial can picture controls
+    #     the tab deliberately does not lead with.
+    page.locator('button.accordion-button:has-text("Style")').first.click()
+    page.wait_for_selector(
+            '[id*="scatter-style-readout"]', state="visible", timeout=10_000
+    )
+    page.wait_for_timeout(400)
+    _save(page, "scatter", "05_style_sizing.png")
+    page.locator('button.accordion-button:has-text("Data")').first.click()
+    page.wait_for_timeout(300)
+
+    page.click("#scatter-config-toggle")
+    page.wait_for_timeout(400)
+    page.wait_for_function(_SCATTER_HAS_POINTS_JS, timeout=30_000)
+    page.wait_for_timeout(600)
+    _save(page, "scatter", "01_scatter_tab.png")
+
+    # 3) Click a point and open its colony.
+    index = page.evaluate(_SCATTER_CLICK_FIRST_POINT_JS)
+    if index is None:
+        raise RuntimeError(
+                "the Scatter figure carried no point to click; "
+                "01_scatter_tab.png would be a picture of an empty plot"
+        )
+    print(f"[shot]   clicked carried row index {index}")
+    page.wait_for_function(_scatter_crop_is_loaded(1), timeout=30_000)
+    page.wait_for_timeout(500)
+    _save(page, "scatter", "03_click_inspector.png")
+
+    # 4) Contours -> Raw. The src is what must change: the control
+    #    re-requests the same colony rather than re-resolving the click.
+    page.locator('#scatter-contour-toggle label:has-text("Raw")').first.click()
+    page.wait_for_function(_scatter_crop_is_loaded(0), timeout=30_000)
+    page.wait_for_timeout(400)
+    _save(page, "scatter", "04_inspector_raw.png")
+
     page.close()
 
 

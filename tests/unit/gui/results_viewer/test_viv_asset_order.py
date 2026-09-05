@@ -123,6 +123,8 @@ def test_colony_grid_uses_a_passive_bounded_linked_camera() -> None:
     facade = (ASSETS / "viv_viewer.js").read_text(encoding="utf-8")
 
     assert "controller: false" in facade
+    assert "deck.setProps({ controller: false })" in facade
+    assert "deck.setProps({ controller: true })" in facade
     assert "function clampGridCamera(grid)" in facade
     assert "function setGridCamera(containerId, command)" in facade
     assert "setGridCamera," in facade

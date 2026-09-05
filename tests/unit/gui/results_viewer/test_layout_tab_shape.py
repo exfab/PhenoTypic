@@ -34,4 +34,16 @@ def test_results_tabs_expose_exactly_the_mounted_surfaces(built_results_layout):
     assert _tab_ids(built_results_layout) == [
         ids.TAB_PLATE_ID,
         ids.TAB_COLONY_ID,
+        ids.TAB_SCATTER_ID,
     ]
+
+
+def test_scatter_is_mounted_and_the_deprecated_tabs_are_not(
+    built_results_layout,
+) -> None:
+    """Scatter joins Plate and Colony; Heatmap and QC stay unmounted."""
+    tab_ids = _tab_ids(built_results_layout)
+    assert ids.TAB_SCATTER_ID in tab_ids
+    assert ids.TAB_HEATMAP_ID not in tab_ids
+    assert ids.TAB_QC_ID not in tab_ids
+    assert ids.TAB_ERROR_ID not in tab_ids

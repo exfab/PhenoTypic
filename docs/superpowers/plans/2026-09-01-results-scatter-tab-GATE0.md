@@ -1,0 +1,1027 @@
+> **STATUS: CLOSED 2026-09-02.** All six spikes were run by the orchestrator
+> after this file was written, so any finding below tagged `[SPIKE-pending]`
+> is resolved — read the outcomes in the plan's **Gate 0 findings** table
+> rather than the pending tag here.
+>
+> Fifteen defects were found and fixed before any implementation: five by
+> reading, five by spikes A–E, four by `spike_f`'s mutation testing, and one
+> during close-out. Notably `spike_a` did **not** escalate S5 — no
+> `MeasurementInfo` leaf's `category()` raises, in either import order.
+>
+>
+> **One correction inside this file.** The vacuity sweep's Task 7 rows are a
+> hand-trace and mark those tests sound. `spike_f`'s mutation run disagrees:
+> **four of Task 7's five tests pass against a class-not-instance bug**, and
+> all four have been rewritten in the plan. Where this file's mutation column
+> and `spike_f` disagree, `spike_f` wins — as this file's own preamble says.
+> Hand-tracing shows what a correct implementation produces; only mutation
+> shows what a wrong one produces, and that is the half that decides whether a
+> test discriminates.
+> Kept as the record of what the gate caught and why.
+
+# Gate 0 review — Results Viewer Scatter Tab implementation plan
+
+**Reviewed:** `docs/superpowers/plans/2026-09-01-results-scatter-tab.md`
+**Against spec:** `docs/superpowers/specs/2026-09-01-results-scatter-tab/design.md` (revision 3)
+**Worktree:** `/bigdata/exfab/anguy344/PhenoTypic/.worktrees/results-scatter-gui`, branch `feat/results-scatter-gui`
+**Date:** 2026-09-01
+**Verdict:** do not start implementation. **9 blocking findings**, 12 should-fix,
+11 nits.
+
+## How to read the evidence markers
+
+Every finding is marked with how it was established. The plan contains runnable
+code, so "I read the signature" and "I ran it" are different strengths of claim
+and are not conflated here.
+
+- **[SRC]** — read directly from the named `file:line`.
+- **[MEASURED]** — a spike script was written and executed; the numbers quoted
+  are its output, not an estimate.
+- **[SPIKE-pending]** — written and queued, output not yet returned.
+
+Seven spike scripts live in
+`/scratch/anguy344/27996931/claude-5188/-bigdata-exfab-anguy344-PhenoTypic/e6ad7160-0024-44c2-ba1e-552a606cebac/scratchpad/`.
+A–F have been executed (all exit 0); G is queued.
+
+| Script | Settled |
+|---|---|
+| `spike_a_schema_prefixes.py` | **Clean.** No leaf's `category()` raises (46 leaves); result is NOT import-order dependent; all four Task 4 assertions pass |
+| `spike_b_frame_index.py` | **Clean.** All three Task 8 tests pass; left join preserves order at n=2000; `maintain_order='left'` accepted |
+| `spike_c_figure_facets.py` | Shared-axes test has **no teeth**; legend bug **confirmed**; `plottable` raises rather than corrupts |
+| `spike_d_store_and_grouping.py` | `_read_store_level` misuse **confirmed and worse than named**; Task 7's 149-column claim reproduces exactly |
+| `spike_e_dash_and_deps.py` | `callback_map` form, missing symbols, missing asset path, absent Chrome/pypdf/fitz — all confirmed |
+| `spike_f_fix_and_vacuity.py` | B1 fix shape; vacuity sweep by mutation |
+| `spike_g_rasterizer_and_range.py` | *(queued)* whether pymupdf is needed; simplest correct `image_display_range` |
+
+## Withdrawn after measurement
+
+Two findings from the first pass did not survive their spikes. Recorded so they
+are not re-raised:
+
+- **S5(a) and S5(c), import-order dependence and a raising `category()`** —
+  disproved. `spike_a` walks all 46 discoverable leaves under both import
+  orders: nothing raises, `Status` is present either way, and the derived tuple
+  is identical (31 prefixes) with and without `phenotypic.sdk_` loaded. Task 4's
+  derivation is sound as written. The docstring-drift point (S5b) and the
+  unstated `QC_` behaviour change (S5d) still stand.
+- **S7, join-order flakiness** — disproved, and by a wider margin than a
+  downgrade. `spike_b` confirms the left join preserves left row order at
+  n=2000, the per-key rank values are correct regardless of order, and
+  `maintain_order='left'` is accepted by polars 1.41.2 if belt-and-braces is
+  wanted. Task 8 needs no change.
+
+---
+
+# BLOCKING
+
+## B1 — The click index is built against the filtered frame and resolved against `master_df` [SRC]
+
+**Accepted by the orchestrator; recorded here for completeness.**
+
+Task 13's figure callback (plan:2026-2027):
+
+```python
+frame = plottable(apply_filters(output_root.master_df, filter_state))
+frame = frame.with_row_index(CUSTOMDATA_COL)
+```
+
+`with_row_index` numbers the rows of the **filtered** frame. Task 11's resolver
+(plan:1853-1855):
+
+```python
+if index < 0 or index >= master_df.height:
+    return None
+row = master_df.row(index, named=True)
+```
+
+indexes the **unfiltered** frame positionally. With any active filter — or with
+no filter at all, because `plottable` drops 121 phantom rows in the verification
+fixture — the two frames have different row counts and different orderings, and
+every click resolves to a different colony than the one clicked.
+
+Nothing errors. The result is a real colony with a real crop and real
+measurements. This is exactly the failure spec §6.1 describes ("It opens the
+wrong colony, silently, and the result looks entirely plausible") and exactly
+what the plan's own orchestration says cluster E exists to prevent ("a mistake
+opens the *wrong* colony plausibly and silently", plan:2253-2255). The plan
+ships the bug inside the code written to prevent it.
+
+**Why it survived the plan's own review:** producer and resolver are in
+different tasks, different clusters, and different review gates. Task 11's three
+tests all pass against the broken wiring because none of them constructs an
+index — they hand `resolve_click` a literal `1`.
+
+### The fix, and the API question it raises
+
+The mechanical fix is to index before filtering:
+
+```python
+base = output_root.master_df.with_row_index(CUSTOMDATA_COL)
+frame = plottable(FilterSpec.from_store(filter_spec).apply_to(base))
+```
+
+This depends on `apply_to` preserving a caller-added column. It does: `apply_to`
+(`results_viewer/_filter_state.py:255-284`) only ever calls
+`normalize_viewer_frame(df)` then `result.filter(expr)` per row.
+`normalize_viewer_frame` (`results_viewer/_metadata.py:61-109`) partitions
+columns into metadata and non-metadata, renames every non-metadata column to a
+shield name, normalizes, and renames back via the `reverse` map — it adds and
+removes nothing. `_scatter_row_index` is non-metadata, so it round-trips with
+its name and values intact, and `.filter()` preserves both row order and column
+set. `spike_f` confirms this end-to-end including the phantom-drop pass. **[SRC,
+SPIKE-pending for the round trip]**
+
+**But the mechanical fix leaves the class of bug in place, and I recommend
+against it on its own.** The defect is not that someone wrote the wrong line; it
+is that the plan's API lets producer and consumer disagree silently across a
+cluster boundary. `resolve_click(master_df, index, ...)` accepts a bare `int`
+whose meaning is a convention held in two files that no gate compares.
+
+**Recommendation — adopt the `index_frame` helper, owned by Task 11.** Move both
+halves behind one function in `_inspector.py`:
+
+```python
+def index_frame(master_df: pl.DataFrame) -> pl.DataFrame:
+    """Attach the positional index that ``resolve_click`` resolves against.
+
+    The index is positional into ``master_df`` and MUST be attached before any
+    filtering: a filtered frame's positions are not master positions, and a
+    click resolved against the wrong frame opens the wrong colony silently.
+    This function and :func:`resolve_click` are the only two places that know
+    the index's meaning.
+    """
+    return master_df.with_row_index(CUSTOMDATA_COL)
+```
+
+Task 13 then calls `index_frame(output_root.master_df)` and can only get it
+right; the docstring lives next to the resolver that depends on it; and Task 11
+owns the invariant end to end rather than owning half of it. It also gives the
+missing test a natural home:
+
+```python
+def test_an_index_survives_filtering_and_still_resolves() -> None:
+    """The B1 regression pin: filter, then resolve, and land on the SAME row."""
+    base = index_frame(master)
+    kept = FilterSpec.from_store(
+        [{"column": "Metadata_Strain", "values": ["S1"]}]
+    ).apply_to(base)
+    for row in kept.iter_rows(named=True):
+        ref = resolve_click(master, row[CUSTOMDATA_COL], "fp", "fp")
+        assert ref == ColonyRef(row[KEY_DATASET], row[KEY_IMAGE_FILE],
+                                row[KEY_OBJECT_LABEL])
+```
+
+That test fails loudly against the plan as written and passes against either
+fix. It is the one test this plan most needs and does not have.
+
+One caveat on the helper: it must be called on `master_df`, never on a frame
+that already carries the column, or `with_row_index` raises a duplicate-column
+error. Either guard it or document it.
+
+## B2 — `apply_filters` and `STORE_FILTER_STATE` do not exist [SRC]
+
+Task 13 (plan:2022, 2026) calls `apply_filters(...)` and reads
+`State(rv_ids.STORE_FILTER_STATE, "data")`. Neither symbol exists anywhere in
+the codebase. The real API:
+
+| Plan writes | Reality |
+|---|---|
+| `rv_ids.STORE_FILTER_STATE` | `STORE_FILTER_SPEC` — `results_viewer/_ids.py:29` |
+| `apply_filters(df, state)` | `FilterSpec.from_store(payload).apply_to(df)` — `_filter_state.py:181` (class), `:198` (`from_store`), `:229` (`apply_to`) |
+
+Working reference for the whole pattern: `results_viewer/_viewer_card.py:1111`
+(`State(STORE_FILTER_SPEC, "data")`) and `:1128-1130`
+(`FilterSpec.from_store(filter_payload)` → `spec.apply_to(slice_df)`).
+
+**Second, functional, defect in the same lines:** the plan makes the filter
+store a `State`. None of the callback's ten `Input`s fires when the user edits a
+filter, so the Scatter figure silently goes stale — defeating decision Q4
+("Share filters only"), which is the tab's entire relationship to the rest of
+the viewer. It must be an `Input`.
+
+## B3 — Task 13's registration test cannot pass, before or after implementation [MEASURED]
+
+plan:1983-1987:
+
+```python
+inputs = {dep.component_id for cb in app.callback_map.values() for dep in cb["inputs"]}
+```
+
+On Dash 4.1.0, `callback_map[...]["inputs"]` holds plain dicts keyed `"id"` and
+`"property"`, not dependency objects. `dep.component_id` raises `AttributeError`
+in both the red and the green phase, so the test gates nothing.
+
+**The exact working form**, copied from the repo's own passing example at
+`tests/unit/gui/results_viewer/test_filter_panel.py:215-219`:
+
+```python
+    registered_input_ids = {
+        spec["id"]
+        for entry in app.callback_map.values()
+        for spec in entry["inputs"]
+    }
+    assert ids.STORE_PLOT_REFRESH_REVISION in registered_input_ids
+```
+
+Note that file also demonstrates the idiom for pattern-matching ids, where
+`spec["id"]` is a dict rather than a string — it joins them into a blob and
+substring-matches (`:222-226`). Scatter's ids are plain strings, so the set
+membership above is correct as written. `spike_e` and `spike_f` both print the
+live structure to confirm.
+
+## B4 — Task 9's `test_an_empty_facet_still_occupies_its_cell` is vacuous [MEASURED]
+
+plan:1342-1351. The frame is:
+
+```python
+"r": ["0", "0"], "c": ["0", "0"]
+```
+
+so `plan_facets` returns a **1×1** grid. There is no empty facet in the fixture
+the test builds. Its only assertion is:
+
+```python
+assert isinstance(fig, go.Figure)
+```
+
+which cannot fail once `build_scatter_figure` exists and returns anything at
+all. The test's name and docstring both describe behaviour it never exercises.
+`spike_c` prints the grid dimensions to make this concrete.
+
+**Replacement:** use ≥2 row values × ≥2 column values with one combination
+absent from the data, then assert on the grid's geometry rather than its type —
+`len(fig.layout.annotations)`, or that the axis domains still tile 2×2, or that
+the trace count is 3 while the subplot count is 4.
+
+## B5 — Task 1's `test_the_display_range_does_not_depend_on_the_crop_window` is vacuous [SRC]
+
+plan:113-124:
+
+```python
+assert image_display_range(store, "rgb") == image_display_range(store, "rgb")
+```
+
+This is `f(x) == f(x)` on a deterministic pure function. It cannot fail.
+
+It is worse than merely weak: `image_display_range(store_path, layer)` **takes
+no window argument** (plan:166), so no implementation of that function could
+ever fail this test — including the per-crop min-max stretch that spec §2.2
+spends three paragraphs rejecting. The test named for the §2.2 defect is
+structurally incapable of detecting it.
+
+Spec §2.5 states the real requirement: "Two crops of the same image, taken from
+different windows, map an identical source value to an identical output." That
+needs two `crop_store_rgb` calls with different centres over an overlapping
+region, comparing the overlap pixel for pixel:
+
+```python
+def test_two_windows_map_a_shared_pixel_identically(store: Path) -> None:
+    a = _decode_rgb(crop_store_rgb(store, "rgb", 100, 100, 64, 0))
+    b = _decode_rgb(crop_store_rgb(store, "rgb", 116, 116, 64, 0))
+    # The two 64px windows overlap; the pixel at (100,100) in image space is
+    # a[32,32] and b[16,16]. A per-crop stretch renders it two different ways.
+    np.testing.assert_array_equal(a[32, 32], b[16, 16])
+```
+
+## B6 — Task 10's page-count test hard-fails wherever Chrome is absent, which the spec says is here [MEASURED]
+
+`test_one_page_is_written_per_section` (plan:1588-1595) calls
+`export_sections_pdf`, which calls `kaleido.write_fig_sync`, which needs a
+Chrome binary. The test has no availability guard — only the separate ink test
+guards `pymupdf`.
+
+Spec §11.2 states plainly that on this node `google-chrome`, `chromium` and
+`chromium-browser` are all absent from `PATH` and `~/.cache/kaleido` does not
+exist, and that plain `write_image` raises `RuntimeError: Kaleido requires
+Google Chrome to be installed`. So the plan's "Expected: the page-count test
+passes" (plan:1723) is wrong in the environment the plan itself documents, and
+the default `uv run pytest` lane goes red.
+
+`_pdf.py` catches that `RuntimeError` and re-raises it with an install hint
+(plan:1706-1709) — which converts the failure into a *different* failure, not
+into a skip.
+
+**Fix, one of:** add a module-level Chrome guard
+(`pytest.mark.skipif(shutil.which("google-chrome") is None and not
+Path("~/.cache/kaleido").expanduser().exists(), ...)`), or make §16.1's decided
+`plotly_get_chrome` an actual Task-10 step with a verification that it works
+from a compute node — §16.1 already lists that as "a requirement, not a note",
+and the plan does not carry it into any task.
+
+## B7 — The blank-PDF guard, which §15 calls the only defence, never executes [MEASURED]
+
+`test_the_exported_page_contains_ink_not_just_axes` (plan:1599) is the sole
+protection against §11.1's silent failure — a valid, well-formed, entirely blank
+PDF produced with exit code 0 and no warning. It cannot run, for two independent
+reasons:
+
+1. It is decorated `@pytest.mark.slow` (plan:1598), and `pyproject.toml:222`
+   sets `addopts = "--verbose --capture=no -m 'not slow'"`. Deselected by
+   default.
+2. It requires `fitz`/`pymupdf`, which is **not a dependency** — absent from
+   `uv.lock` and from `.venv/lib/python3.12/site-packages/`. Task 10 Step 1 adds
+   only `pypdf`. So even under `-m slow` it skips permanently.
+
+Spec §13 says "Export tests assert on rendered ink, never on file existence" and
+§15 lists "A blank export passes a naive test" as **Live**, "Mitigated by the
+ink assertion in §13 — the only defence, since nothing else signals". A defence
+that is deselected by default and skipped when selected is not mitigation. As
+the plan stands, §15's live risk is unmitigated and the risk table is wrong.
+
+`spike_e` confirms all of it on this node: `pypdf`, `fitz` and `pymupdf` all
+absent; kaleido imports; no `chrome`/`chromium`/`chromium-browser` on `PATH`; no
+`~/.cache/kaleido`; `BROWSER_PATH` unset. **[MEASURED]**
+
+**Fix — and it needs no new dependency.** See *Answer 1* below: assert on a PNG
+kaleido renders directly (PIL + numpy, both already present), or on the pypdf
+content-stream size. Drop the `slow` marker either way.
+
+## B8 — The shared-axes test cannot detect the regression it is named for [MEASURED]
+
+Promoted from SHOULD-FIX after measurement. plan:1354-1361 ends:
+
+```python
+assert len(ranges) <= 1
+```
+
+I expected the walk to find four identical ranges, making the assertion weak but
+functional. `spike_c` shows it is worse: rebuilding the same figure with
+`share_axes=False` yields **0 distinct ranges**, not 4 — with no shared range
+set, no `yaxis*` entry carries a `range` key at all, the set comprehension
+matches nothing, and `len(ranges) <= 1` passes.
+
+So the test passes in both the correct and the broken configuration. It is a
+third test that cannot fail, alongside B4 and B5, and it is the one guarding
+the spec's §5 shared-axis-range requirement.
+
+**Fix:** `assert len(ranges) == 1`. That flips correctly in both directions —
+`spike_c` confirms the `share_axes=False` build then fails.
+
+## B9 — A hue absent from the first facet never reaches the legend [MEASURED]
+
+Promoted from SHOULD-FIX; measured, not predicted.
+
+plan:1490 sets `showlegend=first_cell` and plan:1503 clears `first_cell` after
+the first `(row, col)` cell. Any series with no rows in cell 1 hits
+`if part.height == 0: continue` (plan:1475-1476) and is thereafter drawn with
+`showlegend=False` everywhere.
+
+`spike_c` on a 2×2 sparse frame:
+
+```
+series drawn      = ['hue=a', 'hue=b']
+series IN LEGEND  = ['hue=a']
+```
+
+Half the plot is unlabelled. This is blocking rather than cosmetic because of
+what the data looks like: spec §1.3 keeps the verification fixture sparse *on
+purpose* — 23 strains across 36 images, median 32 plottable rows per strain,
+"good for exercising empty facets, sparse grids and the 'no data' cell". A gap
+in the first facet is the normal case here, so the legend is wrong on the very
+run Task 14 smoke-tests, and a legend that silently omits series misattributes
+colour on a comparison surface.
+
+**Fix:** key on the label, not the cell.
+
+```python
+seen_legend: set[str] = set()
+...
+showlegend = label not in seen_legend
+seen_legend.add(label)
+```
+
+---
+
+# ANSWERS TO THE TWO ORCHESTRATOR QUESTIONS
+
+## Answer 1 — No, do not add `pymupdf`. Nothing new is needed. [SRC, SPIKE-pending for the numbers]
+
+There is no PDF rasterizer in the tree — `fitz`, `pymupdf`, `pypdfium2` and
+`pdf2image` are all absent, and while `wand` 0.6.13 is in `uv.lock` and
+installed, it binds ImageMagick and `magick` is not on `PATH` (only the legacy
+`/usr/bin/convert`), so it is not a dependency you can rely on either.
+
+But the ink assertion does not need to rasterize a PDF at all, and **pypdf
+cannot help by the route the question suggests**: a kaleido chart is vector, so
+`page.images` is empty (nothing to extract) and `extract_text()` returns the
+axis labels — which are *identical* on a blank page and a rendered one, because
+§11.1's failure mode is precisely that the axes render and the markers do not.
+Text extraction would pass against the broken export.
+
+Two routes that work with what is already installed:
+
+**Preferred — assert on a PNG, not a PDF.** The failure is in the kaleido
+render, not the pypdf merge, so test it where it happens. `kaleido.write_fig_sync`
+takes the format from the path extension, so the same call writes a PNG; Pillow
+12.0.0 and numpy are both dependencies already.
+
+```python
+def test_the_exported_figure_contains_ink_not_just_axes(tmp_path) -> None:
+    """kaleido renders Scattergl as blank axes, exit 0, no warning."""
+    png = tmp_path / "page.png"
+    kaleido.write_fig_sync(build_scatter_figure(_frame(), _spec(),
+                                                plan_facets(...), for_export=True), png)
+    arr = np.asarray(PILImage.open(png).convert("RGB"))
+    assert (arr.mean(axis=2) < 128).sum() > 2000
+```
+
+This mirrors §11.1's own methodology exactly — the spec's evidence is
+`gl.png non-white 624` against `svg.png non-white 46886`, i.e. it was measured
+on PNGs, not PDFs. Reproducing the spec's measurement as the regression test is
+the right shape.
+
+**Fallback, if it must be the merged PDF bytes** — pypdf (which Task 10 adds
+anyway) exposes the page content stream via `page.get_contents().get_data()`.
+A drawn page's stream is orders of magnitude longer than a blank one's, since
+5,000 markers are 5,000 path operators. `spike_g` measures the ratio on a
+matplotlib-generated blank-vs-drawn pair to confirm the separation is wide
+enough to threshold safely.
+
+Either way the marker must go: an assertion behind `-m 'not slow'` is not a
+defence, and this one is cheap.
+
+## Answer 2 — Drop `_store_member_path` *and* the directory scan. [SRC, SPIKE-pending for confirmation]
+
+`_read_store_level(store_path, layer, level)` resolves the member itself
+(`tiles.py:436-437`), so the only remaining job for `_store_member_path` in
+`image_display_range` is locating a directory to scan for level names. That scan
+is itself avoidable: the level count is recorded in the store.
+
+`gui/CLAUDE.md` states the rule directly — "**Never recompute the pyramid.** The
+level count is recorded in `phenotypic.pyramid`". The plan's `iterdir()` +
+`isdigit()` scan is a recomputation of exactly that.
+
+**Simplest correct form:**
+
+```python
+def image_display_range(store_path: Path, layer: LayerName) -> tuple[int, int]:
+    block = _readable_block(store_path)
+    levels = int(block[ngff_.PhenotypicAttr.PYRAMID]["levels"])
+    smallest = _read_store_level(store_path, layer, levels - 1)
+    finite = smallest[np.isfinite(smallest)] if smallest.dtype.kind == "f" else smallest
+    if finite.size == 0:
+        return (0, 255)
+    return (int(finite.min()), int(finite.max()))
+```
+
+`PhenotypicAttr.PYRAMID` is `"pyramid"` (`sdk_/ngff_.py:455`). I verified the
+depth is uniform across layers on the fixture — `rgb`, `gray`, `detect_mat` and
+`rgb/labels/objmap` each hold levels `0..4`, matching the block's
+`"levels": 5` — so `levels - 1` is the smallest index for every layer, and the
+image/label downsample split (`{"image": "mean", "label": "nearest"}`) does not
+imply differing depths.
+
+This drops one helper call, one directory scan, and the `str`-vs-`int` type
+error in one edit. Two caveats worth a line of code:
+
+- `_level_shape`'s docstring warns it raises `FileNotFoundError` "If the level
+  the store DECLARES is not on disk", so a declared count *can* exceed reality.
+  Catching that and falling back to `(0, 255)` costs nothing.
+- **The fallback must not be `(0, 0)`.** `spike_d` found that the as-written
+  version returns `(0, 0)` silently for `detect_mat` and `gray`; fed to
+  `scale_to_uint8`, `span <= 0` takes the `np.zeros` branch (plan:160-161) and
+  the crop renders **entirely black** with no error. The render path only calls
+  this for `rgb` today, so it is not live — but it is a loaded gun on a public
+  helper, and a guard against `hi <= lo` returning `(0, 255)` instead removes it.
+
+---
+
+# SHOULD-FIX
+
+## S1 — `_read_store_level`'s second parameter is `layer`, not `member` [MEASURED]
+
+**Measured outcome, which is worse than the wrong-argument-name framing.**
+`spike_d` ran the plan's `image_display_range` verbatim against the real store:
+
+| layer | as written | corrected |
+|---|---|---|
+| `rgb` | `(20511, 44047)` — right, by accident | `(20511, 44047)` |
+| `objmap` | **raises `KeyError`** | `(0, 45)` |
+| `detect_mat` | **`(0, 0)` silently** | — |
+| `gray` | **`(0, 0)` silently** | — |
+
+Two of the four layers fail *silently*, and `(0, 0)` is the dangerous value:
+`scale_to_uint8` takes its `span <= 0` branch (plan:160-161) and returns
+`np.zeros`, i.e. a completely black crop with no error and no log. Today only
+`rgb` reaches this helper, so it is latent rather than live — but the helper is
+module-public and the next caller inherits it. See *Answer 2* for the form that
+removes the whole class.
+
+**Also measured:** level-0's true range is `(17290, 47898)`, not the
+`(17912, 45344)` spec §2.3(c) quotes. The under-coverage that section admits is
+therefore worse than stated — roughly 11% clipped at the bottom **and ~8%
+saturated at the top**, against a `rgb/4`-derived range of `(20511, 44047)`. The
+spec's mitigation options (widen the range, or read level 0 strided) are
+unchanged, but the number in §2.3(c) should be corrected.
+
+
+Real signature, `gui/_shared/tiles.py:407-412`:
+
+```python
+def _read_store_level(
+    store_path: Path | str,
+    layer: str,
+    level: int,
+    window: tuple[int, int, int, int] | None = None,
+) -> np.ndarray:
+```
+
+It resolves the member itself at `:436-437`. Task 1 (plan:198) calls:
+
+```python
+smallest = _read_store_level(store_path, member, levels[-1])
+```
+
+passing `member` into the `layer` slot and a **`str`** (`levels[-1]`, from
+`d.name`) into the `level: int` slot.
+
+This appears to work only by coincidence. I read the fixture store's
+`attributes.phenotypic` block: `series` is
+`{'detect_mat': 'detect_mat', 'gray': 'gray', 'rgb': 'rgb'}` — an identity map,
+so `member == "rgb"` and the mistaken argument happens to be a valid layer name.
+It breaks for any non-identity member, and `labels` is already one:
+`{'objmap': 'rgb/labels/objmap'}`.
+
+Two further consequences:
+- `mypy src/phenotypic/gui/_shared/tiles.py` (Task 1 Step 7) will reject `str`
+  for `level: int`.
+- The plan's own hedge — "If `image_display_range` raises, check
+  `_read_store_level`'s actual signature" (plan:211) — will not fire, because on
+  this fixture it does not raise. The safety net is positioned where the failure
+  isn't.
+
+**Correct call:** `_read_store_level(store_path, layer, int(levels[-1]))`. The
+`_store_member_path` lookup at plan:191 is then needed only to locate the
+directory for the level scan.
+
+## S2 — `src/phenotypic/gui/_assets/results_viewer.js` does not exist [MEASURED]
+
+*The orchestrator classifies this blocking. I do not contest it — the severity
+argument is that an agent creates a file at a path Dash never serves, the
+splitter silently never attaches, and nothing fails. It is listed here only
+because the fix is one path segment and is identical at either severity.*
+`spike_e` confirms the plan's path is absent and the real one present.
+
+
+That directory does not exist at all. The real file is
+`src/phenotypic/gui/results_viewer/_assets/results_viewer.js` — splitter block
+at `:798`, `clampSidebarWidth` at `:818`, drag handler at `:834`,
+`#qc-review-splitter` lookups at `:868` and `:884`.
+
+Spec §7 cites the right lines. The plan's File Structure block (plan:53) and
+Task 12 Step 3 (plan:1889, 1923) both give the wrong path. An agent following
+the plan literally creates a new file at a path Dash does not serve; the
+splitter silently never attaches and nothing fails.
+
+## S3 — Task 12 breaks an existing test and does not say so [SRC]
+
+`tests/unit/gui/results_viewer/test_layout_tab_shape.py:33-37` asserts exact
+equality:
+
+```python
+def test_results_tabs_expose_exactly_the_mounted_surfaces(built_results_layout):
+    assert _tab_ids(built_results_layout) == [
+        ids.TAB_PLATE_ID,
+        ids.TAB_COLONY_ID,
+    ]
+```
+
+Mounting a third tab fails it. Task 12 Step 5's "Expected: pass" (plan:1935) is
+wrong.
+
+Two further details the plan gets wrong about this file:
+- the helper is `_tab_ids(layout)` (`:13`), not `_tab_ids_in_layout()`, and it
+  takes an argument;
+- it needs the `built_results_layout` fixture (`conftest.py:38`), which the
+  plan's snippet never requests.
+
+The file's docstring says the edit is deliberate and expected ("This test is
+edited deliberately as surfaces are removed. Each edit is the executable
+statement that a tab came off"), so updating it is correct — the plan just has
+to say so.
+
+## S4 — Task 3 has no test for the only risky part of Task 3 [SRC]
+
+Steps 1-4 test `composite_contours` against synthetic arrays. Step 5 — resolving
+the objmap member from `attributes.phenotypic.labels`, reading the matching
+window, threading `contours` through `crop_store_rgb` → `crop_colony` →
+`register_crop_route` — is prose with no test and no verification step. Spec
+§2.5 explicitly requires "`?contours=1` on a window containing a known label
+emits boundary pixels; `?contours=0` emits none", on a window with a real
+colony.
+
+Two specific hazards left unguarded:
+
+**(a) The shape guard fails silently.** plan:409-410:
+
+```python
+if labels.shape != rgb.shape[:2]:
+    return out
+```
+
+Returns the crop unchanged with no log and no error. If compositing is applied
+after the `size × size` PIL paste rather than to the clamped window array, every
+crop silently loses its contours and the feature quietly does nothing. I checked
+the shapes on the fixture — `rgb/0` is `[3, 3132, 5086]` uint16 and
+`rgb/labels/objmap/0` is `[3132, 5086]` — so the *clamped-window* pairing does
+match, but the plan's prose does not specify which pairing it means. Say it
+explicitly, and log at `warning` rather than returning silently.
+
+**(b) The overlay fallback is unspecified.** `crop_colony` falls through to
+`crop_overlay` when no store exists (`tiles.py:667-671`), and `crop_overlay`
+takes no `contours`. The plan does not say whether that is an error, a silent
+no-op, or acceptable (the baked overlay already has contours drawn in, so it is
+probably acceptable — but it should be stated, since the two paths would then
+render different-looking contours).
+
+## S5 — Task 4's derivation is sound; two smaller problems remain [MEASURED]
+
+**Most of this finding is withdrawn.** `spike_a` disproves the two hypotheses I
+raised: nothing raises, and nothing depends on import order. Across all 46
+discoverable leaves, `category()` raises on none; `Status` is present whether or
+not `phenotypic.sdk_` is loaded first; and the derived tuple is byte-identical
+(31 prefixes) under both import orders. All four of Task 4's assertions pass.
+The derivation ships as written.
+
+Two smaller points survive:
+
+**(b) The docstring becomes a second stale copy.** `selectable_axis_columns`
+spells the tuple's contents out in prose at `colony_view/_grid.py:212-214`
+(`Bbox_`, `Shape_`, `Intensity_`, `TextureGray_`, `SymZones_`, `GridSpatial_`).
+Task 4 changes the tuple and never touches that docstring, recreating exactly
+the drift it is fixing. **[SRC]**
+
+**(d) An unstated behaviour change**, now measured: selectability changes for
+exactly two real column families — `QC_MetadataOnly` and `Texture_*`, both newly
+excluded from axis pickers. `METADATA_MATCH.category()` and
+`QUALITY_CHECK.category()` both return `"QC"`
+(`schema/_metadata_match.py:19`, `schema/_quality_check.py:33`), so `"QC_"`
+enters the exclusion tuple and `QC_MetadataOnly` stops being offered as a
+section or facet column; `Texture_` likewise stops being offered, which is the
+§9 problem the fix exists to solve. Both are probably desirable, but they are
+user-visible changes to the Colony grid's axis options that the plan does not
+mention and FEATURES.md would need to reflect. Spec §16.3 already flags this
+("changes the Colony grid's axis options too"); the plan does not carry it into
+Task 4 or Task 14.
+
+*Not a defect, for the record:* `analysis/_error_cutoffs.py:32-42` keeps its own
+`MEASUREMENT_PREFIXES` and its comment says the independence is deliberate ("This
+list is defined independently — the colony grid's `_MEASUREMENT_PREFIXES` is a
+UI axis-exclusion list, not an authoritative phenotype-measurement set"). Leave
+it alone.
+
+## S6 — `"QC_MetadataOnly"` is hard-coded against a firm convention [SRC]
+
+plan:657 (`_spec.py`) and plan:1037 (`_grouping.py`). The column is owned by
+`METADATA_MATCH.METADATA_ONLY` (`schema/_metadata_match.py:21`), and every
+existing site spells it through the schema: `_cli/_cli_output_manager.py:196`,
+`:860`, `:894`; `sdk_/_metadata_helpers.py:760`. CLAUDE.md's rule — "Metadata
+queries use schema ownership, never string prefixes" — governs.
+
+```python
+from phenotypic.schema import METADATA_MATCH
+CURATION_PHANTOM_COL = str(METADATA_MATCH.METADATA_ONLY)
+```
+
+**Related, and the severity is now measured.** `plottable` does
+`pl.col(CURATION_PHANTOM_COL).cast(pl.Boolean)` (plan:713). The existing pandas
+equivalent `metadata_only_mask` (`sdk_/_metadata_helpers.py:712-765`) devotes a
+paragraph to why that coercion must be refused: "The dtype check is deliberately
+**strict**: only a real boolean column is trusted. An object/string column is
+rejected rather than coerced, because `pd.Series(["False", "True"]).astype(bool)`
+is `[True, True]` — the string `"False"` is truthy — which would silently mark
+every row a phantom."
+
+`spike_c` shows polars does **not** repeat pandas' mistake: a string-typed flag
+raises `InvalidOperationError` (`Utf8View` to `Boolean`), so the failure is loud,
+not silent. That lowers the danger class — a 500 rather than a corrupted plot —
+but it is still an unhandled exception on a code path fed by a user-supplied
+parquet. Mirror the existing helper: test `df.schema[col] == pl.Boolean` and
+treat anything else as "no flag present". **[MEASURED]** The fixture's column is
+`Boolean`, so this never fires on the verification run — which is precisely why
+it needs the guard rather than the fixture as evidence.
+
+## S7 — *(withdrawn — see "Withdrawn after measurement")*
+
+## S8 — *(promoted to B9)*
+
+## S9 — The facet row label is never rendered [SRC]
+
+plan:1438-1441 builds `subplot_titles` as `f"{spec.col_col}={c}"` repeated once
+per row. The row facet value appears nowhere in the figure. Spec §9 lists
+"Figure row label" as a first-class control with its own dropdown, so a user who
+sets it gets a grid that splits by that column but never says which row is
+which.
+
+The list length is correct (`rows * cols`), so `make_subplots` will not
+complain — this fails as a silent usability gap, not an exception. Row labels
+normally go on the left via `fig.update_yaxes(title_text=r_val, row=i, col=1)`
+or a left-edge annotation.
+
+## S10 — *(promoted to B8; my original analysis of it was too generous)*
+
+For the record, because the correction matters more than the finding: I traced
+this by hand and concluded the test was *weak but functional* — that a
+per-facet-range regression would surface four distinct ranges against one, so
+`<= 1` would still fail. `spike_c` disproves that. With `share_axes=False` the
+walk finds **zero** ranges, not four, because no `yaxis*` entry carries a `range`
+key at all when nothing sets one. `<= 1` therefore passes in both directions.
+
+The lesson generalizes past this test: an assertion of the form
+`len(collection) <= n` over a walk that *finds* the collection is
+indistinguishable from an assertion that the walk found nothing. Hand-tracing
+told me what the correct implementation produces; only execution told me what
+the broken one produces, and that is the half that decides whether a test has
+teeth.
+
+## S11 — The `_config.py` ownership claim is false [SRC]
+
+The Orchestration section (plan:2249-2250) states: "A owns *all three*
+`_config.py` constants, including the two Task 6 needs, so C never touches that
+file and the seam stays in one cluster."
+
+Task 3 Step 6 adds only `SCATTER_CROPS_URL_SEGMENT` (plan:450-457). Task 6
+Step 4 adds `SCATTER_FACET_CAP` and `SECTION_GROUP_CAP` (plan:906-923) — and
+Task 6 is in cluster **C**, not A. The plan's own "Shared files" line correctly
+contradicts the claim: "`_config.py` (3, 6)" (plan:2230).
+
+No write race results, because C runs after A. But the stated invariant is wrong
+and should not be relied on if the clustering is ever re-cut. Either move the
+two caps into Task 3, or delete the claim.
+
+**Also within Task 6:** Step 3 writes `from phenotypic.gui._config import
+SCATTER_FACET_CAP` (plan:822) before Step 4 creates the constant. Swap the two
+steps or Step 3 leaves the tree un-importable.
+
+## S12 — Tasks 2 and 10 put non-hermetic work in `tests/unit/` [SRC]
+
+`tests/CLAUDE.md` scopes the directory: "`unit/` ← deterministic, no I/O beyond
+`tmp_path`".
+
+- Task 2 reads an absolute path under
+  `/rhome/anguy344/bigdata_exfab/projects/ucr_029_e_d_Maresca/...` — correctly
+  `skipif`-guarded, but still a machine-specific dependency inside the unit
+  lane.
+- Task 10 spawns headless Chrome.
+
+Both belong under `tests/integration/`. `tests/unit` is in `testpaths`
+(`pyproject.toml:219`), so this is the suite everyone runs by default.
+
+## S13 — `resolve_click` will raise on a null `Object_Label` [SRC]
+
+plan:1859: `label=int(row[KEY_OBJECT_LABEL])`.
+
+`master_df` **is the mirror** — `_output_root.py:348` reads `mirror_path` into
+`master_df` — and the mirror carries phantom rows with a null `Object_Label`
+(121 of 844 in the fixture, per spec §1.1). A fingerprint-matching index should
+never point at one, but `resolve_click`'s documented contract is that it returns
+`None` "when the index is stale or out of range"; a `TypeError` escaping into a
+Dash callback is neither, and surfaces as a 500. Guard it and return `None`.
+
+---
+
+# NITS
+
+1. **plan:215** — "change its signature and both call sites".
+   `_store_layer_array_to_rgb` has exactly one caller: `tiles.py:571`. **[SRC]**
+2. **plan:244** — predicts `test_crop_matches_the_full_resolution_slice` may
+   break. It won't: that test exercises the `detect_mat` layer
+   (`test_tiles_zarr.py:83`), which the change does not touch. The rgb test is
+   `test_rgb_crop_returns_channel_last_pixels` (`:138-142`), and it survives only
+   because `load_synth_yeast_plate` is 8-bit and `scale_to_uint8` short-circuits
+   on `uint8`. Name the right test. **[SRC]**
+3. Consequence of that short-circuit: `image_display_range` performs a whole
+   smallest-level read *before* `scale_to_uint8` discards its result, on every
+   crop from every uint8 store. Check the dtype first. **[SRC]**
+4. **plan:348** — the contours test imports `OI_ORANGE` and never uses it.
+   `ruff check --fix` in Step 7 will strip it, or F401 fires. **[SRC]**
+5. **plan:1112-1121** — Task 7's fixture check hand-joins
+   `D + '/pipeline.json.pht-pipe'`, violating the plan's own Global Constraint
+   (plan:22) to resolve through `layout.pipeline_config_path`. The check itself
+   is sound — I confirmed the file's `meas` block has exactly the assumed shape,
+   with `MeasureColor` carrying `include_XYZ: false, include_xy: false` and
+   `MeasureTexture` carrying `scale: [5]` — it is just spelled against the rule
+   it sits below. **[SRC]**
+6. **plan:674** — `FigureSpec.marker_size` documented as "Marker area in points
+   squared". Plotly's `marker.size` is a diameter in pixels. **[SRC]**
+7. **spec header** still reads "Status: revision 2" while its §2.3 and the plan
+   both say revision 3. **[SRC]**
+8. **plan:1575** — module-level `pytest.importorskip("pypdf")` sits *after* the
+   `_pdf` import; harmless only because `_pdf` imports pypdf lazily inside the
+   function. **[SRC]**
+9. **plan:1459, 1462** — `r_val != ""` means a facet value that is genuinely the
+   empty string applies no filter, silently drawing the whole frame in that cell.
+   Use a sentinel rather than `""`. **[SRC]**
+10. **plan:1394** — `_SYMBOLS` includes `"x"`, which spec §9 also reserves for
+    curation-removed colonies ("show removed colonies as grey x"). With
+    ≥5 shape values the two become indistinguishable. **[SRC]**
+11. **Task 10** has no test that `export_sections_pdf` actually passes
+    `for_export=True`. Spec §13 asks for "a guard that the export path never
+    emits a `Scattergl` trace"; Task 9's trace-type test covers the *builder*,
+    not the export function that calls it. One line: assert every trace in the
+    figure `_pdf` builds is `"scatter"`. **[SRC]**
+
+---
+
+# VACUITY SWEEP — can each test in the plan actually fail?
+
+A test that passes without exercising the code it names is worse than no test,
+because it reports coverage that does not exist. Three of this plan's tests are
+in that category (B4, B5, B8). This is the full sweep across every task that
+ships one.
+
+Two questions per test, and both matter. **Red** asks whether it fails before
+the implementation exists — a TDD plan's own claim. **Teeth** asks the harder
+question: whether it fails against a *plausible wrong* implementation. A test
+can pass the first and fail the second, which is exactly what happened to B8.
+
+`spike_f_fix_and_vacuity.py` runs the teeth column by mutation — it implements
+each plausible bug and asserts the test catches it. *I have not seen its
+output;* the orchestrator reports four defects found by it. The verdicts below
+are my own hand-trace, and where the two disagree the spike wins.
+
+| Task | Test | Red | Teeth | Verdict |
+|---|---|---|---|---|
+| 1 | `a_uint16_ramp_renders_monotonically` | ✅ `ImportError` | ✅ catches the mod-256 cast | **sound** |
+| 1 | `values_above_the_range_clip` | ✅ | ✅ catches wrap-instead-of-clip | **sound** |
+| 1 | `uint8_stores_passed_through` | ✅ | ✅ catches an unconditional stretch | **sound** |
+| 1 | `display_range_does_not_depend_on_crop_window` | ❌ | ❌ | **B5 — cannot fail** |
+| 2 | `a_real_colony_crop_is_smooth_not_noise` | n/a (green by design) | ✅ mean-delta 85.3 → 7.2 is wide | **sound**, but skips without the fixture |
+| 3 | `contours_draw_a_boundary` | ✅ `ImportError` | ✅ | **sound** |
+| 3 | `contours_are_a_no_op_when_no_label` | ✅ | ⚠️ passes against a stub returning `rgb.copy()` unconditionally | **weak** — pair it with the positive case, which is what saves it |
+| 3 | *(threading through the route)* | — | — | **missing entirely — S4** |
+| 4 | three prefix tests | ✅ fails on `Texture_` | ✅ | **sound** |
+| 6 | `numeric_looking_values_sort_numerically` | ✅ | ✅ catches a plain `sorted()` | **sound** |
+| 6 | `non_numeric_values_sort_lexically` | ✅ | ⚠️ a plain `sorted()` also passes | **weak alone**, fine beside the numeric case |
+| 6 | `mixed_values_fall_back_to_lexical` | ✅ | ✅ catches a partial-numeric key | **sound** |
+| 6 | `grid_is_capped_by_the_product_not_per_axis` | ✅ | ✅ a per-axis cap gives 12×12=144 > 16 | **sound** — the docstring's named bug is caught |
+| 6 | `an_uncapped_grid_is_not_marked_truncated` | ✅ | ✅ catches an always-truncate | **sound** |
+| 7 | `exact_headers_group_by_measurer` | ✅ | ✅ | **sound** |
+| 7 | `parameterized_schemas_fall_back_to_category` | ✅ | ✅ catches dropping the `TypeError` branch | **sound** — the best test in the plan |
+| 7 | `measurer_params_change_the_claimed_headers` | ✅ | ✅ catches `cls()` instead of `cls(**params)` | **sound** |
+| 7 | `metadata_is_one_flat_group` | ✅ | ✅ | **sound** |
+| 7 | `unclaimed_columns_land_in_unattributed` | ✅ | ⚠️ passes against most mutations, since these columns are unclaimed either way | **weak** |
+| 8 | `index_ranks_within_each_plate` | ✅ | ✅ catches a global rank | **sound** |
+| 8 | `repeated_timestamps_share_one_index` | ✅ | ✅ catches a missing `.unique()` | **sound** |
+| 8 | `null_datetimes_get_a_null_index` | ✅ | ✅ catches nulls ranked 0 | **sound** |
+| 9 | `screen_figure_uses_webgl` | ✅ | ✅ | **sound** |
+| 9 | `export_figure_uses_svg` | ✅ | ✅ — this is §11.1's guard and it works | **sound** |
+| 9 | `every_point_carries_its_row_index` | ✅ | ⚠️ passes against B1's wrong index, because it only checks membership in `range(df.height)` | **weak — and it is why B1 survived** |
+| 9 | `an_empty_facet_still_occupies_its_cell` | ❌ | ❌ | **B4 — cannot fail** |
+| 9 | `shared_axes_give_every_facet_one_range` | ❌ | ❌ | **B8 — cannot fail** |
+| 10 | `one_page_is_written_per_section` | ❌ errors on missing Chrome | ✅ if Chrome existed | **B6 — fails for the wrong reason** |
+| 10 | `exported_page_contains_ink` | n/a | ✅ 289 vs 36,608 | **B7 — never executes** |
+| 11 | `an_index_resolves_to_its_colony` | ✅ | ✅ | **sound** |
+| 11 | `a_stale_fingerprint_is_refused` | ✅ | ✅ catches dropping the guard | **sound** |
+| 11 | `an_out_of_range_index_is_refused` | ✅ | ✅ catches dropping the bounds check | **sound** |
+| 11 | *(index round-trips under a filter)* | — | — | **missing — this is B1's pin** |
+| 12 | `tab_bar_carries_plate_colony_and_scatter` | ✅ `AttributeError` | ✅ | **sound**, but calls a helper that does not exist — S3 |
+| 13 | `scatter_subscribes_to_shared_refresh` | ❌ `AttributeError` both phases | ❌ | **B3 — cannot pass** |
+
+**Five conclusions.**
+
+1. **Tasks 6, 7, 8 and 11 are in good shape.** Every one of their tests fails
+   red and catches its plausible mutation. Task 7's parameterized-schema test is
+   the strongest in the plan — it pins the exact bug §8 spends a page on.
+2. **Task 9 is where the rot is:** two of its five tests cannot fail, and a
+   third (`every_point_carries_its_row_index`) is the specific weakness that let
+   B1 through. It asserts `seen <= set(range(df.height))` — membership in a
+   range, not correspondence to a row. A filtered-frame index satisfies it
+   perfectly. Strengthen it to assert the index *resolves to the right colony*,
+   and B1 becomes untestable-to-miss.
+3. **Task 10's two tests are both non-functional**, for unrelated reasons
+   (B6 environment, B7 marker + missing dependency). The export path currently
+   has no working test at all.
+4. **Three tests are weak rather than broken** (Task 3's no-op case, Task 6's
+   lexical case, Task 7's unattributed case). Each is saved by a sibling that
+   does have teeth, so none needs action on its own — noted so a later refactor
+   does not delete the sibling and leave the weak one standing.
+5. **Two tests that should exist do not** — Task 3's route threading (S4) and
+   B1's index round-trip. Both cover a seam between components, which is the
+   category this plan's per-task test design structurally under-covers.
+
+---
+
+# VERIFIED CORRECT
+
+Everything below was checked against source and found accurate as the plan
+states it.
+
+**Signatures and symbols**
+- `_readable_block(store_path)` → `tiles.py:333`; `_store_member_path(block,
+  store_path, layer)` → `:353`. Both called correctly by the plan.
+- `crop_store_rgb(store_path, layer, center_rr, center_cc, size, mtime_ns, *,
+  dim_alpha, bbox)` → `tiles.py:475-485`. Task 2's positional call matches
+  exactly.
+- `crop_colony(output_root, dataset, stem, layer, center_rr, center_cc, size, *,
+  dim_alpha, bbox)` → `tiles.py:595-606`. Task 3's argument order matches.
+- `register_crop_route(app, output_root, segment)` → `tiles.py:838-840`; adding
+  `default_contours: int = 0` is purely additive and leaves the two existing
+  segments unchanged, as the plan intends.
+- `KEY_DATASET` / `KEY_IMAGE_FILE` / `KEY_OBJECT_LABEL` →
+  `_filtered_state.py:52/55/58`, resolving to `Metadata_Dataset` /
+  `Metadata_ImageName` / `Object_Label`. Task 11's `_master()` fixture columns
+  match.
+- `OutputRoot.snapshot.consumed_state_fingerprint` → `_output_root.py:75`
+  (descriptor class), `:104` (field), `:163` (`snapshot` field), with a
+  convenience property at `:533`.
+- `STORE_PLOT_REFRESH_REVISION` → `_ids.py:813`, exported at `:1087`.
+  `TAB_HEATMAP_ID` (`:631`) and `TAB_QC_ID` (`:628`) exist and are unmounted, so
+  Task 12's negative assertions are meaningful rather than trivially true.
+- `OKABE_ITO` → `_design.py:280`, a 7-tuple in DESIGN.md §06 series order
+  (navy, orange, sky, green, blue, purple, vermilion). `OI_ORANGE` `:263`,
+  `OI_SKY` `:264`.
+- `phenotypic.measure` exports all five measurers Task 7 names
+  (`measure/__init__.py:9-19`). `get_measurement_infoclasses()` is an instance
+  method returning `tuple[type[MeasurementInfo], ...]`
+  (`abc_/_measure_features.py:333-335`), and `MeasureColor` overrides it on
+  `include_XYZ` / `include_xy` (`_measure_color.py:73-101`) — so the plan's
+  "instantiate from recorded params" rule is necessary, exactly as §8 argues.
+- `TEXTURE.get_headers(cls, scale, matrix_name=None)` → `schema/_texture.py:159-160`.
+  A bare call raises `TypeError`, so the fallback branch is genuinely reachable,
+  and `TEXTURE.category()` is `"Texture"` (`:41`) so the prefix match finds
+  `Texture_Contrast-deg000-scale05`.
+- `is_metadata_header` is exported from `phenotypic.sdk_`
+  (`sdk_/__init__.py:256, 347`) and accepts both `Metadata_Strain` and
+  `Metadata_PlateID` (`_metadata_helpers.py:289`).
+- `kaleido.write_fig_sync(fig, path)` exists
+  (`.venv/.../kaleido/__init__.py:174`), forwarding to `Kaleido.write_fig(fig,
+  path, opts=None, ...)` (`kaleido/kaleido.py:421-430`); the `.pdf` extension
+  selects the format, as the plan assumes.
+
+**Versions** — polars 1.41.2, plotly 6.6.0, dash 4.1.0, kaleido 1.2.0,
+pytest 9.0.1 (so `importorskip(reason=...)` is supported). `with_row_index` and
+`cum_count().over()` are current API.
+
+**Logic I traced and found sound**
+- Task 8's expression is semantically right for all three of its tests:
+  `.unique().drop_nulls().sort()` then `cum_count().over(plate).sub(1)` yields
+  `[0,1,2,0,1]`; `.unique()` collapses repeated timestamps so colonies in one
+  image share a frame; and a null-keyed left join yields `None` rather than 0,
+  because polars does not join on nulls by default. Only the *order* guarantee
+  is at risk (S7).
+- Task 6's cap loop terminates correctly on the 12×12 case, shrinking
+  alternately to 4×4 = 16 ≤ 16 with `truncated=True` and `total=144`.
+- `sort_facet_values(["10", "a", "2"])` returns `["10", "2", "a"]`: CPython's
+  `sorted` computes all keys up front, so the `ValueError` fires before any
+  comparison and the lexical fallback is reached with nothing half-sorted.
+- Task 9's `subplot_titles` list length is `rows * cols`, which is what
+  `make_subplots` expects.
+- Task 1's three arithmetic tests (monotonic ramp, clip, uint8 pass-through) are
+  sound and have teeth: they fail on `ImportError` in the red phase, and the ramp
+  test genuinely detects the mod-256 regression.
+- Task 3's two `composite_contours` tests are correct — `find_boundaries(...,
+  mode="outer")` on the synthetic squares produces non-zero pixels, and the
+  all-zero label map short-circuits both branches so the no-op test holds.
+
+**Fixture facts I re-derived rather than took from the spec**
+- The migration-test store exists at the path Task 2 hard-codes.
+- `attributes.phenotypic.series` is `{'detect_mat': 'detect_mat', 'gray':
+  'gray', 'rgb': 'rgb'}`; `labels` is `{'objmap': 'rgb/labels/objmap'}`;
+  `pyramid` is `{"downsample": {"image": "mean", "label": "nearest"}, "levels":
+  5, "stop_px": 512}`.
+- `rgb/0` is `[3, 3132, 5086]` uint16; `rgb/labels/objmap/0` is `[3132, 5086]`.
+- `deliverables/pipeline.json.pht-pipe` has a top-level `meas` key shaped
+  `{name: {"class": str, "params": dict}}`, carrying exactly the five measurers
+  the plan assumes.
+
+**Structure**
+- `results_viewer/_layout.py:561-577` is the `dbc.Tabs` block with exactly Plate
+  and Colony, matching the plan's "currently lines 560-577".
+- `FEATURES.md:312` carries `## Results Viewer integration`;
+  `scripts/check_features_md.py` and `scripts/check_workflows_md.py` both exist;
+  the highest tutorial page is `docs/source/tutorials/gui/18_browse.md`, so
+  Task 14's `19_scatter.md` is the right number.
+- `docs/superpowers/logic_validation_scripts/2026-09-01-results-scatter-tab/crop_uint16_scaling.py`
+  exists, so Task 15 Step 4 is runnable.
+- Clusters A (`tiles.py` + `test_tiles_zarr.py`) and B (`colony_view/_grid.py` +
+  a new test file) are genuinely disjoint — that half of the parallelism claim
+  holds. `_MEASUREMENT_PREFIXES` has exactly one consumer,
+  `colony_view/_grid.py:244`.
+- No task depends on a symbol an earlier task fails to produce, apart from the
+  intra-task Step 3/Step 4 ordering in Task 6 noted under S11.
+
+---
+
+# Recommended order of fixes
+
+1. **B1** with the `index_frame` helper, plus its round-trip test. This is the
+   only finding that produces silently wrong output for the user.
+2. **B2** — replace `apply_filters`/`STORE_FILTER_STATE` with
+   `FilterSpec`/`STORE_FILTER_SPEC`, and promote the store to an `Input`.
+3. **B6, B7** together — decide Chrome provisioning, add `pymupdf`, unmark the
+   ink test. Until then the export half of the feature is unverifiable.
+4. **B3, B4, B5** — the three tests that cannot fail. Cheap, and they are what
+   the later gates will lean on.
+5. **S1, S2, S3** — three wrong references that each cost an implementing agent
+   a debugging cycle.
+6. Everything else in cluster order.
+
+**One structural suggestion.** B1 survived because the producer and the resolver
+sat in different clusters with a gate between them, and each cluster's tests
+passed in isolation. The plan's gate list (plan:2258-2265) runs
+`implementation-test-reviewer` after D and after G — B1's two halves are in G and
+E, so the first gate that sees both is the last one. Consider adding a
+cheap cross-cluster check to the gate after G specifically: for every value that
+crosses a cluster boundary, name its producer and its consumer and confirm they
+agree. That is the one thing per-cluster review structurally cannot catch.
