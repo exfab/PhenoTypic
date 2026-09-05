@@ -237,6 +237,44 @@ def _build_pre_markers_half_converted(root: Path) -> Path:
     return root
 
 
+def _build_modern_process(root: Path) -> Path:
+    """A CURRENT-schema ``--mode process`` run that still publishes markers.
+
+    The one shape whose ``CONVERT`` rests on **signal 1 alone**, and the reason
+    that matters is the future rather than the present. Its state file is
+    already what migrate leaves behind -- schema 3, ``work_ids``,
+    ``restart_epoch``, no derived dataset sets -- so signals 3, 4 and 5 are all
+    silent. What converts it is the legacy image marker, which ``--mode
+    process`` publishes today.
+
+    So this is the shape that **flips** once P3 converts its records: the
+    marker becomes a record, signal 1 goes quiet, and the verdict becomes
+    ``None``. Every other convertible shape has a legacy state file too and
+    would still convert, so none of them can witness that flip.
+
+    ``requires_conversion``'s docstring has carried a row for this shape since
+    P1 (``_schema_shape.py:325-328``) under a table header that reads *"each
+    with a test"*. It had none -- the row was a claim about post-P3 behaviour
+    with nothing arranged to check it when post-P3 arrived (B-1).
+    """
+    root.mkdir(parents=True, exist_ok=True)
+    _write_state(
+        root,
+        datasets=_DATASETS_CONVERTED,
+        config={
+            "work_ids": _WORK_IDS,
+            "restart_epoch": 0,
+            "process_only_layer": "rgb",
+            "ext": "png",
+        },
+    )
+    _write_json(
+        image_completion_marker_path(root, "plate", "a"),
+        _legacy_marker_payload("a"),
+    )
+    return root
+
+
 def _build_interrupted_migrate(root: Path) -> Path:
     """Half-converted: a record exists and the legacy marker is still live."""
     _build_markers_era(root)
@@ -276,6 +314,7 @@ _EVERY_CONVERTIBLE_SHAPE: dict[str, Callable[[Path], Path]] = {
     "pre-markers-process": _build_pre_markers_process,
     "interrupted-migrate": _build_interrupted_migrate,
     "pre-phenotypic-dir": _build_pre_phenotypic_dir,
+    "modern-process": _build_modern_process,
 }
 
 
@@ -384,6 +423,53 @@ def test_every_convertible_shape_classifies_convert(
     tree = _EVERY_CONVERTIBLE_SHAPE[shape](tmp_path / "run")
 
     assert requires_conversion(tree) is ConversionVerdict.CONVERT
+
+
+def test_the_modern_process_shape_converts_on_the_marker_tree_and_nothing_else(
+    tmp_path,
+):
+    """B-1. The witness for a flip that has not happened yet.
+
+    ``requires_conversion``'s docstring says a modern ``--mode process`` tree is
+    ``CONVERT`` on signal 1 today and ``None`` once P3 converts its records.
+    Nothing checked either half: the row shipped with no builder, and a flip
+    that arrives with no test failing to announce it is the shape of defect
+    this whole change exists to remove.
+
+    Pinned here in the only way available before P3 exists -- by removing the
+    sole cause and requiring the verdict to move. Because this tree's state file
+    is already what migrate leaves behind, signals 3, 4 and 5 are silent, so a
+    residual ``CONVERT`` means some other signal is live and the docstring row's
+    post-P3 ``None`` is wrong.
+
+    **Signal 1 is the DIRECTORY, not the markers in it, and the two steps below
+    are what prove that rather than assume it.** Emptying ``image_complete/``
+    leaves the verdict at ``CONVERT``; removing the tree flips it. That is the
+    correct semantics -- an emptied marker directory is a half-migrated tree,
+    not a converted one -- and it is the half a reader is most likely to get
+    backwards, since every other shape here is built by writing *files*.
+    """
+    import shutil
+
+    tree = _build_modern_process(tmp_path / "run")
+    assert requires_conversion(tree) is ConversionVerdict.CONVERT
+
+    # Emptying is NOT converting: signal 1 asks whether the directory exists.
+    image_completion_marker_path(tree, "plate", "a").unlink()
+    assert requires_conversion(tree) is ConversionVerdict.CONVERT, (
+        "an emptied image_complete/ is a half-migrated tree, not a converted "
+        "one -- signal 1 must not be satisfied by deleting the markers"
+    )
+
+    # What P3 actually changes: records are published instead, so the legacy
+    # marker tree is never created at all.
+    shutil.rmtree(phenotypic_cache_dir(tree) / DIR_PROGRESS / DIR_IMAGE_COMPLETE)
+
+    assert requires_conversion(tree) is None, (
+        "with the marker tree gone this output is fully current, so CONVERT "
+        "rested on signal 1 alone -- another live signal means the docstring "
+        "row's post-P3 `None` is wrong"
+    )
 
 
 @pytest.mark.parametrize("shape", sorted(_EVERY_CURRENT_SHAPE))
