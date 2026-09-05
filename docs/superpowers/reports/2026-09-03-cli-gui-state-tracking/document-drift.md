@@ -24,6 +24,7 @@ about each.
 | **Stale** | True when written; the code moved underneath it | Low. Expected, and the fix is mechanical. |
 | **Never true** | Not true at the moment of writing | Medium. Someone asserted rather than checked. |
 | **Wrong while correcting** | An amendment, whose job is to fix a claim, is itself wrong about it | **Highest.** It carries the authority of a correction, so a reader who checks *is* likely to stop there. |
+| **True but incomplete** | Every statement is correct; a **consequence** is omitted. Not a falsehood, and the only kind here that is not | Medium, and **invisible to every check in this change** — nothing can fail for a sentence that was not written. Found only by tracing a mechanism to its consumer. |
 
 ---
 
@@ -50,6 +51,7 @@ about each.
 | 17 | P2 T3 Step 5 | parametrizes `["full","measure","process"]` and asserts each mints the identity `full` does. Unreachable: the digest branches mutually exclusively on `process_only_layer`, so process and full digest different payloads. No DF-16-satisfying implementation could make them equal without deleting a field | never true | `578147f9` |
 | 18 | P2 T3 Step 7 | *"38 tests"* for `-k 'restart or resume'`. `-k` matches the whole **node id**, so it selects every test in a class or module whose name contains either word — **451**, not 38 | never true | `578147f9` |
 | 19 | **design.md §5.1** | *"`scheduler_epoch` absorbs `slurm_generation`, staged `epoch`, `lifecycle_epoch`, `execution_epoch`, and recompile's `attempt_id`."* **Zero of the five can be renamed** — see below | never true | user-ruled |
+| 20 | **commit `3220a740`** | Says five minting sites became content-derived and `uuid4` is gone — all true. Omits that a generation stable across resumes stops `aggregate_state_from_events` excluding prior events, so **a resumed run now counts history it previously discarded** | **true but incomplete** | annotated, user-ruled |
 
 Two of the sixteen (12, 13) are the orchestrator's own, and both are claims about **what a
 check verifies** — written into the file whose stated job is being trustworthy about exactly
@@ -206,6 +208,56 @@ What survives is smaller and real: `_assert_worker_generation`'s
 `slurm_generation != attempt_id` compares one value with itself, so it is a **dead
 comparison to delete** rather than a token to collapse — no name, no key, no behaviour
 changes, and it removes the thing that made the pair look like two values.
+
+---
+
+### Entry 20 — a behaviour change that shipped inside a true commit message
+
+**The only entry here that is not a falsehood, which is why it needed a new kind.**
+
+`3220a740` converted the resume path's `uuid4()` to the content-derived generation. Its
+message is accurate throughout: five sites converted, the import reduced to `UUID`, and
+the `:2422` comment quoted and refuted as a *justification*. Nothing in it is wrong.
+
+What it does not say is the consequence, two files away:
+
+> `aggregate_state_from_events` (`_cli_update_state.py:337-347`) ignores events tagged with
+> a **different** generation, and `load_processing_state` has always passed the current one.
+> A fresh `uuid4()` per invocation therefore excluded **every prior event on every resume**.
+> Making the generation stable means a resume now **counts** that history.
+
+| | before `3220a740` | after |
+|---|---|---|
+| restart | prior events excluded | excluded — §14, unchanged |
+| **resume** | prior events **excluded** | prior events **counted** |
+
+**Why it was missed, and the lesson.** The deleted comment said a fresh epoch *"fences
+workers left by a killed local attempt"*. That was checked and found false **as a
+justification** for minting a uuid — which it was. It was simultaneously **accurate as a
+description of what the uuid did**. Only the first was verified.
+
+> **Refuting a justification does not refute the description it rests on.** When deleting
+> a comment that explains *why* something is done, trace what it says the thing *does* to
+> the consumer that observes it.
+
+**Assessed after the fact, and the risk direction is safe.** The work list is
+`processed = completed | failed` (`_cli_update_state.py:496-497`) — **`started` is not in
+it**. So a stale `started` from a killed worker drops its image out of `completed` and the
+image is **reprocessed**; it can never be wrongly skipped. Failure direction is extra work,
+never lost work, which is INV-VERDICT's direction. The merge point's own comment says
+*"prefer event log as source of truth"*, so the pre-`3220a740` behaviour was silently
+defeating the stated design on every resume — this is a latent bug fixed, not one
+introduced. §4.2 deletes these derived sets entirely by P6, bounding the window.
+
+**User ruling:** the change is **accepted as shipped**, and the commit is **annotated
+rather than amended**. Amending would rewrite six subsequent SHAs and break committed
+citations — manufacturing, inside the artifacts built to catch dangling references,
+exactly the defect this register tracks. Nine SHA citations exist in `docs/superpowers/`
+today.
+
+**Still owed:** the test must pin the **pair** — a restart excludes prior events (§14,
+unchanged, unpinned today) and a resume **includes** them (new since `3220a740`, unpinned,
+and the half a regression would silently reverse).
 
 ---
 
