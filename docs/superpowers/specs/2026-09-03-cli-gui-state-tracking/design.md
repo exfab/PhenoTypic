@@ -307,7 +307,7 @@ Half-migrated trees holding unconverted `.h5` files contribute a
 | Token | Kind | Derivation |
 |---|---|---|
 | `work_id` | content | unchanged: sha256 over schema version, dataset, input-relative path, input sha256, pipeline fingerprint, per-image config digest, mode |
-| `processing_generation` | content | `sha256(pipeline_sha256 ‖ scientific_config_digest ‖ restart_epoch)` — see §5.4 |
+| `processing_generation` | content | `sha256(pipeline_sha256 ‖ per_image_config_digest ‖ restart_epoch)` — see §5.4. **The second component is NOT `scientific_config_digest`**: that name is the *proof-side* token (the pipeline file's bytes) and would make this formula read `pipeline_sha256` twice. Renamed in P2 Task 2; drift register entry 14. |
 | `publication_id` | content | `sha256(source_set_digest ‖ finalization_inputs)` |
 | `restart_epoch` | tracked counter | monotonic int; preserved by `clear_machine_state` |
 | `scheduler_epoch` | opaque | ⚠ **the absorption is NOT achievable — see below.** Intended to absorb `slurm_generation`, staged `epoch`, `lifecycle_epoch`, `execution_epoch`, and recompile's `attempt_id` |

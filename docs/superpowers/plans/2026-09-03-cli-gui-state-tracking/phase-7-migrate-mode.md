@@ -1370,7 +1370,7 @@ table that stops a future contributor writing a counter:
 | Fact | Derived from | By |
 |---|---|---|
 | "is this run done?" | 1 + 2 + 3 + the proofs | `resolve_run_state(output_dir, depth=...)` |
-| `processing_generation` | `sha256(pipeline_sha256 ‖ scientific_config_digest ‖ restart_epoch)` | `mint_run_identity` |
+| `processing_generation` | `sha256(pipeline_sha256 ‖ per_image_config_digest ‖ restart_epoch)` | `mint_run_identity` |
 | `work_id` | content: schema version, dataset, input-relative path, input sha256, pipeline fingerprint, per-image config digest, mode | `work_id_for_image` |
 | `inventory_digest` / `source_set_digest` / `scientific_config_digest` / `finalization_input_digest` | `config` fields + the verified set | `run_identity`, `finalization_input_object` |
 | per-dataset completed/failed counts | the per-image records | `RunState.diagnostics` — **and nothing branches on them** |
