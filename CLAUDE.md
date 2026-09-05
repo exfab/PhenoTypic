@@ -8,6 +8,15 @@
   with the topic name
 - **html artifacts** go in @docs/superpowers/artifacts/ under their own dated folder
   with the topic name
+- **Review and audit reports** go in @docs/superpowers/reports/ under their own dated
+  folder with the topic name (same name as the matching spec/plan). One file per
+  reviewer, named for what it reviewed — `spec-adherence.md`, `test-review.md`.
+  **A reviewer writes its report to a file rather than returning it in a message**: a
+  long report truncates in transit, and the truncated half is silently lost — during
+  the `cli-gui-state-tracking` P1 gate, three consecutive reports were cut mid-finding
+  and only recovered by asking. The file is also what a later phase reads; a finding
+  that lived only in a message is gone the moment the session ends. This is the sole
+  write an analysis-only reviewer may make.
 - **Executable logic-validation scripts** go in @docs/superpowers/logic_validation_scripts/
   under the change's own dated topic folder (same name as the matching spec/plan). One
   runnable script per subject, named `<subject>.py`; it re-derives the load-bearing numeric
