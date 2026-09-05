@@ -1,8 +1,9 @@
 name: run-pytest
 # Fast PR lane. Goal: ~10-15 min wall-clock for PR-time signal.
 #
-# Matrix: Linux x Python {3.11 (floor), 3.12 (ceiling)} x four logical
-# shards. Windows, macOS, and slow tests remain in run-pytest-full.yml.
+# Matrix: Linux x Python {3.11 (floor), 3.12 (ceiling)} x logical ownership
+# shards loaded from .github/pytest-shards.json. Windows, macOS, and slow tests
+# remain in run-pytest-full.yml.
 # Every shard runs its complete non-slow test set and uses pytest-xdist
 # within the runner. The shard manifest is coverage-checked by
 # tests/unit/ci/test_pytest_shard_manifest.py, so a new test cannot be

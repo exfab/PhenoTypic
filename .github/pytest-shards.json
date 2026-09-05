@@ -1,27 +1,39 @@
 [
   {
-    "name": "core",
+    "name": "foundation-schema",
     "playwright": false,
     "paths": [
       "tests/unit/test_*.py",
       "tests/unit/abc_",
-      "tests/unit/analysis/",
       "tests/unit/assets/",
       "tests/unit/ci/",
       "tests/unit/core/",
+      "tests/unit/docs/",
+      "tests/unit/resources/",
+      "tests/unit/schema/"
+    ]
+  },
+  {
+    "name": "image-processing",
+    "playwright": false,
+    "paths": [
       "tests/unit/correction/",
       "tests/unit/detect/",
-      "tests/unit/docs/",
       "tests/unit/enhance/",
       "tests/unit/grid/",
       "tests/unit/measure/",
+      "tests/unit/refine/"
+    ]
+  },
+  {
+    "name": "analysis-viz",
+    "playwright": false,
+    "paths": [
+      "tests/unit/analysis/",
       "tests/unit/plotting/",
       "tests/unit/post/",
       "tests/unit/prefab/",
       "tests/unit/qc/",
-      "tests/unit/refine/",
-      "tests/unit/resources/",
-      "tests/unit/schema/",
       "tests/unit/util/",
       "tests/unit/viz/"
     ]
