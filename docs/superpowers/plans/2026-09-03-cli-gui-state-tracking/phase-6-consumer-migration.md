@@ -969,6 +969,47 @@ The two advisory tests (`any("migrate" in advisory)`, `any("metadata" in advisor
 substring-match human prose, which makes advisory wording a de-facto API. Give advisories a
 small closed set of codes plus optional detail, and assert on the code.
 
+> ### While you are here: one advisory is written and can never be shown
+>
+> **Test-review finding 5.** `describe_conversion_advisory`'s `UNREADABLE_STATE` branch
+> (`sdk_/_schema_shape.py:415-421`) composes a careful reader-facing message and **no input
+> reaches it**. Its only caller is `_advisories`, invoked at `resolve_run_state`'s tail — but
+> `resolve_run_state` returns early whenever `_read_state_config` yields `None`, and *every*
+> payload that makes `_classify` return `UNREADABLE_STATE` also makes `_read_state_config`
+> return `None`. The reviewer checked the one shape that might have escaped (a valid object
+> with `version`/`datasets` but no `config`): still an early return, and `_classify` calls
+> that `CONVERT` anyway.
+>
+> **Do not just delete the branch.** The early return hardcodes:
+>
+> > *"No readable processing state under this directory, so it has no run identity and no
+> > completion to establish."*
+>
+> and that sentence is **wrong for half the cases it covers**. It conflates two situations a
+> user must tell apart:
+>
+> | Situation | What the user has | What they should be told |
+> |---|---|---|
+> | No state file at all | a fresh or empty directory | the generic sentence — correct today |
+> | State file present but corrupt | truncated JSON, `null`, `[]`, `""` | *"…is not readable as a state file… **Repair or remove that file; conversion cannot recover one it cannot read.**"* |
+>
+> Telling someone whose `processing_state.json` is truncated that there is "no readable
+> processing state under this directory" suggests **absence**, not damage — so they go looking
+> for a missing file instead of repairing the one they have. The better message already
+> exists, fully written; it is simply shadowed.
+>
+> **The fix is at the early return, not in `_schema_shape.py`:** consult
+> `describe_conversion_advisory(output_dir)` there and use its result when non-`None`, keeping
+> the generic sentence as the fallback for genuine absence. Four lines, and it makes seven
+> lines of already-written text reachable.
+>
+> **It lands here rather than in P2 because `_run_state.py` was under active edit when this
+> was found**, and this step is already reworking advisory shape — a codes-plus-detail scheme
+> has to decide what code an unreadable state file carries, which is the same question. Give
+> it a test that distinguishes the two situations by code, and a mutation: collapsing the two
+> back into one message must go red, or the distinction decays the first time someone
+> simplifies the branch.
+
 - [ ] **Step 4: The whole-tree predicate assertion — and commit**
 
 Task 0's gate test was scoped to `_cli` + `sdk_` because the GUI's holders were still live
