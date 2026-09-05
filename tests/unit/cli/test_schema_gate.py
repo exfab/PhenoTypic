@@ -812,10 +812,22 @@ def test_migrate_mode_is_never_refused_by_the_gate(
 
     Spying on ``run_migrate`` is the positive form, and it is deliberately
     not a message match: the gate refuses by raising **before**
-    ``handle_migrate_mode`` is reached (`phenotypicCLI.py:1671`), so
-    ``run_migrate`` being called at all is proof the exemption held. That
-    stays true when the downstream error text changes, and it is the fact
-    MIG-19 is actually about.
+    ``handle_migrate_mode`` is reached, so ``run_migrate`` being called at all
+    is proof the exemption held. That stays true when the downstream error
+    text changes, and it is the fact MIG-19 is actually about.
+
+    **Proved able to fail.** The exemption is the ``not migrate_only`` in
+    ``phenotypicCLI.py``'s ``if not migrate_only and output_dir.exists():``.
+    Removing it makes the gate refuse migrate too, ``run_migrate`` is never
+    reached, and this test -- and only this test -- goes red (1 failed, 56
+    passed, 10 skipped).
+
+    The proof was deferred when this test was written, because the only
+    honest mutation lives in ``phenotypicCLI.py`` and that file was under
+    concurrent edit. A weaker mutation against a file that *was* reachable
+    was drafted and discarded: it would have fired on a branch migrate never
+    executes, so it could not have produced the failure it named. A mutation
+    that cannot produce its own failure proves nothing.
     """
     monkeypatch.setattr(_schema_shape, "SCHEMA_GATE_ARMED", True)
     tree = _build_markers_era(tmp_path / "run")
