@@ -120,6 +120,46 @@ against the existing tree at the moment it is written, not at the moment someone
 implements it. Nothing in the four review rounds asked *"does the shipped code already
 satisfy this?"* — the rounds reviewed the plan against the spec, and both were new.
 
+### The same kind, one level up: a rule APPLIED without checking its precondition
+
+**Second instance, 2026-09-05, and it is the orchestrator's.** The user gave a standing
+rule — *spec drift is acceptable only where the alternative was experimentally validated
+and the decision recorded.* Within minutes the orchestrator told the P2 agent that three
+of its implementation decisions fell in that rule's most severe row and owed experiments.
+
+**The rule's precondition was never checked.** It governs *"the spec said X and the code
+does Y"*. `mint_run_identity` appears in the spec **once**, as a signature and a layer
+constraint, and the three decisions sit outside anything it says. They were latitude, not
+drift.
+
+The agent **accepted the instruction on the orchestrator's authority** and had planned to
+write all three into its commits as documented-but-unmeasured deviations — three
+non-findings entering the gate's most severe category, from a rule that had been correct
+when stated and wrong when applied.
+
+| | Stated vs applied |
+|---|---|
+| **D7** (above) | a rule **stated** without checking the tree already complied |
+| **This** | a rule **applied** without checking its precondition held |
+
+Both are a requirement meeting a reality nobody looked at. The second is faster to make
+and faster to spread, because an instruction carries authority the moment it is sent and
+the recipient has no reason to re-derive it.
+
+**What caught it:** writing the rule down. Recording the scope boundary in `EXECUTION.md`
+forced the question *"what does the spec actually say here?"*, which the instruction had
+skipped. **The artifact caught the author** — which is the argument for writing rules
+into files rather than into messages, and it is the same argument this register makes
+about prose that nothing checks.
+
+**And the correction was itself imprecise.** *"The spec says nothing about how
+`metadata_sha256` reaches the identity"* is true but invites a false check —
+`metadata_sha256` appears five times. The agent caught that too. The final form is the
+test now in the gate: **what does the spec constrain, and is that the thing being
+chosen?** — with the instruction to cite the sections checked *including the satisfied
+ones*, because a claim that something is unconstrained needs evidence exactly as much as
+a claim that it is.
+
 ---
 
 ## What the pattern says
