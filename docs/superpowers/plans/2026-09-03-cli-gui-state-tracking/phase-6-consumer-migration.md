@@ -149,8 +149,88 @@ def test_the_resume_worklist_uses_the_cache_assisted_path():
 > With that, Step 1's scoped grep and Task 7's unrestricted one are both satisfiable, and
 > the test's message ("the old O(N)-hashing readers survive") means what it says.
 
-**Moved** out of `_cli_completion.py`, into `sdk_/_run_state.py` (already built in P1) —
-these are the internals of the deep walk, not predicates, and they become private there:
+> ### ⚠ Corrected: three of these six are **already in `sdk_`** and cannot be moved
+>
+> Written before P1 existed, this list says six functions *move* into `sdk_/_run_state.py`.
+> P1 shipped, and `_run_state.py` **already re-derives all six** under different names. Its
+> own module docstring says so, at `_run_state.py:22-23`: *"the record and proof readers
+> below re-derive what `valid_image_success`, `valid_aggregate_snapshot` and
+> `valid_run_completion` decide today."*
+>
+> | `_cli_completion.py` | Already in `_run_state.py` | |
+> |---|---|---|
+> | `valid_image_success` (`:256`) | `_verify_image` (`:540`) | |
+> | `valid_run_completion` (`:1060`) | `_valid_run_proof` (`:771`) | |
+> | `valid_aggregate_snapshot` (`:927`) | `_valid_aggregate_proof` (`:785`) | |
+> | `current_success_inventory` (`:488`), `_walk_current_success` (`:535`), `_current_success_work_ids` (`:683`) | `_resolve_images` (`:1043`) + `_accepted_inventory` (`:651`) | |
+>
+> **So this is a deletion, not a move — and one of the three cannot be moved at all.**
+> `valid_run_completion` calls `load_processing_state` from `_cli_state_management`
+> (`_cli_completion.py:1062`). Carrying it into `sdk_` verbatim fails
+> `test_neither_module_ever_names_the_cli_package`, which walks the AST for lazy
+> in-function imports precisely so this cannot slip through. The `sdk_` replacement is
+> 12 lines of structural validation against `RUN_PROOF_VERSION`; the original is ~40 that
+> reach back into CLI state. They are not the same function and the rewrite already happened.
+>
+> **What this task actually does:** confirm each `_run_state.py` reader covers its
+> `_cli_completion.py` counterpart's behaviour, convert the call sites, delete the originals.
+> If a behaviour has no `sdk_` equivalent, **stop** — same rule as the deleted trio below:
+> that is a gap in P1's contract, not a licence to copy a second implementation into `sdk_`.
+>
+> **Nothing in this phase would catch a duplicate landing.** Step 1's scoped grep and Task 7's
+> unrestricted one both search for the three *deleted predicate* names only. A second
+> `valid_image_success` inside `_run_state.py` passes every gate in this plan.
+>
+> ### And the migration Step 3 does not size: `valid_image_success` has 19 call sites
+>
+> Measured this turn, not carried from the audit:
+>
+> ```bash
+> grep -rn "valid_image_success(" src/ | grep -v "def valid_image_success" | grep -v ">>>" | wc -l   # 19
+> grep -rn "valid_image_success(" src/ | grep -v "_cli_completion.py" | grep -v ">>>" | wc -l        # 15 outside its own file
+> ```
+>
+> 15 call sites across 11 modules, and `_run_state.__all__` exports **nine names, none of
+> them a per-image validator** — `ImageState`, `RunDiagnostics`, `RunIdentity`, `RunState`,
+> `assert_identity_current`, `clear_verification_cache`, `finalization_input_object`,
+> `resolve_run_state`, `run_identity`. "Moves into `sdk_` and becomes private there" leaves
+> all 15 with nothing to call, and Step 3 converts thirteen *other* call sites (the deleted
+> trio's). **Decide the replacement for these 15 explicitly before deleting anything:** each
+> is a per-image question, and the only exported answer is `resolve_run_state(...).images`,
+> which is a whole-run walk. Calling it once per image is the O(N²) that §9's note about a
+> per-task reader already warns of — so most of these 15 want the *record* reader in
+> `sdk_/_image_record.py`, not `_run_state`. Name which, per site, in Step 3's table.
+>
+> ### `sdk_/_hdf_to_zarr.py` has four `_cli` import statements, not one
+>
+> Step 3's table gives it *"1 — migration's own progress read"*. On disk:
+>
+> | Line | Imports | Fate |
+> |---|---|---|
+> | `:605` | `ARTIFACT_KIND_STORE`, `SUCCESS_MARKER_VERSION`, `_artifact_descriptor` | P3 renames `SUCCESS_MARKER_VERSION` → `RECORD_VERSION`; `_artifact_descriptor` is private |
+> | `:714` | `current_success_counts`, `publish_aggregate_snapshot` | the first is **deleted** by this task; the second stays CLI-side |
+> | `:718`, `:762` | `load_processing_state` | the progress read Step 3 counted |
+> | `:761` | `valid_image_success` | the 19-call-site problem above |
+>
+> This file is not incidental: P7 Task 6 Step 3 records that the HDF→Zarr migrator **is
+> itself a producer of the record schema (CAN-7)**, not a stage that runs before one. It
+> breaks on a deleted function, a privatised one, and a renamed constant, and Step 3 sizes
+> it at one line.
+>
+> ### Why nothing fails today
+>
+> `test_neither_module_ever_names_the_cli_package` walks **four named modules** —
+> `_state_types`, `_verification_cache`, `_schema_shape`, `_run_state` — not the `sdk_`
+> package. `_hdf_to_zarr.py`, `generate_report.py` and `monitor_slurm_jobs.py` all import
+> `phenotypic._cli` and all pass. That scoping is deliberate and correct for P1 (the test
+> defends the readers it names, and says why each was added), but it means **INV-LAYER as a
+> package-wide claim is untested**, and this task is where that gap becomes load-bearing.
+> Either widen the walk to the package with the three known importers listed as explicit,
+> dated exemptions, or stop describing the invariant as `sdk_`-wide. Do not leave it stated
+> broadly and tested narrowly.
+
+**Deleted** out of `_cli_completion.py` — their behaviour already lives in
+`sdk_/_run_state.py`, per the correction above:
 `current_success_inventory`, `_walk_current_success`, `_current_success_work_ids`,
 `valid_aggregate_snapshot`, `valid_run_completion`, `valid_image_success`.
 

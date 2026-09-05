@@ -1006,9 +1006,27 @@ fail:
 ## Task 3b: `requires_conversion` — the schema gate (CAN-11)
 
 **Files:**
-- Create: `src/phenotypic/_cli/_cli_schema_gate.py`
+- Create: `src/phenotypic/sdk_/_schema_shape.py` — **detection**: `requires_conversion`,
+  `ConversionVerdict`, `describe_required_conversion`, `describe_conversion_advisory`,
+  `SCHEMA_GATE_ARMED`
+- Create: `src/phenotypic/_cli/_cli_schema_gate.py` — **refusal**: `refuse_unconverted_schema`
 - Modify: `src/phenotypic/phenotypicCLI.py`
 - Test: `tests/unit/cli/test_schema_gate.py` *(new)*
+
+> **Two modules, not one — INV-LAYER forces the split, and it was found in execution.**
+> This task originally created only the `_cli` module. But §4.3's reader half puts a
+> `needs_conversion` advisory on `resolve_run_state`, which lives in `sdk_` — and
+> **INV-LAYER forbids `sdk_` importing `phenotypic._cli`**, with an AST test that fails the
+> build. A detector reachable from only one side of that line cannot serve both consumers.
+>
+> So detection moved to `sdk_/_schema_shape.py` and `_cli_schema_gate.py` became the thin
+> refusing wrapper over it. The CLI raises `SystemExit`; the SDK returns an advisory string;
+> neither re-implements the signal list, which stays specified once in
+> [phase-7-migrate-mode.md](phase-7-migrate-mode.md) Task 1.
+>
+> **`SCHEMA_GATE_ARMED` is why the advisory does not fire before the gate exists.** The flag
+> lives beside the detector and both consumers ask it, so *"is the gate live?"* has one
+> answer rather than one per caller.
 
 **Moved here from P7 Task 1, and the move is the point.** P3 Task 2 is an explicit clean
 break — `publish_image_success` writes the new record and `valid_image_success` reads it —

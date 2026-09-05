@@ -1334,7 +1334,7 @@ disproved — the one the paragraph above corrects. A module guide fixed while t
 beside the function still asserts the opposite leaves the more authoritative copy wrong:
 readers trust the code. Correct both in this step.
 
-- [ ] **Step 2: Add the register — three tables, and the split IS the content**
+- [ ] **Step 2: Add the register — four headings, and the split IS the content**
 
 **(a) Tracked state — written down, and irreducibly so.** Exactly these, and the "why it
 cannot be derived" column is the load-bearing one:
@@ -1345,14 +1345,6 @@ cannot be derived" column is the load-bearing one:
 | 2 | Terminal failures | `.phenotypic/terminal_failures.jsonl` | `append_terminal_failure` | A failure leaves no artifact; absence of output is indistinguishable from not-yet-started. |
 | 3 | Liveness & ownership | `slurm_lifecycle.json`, `slurm_jobs.jsonl`, `gui_launch_owner.json` | CLI submitter / **GUI** | External-system and process facts; a crashed worker leaves no trace. |
 | 4 | `restart_epoch` | `.phenotypic/restart_epoch.json` | `bump_restart_epoch` | A content-derived generation cannot distinguish "deliberately fresh attempt" from "same config again". **Preserved by `clear_machine_state`** — a counter that resets on the operation it fences is not a fence. |
-| Fact | Derived from | By |
-|---|---|---|
-| "is this run done?" | 1 + 2 + 3 + the proofs | `resolve_run_state(output_dir, depth=...)` |
-| `processing_generation` | `sha256(pipeline_sha256 ‖ scientific_config_digest ‖ restart_epoch)` | `mint_run_identity` |
-| `work_id` | content: schema version, dataset, input-relative path, input sha256, pipeline fingerprint, per-image config digest, mode | `work_id_for_image` |
-| `inventory_digest` / `source_set_digest` / `scientific_config_digest` / `finalization_input_digest` | `config` fields + the verified set | `run_identity`, `finalization_input_object` |
-| per-dataset completed/failed counts | the per-image records | `RunState.diagnostics` — **and nothing branches on them** |
-| the master | the marker-authorized embedded tables, and **nothing else** | `finalize_run` step 1 (INV-INPUTS) |
 
 **Four. If a fifth appears, that is a design regression** — say so in the file, and name
 the organising principle it violates: *move state that is tracked to state that is checked.*
@@ -1365,10 +1357,41 @@ aggregate proof after outputs → run proof after aggregate.
 **(c) Derived, and how.** One row per fact, naming the deriving function — this is the
 table that stops a future contributor writing a counter:
 
+| Fact | Derived from | By |
+|---|---|---|
+| "is this run done?" | 1 + 2 + 3 + the proofs | `resolve_run_state(output_dir, depth=...)` |
+| `processing_generation` | `sha256(pipeline_sha256 ‖ scientific_config_digest ‖ restart_epoch)` | `mint_run_identity` |
+| `work_id` | content: schema version, dataset, input-relative path, input sha256, pipeline fingerprint, per-image config digest, mode | `work_id_for_image` |
+| `inventory_digest` / `source_set_digest` / `scientific_config_digest` / `finalization_input_digest` | `config` fields + the verified set | `run_identity`, `finalization_input_object` |
+| per-dataset completed/failed counts | the per-image records | `RunState.diagnostics` — **and nothing branches on them** |
+| the master | the marker-authorized embedded tables, and **nothing else** | `finalize_run` step 1 (INV-INPUTS) |
+
 State explicitly what was **deleted** and must not come back:
 `processing_state.datasets.{completed,failed,started}` (a cache of a cache — already
 re-aggregated from the event log on every load), `manifest.json` as evidence,
 `publication_id`, and the event log as a completion source.
+
+**(d) Neither tracked nor derived — retained, and read by nothing.** Two artifacts survive
+on disk without belonging to any table above, and both need saying *because* they look like
+counter-examples to (a)'s "four, and a fifth is a regression".
+
+| Artifact | Written by | What consults it | When it may be deleted |
+|---|---|---|---|
+| `.phenotypic/legacy-v2/` | `--mode migrate`, by renaming `image_complete/` + `stage3_complete/` | Nothing. It exists only so `migrate --revert` is a rename back. | Once the migrated tree has been reprocessed, or the operator accepts migration is final. Deleting it costs the revert path and nothing else. |
+| `.phenotypic/verification_cache.json` | `persist_states` after a deep pass | Only `resolve_run_state(depth="shallow")`, and only to **skip re-hashing** an artifact whose `(size, mtime_ns)` is unchanged. | Any time. A missing cache costs one deep pass. `clear_machine_state` deletes it — unlike `restart_epoch.json`, it is **not** preserved across `--restart`. |
+
+**The rule that keeps both out of (a): nothing branches on them and no verdict is derived
+from them.** Delete either one and every answer this system gives is identical, only slower
+(the cache) or one option poorer (the revert). That is the whole test for whether a future
+artifact belongs here or is a fifth tracked state.
+
+**Say the cache's weaker guarantee here too, not only in its module docstring (U-11).**
+In-process, "this entry lets a previously deep-verified result stand" meant *by this
+process, minutes ago*. On disk it means *by some process* — possibly an older build with
+different verification rules, possibly another user. It stays safe because every doubt
+falls through to `deep`: entry absent, stat tuple moved, recorded identity ≠ current, file
+missing, unreadable, or unparseable. A reader who needs to know why that list is exhaustive
+should be sent to §9.1, not left to infer it.
 
 - [ ] **Step 3: Record the read/write asymmetry and the migration floor**
 
