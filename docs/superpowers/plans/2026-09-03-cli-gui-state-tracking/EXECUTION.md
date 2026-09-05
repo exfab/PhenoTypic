@@ -251,11 +251,31 @@ drift and needs no experiment** — it needs to be reasoned and reviewable.
 
 Worked example, and the orchestrator got this wrong first: `mint_run_identity` appears
 in the spec **once** (`design.md:328`), as `(config, *, restart) -> RunIdentity  CLI
-only`. That is a signature and a layer constraint. It says nothing about how
-`metadata_sha256` reaches the identity, nothing about how the mint-once guard is
-implemented, nothing about how the inventory digest is looked up. So P2's three flagged
-decisions are **latitude, not drift**, and demanding an experiment for each would be the
-rule over-firing.
+only`. That is a signature and a layer constraint, and the implementation satisfies both.
+So P2's three flagged decisions are **latitude, not drift**, and demanding an experiment
+for each would be the rule over-firing.
+
+**Ask the sharper question: what does the spec constrain, and is that the thing being
+chosen?** "The spec is silent on `metadata_sha256`" would be **false** — it appears five
+times (`:443`, `:458`, `:469`, `:503`, `:666`), and a reviewer who greps and finds five
+hits will reasonably conclude the claim was careless. Every one of them constrains
+something the implementation already satisfies:
+
+| Where | Constrains | Satisfied? |
+|---|---|---|
+| §5.5 `:469` | the finalization-input **object's contents** — `{schema_version, metadata_sha256, include_dataset_column, no_qc}` | yes, exactly those four keys |
+| §7.4 `:666` | the **consequence** — a metadata edit invalidates `finalization_input_digest`, so the next invocation re-finalizes without touching an image | yes |
+| §5.4 `:443`, `:458` | **placement** — finalization side, not per-image | yes |
+
+What no section addresses is **where the value comes from at mint time** — recomputed
+from config, or read from a state file that does not yet carry it. That, and only that,
+is the choice. **The spec constrains the object and the behaviour; it is silent on
+provenance.**
+
+So the finding is not *"the spec does not mention this"* but *"the spec constrains X, Y
+and Z, the code satisfies all three, and the decision lies outside them."* Cite the
+sections you checked, including the ones that turned out to be satisfied — a reviewer
+who names only the silence has not shown they looked.
 
 **Applying it to everything is how a good rule becomes noise.** If every unmeasured
 implementation choice is a finding, the report fills with them, and the one deviation
