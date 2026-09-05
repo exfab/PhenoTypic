@@ -526,6 +526,146 @@ def test_the_two_metadata_digests_agree(tmp_path, make_exec_config):
     assert _metadata_digest_for(config) == cli_side
 
 
+# --------------------------------------------- D5 and mode parity (3b)
+
+
+def _config_for(tmp_path, make_exec_config, **overrides):
+    """A config over a real input image, for `work_id_for_image`."""
+    root = tmp_path / "run"
+    phenotypic_cache_dir(root).mkdir(parents=True, exist_ok=True)
+    inputs = tmp_path / "input"
+    inputs.mkdir(exist_ok=True)
+    image = inputs / "a.tiff"
+    if not image.is_file():
+        image.write_bytes(b"pixels")
+    pipeline = tmp_path / "pipeline.json"
+    if not pipeline.is_file():
+        pipeline.write_text("{}", encoding="utf-8")
+    config = make_exec_config(
+        pipeline_json=pipeline,
+        input_path=inputs,
+        output_dir=root,
+        **overrides,
+    )
+    return config, image
+
+
+def test_a_restart_moves_the_generation_but_not_any_work_id(
+    tmp_path, make_exec_config
+):
+    """**D5**: the epoch fixes the stale-worker hazard *without* turning
+    ``--restart`` into ``--overwrite``.
+
+    Continuation skips an image whose ``work_id`` already carries a valid
+    marker, so a ``work_id`` that moved on restart would reprocess every
+    surviving store from zero -- exactly what D5 forbids. The two values must
+    therefore move **independently**: the generation changes so stale workers
+    are fenced, and the work_id does not, so finished images are still reused.
+
+    Asserting both in one test is the point. Either alone is satisfied by a
+    broken implementation -- one where nothing changes, or one where
+    everything does.
+
+    Structural today, because ``ExecutionConfig`` carries no ``restart_epoch``
+    field for ``work_id_for_image`` to see. The leak the plan warns about
+    would arrive by someone *adding* one, which is a one-line change nothing
+    else here would catch.
+    """
+    from phenotypic._cli._cli_failure_tracker import work_id_for_image
+    from phenotypic._cli._cli_identity import mint_run_identity
+
+    before_config, image = _config_for(tmp_path, make_exec_config)
+    before_work_id = work_id_for_image(before_config, "plate", image)[0]
+    before_gen = mint_run_identity(
+        before_config, restart=False
+    ).processing_generation
+
+    # A second config object: the mint-once guard is per invocation, and a
+    # restart IS a second invocation.
+    after_config, _ = _config_for(tmp_path, make_exec_config)
+    after_gen = mint_run_identity(
+        after_config, restart=True
+    ).processing_generation
+    after_work_id = work_id_for_image(after_config, "plate", image)[0]
+
+    assert after_gen != before_gen, (
+        "a restart did not mint a new generation, so a pre-restart worker "
+        "would still pass the fence"
+    )
+    assert after_work_id == before_work_id, (
+        "the restart epoch leaked into work_id; --restart would reprocess "
+        "every surviving store, which is D5's whole prohibition"
+    )
+
+
+def test_measure_mints_the_identity_a_full_run_would(
+    tmp_path, make_exec_config
+):
+    """DF-16 / CAN-20: measure runs under the SAME content-derived identity.
+
+    Measure mode minted its own ``uuid4()`` and could therefore never match
+    the run it was measuring. §7.4 routes measure through ``finalize_run`` and
+    P4 Task 4 parametrizes a byte-identical master over
+    ``["full", "measure", "recompile"]`` -- none of which is coherent if a
+    measure invocation has an identity of its own.
+
+    D3 supplies the mechanism: the pipeline and the per-image configuration
+    are unchanged, so the generation is the same *value*.
+    """
+    from phenotypic._cli._cli_identity import mint_run_identity
+
+    full_config, _ = _config_for(tmp_path, make_exec_config)
+    measure_config, _ = _config_for(
+        tmp_path, make_exec_config, measure_only=True
+    )
+
+    assert (
+        mint_run_identity(measure_config, restart=False).processing_generation
+        == mint_run_identity(full_config, restart=False).processing_generation
+    )
+
+
+def test_process_mints_a_DIFFERENT_identity_and_that_is_correct(
+    tmp_path, make_exec_config
+):
+    """**The plan's own parametrized test would fail here, and should.**
+
+    Task 3 Step 5 specifies
+    ``@pytest.mark.parametrize("mode", ["full", "measure", "process"])`` with
+    every mode asserted equal to ``full``. That holds for ``measure`` and is
+    **wrong for ``process``**: ``process_only_layer`` is a per-image
+    configuration field, and ``processing_configuration_digest_from_values``
+    branches on it (`_cli_failure_tracker.py:216-233`) -- a process run
+    digests ``{process_only_layer, ext, process_format}`` where a full run
+    digests ``{include_dataset_column, overlay_alpha, save_overlays}``.
+
+    Different payload, different digest, different generation -- and that is
+    the **right** answer, not a defect to paper over. A process run exports
+    one layer and publishes no master; a full run does neither. Forcing them
+    to share a generation would say two genuinely different configurations
+    were the same one, which is what the generation exists to deny.
+
+    So DF-16's "same statement" for ``--mode process`` cannot be "same
+    generation as full". It is: a process run mints the generation **its own**
+    configuration implies, by the same rule as every other mode.
+    """
+    from phenotypic._cli._cli_identity import mint_run_identity
+
+    full_config, _ = _config_for(tmp_path, make_exec_config)
+    process_config, _ = _config_for(
+        tmp_path, make_exec_config, process_only_layer="rgb"
+    )
+
+    assert (
+        mint_run_identity(
+            process_config, restart=False
+        ).processing_generation
+        != mint_run_identity(
+            full_config, restart=False
+        ).processing_generation
+    )
+
+
 # ------------------------------------------------------------- the counter
 
 

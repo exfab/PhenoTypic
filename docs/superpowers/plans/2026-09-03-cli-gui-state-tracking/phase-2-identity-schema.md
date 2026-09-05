@@ -662,6 +662,20 @@ def test_every_mode_mints_the_same_identity_for_the_same_config(tmp_path, mode):
 QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/cli -k 'restart or resume' -q
 ```
 
+> **Measured during execution: this selects 451 tests, not the ~38 a
+> reader would estimate from the `def test_*restart*` count** (1228
+> deselected). `-k` matches the whole node id, so it also selects every
+> test in a class or module whose name contains either word. That is
+> broader coverage than the step was asking for, not less — worth
+> knowing before someone "fixes" the selector to something narrower.
+>
+> **It is a regression check, not the D5 assertion.** No test here
+> pinned *"`--restart` reuses surviving stores"* directly. The precise
+> form is a unit test, added in 3b: the generation must move and the
+> `work_id` must not, asserted together — either alone passes against a
+> broken implementation, one where nothing changes and one where
+> everything does.
+
 D5 is explicit: `--restart` keeps reusing surviving `results/` stores. The epoch fixes the
 stale-worker hazard **without** turning `--restart` into `--overwrite`. If any of these
 tests now show a restart reprocessing images it previously reused, the epoch has leaked

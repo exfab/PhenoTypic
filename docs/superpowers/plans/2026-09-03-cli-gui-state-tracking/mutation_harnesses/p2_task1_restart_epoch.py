@@ -105,6 +105,53 @@ MUTATIONS: list[tuple[str, str, str, tuple[str, ...]]] = [
         ("test_the_two_metadata_digests_agree",),
     ),
     (
+        "D5 BROKEN: the restart epoch leaks into work_id, so --restart"
+        " reprocesses every surviving store from zero -- turning --restart"
+        " into --overwrite, which is the one thing D5 forbids. Modelled the"
+        " way the leak would actually arrive: the epoch reaching the id"
+        " through a field somebody added to make it available.",
+        "            mode=mode,\n",
+        "            mode=mode\n"
+        "            + str(\n"
+        '                __import__('
+        '                    "phenotypic._cli._cli_identity", '
+        'fromlist=["x"]\n'
+        "                ).read_restart_epoch(config.output_dir)\n"
+        "            ),\n",
+        ("test_a_restart_moves_the_generation_but_not_any_work_id",),
+    ),
+    (
+        "measure stops sharing the full run's identity -- it mints under its"
+        " own mode, so §7.4 cannot route it through finalize_run and P4's"
+        " byte-identical master across [full, measure, recompile] is"
+        " unreachable",
+        "            per_image_config=per_image_config_digest(config),\n"
+        "            restart_epoch=epoch,\n",
+        "            per_image_config=per_image_config_digest(config)\n"
+        '            + str(config.measure_only),\n'
+        "            restart_epoch=epoch,\n",
+        ("test_measure_mints_the_identity_a_full_run_would",),
+    ),
+    (
+        "process stops being distinguishable from full: process_only_layer"
+        " is dropped from the per-image digest, so a layer export and a full"
+        " run share a generation and the fence says two different"
+        " configurations are the same one."
+        " A SECOND TEST WAS CLAIMED HERE AND REMOVED. The reasoning was that"
+        " dropping the field also hides config changes in the process arm --"
+        " sound for a PROCESS config, and irrelevant to a test that uses a"
+        " FULL one: `process_only_layer is None` takes the `else` branch,"
+        " which never contained the field. A mutation is invisible to a test"
+        " that does not enter the branch it edits."
+        " THIS IS THE SECOND OVER-CLAIM OF ITS FAMILY. The first assumed a"
+        " test SEES state it merely passes through; this one assumed a test"
+        " ENTERS the branch being edited. Both are 'the mutation perturbs"
+        " something nearby, therefore the test notices'.",
+        "    if process_only_layer is not None:\n",
+        "    if False:\n",
+        ("test_process_mints_a_DIFFERENT_identity_and_that_is_correct",),
+    ),
+    (
         "CAN-21's mint-once guard is removed, so one invocation can mint two"
         " generations and burn a restart epoch silently",
         "    if getattr(config, _MINTED_FLAG, False):\n",
@@ -141,7 +188,10 @@ MUTATIONS: list[tuple[str, str, str, tuple[str, ...]]] = [
         " generation can see it.",
         "            per_image_config=per_image_config_digest(config),\n",
         "            per_image_config=None,\n",
-        ("test_a_per_image_config_change_mints_a_new_generation",),
+        (
+            "test_a_per_image_config_change_mints_a_new_generation",
+            "test_process_mints_a_DIFFERENT_identity_and_that_is_correct",
+        ),
     ),
     (
         "the minted generation stops folding in the pipeline digest",
@@ -193,6 +243,7 @@ MUTATIONS: list[tuple[str, str, str, tuple[str, ...]]] = [
             "test_every_component_moves_the_generation"
             "[per_image_config-cfg-2]",
             "test_a_per_image_config_change_mints_a_new_generation",
+            "test_process_mints_a_DIFFERENT_identity_and_that_is_correct",
         ),
     ),
     (
@@ -210,6 +261,7 @@ MUTATIONS: list[tuple[str, str, str, tuple[str, ...]]] = [
         (
             "test_every_component_moves_the_generation[restart_epoch-1]",
             "test_a_resume_does_not_bump_the_epoch_but_a_restart_does",
+            "test_a_restart_moves_the_generation_but_not_any_work_id",
         ),
     ),
     (
