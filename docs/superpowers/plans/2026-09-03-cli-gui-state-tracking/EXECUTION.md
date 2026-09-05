@@ -369,29 +369,26 @@ the field is in `_IDENTITY_DIGEST_FIELDS`, so it is exactly what `assert_identit
 compares. Two answers to one question, on the field that decides whether a cached verdict
 may stand.
 
-**Where the helpers live (user, 2026-09-05): `src/phenotypic/_cli/state_tracking.py`.**
-One module, in the CLI folder, that is the **single place CLI code looks** for a
-state-tracking check. Not scattered across `_cli_identity`, `_cli_completion`,
-`_cli_state_management` and `_cli_update_state` as they are today.
+**Where the helpers live (user, 2026-09-05): `sdk_`, not `_cli`.** One home —
+`src/phenotypic/sdk_/_state_tracking.py`, with the public names re-exported from
+`sdk_/__init__.py` per the project's "only `__init__` exports are public" convention.
 
-**INV-LAYER shapes how that is obeyed, and the shape matters.** `sdk_` may never import
-`phenotypic._cli`, and several of these duplications straddle the line — `inventory_digest`
-has one producer in `sdk_/_run_state.py` and one in `_cli/_cli_identity.py`. A definition
-**both** sides need therefore *cannot* live in `_cli/`, or the layer inverts and the AST
-test fails the build.
+**Because there are THREE consumers, not two.** The CLI and the `sdk_` readers are the
+obvious pair; **the GUI is the third**, and it is the one that decides the location. Today
+the GUI reaches into `phenotypic._cli` with 25 private imports across 9 modules — the audit
+finding this whole change exists to remove. Homing shared state-tracking logic in `_cli/`
+would have made that reach *correct* and entrenched it permanently.
 
-So:
+`sdk_` is the only layer all three may import:
 
-| Used by | Definition lives in | `state_tracking.py`'s role |
+| Consumer | may import `sdk_` | may import `_cli` |
 |---|---|---|
-| CLI only | **`_cli/state_tracking.py`** | it *is* the home |
-| CLI **and** `sdk_` readers | `sdk_/` | `state_tracking.py` **imports and re-exports** it |
+| `phenotypic._cli` | yes | — |
+| `phenotypic.gui` | yes | **no** (that is the defect) |
+| `sdk_` readers | yes | **no** (INV-LAYER, AST-enforced) |
 
-Either way **CLI code has exactly one place to look**, which is the point of the
-instruction — and `sdk_` keeps importing its own definitions directly, which is what
-INV-LAYER requires. A re-export is not a second home: there is one definition, and the
-re-export is a pointer to it. That distinction is the same one this change makes everywhere
-else — a pointer to a real symbol cannot drift, a restatement can.
+So the rule is simply: **one definition, in `sdk_`, imported by everyone.** No re-export
+shims, no per-layer copies, and INV-LAYER holds by construction rather than by discipline.
 
 **For implementers, in order:**
 
