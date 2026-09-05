@@ -26,6 +26,8 @@ from phenotypic.sdk_ import ColumnRef
 
 if TYPE_CHECKING:  # pragma: no cover - annotations only
     import plotly.graph_objects as go
+else:  # runtime: resolvable stand-in so get_type_hints works
+    from phenotypic.sdk_._lazy_annotations import go
 
 _TIME = str(CULTURE.TIME)
 

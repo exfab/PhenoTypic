@@ -615,6 +615,51 @@ print(json.dumps({
     )
 
 
+@pytest.mark.parametrize(
+    "worker",
+    [
+        "phenotypic._cli._cli_process_single",
+        "phenotypic._cli._cli_staged_slurm_worker",
+        "phenotypic._cli._cli_staged_workers",
+        "phenotypic._cli._cli_recompile_worker",
+    ],
+)
+def test_every_drawing_worker_selects_a_headless_backend(worker):
+    """Each worker launched as its own module must choose Agg for itself.
+
+    These are started with ``python -m phenotypic._cli.<worker>``, so they never
+    import the CLI and cannot inherit its backend. Every one of them draws —
+    overlays, or plot hooks through ``PlotCoordinator.emit_image``.
+
+    Two of them (``_cli_staged_workers``, ``_cli_recompile_worker``) guessed
+    their backend even before this branch. That is latent on a batch node, where
+    matplotlib falls back to agg on its own, and bites over ``ssh -X``,
+    ``srun --x11`` or an OOD desktop: a valid DISPLAY makes it pick qtagg and
+    build a QApplication per figure.
+
+    In a subprocess because ``tests/conftest.py`` calls ``matplotlib.use("Agg")``
+    session-wide, so any in-process assertion here would be vacuous. Reading
+    ``rcParams`` through ``dict.__getitem__`` because the ordinary lookup
+    resolves the auto sentinel and reports ``agg`` on a headless runner whether
+    or not anything selected it.
+    """
+    script = f"""
+import json
+
+import {worker}  # noqa: F401
+import matplotlib
+
+raw = dict.__getitem__(matplotlib.rcParams, "backend")
+print(json.dumps({{"explicit": isinstance(raw, str), "backend": raw if isinstance(raw, str) else None}}))
+"""
+    result = surface._probe(script)
+    assert result["explicit"], (
+        f"{worker} left matplotlib to guess a backend; with a live DISPLAY it "
+        "picks an interactive one and builds a QApplication per figure"
+    )
+    assert result["backend"].lower() == "agg", result["backend"]
+
+
 def test_no_doctest_uses_a_deferred_library_without_importing_it():
     """A doctest must import what it uses; module globals are no longer enough.
 
@@ -665,4 +710,97 @@ def test_no_doctest_uses_a_deferred_library_without_importing_it():
     assert not offenders, (
         "these doctests use `plt` without importing it, which now raises:\n  "
         + "\n  ".join(offenders)
+    )
+
+
+#: Names that already failed to resolve before any of this branch's deferrals,
+#: measured against the pinned pre-refactor baseline: ``Image`` (96 public
+#: callables) and ``GridImage`` (10). They come from long-standing
+#: ``TYPE_CHECKING`` imports of the core image classes, not from a deferred
+#: third-party library, and fixing them is a separate change. Listed rather than
+#: ignored so the count is a ratchet: a new one fails.
+PREEXISTING_UNRESOLVABLE = {"Image": 96, "GridImage": 10}
+
+
+def test_public_annotations_resolve_at_runtime():
+    """Every public callable's annotations must resolve. The general property.
+
+    This is the test that should have existed two stages ago. Deferring a
+    library into ``if TYPE_CHECKING:`` turns its names into annotations nothing
+    can resolve, and ``docs/source/conf.py`` sets ``autodoc_typehints = "both"``,
+    so Sphinx resolves them at runtime — the breakage lands in a docs build, not
+    a test run.
+
+    It has now happened three times on this branch: polars in
+    ``util/_measurement_outputs``, matplotlib across fifteen modules, and plotly
+    in ``analysis/qc``. The first two were each fixed by pinning the *specific
+    module by name*, which is why the second and third recurred. Pinning the
+    property instead catches the next one for free.
+
+    Scoped to public callables (no leading underscore) reachable through a
+    package's ``__all__``, because that is what autodoc renders and what a user
+    introspects. Only ``NameError`` counts: other resolution failures are a
+    different problem and not this test's business.
+    """
+    import collections
+    import importlib
+    import inspect
+    import typing
+
+    packages = [
+        "phenotypic",
+        "phenotypic.analysis",
+        "phenotypic.detect",
+        "phenotypic.enhance",
+        "phenotypic.refine",
+        "phenotypic.measure",
+        "phenotypic.correction",
+        "phenotypic.grid",
+        "phenotypic.util",
+        "phenotypic.plotting",
+        "phenotypic.post",
+        "phenotypic.sdk_.orientation_fields",
+    ]
+
+    failures: collections.Counter = collections.Counter()
+    examples: dict[str, str] = {}
+    for package in packages:
+        module = importlib.import_module(package)
+        for exported in getattr(module, "__all__", ()) or ():
+            if exported.startswith("_"):
+                continue
+            obj = getattr(module, exported, None)
+            targets = [(exported, obj)] if inspect.isfunction(obj) else []
+            if inspect.isclass(obj):
+                targets = [
+                    (f"{exported}.{name}", value)
+                    for name, value in vars(obj).items()
+                    if inspect.isfunction(value) and not name.startswith("_")
+                ]
+            for label, target in targets:
+                # Skip callables a library injected into our classes (pydantic's
+                # `init_private_attributes`, say) -- their annotations are not ours.
+                if not (target.__module__ or "").startswith("phenotypic"):
+                    continue
+                try:
+                    typing.get_type_hints(target)
+                except NameError as exc:
+                    missing = str(exc).split("'")[1]
+                    failures[missing] += 1
+                    examples.setdefault(missing, f"{package}.{label}")
+                except Exception:
+                    pass
+
+    unexpected = {
+        name: count
+        for name, count in failures.items()
+        if count > PREEXISTING_UNRESOLVABLE.get(name, 0)
+    }
+    assert not unexpected, (
+        "public annotations stopped resolving at runtime — Sphinx resolves these, "
+        "so this breaks the docs build, not the test suite:\n  "
+        + "\n  ".join(
+            f"{name}: {count} callables (e.g. {examples[name]})"
+            for name, count in sorted(unexpected.items())
+        )
     )

@@ -17,7 +17,7 @@ from ..abc_._set_analyzer import normalize_measurement_metadata_columns
 if TYPE_CHECKING:  # pragma: no cover - annotations only
     import matplotlib.pyplot as plt
 else:  # runtime: resolvable stand-ins so get_type_hints works
-    from phenotypic.sdk_._mpl_annotations import plt
+    from phenotypic.sdk_._lazy_annotations import plt
 
 # Iglewicz & Hoaglin (1993) consistency constant: for a normal distribution
 # sigma ~= 1.4826 * MAD, and 0.6745 ~= 1 / 1.4826. Multiplying the absolute

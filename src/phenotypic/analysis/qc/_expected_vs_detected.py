@@ -38,6 +38,8 @@ import phenotypic.schema as schema
 
 if TYPE_CHECKING:  # pragma: no cover - annotations only
     import plotly.graph_objects as go
+else:  # runtime: resolvable stand-in so get_type_hints works
+    from phenotypic.sdk_._lazy_annotations import go
 
 # ``metadata`` is a single, unified field that accepts **either** an
 # in-memory layout :class:`pandas.DataFrame` (an "array") **or** a path

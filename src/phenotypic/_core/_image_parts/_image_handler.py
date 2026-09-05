@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     import plotly.graph_objects as go
     import matplotlib.pyplot as plt
 else:  # runtime: resolvable stand-ins so get_type_hints works
-    from phenotypic.sdk_._mpl_annotations import plt
+    from phenotypic.sdk_._lazy_annotations import plt
 
 import numpy as np
 import skimage as ski

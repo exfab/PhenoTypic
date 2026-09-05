@@ -18,7 +18,7 @@ if TYPE_CHECKING:  # pragma: no cover - annotations only
     from matplotlib.figure import Figure
     import matplotlib.pyplot as plt
 else:  # runtime: resolvable stand-ins so get_type_hints works
-    from phenotypic.sdk_._mpl_annotations import Figure, plt
+    from phenotypic.sdk_._lazy_annotations import Figure, plt
 
 
 class EdgeCorrector(EdgeCorrection):

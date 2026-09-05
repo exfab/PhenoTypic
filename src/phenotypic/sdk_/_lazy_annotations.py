@@ -1,6 +1,7 @@
-"""Runtime stand-ins for the matplotlib names used only in annotations.
+"""Runtime stand-ins for deferred-library names used only in annotations.
 
-Deferring matplotlib moved names like ``plt``, ``Figure`` and ``Axes`` into
+Deferring a library moves names like ``plt``, ``Figure``, ``Axes`` and plotly's
+``go`` into
 ``if TYPE_CHECKING:`` blocks. With ``from __future__ import annotations`` the
 annotations that mention them become strings — and a string nothing can resolve
 is a broken public API, not a free optimization: ``typing.get_type_hints`` on
@@ -27,6 +28,7 @@ from typing import Any
 
 __all__ = [
     "Axes",
+    "go",
     "Colormap",
     "Figure",
     "GridSpec",
@@ -39,6 +41,10 @@ __all__ = [
 
 #: Stand-in for ``matplotlib.pyplot``, carrying only the annotation attributes.
 plt = SimpleNamespace(Figure=Any, Axes=Any)
+
+#: Stand-in for ``plotly.graph_objects``. Same reasoning as ``plt``: the
+#: annotations spell ``go.Figure``, so ``Any`` would raise on attribute access.
+go = SimpleNamespace(Figure=Any)
 
 Axes = Any
 Colormap = Any
