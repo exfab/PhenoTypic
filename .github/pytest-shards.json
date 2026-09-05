@@ -1,0 +1,59 @@
+[
+  {
+    "name": "core",
+    "playwright": false,
+    "paths": [
+      "tests/unit/test_*.py",
+      "tests/unit/abc_",
+      "tests/unit/analysis/",
+      "tests/unit/assets/",
+      "tests/unit/ci/",
+      "tests/unit/core/",
+      "tests/unit/correction/",
+      "tests/unit/detect/",
+      "tests/unit/docs/",
+      "tests/unit/enhance/",
+      "tests/unit/grid/",
+      "tests/unit/measure/",
+      "tests/unit/nn/",
+      "tests/unit/plotting/",
+      "tests/unit/post/",
+      "tests/unit/prefab/",
+      "tests/unit/qc/",
+      "tests/unit/refine/",
+      "tests/unit/resources/",
+      "tests/unit/schema/",
+      "tests/unit/sweep/",
+      "tests/unit/util/",
+      "tests/unit/viz/"
+    ]
+  },
+  {
+    "name": "cli-packaging",
+    "playwright": false,
+    "paths": [
+      "tests/unit/cli/",
+      "tests/integration/cli/",
+      "tests/integration/packaging/",
+      "tests/smoke/"
+    ]
+  },
+  {
+    "name": "tune-sdk",
+    "playwright": false,
+    "paths": [
+      "tests/unit/sdk_/",
+      "tests/unit/tune/",
+      "tests/integration/tune/"
+    ]
+  },
+  {
+    "name": "gui-browser",
+    "playwright": true,
+    "paths": [
+      "tests/unit/gui/",
+      "tests/integration/gui/",
+      "tests/gui/"
+    ]
+  }
+]
