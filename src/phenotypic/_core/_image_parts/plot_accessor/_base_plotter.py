@@ -12,6 +12,8 @@ from phenotypic._core._image_parts.accessor_abstracts._image_accessor_base impor
 
 if TYPE_CHECKING:  # pragma: no cover - annotations only
     import matplotlib.pyplot as plt
+else:  # runtime: resolvable stand-ins so get_type_hints works
+    from phenotypic.sdk_._mpl_annotations import plt
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image

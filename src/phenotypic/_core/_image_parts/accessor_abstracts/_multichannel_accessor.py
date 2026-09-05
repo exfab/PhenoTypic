@@ -16,6 +16,8 @@ from phenotypic.sdk_.constants_ import IO
 if TYPE_CHECKING:
     import matplotlib.pyplot as plt
     import plotly.graph_objects as go
+else:  # runtime: resolvable stand-ins so get_type_hints works
+    from phenotypic.sdk_._mpl_annotations import plt
 
 
 class MultiChannelAccessor(ImageAccessorBase, ABC):

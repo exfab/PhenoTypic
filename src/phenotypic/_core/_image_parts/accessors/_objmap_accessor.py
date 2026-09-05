@@ -25,6 +25,8 @@ from phenotypic.sdk_.exceptions_ import (
 
 if TYPE_CHECKING:  # pragma: no cover - annotations only
     import matplotlib.pyplot as plt
+else:  # runtime: resolvable stand-ins so get_type_hints works
+    from phenotypic.sdk_._mpl_annotations import plt
 
 
 class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):

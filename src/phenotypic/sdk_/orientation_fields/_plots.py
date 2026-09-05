@@ -24,6 +24,8 @@ if TYPE_CHECKING:  # pragma: no cover - annotations only
     from matplotlib.colors import Normalize
     from matplotlib.collections import PathCollection
     from matplotlib.quiver import Quiver
+else:  # runtime: resolvable stand-ins so get_type_hints works
+    from phenotypic.sdk_._mpl_annotations import Axes, Colormap, Normalize, PathCollection, Quiver
 
 
 def _validated_image(

@@ -132,7 +132,7 @@
     "phenotypic": {
       "forbidden_in_final": [],
       "forbidden_preloaded": [],
-      "phenotypic_module_count": 432,
+      "phenotypic_module_count": 433,
       "phenotypic_modules": [
         "phenotypic",
         "phenotypic._core",
@@ -470,6 +470,7 @@
         "phenotypic.sdk_._metadata_compatibility",
         "phenotypic.sdk_._metadata_helpers",
         "phenotypic.sdk_._metadata_migration",
+        "phenotypic.sdk_._mpl_annotations",
         "phenotypic.sdk_._pipeline_publication",
         "phenotypic.sdk_._qc_recipe",
         "phenotypic.sdk_._qc_recipe._recipe",
@@ -607,12 +608,12 @@
         "typing_extensions",
         "typing_inspection"
       ],
-      "total_modules": 2230
+      "total_modules": 2231
     },
     "phenotypic.phenotypicCLI": {
       "forbidden_in_final": [],
       "forbidden_preloaded": [],
-      "phenotypic_module_count": 467,
+      "phenotypic_module_count": 468,
       "phenotypic_modules": [
         "phenotypic",
         "phenotypic._assets",
@@ -985,6 +986,7 @@
         "phenotypic.sdk_._metadata_compatibility",
         "phenotypic.sdk_._metadata_helpers",
         "phenotypic.sdk_._metadata_migration",
+        "phenotypic.sdk_._mpl_annotations",
         "phenotypic.sdk_._pipeline_publication",
         "phenotypic.sdk_._qc_recipe",
         "phenotypic.sdk_._qc_recipe._recipe",
@@ -1125,7 +1127,7 @@
         "typing_inspection",
         "yaml"
       ],
-      "total_modules": 2472
+      "total_modules": 2473
     }
   },
   "exports": {
@@ -2921,6 +2923,7 @@
         "_metadata_compatibility",
         "_metadata_helpers",
         "_metadata_migration",
+        "_mpl_annotations",
         "_pipeline_publication",
         "_qc_recipe",
         "_windows_metadata_journal",

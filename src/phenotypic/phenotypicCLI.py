@@ -150,6 +150,21 @@ from pathlib import Path
 from typing import Any, List, Optional, Sequence, cast
 from uuid import UUID, uuid4
 
+# Every CLI process renders headlessly. Before this branch that was a byproduct:
+# `_cli_execution_strategies` imported `_cli_process_single` at module scope, and
+# that module calls `matplotlib.use("Agg")` — so any CLI process inherited the
+# non-interactive backend whether or not it drew anything. Deferring the worker
+# import (so `--help` stops paying 274 ms for matplotlib) removed that byproduct,
+# and overlay/dashboard rendering in `_cli_overlay_rendering`,
+# `_cli_recompile_worker` and `_cli_staged_workers` was left to whatever backend
+# matplotlib picked on a node with no display.
+#
+# `MPLBACKEND` restores it for free: matplotlib reads it the first time it is
+# imported, so nothing is imported here. `setdefault`, not an assignment — an
+# operator who deliberately exports MPLBACKEND keeps their choice. That is a
+# deliberate narrowing of `use("Agg")`, which overrode them.
+os.environ.setdefault("MPLBACKEND", "Agg")
+
 import click
 import yaml  # type: ignore[import-untyped]
 from click.core import ParameterSource
