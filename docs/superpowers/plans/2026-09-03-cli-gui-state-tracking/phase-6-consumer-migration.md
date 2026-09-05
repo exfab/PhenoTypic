@@ -63,6 +63,8 @@ existing tree.
 
 **Files:**
 - Modify: `src/phenotypic/_cli/_cli_completion.py` — readers out, writers stay
+  — ⚠ **re-grep before trusting any line number here.** P2 Task 4 renamed a
+  writer parameter in this file; see below.
 - Modify: `src/phenotypic/phenotypicCLI.py:2394,2428,2439,2874,3725`
   — ⚠ **do not reason from the comment at `:2418-2421`; P2 Task 3 deleted it.** See below.
 - Modify: `src/phenotypic/_cli/_cli_checkpoint_handler.py:291,348,401` **(gen-r4 N-1)**
@@ -73,6 +75,21 @@ existing tree.
 - Modify: `src/phenotypic/_cli/_cli_staged_resume.py:203-213` — `valid_image_success`, not the three above
 - Modify: `src/phenotypic/_cli/_cli_migrate.py:88-89` — likewise
 - Test: `tests/unit/cli/test_completion_split.py` *(new)*
+
+> ### ⚠ Line numbers in this file have drifted twice — regenerate, do not trust
+>
+> **P2 Task 4 renamed `scheduler_epoch` on `publish_image_success`** (`_cli_completion.py`,
+> a writer). Your work here is the **reader** migration — different halves, no
+> contradiction, and no ordering constraint. But the rename shifts line numbers under
+> every citation this task makes into that file.
+>
+> That is the second drift: this task's own file list was already short by three files and
+> wrong about the invocation count (gen-r4 N-1/N-2, open three rounds), and P2 Task 3
+> moved lines in `phenotypicCLI.py` besides. **Regenerate the greps rather than trusting
+> any `file:line` written here** — the commands are in Step 1 and Step 3, and this plan's
+> most repeated defect is a citation that was true when written.
+>
+> The *claims* have held every time they were checked. It is the line numbers that move.
 
 > ### ⚠ A deleted comment in the middle of your call sites
 >
