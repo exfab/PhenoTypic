@@ -22,6 +22,7 @@ sentence will be wrong about shipped code.
 | **D-A** | §6.3, §6.4, §6.1, §7.4, §8, §15.4 | **Per-store metadata is written at promote time, not backfilled.** Cuts the hardlink re-promote, the certified-rewrite *generalisation*, `stages.backfilled`, `finalize_run`'s step 6, the backfill half of the fan-out, and residual risk 4. §7's inversion is kept in full. |
 | **D-B** | §9.1 | **The verification cache is in-process**, not `.phenotypic/verification_cache.json`. Audit S1 proposed process-level; §9.1 escalated it without cause. |
 | **D-C** ⚠ | §5.4 | **§5.4's field list is wrong.** It claims `include_dataset_column` is in neither `work_id` nor the generation "exactly as `work_id` does today". `processing_configuration_digest_from_values` (`_cli_failure_tracker.py:236-243`) puts it, `overlay_alpha` and `save_overlays` in `work_id`. §5.4's *argument* survives; its field list does not. `scientific_config_digest` **is** `processing_configuration_digest`, verbatim. |
+| **U-12** | §5.3 | **"None is redundant" is a claim about the four DIGESTS, not about their fields.** A field belongs to every digest whose question it can change the answer to, so a field appearing in two digests is correct rather than a defect. Settled because `include_dataset_column` is in both `scientific_config_digest` (`_cli_failure_tracker.py:230`) and `finalization_input_digest` (`_run_state.py:172`), which the alternative reading would make a bug. **No code changes; no digest value on disk changes.** |
 | **U-1/U-6** | §2, new | Migration floor is the **pre-markers shape** — schema `2.0.0` with no `work_ids` key. `state.version` cannot express a package-version floor: `"2.0.0"` is the value at v0.17.3 *and* immediately before `"3.0.0"`. No `BELOW_FLOOR` verdict. |
 | **U-2** | §4.3 | `complete` keeps **both** clauses. Rule 1 also carries the full five-way comparison `current_aggregate_is_current` (`_cli_completion.py:738-745`) makes — dropping `finalization_input_digest` alone breaks §7.4's late-metadata guarantee. |
 | **U-3** ⚠ | §7.3 | **"tag the master … so an old reader fails loudly" is false as stated.** `pd.read_parquet` / `pl.read_parquet` / `pq.read_table` ignore Parquet KV metadata and raise nothing; an *old* reader predates the key entirely. The stamp is kept **and given a reader** — `read_master_measurements()` in `sdk_` — so the claim narrows to: in-repo readers fail loudly, external ones are unaffected. |
@@ -337,6 +338,29 @@ can, and does — 25 private `phenotypic._cli` symbols across 9 GUI modules.
 ### 5.3 Digest composition rules
 
 Four digests answer four different questions; none is redundant:
+
+> ⚠ **CLARIFIED (U-12): "none is redundant" is about the DIGESTS, not their
+> fields.** Each of the four answers a question no other answers, so none can be
+> deleted without losing an answer. That is the claim. It says nothing about
+> field membership, and a field belongs to **every digest whose question it can
+> change the answer to**.
+>
+> The case that forced the clarification: `include_dataset_column` is in
+> `scientific_config_digest` (`_cli_failure_tracker.py:230`) **and** in
+> `finalization_input_digest` (`_run_state.py:172`). Under the other reading —
+> that no *field* may appear twice — that overlap would be a defect and the fix
+> would be to remove it from one of them. **That fix would introduce a bug in
+> whichever digest lost it**, because the flag really does change both answers:
+> it alters the per-image processing config, so a result computed under the other
+> setting must not be reused; and it alters the join inputs, so a master built
+> under the other setting must not be treated as current. A digest blind to a
+> change that moves its own answer is exactly the stale-reuse failure this whole
+> design removes.
+>
+> So overlap is not tolerated here, it is **required**, and the rule for adding a
+> field to a digest is the question, not exclusivity: *can this field change the
+> answer to what this digest asks?*
+
 
 | Digest | Question | Lives in |
 |---|---|---|
