@@ -261,6 +261,54 @@ and the half a regression would silently reverse).
 
 ---
 
+## The two P2-gate rulings, and one of them was not a defect
+
+### F2 — `inventory_digest` is reader-owned. Option (a). User-ruled 2026-09-05.
+
+`mint_run_identity` returns `inventory_digest=""`, documented as *populated by the reader,
+empty at mint*; `assert_identity_current` skips empty tokens; **`_inventory_digest_for` is
+deleted**, not repaired.
+
+**What made this obvious rather than a compromise** was counting the uses. The field is
+`canonical_digest(work_ids)` — a pure function of data already in `processing_state.json` —
+and it is computed that way in **four** places that all agree: the reader
+(`_run_state.py:276`) and the three proof writers (`_cli_completion.py:904,1012,1086`).
+Only the minter disagreed, and it disagreed by digesting a 64-char hex string that is
+`None` by default, so the field meant to answer *"did the accepted scope change?"* answered
+**"no"** unconditionally.
+
+**So the minter never needed to carry it.** It is derived from state, the minter runs before
+state exists, and anyone needing it computes it live from disk. `_run_state.py:384` already
+sets `inventory_digest=""` for the unidentified case, so the empty form has precedent.
+
+### F10 — NOT A DEFECT. Withdrawn 2026-09-05.
+
+Reported as: the on-disk cache made a `(size, mtime_ns)` staleness window *persistent*, so a
+file rewritten within one filesystem tick at the same size keeps a stale "verified" verdict
+forever rather than until the process exits.
+
+**The mechanism is real; the precondition does not occur, and nobody checked it before
+building a decision on it.** Two independent reasons:
+
+| Requirement | Reality |
+|---|---|
+| the same artifact written **twice** | no code path does this within a pass — each worker owns one image and writes its artifacts once; the only in-place rewrite of a tracked artifact is `replace_embedded_measurement_table` (`_cli_migrate_image.py:281`), which runs under `--mode migrate`, a separate invocation |
+| **within one mtime tick** | measured on GPFS `/bigdata`, where runs live: **0 of 200** back-to-back same-size writes shared an `mtime_ns` (delta ~81 µs). Node-local scratch is 181/200 at ~1 ms — but run output may never live there |
+
+**The correction is the orchestrator's**, and it is the session's recurring error in a new
+costume: *a claim about what a check cannot catch, carried forward without establishing that
+the triggering condition exists.* A decision menu was built for it, and the measurement
+taken was of granularity — the half that was not load-bearing. The user asked the question
+that dissolved it: *"each job owns one image, so what would the second write be?"*
+
+**What survives** is one line in `_verification_cache.py` recording *why* `(size,
+mtime_ns)` is sufficient — no path rewrites a tracked artifact within a pass, GPFS resolves
+to ~81 µs measured — so the next reader gets the reasoning rather than re-deriving it. That
+is documentation of a sound decision, not of a hole. It also states the condition under
+which it would stop being true: output on a filesystem with coarser granularity.
+
+---
+
 ## What the pattern says
 
 **Nothing failed, and nothing could have.** Not one entry would have been caught by a test,
