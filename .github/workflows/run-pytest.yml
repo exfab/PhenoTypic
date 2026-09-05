@@ -145,6 +145,9 @@ jobs:
           uv lock
           uv sync --group dev --group test-qt --all-extras
 
+      - name: Install Playwright browsers
+        run: uv run playwright install --with-deps chromium
+
       - name: Cache testmon data
         uses: actions/cache@v5
         with:
