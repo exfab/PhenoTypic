@@ -168,13 +168,16 @@ STAGE_STAGE2: Final[str] = "stage2"
 STAGE_STAGE3: Final[str] = "stage3"
 STAGE_MEASURED: Final[str] = "measured"
 
-#: The `artifacts` block's kind vocabulary (flow-r4, N-3 scope). The record's
-#: artifacts are `{"kind": "store"|"file", ...}` and the sdk_-side reader compares
-#: those kinds, so they belong here with the stage names rather than being spelled
-#: at each comparison. Omitting them reopens the duplication N-3 exists to close,
-#: one vocabulary over -- the same defect, in a different noun.
-ARTIFACT_KIND_STORE: Final[str] = "store"
-ARTIFACT_KIND_FILE: Final[str] = "file"
+# NOT DEFINED HERE -- corrected at cluster 3.1. This block used to declare
+# ARTIFACT_KIND_STORE/FILE in this module, reasoning that the kinds "would
+# otherwise be spelled at each comparison". The rule is right; the premise is
+# false about this tree. They have lived in `sdk_/_io_constants.py` since the
+# marker schema was written, and EIGHT modules import them from there --
+# `_run_state`, `_cli_completion`, `_cli_migrate_image`, `_hdf_to_zarr`, the
+# two recompile modules and `sdk_/__init__`. Declaring them here would create
+# the second home the argument exists to prevent.
+#
+# Import them: `from ._io_constants import ARTIFACT_KIND_FILE, ...`
 
 #: The record's `provenance` values (U-10). Compared in sdk_ by
 #: valid_image_success and written in _cli by migrate, so the spelling lives here
@@ -249,8 +252,54 @@ def consume_stage(
 ## Task 1: The record writer and reader
 
 **Files:**
-- Create: `src/phenotypic/_cli/_cli_image_record.py`
+- Create: `src/phenotypic/sdk_/_image_record.py` — **readers and vocabulary**
+- Create: `src/phenotypic/_cli/_cli_image_record.py` — **writers only**
+- Modify: `src/phenotypic/sdk_/_run_state.py` — import `STAGE_MEASURED` and
+  `PROVENANCE_MIGRATED` instead of re-spelling them
+- Modify: `src/phenotypic/sdk_/__init__.py` — export the new vocabulary
 - Test: `tests/unit/cli/test_image_record.py`
+
+> ### ⚠ CORRECTED at cluster 3.1 — this block used to name only the `_cli` module
+>
+> **The File Structure table wins, and it is not close.** That table (top of
+> this file) has always said *create both*, with the `sdk_` module first and a
+> separate line budget. This block said one. Four independent reasons the table
+> is the authority:
+>
+> 1. **Task 1's own tests import `phenotypic.sdk_._image_record` four times** —
+>    more specific than either prose block.
+> 2. **INV-LAYER makes the alternative impossible.** `_run_state.py` is `sdk_`
+>    and needs `STAGE_MEASURED`; readers in `_cli` leave `sdk_` unable to read a
+>    record at all.
+> 3. **P6 Task 0 moves `valid_image_success` into `sdk_`**, where it must parse
+>    a record whose reader would then be in `_cli`.
+> 4. **This plan warns against exactly this**, 180 lines above the block that
+>    caused it — *"an implementer resolving the resulting `ImportError` by
+>    majority would put them back in `_cli`, re-creating the exact deadlock this
+>    split prevents, and discovering it four phases later."*
+>
+> That warning was written about twelve snippets left importing readers from
+> `_cli`; **this block was the same revision's other half**. A document that
+> names a trap and then steps into it one edit later is worth flagging on its
+> own: treat that revision's output with suspicion rather than rediscovering
+> this. Its other tell is mechanical — three of the five snippets below still
+> carry a column-0 `import` inside a `def`, which is a syntax error if copied
+> and the signature of a machine edit applied without parsing the result.
+>
+> **`ARTIFACT_KIND_*` is NOT part of the new module**, against the Interfaces
+> block's instruction. That block argues the kinds "would otherwise be spelled
+> at each comparison" — a sound rule, and false about this tree: they have
+> lived in `_io_constants.py` since the marker schema was written and **eight
+> modules import them from there**. Following it would create the second home
+> the argument exists to prevent. `RECORD_VERSION` is new and does belong in
+> the new module.
+>
+> **`STAGE_MEASURED` resolves the opposite way, from a rule that reads the
+> same.** `_run_state.py` had a private `_STAGE_MEASURED` whose own comment said
+> it stood *"until P3 replaces the reader"* — so here the new home is the real
+> one and the existing copy is a placeholder that says so. `_PROVENANCE_MIGRATED`
+> was the same duplication one noun over and is closed with it. The question is
+> never *"should this move?"* but *"which home is the real one?"*
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -892,6 +941,26 @@ unchanged; only where the descriptors live moved."
 - Modify: `src/phenotypic/_cli/_cli_stage2_token.py`
 - Modify: `src/phenotypic/_cli/_cli_staged_resume.py`
 - Test: `tests/unit/cli/test_staged_resume_equivalence.py`
+
+> **Two assertions arrive here from Task 1 — not new scope.**
+> `test_the_stage_names_come_from_one_shared_constant` was written in Task 1
+> and ends:
+>
+> ```python
+> assert _cli_stage2_token.STAGE_STAGE2 is STAGE_STAGE2
+> assert _cli_staged_resume.STAGE_STAGE3 is STAGE_STAGE3
+> ```
+>
+> Those two modules do not import those constants until **this task**, so in
+> cluster 3.1 they fail for a reason that is not a defect. Task 1 landed its
+> own half — the constants have one home, and the writer and reader both use
+> it (`test_the_stage_names_have_exactly_one_home`) — and these two move here,
+> with the imports they check.
+>
+> **Keep `is`, do not weaken to `==`.** A shared-*object* check is the whole
+> content of CAN-27: `==` passes for two modules that happen to spell
+> `"stage2"` identically, which is precisely the state the constant exists to
+> make unrepresentable.
 
 **This is the risky task.** `classify_staged_image` (`_cli_staged_resume.py:197`) decides
 per image whether to run stage 1, 2 or 3. Collapsing four filesystem probes into one read

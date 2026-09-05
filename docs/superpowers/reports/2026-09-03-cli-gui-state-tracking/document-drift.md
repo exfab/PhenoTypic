@@ -699,6 +699,55 @@ three. One residual site was also line-wrapped, so the obvious grep did not matc
 
 ---
 
+### Entry 25 — A CORRECTION THAT NAMES THE TRAP, THEN STEPS IN IT
+
+**Found at P3's open, before a line was written, and the plan had already described the
+failure it was about to cause.**
+
+`phase-3-per-image-record.md` states how many modules Task 1 creates in two places, and they
+disagree:
+
+```
+:72   | Create sdk_/_image_record.py      | Readers and shared vocabulary...
+:73   | Create _cli/_cli_image_record.py  | Writers only...
+:252  - Create: src/phenotypic/_cli/_cli_image_record.py      <- Task 1's Files block: ONE
+```
+
+Task 1's own test snippets import `phenotypic.sdk_._image_record` **eight times**. So an
+implementer following the Files block creates one module, hits `ModuleNotFoundError`, and
+takes the cheapest repair: move the readers into `_cli`. That re-creates a layering deadlock
+which does not surface until P6 needs `valid_image_success` in `sdk_` parsing a record whose
+parser now lives in `_cli` — four phases later.
+
+**The plan warns against exactly this, 180 lines above the block that causes it:**
+
+> *"An earlier revision changed this table and left twelve snippets importing readers from
+> `_cli` — an implementer resolving the resulting `ImportError` by majority would put them
+> back in `_cli`, re-creating the exact deadlock this split prevents, and discovering it four
+> phases later."*
+
+**The warning and the trap are the same edit's two halves.** A reviewer noticed the hazard,
+wrote a precise callout about it, and the revision that carried the callout left a second
+block stating the wrong count. The document now contains its own postmortem, filed in
+advance, one screen away from the defect.
+
+**Why this is not just "a stale block".** Every other stale-document entry here is a claim
+that *decayed*. This one was authored **alongside a correct account of why it is dangerous**,
+which means proofreading against intent could not have caught it: the intent is stated, and
+correct, and adjacent. Only checking the two counts against each other finds it.
+
+**The tell, and it is cheap:** a document that has been revised states its load-bearing
+facts more than once, and revision updates one site. **Before trusting a block, ask whether
+the document says the same thing somewhere else** — the contradiction is invisible to a
+reader who finds the first statement and stops, and it is *more* likely in a carefully
+revised document, not less.
+
+*(Same revision's other residue: three of five test snippets carry column-0 imports inside
+function bodies — a syntax error if copied. The signature of a machine edit applied without
+parsing its own output, which is also entry 25's provenance.)*
+
+---
+
 ## What the pattern says
 
 **Nothing failed, and nothing could have.** Not one entry would have been caught by a test,

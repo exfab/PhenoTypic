@@ -518,6 +518,24 @@ missed overlap costs two invalidated freeze runs that still print green. So the 
 > **Escalate on the cost asymmetry, and send the whole disjunction.** State what would make
 > you wrong, and how the recipient can check it in one command.
 
+### A long document states its load-bearing facts twice — check both before trusting one
+
+**Earned at P3's open, and it is the sibling of the rule below.** The orchestrator's brief
+said *"Files (verified against the plan, not inherited)"*. That was accurate: Task 1's Files
+block does name exactly those files. It was also wrong, because the **File Structure table
+180 lines earlier names two modules**, the task's own tests import from the missing one eight
+times, and the plan carries an explicit callout warning that this precise mismatch will send
+an implementer into a layering deadlock discovered four phases later.
+
+Checking *one* authority is not verification when two exist and disagree — and nothing in the
+first block signals that a second exists.
+
+> **Before trusting any block in a long document, grep the document for the same fact.**
+
+A revised document is *more* prone to this, not less: revision updates one site, and the
+sections most worth restating — file lists, invariants, counts, schema shapes — are exactly
+the ones stated in both a summary table and a task body.
+
 ### An independent check that adopts the classification is not independent
 
 **The subtlest of the three, and it is the orchestrator's.** An agent reported 19 stale

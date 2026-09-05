@@ -42,6 +42,7 @@ from pathlib import Path
 
 from . import _schema_shape
 from ._digests import canonical_digest
+from ._image_record import PROVENANCE_MIGRATED, STAGE_MEASURED
 from ._io_constants import (
     AGGREGATE_PROOF_VERSION,
     ARTIFACT_KIND_FILE,
@@ -374,15 +375,22 @@ _SNAPSHOT_SHA256_ATTR = "snapshot_sha256"
 #: carrying this, and such a record is accepted on **artifact validity alone**
 #: -- no ``work_id`` comparison, because a pre-markers tree never had one to
 #: compare against. :func:`resolve_run_state` says so in an advisory.
-_PROVENANCE_MIGRATED = "migrated"
-
-#: The stage a P1 marker maps onto. Until P3 replaces the reader, today's
-#: ``image_complete/<ds>/<stem>.json`` is projected onto a **single-key**
-#: ``stages`` map. The single key is a consequence of what today's marker
-#: records, not the design: spec §6.1's record carries ``stage1``/``stage2``/
-#: ``stage3``/``measured``, and P3 swaps the reader without touching any
-#: caller.
-_STAGE_MEASURED = "measured"
+#: ``PROVENANCE_MIGRATED`` and ``STAGE_MEASURED`` were spelled again here as
+#: private constants until P3. They are now imported from
+#: :mod:`._image_record`, the record vocabulary's single home -- both modules
+#: are ``sdk_``, so the import crosses no layer, and the call sites below use
+#: the public names directly rather than through a private alias. An alias
+#: would be a second *name* for one value, which is the same defect as a
+#: second value in a thinner disguise.
+#:
+#: The stage constant's old comment said it stood "until P3 replaces the
+#: reader". P3 is where that reader arrives, so a private copy surviving it
+#: would be a second home the code had already labelled temporary.
+#:
+#: The single-key ``stages`` projection is unchanged, and is a consequence of
+#: what today's **marker** records rather than of the design: spec §6.1's
+#: record carries ``stage1``/``stage2``/``stage3``/``measured``, and swapping
+#: the reader touches no caller.
 
 #: Statuses in the GUI owner record that assert work is in flight. Named
 #: rather than derived from the registry's ``_RUN_STATUSES`` minus its
@@ -531,7 +539,7 @@ def marker_rejection(
         return "marker was written for a different dataset"
     if marker.get("image_stem") != image_stem:
         return "marker was written for a different image"
-    if marker.get("provenance") != _PROVENANCE_MIGRATED:
+    if marker.get("provenance") != PROVENANCE_MIGRATED:
         if marker.get("work_id") != work_id:
             return "marker was written for a different work_id"
     artifacts = marker.get("artifacts")
@@ -708,7 +716,7 @@ def _verify_image(
                 work_id=work_id,
                 dataset=dataset,
                 image_stem=image_stem,
-                stages={_STAGE_MEASURED: stage},
+                stages={STAGE_MEASURED: stage},
                 verdict="verified",
             ),
             stat_tuples=fence,
@@ -1235,7 +1243,7 @@ def _advisories(
     migrated = sorted(
         f"{image.dataset}/{image.image_stem}"
         for image in images.values()
-        if _stage_value(image, "provenance") == _PROVENANCE_MIGRATED
+        if _stage_value(image, "provenance") == PROVENANCE_MIGRATED
     )
     if migrated:
         notes.append(
@@ -1257,7 +1265,7 @@ def _stage_value(image: ImageState, key: str) -> object | None:
     path it reuses, instead of losing them or paying a per-image read to keep
     them.
     """
-    stage = image.stages.get(_STAGE_MEASURED)
+    stage = image.stages.get(STAGE_MEASURED)
     if not isinstance(stage, Mapping):
         return None
     return stage.get(key)

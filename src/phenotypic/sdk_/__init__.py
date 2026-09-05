@@ -261,6 +261,17 @@ from ._io_constants import (
     validate_analysis_id,
     zarr_store_path,
 )
+from ._image_record import (
+    PROVENANCE_FORWARD,
+    PROVENANCE_MIGRATED,
+    RECORD_VERSION,
+    STAGE_MEASURED,
+    STAGE_STAGE1,
+    STAGE_STAGE2,
+    STAGE_STAGE3,
+    read_image_record,
+    record_provenance,
+)
 from ._pipeline_publication import pipeline_publication_lock
 from ._run_state import (
     ImageState,
@@ -569,6 +580,15 @@ __all__ = [
     "slurm_lifecycle_path",
     "image_completion_marker_path",
     "image_record_path",
+    "read_image_record",
+    "record_provenance",
+    "PROVENANCE_FORWARD",
+    "PROVENANCE_MIGRATED",
+    "RECORD_VERSION",
+    "STAGE_MEASURED",
+    "STAGE_STAGE1",
+    "STAGE_STAGE2",
+    "STAGE_STAGE3",
     "has_config_suffix",
     "job_metadata_path",
     "load_image_from_store",
