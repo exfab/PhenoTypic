@@ -115,7 +115,31 @@ def _metadata_digest_for(config: "ExecutionConfig") -> str | None:
     """
     import hashlib
 
+    from ..sdk_._io_constants import metadata_csv_deliverable_path
+
     path = getattr(config, "metadata_csv", None)
+    if (
+        path is None
+        and not config.measure_only
+        and not config.process_only_layer
+        and config.output_dir is not None
+    ):
+        # The snapshot fallback, and the GUARD is the load-bearing half.
+        #
+        # `_prepare_incremental_startup` reassigns `config.metadata_csv` to
+        # the existing `deliverables/metadata.csv` **after** the mint, so a
+        # continuation that does not re-pass `--metadata` -- the default way
+        # a run is continued -- saw `None` here and `state.config` recorded
+        # the snapshot's real digest. The two then disagreed on every such
+        # invocation, which is exactly the "fires on every run instead of on
+        # a real edit" failure this function's docstring says it prevents.
+        #
+        # Unguarded, the fallback introduces the mirror-image bug: measure
+        # and process runs **skip** the snapshot entirely, so pointing at
+        # `deliverables/metadata.csv` would invent a digest for a file those
+        # modes never wrote. The two arms fail in opposite directions, which
+        # is why both are tested.
+        path = metadata_csv_deliverable_path(config.output_dir)
     if path is None or not Path(path).is_file():
         return None
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
@@ -231,6 +255,22 @@ def mint_run_identity(
         the SLURM lifecycle record and the GUI owner record, neither of which
         exists at mint time, and both are outside
         :meth:`RunIdentity.digest` by design.
+
+    **``--restart --dry-run`` still bumps, and still creates
+    ``.phenotypic/``** (gate finding F8). This is the only ``--dry-run``-
+    reachable writer the identity change adds, and it is left as-is on
+    purpose rather than made conditional:
+
+    * the cost is bounded -- the counter is monotonic, so a dry run costs one
+      generation value, never a wrong one;
+    * ``--restart`` has already run ``clear_machine_state`` by this point, so
+      a dry run under it has written to the tree regardless;
+    * making the bump conditional on ``dry_run`` would put a second rule on a
+      counter whose whole value is being unconditional. A fence with an
+      exception is a fence someone has to remember.
+
+    Worth knowing rather than worth fixing, but a ``--dry-run`` that writes
+    tracked state deserves to say so where the write happens.
 
     Raises:
         RuntimeError: If called twice for the same ``config`` object.

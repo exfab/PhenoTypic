@@ -381,6 +381,28 @@ def test_an_unrecognized_verdict_is_refused(tmp_path):
     assert load_persisted_states(root, DIGEST_A) is None
 
 
+def test_a_boolean_schema_version_is_refused(tmp_path):
+    """`True == 1` in Python, so `schema_version: true` satisfies a plain
+    comparison against version 1 (gate finding F11).
+
+    This module already fails closed on `bool` in three other places -- the
+    verdict check, and both halves of the stat tuple -- for exactly this
+    reason. The omission here was inconsistent rather than reasoned, which is
+    the kind that survives review: every individual guard looks deliberate.
+    """
+    root = _writable_output(tmp_path)
+    _write_document(
+        root,
+        {
+            "schema_version": True,
+            "identity_digest": DIGEST_A,
+            "entries": {},
+        },
+    )
+
+    assert load_persisted_states(root, DIGEST_A) is None
+
+
 def test_a_different_schema_version_is_refused(tmp_path):
     """The version is the only signal that a file was written by a build whose
     deep-verification RULES differed: the payload records what was checked,

@@ -2153,19 +2153,6 @@ def phenotypic_cli(
 
         config.output_dir = output_dir
 
-        # Mint ONCE per invocation, then thread the value (CAN-21).
-        # Here, and not later, because this point DOMINATES both resume
-        # sites: the incremental-reconciliation block below and the main
-        # state block further down both run in one invocation, so minting
-        # at either would be a second mint at the other -- two generations
-        # for one run, and a burned epoch.
-        #
-        # After `clear_machine_state` (above) on purpose: that function
-        # PRESERVES `restart_epoch.json`, so the bump below reads the
-        # counter the restart deliberately kept. A counter that reset on
-        # the operation it fences would not be a fence.
-        identity = mint_run_identity(config, restart=restart)
-
         # Check existing contents only for a genuinely fresh run.
         if not config.resume and not restart and not measure_only:
             if output_dir.exists() and any(
@@ -2192,6 +2179,34 @@ def phenotypic_cli(
                         err=True,
                     )
                     sys.exit(1)
+
+        # Mint ONCE per invocation, then thread the value (CAN-21).
+        # Every branch below READS `identity`; none mints. A second mint
+        # would give one run two generations and burn a restart epoch.
+        #
+        # BELOW the overwrite branch, and that placement is the fix for a
+        # bug this comment previously helped hide. The earlier version sat
+        # above it and reasoned at length about `clear_machine_state` --
+        # the destructive operation *above* the mint, which preserves the
+        # counter on purpose -- while `shutil.rmtree(output_dir)` seventeen
+        # lines *below* deleted the counter the mint had just read. The
+        # comment defended the neighbour it could see.
+        #
+        # The failure was silent because `--overwrite` and `--restart` are
+        # mutually exclusive, so the mint only READ and nothing raised:
+        # `state.config["restart_epoch"]` kept the pre-overwrite value while
+        # the counter file was gone. A live SLURM run then never reported
+        # `active` (the lifecycle record stamps 0, the identity says 1), and
+        # the next `--restart` bumped 0 -> 1 and re-minted the SAME
+        # generation the overwrite run had used -- so pre-restart workers
+        # passed the event-log fence, which is the failure D5 and §14 exist
+        # to prevent.
+        #
+        # Still dominates both resume sites: they are all below this point,
+        # and the overwrite branch above is guarded by `not config.resume
+        # and not restart and not measure_only`, so no path reaches a resume
+        # site without passing here first.
+        identity = mint_run_identity(config, restart=restart)
 
         # Scan directory structure (or discover image stores in measure mode)
         if measure_only:

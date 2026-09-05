@@ -443,7 +443,13 @@ def load_persisted_states(
         return None
     if not isinstance(document, dict):
         return None
-    if document.get(_SCHEMA_VERSION_KEY) != VERIFICATION_CACHE_VERSION:
+    # `_is_plain_int` and not a bare `!=`: `True == 1` in Python, so a
+    # document whose schema_version is `true` would satisfy a plain
+    # comparison against version 1. This module already fails closed on
+    # bool in three other places; the omission here was inconsistent
+    # rather than reasoned.
+    version = document.get(_SCHEMA_VERSION_KEY)
+    if not _is_plain_int(version) or version != VERIFICATION_CACHE_VERSION:
         return None
     if document.get(_IDENTITY_KEY) != identity_digest:
         return None
@@ -550,8 +556,16 @@ def warm_states(
 def clear_verification_cache(output_dir: Path | None = None) -> None:
     """Drop one output's **tier-1** entries, or every output's.
 
-    Rule 4 of Task 3. P2 wires the scoped form to ``clear_machine_state``, so
-    discarding a run's tracked state also discards what was derived from it.
+    Rule 4 of Task 3. **Nothing in ``src/`` calls the scoped form.** An
+    earlier draft of this docstring said P2 wired it to
+    ``clear_machine_state``; it does not, and the paragraph below --
+    which says the two are separate and why -- is the accurate one. The
+    two sentences contradicted each other three lines apart.
+
+    Left unwired deliberately. Adding the call is a behaviour change
+    nobody has ruled on, and it is not needed: ``clear_machine_state``
+    deletes the on-disk tier by deleting the directory, and tier 1 is
+    per-process memory that a restarting process does not have.
 
     **Tier 1 only, and deliberately.** This function touches no file: it is a
     reader-side memory reset, and that is what lets ``_run_state`` re-export it

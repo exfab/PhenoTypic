@@ -35,6 +35,7 @@ from pathlib import Path
 
 import pytest
 
+from phenotypic._cli._cli_failure_tracker import file_sha256
 from phenotypic._cli._cli_identity import (
     bump_restart_epoch,
     read_restart_epoch,
@@ -502,10 +503,12 @@ def test_the_two_metadata_digests_agree(tmp_path, make_exec_config):
     detection. This is the detection: compute both ways over one input and
     require them equal.
     """
-    import hashlib
-
     from phenotypic._cli._cli_identity import _metadata_digest_for
+    from phenotypic.phenotypicCLI import _snapshot_metadata_csv
+    from phenotypic.sdk_ import metadata_csv_deliverable_path
 
+    root = tmp_path / "run"
+    phenotypic_cache_dir(root).mkdir(parents=True)
     metadata = tmp_path / "metadata.csv"
     metadata.write_text(
         "Metadata_Well,Metadata_Strain\nA1,wt\n", encoding="utf-8"
@@ -513,17 +516,45 @@ def test_the_two_metadata_digests_agree(tmp_path, make_exec_config):
     config = make_exec_config(
         pipeline_json=tmp_path / "pipeline.json",
         input_path=tmp_path / "input",
-        output_dir=tmp_path / "run",
+        output_dir=root,
         metadata_csv=metadata,
     )
 
-    # The CLI's computation, `phenotypicCLI.py`'s snapshot copier: sha256 over
-    # the CSV's raw bytes. Spelled out rather than imported, because the point
-    # is that two independently written computations agree -- importing the
-    # other one would make this test tautological.
-    cli_side = hashlib.sha256(metadata.read_bytes()).hexdigest()
+    # Drive the CLI's OWN copier rather than restating its arithmetic. An
+    # earlier version of this test hand-copied the one-line sha256 and called
+    # that "the CLI side" -- so it constrained only `_metadata_digest_for`,
+    # the half already under a docstring, and stayed green through every
+    # drift it named.
+    _snapshot_metadata_csv(root, metadata)
+    snapshot = metadata_csv_deliverable_path(root)
 
-    assert _metadata_digest_for(config) == cli_side
+    assert _metadata_digest_for(config) == file_sha256(snapshot)
+
+    # ARM 2 -- the continuation, and the case that used to fail. No
+    # `--metadata` is re-passed, so `config.metadata_csv` is None and the
+    # digest must come from the existing snapshot rather than reading None.
+    continued = make_exec_config(
+        pipeline_json=tmp_path / "pipeline.json",
+        input_path=tmp_path / "input",
+        output_dir=root,
+        metadata_csv=None,
+    )
+
+    assert _metadata_digest_for(continued) == file_sha256(snapshot)
+
+    # ARM 3 -- the guard. Measure and process runs SKIP the snapshot, so
+    # falling back to it would invent a digest for a file those modes never
+    # wrote. The two arms fail in opposite directions; the guard is what a
+    # later edit will drop, so it is what this arm defends.
+    measuring = make_exec_config(
+        pipeline_json=tmp_path / "pipeline.json",
+        input_path=tmp_path / "input",
+        output_dir=root,
+        metadata_csv=None,
+        measure_only=True,
+    )
+
+    assert _metadata_digest_for(measuring) is None
 
 
 # --------------------------------------------- D5 and mode parity (3b)

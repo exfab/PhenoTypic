@@ -85,10 +85,26 @@ MUTATIONS: list[tuple[str, str, str, tuple[str, ...]]] = [
     (
         "the reader ignores the schema version -- a file written by a build"
         " whose verification RULES differed is honoured",
-        "    if document.get(_SCHEMA_VERSION_KEY) != "
-        "VERIFICATION_CACHE_VERSION:\n        return None\n",
+        "    version = document.get(_SCHEMA_VERSION_KEY)\n"
+        "    if not _is_plain_int(version) or version != "
+        "VERIFICATION_CACHE_VERSION:\n"
+        "        return None\n",
         "",
-        ("test_a_different_schema_version_is_refused",),
+        (
+            "test_a_different_schema_version_is_refused",
+            "test_a_boolean_schema_version_is_refused",
+        ),
+    ),
+    (
+        "the schema version accepts a bool -- `True == 1` in Python, so a"
+        " document whose schema_version is `true` satisfies a plain"
+        " comparison against version 1. The module fails closed on bool in"
+        " three other places; this one was inconsistent rather than"
+        " reasoned (gate finding F11).",
+        "    if not _is_plain_int(version) or version != "
+        "VERIFICATION_CACHE_VERSION:\n",
+        "    if version != VERIFICATION_CACHE_VERSION:\n",
+        ("test_a_boolean_schema_version_is_refused",),
     ),
     (
         "a read failure propagates instead of degrading [§9.1 cases 4 and 5]."
