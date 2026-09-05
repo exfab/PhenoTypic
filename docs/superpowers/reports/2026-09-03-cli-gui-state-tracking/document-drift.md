@@ -47,6 +47,9 @@ about each.
 | 14 | design.md §5.3 vs §5.4 | **`scientific_config_digest` names two different values.** §5.3's table asks *"did the **pipeline** change?"* — the pipeline file's bytes, which is what the proofs write (`_cli_completion.py:914,1020,1087`). §5.4 calls it *"the per-image digest already folded into `work_id`"* — a payload containing no pipeline bytes. Adjacent sections, one name, two values | never true | user-ruled; renamed |
 | 15 | `test_run_state_layering.py` | INV-LAYER's walk checked `module.startswith(("phenotypic._cli", "._cli"))`. `ast` strips a relative import's dots into `level`, so **`"._cli"` could never match anything** — and `from .._cli import x`, the natural relative violation from `sdk_`, passed. Four holes, not the two the review named | never true | `45af0a81` |
 | 16 | `test_run_state.py` | `test_image_state_stages_carry_no_backfilled_key` asserted a property of a literal the test wrote three lines earlier; no source change could redden it. And forbidding a key in a deliberately **open** map argued against the design it claimed to protect | never true | `74d75f3c` |
+| 17 | P2 T3 Step 5 | parametrizes `["full","measure","process"]` and asserts each mints the identity `full` does. Unreachable: the digest branches mutually exclusively on `process_only_layer`, so process and full digest different payloads. No DF-16-satisfying implementation could make them equal without deleting a field | never true | `578147f9` |
+| 18 | P2 T3 Step 7 | *"38 tests"* for `-k 'restart or resume'`. `-k` matches the whole **node id**, so it selects every test in a class or module whose name contains either word — **451**, not 38 | never true | `578147f9` |
+| 19 | **design.md §5.1** | *"`scheduler_epoch` absorbs `slurm_generation`, staged `epoch`, `lifecycle_epoch`, `execution_epoch`, and recompile's `attempt_id`."* **Zero of the five can be renamed** — see below | never true | user-ruled |
 
 Two of the sixteen (12, 13) are the orchestrator's own, and both are claims about **what a
 check verifies** — written into the file whose stated job is being trustworthy about exactly
@@ -159,6 +162,50 @@ test now in the gate: **what does the spec constrain, and is that the thing bein
 chosen?** — with the instruction to cite the sections checked *including the satisfied
 ones*, because a claim that something is unconstrained needs evidence exactly as much as
 a claim that it is.
+
+---
+
+### Entry 19, and the distinction that produced it: OWNERSHIP is not PERSISTENCE
+
+§5.1's line is the largest single reduction the spec claims — five identity tokens into
+one. Checked writer by writer against the shipped code, **none of the five can be
+renamed**, for four different reasons:
+
+| Token | Why not |
+|---|---|
+| `slurm_generation` | an **on-disk key** in `job_metadata.json` (`_cli_execution_strategies.py:1059`) and the recompile manifest, read by `_cli_checkpoint_handler.py:169,208`, `_cli_recompile_slurm_scripts.py:251`, and **three GUI sites** (`gui/run_console/_slurm.py:244,290`, `_slurm_observer.py:436`) |
+| recompile `attempt_id` | *is* `slurm_generation` by value — one variable passed into both parameters, then asserted equal — and is pinned by that token's persistence |
+| `lifecycle_epoch` | **mode-dependent at runtime**: `_authoritative_lifecycle_epoch()` returns the scheduler generation under SLURM and the *processing generation* locally. `scheduler_epoch` is **narrower than the value**, which is a worse defect than the vagueness it would fix |
+| `execution_epoch` | a **proof field** — renaming rewrites keys in every aggregate and run proof on disk |
+| staged `epoch` | its own writer, its own lifetime |
+
+**The general form, and it is the reason this took two passes to get right:**
+
+> **Ownership says who may change the value. Persistence says who else can still read the
+> name.** A token can have exactly one writer and still be a public format.
+
+Those two properties read as one, which is why *"one writer, scheduler-owned"* felt like
+it meant *"safe to rename"*. The cluster agent applied the on-disk test to
+`execution_epoch`, did **not** apply it to `slurm_generation`, and marked row 1
+collapsible. **The orchestrator then carried that row into a table put in front of the
+user for a ruling, without applying to row 1 the test it had just read in row 4.** The
+agent caught its own error while the ruling was in flight.
+
+**Both halves belong in the register.** The first is a missed check; the second is an
+unverified claim propagating through an intermediary who had the disproof in the same
+table. It is the second time this phase an unchecked assertion of the orchestrator's
+reached the user's decision, and the second time the cluster agent caught it.
+
+**Disposition, user-ruled:** §5.1 is amended to record the collapse as unachievable, with
+these four reasons cited. The alternative — renaming with read-both-keys shims in every
+reader — was rejected because **dual-key support is more state to keep in sync, not
+less**, and a change whose stated purpose is reducing tracked state would have ended by
+adding some.
+
+What survives is smaller and real: `_assert_worker_generation`'s
+`slurm_generation != attempt_id` compares one value with itself, so it is a **dead
+comparison to delete** rather than a token to collapse — no name, no key, no behaviour
+changes, and it removes the thing that made the pair look like two values.
 
 ---
 
