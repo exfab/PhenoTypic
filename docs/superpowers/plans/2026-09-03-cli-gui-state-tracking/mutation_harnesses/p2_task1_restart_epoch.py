@@ -54,6 +54,7 @@ TARGETS = (
     "src/phenotypic/_cli/_cli_failure_tracker.py",
     "src/phenotypic/_cli/_cli_migrate.py",
     "src/phenotypic/_cli/_cli_state_management.py",
+    "src/phenotypic/_cli/_cli_update_state.py",
 )
 SUITE = "tests/unit/cli/test_run_identity.py"
 
@@ -150,6 +151,36 @@ MUTATIONS: list[tuple[str, str, str, tuple[str, ...]]] = [
         "    if process_only_layer is not None:\n",
         "    if False:\n",
         ("test_process_mints_a_DIFFERENT_identity_and_that_is_correct",),
+    ),
+    (
+        "THE FENCE IS REMOVED: the event-log generation filter never"
+        " excludes anything, so a worker abandoned by a --restart keeps"
+        " reporting progress into the post-restart state. Spec §14's"
+        " requirement, deleted."
+        " THIS IS THE POSITIVE PREDICTION and it must go red for the RIGHT"
+        " reason -- `a_restart_excludes_events_from_the_previous_generation`"
+        " fails because a foreign-generation event is now COUNTED, not"
+        " because a signature moved. Its pair must stay GREEN: removing an"
+        " exclusion cannot break a test that asserts inclusion, and if it"
+        " does then the two tests are not the independent halves they claim"
+        " to be. Category E shape #2 -- a guard whose branch does nothing --"
+        " is exactly what this proves absent.",
+        "                generation is not None\n"
+        "                and event.generation is not None\n"
+        "                and event.generation != generation\n",
+        "                False\n",
+        (
+            "test_a_restart_excludes_events_from_the_previous_generation",
+        ),
+    ),
+    (
+        "the fence is INVERTED: it excludes an event whose generation"
+        " MATCHES. A run then discards its own history on every resume --"
+        " the pre-3220a740 behaviour, restored, and the one a reader would"
+        " mistake for tightening a fence rather than deleting one.",
+        "                and event.generation != generation\n",
+        "                and event.generation == generation\n",
+        ("test_a_resume_counts_events_from_its_own_generation",),
     ),
     (
         "CAN-21's mint-once guard is removed, so one invocation can mint two"

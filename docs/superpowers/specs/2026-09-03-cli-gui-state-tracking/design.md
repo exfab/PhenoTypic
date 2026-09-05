@@ -310,7 +310,7 @@ Half-migrated trees holding unconverted `.h5` files contribute a
 | `processing_generation` | content | `sha256(pipeline_sha256 ‖ scientific_config_digest ‖ restart_epoch)` — see §5.4 |
 | `publication_id` | content | `sha256(source_set_digest ‖ finalization_inputs)` |
 | `restart_epoch` | tracked counter | monotonic int; preserved by `clear_machine_state` |
-| `scheduler_epoch` | opaque | absorbs `slurm_generation`, staged `epoch`, `lifecycle_epoch`, `execution_epoch`, and recompile's `attempt_id` |
+| `scheduler_epoch` | opaque | ⚠ **the absorption is NOT achievable — see below.** Intended to absorb `slurm_generation`, staged `epoch`, `lifecycle_epoch`, `execution_epoch`, and recompile's `attempt_id` |
 | `owner_generation` | opaque | GUI launch ownership |
 
 Retained but reclassified as **diagnostic** — written, never branched on:
@@ -319,6 +319,44 @@ per-image `attempt_id` (its only consumer type-checks it), and the event-log
 
 Reclassified as **in-memory CAS counters, not identity**: `record_revision`,
 registry `revision`, `binding_generation`. None reaches disk as identity.
+
+> ### ⚠ AMENDED (P2 Task 4, user-ruled): the five-token collapse is achievable ZERO times
+>
+> Checked writer by writer against the shipped code. **Five names, four writers, four
+> lifetimes** — and not one can be renamed:
+>
+> | Token | Why not |
+> |---|---|
+> | `slurm_generation` | an **on-disk key** in `job_metadata.json` (`_cli_execution_strategies.py:1059`) and the recompile manifest, read by `_cli_checkpoint_handler.py:169,208`, `_cli_recompile_slurm_scripts.py:251`, and **three GUI sites** (`gui/run_console/_slurm.py:244,290`, `_slurm_observer.py:436`). One writer, but a public format. |
+> | recompile `attempt_id` | **is** `slurm_generation` by value — every supplier passes one variable into both parameters (`_cli_recompile_slurm_scripts.py:292-293`). Pinned by that token's persistence. |
+> | `lifecycle_epoch` | **mode-dependent at runtime.** `_authoritative_lifecycle_epoch()` returns the scheduler generation under SLURM and the *processing generation* locally. `scheduler_epoch` would be **narrower than the value** — a worse defect than the vagueness it fixes. |
+> | `execution_epoch` | a **proof field**; renaming rewrites keys in every aggregate and run proof on disk. A migration, not a rename. |
+> | staged `epoch` | its own writer, its own lifetime. |
+>
+> **The distinction that decides all five:** *ownership* says who may change a value;
+> *persistence* says who else can still read its name. **A token can have exactly one writer
+> and still be a public format.** Those read as one property, which is how "one writer,
+> scheduler-owned" came to stand in for "safe to rename".
+>
+> **The rejected alternative, and why.** Renaming with read-both-keys shims in every reader
+> was considered and declined: dual-key support is **more** state to keep in sync, and a
+> change whose stated purpose is reducing tracked state would have ended by adding some.
+>
+> **What Task 4 delivered instead.** `_assert_worker_generation`'s
+> `slurm_generation != attempt_id` compared one value with itself, so it was a **dead
+> comparison to delete** rather than a token to collapse — no name, no key, no behaviour
+> changed, and it removed the thing that made the pair look like two values.
+>
+> ### And §14's fence was never missing
+>
+> `aggregate_state_from_events` (`_cli_update_state.py:337-347`) has always excluded
+> foreign-generation events, and `load_processing_state` has always passed the current
+> generation. What P2 changed is **the value it fences on**: a `uuid4()` that churned every
+> invocation became a content-derived token stable across resumes. The fence went from
+> firing on **every resume** to firing only on a **restart**.
+>
+> **P2 did not build this fence; it made it mean something.** Both findings are the same
+> shape — the spec asked for a thing the code already had, differently.
 
 ### 5.2 Function surface
 

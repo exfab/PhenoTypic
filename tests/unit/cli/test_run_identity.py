@@ -666,6 +666,87 @@ def test_process_mints_a_DIFFERENT_identity_and_that_is_correct(
     )
 
 
+# ------------------------------------- the event-log generation fence (§14)
+
+
+def _log_event(output_dir: Path, *, generation: str, image: str) -> None:
+    """Append one completed event tagged with ``generation``."""
+    from phenotypic._cli._cli_update_state import append_event
+    from phenotypic.sdk_ import resolve_event_log_path
+
+    log = resolve_event_log_path(output_dir)
+    log.parent.mkdir(parents=True, exist_ok=True)
+    append_event(
+        log,
+        "plate",
+        image,
+        "completed",  # type: ignore[arg-type]
+        generation=generation,
+    )
+
+
+def _aggregate_under(output_dir: Path, generation: str) -> set[str]:
+    """Return the images counted completed under ``generation``."""
+    from phenotypic._cli._cli_update_state import aggregate_state_from_events
+    from phenotypic.sdk_ import resolve_event_log_path
+
+    states = aggregate_state_from_events(
+        resolve_event_log_path(output_dir),
+        inventory={"plate": {"a.tif"}},
+        generation=generation,
+    )
+    return set(states["plate"].completed) if "plate" in states else set()
+
+
+def test_a_restart_excludes_events_from_the_previous_generation(tmp_path):
+    """Spec §14: a worker holding the pre-restart generation must not have
+    its **events counted**.
+
+    The fence itself is not new -- `aggregate_state_from_events` has always
+    ignored events tagged with another generation. What P2 changed is the
+    *value* it fences on: before `3220a740` the generation was a `uuid4()`
+    that churned on every invocation, so this fired constantly. Now it fires
+    on a restart and only on a restart, which is what makes it a fence rather
+    than an eraser.
+
+    Nothing pinned this before. It is the half a reader would assume is
+    covered.
+    """
+    _log_event(tmp_path, generation="gen-before", image="a.tif")
+
+    assert _aggregate_under(tmp_path, "gen-after-restart") == set(), (
+        "an event tagged with the pre-restart generation was counted; a "
+        "worker the restart abandoned is still reporting progress"
+    )
+
+
+def test_a_resume_counts_events_from_its_own_generation(tmp_path):
+    """**The half that changed, and the half nothing defends.**
+
+    A resume mints the *same* generation (D3), so its prior events are its
+    own and must be counted. Before `3220a740` a resume minted a fresh uuid,
+    every prior event read as "other generation", and the event log was
+    discarded on every resume -- silently defeating the merge point's own
+    stated design, which is `prefer event log as source of truth`.
+
+    That change shipped inside a commit about minting and was accepted by
+    the user after the fact, on the evidence that the failure direction is
+    safe: the work list is `completed | failed`, `started` is not in it, so a
+    stale marker costs reprocessing and never a wrongly skipped image.
+
+    **A regression here is silent and cheap to introduce** -- it looks like
+    restoring a fence rather than deleting one. This test is what makes it
+    loud. Paired with the restart test above on purpose: either alone is
+    satisfied by an implementation that counts everything, or nothing.
+    """
+    _log_event(tmp_path, generation="gen-stable", image="a.tif")
+
+    assert _aggregate_under(tmp_path, "gen-stable") == {"a.tif"}, (
+        "a resume discarded its own prior events; the generation is stable "
+        "across a resume (D3) precisely so they are kept"
+    )
+
+
 # ------------------------------------------------------------- the counter
 
 
