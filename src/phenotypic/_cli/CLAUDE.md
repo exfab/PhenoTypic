@@ -301,9 +301,44 @@ all of its work.
 
 Descriptors dispatch on `kind`. A **store** is fingerprinted by its root
 `zarr.json` alone, not recursively: the root is written **last** by the promote
-protocol and nothing writes into the store after publication, so a valid root
-implies a complete store. An absent `kind` reads as `"file"` (v1 shape); an
-unknown `kind` **fails closed**.
+protocol, so a valid root implies a complete store. An absent `kind` reads as
+`"file"` (v1 shape); an unknown `kind` **fails closed**.
+
+> **"Nothing writes into the store after publication" is FALSE, and root-only
+> fingerprinting is sound anyway.** The stronger claim was written here and is
+> withdrawn — `replace_embedded_measurement_table` has **three** call sites, not
+> the one (`_cli_migrate_image.py:281`) an earlier note named. The third,
+> `_cli_output_manager.py:1997` ← `_cli_process_single.py:439`, runs on the
+> ordinary **`--mode measure`** path and writes into a store that is already
+> published.
+>
+> What actually holds is narrower and is what the fingerprint needs. Both write
+> shapes preserve *"a valid root implies a complete store"*:
+>
+> - **descriptor changed** → a root-last store transaction, so the root is
+>   rewritten last exactly as at promote time;
+> - **descriptor unchanged** → one validated same-directory atomic file
+>   replacement, and `_measurement_tables.py:283-289` returns **without touching
+>   the root** at all.
+>
+> So the root never observes a partial store either way. The root fingerprint is
+> a **completeness** check, not a content-version one, and it was never asked to
+> distinguish two tables carrying the same columns — the descriptor holds
+> `schema_version`, `type`, `format`, `path`, `measurement_columns` and `target`,
+> and deliberately no row count or content digest.
+>
+> The measure path then re-publishes the marker through
+> `_republish_table_marker` (`_cli_process_single.py:462`), which rehashes every
+> artifact and writes the marker last, so no store write outlives the
+> publication that certifies it.
+>
+> **Why the wording mattered even though the conclusion did not.** A reader
+> checking the guarantee would have found a counterexample on the first grep and
+> had no way to tell whether the fingerprint was unsound or merely
+> mis-described. Overstating a true invariant costs the next reader the ability
+> to verify it — and the overstatement came from a citation that named one call
+> site when there were three, which is the third time in this change a dismissal
+> rested on an under-counted citation.
 
 The `"hdf"` branch is **not** dead code, though no forward path writes an
 `.h5` any more. `_migrate_legacy_success_evidence` promotes trees from older

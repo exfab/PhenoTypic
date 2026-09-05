@@ -558,6 +558,48 @@ not live — a second caller of `initialize_orchestration` would activate it sil
 
 ---
 
+### Entry 23 — THE UNDER-COUNTED CITATION: a dismissal that names one site of several
+
+**Three instances in one change, which is what makes it a shape rather than a slip.** Each
+is a claim that *dismisses* a risk by pointing at where something happens — and each names
+strictly fewer places than exist. All three are **verifiable exactly as written**, which is
+what makes them survive review: a reader follows the citation, finds what it promises, and
+stops.
+
+| # | The dismissal | What it named | What existed |
+|---|---|---|---|
+| 1 | *"`stage2_result_replayable()` is the one function all five sites call"* | a count with **no unit** — sites of what? | six call sites, in three modules |
+| 2 | *"`_cli_staged_slurm.py:412` writes the key, so the default is inert"* | one **line** | the key is written to **two documents**, from two lines; `:412` covers only the controller config, and the two `False`-defaulting readers consult the orchestration state |
+| 3 | *"the only in-place rewrite of a tracked artifact is `_cli_migrate_image.py:281`, under `--mode migrate`"* | one **call site** | three call sites; the third (`_cli_output_manager.py:1997` ← `_cli_process_single.py:439`) runs on the ordinary `--mode measure` path |
+
+**The common structure.** A conclusion depends on *"this is the only place."* The citation
+establishes *"this is a place."* The gap between the two is invisible because the cited fact
+is true, and checking it returns success.
+
+**Why review does not catch it.** The reader's natural verification — follow the reference,
+confirm it says what the claim says — **cannot fail**. Refuting it requires the reader to
+independently enumerate the sites, which is the work the citation appeared to have done. A
+precise-looking reference is read as evidence that enumeration happened.
+
+**The tell, in all three cases: the claim quantifies but the citation does not.** "The one
+function", "the only rewrite", "five sites" are statements about a *set*; `:412` and `:281`
+are statements about a *member*. Whenever a dismissal's strength comes from a word like
+*only*, *the one*, or a bare count, the evidence has to be the enumeration — a `grep` and
+its output — not an exemplar.
+
+**None of the three changed a conclusion.** The "five sites" count was cosmetic; `:412`'s
+default really is inert *for the document it named*; and F10's withdrawal survives intact
+because `--mode measure` is a separate invocation, so `mtime` moves regardless. **That is
+the argument for recording them, not against it.** A shape that has been harmless three
+times is one nobody is looking for on the fourth, and the fourth is the one where the
+unnamed site is on the path that matters.
+
+**The cheap discipline:** when writing *only* or *the one*, paste the command that
+establishes it. `grep -rn '<symbol>' src/ | grep -v '.pyc'` in the commit message is
+falsifiable by the next reader in one keystroke; a line number is not.
+
+---
+
 ## What the pattern says
 
 **Nothing failed, and nothing could have.** Not one entry would have been caught by a test,
@@ -578,6 +620,11 @@ acts on it.
    *present*, both written as the safeguard against this exact class. **A tool's output is a
    sample, and needs the same precondition its operator does** — including before you read
    its log.
+
+3. **A dismissal citing one site of several** (23). The hardest to catch, because the
+   reader's natural check — follow the citation — *cannot fail*. Refuting it needs the
+   enumeration the citation appeared to have done. Tell: the claim quantifies (*only*, *the
+   one*, a bare count) while the evidence exemplifies (a line number).
 
 **The mitigation that actually worked**, and it is not "be careful": **prefer a pointer to a
 real symbol over a restatement.** A pointer to a symbol that exists is the one form of these

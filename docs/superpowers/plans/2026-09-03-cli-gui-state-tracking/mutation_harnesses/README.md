@@ -15,12 +15,38 @@ reason.
 
 ## Files
 
-| File | What it does |
+| File | What it covers |
 |---|---|
-| `p1_task3_verification_cache.py` | P1 Task 3 Step 6 — thirteen mutations over `sdk_/_verification_cache.py`, covering all twenty in-process INV-VERDICT tests. |
-| `p2_task0_disk_verification_cache.py` | P2 Task 0 (U-11) — twenty mutations over three targets, covering all twenty-eight on-disk tier tests, including §9.1's six corruption cases. |
-| `p2_task1_restart_epoch.py` | P2 Task 1 — ten mutations over **four** targets, covering all eleven `restart_epoch` and rule-2 fence tests. |
+| `p1_task3_verification_cache.py` | P1 Task 3 Step 6 — the **in-process (tier 1)** INV-VERDICT tests, over `sdk_/_verification_cache.py`. |
+| `p2_task0_disk_verification_cache.py` | P2 Task 0 (U-11) — the **on-disk (tier 2)** tests, including §9.1's six corruption cases. |
+| `p2_task1_restart_epoch.py` | P2 Task 1 — the `restart_epoch` and **rule-2 fence** tests, over the identity, lifecycle and state-writing modules. |
 | `check_mutation_coverage.py` | Read-only, no pytest. Name integrity, coverage, and anchor drift for every harness here. |
+
+### Why this table carries no counts
+
+**It used to, and every one of them was wrong.** `p2_task0` read *"twenty
+mutations over three targets, covering all twenty-eight"* against an actual
+21/3/29; `p2_task1` read *"ten mutations over four targets, covering all
+eleven"* against **thirty-five over nine, covering thirty-four**. That is not a
+rounding error, it is a 3.5× drift sitting in the file whose entire subject is
+checks that silently stop meaning anything.
+
+Nothing caught it because nothing could: `check_mutation_coverage.py` prints the
+true numbers and passes, so a prose count sat beside a machine-checked one with
+no relation between them. **A number that must be hand-synced with a
+generator's output is a second home for a value** — the defect the
+`cli-gui-state-tracking` change exists to remove, reproduced in that change's
+own scaffolding.
+
+So the counts live in one place, and it is the one that derives them:
+
+```
+uv run python docs/superpowers/plans/2026-09-03-cli-gui-state-tracking/mutation_harnesses/check_mutation_coverage.py
+```
+
+What stays here is what does not drift — which suite each harness binds, and
+why. If you want a harness's mutation count, run the checker; if you want it in
+prose, you are about to create the same defect again.
 
 ## Run `check_mutation_coverage.py` after touching either side
 
@@ -258,23 +284,28 @@ Scope rule warns about, applied to itself.
 
 | Suite | Watched by |
 |---|---|
-| `tests/unit/sdk_/test_verification_cache.py` (20) | `p1_task3_verification_cache.py` |
-| `tests/unit/sdk_/test_verification_cache_disk.py` (28) | `p2_task0_disk_verification_cache.py` |
-| `tests/unit/cli/test_run_identity.py` (11) | `p2_task1_restart_epoch.py` |
-| **`tests/unit/sdk_/test_run_state.py` (62)** | **nothing** |
-| **`tests/unit/sdk_/test_run_state_layering.py` (2)** | **nothing** |
+| `tests/unit/sdk_/test_verification_cache.py` | `p1_task3_verification_cache.py` |
+| `tests/unit/sdk_/test_verification_cache_disk.py` | `p2_task0_disk_verification_cache.py` |
+| `tests/unit/cli/test_run_identity.py` | `p2_task1_restart_epoch.py` |
+| **`tests/unit/sdk_/test_run_state.py`** | **nothing** |
+| **`tests/unit/sdk_/test_run_state_layering.py`** | **nothing** |
 | **`tests/unit/cli/test_schema_gate.py`** | **nothing** |
 
-`test_run_state.py` is **P1's largest suite and the one that pins INV-VERDICT's
-run-level half** — rule 1's six comparisons, the live-authority ladder, the four
-advisories. It is unwatched, so a mutation in `resolve_run_state` that no test
-catches would be reported by nothing here.
+This table's counts are gone for the reason the Files table's are, and it is the
+sharper case of the two: what this table argues is **watched or not**, which is a
+boolean. The numerals never carried the argument, and they drifted anyway —
+`test_run_identity.py` was listed as 11 against an actual 34.
+
+`test_run_state.py` is **the largest suite here and the one that pins
+INV-VERDICT's run-level half** — rule 1's six comparisons, the live-authority
+ladder, the four advisories. It is unwatched, so a mutation in
+`resolve_run_state` that no test catches would be reported by nothing here.
 
 That is a deliberate scope choice, not an oversight: the two committed harnesses
 cover the module whose *bug class* is silent (a cache that hands back a stale
-`complete`), and a 62-test harness is a phase of work in itself. But it must be
-written down, because the alternative is a future reader taking `COVERAGE_OK=True`
-for a claim it does not make.
+`complete`), and a harness over that suite is a phase of work in itself. But it
+must be written down, because the alternative is a future reader taking
+`COVERAGE_OK=True` for a claim it does not make.
 
 **Evidence it is a real gap, not a theoretical one.** The `publication_id` param
 of `test_each_of_rule_ones_comparisons_is_load_bearing` did not exist until
