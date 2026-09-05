@@ -41,6 +41,8 @@ def _manifest_assignments() -> Counter[Path]:
             if not matches:
                 raise AssertionError(f"shard path does not exist: {entry}")
             for match in matches:
+                if match.is_dir() and not any(match.rglob("*.py")):
+                    raise AssertionError(f"shard path has no source files: {entry}")
                 candidates = match.rglob("*.py") if match.is_dir() else (match,)
                 assignments.update(
                     path.relative_to(REPO_ROOT)

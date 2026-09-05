@@ -15,7 +15,6 @@
       "tests/unit/enhance/",
       "tests/unit/grid/",
       "tests/unit/measure/",
-      "tests/unit/nn/",
       "tests/unit/plotting/",
       "tests/unit/post/",
       "tests/unit/prefab/",
@@ -23,7 +22,6 @@
       "tests/unit/refine/",
       "tests/unit/resources/",
       "tests/unit/schema/",
-      "tests/unit/sweep/",
       "tests/unit/util/",
       "tests/unit/viz/"
     ]
