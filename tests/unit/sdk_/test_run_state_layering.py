@@ -40,22 +40,108 @@ _MODULES = (
 )
 
 
+#: The package every watched module lives in. Relative imports resolve
+#: against it, so ``level=1`` is ``phenotypic.sdk_`` and ``level=2`` is
+#: ``phenotypic``.
+_PACKAGE = "phenotypic.sdk_"
+
+_FORBIDDEN = "phenotypic._cli"
+
+
+def _names_the_cli(dotted: str) -> bool:
+    """Whether *dotted* is ``phenotypic._cli`` or something inside it."""
+    return dotted == _FORBIDDEN or dotted.startswith(_FORBIDDEN + ".")
+
+
+def _absolute_module(node: ast.ImportFrom) -> str:
+    """Resolve an ``ImportFrom`` to an absolute dotted module.
+
+    ``ast`` puts the leading dots of a relative import in ``level`` and
+    **strips them from** ``module``, so ``from .._cli import x`` arrives as
+    ``module='_cli', level=2`` -- with no dot anywhere in the string.
+    """
+    if node.level == 0:
+        return node.module or ""
+    parts = _PACKAGE.split(".")
+    base = ".".join(parts[: len(parts) - node.level + 1])
+    return f"{base}.{node.module}" if node.module else base
+
+
 def test_neither_module_ever_names_the_cli_package():
+    """INV-LAYER, over every syntactic form that can reach the CLI package.
+
+    The first version checked ``node.module.startswith(("phenotypic._cli",
+    "._cli"))`` and missed four shapes -- three of them plausible, one of them
+    the *most likely accidental violation there is*. Each is now covered and
+    each is proved by a mutation:
+
+    ===================================== =================================
+    Form                                  Why the old walk missed it
+    ===================================== =================================
+    ``from .._cli import x``              ``module='_cli'``, dots moved to
+                                          ``level``. The ``"._cli"`` prefix
+                                          in the old test could therefore
+                                          **never match anything** -- it was
+                                          written believing ``ast`` keeps
+                                          the dot. This is the natural
+                                          relative form from ``sdk_``.
+    ``from phenotypic import _cli``       ``module='phenotypic'``; the name
+                                          is in ``node.names``
+    ``from .. import _cli``               ``module`` is ``None``, so the
+                                          ``and node.module`` guard skipped
+                                          the node entirely
+    ``importlib.import_module("...")``    not an import node at all
+    ===================================== =================================
+
+    Relative imports are resolved to absolute before comparison, and the
+    imported *names* are checked too, not only the module they come from.
+    """
     offenders: list[str] = []
     for source in _MODULES:
         tree = ast.parse(source.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom) and node.module:
-                if node.module.startswith(("phenotypic._cli", "._cli")):
+            if isinstance(node, ast.ImportFrom):
+                module = _absolute_module(node)
+                # `from phenotypic import _cli` names the package in an
+                # alias rather than in `module`, so both are checked.
+                candidates = [module] + [
+                    f"{module}.{alias.name}" for alias in node.names
+                ]
+                if any(_names_the_cli(c) for c in candidates):
                     offenders.append(
-                        f"{source.name}:{node.lineno} from {node.module}"
+                        f"{source.name}:{node.lineno} from {module} import "
+                        + ", ".join(a.name for a in node.names)
                     )
             elif isinstance(node, ast.Import):
                 for alias in node.names:
-                    if alias.name.startswith("phenotypic._cli"):
+                    if _names_the_cli(alias.name):
                         offenders.append(
                             f"{source.name}:{node.lineno} import {alias.name}"
                         )
+            elif isinstance(node, ast.Call):
+                # importlib.import_module("phenotypic._cli...") and
+                # __import__("...") route around the import statement
+                # entirely. Only a literal argument is checkable, which is
+                # the point: a computed one is not something a reader can
+                # audit either, and belongs nowhere near this boundary.
+                func = node.func
+                name = (
+                    func.attr
+                    if isinstance(func, ast.Attribute)
+                    else func.id
+                    if isinstance(func, ast.Name)
+                    else ""
+                )
+                if name in {"import_module", "__import__"}:
+                    for arg in node.args:
+                        if isinstance(
+                            arg, ast.Constant
+                        ) and isinstance(arg.value, str):
+                            if _names_the_cli(arg.value):
+                                offenders.append(
+                                    f"{source.name}:{node.lineno} "
+                                    f"{name}({arg.value!r})"
+                                )
     assert not offenders, (
         "INV-LAYER: the run-state readers must not import phenotypic._cli. "
         f"Found: {offenders}"
