@@ -54,7 +54,10 @@ there is no `--resume` flag. Exact terminal failures remain skipped unless
 A missing or invalid store selects Stage 1; a valid store without a complete
 Stage-2 signal selects Stage 2; and a valid store with one selects Stage 3.
 **Every prereq probe tests BOTH halves of the signal** —
-`stage2_result_replayable()` is the one function all five sites call. The token
+`stage2_result_replayable()` is the one function all **six call sites in three
+modules** call (`_cli_staged_strategy.py` ×3, `_cli_staged_slurm_worker.py` ×2,
+`_cli_staged_controller.py` ×1) — a count a `grep` can confirm or refute, which
+"five sites" could not, because it never said sites of what. The token
 is only a flag; Stage 3's actual input is the raw `.npy`, so a
 token-present/raw-missing image is routed back to Stage 2, not into a Stage 3
 that would raise `FileNotFoundError` and be recorded as a terminal *scientific*
@@ -231,6 +234,55 @@ run from zero.
 
 Rejected with `--mode recompile` and `migrate`: those
 modes write no image store from a pipeline, so the flag could only mislead.
+
+## One writer per artifact, one producer per derived value
+
+**The rule the state-tracking design rests on, and it is load-bearing in two
+different places.** Both were learned the expensive way in the
+`cli-gui-state-tracking` change; the reasoning is in
+`docs/superpowers/reports/2026-09-03-cli-gui-state-tracking/`.
+
+### One writer per artifact, per pass
+
+**Each worker owns exactly one image and writes its artifacts once.** No path
+rewrites a tracked artifact within a pass. Retries, `--restart` and `--mode
+measure` are separate invocations, seconds to hours apart.
+
+That is not a convention — **it is what makes the verification cache correct.**
+The cache fences on `(size, mtime_ns)`, which cannot detect a same-size rewrite
+landing inside one filesystem `mtime` tick. It does not have to, because no such
+rewrite occurs. Measured on GPFS `/bigdata`: 0 of 200 back-to-back same-size
+writes shared an `mtime_ns` (~81 µs resolution); node-local scratch is 181/200 at
+~1 ms, which is one more reason run output may never live there.
+
+**So a change that makes any component rewrite a tracked artifact twice within a
+pass silently invalidates the cache's soundness argument** — and nothing will
+fail, because the cache will simply keep answering from a stale verdict. If you
+need a second write, say so where the cache is defined, not only where you write.
+
+### One producer per derived value
+
+**A value derived from state has exactly one producer: the reader of that
+state.** Do not compute it a second time somewhere earlier and carry it.
+
+`inventory_digest` is the worked example. It is `canonical_digest(work_ids)` —
+a pure function of `processing_state.json` — and four sites compute it that way
+and agree: `sdk_/_run_state.py` and the three proof writers in
+`_cli_completion.py`. A fifth producer in `_cli_identity.py` derived it from the
+`--image-manifest` digest instead, which is `None` by default. So the field whose
+job is answering *"did the accepted scope change?"* answered **"no"**
+unconditionally, and could never equal the reader's value for any input.
+
+**The tell was the ordering.** `mint_run_identity` runs before
+`state.config["work_ids"]` exists. A value that cannot be computed at the point
+you are standing is a value you do not own — the fix was to leave it empty and
+document the reader as its owner, not to invent a stand-in.
+
+> **Before adding a producer, ask what already computes this and whether you can
+> reach it.** If you cannot reach it because of ordering, you are not its
+> producer. If you cannot reach it because of layering, the shared definition
+> needs a home in `sdk_` — the layer the CLI, the GUI and the readers may all
+> import. It is never a reason to restate it.
 
 ## Per-image completion markers
 
