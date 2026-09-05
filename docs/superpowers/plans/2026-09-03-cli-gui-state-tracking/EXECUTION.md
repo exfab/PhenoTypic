@@ -339,6 +339,47 @@ Constraints that make it worth running:
   separate instances. Regenerate the consumer greps; do not trust the plan's file lists.
 - Analysis only. Never edits.
 
+### ⛔ HARD STOP: a fix may not increase the state-artifact count
+
+**Standing rule (user, 2026-09-05).** Execution runs to completion without checking in,
+with exactly two exceptions. The first is an open question needing a ruling. **The second
+is any fix — from a gate finding, a review, or a later phase — that would raise the number
+of state-tracking artifacts above what the plan outlines.** Stop and ask; do not implement
+it and flag it afterwards.
+
+**The declared budget** (P7 Task 6's register):
+
+| | Count | |
+|---|---|---|
+| **Tracked state** | **4** | accepted inventory · terminal failures · liveness & ownership · `restart_epoch`. *"Four. If a fifth appears, that is a design regression."* |
+| Content proofs | 3 | per-image record, aggregate proof, run proof — digest manifests over artifacts that already exist, not tracked state |
+| Neither tracked nor derived | 2 | `.phenotypic/legacy-v2/` · `verification_cache.json` — nothing branches on them, no verdict derives from them |
+
+**Why this is a stop and not a preference.** The whole change is the claim *nine evidence
+sources become three, fourteen tokens become five*. A fix that adds an artifact does not
+merely cost some tidiness — it falsifies the change's own thesis, and it does so at exactly
+the moment everyone is focused on the defect being fixed rather than on the count.
+
+**It has already been the deciding argument twice**, which is why it is written down:
+
+- **U-11's on-disk cache tier** was allowed only after establishing that *nothing branches
+  on it and no verdict is derived from it* — a cache, listed under "neither tracked nor
+  derived", never under tracked state. The measurement (1403 s → 37 s) justified building
+  it; the classification is what made it admissible.
+- **§5.1's dual-key rename shims were rejected on this ground alone.** Read-both-keys
+  support in every reader is *more* state to keep in sync — a change whose stated purpose
+  is reducing tracked state would have ended by adding some.
+
+**The test to apply to any proposed fix**, in this order:
+
+1. Does it add a file, key, or field that something **branches on**? → tracked state. **Stop
+   and ask.**
+2. Does it add one that nothing branches on and no verdict derives from? → a cache or a
+   retained artifact. Still name it in P7 Task 6's register, and still say so when
+   proposing it.
+3. Does it add a *second home* for a value that already exists? → that is the defect this
+   change removes, not a fix. Reject it without asking.
+
 ### Every test run past a single file goes through the sharded array
 
 **Standing instruction (user, 2026-09-04): cluster any large suite and run it massively in
