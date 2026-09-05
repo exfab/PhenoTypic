@@ -71,10 +71,11 @@ from ._state_types import (
 )
 from ._verification_cache import (
     CachedVerification,
-    cached_states,
     clear_verification_cache,
     entry_is_still_current,
+    persist_states,
     remember_states,
+    warm_states,
 )
 
 #: Grows one name at a time, in the task that defines it. ``run_identity``,
@@ -1053,13 +1054,20 @@ def _resolve_images(
     cache is a deep pass and says so. ``depth`` is what a caller reads to
     know whether the answer is authoritative, and "mostly shallow" is not a
     useful third value -- so any escalation at all reports ``"deep"``.
+
+    ``warm_states`` reads tier 1 (in process) and falls back to tier 2 (
+    ``.phenotypic/verification_cache.json``, U-11) -- but the loop below does
+    not know or care which tier an entry came from, because both are gated by
+    the same :func:`entry_is_still_current` call. That is what keeps the
+    on-disk tier a cache: it changes which pass is skipped and never which
+    verdict is reached.
     """
     try:
         output_root = Path(output_dir).resolve()
     except OSError:
         output_root = Path(output_dir).absolute()
     warm = (
-        cached_states(output_dir, identity.digest())
+        warm_states(output_dir, identity.digest())
         if requested_depth == "shallow"
         else None
     )
@@ -1083,6 +1091,13 @@ def _resolve_images(
     # minted under any other identity are already unusable, so there is no
     # eviction policy to get wrong.
     remember_states(output_dir, identity.digest(), entries)
+    # Tier 2 is written only when this pass actually deep-verified something
+    # (U-11). A fully warm shallow pass changed nothing on disk, so rewriting
+    # the file would put a per-image-sized write on the observer's 2 s tick
+    # and the viewer's 5-10 s poll -- the two cadences the cache exists to
+    # make cheap.
+    if escalated:
+        persist_states(output_dir, identity.digest(), entries)
     performed: Depth = (
         "shallow"
         if requested_depth == "shallow" and warm is not None and not escalated
@@ -1109,13 +1124,15 @@ def resolve_run_state(
     case being decided. ``active`` outranks ``failed`` so that a failure from
     a previous attempt cannot mask an attempt currently retrying it.
 
-    ``depth="shallow"`` re-stats the in-process cache's recorded tuples and
-    falls through to a deep pass for any image that is absent from the cache,
-    moved, minted under a different identity, or unreadable. It **never**
-    yields a positive verdict from a cache entry alone (INV-VERDICT): a
-    cached entry can only ever license *skipping* a re-verification the
-    caller already performed, and the run-level proofs are re-verified on
-    every call regardless.
+    ``depth="shallow"`` re-stats the verification cache's recorded tuples --
+    tier 1 in process, tier 2 from ``.phenotypic/verification_cache.json``
+    when tier 1 is cold (U-11) -- and falls through to a deep pass for any
+    image that is absent from the cache, moved, minted under a different
+    identity, or unreadable. It **never** yields a positive verdict from a
+    cache entry alone (INV-VERDICT): a cached entry can only ever license
+    *skipping* a re-verification the caller already performed, and the
+    run-level proofs are re-verified on every call regardless. A pass that
+    deep-verified anything rewrites tier 2; a fully warm one writes nothing.
 
     Args:
         output_dir: Run output root. May be any directory, including one this

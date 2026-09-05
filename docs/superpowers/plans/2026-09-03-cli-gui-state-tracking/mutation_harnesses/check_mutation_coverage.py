@@ -139,19 +139,41 @@ def _target_of(harness: Path) -> Path:
     raise SystemExit(f"{harness.name}: no TARGET constant found")
 
 
-def _broken_anchors(target: Path, mutations: list[Mutation]) -> list[str]:
-    """Return labels whose ``old`` text no longer matches the target once.
+def _broken_anchors(
+    targets: list[Path], mutations: list[Mutation]
+) -> list[str]:
+    """Return labels whose ``old`` text no longer matches ONCE ACROSS ALL targets.
 
     A drifted anchor makes the harness print ``SKIPPED`` for that mutation,
     which reads as *not run* rather than *not proved* and is easy to skim
     past in a twelve-row report. Refactoring the target is exactly when it
     happens, and exactly when nobody is thinking about the harness.
+
+    **Counts across the union, not per target.** An earlier version took one
+    target and was called in a loop, so with a multi-target harness every
+    mutation was counted against every file -- a mutation anchored in file A
+    reported 0 matches for B and C, and each one produced ``len(targets) - 1``
+    spurious drift rows. ``COVERAGE_OK`` could never be ``True`` for any
+    harness that used the ``TARGETS`` feature at all.
+
+    Nothing caught it because nothing exercised it: the only committed harness
+    when ``TARGETS`` was added had a single target, where summing over one file
+    and counting in it are the same operation. Found by the first harness to
+    declare three (P2 Task 0).
     """
-    source = target.read_text(encoding="utf-8")
+    sources = [t.read_text(encoding="utf-8") for t in targets]
+
+    def _hits(anchor: str) -> int:
+        return sum(s.count(anchor) for s in sources)
+
+    # Counted PER MUTATION, never accumulated per anchor string. Two mutations
+    # legitimately share an anchor when they are different bugs in the same few
+    # lines; accumulating would report a perfectly unique anchor as matching
+    # twice and flag both as drifted.
     return [
-        f"{label[:60]} (matches {source.count(old)}x)"
+        f"{label[:60]} (matches {_hits(old)}x in {len(targets)} target(s))"
         for label, old, _new, _expected in mutations
-        if source.count(old) != 1
+        if _hits(old) != 1
     ]
 
 
@@ -194,10 +216,8 @@ def main() -> int:
             for name in expected
         }
 
-        drifted = []
-        for target in _targets_of(harness):
-            if target.is_file():
-                drifted += _broken_anchors(target, mutations)
+        present = [p for p in _targets_of(harness) if p.is_file()]
+        drifted = _broken_anchors(present, mutations) if present else []
 
         print(f"\n{harness.name}  ->  {suite}")
         print(f"  mutations defined      : {len(mutations)}")

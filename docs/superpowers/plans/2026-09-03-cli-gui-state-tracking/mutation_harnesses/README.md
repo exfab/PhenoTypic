@@ -17,7 +17,8 @@ reason.
 
 | File | What it does |
 |---|---|
-| `p1_task3_verification_cache.py` | P1 Task 3 Step 6 — twelve mutations over `sdk_/_verification_cache.py`, covering all fifteen INV-VERDICT tests. |
+| `p1_task3_verification_cache.py` | P1 Task 3 Step 6 — thirteen mutations over `sdk_/_verification_cache.py`, covering all twenty in-process INV-VERDICT tests. |
+| `p2_task0_disk_verification_cache.py` | P2 Task 0 (U-11) — twenty mutations over three targets, covering all twenty-eight on-disk tier tests, including §9.1's six corruption cases. |
 | `check_mutation_coverage.py` | Read-only, no pytest. Name integrity, coverage, and anchor drift for every harness here. |
 
 ## Run `check_mutation_coverage.py` after touching either side
@@ -40,6 +41,50 @@ nothing.
 matching, so the harness prints `SKIPPED` for it. That reads as *not run*
 rather than *not proved*, and it is easy to skim past in a twelve-row report —
 at exactly the moment nobody is thinking about the harness.
+
+## One source term, two suites: record it or lose it
+
+A harness binds **one suite** — `check_mutation_coverage.py` would report a test
+name from another file as a typo. But a single source term can be the subject of
+tests in two suites, and then the proof for one of them lives in the *other*
+harness, where nothing connects the two.
+
+There is exactly one such term today, `_run_state.py:1103`:
+
+```python
+    performed: Depth = (
+        "shallow"
+        if requested_depth == "shallow" and warm is not None and not escalated
+        else "deep"
+    )
+```
+
+Delete `and not escalated` and **three** tests fail, across both suites:
+
+| Suite | Test |
+|---|---|
+| `test_verification_cache.py` (tier 1) | `test_a_tampered_artifact_falls_through_even_with_a_warm_cache` (`:580`) |
+| `test_verification_cache_disk.py` (tier 2) | `test_a_moved_stat_tuple_falls_through_to_deep` |
+| `test_verification_cache_disk.py` (tier 2) | `test_an_absent_entry_falls_through_to_deep` |
+
+Only the second and third are claimed by a mutation — `p2_task0`'s *"a warm cache
+reports `depth=shallow` even when part of the pass was deep"*. **The first is
+proved by that same mutation and by nothing in its own harness.**
+
+**Why the P1 harness was not converted to multi-target to cover it.** It could be:
+`TARGETS` exists and `p2_task0` uses it. But a second mutation of the same line
+from a second harness is duplicate evidence that *reads* as independent — the
+coverage output would show one source term under two harnesses with nothing saying
+they are the same term. That is the failure this whole directory exists to prevent,
+imported into the gate itself.
+
+So: one mutation, and this table. The obligation the table creates is that
+**deleting or weakening `p2_task0`'s escalation mutation silently unproves a tier-1
+test too.** Check here before touching it.
+
+*(Measured, not assumed: the mutation was applied to `_run_state.py` and both
+suites run against it — 1 failed / 19 passed and 2 failed / 26 passed — then the
+file restored and its hash confirmed.)*
 
 ## Controls: declared, never inferred
 
@@ -75,6 +120,52 @@ to it, so **"the checker is green" does not mean "every anchor in this change is
 validated"** — it means every anchor in every *committed* harness is. If you are
 mutating a target whose harness is not in this directory, that target is
 unwatched. Commit the harness.
+
+### What is unwatched right now, named
+
+`COVERAGE_OK=True` answers *"is every test claimed by a committed harness
+proved?"* — not *"is every test in this change proved?"* The second question has
+a different answer, and leaving it implicit is the exact failure this file's own
+Scope rule warns about, applied to itself.
+
+| Suite | Watched by |
+|---|---|
+| `tests/unit/sdk_/test_verification_cache.py` (20) | `p1_task3_verification_cache.py` |
+| `tests/unit/sdk_/test_verification_cache_disk.py` (28) | `p2_task0_disk_verification_cache.py` |
+| **`tests/unit/sdk_/test_run_state.py` (62)** | **nothing** |
+| **`tests/unit/sdk_/test_run_state_layering.py` (2)** | **nothing** |
+| **`tests/unit/cli/test_schema_gate.py`** | **nothing** |
+
+`test_run_state.py` is **P1's largest suite and the one that pins INV-VERDICT's
+run-level half** — rule 1's six comparisons, the live-authority ladder, the four
+advisories. It is unwatched, so a mutation in `resolve_run_state` that no test
+catches would be reported by nothing here.
+
+That is a deliberate scope choice, not an oversight: the two committed harnesses
+cover the module whose *bug class* is silent (a cache that hands back a stale
+`complete`), and a 62-test harness is a phase of work in itself. But it must be
+written down, because the alternative is a future reader taking `COVERAGE_OK=True`
+for a claim it does not make.
+
+**Evidence it is a real gap, not a theoretical one.** The `publication_id` param
+of `test_each_of_rule_ones_comparisons_is_load_bearing` did not exist until
+`b54a9613`: rule 1 binds six fields and the suite enumerated five, so deleting
+`_run_state.py`'s `publication_id` comparison left the whole suite green.
+
+A harness over this suite would not have found that either — nothing claimed the
+missing param — **and neither would the checker, which is blind to params.**
+`defined` comes from AST `FunctionDef` names (`:185`) and `named` strips the
+bracket (`:214`), so a five-case and a six-case parametrization are byte-identical
+to it. A missing `pytest.param` is precisely the gap it cannot see.
+
+What would have found it is **writing the mutations**: enumerating rule 1's
+comparisons one at a time against the source is what makes a six-field rule with
+five cases visible. That is the argument for eventually declaring this suite — and
+it belongs to the human step, not the tool.
+
+*(An earlier draft of this paragraph claimed the checker would have caught it. It
+would not, and the claim was corrected before it shipped — in the file whose job is
+to be trustworthy about exactly what each check verifies.)*
 
 ## Two rules the P1 run produced
 

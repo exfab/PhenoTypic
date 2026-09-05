@@ -12,8 +12,14 @@ into a complete one is the bug this file exists to prevent shipping.
 
 D-B moved the cache in-process, so the "forge the file" cases here forge the
 dict. The invariant is about what a cache may CAUSE, not where it lives, so it
-binds identically. If S-5 had added an on-disk tier, Task 3 Step 8 would add
-the JSON-corruption cases; it did not, so there are none.
+binds identically.
+
+**U-11 reversed D-B and the on-disk tier now ships**, so the JSON-corruption
+cases this file's earlier draft said did not exist do exist -- in
+``test_verification_cache_disk.py``, with their own mutation harness. They are
+a separate suite rather than a section here because the mutation-coverage gate
+is one harness per suite: appending to this one would have made P1 Task 3's
+harness responsible for proving P2 Task 0's tests.
 
 **Two halves, and both are here.** Everything above the "INV-VERDICT, end to
 end" banner binds the cache's own surface: an entry only ever *licenses* a
@@ -546,6 +552,21 @@ def test_a_tampered_artifact_falls_through_even_with_a_warm_cache(
 
     Mutation that must break it: have the shallow path trust a cached entry
     without calling `entry_is_still_current`.
+
+    **The depth assertion pins a different term, and this is the only test in
+    this file that can.** `_resolve_images` reports `"shallow"` only when the
+    request was shallow AND a cache was found AND *nothing* escalated. Every
+    other test here reaches at most two of those: either `warm is None`, so
+    the answer is `"deep"` whichever way the third term goes, or the whole
+    cache is current, so it is `"shallow"` either way. Here exactly one of the
+    two images escalates -- `a`'s overlay moved, `b`'s did not -- under an
+    unchanged identity, which is the only shape that distinguishes them.
+
+    Losing `and not escalated` would not breach INV-VERDICT: it understates
+    the work done rather than overstating the verdict. But `depth` is
+    documented as what a caller reads to know whether the answer is
+    authoritative, so it would lie in the direction that makes a consumer skip
+    a re-check it needs.
     """
     warm = resolve_run_state(complete_run, depth="deep")
     assert warm.completion == "complete"
@@ -556,6 +577,9 @@ def test_a_tampered_artifact_falls_through_even_with_a_warm_cache(
 
     after = resolve_run_state(complete_run, depth="shallow")
     assert after.completion != "complete"
+    assert after.depth == "deep", (
+        "a partial cache miss must still report the depth performed"
+    )
 
 
 def test_a_warm_cache_is_actually_used(complete_run):
@@ -591,13 +615,24 @@ def test_clear_scoped_to_one_output_does_not_clear_another_end_to_end(
     This is the plan's original Task 3 Step 1 version of the scoped-clear
     test. The cache-level one above pins the same rule without needing a
     resolver, so this one is additive rather than a replacement.
+
+    **Both persisted caches are removed first (P2 Task 0).**
+    ``clear_verification_cache`` clears tier 1 only, so with the on-disk tier
+    present ``a`` would be served from its file and report ``"shallow"`` --
+    correct behaviour, but not the thing this test is about. Removing ``b``'s
+    file too is what keeps the test able to fail: an unscoped in-process clear
+    would otherwise be masked by ``b`` falling back to its own file, and the
+    mutation that proves this test would stop proving it.
     """
+    from phenotypic.sdk_ import verification_cache_path
     from tests._output_layout import build_complete_run
 
     a = build_complete_run(tmp_path / "a")
     b = build_complete_run(tmp_path / "b")
     resolve_run_state(a, depth="deep")
     resolve_run_state(b, depth="deep")
+    verification_cache_path(a).unlink()
+    verification_cache_path(b).unlink()
 
     clear_verification_cache(a)
 

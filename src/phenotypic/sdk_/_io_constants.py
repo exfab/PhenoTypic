@@ -673,6 +673,27 @@ DIR_IMAGE_COMPLETE: Final[str] = "image_complete"
 #: bulk replay data, not a record.
 DIR_IMAGE_RECORDS: Final[str] = "images"
 
+#: ``<output>/.phenotypic/verification_cache.json`` -- the on-disk second tier
+#: of the verification cache (spec §9.1, as reversed back on by U-11).
+#:
+#: **A cache, and named like one.** Nothing branches on it and no verdict is
+#: derived from it; it only ever licenses *skipping* a deep pass whose stat
+#: tuples still match. It lives inside ``.phenotypic/`` so
+#: :func:`clear_machine_state` removes it with everything else there --
+#: deliberately, and unlike ``restart_epoch.json``, which that function
+#: preserves.
+VERIFICATION_CACHE_JSON: Final[str] = "verification_cache.json"
+
+#: Schema version of the persisted verification cache.
+#:
+#: **Bump this when the deep-verification RULES change, not only when the JSON
+#: shape does.** The reader has no other way to tell that a file was written
+#: by a build whose notion of "verified" differed from its own: the payload
+#: records what was checked, never how. A rules change shipped without a bump
+#: is a build silently honouring another build's verdicts, which is the one
+#: failure the in-process tier could not have.
+VERIFICATION_CACHE_VERSION: Final[int] = 1
+
 #: Per-image success-marker schema version. Bumped to 2 when artifact
 #: descriptors gained ``kind``: a v1 marker describes the per-image ``.h5``,
 #: which ``--mode migrate`` keeps by default, so a v1 marker would *validate*
@@ -942,6 +963,16 @@ def progress_dir(output_dir: Path) -> Path:
     intend to write into it.
     """
     return phenotypic_cache_dir(output_dir) / DIR_PROGRESS
+
+
+def verification_cache_path(output_dir: Path) -> Path:
+    """Return ``<output>/.phenotypic/verification_cache.json``.
+
+    Pure path expression; the caller decides whether to write. Note that the
+    cache's writer deliberately does **not** ``mkdir`` this path's parent --
+    see :func:`phenotypic.sdk_._verification_cache.persist_states`.
+    """
+    return phenotypic_cache_dir(output_dir) / VERIFICATION_CACHE_JSON
 
 
 def results_dir(output_dir: Path) -> Path:

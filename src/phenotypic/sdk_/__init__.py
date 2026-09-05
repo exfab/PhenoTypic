@@ -120,6 +120,8 @@ from ._io_constants import (
     TRIALS_PARQUET,
     TUNING_CONFIG_SUFFIXES,
     TUNING_SPEC_JSON,
+    VERIFICATION_CACHE_JSON,
+    VERIFICATION_CACHE_VERSION,
     VERIFIED_PARQUET,
     # Namespace classes
     ChunkManifestKey,
@@ -252,6 +254,7 @@ from ._io_constants import (
     tune_cache_splits_dir,
     tune_cache_study_db_path,
     tuning_spec_path,
+    verification_cache_path,
     verified_parquet_path,
     validate_analysis_id,
     zarr_store_path,
@@ -484,6 +487,8 @@ __all__ = [
     "TRIALS_PARQUET",
     "TUNING_CONFIG_SUFFIXES",
     "TUNING_SPEC_JSON",
+    "VERIFICATION_CACHE_JSON",
+    "VERIFICATION_CACHE_VERSION",
     "VERIFIED_PARQUET",
     # Directory constants
     "DIR_CHUNKS",
@@ -640,6 +645,7 @@ __all__ = [
     "tune_cache_splits_dir",
     "tune_cache_study_db_path",
     "tuning_spec_path",
+    "verification_cache_path",
     "verified_parquet_path",
     "validate_analysis_id",
     "zarr_store_path",
