@@ -138,6 +138,42 @@ mutation and making them fail for a reason other than what they assert.
 ``record.pop(..., None)`` is the shape that matches the subject, *a record with
 no epoch*.
 
+## How to fill `expected`: under-claim when reasoning, claim exactly when reading
+
+**The harness is asymmetric, and the asymmetry should drive how you write a claim
+list.** An extra failure reports `PROVED (broad)` — informative, free, no re-run. A
+missing one reports `NOT PROVED`, which reads as *the test is weaker than its docstring*
+and costs a full freeze cycle to discover it was the expectation instead.
+
+So:
+
+- **Reading a previous run's log?** Claim exactly what failed.
+- **Reasoning about what *should* fail?** Claim only what you can name the mechanism for,
+  and let the rest come back broad.
+
+**Derived from being wrong twice in two rounds** (P2 Task 3), both times by predicting
+reach rather than measuring it. Both were the same family in different clothes:
+
+| Instance | The assumption |
+|---|---|
+| *"a resume bumps the epoch too"* claimed the mint-once test | that a test **sees state it merely passes through**. It asserts a second mint *raises* — which it still does, for the guard. The epoch is never inspected. |
+| *"`process_only_layer` dropped"* claimed the per-image-config test | that a test **enters the branch being edited**. That test uses a *full* config, so it takes the `else` arm, which never held the deleted field. |
+
+Both reduce to **"the mutation perturbs something nearby, therefore the test notices"** —
+and it is worth naming as a family, because the two mechanisms look unrelated until you
+say it that way.
+
+**The discipline that follows:** if your reason for claiming a test is a chain of
+inference rather than a line you read, leave it out. A deliberate under-claim that comes
+back broad has cost nothing and taught you the mechanism. An over-claim that comes back
+`NOT PROVED` sends the next reader to investigate the test, which is the wrong place, and
+that is the expensive half — not the re-run.
+
+**A worked application:** in the round after these two, a mutation's claim was left off
+because the argument for it depended on Python's left-to-right evaluation of two calls
+inside one `assert`. Sound reasoning, and exactly the "obviously it follows" step that
+had just been wrong twice. It was left to report broad.
+
 ## The two gates have OPPOSITE blind spots, and that is the design
 
 `check_mutation_coverage.py` and a harness's own precondition check ask the same
