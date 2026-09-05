@@ -707,8 +707,38 @@ def _terminal_failures(output_dir: Path) -> dict[str, str]:
     return failures
 
 
-def _live_authority(output_dir: Path) -> str | None:
+def _live_authority(
+    output_dir: Path, identity: RunIdentity
+) -> str | None:
     """Return a liveness authority that reports work in flight, or ``None``.
+
+    **Rule 2's FIRST half, which P1 could not build** (spec Q2 /
+    ``README.md:113-114``): an authority counts only when it reports work in
+    flight *for the current identity*. P1 shipped the second half only -- the
+    pid probe below -- and that was correct then and stops being correct now.
+    Before ``restart_epoch`` existed, ``identity.scheduler_epoch`` and this
+    function's ``active`` flag were read from the *same file*, so the
+    comparison would have been a value against itself.
+
+    Once a restart can bump the epoch the halves come apart, and the failure
+    the first half excludes is specific: a ``--restart`` mints a new epoch, a
+    worker from the previous epoch is still draining, and its lifecycle record
+    still says ``active``. Without the fence rule 2 fires and the run reads
+    ``active`` on the strength of a worker the restart already abandoned --
+    a stale authority outranking a valid verdict.
+
+    A record with no ``restart_epoch`` reads as ``0``: an authority written
+    before this field existed still counts on a never-restarted run, and is
+    fenced on a restarted one. Both are the answers those trees should get.
+
+    **Only the lifecycle record is epoch-fenced, and that is a decision.** The
+    GUI owner record carries no epoch -- its writer is the GUI, which has no
+    restart to be on the far side of -- and it does not need one: it is a
+    *local process* claim, already believed only while the pid it names is
+    alive. A GUI still running across a restart is genuinely still running,
+    which is not the stale-authority case this fence is for. Adding an epoch
+    there would fence a live process on the strength of a counter it never
+    read.
 
     Rule 2 of the verdict ladder has **two** halves, and the second is not
     decoration (CAN-24): nothing in this codebase repairs
@@ -730,7 +760,11 @@ def _live_authority(output_dir: Path) -> str | None:
         The filename of the authority reporting live work, or ``None``.
     """
     lifecycle = _read_json_object(slurm_lifecycle_path(output_dir))
-    if lifecycle is not None and lifecycle.get("active") is True:
+    if (
+        lifecycle is not None
+        and lifecycle.get("active") is True
+        and _record_restart_epoch(lifecycle) >= identity.restart_epoch
+    ):
         return slurm_lifecycle_path(output_dir).name
     owner = _read_json_object(gui_launch_owner_path(output_dir))
     if owner is not None and owner.get("status") in _OWNER_STATUSES_IN_FLIGHT:
@@ -742,6 +776,26 @@ def _live_authority(output_dir: Path) -> str | None:
         ):
             return gui_launch_owner_path(output_dir).name
     return None
+
+
+def _record_restart_epoch(record: Mapping[str, object]) -> int:
+    """Return the restart epoch a liveness record was published under.
+
+    ``0`` for an absent, corrupt or non-integer field -- the same degrade the
+    identity reader applies to ``config.restart_epoch``, and for the same
+    reason: a corrupt field must not raise out of a reader. ``bool`` is
+    excluded explicitly because it is an ``int`` subclass and ``True`` is not
+    an epoch.
+
+    Note the direction this degrade points. Reading ``0`` makes a record look
+    *older* than it may be, so a doubtful authority is fenced rather than
+    believed -- which moves the verdict away from ``active`` and toward
+    ``incomplete``, INV-VERDICT's direction.
+    """
+    epoch = record.get("restart_epoch")
+    if not isinstance(epoch, int) or isinstance(epoch, bool):
+        return 0
+    return epoch
 
 
 def _process_is_alive(pid: int) -> bool:
@@ -1189,7 +1243,7 @@ def resolve_run_state(
         inventory_present=inventory_present,
     ):
         completion: Completion = "complete"
-    elif _live_authority(output_dir) is not None:
+    elif _live_authority(output_dir, identity) is not None:
         completion = "active"
     elif any(image.verdict == "failed" for image in images.values()):
         completion = "failed"

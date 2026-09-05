@@ -206,13 +206,34 @@ def scientific_config_digest(config: "ExecutionConfig") -> str:
 >     )
 > ```
 >
-> `_live_authority` needs the identity passed in, so its signature changes. P6 Task 0's
+> `_live_authority` needs the identity passed in, so its signature changes. ~~P6 Task 0's
 > call-site conversion is the only external caller and it passes `output_dir` alone today —
-> check it before changing the signature rather than after.
+> check it before changing the signature rather than after.~~
+>
+> **CHECKED, AND FALSE — corrected during execution.** There is no external caller.
+> `_live_authority` is module-private with exactly one call site, `_run_state.py:1192`,
+> inside `resolve_run_state`, which already holds `identity` in a local. And
+> `grep -n 'live_authority' phase-6-consumer-migration.md` returns **nothing** — P6 does not
+> mention the symbol. The signature change is a two-line internal edit with no cross-phase
+> coordination. Benign direction, but the warning as written sends the next reader into a
+> phase that never names it.
 
 **Files:**
 - Create: `src/phenotypic/_cli/_cli_identity.py`
 - Modify: `src/phenotypic/sdk_/_io_constants.py`
+- Modify: `src/phenotypic/sdk_/_run_state.py` — rule 2's fence (`_live_authority` +
+  `_record_restart_epoch`) and its one call site
+- **Modify: `src/phenotypic/_cli/_cli_slurm_lifecycle.py`** — **added during execution.**
+  The fence is uncomputable without it: `initialize_slurm_lifecycle` wrote no
+  `restart_epoch`, so `_live_authority` had nothing to compare and this task's own test
+  (`_mark_slurm_lifecycle_active(root, epoch=0)`) presumed a field no writer produced. The
+  writer **reads** the epoch itself inside the lock it already holds rather than taking it
+  as a parameter — a parameter would let a caller stamp an epoch that was never current, so
+  the fence would assert the caller's belief rather than the run's state, and it would have
+  meant a required argument at ~10 production call sites across 6 modules (including
+  `tune/` and `sdk_/slurm/`, neither of which has a restart-epoch concept) plus 100+ test
+  call sites.
+- Modify: `src/phenotypic/sdk_/_verification_cache.py` — the copy-(2) pointer
 - Test: `tests/unit/cli/test_run_identity.py`
 
 `clear_machine_state` (`_io_constants.py:1081`) currently deletes every child of

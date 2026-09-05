@@ -302,16 +302,20 @@ MUTATIONS: list[tuple[str, str, str, tuple[str, ...]]] = [
         ("test_the_reader_rebuilds_every_field_of_an_entry",),
     ),
     (
-        "clear_machine_state PRESERVES the verification cache, like"
-        " restart_epoch.json -- a restart then inherits its own pre-restart"
-        " verdicts across the fence it exists to raise",
-        "            if child.name == TERMINAL_FAILURES_JSONL:\n"
-        "                continue\n",
-        "            if child.name in (\n"
-        "                TERMINAL_FAILURES_JSONL,\n"
-        "                VERIFICATION_CACHE_JSON,\n"
-        "            ):\n"
-        "                continue\n",
+        "the verification cache is added to _PRESERVED_ON_RESTART -- a restart"
+        " then inherits its own pre-restart verdicts across the fence it"
+        " exists to raise. RE-ANCHORED BY P2 TASK 1, which replaced the"
+        " literal `child.name == TERMINAL_FAILURES_JSONL` with the frozenset."
+        " The mutation got sharper in the process: adding a name to that set"
+        " is now a genuine one-line edit that reads as bookkeeping, which is"
+        " exactly the hazard its membership rule was written for.",
+        "_PRESERVED_ON_RESTART: Final[frozenset[str]] = frozenset(\n"
+        "    {TERMINAL_FAILURES_JSONL, RESTART_EPOCH_JSON}\n"
+        ")",
+        "_PRESERVED_ON_RESTART: Final[frozenset[str]] = frozenset(\n"
+        "    {TERMINAL_FAILURES_JSONL, RESTART_EPOCH_JSON, "
+        "VERIFICATION_CACHE_JSON}\n"
+        ")",
         ("test_clear_machine_state_deletes_the_persisted_cache",),
     ),
 ]

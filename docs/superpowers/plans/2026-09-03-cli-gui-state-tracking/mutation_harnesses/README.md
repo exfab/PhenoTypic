@@ -19,6 +19,7 @@ reason.
 |---|---|
 | `p1_task3_verification_cache.py` | P1 Task 3 Step 6 — thirteen mutations over `sdk_/_verification_cache.py`, covering all twenty in-process INV-VERDICT tests. |
 | `p2_task0_disk_verification_cache.py` | P2 Task 0 (U-11) — twenty mutations over three targets, covering all twenty-eight on-disk tier tests, including §9.1's six corruption cases. |
+| `p2_task1_restart_epoch.py` | P2 Task 1 — ten mutations over **four** targets, covering all eleven `restart_epoch` and rule-2 fence tests. |
 | `check_mutation_coverage.py` | Read-only, no pytest. Name integrity, coverage, and anchor drift for every harness here. |
 
 ## Run `check_mutation_coverage.py` after touching either side
@@ -86,6 +87,57 @@ test too.** Check here before touching it.
 suites run against it — 1 failed / 19 passed and 2 failed / 26 passed — then the
 file restored and its hash confirmed.)*
 
+## Predict the outcomes BEFORE running the harness
+
+Say what each mutation should take down, in writing, before the run. It is not
+ceremony -- it is a cheaper check than the run itself, and it catches a class the
+run cannot.
+
+**Task 1 is the worked example.** Writing the expected table found three defects
+with nothing executed, against a suite where all 323 tests passed:
+
+- **A mutation claimed a test that would not have failed.** Deleting the writer's
+  epoch stamp degrades the record to ``0``, and ``0 >= 1`` is still False, so the
+  run stays fenced -- the right answer for the wrong reason. It would have come
+  back ``NOT PROVED`` and sent the investigation to the fence, which was correct,
+  rather than to the expectation, which was not.
+- **A second mutation claimed the same test**, whose record *has* the field, so
+  the fallback branch it mutates never runs.
+- **Chasing what would actually catch that one found a real hole.** The
+  missing-epoch default was tested in one direction only:
+  ``test_a_record_without_an_epoch_still_counts_on_an_unrestarted_run`` is
+  satisfied by ``sys.maxsize`` exactly as well as by ``0``. A default degrading
+  *upward* passes it while believing every stale authority on every restarted
+  run -- the precise failure rule 2 exists to prevent. The docstring claimed both
+  directions; one was untested.
+
+**Be precise about what could and could not have found the third.** The run
+*would* have found it: the mis-expecting mutation was in the harness, would have
+reported ``NOT PROVED``, and asking why no test catches an upward-degrading
+default leads to the same hole — one freeze cycle later, with the mutation as
+prime suspect rather than the missing test. Prediction found it **cheaper and
+more legibly**, not exclusively.
+
+**``COVERAGE_OK`` could not have found it at all**, and that is the structural
+claim. The gate maps tests to mutations; an untested *direction* of a
+two-directional claim is invisible to it, because the test exists, it is claimed,
+and the row is green. ``test_a_record_without_an_epoch_still_counts_on_an_unrestarted_run``
+is satisfied by ``sys.maxsize`` exactly as well as by ``0``, and no amount of
+coverage checking sees that. Prediction is where it surfaces, because writing
+*"this mutation fails that test"* forces you to trace the branch, and a branch no
+test enters is obvious the moment you try.
+
+*(An earlier draft of this paragraph said the run "structurally could not have
+found" it. That was wrong in the direction this file exists to prevent —
+overstating what a check does — and was corrected by the author of the harness
+before it shipped.)*
+
+Same round: two absent-field tests used ``del record["restart_epoch"]``, which
+**raises** when the writer stops stamping -- coupling them to an unrelated
+mutation and making them fail for a reason other than what they assert.
+``record.pop(..., None)`` is the shape that matches the subject, *a record with
+no epoch*.
+
 ## Controls: declared, never inferred
 
 A **control** fails when the implementation becomes *too eager* —
@@ -132,6 +184,7 @@ Scope rule warns about, applied to itself.
 |---|---|
 | `tests/unit/sdk_/test_verification_cache.py` (20) | `p1_task3_verification_cache.py` |
 | `tests/unit/sdk_/test_verification_cache_disk.py` (28) | `p2_task0_disk_verification_cache.py` |
+| `tests/unit/cli/test_run_identity.py` (11) | `p2_task1_restart_epoch.py` |
 | **`tests/unit/sdk_/test_run_state.py` (62)** | **nothing** |
 | **`tests/unit/sdk_/test_run_state_layering.py` (2)** | **nothing** |
 | **`tests/unit/cli/test_schema_gate.py`** | **nothing** |

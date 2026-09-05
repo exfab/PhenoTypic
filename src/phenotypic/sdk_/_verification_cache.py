@@ -121,13 +121,11 @@ buy nothing a wrong answer could come from.
    the user has to act on. Spec §9.1: *a tree the user cannot write must not
    become a tree the user cannot read.*
 
-``clear_machine_state`` deletes the file, because it deletes every child of
-``.phenotypic/`` bar the terminal-failure journal. That is the intended
-lifecycle and it needs no special case; what needs stating is that the cache is
-**not** in the preserve set that ``restart_epoch.json`` is in -- a counter that
-must survive a restart and a cache that must not are the two halves of the same
-directory, and confusing them silently carries a pre-restart verdict across the
-fence the restart exists to raise.
+``clear_machine_state`` deletes the file, and that is deliberate rather than
+incidental. The rule deciding it -- and why an expensive cache is exactly the
+thing a restart must **not** carry across its own fence -- is stated once, at
+``_io_constants._PRESERVED_ON_RESTART``. Do not restate it here; a membership
+rule with two homes is a membership rule that will disagree with itself.
 
 :func:`clear_verification_cache` clears **tier 1 only**. That is the same
 asymmetry, from the other side: it is a reader-side memory reset, it touches no

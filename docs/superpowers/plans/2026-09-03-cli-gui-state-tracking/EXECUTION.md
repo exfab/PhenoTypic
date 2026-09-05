@@ -97,7 +97,7 @@ task's `Files:` block.
 
 | Touchers | File | Tasks |
 |---|---|---|
-| 5 | `src/phenotypic/sdk_/_run_state.py` | P1 T1, P1 T4, P1 T5, P1 T6, P3 T2 |
+| 6 | `src/phenotypic/sdk_/_run_state.py` | P1 T1, P1 T4, P1 T5, P1 T6, P2 T1, P3 T2 |
 | 5 | `tests/unit/sdk_/test_run_state.py` | P1 T2, P1 T4, P1 T5, P1 T6, P3 T2 |
 | 4 | `src/phenotypic/_cli/_cli_migrate_state.py` | P7 T2, P7 T3, P7 T4, P7 T5 |
 | 4 | `tests/unit/cli/test_migrate_state.py` | P7 T2, P7 T3, P7 T4, P7 T5 |
@@ -113,6 +113,7 @@ task's `Files:` block.
 | 2 | `src/phenotypic/_cli/_cli_staged_resume.py` | P3 T3, P6 T0 |
 | 2 | `src/phenotypic/gui/shell/_runs_registry.py` | P6 T4, P6 T5 |
 | 2 | `src/phenotypic/sdk_/_io_constants.py` | P1 T1, P2 T1 |
+| 2 | `src/phenotypic/sdk_/_verification_cache.py` | P1 T3, P2 T1 |
 | 2 | `tests/integration/` | P4 T5, P7 T5 |
 | 2 | `tests/unit/cli/test_embedded_table_inversion.py` | P4 T1, P4 T2 |
 | 2 | `tests/unit/cli/test_finalize_run.py` | P4 T3, P4 T4 |
@@ -120,8 +121,8 @@ task's `Files:` block.
 | 2 | `tests/unit/cli/test_schema_gate.py` | P1 T3b, P7 T1 |
 | 2 | `tests/unit/gui/shell/` | P6 T4, P6 T5 |
 
-**Rows 1-16 were previously maintained by hand and the generator reproduces every one of
-them.** The last six are what it added, and three matter because they cross a cluster
+**The sixteen rows this table was originally maintained with by hand are all reproduced by
+the generator.** Six more were added when it was first run, and three matter because they cross a cluster
 boundary — the only kind this table exists to veto:
 
 | Overlap | Clusters | Why it was invisible |

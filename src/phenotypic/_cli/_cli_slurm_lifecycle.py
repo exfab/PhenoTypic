@@ -29,6 +29,7 @@ from phenotypic.sdk_._file_locking import exclusive_path_lock
 from phenotypic.sdk_.slurm import sbatch_submission_environment
 
 from ._cli_file_locking import atomic_append, atomic_read
+from ._cli_identity import read_restart_epoch
 
 SCHEMA_VERSION = 2
 _LEDGER_FILENAME = "slurm_jobs.jsonl"
@@ -106,7 +107,21 @@ def initialize_slurm_lifecycle(
     owner_kind: str | None = None,
     control_root: Path | None = None,
 ) -> dict[str, Any]:
-    """Publish an active launch fence before any scheduler call."""
+    """Publish an active launch fence before any scheduler call.
+
+    **The record stamps the restart epoch that was live at publication**, read
+    here rather than passed in by the caller (spec §5.1 D4, rule 2's first
+    half). That is not a convenience: the fence has to mean *"this launch
+    belongs to the run as it stood when the fence went up"*, and only a value
+    read at that moment can mean it. A ``restart_epoch=`` parameter would let
+    a caller stamp an epoch that was never current, so the fence would assert
+    something about the caller's belief rather than about the run --
+    and ``_live_authority`` would then be trusting that belief.
+
+    A record written before this field existed reads as epoch ``0``, which is
+    the correct default in both directions: on a never-restarted run it still
+    counts as live, and on a restarted run it is fenced.
+    """
     with exclusive_path_lock(lifecycle_lock_path(output_dir), timeout=60.0):
         existing = load_slurm_lifecycle(output_dir)
         if existing is not None and existing.get("active") is True:
@@ -117,12 +132,15 @@ def initialize_slurm_lifecycle(
                     f"{existing_generation!r}; refusing conflicting generation "
                     f"{generation!r}"
                 )
+            # Deliberately NOT re-stamped: this fence was published earlier,
+            # and the epoch live at *that* moment is the one it asserts.
             return existing
         state = {
             "schema_version": SCHEMA_VERSION,
             "generation": generation,
             "mode": mode,
             "active": True,
+            "restart_epoch": read_restart_epoch(output_dir),
             "created_at": _timestamp(),
             "updated_at": _timestamp(),
         }

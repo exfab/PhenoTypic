@@ -678,11 +678,19 @@ DIR_IMAGE_RECORDS: Final[str] = "images"
 #:
 #: **A cache, and named like one.** Nothing branches on it and no verdict is
 #: derived from it; it only ever licenses *skipping* a deep pass whose stat
-#: tuples still match. It lives inside ``.phenotypic/`` so
-#: :func:`clear_machine_state` removes it with everything else there --
-#: deliberately, and unlike ``restart_epoch.json``, which that function
-#: preserves.
+#: tuples still match. It is **deleted** by :func:`clear_machine_state`; the
+#: rule that decides why, and the test that enforces it, are stated once at
+#: :data:`_PRESERVED_ON_RESTART`.
 VERIFICATION_CACHE_JSON: Final[str] = "verification_cache.json"
+
+#: ``<output>/.phenotypic/restart_epoch.json`` -- the run's restart counter
+#: (spec §5.1 D4), and the **one tracked value this design adds**.
+#:
+#: Preserved across ``--restart``, unlike everything else under
+#: ``.phenotypic/`` bar the terminal-failure journal. The rule that puts it
+#: there -- and keeps the verification cache out -- is at
+#: :data:`_PRESERVED_ON_RESTART`.
+RESTART_EPOCH_JSON: Final[str] = "restart_epoch.json"
 
 #: Schema version of the persisted verification cache.
 #:
@@ -965,6 +973,18 @@ def progress_dir(output_dir: Path) -> Path:
     return phenotypic_cache_dir(output_dir) / DIR_PROGRESS
 
 
+def restart_epoch_path(output_dir: Path) -> Path:
+    """Return ``<output>/.phenotypic/restart_epoch.json``.
+
+    Pure path expression. The readers and the writer are
+    :func:`phenotypic._cli._cli_identity.read_restart_epoch` and
+    :func:`~phenotypic._cli._cli_identity.bump_restart_epoch` -- the writer
+    lives in ``_cli`` because spec §5.2 keeps every publisher out of ``sdk_``,
+    and only the path belongs here.
+    """
+    return phenotypic_cache_dir(output_dir) / RESTART_EPOCH_JSON
+
+
 def verification_cache_path(output_dir: Path) -> Path:
     """Return ``<output>/.phenotypic/verification_cache.json``.
 
@@ -1144,14 +1164,55 @@ def migrate_legacy_qc(output_dir: Path) -> bool:
     return True
 
 
+#: Children of ``.phenotypic/`` that :func:`clear_machine_state` keeps.
+#:
+#: **THE MEMBERSHIP RULE — read this before adding a name.** A name belongs
+#: here only when carrying it across a restart is **safer than losing it**.
+#:
+#: * ``terminal_failures.jsonl`` qualifies: append-only history, and losing it
+#:   loses the record of *why* images failed.
+#: * ``restart_epoch.json`` qualifies: a counter that resets on the operation
+#:   it fences is not a fence.
+#:
+#: Anything recording a **verdict reached before the fence** does **not**
+#: qualify, however expensive it was to compute -- a restart exists to
+#: invalidate exactly those.
+#:
+#: **The worked exclusion, which is why this rule is written down at all:**
+#: ``verification_cache.json`` is a completion verdict, and an expensive one
+#: (spec U-11 measures the deep pass it replaces at 1403 s against ~37 s).
+#: That expense is precisely the argument that will be made for preserving it,
+#: and it is precisely the wrong argument -- a preserved cache would carry a
+#: pre-restart ``complete`` across the fence the restart exists to raise. It
+#: is deleted by falling into the sweep's everything-else branch, and that
+#: exclusion is enforced by
+#: ``test_clear_machine_state_deletes_the_persisted_cache`` in
+#: ``tests/unit/sdk_/test_verification_cache_disk.py`` -- a suite an editor of
+#: this set will not have open, which is why the rule lives here rather than
+#: only there.
+#:
+#: This set is a **module-level constant on purpose**: later phases are told
+#: to grow it (P7 adds ``legacy-v2/``, the retained revert path), and a set
+#: those phases must find and extend does not belong in a function body where
+#: it can carry no documentation.
+_PRESERVED_ON_RESTART: Final[frozenset[str]] = frozenset(
+    {TERMINAL_FAILURES_JSONL, RESTART_EPOCH_JSON}
+)
+
+
 def clear_machine_state(output_dir: Path) -> bool:
     """Remove **all** of a run's machine-state for a clean ``--restart``.
 
     Deletes current state inside ``.phenotypic/`` (``progress/``,
     ``processing_state.json``, ``processing_events.log``, logs, and generated
     SLURM scripts) and any pre-migration root-level machine-state, while
-    preserving the append-only ``terminal_failures.jsonl`` journal and
-    user-facing output artifacts (``deliverables/``, ``results/``, ``qc/``, …).
+    preserving :data:`_PRESERVED_ON_RESTART` -- the append-only
+    ``terminal_failures.jsonl`` journal **and** ``restart_epoch.json``, because
+    a counter that resets on the operation it fences is not a fence -- along
+    with user-facing output artifacts (``deliverables/``, ``results/``,
+    ``qc/``, …). **Read that set's membership rule before adding to it**; it is
+    now the only thing standing between ``--restart`` and every artifact under
+    ``.phenotypic/``.
     This is
     the difference between ``--restart``
     (re-run the orchestration against clean state, keep outputs) and
@@ -1171,7 +1232,7 @@ def clear_machine_state(output_dir: Path) -> bool:
     cache = phenotypic_cache_dir(output_dir)
     if cache.exists():
         for child in cache.iterdir():
-            if child.name == TERMINAL_FAILURES_JSONL:
+            if child.name in _PRESERVED_ON_RESTART:
                 continue
             if child.is_dir() and not child.is_symlink():
                 shutil.rmtree(child)
