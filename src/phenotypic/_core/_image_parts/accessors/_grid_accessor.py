@@ -684,6 +684,7 @@ class GridAccessor:
             >>> col_3_min, col_3_max = int(col_edges[3]), int(col_edges[4])
             >>> column_3_data = grid_image.gray[:, col_3_min:col_3_max]
             >>> # Visualize grid column positions
+            >>> import matplotlib.pyplot as plt
             >>> fig, ax = plt.subplots()
             >>> ax.imshow(grid_image.gray)
             >>> ax.vlines(x=col_edges, ymin=0, ymax=grid_image.shape[0], colors='cyan')
@@ -718,6 +719,7 @@ class GridAccessor:
             >>> # Visualize columns with distinct colors
             >>> from skimage.color import label2rgb
             >>> colored_columns = label2rgb(label=col_map, image=grid_image.gray[:])
+            >>> import matplotlib.pyplot as plt
             >>> plt.imshow(colored_columns)
         """
         grid_info = self.info()
@@ -772,6 +774,7 @@ class GridAccessor:
 
             >>> # Display column overlay with gridlines
             >>> fig, ax = grid_image.grid.show_column_overlay(show_grid=True)
+            >>> import matplotlib.pyplot as plt
             >>> plt.title("Colony Array - Column Overlay")
             >>> plt.show()
             >>> # Use enhanced image for better contrast
@@ -847,6 +850,7 @@ class GridAccessor:
             >>> row_4_min, row_4_max = int(row_edges[4]), int(row_edges[5])
             >>> row_4_data = grid_image.gray[row_4_min:row_4_max, :]
             >>> # Visualize grid row positions
+            >>> import matplotlib.pyplot as plt
             >>> fig, ax = plt.subplots()
             >>> ax.imshow(grid_image.gray)
             >>> ax.hlines(y=row_edges, xmin=0, xmax=grid_image.shape[1], colors='cyan')
@@ -881,6 +885,7 @@ class GridAccessor:
             >>> # Visualize rows with distinct colors
             >>> from skimage.color import label2rgb
             >>> colored_rows = label2rgb(label=row_map, image=grid_image.gray[:])
+            >>> import matplotlib.pyplot as plt
             >>> plt.imshow(colored_rows)
         """
         grid_info = self.info()
@@ -934,6 +939,7 @@ class GridAccessor:
 
             >>> # Display row overlay with gridlines
             >>> fig, ax = grid_image.grid.show_row_overlay(show_grid=True)
+            >>> import matplotlib.pyplot as plt
             >>> plt.title("Colony Array - Row Overlay")
             >>> plt.show()
             >>> # Use enhanced image for better contrast
@@ -1021,6 +1027,7 @@ class GridAccessor:
             >>> # Visualize section distribution
             >>> from skimage.color import label2rgb
             >>> colored_sections = label2rgb(label=section_map, image=grid_image.gray[:])
+            >>> import matplotlib.pyplot as plt
             >>> plt.imshow(colored_sections)
         """
         grid_info = self.info()

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import json
 import logging
 import time
@@ -43,6 +44,13 @@ from phenotypic.sdk_ import (
     progress_dir as progress_dir_helper,
     recompile_dir as recompile_dir_helper,
 )
+
+# Headless by default: this worker draws (overlays, plot hooks) and runs on
+# nodes with no display. Set before matplotlib is imported anywhere, so it costs
+# nothing -- matplotlib reads MPLBACKEND the first time it loads. `setdefault`
+# leaves an operator who exported MPLBACKEND in control.
+os.environ.setdefault("MPLBACKEND", "Agg")
+
 
 logger = logging.getLogger(__name__)
 

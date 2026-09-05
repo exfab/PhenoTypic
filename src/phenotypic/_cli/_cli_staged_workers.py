@@ -20,6 +20,7 @@ Three content-defined stages, each a pure per-image function:
 from __future__ import annotations
 
 from contextlib import contextmanager
+import os
 import json
 import logging
 from pathlib import Path
@@ -67,6 +68,13 @@ from ._cli_slurm_lifecycle import (
     SlurmGenerationInactiveError,
     slurm_generation_inactive_cause,
 )
+
+# Headless by default: this worker draws (overlays, plot hooks) and runs on
+# nodes with no display. Set before matplotlib is imported anywhere, so it costs
+# nothing -- matplotlib reads MPLBACKEND the first time it loads. `setdefault`
+# leaves an operator who exported MPLBACKEND in control.
+os.environ.setdefault("MPLBACKEND", "Agg")
+
 
 logger = logging.getLogger(__name__)
 

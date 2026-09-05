@@ -10,6 +10,7 @@ from typing import Any, Callable
 import pytest
 from click.testing import CliRunner
 
+from phenotypic._cli import _cli_process_single
 from phenotypic._cli._cli_failure_tracker import processing_configuration_digest
 from phenotypic._cli._cli_state_management import validate_resume_compatibility
 from phenotypic._cli._cli_types import Dataset
@@ -171,7 +172,7 @@ def test_local_strategy_hands_drop_originals_to_forward_worker(
         published.update(kwargs)
 
     monkeypatch.setattr(strategies, "work_id_for_image", _work_identity)
-    monkeypatch.setattr(strategies, "process_single_image_core", _spy)
+    monkeypatch.setattr(_cli_process_single, "process_single_image_core", _spy)
     monkeypatch.setattr(strategies, "_publish_local_image_success", _publish)
 
     result = strategy._process_single_local(
@@ -227,7 +228,7 @@ def test_local_strategy_reuses_preflight_identity_for_failure_publication(
         return True
 
     monkeypatch.setattr(strategies, "work_id_for_image", _work_identity)
-    monkeypatch.setattr(strategies, "process_single_image_core", _fail)
+    monkeypatch.setattr(_cli_process_single, "process_single_image_core", _fail)
     monkeypatch.setattr(strategies, "_record_local_terminal_failure", _record)
 
     result = strategy._process_single_local(

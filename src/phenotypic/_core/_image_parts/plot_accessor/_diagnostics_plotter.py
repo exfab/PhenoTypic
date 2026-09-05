@@ -107,6 +107,7 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
         >>> plotter = DiagnosticsPlotter(image)
         >>> fig, metrics = plotter.diagnostics()
         >>> print(f"SNR: {metrics['noise']['snr']:.2f}")
+        >>> import matplotlib.pyplot as plt
         >>> plt.savefig("diagnostics.png", dpi=150, bbox_inches="tight")
         >>> plt.close(fig)
 
@@ -114,6 +115,7 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
 
         >>> plotter = DiagnosticsPlotter(image)
         >>> fig, metrics = plotter.diagnostics(sections=["noise", "contrast"])
+        >>> import matplotlib.pyplot as plt
         >>> plt.close(fig)
     """
 
@@ -1403,6 +1405,7 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
             >>> plotter = DiagnosticsPlotter(image)
             >>> fig, metrics = plotter.diagnostics()
             >>> print(f"SNR: {metrics['noise']['snr']:.2f}")
+            >>> import matplotlib.pyplot as plt
             >>> plt.savefig("diagnostics.png", dpi=150, bbox_inches="tight")
             >>> plt.close(fig)
 

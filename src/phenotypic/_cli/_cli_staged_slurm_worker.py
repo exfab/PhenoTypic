@@ -69,6 +69,13 @@ from ._cli_slurm_lifecycle import (
 )
 from ._stages import STAGE_GPU_DETECT, STAGE_MEASURE, STAGE_PREPROCESS
 
+# Headless by default: this worker draws (overlays, plot hooks) and runs on
+# nodes with no display. Set before matplotlib is imported anywhere, so it costs
+# nothing -- matplotlib reads MPLBACKEND the first time it loads. `setdefault`
+# leaves an operator who exported MPLBACKEND in control.
+os.environ.setdefault("MPLBACKEND", "Agg")
+
+
 Manifest = Sequence[StagedManifestEntry]
 
 

@@ -613,3 +613,56 @@ print(json.dumps({
     assert not result["matplotlib_eager"], (
         "selecting the backend must not drag pyplot onto the CLI startup path"
     )
+
+
+def test_no_doctest_uses_a_deferred_library_without_importing_it():
+    """A doctest must import what it uses; module globals are no longer enough.
+
+    ``doctest`` executes examples with the defining module's ``__dict__`` as
+    globals, so before this branch ``>>> fig, ax = plt.subplots()`` worked purely
+    because ``plt`` happened to be a module-level import. Deferring matplotlib
+    removed that, and the runtime stand-in in
+    :mod:`phenotypic.sdk_._mpl_annotations` turns the same line into an
+    ``AttributeError`` — nine examples were affected, in two files.
+
+    Nothing ran these: ``--doctest-modules`` is not in ``addopts`` and no
+    workflow enables it. They are user-facing documentation, and CLAUDE.md
+    requires every example to be runnable, so this checks them statically.
+    Requiring the import also makes each example self-contained for a reader
+    copying it, which module-level luck never did.
+    """
+    import ast
+    import doctest
+
+    import phenotypic
+
+    src = Path(phenotypic.__file__).parent
+    offenders = []
+    for path in sorted(src.rglob("*.py")):
+        text = path.read_text(encoding="utf-8")
+        if "plt." not in text:
+            continue
+        try:
+            tree = ast.parse(text)
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(
+                node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+            ):
+                continue
+            docstring = ast.get_docstring(node)
+            if not docstring:
+                continue
+            examples = doctest.DocTestParser().get_examples(docstring)
+            uses = any("plt." in ex.source for ex in examples)
+            imports = any("import matplotlib" in ex.source for ex in examples)
+            if uses and not imports:
+                offenders.append(
+                    f"{path.relative_to(src)}::{getattr(node, 'name', '<module>')}"
+                )
+
+    assert not offenders, (
+        "these doctests use `plt` without importing it, which now raises:\n  "
+        + "\n  ".join(offenders)
+    )
