@@ -339,6 +339,76 @@ Constraints that make it worth running:
   separate instances. Regenerate the consumer greps; do not trust the plan's file lists.
 - Analysis only. Never edits.
 
+### Every state-tracking check goes through a shared helper — forever, not once
+
+**Standing rule (user, 2026-09-05), binding on P3-P7 and on every fix.** A state-tracking
+check is **called**, never **reimplemented**. An implementation that open-codes a question
+some helper already answers is a finding, even when its logic is correct today.
+
+**Why this is structural and not style.** The change's thesis is *nine ways of asking "is
+this run done" become one*. Collapsing the **answers** while leaving the **asking**
+duplicated buys nothing: two implementations of one question drift, and the failure mode is
+that two parts of the system disagree about the same tree while both look right in
+isolation.
+
+**The questions, and where each is answered exactly once:**
+
+| Question | The one helper |
+|---|---|
+| is this run complete? | `resolve_run_state(output_dir, depth=...)` |
+| is this identity current? | `assert_identity_current`, over `_IDENTITY_DIGEST_FIELDS` |
+| is this per-image record valid? | the record reader in `sdk_/_image_record.py` |
+| is this artifact's proof intact? | the fenced-artifact / stat-tuple comparison in `_run_state.py` |
+| which images remain? | the worklist derivation, not a hand-rolled set difference |
+| every identity digest | one definition per digest, imported — not restated |
+
+**It is already broken once, which is why it is a rule and not an aspiration.**
+`inventory_digest` has two producers computing it differently — `_run_state.py:276` from
+`config["work_ids"]`, `_cli_identity.py:124-141` from `config.image_manifest_digest` — and
+the field is in `_IDENTITY_DIGEST_FIELDS`, so it is exactly what `assert_identity_current`
+compares. Two answers to one question, on the field that decides whether a cached verdict
+may stand.
+
+**Where the helpers live (user, 2026-09-05): `src/phenotypic/_cli/state_tracking.py`.**
+One module, in the CLI folder, that is the **single place CLI code looks** for a
+state-tracking check. Not scattered across `_cli_identity`, `_cli_completion`,
+`_cli_state_management` and `_cli_update_state` as they are today.
+
+**INV-LAYER shapes how that is obeyed, and the shape matters.** `sdk_` may never import
+`phenotypic._cli`, and several of these duplications straddle the line — `inventory_digest`
+has one producer in `sdk_/_run_state.py` and one in `_cli/_cli_identity.py`. A definition
+**both** sides need therefore *cannot* live in `_cli/`, or the layer inverts and the AST
+test fails the build.
+
+So:
+
+| Used by | Definition lives in | `state_tracking.py`'s role |
+|---|---|---|
+| CLI only | **`_cli/state_tracking.py`** | it *is* the home |
+| CLI **and** `sdk_` readers | `sdk_/` | `state_tracking.py` **imports and re-exports** it |
+
+Either way **CLI code has exactly one place to look**, which is the point of the
+instruction — and `sdk_` keeps importing its own definitions directly, which is what
+INV-LAYER requires. A re-export is not a second home: there is one definition, and the
+re-export is a pointer to it. That distinction is the same one this change makes everywhere
+else — a pointer to a real symbol cannot drift, a restatement can.
+
+**For implementers, in order:**
+
+1. Before writing a check, **grep for the question**, not for the function name you expect.
+   The duplicate you are about to create usually exists under a different spelling.
+2. If a helper exists, **call it.** If it is in the wrong layer, move it or raise it — do
+   not copy it.
+3. If a genuine constraint blocks sharing — an import cycle, a layer boundary — **the
+   finding is that the shared definition needs a home neither module owns**, not that
+   restating it is acceptable. Say so and raise it; do not restate and move on.
+4. A restatement that ships anyway carries, at its site, the reason sharing was impossible
+   and the name of the definition it mirrors. A future reader must be able to find the
+   other copy.
+
+**The gate checks this.** A reviewer with this remit runs each phase alongside the
+correctness and spec-drift reviewers.
+
 ### ⛔ HARD STOP: a fix may not increase the state-artifact count
 
 **Standing rule (user, 2026-09-05).** Execution runs to completion without checking in,
