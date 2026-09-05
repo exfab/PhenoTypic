@@ -172,10 +172,21 @@ design question the review raises before the next cluster.
 ### Per phase — three agents, all frontier
 Never review with a weaker model than implemented.
 
+**Both reviewers are INDEPENDENT, and independence is mechanical, not a posture** (user,
+2026-09-05): a *fresh* agent that did not write the code, with no memory of the implementing
+session's reasoning. An implementer reviewing its own phase re-derives the same blind spot —
+it already believes the thing it would need to doubt. Never reuse the cluster agent, and
+never let a reviewer's brief carry the implementer's summary of what it did; give it the
+spec, the plan and the diff, and let it find out.
+
 1. **`implementation-test-reviewer`** over the phase's combined diff — every phase adds
    tests, and the question is whether they *can fail*, not whether they pass.
 2. **Spec-adherence reviewer** *(added at user request)* — see the brief below.
 3. **Orchestrator triage** — fix high-signal findings before the next phase starts.
+
+**Required after phases 0-4 specifically** (user, 2026-09-05), and applied to every phase
+here because the failure mode does not respect phase numbers. P1 ran both
+(`P1-gate-tests`, `P1-gate-spec`); P2's are due once cluster 2.2 lands.
 
 Then: `uv run mypy src/phenotypic`, `ruff` on changed paths, the phase's test selection, and
 a commit that passes its own gate — so a bisect lands on a phase boundary, not mid-rewrite
@@ -197,6 +208,46 @@ four categories, each finding citing `file:line` in **both** the plan/spec and t
 | **B** | Planned, not done | Every task step and every named test — did it land? An unchecked box with no code is this. |
 | **C** | Implemented, but differs | Does the code do what the spec says, or something adjacent? Names, signatures, and **ordering** count. |
 | **D** | Implemented, never specified | Scope creep, and the mechanism by which a plan grows a fourth authority nobody agreed to. |
+| **E** | **Implemented as a placeholder** | Is there a *body*, or only a name? See below — this is the category A cannot catch. |
+
+#### Category E — the placeholder sweep, and why A does not cover it
+
+**Added at user request, 2026-09-05: guard against an implementer that ships a name instead
+of a behaviour.** A placeholder **passes category A**. A is *"is there code for this
+requirement?"* — and a correctly-named function, at the path the plan names, with the
+signature the plan specifies, returning a constant, answers yes. It also passes review,
+passes mypy, and passes any test written against it, because the test was written to the
+same misunderstanding.
+
+So E is a **separate, mechanical sweep of the phase's diff**, not a judgement:
+
+```bash
+# in the phase's changed files only
+grep -rn "NotImplementedError\|TODO\|FIXME\|XXX\|placeholder\|for now\|stub" <files>
+grep -rn "^\s*\.\.\.\s*$\|^\s*pass\s*$" <files>      # bodies that are only a name
+grep -rn "@pytest.mark.skip\|@pytest.mark.xfail" <files>   # a test that does not run
+```
+
+Then, for every symbol the plan named, **read the body and answer in one sentence what it
+computes.** A body you cannot summarise without repeating its signature is the finding.
+
+Four shapes that are placeholders while looking implemented:
+
+1. **Returns a constant where the spec requires derivation** — `return True`, `return {}`,
+   `return None` on a path the spec says computes something.
+2. **A guard with no consequence** — the condition is evaluated and the branch does nothing,
+   so the check reads as present and enforces nothing.
+3. **A skipped or xfailed test with no removal note.** A skip is legitimate *only* with the
+   condition and the phase that removes it named — `test_schema_gate.py:972` is the correct
+   form; a bare `@skip` is scope silently deferred.
+4. **A parameter accepted and never read.** The signature satisfies the plan; the behaviour
+   does not exist. mypy will not say a word.
+
+Report each with the plan's requirement on one side and the body on the other, exactly as
+for A-D. **A finding here outranks everything except a correctness bug**, because a
+placeholder is the one defect that gets *more* expensive with every phase built on top of
+it — and by construction nothing downstream will fail until something depends on the
+behaviour that was never written.
 
 Constraints that make it worth running:
 
