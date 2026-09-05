@@ -1323,3 +1323,65 @@ def test_a_terminal_owner_status_is_not_a_live_authority(incomplete_run):
     assert state.completion != "active", (
         "a terminal owner status still reported live work"
     )
+
+
+def test_a_post_u4_run_proof_binds_without_the_aggregate(complete_run):
+    """Rule 1's modern branch -- dead today, live the moment P4 lands.
+
+    `_source_set_binding` returns the run proof directly when it carries
+    `source_set_digest`, and otherwise follows `publication_id` to the
+    aggregate proof. Today's `publish_run_completion_evidence` writes neither
+    field, so **only the legacy branch has ever executed** and the modern one
+    arrives in P4 unproven.
+
+    The failure that would land is silent and total. `:910-911` reads BOTH
+    `source_set_digest` and `source_image_count` off whichever proof the
+    binding returns -- so a P4 publishing the digest without the count makes
+    the arity check compare `None` to an int, rule 1 stops firing, and **every
+    full run reads `incomplete` forever**. That is N-4's shape, which this dual
+    read exists to prevent, and the plan's claim of "no window in which the two
+    comparisons silently stop being made" is the one part of rule 1 that
+    nothing else checks.
+
+    **The aggregate binding is deliberately broken here.** Stamping the run
+    proof alone would pass via the legacy branch and prove nothing, so the
+    `publication_id` link is severed: `complete` is then reachable ONLY through
+    line 930.
+    """
+    import json
+
+    from phenotypic.sdk_ import (
+        aggregate_publication_marker_path,
+        resolve_run_state,
+        run_completion_marker_path,
+    )
+    from phenotypic.sdk_._digests import canonical_digest
+
+    before = resolve_run_state(complete_run, depth="deep")
+    assert before.completion == "complete", "fixture is not complete"
+    verified = sorted(
+        work_id
+        for work_id, image in before.images.items()
+        if image.verdict == "verified"
+    )
+
+    agg_path = aggregate_publication_marker_path(complete_run)
+    aggregate = json.loads(agg_path.read_text(encoding="utf-8"))
+    aggregate["publication_id"] = "severed-so-the-legacy-branch-cannot-bind"
+    agg_path.write_text(json.dumps(aggregate), encoding="utf-8")
+
+    path = run_completion_marker_path(complete_run)
+    proof = json.loads(path.read_text(encoding="utf-8"))
+    assert "source_set_digest" not in proof, (
+        "today's publisher already writes source_set_digest -- this test's "
+        "premise has expired and it should assert the real shape instead"
+    )
+    proof["source_set_digest"] = canonical_digest(verified)
+    proof["source_image_count"] = len(verified)
+    path.write_text(json.dumps(proof), encoding="utf-8")
+
+    state = resolve_run_state(complete_run, depth="deep")
+    assert state.completion == "complete", (
+        "a run proof carrying its own source-set binding did not satisfy "
+        "rule 1 -- the post-U-4 branch is broken and P4 would ship it"
+    )
