@@ -71,6 +71,63 @@ MUTATIONS: list[tuple[str, str, str, tuple[str, ...]]] = [
         ("test_per_image_config_digest_is_the_work_id_digest_itself",),
     ),
     (
+        "CAN-21's mint-once guard is removed, so one invocation can mint two"
+        " generations and burn a restart epoch silently",
+        "    if getattr(config, _MINTED_FLAG, False):\n",
+        "    if False:\n",
+        (
+            "test_minting_twice_in_one_invocation_is_a_programming_error",
+        ),
+    ),
+    (
+        "a RESUME bumps the epoch too, so every resume fences its own"
+        " in-flight workers -- the failure D5 exists to prevent, and the"
+        " opposite of what a resume is for."
+        " ONE TEST WAS CLAIMED HERE AND REMOVED, because the claim did not"
+        " follow: this mutation DOES perturb state the mint-once test's"
+        " fixture passes through -- the first mint now burns an epoch -- and"
+        " that test is still blind to it, because it asserts that a SECOND"
+        " mint raises, which it still does, for the guard. Perturbing state a"
+        " test passes through is not the same as perturbing state it asserts"
+        " on.",
+        "    epoch = (\n"
+        "        bump_restart_epoch(output_dir)\n"
+        "        if restart\n"
+        "        else read_restart_epoch(output_dir)\n"
+        "    )\n",
+        "    epoch = bump_restart_epoch(output_dir)\n",
+        ("test_a_resume_does_not_bump_the_epoch_but_a_restart_does",),
+    ),
+    (
+        "CATEGORY E #4: `per_image_config` is ACCEPTED AND NEVER READ."
+        " mint_run_identity still takes an ExecutionConfig, the signature is"
+        " unchanged, mypy is silent, and derive_processing_generation's own"
+        " tests all pass -- because they test the primitive, not the caller."
+        " Only a test that moves a config field and watches the MINTED"
+        " generation can see it.",
+        "            per_image_config=per_image_config_digest(config),\n",
+        "            per_image_config=None,\n",
+        ("test_a_per_image_config_change_mints_a_new_generation",),
+    ),
+    (
+        "the minted generation stops folding in the pipeline digest",
+        "            pipeline_sha256=pipeline_sha256,\n"
+        "            per_image_config=per_image_config_digest(config),\n",
+        "            pipeline_sha256=None,\n"
+        "            per_image_config=per_image_config_digest(config),\n",
+        ("test_a_pipeline_edit_mints_a_new_generation",),
+    ),
+    (
+        "THE A/B SWAP: the minted proof-side token becomes the PER-IMAGE"
+        " digest. Every proof this run publishes then disagrees with every"
+        " proof already on disk, and nothing else in the suite notices --"
+        " drift register entry 14, arriving through the minter instead of"
+        " through a rename.",
+        "        scientific_config_digest=pipeline_sha256 or \"\",\n",
+        "        scientific_config_digest=per_image_config_digest(config),\n",
+        ("test_the_minted_proof_side_digest_is_the_pipeline_digest",),
+    ),
+    (
         "the generation goes back to being a uuid4 -- D3 gone entirely, and"
         " every site this task converted regresses at once"
         " [inherently broad: when the generation stops being a function of its"
@@ -89,30 +146,53 @@ MUTATIONS: list[tuple[str, str, str, tuple[str, ...]]] = [
     (
         "the generation ignores per_image_config -- a pipeline-only fence,"
         " so a detect_mode or bit_depth change mints the same generation and"
-        " a worker holding it is not fenced",
+        " a worker holding it is not fenced."
+        " The minter test here is NOT independent evidence -- the"
+        " minter calls the primitive, so one dropped component fails"
+        " both. It is claimed because it genuinely fails, not because"
+        " it adds a witness. The E#4 mutation is what proves the minter"
+        " tests earn their place; a later reader trimming 'redundant'"
+        " tests must cut from here and never from there.",
         '            "per_image_config_digest": per_image_config or "",\n',
         '            "per_image_config_digest": "",\n',
         (
             "test_every_component_moves_the_generation"
             "[per_image_config-cfg-2]",
+            "test_a_per_image_config_change_mints_a_new_generation",
         ),
     ),
     (
         "the generation ignores restart_epoch -- D4's whole purpose gone, so"
         " a deliberately fresh attempt is indistinguishable from the run it"
-        " replaces and the pre-restart workers pass the fence",
+        " replaces and the pre-restart workers pass the fence."
+        " The minter test here is NOT independent evidence -- the"
+        " minter calls the primitive, so one dropped component fails"
+        " both. It is claimed because it genuinely fails, not because"
+        " it adds a witness. The E#4 mutation is what proves the minter"
+        " tests earn their place; a later reader trimming 'redundant'"
+        " tests must cut from here and never from there.",
         '            "restart_epoch": restart_epoch,\n        }\n    )\n',
         '            "restart_epoch": 0,\n        }\n    )\n',
-        ("test_every_component_moves_the_generation[restart_epoch-1]",),
+        (
+            "test_every_component_moves_the_generation[restart_epoch-1]",
+            "test_a_resume_does_not_bump_the_epoch_but_a_restart_does",
+        ),
     ),
     (
         "the generation ignores pipeline_sha256 -- an edited pipeline mints"
-        " the same generation",
+        " the same generation."
+        " The minter test here is NOT independent evidence -- the"
+        " minter calls the primitive, so one dropped component fails"
+        " both. It is claimed because it genuinely fails, not because"
+        " it adds a witness. The E#4 mutation is what proves the minter"
+        " tests earn their place; a later reader trimming 'redundant'"
+        " tests must cut from here and never from there.",
         '            "pipeline_sha256": pipeline_sha256 or "",\n',
         '            "pipeline_sha256": "",\n',
         (
             "test_every_component_moves_the_generation"
             "[pipeline_sha256-pipe-2]",
+            "test_a_pipeline_edit_mints_a_new_generation",
         ),
     ),
     (

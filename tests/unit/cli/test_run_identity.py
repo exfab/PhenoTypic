@@ -299,6 +299,128 @@ def test_a_migrated_tree_records_a_restart_epoch(tmp_path):
     assert _state_config(root)["restart_epoch"] == 0
 
 
+# -------------------------------------------- mint_run_identity (CAN-21, E4)
+
+
+@pytest.fixture
+def minted(tmp_path, make_exec_config):
+    """A factory returning a FRESH config each call, and its identity.
+
+    Fresh because `mint_run_identity` sets a once-only flag on the config
+    object (CAN-21), so a fixture handing back one shared config would make
+    the second call in any test raise for a reason unrelated to that test.
+    """
+
+    def _mint(*, restart: bool = False, **overrides):
+        root = tmp_path / "run"
+        root.mkdir(exist_ok=True)
+        phenotypic_cache_dir(root).mkdir(parents=True, exist_ok=True)
+        pipeline = overrides.pop("pipeline_json", None)
+        if pipeline is None:
+            pipeline = tmp_path / "pipeline.json"
+            if not pipeline.is_file():
+                pipeline.write_text("{}", encoding="utf-8")
+        config = make_exec_config(
+            pipeline_json=pipeline,
+            input_path=tmp_path / "input",
+            output_dir=root,
+            **overrides,
+        )
+        from phenotypic._cli._cli_identity import mint_run_identity
+
+        return config, mint_run_identity(config, restart=restart)
+
+    return _mint
+
+
+def test_minting_twice_in_one_invocation_is_a_programming_error(minted):
+    """CAN-21. Two mints in one run give it two generations and burn an
+    epoch. `ExecutionConfig.output_dir` is `Optional[Path]`, so this cannot
+    make itself idempotent by re-reading — the guard is a loud failure, and
+    the rule it enforces is structural: the entry point mints once and threads
+    the `RunIdentity` down."""
+    from phenotypic._cli._cli_identity import mint_run_identity
+
+    config, _ = minted()
+
+    with pytest.raises(RuntimeError, match="already minted"):
+        mint_run_identity(config, restart=True)
+
+
+def test_a_resume_does_not_bump_the_epoch_but_a_restart_does(minted):
+    """**A resume is not a restart**, which is the conclusion the rewritten
+    `phenotypicCLI.py:2422` comment records.
+
+    A resume's configuration has not changed, so it mints the *same*
+    generation — that is what D3 is for. If a resume bumped, every resume
+    would fence its own in-flight workers, which is the failure D5 exists to
+    prevent and the opposite of what a resume is for.
+    """
+    _, first = minted(restart=False)
+    _, resumed = minted(restart=False)
+    _, restarted = minted(restart=True)
+
+    assert resumed.restart_epoch == first.restart_epoch
+    assert resumed.processing_generation == first.processing_generation
+
+    assert restarted.restart_epoch == first.restart_epoch + 1
+    assert restarted.processing_generation != first.processing_generation
+
+
+def test_a_pipeline_edit_mints_a_new_generation(tmp_path, minted):
+    """The pipeline is a generation component, threaded from the config."""
+    pipeline = tmp_path / "edited.json"
+    pipeline.write_text("{}", encoding="utf-8")
+    _, before = minted(pipeline_json=pipeline)
+
+    pipeline.write_text('{"changed": true}', encoding="utf-8")
+    _, after = minted(pipeline_json=pipeline)
+
+    assert after.processing_generation != before.processing_generation
+
+
+def test_a_per_image_config_change_mints_a_new_generation(minted):
+    """**Category E #4, and the reason this test exists separately.**
+
+    `mint_run_identity` accepts an `ExecutionConfig` and threads several
+    components into the digest. A component accepted and never folded in
+    leaves the signature correct, mypy silent, and
+    `derive_processing_generation`'s own tests passing — because those test
+    the primitive, not the caller. Only a test that moves a config field and
+    watches the minted generation can see the difference.
+    """
+    _, before = minted(detect_mode="gray")
+    _, after = minted(detect_mode="rgb")
+
+    assert after.processing_generation != before.processing_generation
+
+
+def test_the_minted_proof_side_digest_is_the_pipeline_digest(
+    tmp_path, minted
+):
+    """Category E #4 again, on the component most likely to be mis-threaded.
+
+    `RunIdentity.scientific_config_digest` is the **proof-side** token (A) --
+    the pipeline file's bytes -- not `per_image_config_digest` (B). Writing B
+    here would make every proof this run publishes disagree with every proof
+    already on disk, and nothing else in this suite would notice.
+    """
+    import hashlib
+
+    pipeline = tmp_path / "proof.json"
+    pipeline.write_text('{"ops": []}', encoding="utf-8")
+    config, identity = minted(pipeline_json=pipeline)
+
+    from phenotypic._cli._cli_identity import per_image_config_digest
+
+    expected = hashlib.sha256(pipeline.read_bytes()).hexdigest()
+
+    assert identity.scientific_config_digest == expected
+    assert identity.scientific_config_digest != per_image_config_digest(
+        config
+    )
+
+
 # ------------------------------------------------------------- the counter
 
 

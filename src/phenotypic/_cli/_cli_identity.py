@@ -29,15 +29,22 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ..sdk_._atomic_io import atomic_write_json
 from ..sdk_._digests import canonical_digest
 from ..sdk_._io_constants import phenotypic_cache_dir, restart_epoch_path
+from ..sdk_._run_state import FINALIZATION_INPUT_SCHEMA_VERSION
+from ..sdk_._state_types import RunIdentity
 from ._cli_failure_tracker import processing_configuration_digest
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from ._cli_types import ExecutionConfig
 
 __all__ = [
     "bump_restart_epoch",
     "derive_processing_generation",
+    "mint_run_identity",
     "per_image_config_digest",
     "read_restart_epoch",
 ]
@@ -85,6 +92,53 @@ per_image_config_digest = processing_configuration_digest
 #: The document key. Spelled once: a reader and a writer disagreeing about it
 #: would reset the fence to 0 on every read, silently.
 _EPOCH_KEY = "restart_epoch"
+
+#: Set on the ``ExecutionConfig`` by :func:`mint_run_identity` so a second
+#: mint in one invocation is a loud failure rather than a silent second epoch
+#: bump (CAN-21). An attribute on the config object rather than a module-level
+#: registry: the config IS the invocation, so its lifetime is exactly the
+#: scope the guard should have, and there is no `id()` reuse to get wrong.
+_MINTED_FLAG = "_phenotypic_identity_minted"
+
+
+def _metadata_digest_for(config: "ExecutionConfig") -> str | None:
+    """Return the metadata snapshot's digest, or ``None`` without one.
+
+    **Must stay identical to what the snapshot copier records.**
+    ``phenotypicCLI.py:471`` computes ``sha256`` over the CSV's raw bytes and
+    stamps it into ``config.metadata_sha256`` *after* state creation, so this
+    recomputes rather than reads -- at mint time the state file does not yet
+    carry it. A different computation here would make the minted
+    ``finalization_input_digest`` disagree with the one every later reader
+    derives from the state, and §7.4's late-metadata guarantee would fire on
+    every run instead of only on an actual edit.
+    """
+    import hashlib
+
+    path = getattr(config, "metadata_csv", None)
+    if path is None or not Path(path).is_file():
+        return None
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def _inventory_digest_for(config: "ExecutionConfig") -> str:
+    """Return the digest of the input scope this invocation accepted.
+
+    Mirrors ``_cli_state_management._image_manifest_digest_for``, and is
+    **deliberately not imported from it**: ``_cli_slurm_lifecycle`` imports
+    this module, so a module-level import of ``_cli_state_management`` here
+    would close a cycle the moment ``create_initial_state`` takes a
+    ``RunIdentity``. The scanner helper it defers to is the shared definition;
+    only the two-line attribute lookup is restated.
+    """
+    digest = getattr(config, "image_manifest_digest", None)
+    if digest is None:
+        manifest = getattr(config, "image_manifest", None)
+        if manifest is not None:
+            from ._cli_directory_scanner import image_manifest_digest
+
+            digest = image_manifest_digest(manifest)
+    return canonical_digest(digest)
 
 
 def derive_processing_generation(
@@ -140,6 +194,98 @@ def derive_processing_generation(
             "per_image_config_digest": per_image_config or "",
             "restart_epoch": restart_epoch,
         }
+    )
+
+
+def mint_run_identity(
+    config: "ExecutionConfig", *, restart: bool
+) -> RunIdentity:
+    """Mint the identity of a new or resumed invocation (spec §5.1, §5.4).
+
+    **A writer.** ``restart=True`` bumps and persists the epoch, which is why
+    this lives in ``phenotypic._cli`` rather than beside the readers in
+    ``sdk_/_run_state.py``.
+
+    **Mint exactly once per invocation, then thread the value (CAN-21).**
+    Calling this twice in one run gives that run two generations and burns an
+    epoch. ``ExecutionConfig.output_dir`` is ``Optional[Path]``
+    (``_cli_types.py:102``), so this cannot make itself idempotent by
+    re-reading; the rule is structural instead -- **the CLI entry point mints
+    once and passes the** :class:`RunIdentity` **down**, and nothing below it
+    calls this function. A second call on the same config object is a
+    programming error and says so.
+
+    **A resume is not a restart.** Only ``restart=True`` bumps. A resume mints
+    the *same* generation, because its configuration has not changed -- which
+    is the entire point of D3. If a resume bumped, every resume would fence
+    its own in-flight workers, which is the failure D5 exists to prevent.
+
+    Args:
+        config: The invocation's execution configuration.
+        restart: ``True`` for ``--restart``, which bumps and persists the
+            epoch. ``False`` for a fresh run or a resume.
+
+    Returns:
+        A :class:`~phenotypic.sdk_.RunIdentity`. ``scheduler_epoch`` and
+        ``owner_generation`` are ``None``: they are liveness facts owned by
+        the SLURM lifecycle record and the GUI owner record, neither of which
+        exists at mint time, and both are outside
+        :meth:`RunIdentity.digest` by design.
+
+    Raises:
+        RuntimeError: If called twice for the same ``config`` object.
+    """
+    if getattr(config, _MINTED_FLAG, False):
+        raise RuntimeError(
+            "run identity already minted for this invocation; mint once at "
+            "the CLI entry point and thread the RunIdentity down (CAN-21). "
+            "A second mint gives one run two generations and burns a restart "
+            "epoch."
+        )
+    output_dir = config.output_dir
+    if output_dir is None:
+        raise RuntimeError(
+            "cannot mint a run identity without an output directory"
+        )
+    epoch = (
+        bump_restart_epoch(output_dir)
+        if restart
+        else read_restart_epoch(output_dir)
+    )
+    # Lazy: this module is imported BY `_cli_slurm_lifecycle`, so it stays
+    # import-light at module scope to keep that edge acyclic.
+    from ._cli_staged_resume import pipeline_content_digest
+
+    pipeline_sha256 = (
+        pipeline_content_digest(config.pipeline_json)
+        if config.pipeline_json.is_file()
+        else None
+    )
+    setattr(config, _MINTED_FLAG, True)
+    return RunIdentity(
+        processing_generation=derive_processing_generation(
+            pipeline_sha256=pipeline_sha256,
+            per_image_config=per_image_config_digest(config),
+            restart_epoch=epoch,
+        ),
+        restart_epoch=epoch,
+        # Liveness, not configuration -- see the Returns note.
+        scheduler_epoch=None,
+        owner_generation=None,
+        inventory_digest=_inventory_digest_for(config),
+        # The PROOF-side token (A), which is `pipeline_sha256` verbatim. NOT
+        # `per_image_config_digest` -- see this module's A/B block. Writing B
+        # here would make every proof this run publishes disagree with every
+        # proof already on disk.
+        scientific_config_digest=pipeline_sha256 or "",
+        finalization_input_digest=canonical_digest(
+            {
+                "schema_version": FINALIZATION_INPUT_SCHEMA_VERSION,
+                "metadata_sha256": _metadata_digest_for(config),
+                "include_dataset_column": config.include_dataset_column,
+                "no_qc": config.no_qc,
+            }
+        ),
     )
 
 
