@@ -80,6 +80,48 @@ converts a naming problem into a migration problem.
 
 ---
 
+## A fourth kind, kept OUT of the register above — and why that matters
+
+**D7 is not in the table, and declining to put it there is the finding.**
+
+D7 says: *"`inventory_digest` stays out of the generation digest."* The migrator has
+folded the inventory into `processing_generation` since **`dd18d9c7` (2026-08-26)** —
+`git merge-base --is-ancestor` confirms it is a direct ancestor of `c9d1fbfc`
+(2026-09-03), the commit that created `design.md` and D7 with it. So the code predates
+the rule by eight days, and has never satisfied it.
+
+That looks like a register entry and is not one:
+
+- **Not stale.** Stale means *true when written, then the code moved*. D7 was never
+  satisfied — the violation predates the rule.
+- **Not never-true.** That means *the author asserted something untrue about the tree*.
+  **D7 asserts nothing about the tree.** Its text is prescriptive — a rule in a
+  decisions table, with a rationale — so there is nothing in it that is true or false
+  about `_cli_migrate.py`.
+
+Every entry in the register above is **a document wrong about the code**. This is
+**code wrong about a document**, and the document is correct. Folding it in to make the
+tally larger would put the first non-falsehood in a table of falsehoods, and the kinds
+are only worth having if they are trustworthy — which is the same standard this whole
+change applies to its verdicts.
+
+| Kind | What it means | Cost |
+|---|---|---|
+| **Rule written without checking compliance** | A document states a requirement; nobody verified the shipped tree already met it. The document is not wrong — the code is | Medium, and **misattributed**. Invisible until someone implements the rule, and the failure then surfaces in whatever phase touches it, blamed on that phase. |
+
+**The misattribution is the whole cost, and here it is concrete.** The plan warns that
+leaving this unfixed makes P5's rolling-input matrix fail on any migrated tree, where
+*"the failure looks like a bug in P5 rather than an unrevised writer"*. Every new image
+under a rolling input would change the generation, reset live progress, and fence
+in-flight workers — exactly what D7 exists to prevent, on every migrated tree today.
+
+**The procedural lesson:** a new rule in a decisions table needs a compliance check
+against the existing tree at the moment it is written, not at the moment someone
+implements it. Nothing in the four review rounds asked *"does the shipped code already
+satisfy this?"* — the rounds reviewed the plan against the spec, and both were new.
+
+---
+
 ## What the pattern says
 
 **Nothing failed, and nothing could have.** Not one entry would have been caught by a test,
