@@ -148,7 +148,7 @@ import shutil
 import sys
 from pathlib import Path
 from typing import Any, List, Optional, Sequence, cast
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import click
 import yaml  # type: ignore[import-untyped]
@@ -178,6 +178,7 @@ from phenotypic._cli._cli_interactive import (
     execute_dry_run,
     get_sample_datasets,
 )
+from phenotypic._cli._cli_identity import mint_run_identity
 from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_report_generator import HTMLReportGenerator
 from phenotypic._cli._cli_state_management import (
@@ -2152,6 +2153,19 @@ def phenotypic_cli(
 
         config.output_dir = output_dir
 
+        # Mint ONCE per invocation, then thread the value (CAN-21).
+        # Here, and not later, because this point DOMINATES both resume
+        # sites: the incremental-reconciliation block below and the main
+        # state block further down both run in one invocation, so minting
+        # at either would be a second mint at the other -- two generations
+        # for one run, and a burned epoch.
+        #
+        # After `clear_machine_state` (above) on purpose: that function
+        # PRESERVES `restart_epoch.json`, so the bump below reads the
+        # counter the restart deliberately kept. A counter that reset on
+        # the operation it fences would not be a fence.
+        identity = mint_run_identity(config, restart=restart)
+
         # Check existing contents only for a genuinely fresh run.
         if not config.resume and not restart and not measure_only:
             if output_dir.exists() and any(
@@ -2414,12 +2428,26 @@ def phenotypic_cli(
                             ),
                         )
 
-            # Every compatible invocation owns a fresh machine-state epoch,
-            # including a no-work reconciliation. This fences workers left by
-            # a killed local attempt and prevents historical started events
-            # from remaining active forever. Scientific publication identity
-            # is work-ID based and is intentionally unchanged.
-            resume_state.config["processing_generation"] = uuid4().hex
+            # A RESUME IS NOT A RESTART -- see the mint above.
+            #
+            # This minted a fresh uuid here, justified as "every
+            # compatible invocation owns a fresh machine-state epoch
+            # ... this fences workers left by a killed local attempt".
+            # Both halves are now wrong: a fresh token per invocation
+            # is exactly what D3 forbids, and that fencing is
+            # `restart_epoch`'s job (P2 Task 1).
+            #
+            # THE FIFTH MINTING SITE -- named in the plan's prose,
+            # given no step, and the one that would have gone on
+            # minting uuids after every other site became
+            # content-derived, leaving the invariant almost true with
+            # nothing saying which site broke it.
+            resume_state.config["processing_generation"] = (
+                identity.processing_generation
+            )
+            resume_state.config["restart_epoch"] = (
+                identity.restart_epoch
+            )
             save_processing_state(resume_state, output_dir)
             config.processing_generation = str(
                 resume_state.config["processing_generation"]
@@ -2653,9 +2681,6 @@ def phenotypic_cli(
             if config.resume:
                 assert resume_state is not None
                 state = update_state_from_events(resume_state, output_dir)
-                processing_generation = str(
-                    state.config.get("processing_generation") or uuid4().hex
-                )
                 state.execution_mode = (
                     "slurm" if config.is_slurm_mode() else "local"
                 )
@@ -2687,7 +2712,22 @@ def phenotypic_cli(
                     "include_dataset_column": config.include_dataset_column,
                     "overlay_alpha": config.overlay_alpha,
                     "no_qc": config.no_qc,
-                    "processing_generation": processing_generation,
+                    # A RESUME IS NOT A RESTART. Same configuration ->
+                    # same generation (D3); only `--restart` bumps the
+                    # epoch, and therefore the generation.
+                    #
+                    # The justification this replaces read: "Every
+                    # compatible invocation owns a fresh machine-state
+                    # epoch ... this fences workers left by a killed
+                    # local attempt." That is now false twice over. A
+                    # fresh token per invocation is exactly what D3
+                    # forbids, and the fencing it wanted is
+                    # `restart_epoch`'s job (P2 Task 1). If a resume
+                    # bumped, every resume would fence its OWN in-flight
+                    # workers -- the failure D5 exists to prevent, and
+                    # the opposite of what a resume is for.
+                    "processing_generation": identity.processing_generation,
+                    "restart_epoch": identity.restart_epoch,
                     "metadata_sha256": (
                         file_sha256(config.metadata_csv)
                         if config.metadata_csv is not None
@@ -2702,7 +2742,9 @@ def phenotypic_cli(
                         image.name for image in current_dataset.images
                     )
             else:
-                state = create_initial_state(config, full_datasets, output_dir)
+                state = create_initial_state(
+                    config, full_datasets, output_dir, identity=identity
+                )
                 state.config["save_overlays"] = config.save_overlays
             state.config["metadata_sha256"] = (
                 file_sha256(config.metadata_csv)
@@ -2719,11 +2761,15 @@ def phenotypic_cli(
                 for dataset in full_datasets
             }
             save_processing_state(state, output_dir)
-            config.processing_generation = str(
-                state.config["processing_generation"]
-            )
-        else:
-            config.processing_generation = uuid4().hex
+        # DF-16 / CAN-20: measure and process run under the SAME
+        # content-derived identity as `full`. The pipeline and per-image
+        # configuration are unchanged, so D3 says the generation is the
+        # same VALUE -- which is what lets §7.4 route measure through
+        # `finalize_run`, and P4 Task 4 parametrize a byte-identical
+        # master over ["full", "measure", "recompile"]. Measure minted
+        # its own uuid here and could therefore never match the run it
+        # was measuring.
+        config.processing_generation = identity.processing_generation
         os.environ[PROCESSING_GENERATION_ENV_VAR] = (
             config.processing_generation
         )

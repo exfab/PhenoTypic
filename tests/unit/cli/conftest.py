@@ -428,3 +428,27 @@ def legacy_headers_run(
     for stem in run_stems(output_dir):
         refresh_marker_descriptors(output_dir, _MIGRATION_DATASET, stem)
     return output_dir
+
+
+@pytest.fixture
+def stub_run_identity():
+    """A throwaway ``RunIdentity`` for tests that do not exercise identity.
+
+    ``create_initial_state`` takes the identity as a **required** keyword from
+    P2 Task 3 onward, because an optional one would let a caller silently fall
+    back to the ``uuid4().hex`` the change exists to remove. Tests about
+    manifest digests or state shape still have to supply one, and supplying a
+    recognisable stub is clearer than minting a real identity they then ignore
+    -- a minted one would also bump a restart epoch as a side effect.
+    """
+    from phenotypic.sdk_ import RunIdentity
+
+    return RunIdentity(
+        processing_generation="stub-generation",
+        restart_epoch=0,
+        scheduler_epoch=None,
+        owner_generation=None,
+        inventory_digest="stub-inventory",
+        scientific_config_digest="stub-pipeline",
+        finalization_input_digest="stub-finalization",
+    )

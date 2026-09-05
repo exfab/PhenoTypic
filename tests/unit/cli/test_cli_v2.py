@@ -247,7 +247,9 @@ class TestDirectoryScanning:
 class TestStateManagement:
     """Test processing state management and resume capability."""
 
-    def test_create_initial_state(self, temp_output_dir):
+    def test_create_initial_state(
+        self, temp_output_dir, stub_run_identity
+    ):
         """Test creating initial processing state."""
         datasets = [
             Dataset(
@@ -280,13 +282,20 @@ class TestStateManagement:
             skip_validation=False,
         )
 
-        state = create_initial_state(config, datasets, temp_output_dir)
+        state = create_initial_state(
+            config,
+            datasets,
+            temp_output_dir,
+            identity=stub_run_identity,
+        )
 
         assert state.version == "3.0.0"
         assert "test" in state.datasets
         assert state.execution_mode == "local"
 
-    def test_save_and_load_state(self, temp_output_dir):
+    def test_save_and_load_state(
+        self, temp_output_dir, stub_run_identity
+    ):
         """Test saving and loading processing state."""
         datasets = [
             Dataset(
@@ -320,7 +329,12 @@ class TestStateManagement:
         )
 
         # Create and save state
-        state = create_initial_state(config, datasets, temp_output_dir)
+        state = create_initial_state(
+            config,
+            datasets,
+            temp_output_dir,
+            identity=stub_run_identity,
+        )
         save_processing_state(state, temp_output_dir)
 
         # Load state
@@ -1599,7 +1613,9 @@ class TestNewCoverageGaps:
             / "image2.png"
         )
 
-    def test_initial_images_stored_in_state(self, temp_output_dir):
+    def test_initial_images_stored_in_state(
+        self, temp_output_dir, stub_run_identity
+    ):
         """Test that initial_images is stored when creating state."""
         datasets = [
             Dataset(
@@ -1632,14 +1648,21 @@ class TestNewCoverageGaps:
             skip_validation=False,
         )
 
-        state = create_initial_state(config, datasets, temp_output_dir)
+        state = create_initial_state(
+            config,
+            datasets,
+            temp_output_dir,
+            identity=stub_run_identity,
+        )
 
         # Check initial_images is populated
         assert "test" in state.datasets
         assert len(state.datasets["test"].initial_images) == 5
         assert "img0.png" in state.datasets["test"].initial_images
 
-    def test_resume_after_zero_processed(self, temp_output_dir):
+    def test_resume_after_zero_processed(
+        self, temp_output_dir, stub_run_identity
+    ):
         """Test resume validation when no images were processed."""
         datasets = [
             Dataset(
@@ -1673,7 +1696,12 @@ class TestNewCoverageGaps:
         )
 
         # Create and save initial state (no processing done)
-        state = create_initial_state(config, datasets, temp_output_dir)
+        state = create_initial_state(
+            config,
+            datasets,
+            temp_output_dir,
+            identity=stub_run_identity,
+        )
         temp_output_dir.mkdir(parents=True, exist_ok=True)
         save_processing_state(state, temp_output_dir)
 

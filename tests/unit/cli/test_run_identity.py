@@ -421,6 +421,111 @@ def test_the_minted_proof_side_digest_is_the_pipeline_digest(
     )
 
 
+# ------------------------------------------- the wiring (increment 3)
+
+
+def test_create_initial_state_records_the_minted_identity(
+    tmp_path, make_exec_config
+):
+    """The generation and the epoch both land in `config`, from the identity.
+
+    `create_initial_state` minted its own `uuid4().hex` before this change.
+    Taking the identity as a **required** keyword is what stops the five
+    minting sites this task consolidates from quietly becoming six: an
+    optional one would let a caller fall back to a uuid with nothing failing.
+    """
+    from phenotypic._cli._cli_identity import mint_run_identity
+    from phenotypic._cli._cli_state_management import create_initial_state
+
+    root = tmp_path / "run"
+    phenotypic_cache_dir(root).mkdir(parents=True)
+    pipeline = tmp_path / "pipeline.json"
+    pipeline.write_text("{}", encoding="utf-8")
+    config = make_exec_config(
+        pipeline_json=pipeline,
+        input_path=tmp_path / "input",
+        output_dir=root,
+    )
+    identity = mint_run_identity(config, restart=False)
+
+    state = create_initial_state(config, [], root, identity=identity)
+
+    assert state.config["processing_generation"] == (
+        identity.processing_generation
+    )
+    assert state.config["restart_epoch"] == identity.restart_epoch
+
+
+def test_the_state_generation_is_not_a_uuid(tmp_path, make_exec_config):
+    """D3, at the site that used to break it.
+
+    A `uuid4().hex` is 32 lowercase hex characters; the content-derived
+    generation is a sha256 and is 64. Asserting the *length* rather than a
+    specific digest keeps this a test about "derived, not random" rather than
+    a golden value that has to be updated whenever a component moves.
+    """
+    from phenotypic._cli._cli_identity import mint_run_identity
+    from phenotypic._cli._cli_state_management import create_initial_state
+
+    root = tmp_path / "run"
+    phenotypic_cache_dir(root).mkdir(parents=True)
+    pipeline = tmp_path / "pipeline.json"
+    pipeline.write_text("{}", encoding="utf-8")
+    config = make_exec_config(
+        pipeline_json=pipeline,
+        input_path=tmp_path / "input",
+        output_dir=root,
+    )
+
+    state = create_initial_state(
+        config, [], root, identity=mint_run_identity(config, restart=False)
+    )
+
+    assert len(str(state.config["processing_generation"])) == 64
+
+
+def test_the_two_metadata_digests_agree(tmp_path, make_exec_config):
+    """**The cross-module agreement test.** Category E, not spec drift.
+
+    `mint_run_identity` must recompute `metadata_sha256` rather than read it,
+    because `phenotypicCLI.py` stamps that value into the state only *after*
+    state creation -- at mint time there is nothing to read. That constraint
+    is real and forced; it is not a deviation and owes no experiment.
+
+    The **risk** it creates is that the two computations drift apart. If they
+    do, the minted `finalization_input_digest` disagrees with the one every
+    later reader derives from the state, and §7.4's late-metadata guarantee
+    fires on **every** run instead of on a real edit -- a re-finalize per
+    invocation, forever, with nothing failing.
+
+    A docstring saying "keep these identical" is prevention with no
+    detection. This is the detection: compute both ways over one input and
+    require them equal.
+    """
+    import hashlib
+
+    from phenotypic._cli._cli_identity import _metadata_digest_for
+
+    metadata = tmp_path / "metadata.csv"
+    metadata.write_text(
+        "Metadata_Well,Metadata_Strain\nA1,wt\n", encoding="utf-8"
+    )
+    config = make_exec_config(
+        pipeline_json=tmp_path / "pipeline.json",
+        input_path=tmp_path / "input",
+        output_dir=tmp_path / "run",
+        metadata_csv=metadata,
+    )
+
+    # The CLI's computation, `phenotypicCLI.py`'s snapshot copier: sha256 over
+    # the CSV's raw bytes. Spelled out rather than imported, because the point
+    # is that two independently written computations agree -- importing the
+    # other one would make this test tautological.
+    cli_side = hashlib.sha256(metadata.read_bytes()).hexdigest()
+
+    assert _metadata_digest_for(config) == cli_side
+
+
 # ------------------------------------------------------------- the counter
 
 

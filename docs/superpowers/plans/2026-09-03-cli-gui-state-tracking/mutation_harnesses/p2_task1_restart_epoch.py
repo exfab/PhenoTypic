@@ -53,6 +53,7 @@ TARGETS = (
     "src/phenotypic/sdk_/_io_constants.py",
     "src/phenotypic/_cli/_cli_failure_tracker.py",
     "src/phenotypic/_cli/_cli_migrate.py",
+    "src/phenotypic/_cli/_cli_state_management.py",
 )
 SUITE = "tests/unit/cli/test_run_identity.py"
 
@@ -69,6 +70,39 @@ MUTATIONS: list[tuple[str, str, str, tuple[str, ...]]] = [
         "def per_image_config_digest(config):\n"
         "    return processing_configuration_digest(config)\n",
         ("test_per_image_config_digest_is_the_work_id_digest_itself",),
+    ),
+    (
+        "create_initial_state goes back to minting its own uuid4 instead of"
+        " recording the threaded identity -- the fifth site becoming a sixth,"
+        " with the state's generation no longer matching the one the run is"
+        " fenced by",
+        '            "processing_generation": '
+        "identity.processing_generation,\n",
+        '            "processing_generation": '
+        '__import__("uuid").uuid4().hex,\n',
+        (
+            "test_create_initial_state_records_the_minted_identity",
+            "test_the_state_generation_is_not_a_uuid",
+        ),
+    ),
+    (
+        "create_initial_state stops recording restart_epoch -- P1's"
+        " requires_conversion signal 4 is its ABSENCE, so the schema gate"
+        " fires on every tree the current build writes",
+        '            "restart_epoch": identity.restart_epoch,\n        }',
+        "        }",
+        ("test_create_initial_state_records_the_minted_identity",),
+    ),
+    (
+        "the two metadata digests drift apart: the minter hashes the path"
+        " instead of the bytes. §7.4's late-metadata guarantee then fires on"
+        " EVERY run instead of on a real edit -- a re-finalize per"
+        " invocation, forever, with nothing failing. Category E: the"
+        " docstring saying 'keep these identical' is prevention; this is the"
+        " detection.",
+        "    return hashlib.sha256(Path(path).read_bytes()).hexdigest()\n",
+        "    return hashlib.sha256(str(path).encode()).hexdigest()\n",
+        ("test_the_two_metadata_digests_agree",),
     ),
     (
         "CAN-21's mint-once guard is removed, so one invocation can mint two"

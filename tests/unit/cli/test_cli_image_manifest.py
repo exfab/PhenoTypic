@@ -204,12 +204,14 @@ def test_manifest_alias_refuses_two_scanned_dataset_identities(
 
 
 def test_manifest_digest_is_saved_and_resume_refuses_an_edited_manifest(
-    image_tree: Path, pipeline_stub: Path, tmp_path: Path
+    image_tree: Path, pipeline_stub: Path, tmp_path: Path, stub_run_identity
 ) -> None:
     """A reused output cannot silently exchange one approved list for another."""
     manifest = _manifest(tmp_path / "approved.images", ["plate1/img001.tiff"])
     config = _config(pipeline_stub, image_tree, tmp_path / "out", manifest)
-    state = create_initial_state(config, [], tmp_path / "out")
+    state = create_initial_state(
+        config, [], tmp_path / "out", identity=stub_run_identity
+    )
 
     assert state.config["image_manifest_digest"] == (
         f"sha256:{hashlib.sha256(manifest.read_bytes()).hexdigest()}"
@@ -221,12 +223,14 @@ def test_manifest_digest_is_saved_and_resume_refuses_an_edited_manifest(
 
 
 def test_measure_resume_ignores_manifest_drift_seam(
-    image_tree: Path, pipeline_stub: Path, tmp_path: Path
+    image_tree: Path, pipeline_stub: Path, tmp_path: Path, stub_run_identity
 ) -> None:
     """Measure mode reuses stores, rather than revalidating an input subset."""
     manifest = _manifest(tmp_path / "approved.images", ["plate1/img001.tiff"])
     saved = _config(pipeline_stub, image_tree, tmp_path / "out", manifest)
-    state = create_initial_state(saved, [], tmp_path / "out")
+    state = create_initial_state(
+        saved, [], tmp_path / "out", identity=stub_run_identity
+    )
     current = _config(pipeline_stub, tmp_path / "out", tmp_path / "out", None)
     current.measure_only = True
 
@@ -234,7 +238,7 @@ def test_measure_resume_ignores_manifest_drift_seam(
 
 
 def test_manifest_snapshot_remains_bound_after_validation_until_selection(
-    image_tree: Path, pipeline_stub: Path, tmp_path: Path
+    image_tree: Path, pipeline_stub: Path, tmp_path: Path, stub_run_identity
 ) -> None:
     """Changing the file after resume validation cannot alter selected images."""
     snapshot_loader = getattr(directory_scanner, "load_image_manifest", None)
@@ -245,7 +249,9 @@ def test_manifest_snapshot_remains_bound_after_validation_until_selection(
     saved = _config(pipeline_stub, image_tree, tmp_path / "out", manifest)
     saved_snapshot = snapshot_loader(manifest)
     saved.image_manifest_digest = saved_snapshot.digest
-    state = create_initial_state(saved, [], tmp_path / "out")
+    state = create_initial_state(
+        saved, [], tmp_path / "out", identity=stub_run_identity
+    )
     current = _config(pipeline_stub, image_tree, tmp_path / "out", manifest)
     snapshot = snapshot_loader(manifest)
     current.image_manifest_entries = snapshot.entries

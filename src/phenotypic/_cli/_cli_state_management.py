@@ -10,9 +10,8 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Optional, List
+from typing import Any, Optional, List, TYPE_CHECKING
 from datetime import datetime
-from uuid import uuid4
 
 from ._cli_types import ProcessingState, DatasetState, Dataset, ExecutionConfig
 from ._cli_update_state import aggregate_state_from_events
@@ -27,6 +26,9 @@ from phenotypic.sdk_ import (
 
 from ._cli_directory_scanner import image_manifest_digest
 from ._cli_staged_resume import pipeline_content_digest
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from ..sdk_._state_types import RunIdentity
 
 logger = logging.getLogger(__name__)
 
@@ -181,16 +183,30 @@ def load_processing_state(output_dir: Path) -> Optional[ProcessingState]:
 def create_initial_state(
     config: ExecutionConfig,
     datasets: List[Dataset],
-    output_dir: Path
+    output_dir: Path,
+    *,
+    identity: "RunIdentity",
 ) -> ProcessingState:
     """
     Create initial processing state for a new run.
-    
+
+    ``identity`` is **required and keyword-only**, and that is deliberate.
+    Before P2 this function minted its own ``uuid4().hex``; a default here
+    would let a caller silently fall back to one, and a run whose generation
+    is a uuid is a run that cannot be fenced (spec D3). Required means the
+    four minting sites this change consolidates cannot quietly become five.
+
+    **This function does not mint.** ``mint_run_identity`` bumps and persists
+    the restart epoch, so calling it twice in one invocation burns an epoch
+    (CAN-21). The entry point mints once and threads the value down; this is
+    one of the places it lands.
+
     Args:
         config: Execution configuration
         datasets: List of datasets to process
         output_dir: Output directory
-        
+        identity: The invocation's already-minted run identity.
+
     Returns:
         New ProcessingState object
     """
@@ -234,7 +250,15 @@ def create_initial_state(
             "image_manifest_digest": _image_manifest_digest_for(config),
             "staged_stage3_markers": config.staged_stage3_markers,
             "success_markers_required": True,
-            "processing_generation": uuid4().hex,
+            # D3: content-derived, not `uuid4().hex`. Same inputs -> same
+            # token, so a worker starting cold fences itself correctly
+            # against a run it has never read.
+            "processing_generation": identity.processing_generation,
+            # P1's `requires_conversion` signal 4 is the ABSENCE of this key,
+            # so until this line existed the schema gate fired on every tree
+            # the current build wrote -- the gate armed against its own
+            # writer. A bisect between P1 and here lands in that window.
+            "restart_epoch": identity.restart_epoch,
         }
     )
     
