@@ -1,22 +1,19 @@
-"""Mask-based radial expansion measurements for colonies on solid media."""
+"""Radial expansion, symmetry, and orientation-zone measurements."""
 
 from ._measurement_info import Entry
 from ._tiers import DescriptiveTrait
 
 
 class SYMMETRIC_ZONES(DescriptiveTrait):
-    """Mask-based radial expansion measurements for colonies on solid media.
+    """Radial expansion, symmetry, and branch-orientation zone geometry.
 
-    Summarises each colony's radial growth through four scalars derived
-    directly from the binary object mask: the inoculum core radius (shared
-    with :class:`RADIAL_EXPANSION`), the radius at which growth stops being
-    angularly symmetric, and mean / maximum radial extent beyond the core.
-
-    Unlike :class:`RADIAL_EXPANSION`, no skeletonization, branch tracing, or
-    runner-outlier statistics are involved — all values are computed from
-    per-annulus mask geometry and a circular-statistics angular resultant
-    length. Intended for users who care about colony-level expansion and the
-    symmetry of that expansion, not individual hyphae.
+    The first four measurements are independent summaries derived directly
+    from the binary object mask: PELT core radius, angular symmetry radius,
+    and mean and maximum expansion. Canonical CoreZone, DenseZone, and
+    SparseZone geometry is resolved by Method B from the target mask,
+    detection matrix, structure-tensor field, and literal skeleton crossings.
+    Historical colony-ness geometry remains available through
+    ``legacy_mode=True``.
     """
 
     @classmethod
@@ -33,8 +30,8 @@ class SYMMETRIC_ZONES(DescriptiveTrait):
         "SymmetricRadius",
         "Radial distance from the inoculum centroid at which colony growth "
         "ceases to be angularly uniform. Computed as the first radius past "
-        "the core where the smoothed per-annulus circular mean resultant "
-        "length of mask-boundary pixels exceeds the symmetry threshold. "
+        "the core where the smoothed fraction of occupied angular sectors "
+        "drops below the symmetry threshold. "
         "Equals the colony outer envelope when growth remains symmetric "
         "throughout.",
     )
@@ -53,36 +50,35 @@ class SYMMETRIC_ZONES(DescriptiveTrait):
     )
     CORE_END_RADIUS = Entry(
         "CoreEndRadius",
-        "Mean radius of the inoculum core boundary derived from the per-angle "
-        "bright/background ratio walk. Each of 360 1° angular sectors finds the "
-        "outer edge of the contiguous core run (bright fraction >= tau_core); the "
-        "reported value is the mean across sectors. Compare with CoreRadius (the "
-        "global PELT changepoint) — close agreement indicates a well-formed core.",
+        "Outer radius in pixels of CoreZone. Canonical Method B defines CoreZone "
+        "as the inoculum plus any inner region without resolvable branch "
+        "orientation. With legacy_mode=True, the historical colony-ness "
+        "threshold defines this boundary. CoreRadius remains the independent "
+        "mask-density PELT estimate.",
     )
     DENSE_END_RADIUS = Entry(
         "DenseEndRadius",
-        "Mean outer radius of the dense branching zone, where mask-bright pixels "
-        "dominate (bright fraction >= tau_sparse). Per-angle radii are capped at "
-        "the SymmetricRadius and angularly median-smoothed before averaging.",
+        "Outer radius in pixels of DenseZone. Canonical Method B uses its second "
+        "change point; a collapsed one-change solution makes this equal to "
+        "CoreEndRadius. Legacy mode uses the historical colony-ness threshold.",
     )
     SPARSE_END_RADIUS = Entry(
         "SparseEndRadius",
-        "Mean outer radius of the sparse branching zone (= colony envelope inside "
-        "the symmetric growth front). Equals min(objmask outer envelope, "
-        "SymmetricRadius) per angle, averaged across 360 sectors.",
+        "Outer radius in pixels of SparseZone. Canonical Method B uses the exact "
+        "target-mask radius selected by outer_zone_percentile; legacy mode uses "
+        "the historical colony-ness and symmetric-envelope boundary.",
     )
     CORE_AREA = Entry(
         "CoreArea",
-        "Pixel^2 area of the inoculum core zone, integrated across the 360-sector "
-        "polar polygon defined by the per-angle core radii.",
+        "Pixel-squared area of CoreZone using the concentric CoreEndRadius circle.",
     )
     DENSE_AREA = Entry(
         "DenseArea",
-        "Pixel^2 area of the dense branching zone, the annular region between the "
-        "per-angle core boundary and dense-branching boundary.",
+        "Pixel-squared area of DenseZone between CoreEndRadius and "
+        "DenseEndRadius. It is zero for a collapsed canonical solution.",
     )
     SPARSE_AREA = Entry(
         "SparseArea",
-        "Pixel^2 area of the sparse branching zone, the annular region between the "
-        "per-angle dense boundary and the symmetric-envelope outer boundary.",
+        "Pixel-squared area of SparseZone between DenseEndRadius and "
+        "SparseEndRadius.",
     )

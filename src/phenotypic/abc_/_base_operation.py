@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Self
 
 import importlib.util
 import json
@@ -317,7 +317,9 @@ class BaseOperation(BaseModel, ABC):
                 f"a subclass of {cls.__name__}. Use BaseOperation.from_json() "
                 f"or a compatible class."
             )
-        return op_class.model_validate(envelope.get("params", {}) or {})
+        return op_class._validate_serialized_params(
+            envelope.get("params", {}) or {}
+        )
 
     def _log_memory_usage(
             self,
@@ -380,3 +382,15 @@ class BaseOperation(BaseModel, ABC):
             except Exception:
                 # Ignore errors during cleanup
                 pass
+
+    @classmethod
+    def _migrate_serialized_params(
+            cls, params: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Return serialized parameters after class-specific compatibility fixes."""
+        return dict(params)
+
+    @classmethod
+    def _validate_serialized_params(cls, params: dict[str, Any]) -> Self:
+        """Validate a serialized parameter payload through its migration hook."""
+        return cls.model_validate(cls._migrate_serialized_params(params))

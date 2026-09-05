@@ -36,6 +36,28 @@ from phenotypic.measure._measure_orientation_zones import (
 )
 
 
+def _mock_object_analysis(
+    segmentation,
+    object_mask,
+    orientation,
+    coherence,
+    distance_map,
+    center,
+):
+    """Build the named per-object record used by diagnostic figure tests."""
+    return SimpleNamespace(
+        prop=None,
+        resolution=None,
+        segmentation=segmentation,
+        object_mask=object_mask,
+        orientation=orientation,
+        coherence=coherence,
+        gradient=None,
+        distance_map=distance_map,
+        center=center,
+    )
+
+
 def test_aggregate_parallel_field_high_R_zero_turning():
     n = 40
     phi = np.full((n, n), 0.3)  # constant orientation
@@ -108,7 +130,7 @@ def test_zone_restriction_inner_vs_outer_orientation():
 
 def test_measure_returns_all_schema_columns_one_row_per_object():
     image = load_synth_filamentous_plate()
-    df = MeasureOrientationZones().measure(image)
+    df = MeasureOrientationZones(legacy_mode=True).measure(image)
     assert isinstance(df, pd.DataFrame)
     assert len(df) == image.num_objects
     for h in ORIENTATION_ZONE_PRIMARY.get_headers():
@@ -120,7 +142,7 @@ def test_measure_returns_all_schema_columns_one_row_per_object():
 
 def test_include_diagnostics_emits_comparators_support_and_legacy_columns():
     image = load_synth_filamentous_plate()
-    df = MeasureOrientationZones(include_diagnostics=True).measure(image)
+    df = MeasureOrientationZones(legacy_mode=True, include_diagnostics=True).measure(image)
 
     assert set(ORIENTATION_ZONE_PRIMARY.get_headers()).issubset(df.columns)
     assert set(ORIENTATION_ZONE_DIAGNOSTIC.get_headers()).issubset(df.columns)
@@ -189,7 +211,12 @@ def test_primary_and_diagnostic_schema_are_distinct_and_document_units():
         *ORIENTATION_ZONE_DIAGNOSTIC,
     ):
         description = member.desc.lower()
-        assert "degree" in description or "dimensionless" in description
+        assert (
+            "degree" in description
+            or "dimensionless" in description
+            or "pixel" in description
+            or "ring" in description
+        )
 
 
 def test_legacy_orientation_zones_name_preserves_legacy_member_access():
@@ -233,7 +260,7 @@ def test_public_zone_angles_are_converted_from_radians_to_degrees():
         dense_end_radius=30.0,
         sparse_end_radius=45.0,
     )
-    operation = MeasureOrientationZones(include_diagnostics=True)
+    operation = MeasureOrientationZones(legacy_mode=True, include_diagnostics=True)
     row: dict[str, float] = {}
 
     (
@@ -335,7 +362,7 @@ def test_literal_crossing_primary_and_diagnostic_values_use_public_units():
         core_end_radius=10.0,
         dense_end_radius=30.0,
     )
-    operation = MeasureOrientationZones(
+    operation = MeasureOrientationZones(legacy_mode=True,
         radial_ring_width=5.0,
         long_range_lag=10.0,
         include_diagnostics=True,
@@ -393,7 +420,7 @@ def test_r3c4_real_crop_preserves_literal_crossing_regression() -> None:
     image = Image(arr=detect_mat)
     image.detect_mat[:] = detect_mat
     image.objmap[:] = objmap
-    result = MeasureOrientationZones(include_diagnostics=True).measure(image)
+    result = MeasureOrientationZones(legacy_mode=True, include_diagnostics=True).measure(image)
     assert len(result) == 1
     row = result.iloc[0]
 
@@ -800,7 +827,7 @@ def test_long_range_midpoint_assignment_uses_lower_inclusive_bound():
 
 
 def test_long_range_parameters_require_compatible_positive_scales():
-    operation = MeasureOrientationZones(
+    operation = MeasureOrientationZones(legacy_mode=True,
         radial_ring_width=8.0,
         long_range_lag=32.0,
         include_diagnostics=True,
@@ -813,21 +840,21 @@ def test_long_range_parameters_require_compatible_positive_scales():
     assert restored.include_diagnostics is True
 
     with pytest.raises(ValueError, match="integer multiple"):
-        MeasureOrientationZones(
+        MeasureOrientationZones(legacy_mode=True,
             radial_ring_width=8.0,
             long_range_lag=12.0,
         )
     with pytest.raises(ValueError, match="finite and > 0"):
-        MeasureOrientationZones(radial_ring_width=0.0)
+        MeasureOrientationZones(legacy_mode=True, radial_ring_width=0.0)
     with pytest.raises(ValueError, match="integer multiple"):
-        MeasureOrientationZones(
+        MeasureOrientationZones(legacy_mode=True,
             radial_ring_width=8.0,
             long_range_lag=16.00008,
         )
     for field in ("radial_ring_width", "long_range_lag"):
         for value in (np.nan, np.inf):
             with pytest.raises(ValueError, match="finite and > 0"):
-                MeasureOrientationZones(**{field: value})
+                MeasureOrientationZones(legacy_mode=True, **{field: value})
 
 
 @pytest.mark.parametrize(
@@ -846,7 +873,7 @@ def test_literal_aggregate_parameters_are_validated(
     message: str,
 ) -> None:
     with pytest.raises(ValueError, match=message):
-        MeasureOrientationZones(**{field: value})
+        MeasureOrientationZones(legacy_mode=True, **{field: value})
 
 
 def test_rotation_invariance_of_R_magnitude_and_turning():
@@ -878,7 +905,7 @@ def test_rotation_invariance_of_R_magnitude_and_turning():
 
 def test_tiny_objects_are_all_nan():
     image = load_synth_yeast_plate()
-    df = MeasureOrientationZones().measure(image)
+    df = MeasureOrientationZones(legacy_mode=True).measure(image)
     # every row has the full column set; NaN allowed, no exceptions
     assert set(ORIENTATION_ZONE_PRIMARY.get_headers()).issubset(df.columns)
 
@@ -887,7 +914,7 @@ def test_measure_cache_is_compact():
     # Guard against memory bloat: after measure(), the per-object cache must hold
     # NO full-res arrays and NO seg dataclass — only scalars + the block quiver.
     image = load_synth_filamentous_plate()
-    op = MeasureOrientationZones()
+    op = MeasureOrientationZones(legacy_mode=True)
     op.measure(image)
     assert op._cache, "cache should be populated"
     assert not hasattr(op, "_cache_image")
@@ -924,7 +951,7 @@ def test_inspect_builds_figure():
     from plotly.colors import get_colorscale
 
     image = load_synth_filamentous_plate()
-    op = MeasureOrientationZones()
+    op = MeasureOrientationZones(legacy_mode=True)
     op.measure(image)
     fig = op.inspect(image)
     assert isinstance(fig, go.Figure)
@@ -996,7 +1023,7 @@ def test_inspect_builds_figure():
 
 def test_inspect_includes_legacy_metrics_only_when_diagnostics_are_enabled():
     image = load_synth_filamentous_plate()
-    op = MeasureOrientationZones(include_diagnostics=True)
+    op = MeasureOrientationZones(legacy_mode=True, include_diagnostics=True)
     op.measure(image)
 
     figure = op.inspect(image)
@@ -1037,7 +1064,7 @@ def test_cumulative_rotation_overlay_uses_degrees_and_excludes_inoculum(
         symmetric_radius=88.0,
         centroid_global=centre,
     )
-    op = MeasureOrientationZones()
+    op = MeasureOrientationZones(legacy_mode=True)
     monkeypatch.setattr(
         MeasureOrientationZones,
         "_prep",
@@ -1045,9 +1072,13 @@ def test_cumulative_rotation_overlay_uses_degrees_and_excludes_inoculum(
     )
     monkeypatch.setattr(
         MeasureOrientationZones,
-        "_iter_object_fields",
+        "_analyze_objects",
         lambda self, image, props, label2section: iter(
-            [(None, seg, obj_mask, phi, coherence, None, distance, centre)]
+            [
+                _mock_object_analysis(
+                    seg, obj_mask, phi, coherence, distance, centre
+                )
+            ]
         ),
     )
     fig = go.Figure()
@@ -1101,7 +1132,7 @@ def test_matched_cumulative_overlay_tracks_nearby_sectors_and_uses_full_range(
         symmetric_radius=88.0,
         centroid_global=centre,
     )
-    op = MeasureOrientationZones()
+    op = MeasureOrientationZones(legacy_mode=True)
     monkeypatch.setattr(
         MeasureOrientationZones,
         "_prep",
@@ -1109,9 +1140,13 @@ def test_matched_cumulative_overlay_tracks_nearby_sectors_and_uses_full_range(
     )
     monkeypatch.setattr(
         MeasureOrientationZones,
-        "_iter_object_fields",
+        "_analyze_objects",
         lambda self, image, props, label2section: iter(
-            [(None, seg, obj_mask, phi, coherence, None, distance, centre)]
+            [
+                _mock_object_analysis(
+                    seg, obj_mask, phi, coherence, distance, centre
+                )
+            ]
         ),
     )
     fig = go.Figure()
@@ -1193,7 +1228,7 @@ def test_matched_cumulative_overlay_draws_gap_as_dashed_bridge(monkeypatch):
     orientation[2, 0] = np.deg2rad(15.0)
     resultant[0, 0] = 1.0
     resultant[2, 0] = 1.0
-    op = MeasureOrientationZones()
+    op = MeasureOrientationZones(legacy_mode=True)
     monkeypatch.setattr(
         MeasureOrientationZones,
         "_prep",
@@ -1201,9 +1236,13 @@ def test_matched_cumulative_overlay_draws_gap_as_dashed_bridge(monkeypatch):
     )
     monkeypatch.setattr(
         MeasureOrientationZones,
-        "_iter_object_fields",
+        "_analyze_objects",
         lambda self, image, props, label2section: iter(
-            [(None, seg, obj_mask, phi, coherence, None, distance, centre)]
+            [
+                _mock_object_analysis(
+                    seg, obj_mask, phi, coherence, distance, centre
+                )
+            ]
         ),
     )
     monkeypatch.setattr(
@@ -1239,7 +1278,7 @@ def test_matched_cumulative_overlay_draws_gap_as_dashed_bridge(monkeypatch):
 
 def test_matched_cumulative_overlay_warns_restart_is_segment_relative():
     image = load_synth_filamentous_plate()
-    op = MeasureOrientationZones()
+    op = MeasureOrientationZones(legacy_mode=True)
     op.measure(image)
 
     fig = op.matched_cumulative_rotation_overlay(
@@ -1261,7 +1300,7 @@ def test_matched_cumulative_overlay_warns_restart_is_segment_relative():
     ["allow_gap_bridging", "allow_restarts"],
 )
 def test_matched_cumulative_overlay_rejects_non_boolean_rule_flags(parameter):
-    op = MeasureOrientationZones()
+    op = MeasureOrientationZones(legacy_mode=True)
 
     with pytest.raises(ValueError, match="must be a boolean"):
         op.matched_cumulative_rotation_overlay(**{parameter: 1})
@@ -1295,7 +1334,7 @@ def test_fiber_bend_overlay_is_multiscale_unsigned_and_excludes_core(
     image.detect_mat = base
     image.gray = base
     image.rgb = np.repeat(base[..., None], 3, axis=2)
-    op = MeasureOrientationZones()
+    op = MeasureOrientationZones(legacy_mode=True)
     original_cache = {1: {"sentinel": True}}
     op._cache = original_cache
     op._cache_image_ref = weakref.ref(image)
@@ -1307,9 +1346,13 @@ def test_fiber_bend_overlay_is_multiscale_unsigned_and_excludes_core(
     )
     monkeypatch.setattr(
         MeasureOrientationZones,
-        "_iter_object_fields",
+        "_analyze_objects",
         lambda self, subject, props, label2section: iter(
-            [(None, seg, obj_mask, phi, coherence, None, distance, centre)]
+            [
+                _mock_object_analysis(
+                    seg, obj_mask, phi, coherence, distance, centre
+                )
+            ]
         ),
     )
 
@@ -1381,7 +1424,7 @@ def test_fiber_bend_overlay_is_multiscale_unsigned_and_excludes_core(
 
 
 def test_fiber_bend_overlay_rejects_unknown_scale_set():
-    op = MeasureOrientationZones()
+    op = MeasureOrientationZones(legacy_mode=True)
 
     with pytest.raises(ValueError, match="scale_set"):
         op.fiber_bend_overlay(
@@ -1393,7 +1436,7 @@ def test_fiber_bend_overlay_rejects_unknown_scale_set():
 def test_inspect_adds_long_range_ring_trace_from_compact_cache():
     import plotly.graph_objects as go
 
-    operation = MeasureOrientationZones()
+    operation = MeasureOrientationZones(legacy_mode=True)
     operation._cache[1] = {
         "centroid_global": (20.0, 30.0),
         "ring_profile": {
@@ -1439,7 +1482,7 @@ def test_inspect_adds_long_range_ring_trace_from_compact_cache():
 def test_inspect_fiber_axes_are_rotated_and_clipped_to_overall_selector():
     import plotly.graph_objects as go
 
-    op = MeasureOrientationZones(quiver_block=12)
+    op = MeasureOrientationZones(legacy_mode=True, quiver_block=12)
     op._cache[1] = {
         "centroid_global": (10.0, 10.0),
         "centre": (10.0, 10.0),
@@ -1468,7 +1511,7 @@ def test_inspect_remeasures_when_explicit_image_changes():
     plate = load_synth_filamentous_plate()
     first = plate.grid[18]
     second = plate.grid[19]
-    op = MeasureOrientationZones()
+    op = MeasureOrientationZones(legacy_mode=True)
     op.measure(first)
     assert op._cached_image() is first
 
@@ -1482,6 +1525,8 @@ def test_inspect_remeasures_when_explicit_image_changes():
 
     assert op._cache_signature != previous_signature
     assert op._cache_signature == op.model_dump_json()
+    assert '"long_range_lag":32.0' in op._cache_signature
+    assert len(figure.data) > 0
     assert not figure.layout.annotations
     assert figure.layout.margin.b is None
 
@@ -1490,7 +1535,7 @@ def test_report_builds_composed_figure():
     import plotly.graph_objects as go
 
     image = load_synth_filamentous_plate()
-    op = MeasureOrientationZones()
+    op = MeasureOrientationZones(legacy_mode=True)
     op.measure(image)
     fig = op.report(subject=image, show=False)
     assert isinstance(fig, go.Figure)
@@ -1516,7 +1561,7 @@ def test_orientation_plot_uses_plot_image_without_legacy_report_aliases():
         _OrientationZonesReport,
     )
 
-    op = MeasureOrientationZones()
+    op = MeasureOrientationZones(legacy_mode=True)
     assert isinstance(op, PlotImage)
     assert not hasattr(op, "dashboard")
     assert not hasattr(op, "dash")
@@ -1549,7 +1594,7 @@ def test_non_grid_image_uses_expanded_crop_fallback():
     image = load_synth_filamentous_plate()
     section = image.grid[18]
     assert not hasattr(section, "grid"), "grid section should be a plain Image"
-    df = MeasureOrientationZones(include_diagnostics=True).measure(section)
+    df = MeasureOrientationZones(legacy_mode=True, include_diagnostics=True).measure(section)
     assert isinstance(df, pd.DataFrame)
     assert len(df) == section.num_objects
     assert set(ORIENTATION_ZONE_PRIMARY.get_headers()).issubset(df.columns)
@@ -1564,23 +1609,22 @@ def test_collapsed_zones_yield_all_nan():
     # branch is never hit by the fixtures, so drive _fill_metrics directly using
     # real per-object arrays with a mutated (collapsed) segmentation.
     image = load_synth_filamentous_plate()
-    op = MeasureOrientationZones()
+    op = MeasureOrientationZones(legacy_mode=True)
     props, label2section = op._prep(image)
-    _prop, seg, obj_mask, phi, coh, grad, dist_map, _centre = next(
-        op._iter_object_fields(image, props, label2section)
-    )
+    analysis = next(op._analyze_objects(image, props, label2section))
+    seg = analysis.segmentation
     seg.zones_computed = False
     seg.symmetric_radius = 0.0
     row: dict = {}
     op._fill_metrics(
         row,
         seg,
-        obj_mask,
-        phi,
-        coh,
-        grad,
-        dist_map,
-        _centre,
+        analysis.object_mask,
+        analysis.orientation,
+        analysis.coherence,
+        analysis.gradient,
+        analysis.distance_map,
+        analysis.center,
     )
     assert len(row) == len(ORIENTATION_ZONE_PRIMARY.get_headers())
     assert all(np.isnan(v) for v in row.values())
@@ -1591,7 +1635,7 @@ def test_radial_and_mask_variants_diverge_on_real_plate():
     # (spec §1/§2). In the sparse ring the mask carves holes the Radial variant
     # keeps, so the two concentration reads must differ for at least some objects.
     image = load_synth_filamentous_plate()
-    df = MeasureOrientationZones(include_diagnostics=True).measure(image)
+    df = MeasureOrientationZones(legacy_mode=True, include_diagnostics=True).measure(image)
     rad = df["OrientZones_Concentration-Radial-Sparse"].to_numpy(float)
     msk = df["OrientZones_Concentration-Mask-Sparse"].to_numpy(float)
     both = np.isfinite(rad) & np.isfinite(msk)

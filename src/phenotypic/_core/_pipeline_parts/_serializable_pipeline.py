@@ -69,7 +69,7 @@ class SerializablePipeline(NapariPipelineViewer):
     Serialization delegates to pydantic v2: every operation, measurement,
     post transform, and analyzer is a ``BaseModel``, so each entry is
     captured as ``{"class": <name>, "params": model.model_dump(mode="json")}``
-    and rebuilt with ``cls.model_validate(params)``. ``model_dump`` skips
+    and rebuilt through the class serialization-migration hook. ``model_dump`` skips
     ``PrivateAttr`` state (loggers, timing dicts, fitted DataFrames)
     automatically, so internal state is excluded without ad-hoc filtering.
     """
@@ -432,7 +432,7 @@ class SerializablePipeline(NapariPipelineViewer):
     #
     # Every operation is a pydantic ``BaseModel``, so each entry is
     # encoded as ``{"class": <name>, "params": model.model_dump(mode="json")}``
-    # and rebuilt with ``cls.model_validate(params)``. ``model_dump``
+    # and rebuilt through the class serialization-migration hook. ``model_dump``
     # already drops ``PrivateAttr`` state and serializes nested
     # ``OperationField`` / ``NdArrayField`` parameters, so there is no
     # ``__dict__`` walking and no ``try/except json.dumps`` block that
@@ -549,7 +549,7 @@ class SerializablePipeline(NapariPipelineViewer):
             params = SerializablePipeline._deserialize_value(
                 op_data.get("params", {}) or {}
             )
-            operations[name] = op_class.model_validate(params)
+            operations[name] = op_class._validate_serialized_params(params)
 
         return operations
 
@@ -588,7 +588,7 @@ class SerializablePipeline(NapariPipelineViewer):
                 k: cls._deserialize_value(v)
                 for k, v in (value.get("params", {}) or {}).items()
             }
-            return op_class.model_validate(nested_params)
+            return op_class._validate_serialized_params(nested_params)
 
         # Legacy operation-list marker (may mix operations and pipelines).
         if isinstance(value, dict) and value.get("__type__") == "operation_list":

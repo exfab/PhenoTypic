@@ -20,17 +20,19 @@ CombineMode = Literal["max", "mean", "min", "median"]
 class CompositeEnhance(NormalizedOutputMixin, ImageEnhancer):
     """Enhance ``detect_mat`` by combining several enhancers' response maps pixel-wise.
 
-    Apply two or more enhancers (or preprocessing pipelines ending in an
+    Apply one or more enhancers (or preprocessing pipelines ending in an
     enhancer) to the same plate image and reduce their ``detect_mat`` outputs
-    into a single response map. This ensembles complementary preprocessing
-    strategies: where one enhancer responds strongly to faint colonies and
-    another to sharp edges, ``'max'`` keeps the strongest signal from either.
-    It is the enhancer-side analogue of :class:`CompositeDetector`, which
-    combines binary masks rather than continuous response maps.
+    into a single response map. The immutable grayscale input can optionally
+    participate as another response source. This ensembles complementary
+    preprocessing strategies: where one enhancer responds strongly to faint
+    colonies and another to sharp edges, ``'max'`` keeps the strongest signal
+    from either. It is the enhancer-side analogue of
+    :class:`CompositeDetector`, which combines binary masks rather than
+    continuous response maps.
 
-    Each branch reads the *same* input ``detect_mat`` independently (branches
-    do not chain into one another), so the order of ``ops`` does not affect
-    the result for the commutative reductions used here.
+    Each enhancer branch reads the *same* input ``detect_mat`` independently
+    (branches do not chain into one another), so the order of ``ops`` does not
+    affect the result for the commutative reductions used here.
 
     Best For:
         - Fusing complementary focus maps (e.g. an edge response and a blob
@@ -61,6 +63,11 @@ class CompositeEnhance(NormalizedOutputMixin, ImageEnhancer):
             ``'mean'`` averages all branches. ``'median'`` takes the per-pixel
             median (robust to a single outlier branch; most useful with three
             or more enhancers). Default: ``'max'``.
+        include_gray: Include the immutable input ``image.gray`` layer as one
+            additional response map in the selected reduction. This allows a
+            branch response such as phase congruency to be fused with the
+            original grayscale signal before a downstream detector. Defaults
+            to ``False``.
         norm: Output range policy applied after reduction. ``None`` (default)
             passes values through untouched, which is what an arbitrarily-scaled
             (non unit-normalised) response map needs. ``"clip"`` saturates
@@ -72,7 +79,8 @@ class CompositeEnhance(NormalizedOutputMixin, ImageEnhancer):
         map. ``rgb`` and ``gray`` are unchanged.
 
     Raises:
-        ValueError: If ``ops`` is empty or contains only ``None`` slots.
+        ValueError: If ``ops`` is empty or contains only ``None`` slots while
+            ``include_gray`` is ``False``.
 
     Examples:
         Combine two enhancers, keeping the strongest response per pixel:
@@ -114,6 +122,7 @@ class CompositeEnhance(NormalizedOutputMixin, ImageEnhancer):
         default_factory=lambda: [BlurGauss(), MedianFilter()]
     )
     mode: CombineMode = "max"
+    include_gray: bool = False
     norm: NormOut = None
 
     @field_validator("ops", mode="before")
@@ -130,12 +139,14 @@ class CompositeEnhance(NormalizedOutputMixin, ImageEnhancer):
         return value
 
     def _operate(self, image: Image) -> Image:
-        """Apply each branch and reduce their ``detect_mat`` maps pixel-wise."""
+        """Reduce enhancer responses and optional grayscale pixel-wise."""
 
         # Import here to avoid a circular dependency at module load.
         from phenotypic import ImagePipeline
 
         response_maps: list[np.ndarray] = []
+        if self.include_gray:
+            response_maps.append(np.asarray(image.gray[:], dtype=float))
         for enhancer in self.ops:
             if enhancer is None:
                 # An unfilled GUI-builder slot; nothing to apply -- skip it.
@@ -148,7 +159,8 @@ class CompositeEnhance(NormalizedOutputMixin, ImageEnhancer):
 
         if not response_maps:
             raise ValueError(
-                "At least one enhancer must be provided to CompositeEnhance"
+                "At least one enhancer or include_gray=True must be provided "
+                "to CompositeEnhance"
             )
 
         combined = self._apply_norm(self._combine(response_maps))
