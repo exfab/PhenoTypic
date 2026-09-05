@@ -242,6 +242,34 @@ above it falls in, and cite the experiment and the ruling by identifier when it 
 the first or second. *"This deviation is fine because X"* is not a disposition — it is
 the third row wearing the first row's clothes.
 
+##### The rule's scope: drift, not every unmeasured choice
+
+**Check that the spec actually says something before calling a deviation drift.** The
+rule governs *the spec said X and the code does Y*. Where the spec is **silent**, the
+implementer has latitude, and an implementation choice inside that latitude is **not
+drift and needs no experiment** — it needs to be reasoned and reviewable.
+
+Worked example, and the orchestrator got this wrong first: `mint_run_identity` appears
+in the spec **once** (`design.md:328`), as `(config, *, restart) -> RunIdentity  CLI
+only`. That is a signature and a layer constraint. It says nothing about how
+`metadata_sha256` reaches the identity, nothing about how the mint-once guard is
+implemented, nothing about how the inventory digest is looked up. So P2's three flagged
+decisions are **latitude, not drift**, and demanding an experiment for each would be the
+rule over-firing.
+
+**Applying it to everything is how a good rule becomes noise.** If every unmeasured
+implementation choice is a finding, the report fills with them, and the one deviation
+that genuinely contradicts the spec is read at the same weight as a private helper's
+shape. The rule earns its severity by being narrow.
+
+**But note what does NOT change.** A latitude decision can still be a **correctness**
+finding on its own merits, and the disposition rule is silent about that. P2's
+`_metadata_digest_for` must recompute `metadata_sha256` because `phenotypicCLI.py:471`
+stamps it only after state creation — a real constraint, no experiment needed, no drift.
+It *still* needs a cross-module agreement test, because if the two computations diverge
+§7.4's late-metadata guarantee fires on every run instead of on a real edit. That is
+category E's concern (a guard that is prevention with no detection), not this rule's.
+
 #### Category E — the placeholder sweep, and why A does not cover it
 
 **Added at user request, 2026-09-05: guard against an implementer that ships a name instead
