@@ -5,8 +5,9 @@ import itertools
 from abc import ABC
 from typing import Any, ClassVar, Dict, List, Literal, Tuple, TYPE_CHECKING, Union
 
-import matplotlib
-import matplotlib.pyplot as plt
+# matplotlib is imported inside the methods that draw. A module-scope import
+# put pyplot (541 ms, the single largest remaining cost) on the
+# `import phenotypic` path for every run, most of which draw nothing.
 import numpy as np
 import pandas as pd
 import scipy.optimize as optimize
@@ -18,6 +19,9 @@ from phenotypic.schema import CULTURE, MeasurementInfo, MODEL_METRICS, qualified
 from phenotypic.sdk_ import ColumnRef
 
 from ._set_analyzer import SetAnalyzer, normalize_measurement_metadata_columns
+
+if TYPE_CHECKING:  # pragma: no cover - annotations only
+    import matplotlib.pyplot as plt
 
 if TYPE_CHECKING:
     import plotly.graph_objects as go
@@ -464,6 +468,9 @@ class ModelFitter(SetAnalyzer, PlotAnalysis, ABC):
         Returns:
             A ``(Figure, Axes)`` pair.
         """
+        import matplotlib
+        import matplotlib.pyplot as plt
+
         hue = legend if isinstance(legend, str) else None
         show_legend = legend is not False
         if hue is not None and hue not in self.groupby:
@@ -643,6 +650,8 @@ class ModelFitter(SetAnalyzer, PlotAnalysis, ABC):
         Raises:
             ImportError: If ``plotly`` is not installed.
         """
+        import matplotlib
+
         hue = legend if isinstance(legend, str) else None
         show_legend = legend is not False
         if hue is not None and hue not in self.groupby:

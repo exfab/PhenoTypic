@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from collections.abc import Sequence
 
 import numpy as np
-from matplotlib.axes import Axes
-from matplotlib.collections import PathCollection
-from matplotlib.colors import Colormap, Normalize
-from matplotlib.patches import Circle
-from matplotlib.quiver import Quiver
+# matplotlib is imported inside the methods that draw. A module-scope import
+# put pyplot (541 ms, the single largest remaining cost) on the
+# `import phenotypic` path for every run, most of which draw nothing.
 from numpy.typing import NDArray
 
 from ._literal_crossings import (
@@ -17,6 +17,13 @@ from ._literal_crossings import (
     LiteralSkeletonRingCrossingTransform,
     literal_crossing_ring_profile,
 )
+
+if TYPE_CHECKING:  # pragma: no cover - annotations only
+    from matplotlib.axes import Axes
+    from matplotlib.colors import Colormap
+    from matplotlib.colors import Normalize
+    from matplotlib.collections import PathCollection
+    from matplotlib.quiver import Quiver
 
 
 def _validated_image(
@@ -80,6 +87,9 @@ def plot_literal_crossing_map(
     Raises:
         ValueError: If image or plotting parameters are invalid.
     """
+    from matplotlib.patches import Circle
+    from matplotlib.colors import Normalize
+
     source = _validated_image(image, transform)
     if not np.isfinite(arrow_length) or arrow_length <= 0.0:
         raise ValueError("arrow_length must be finite and > 0")
@@ -239,6 +249,8 @@ def plot_literal_crossing_population(
     The ring profile is derived internally so raw crossings cannot be paired
     with a profile calculated from another transform.
     """
+    from matplotlib.colors import Normalize
+
     profile = literal_crossing_ring_profile(
         transform,
         minimum_points=minimum_points,
@@ -326,6 +338,8 @@ def plot_literal_crossing_outward_profile(
     Returns:
         Tuple of the change scatter artist and resultant axis.
     """
+    from matplotlib.colors import Normalize
+
     resolved_norm = (
         Normalize(vmin=-180.0, vmax=180.0) if norm is None else norm
     )

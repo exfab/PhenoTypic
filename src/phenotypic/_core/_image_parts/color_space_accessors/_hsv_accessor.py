@@ -6,11 +6,16 @@ if TYPE_CHECKING:
     pass
 
 import numpy as np
-from matplotlib import pyplot as plt
+# matplotlib is imported inside the methods that draw. A module-scope import
+# put pyplot (541 ms, the single largest remaining cost) on the
+# `import phenotypic` path for every run, most of which draw nothing.
 from skimage.color import rgb2hsv
 from skimage.exposure import histogram
 
 from phenotypic._core._image_parts.accessor_abstracts import ColorSpaceAccessor
+
+if TYPE_CHECKING:  # pragma: no cover - annotations only
+    import matplotlib.pyplot as plt
 
 
 class HsvAccessor(ColorSpaceAccessor):
@@ -142,6 +147,8 @@ class HsvAccessor(ColorSpaceAccessor):
             direction. Angular gridlines appear every 30 degrees. Radial gridlines
             show histogram bin counts.
         """
+        import matplotlib.pyplot as plt
+
         import matplotlib.colors as mcolors
 
         fig, axes = plt.subplots(
@@ -243,6 +250,8 @@ class HsvAccessor(ColorSpaceAccessor):
                 - np.ndarray: Array of three Axes objects for hue, saturation,
                   and brightness subplots respectively
         """
+        import matplotlib.pyplot as plt
+
         fig, axes = plt.subplots(nrows=3, figsize=figsize)
         ax = axes.ravel()
 
@@ -305,6 +314,8 @@ class HsvAccessor(ColorSpaceAccessor):
             Uses np.ma.array (masked arrays) to suppress visualization of background
             pixels. Only pixels where the object mask is non-zero are displayed.
         """
+        import matplotlib.pyplot as plt
+
         fig, axes = plt.subplots(nrows=3, figsize=figsize)
         ax = axes.ravel()
 

@@ -7,7 +7,9 @@ from typing import Union, Tuple, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     import napari
 
-import matplotlib.pyplot as plt
+# matplotlib is imported inside the methods that draw. A module-scope import
+# put pyplot (541 ms, the single largest remaining cost) on the
+# `import phenotypic` path for every run, most of which draw nothing.
 import numpy as np
 import pandas as pd
 
@@ -390,6 +392,8 @@ class ImageGridHandler(Image):
         Returns:
             np.ndarray: Copy of overlay_arr with section boxes drawn.
         """
+        import matplotlib.pyplot as plt
+
         from skimage.draw import rectangle_perimeter
 
         arr = overlay_arr.copy()

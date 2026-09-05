@@ -9,7 +9,9 @@ if TYPE_CHECKING:
 import numpy as np
 
 from scipy.sparse import csc_matrix, coo_matrix, issparse
-import matplotlib.pyplot as plt
+# matplotlib is imported inside the methods that draw. A module-scope import
+# put pyplot (541 ms, the single largest remaining cost) on the
+# `import phenotypic` path for every run, most of which draw nothing.
 from skimage.measure import label
 from skimage.color import label2rgb
 
@@ -20,6 +22,9 @@ from phenotypic.sdk_.exceptions_ import (
     ArrayKeyValueShapeMismatchError,
     InvalidMapValueError,
 )
+
+if TYPE_CHECKING:  # pragma: no cover - annotations only
+    import matplotlib.pyplot as plt
 
 
 class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
@@ -387,6 +392,8 @@ class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
             >>> # Use a different colormap
             >>> fig = image.objmap.show(cmap='tab20')
         """
+        import matplotlib.pyplot as plt
+
         cmap = plt.get_cmap(cmap)
         cmap.set_bad(color="black")
         return self._mpl_plot(

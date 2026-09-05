@@ -5,7 +5,9 @@ if TYPE_CHECKING:
     pass
 
 from skimage.measure import label
-import matplotlib.pyplot as plt
+# matplotlib is imported inside the methods that draw. A module-scope import
+# put pyplot (541 ms, the single largest remaining cost) on the
+# `import phenotypic` path for every run, most of which draw nothing.
 import numpy as np
 
 from phenotypic._core._image_parts.accessor_abstracts import SingleChannelAccessor
@@ -16,6 +18,9 @@ from phenotypic.sdk_.exceptions_ import (
     InvalidMaskScalarValueError,
     ArrayKeyValueShapeMismatchError,
 )
+
+if TYPE_CHECKING:  # pragma: no cover - annotations only
+    import matplotlib.pyplot as plt
 
 
 class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
@@ -301,6 +306,8 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
             >>> # Display with custom size and title
             >>> fig = objmask.show(figsize=(8, 8), title='Object Mask')
         """
+        import matplotlib.pyplot as plt
+
         cmap = plt.get_cmap(cmap)
         cmap.set_bad(color="black")
         return self._mpl_plot(

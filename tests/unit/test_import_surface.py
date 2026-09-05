@@ -568,3 +568,48 @@ def test_public_util_annotations_still_resolve_at_runtime():
     for function in (split_measurements, generate_output_key):
         hints = typing.get_type_hints(function)
         assert "df" in hints, f"{function.__name__} lost its parameter annotation"
+
+
+def test_the_slurm_worker_still_gets_a_headless_backend():
+    """`matplotlib.use("Agg")` must still run before anything imports pyplot.
+
+    `_cli_process_single` sets the non-interactive backend at module scope. That
+    is load-bearing: a SLURM worker has no display, and a pyplot import that
+    picks an interactive backend first would fail or hang. Deferring the worker
+    import out of `_cli_execution_strategies` (so `--help` stops paying 274 ms
+    for matplotlib) moves *when* that runs, so this pins that it still runs
+    early enough.
+
+    The order asserted is the real one: import the CLI, then the worker, then
+    pyplot -- and matplotlib must not have been loaded before the worker, or the
+    backend selection would be racing whatever loaded it.
+    """
+    script = """
+import json, sys
+
+import phenotypic.phenotypicCLI  # noqa: F401
+before_worker = "matplotlib" in sys.modules
+
+import phenotypic._cli._cli_process_single  # noqa: F401  -- calls use("Agg")
+import matplotlib
+
+after_worker = matplotlib.get_backend()
+
+import matplotlib.pyplot  # noqa: F401
+
+print(json.dumps({
+    "matplotlib_loaded_before_worker": before_worker,
+    "backend_after_worker": after_worker,
+    "backend_after_pyplot": matplotlib.get_backend(),
+}))
+"""
+    result = surface._probe(script)
+    assert not result["matplotlib_loaded_before_worker"], (
+        "matplotlib was already imported before the worker set its backend"
+    )
+    assert result["backend_after_worker"].lower() == "agg", (
+        f"worker left the backend at {result['backend_after_worker']!r}, not Agg"
+    )
+    assert result["backend_after_pyplot"].lower() == "agg", (
+        "importing pyplot changed the backend away from Agg"
+    )

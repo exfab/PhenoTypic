@@ -23,7 +23,9 @@
         "wall_seconds_min": 3.52,
         "importtime_self_seconds": 3.258
       }
-    }
+    },
+    "methodology": "min of 3 wall runs on the shared interactive node r34",
+    "caveat": "Measured on a SHARED node under uncontrolled load (observed load average up to 128 on a 16-core allocation). Comparable within a run, NOT comparable across stages. Superseded by the exclusive-node series below."
   },
   {
     "label": "stage-1-colour-numba-h5py",
@@ -49,7 +51,9 @@
         "wall_seconds_min": 2.843,
         "importtime_self_seconds": 2.556
       }
-    }
+    },
+    "methodology": "min of 3 wall runs on the shared interactive node r34",
+    "caveat": "Measured on a SHARED node under uncontrolled load (observed load average up to 128 on a 16-core allocation). Comparable within a run, NOT comparable across stages. Superseded by the exclusive-node series below."
   },
   {
     "label": "stage-2-cv2-polars-plotly",
@@ -74,6 +78,58 @@
         ],
         "wall_seconds_min": 2.495,
         "importtime_self_seconds": 2.238
+      }
+    },
+    "methodology": "min of 3 wall runs on the shared interactive node r34",
+    "caveat": "Measured on a SHARED node under uncontrolled load (observed load average up to 128 on a 16-core allocation). Comparable within a run, NOT comparable across stages. Superseded by the exclusive-node series below."
+  },
+  {
+    "label": "stage-3-matplotlib",
+    "recorded_at_utc": "2026-09-04T20:46:49.928300+00:00",
+    "node": "r34",
+    "commit": "0331433e",
+    "measurements": {
+      "import phenotypic": {
+        "wall_seconds": [
+          2.602,
+          2.767,
+          2.748
+        ],
+        "wall_seconds_min": 2.602,
+        "importtime_self_seconds": 2.388
+      },
+      "python -m phenotypic --help": {
+        "wall_seconds": [
+          2.865,
+          2.89,
+          2.951
+        ],
+        "wall_seconds_min": 2.865,
+        "importtime_self_seconds": 2.578
+      }
+    },
+    "methodology": "min of 3 wall runs on the shared interactive node r34",
+    "caveat": "Measured on a SHARED node under uncontrolled load (observed load average up to 128 on a 16-core allocation). Comparable within a run, NOT comparable across stages. Superseded by the exclusive-node series below."
+  },
+  {
+    "label": "exclusive-node series (authoritative)",
+    "methodology": "One Slurm job, --exclusive, load average 0.58 at start; every tree measured back-to-back in the same job on the same node (r45), min of 7 wall runs each, source selected with PYTHONPATH against pinned worktrees. Cross-stage comparison is only meaningful this way -- the earlier per-stage numbers were taken on a shared node at wildly different load and overstated the later stages' cost.",
+    "node": "r45",
+    "measurements": {
+      "base 4a5e3ccb": {
+        "import_min_s": 2.39,
+        "help_min_s": 2.47,
+        "modules": 3341
+      },
+      "stage 2 7b259247": {
+        "import_min_s": 1.65,
+        "help_min_s": 1.76,
+        "modules": 2354
+      },
+      "stage 3": {
+        "import_min_s": 1.41,
+        "help_min_s": 1.53,
+        "modules": 2230
       }
     }
   }

@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from typing import Any, Literal, TYPE_CHECKING
 
-import matplotlib.pyplot as plt
+# matplotlib is imported inside the methods that draw. A module-scope import
+# put pyplot (541 ms, the single largest remaining cost) on the
+# `import phenotypic` path for every run, most of which draw nothing.
 import numpy as np
 # plotly is imported inside the functions that build figures. A module-scope
 # import put it on the `import phenotypic` startup path for every CLI and
 # tune run, none of which render a figure.
-from matplotlib.gridspec import GridSpec
 from scipy import fft as scipy_fft
 from scipy.stats import norm
 from skimage.filters import sobel
@@ -32,6 +33,9 @@ from ._diagnostics_types import (
     PANEL_K_VARIANCE,
     PanelDescription,
 )
+
+if TYPE_CHECKING:  # pragma: no cover - annotations only
+    import matplotlib.pyplot as plt
 
 if TYPE_CHECKING:  # pragma: no cover - annotations only
     import plotly.graph_objects as go
@@ -977,6 +981,8 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
         self, ax: plt.Axes, detect_mat: np.ndarray, correlation_length: float
     ) -> None:
         """Plot noise autocorrelation (Panel B)."""
+        import matplotlib.pyplot as plt
+
         autocorr = self._compute_autocorrelation(detect_mat.astype(np.float64))
 
         # Normalize to [0, 1]
@@ -1042,6 +1048,8 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
         self, ax: plt.Axes, detect_mat: np.ndarray, calculator: ImageMetricsCalculator
     ) -> None:
         """Plot local contrast map (Panel E)."""
+        import matplotlib.pyplot as plt
+
         contrast_map = calculator.compute_local_contrast(detect_mat)
 
         im = ax.imshow(contrast_map, cmap="magma", vmin=0, vmax=np.percentile(contrast_map, 99))
@@ -1103,6 +1111,8 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
 
     def _plot_gradient_magnitude(self, ax: plt.Axes, detect_mat: np.ndarray) -> None:
         """Plot Sobel gradient magnitude (Panel G)."""
+        import matplotlib.pyplot as plt
+
         img_norm = detect_mat.astype(np.float64) / self._max_intensity
         gradient = sobel(img_norm)
 
@@ -1115,6 +1125,8 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
         self, ax: plt.Axes, coherence_map: np.ndarray, mean_coherence: float
     ) -> None:
         """Plot orientation coherence from structure tensor (Panel H)."""
+        import matplotlib.pyplot as plt
+
         im = ax.imshow(coherence_map, cmap="plasma", vmin=0, vmax=1)
         ax.set_title("H: Orientation Coherence", fontweight="bold")
         ax.axis("off")
@@ -1158,6 +1170,8 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
         self, ax: plt.Axes, background: np.ndarray, nonuniformity: float
     ) -> None:
         """Plot background estimate (Panel J)."""
+        import matplotlib.pyplot as plt
+
         im = ax.imshow(background, cmap="gray")
         ax.set_title("J: Background Estimate", fontweight="bold")
         ax.axis("off")
@@ -1188,6 +1202,8 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
         self, ax: plt.Axes, detect_mat: np.ndarray, calculator: ImageMetricsCalculator
     ) -> None:
         """Plot local variance map on log scale (Panel K)."""
+        import matplotlib.pyplot as plt
+
         variance = calculator.compute_local_variance(detect_mat)
 
         # Log scale for better visualization
@@ -1435,6 +1451,9 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
 
         Produces the original multi-panel figure when Panel is not installed.
         """
+        from matplotlib.gridspec import GridSpec
+        import matplotlib.pyplot as plt
+
         # Parse sections
         if sections == "all":
             section_list = ["noise", "contrast", "structure", "background"]

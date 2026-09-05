@@ -132,7 +132,7 @@
     "phenotypic": {
       "forbidden_in_final": [],
       "forbidden_preloaded": [],
-      "phenotypic_module_count": 431,
+      "phenotypic_module_count": 432,
       "phenotypic_modules": [
         "phenotypic",
         "phenotypic._core",
@@ -146,6 +146,7 @@
         "phenotypic._core._image_parts._image_io_handler",
         "phenotypic._core._image_parts._image_objects_handler",
         "phenotypic._core._image_parts._image_visualization_handler",
+        "phenotypic._core._image_parts._overlay_palette",
         "phenotypic._core._image_parts.accessor_abstracts",
         "phenotypic._core._image_parts.accessor_abstracts._color_space_accessor",
         "phenotypic._core._image_parts.accessor_abstracts._image_accessor_base",
@@ -573,7 +574,6 @@
         "bm4d",
         "charset_normalizer",
         "cloudpickle",
-        "cycler",
         "cython_runtime",
         "dateutil",
         "defusedxml",
@@ -581,12 +581,9 @@
         "imagecodecs",
         "imageio",
         "joblib",
-        "kiwisolver",
         "lazy_loader",
         "mahotas",
-        "matplotlib",
         "mmh3",
-        "mpl_toolkits",
         "numpy",
         "numpydoc",
         "packaging",
@@ -598,7 +595,6 @@
         "pydantic",
         "pydantic_core",
         "pympler",
-        "pyparsing",
         "pytz",
         "pywt",
         "rawpy",
@@ -611,7 +607,7 @@
         "typing_extensions",
         "typing_inspection"
       ],
-      "total_modules": 2354
+      "total_modules": 2230
     },
     "phenotypic.phenotypicCLI": {
       "forbidden_in_final": [],
@@ -631,7 +627,6 @@
         "phenotypic._cli._cli_output_manager",
         "phenotypic._cli._cli_parquet_agg",
         "phenotypic._cli._cli_process_only",
-        "phenotypic._cli._cli_process_single",
         "phenotypic._cli._cli_recompile_recovery",
         "phenotypic._cli._cli_recompile_slurm_scripts",
         "phenotypic._cli._cli_report_generator",
@@ -664,6 +659,7 @@
         "phenotypic._core._image_parts._image_io_handler",
         "phenotypic._core._image_parts._image_objects_handler",
         "phenotypic._core._image_parts._image_visualization_handler",
+        "phenotypic._core._image_parts._overlay_palette",
         "phenotypic._core._image_parts.accessor_abstracts",
         "phenotypic._core._image_parts.accessor_abstracts._color_space_accessor",
         "phenotypic._core._image_parts.accessor_abstracts._image_accessor_base",
@@ -1094,7 +1090,6 @@
         "charset_normalizer",
         "click",
         "cloudpickle",
-        "cycler",
         "cython_runtime",
         "dateutil",
         "defusedxml",
@@ -1102,12 +1097,9 @@
         "imagecodecs",
         "imageio",
         "joblib",
-        "kiwisolver",
         "lazy_loader",
         "mahotas",
-        "matplotlib",
         "mmh3",
-        "mpl_toolkits",
         "numpy",
         "numpydoc",
         "packaging",
@@ -1120,7 +1112,6 @@
         "pydantic",
         "pydantic_core",
         "pympler",
-        "pyparsing",
         "pytz",
         "pywt",
         "rawpy",
@@ -1134,7 +1125,7 @@
         "typing_inspection",
         "yaml"
       ],
-      "total_modules": 2599
+      "total_modules": 2472
     }
   },
   "exports": {

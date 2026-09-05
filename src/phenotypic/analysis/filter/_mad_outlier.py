@@ -1,16 +1,21 @@
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Any, Callable, TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 from joblib import delayed, Parallel
-import matplotlib.pyplot as plt
+# matplotlib is imported inside the methods that draw. A module-scope import
+# put pyplot (541 ms, the single largest remaining cost) on the
+# `import phenotypic` path for every run, most of which draw nothing.
 from pydantic import field_validator, PrivateAttr
 
 from .._helper import _qc_math
 from ..abc_ import SetAnalyzer
 from ..abc_._set_analyzer import normalize_measurement_metadata_columns
+
+if TYPE_CHECKING:  # pragma: no cover - annotations only
+    import matplotlib.pyplot as plt
 
 # Iglewicz & Hoaglin (1993) consistency constant: for a normal distribution
 # sigma ~= 1.4826 * MAD, and 0.6745 ~= 1 / 1.4826. Multiplying the absolute
@@ -334,6 +339,8 @@ class MADOutlierRemover(SetAnalyzer):
             **kwargs,
     ) -> tuple[plt.Figure, plt.Axes]:
         """Create individual subplots for each group."""
+        import matplotlib.pyplot as plt
+
         # Extract figure-level kwargs
         fig_kwargs = {
             k: v for k, v in kwargs.items() if k in ("dpi", "facecolor", "edgecolor")
@@ -490,6 +497,8 @@ class MADOutlierRemover(SetAnalyzer):
             **kwargs,
     ) -> tuple[plt.Figure, plt.Axes]:
         """Create collapsed stacked view with all groups in single plot."""
+        import matplotlib.pyplot as plt
+
         # Extract figure-level kwargs
         fig_kwargs = {
             k: v for k, v in kwargs.items() if k in ("dpi", "facecolor", "edgecolor")

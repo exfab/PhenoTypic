@@ -2,15 +2,20 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Tuple
 
-import matplotlib.pyplot as plt
+# matplotlib is imported inside the methods that draw. A module-scope import
+# put pyplot (541 ms, the single largest remaining cost) on the
+# `import phenotypic` path for every run, most of which draw nothing.
 import numpy as np
 import skimage as ski
-from matplotlib.patches import Rectangle
 
 from phenotypic.schema import IMAGE
 from phenotypic.sdk_.funcs_ import normalize_rgb_bitdepth
 
+from ..._overlay_palette import OVERLAY_COLORS
 from ._accessor_io_handler import AccessorIOHandler
+
+if TYPE_CHECKING:  # pragma: no cover - annotations only
+    import matplotlib.pyplot as plt
 
 if TYPE_CHECKING:
     pass
@@ -24,19 +29,12 @@ class AccessorMplHandler(AccessorIOHandler):
     above in the MRO chain.
     """
 
-    # Default overlay colors matching skimage.color.colorlabel.DEFAULT_COLORS
-    _OVERLAY_COLORS: np.ndarray = np.array([
-        [1.0, 0.0, 0.0],  # red
-        [0.0, 0.0, 1.0],  # blue
-        [1.0, 1.0, 0.0],  # yellow
-        [1.0, 0.0, 1.0],  # magenta
-        [0.0, 0.5, 0.0],  # green
-        [0.294, 0.0, 0.510],  # indigo
-        [1.0, 0.549, 0.0],  # darkorange
-        [0.0, 1.0, 1.0],  # cyan
-        [1.0, 0.753, 0.796],  # pink
-        [0.604, 0.804, 0.196],  # yellowgreen
-    ], dtype=np.float32)
+    #: Default overlay colours, matching
+    #: ``skimage.color.colorlabel.DEFAULT_COLORS``. Defined in
+    #: :mod:`.._overlay_palette` so callers wanting only the colours need not
+    #: import this matplotlib-bound class; re-exported here because subclasses
+    #: and existing callers reach it as ``AccessorMplHandler._OVERLAY_COLORS``.
+    _OVERLAY_COLORS: np.ndarray = OVERLAY_COLORS
 
     # ------------------------------------------------------------------
     # Overlay composition (shared by mpl and plotly layers)
@@ -174,6 +172,8 @@ class AccessorMplHandler(AccessorIOHandler):
             This method uses `skimage.exposure.histogram <https://scikit-image.org/docs/stable/api/skimage.exposure.html#skimage.exposure.histogram>`_
             for computing the histogram data.
         """
+        import matplotlib.pyplot as plt
+
         arr = self._subject_arr
         dtype = arr.dtype
 
@@ -272,6 +272,8 @@ class AccessorMplHandler(AccessorIOHandler):
             tuple[plt.Figure, plt.Axes]: A tuple containing the created or passed Matplotlib `Figure` and `Axes` objects.
 
         """
+        import matplotlib.pyplot as plt
+
         fig, ax = (ax.get_figure(), ax) if ax else plt.subplots(figsize=figsize)
 
         mpl_settings = mpl_settings if mpl_settings else {}
@@ -549,6 +551,9 @@ class AccessorMplHandler(AccessorIOHandler):
         Args:
             ax: Matplotlib axes to draw section boxes on.
         """
+        from matplotlib.patches import Rectangle
+        import matplotlib.pyplot as plt
+
         min_rr, max_rr, min_cc, max_cc = (
             self._root_image.grid._get_section_object_bounds_arrays()  # type: ignore[attr-defined]
         )

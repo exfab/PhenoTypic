@@ -105,6 +105,13 @@ FORBIDDEN_EAGER_BY_TARGET: dict[str, tuple[str, ...]] = {
         "cv2",
         "plotly",
         "polars",
+        # Stage 3. matplotlib (274 ms) and pyplot (541 ms) -- the largest single
+        # remaining cost. `matplotlib.use("Agg")` in the SLURM worker is still a
+        # module-scope side effect; the worker module is now imported lazily by
+        # the execution strategy instead, so the backend is still set before
+        # anything draws. Pinned by
+        # `test_the_slurm_worker_still_gets_a_headless_backend`.
+        "matplotlib",
     ),
     "phenotypic.phenotypicCLI": (
         "colour",
@@ -114,6 +121,7 @@ FORBIDDEN_EAGER_BY_TARGET: dict[str, tuple[str, ...]] = {
         "numba",
         "cv2",
         "plotly",
+        "matplotlib",
         # NOTE: `polars` is deliberately absent -- see above.
     ),
 }
@@ -172,6 +180,11 @@ MODULE_SCOPE_ALLOWED_PREFIXES: tuple[tuple[str, str], ...] = (
     ("gui/", "polars"),
     ("gui/", "plotly"),
     ("gui/", "cv2"),
+    ("gui/", "matplotlib"),
+    # The SLURM worker sets the headless backend at module scope and must keep
+    # doing so; it is off both eager paths because the execution strategy now
+    # imports it lazily.
+    ("_cli/_cli_process_single.py", "matplotlib"),
     # polars is the CLI measurement layer's working dependency; the CLI target
     # does not forbid it. See FORBIDDEN_EAGER_BY_TARGET.
     ("_cli/", "polars"),

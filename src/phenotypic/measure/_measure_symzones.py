@@ -726,11 +726,9 @@ class MeasureSymZones(MeasureFeatures, PlotImage):
         # the Objmap layer here matches colors elsewhere in phenotypic, and
         # key it on ``label`` (not enumeration index) so neighbouring objects
         # cycle through the whole palette rather than colliding.
-        from phenotypic._core._image_parts.accessor_abstracts._image_accessor_base_parents._accessor_mpl_handler import (  # noqa: E501
-            AccessorMplHandler,
-        )
+        from phenotypic._core._image_parts._overlay_palette import OVERLAY_COLORS
 
-        _palette_rgb = (AccessorMplHandler._OVERLAY_COLORS * 255).astype(np.int32)
+        _palette_rgb = (OVERLAY_COLORS * 255).astype(np.int32)
         n_palette = len(_palette_rgb)
 
         bucket_xs: list[list[float]] = [[] for _ in range(n_palette)]

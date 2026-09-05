@@ -36,7 +36,12 @@ from ._cli_types import (
 )
 from phenotypic._core._provenance import pipeline_source_identity
 from ._cli_output_manager import OutputManager
-from ._cli_process_single import process_single_image_core
+# `._cli_process_single` is imported inside the method that runs it, matching
+# the measure worker below. It calls `matplotlib.use("Agg")` at module scope
+# -- a load-bearing side effect for headless SLURM workers -- so importing it
+# here made every `--help` and `--dry-run` pay 274 ms for matplotlib to set a
+# backend nothing was going to draw with. Deferring moves that cost to the
+# first image actually processed, which is still long before anything plots.
 from phenotypic.sdk_.slurm import get_slurm_array_limit
 from phenotypic.sdk_._file_locking import exclusive_path_lock
 from ._cli_slurm_array_scripts import (
@@ -478,6 +483,8 @@ class LocalParallelStrategy(ExecutionStrategy):
             work_identity = work_id_for_image(
                 self.config, dataset.name, image_path
             )
+            from ._cli_process_single import process_single_image_core
+
             process_single_image_core(
                 pipeline_path=self.config.pipeline_json,
                 image_path=image_path,

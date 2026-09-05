@@ -7,7 +7,9 @@ if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
 
 import numpy as np
-import matplotlib.pyplot as plt
+# matplotlib is imported inside the methods that draw. A module-scope import
+# put pyplot (541 ms, the single largest remaining cost) on the
+# `import phenotypic` path for every run, most of which draw nothing.
 import pandas as pd
 from skimage.color import label2rgb
 
@@ -17,6 +19,9 @@ from phenotypic.sdk_.constants_ import IMAGE_TYPES
 from phenotypic.schema import OBJECT
 from phenotypic.schema import BBOX, GRID
 from phenotypic.sdk_.exceptions_ import NoObjectsError
+
+if TYPE_CHECKING:  # pragma: no cover - annotations only
+    import matplotlib.pyplot as plt
 
 
 class GridAccessor:
@@ -778,6 +783,8 @@ class GridAccessor:
             >>> grid_image.grid.show_column_overlay(ax=axes[0])
             >>> grid_image.grid.show_row_overlay(ax=axes[1])
         """
+        import matplotlib.pyplot as plt
+
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
         else:
@@ -940,6 +947,8 @@ class GridAccessor:
             >>> plt.suptitle("Column vs Row Grid Visualization")
             >>> plt.show()
         """
+        import matplotlib.pyplot as plt
+
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
         else:
@@ -1286,6 +1295,8 @@ class GridAccessor:
                 ``(rectangles, colors)`` where each rectangle is a 4x2 array
                 of corner vertices and each color is an RGBA array.
         """
+        import matplotlib.pyplot as plt
+
         row_edges = self.get_row_edges()
         col_edges = self.get_col_edges()
         cmap = plt.get_cmap("tab20")
