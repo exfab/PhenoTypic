@@ -429,21 +429,59 @@ single `deliverables/qc/qc.duckdb` (one self-describing table per QC module plus
 `phenotypic.sdk_` helpers (`deliverables_dir`, `master_measurements_parquet_path`,
 `qc_dir`, `qc_duckdb_path`, …), never by hand-joining names.
 
-**Master vs. mirror.** Each embedded table is built by right-joining the stable
-metadata snapshot (metadata left, baseline measurements right), so it contains
-every measured row, excludes metadata-only rows, and records ordered join keys
-and snapshot SHA-256 in Parquet schema metadata.
-`master_measurements.{csv,parquet}` is the exact pre-post concatenation of
-marker-authorized embedded tables; it is already metadata-joined measured data.
-Finalization rejects mixed metadata digests or join keys.
+**Master vs. mirror.** *(Rewritten by P4 — spec §7.3. The paragraph this
+replaced described the pre-inversion contract in every particular, and each
+particular is now false.)*
 
-`measurements.{csv,parquet}` is the post-applied mirror the GUI reads and
-curates. Before post, finalization appends the external metadata anti-join once
-using the recorded keys. Measured rows receive `QC_MetadataOnly=false`;
-appended phantoms receive `QC_MetadataOnly=true`, keep their metadata values,
-and have null measurement/info values. Per-feature splits and named analysis
-artifacts derive from the mirror. Analysis consumers resolve tables through
-`analysis_manifest.json`, never by constructing filenames.
+Each embedded table carries **measurements alone**; the image's own rows of the
+run's metadata snapshot sit beside it at `tables/metadata/pht-metadata.parquet`,
+and the store root records which snapshot it was built against in
+`attributes.phenotypic.metadata_table.snapshot_sha256`.
+`master_measurements.parquet` is the exact pre-post concatenation of
+marker-authorized embedded tables, so it is **un-joined**: intrinsic identity
+(`Metadata_Dataset`, `Metadata_ImageName`, the `IMAGE`-owned provenance block)
+plus measurements, and no user metadata at all.
+
+**The join happens once, at finalization**, in `finalize_run`
+(`_cli_finalize_run.py`) → `finalize_post_master_outputs` →
+`join_metadata(master_df, metadata_csv, how="left")`. That one call identifies
+its own common columns, so **nothing reads the stores' recorded join keys** —
+which is why D-A is free to leave them inconsistent across snapshot
+generations. Finalization no longer rejects mixed metadata digests; divergence
+is an advisory, and an advisory is never a gate. It *does* still refuse mixed
+**authority** — a tree holding both embedded tables and legacy external
+Parquets (`refuse_mixed_measurement_authority`).
+
+`measurements.{csv,parquet}` is the post-applied, metadata-joined mirror the GUI
+reads and curates. Metadata is the **left** frame, deliberately: a metadata
+identity that matched no measured object survives as a phantom row with
+`QC_MetadataOnly=true`, its metadata values kept and its measurement/info
+columns null, while a measured object whose key appears in **no** metadata row
+is dropped — an object outside the described experiment. The master keeps that
+object; the mirror does not. That asymmetry is the master/mirror distinction the
+"feed analysis and dashboards from the mirror" rule rests on. Per-feature splits
+and named analysis artifacts derive from the mirror. Analysis consumers resolve
+tables through `analysis_manifest.json`, never by constructing filenames.
+
+**Reading a master written before the inversion.** Nothing stamps the file — a
+v1 master carries **user** metadata because the join happened per image, a v2
+carries only **intrinsic identity** metadata, and that *is* the discrimination.
+Ask `phenotypic.sdk_.master_carries_user_metadata(frame)`, which is its one home
+and carries its retirement condition; never re-derive the check at a reader.
+
+**Ownership decides, never the `Metadata_` prefix** — both shapes carry it. A v2
+master carries `Metadata_Dataset` and `Metadata_ImageName`, and `Metadata_Strain`
+is itself a schema member (`GENETIC.STRAIN`), so neither the prefix nor
+"is it in the schema" separates the two. A header is user metadata when
+`is_metadata_header` accepts it and `metadata_owner_for_header` returns neither
+`IMAGE` nor `EXPERIMENT.DATASET`. This is the general rule in root `CLAUDE.md`
+("Metadata queries use schema ownership, never string prefixes"), and the master
+is the case where getting it wrong classifies *every* v2 master as v1.
+
+The limit that leaves: column provenance is not recoverable from a column name,
+so a master carrying a non-`IMAGE` metadata column that a **custom operation**
+produced reads as v1 though no CSV was joined into it. The forward pipeline emits
+no such column, which is what keeps this a limit rather than a defect.
 
 Ordinary SLURM checkpoints read only marker-authorized embedded tables and write
 rolling cache state below `.phenotypic/progress/`. They do not recreate

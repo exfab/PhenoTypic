@@ -800,12 +800,17 @@ def test_clause_one_is_load_bearing(complete_run):
 
     _remove_one_image_marker(complete_run)
     surviving = [f"work-{FIXTURE_STEMS[0]}"]
-    _falsify_aggregate_proof(
-        "source_set_digest", canonical_digest(surviving)
-    )(complete_run)
-    _falsify_aggregate_proof("source_image_count", len(surviving))(
+    # P4/U-4: the RUN proof, not the aggregate. Rule 1 reads the source-set
+    # binding off whichever proof `_source_set_binding` returns, and the run
+    # proof now carries its own copy -- so falsifying only the aggregate would
+    # leave clause 2's comparison FAILING on the run proof's stale two-image
+    # digest, and this test would pass without ever reaching clause 1. The
+    # whole point is a partial publication in which clause 2 is entirely
+    # satisfied, so the subset digest has to land where rule 1 reads it.
+    _falsify_run_proof("source_set_digest", canonical_digest(surviving))(
         complete_run
     )
+    _falsify_run_proof("source_image_count", len(surviving))(complete_run)
 
     assert (
         resolve_run_state(complete_run, depth="deep").completion
@@ -831,21 +836,29 @@ def test_clause_one_is_load_bearing(complete_run):
             "finalization_input_digest",
             id="finalization_input_digest",
         ),
+        # P4/U-4: these two moved from the AGGREGATE proof to the RUN proof.
+        # `_source_set_binding` returns the run proof directly once it carries
+        # `source_set_digest`, so falsifying the aggregate's copy no longer
+        # reaches rule 1 at all -- the parameters would still be green while
+        # testing nothing. The aggregate's own copy is checked by a different
+        # reader (`_cli_completion.current_aggregate_is_current`) against the
+        # live success set, which is what makes the pair a cross-check.
         pytest.param(
-            _falsify_aggregate_proof("source_set_digest"),
+            _falsify_run_proof("source_set_digest"),
             "source_set_digest",
             id="source_set_digest",
         ),
         pytest.param(
-            _falsify_aggregate_proof("source_image_count", 99),
+            _falsify_run_proof("source_image_count", 99),
             "source_image_count",
             id="source_image_count",
         ),
-        pytest.param(
-            _falsify_run_proof("publication_id", "deadbeef"),
-            "publication_id",
-            id="publication_id",
-        ),
+        # The `publication_id` parameter is DELETED, not repointed. U-4 cut
+        # the field from both writers, so `_falsify_run_proof("publication_id",
+        # ...)` would add a key nothing reads and assert that a run stays
+        # complete-then-incomplete for a reason that no longer exists -- a
+        # parameter that cannot fail, which is what this whole test exists to
+        # rule out.
     ],
 )
 def test_each_of_rule_ones_comparisons_is_load_bearing(
@@ -1428,27 +1441,25 @@ def test_a_terminal_owner_status_is_not_a_live_authority(incomplete_run):
 
 
 def test_a_post_u4_run_proof_binds_without_the_aggregate(complete_run):
-    """Rule 1's modern branch -- dead today, live the moment P4 lands.
+    """Rule 1's modern branch -- **live since P4**, and this is its gate.
 
     `_source_set_binding` returns the run proof directly when it carries
     `source_set_digest`, and otherwise follows `publication_id` to the
-    aggregate proof. Today's `publish_run_completion_evidence` writes neither
-    field, so **only the legacy branch has ever executed** and the modern one
-    arrives in P4 unproven.
+    aggregate proof. Before P4 the publisher wrote neither field, so only the
+    legacy branch had ever executed; P4's writer change makes the modern one
+    the normal path, and this test was written then to assert the real shape
+    once it arrived ("this test's premise has expired and it should assert
+    the real shape instead").
 
-    The failure that would land is silent and total. `:910-911` reads BOTH
+    The failure it guards is silent and total. Rule 1 reads BOTH
     `source_set_digest` and `source_image_count` off whichever proof the
-    binding returns -- so a P4 publishing the digest without the count makes
-    the arity check compare `None` to an int, rule 1 stops firing, and **every
-    full run reads `incomplete` forever**. That is N-4's shape, which this dual
-    read exists to prevent, and the plan's claim of "no window in which the two
-    comparisons silently stop being made" is the one part of rule 1 that
-    nothing else checks.
+    binding returns -- so a publisher writing the digest without the count
+    makes the arity check compare `None` to an int, rule 1 stops firing, and
+    **every full run reads `incomplete` forever**. That is N-4's shape.
 
-    **The aggregate binding is deliberately broken here.** Stamping the run
-    proof alone would pass via the legacy branch and prove nothing, so the
-    `publication_id` link is severed: `complete` is then reachable ONLY through
-    line 930.
+    **The aggregate binding is deliberately broken here.** The legacy branch
+    must not be able to rescue the verdict, or a run proof that silently
+    stopped carrying its own binding would still read `complete`.
     """
     import json
 
@@ -1466,26 +1477,37 @@ def test_a_post_u4_run_proof_binds_without_the_aggregate(complete_run):
         for work_id, image in before.images.items()
         if image.verdict == "verified"
     )
-
-    agg_path = aggregate_publication_marker_path(complete_run)
-    aggregate = json.loads(agg_path.read_text(encoding="utf-8"))
-    aggregate["publication_id"] = "severed-so-the-legacy-branch-cannot-bind"
-    agg_path.write_text(json.dumps(aggregate), encoding="utf-8")
+    assert verified, "no verified images; every assertion below is vacuous"
 
     path = run_completion_marker_path(complete_run)
     proof = json.loads(path.read_text(encoding="utf-8"))
-    assert "source_set_digest" not in proof, (
-        "today's publisher already writes source_set_digest -- this test's "
-        "premise has expired and it should assert the real shape instead"
+    assert "publication_id" not in proof, (
+        "U-4 did not cut publication_id from the run proof"
     )
-    proof["source_set_digest"] = canonical_digest(verified)
-    proof["source_image_count"] = len(verified)
-    path.write_text(json.dumps(proof), encoding="utf-8")
+    assert proof["source_set_digest"] == canonical_digest(verified), (
+        "the real publisher did not COPY the aggregate's source-set binding "
+        "into the run proof -- the modern branch is unreachable and rule 1 "
+        "is running on the legacy one"
+    )
+    assert proof["source_image_count"] == len(verified), (
+        "the digest was published without its count; rule 1's arity check "
+        "compares None to an int and every full run reads incomplete"
+    )
+
+    # Severing the legacy link must change nothing: the modern branch never
+    # consults the aggregate proof.
+    agg_path = aggregate_publication_marker_path(complete_run)
+    aggregate = json.loads(agg_path.read_text(encoding="utf-8"))
+    assert "publication_id" not in aggregate, (
+        "U-4 did not cut publication_id from the aggregate proof"
+    )
+    aggregate["publication_id"] = "severed-so-the-legacy-branch-cannot-bind"
+    agg_path.write_text(json.dumps(aggregate), encoding="utf-8")
 
     state = resolve_run_state(complete_run, depth="deep")
     assert state.completion == "complete", (
         "a run proof carrying its own source-set binding did not satisfy "
-        "rule 1 -- the post-U-4 branch is broken and P4 would ship it"
+        "rule 1 -- the post-U-4 branch is broken"
     )
 
 

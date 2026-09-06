@@ -810,20 +810,21 @@ def _run_post_master_steps(
     slurm_generation: str | None = None,
 ) -> None:
     """Run canonical post-master outputs before marker publication."""
+    from ._cli_finalize_run import refuse_mixed_measurement_authority
     from ._cli_output_manager import (
-        _consistent_embedded_join_keys,
         _load_pipeline_from_output_dir,
         finalize_post_master_outputs,
     )
 
+    # CAN-2: the recorded per-store join keys are gone. `finalize_post_master_
+    # outputs` derives its own common columns from the master and the snapshot,
+    # so the `measurement_sources` / `metadata_join_keys` split -- which existed
+    # only because the two callers arrived with differently-shaped inputs --
+    # goes with them. What survives is the mixed-AUTHORITY refusal (H6), which
+    # the retired function also carried and which nothing else replaces.
     measurement_sources = task.get("measurement_sources")
-    metadata_join_keys: tuple[str, ...] | None
-    if measurement_sources is None:
-        metadata_join_keys = tuple(
-            str(key) for key in task.get("metadata_join_keys", [])
-        )
-    else:
-        metadata_join_keys = _consistent_embedded_join_keys(
+    if measurement_sources is not None:
+        refuse_mixed_measurement_authority(
             [Path(str(path)) for path in measurement_sources]
         )
 
@@ -845,7 +846,6 @@ def _run_post_master_steps(
                 merged_df,
                 pipeline,
                 metadata_csv=metadata_csv,
-                metadata_join_keys=metadata_join_keys,
                 no_qc=no_qc,
             )
         else:
@@ -855,7 +855,6 @@ def _run_post_master_steps(
                     merged_df,
                     pipeline,
                     metadata_csv=metadata_csv,
-                    metadata_join_keys=metadata_join_keys,
                     no_qc=no_qc,
                 )
 

@@ -38,16 +38,9 @@ if TYPE_CHECKING:
 from ._cli_types import Dataset
 from ._embedded_measurement_tables import prepare_image_tables
 from ._metadata_join import (
-    normalize_external_metadata_columns,
     normalize_measurement_metadata_columns,
     prepare_metadata_join_keys,
 )
-from ._measurement_sources import (
-    add_metadata_image_name_from_filename,
-    discover_measurement_sources,
-    measurement_sources_by_path,
-)
-from ._cli_parquet_agg import SOURCE_PATH_COLUMN, aggregate_parquet_files
 from phenotypic.schema import EXPERIMENT, IMAGE, METADATA_MATCH
 from phenotypic.util import split_measurements
 from phenotypic.sdk_ import (
@@ -129,6 +122,164 @@ def _is_metadata_integrity_error(exc: ValueError) -> bool:
     )
 
 
+#: Throwaway column names used by the ragged join. Prefixed so they cannot
+#: collide with a measurement, metadata or locator column, and dropped before
+#: anything is returned.
+_KEY_NULL_MASK_PREFIX = "__phenotypic_keynull__"
+_METADATA_ROW_INDEX = "__phenotypic_metadata_row__"
+
+
+def _structural_key_patterns(
+    df: "pl.DataFrame", common: list[str]
+) -> list[tuple[bool, ...]]:
+    """Return the distinct null patterns the join keys take across *df*.
+
+    One pattern is the ordinary case: every row carries the same key columns.
+    More than one means the frame is **ragged** -- a ``diagonal_relaxed``
+    concat over images whose measurement schemas differ, where a column absent
+    from one image's table is filled with null for its rows.
+    """
+    if df.height == 0:
+        return [tuple(False for _ in common)]
+    masks = [
+        pl.col(key).is_null().alias(f"{_KEY_NULL_MASK_PREFIX}{key}")
+        for key in common
+    ]
+    return df.select(masks).unique().rows()
+
+
+def _join_ragged_key_groups(
+    metadata_df: "pl.DataFrame",
+    df: "pl.DataFrame",
+    common: list[str],
+    how: str,
+    flag: str,
+    patterns: list[tuple[bool, ...]],
+) -> "pl.DataFrame":
+    """Join a ragged measurement frame without losing a measured row.
+
+    **The problem.** ``master_measurements.parquet`` is a ``diagonal_relaxed``
+    concat of per-image tables, so a column that only *some* images measured is
+    null for the rest. ``prepare_metadata_join_keys`` selects join keys by
+    column intersection, so such a column is still a key -- and a null key
+    **anti-matches**. Every row of every image that lacked the column is
+    silently dropped from the mirror, and the metadata rows they should have
+    matched appear as phantoms instead. Measured: a two-image tree where only
+    one image carried ``Grid_RowNum`` lost 100% of the other image's rows.
+
+    **The fix, and what it is not.** A null here means "this image's table had
+    no such column", not "this object's value is missing" -- and a concat
+    cannot invent the value it never had. So this does not fabricate anything.
+    It groups the frame by *which key columns its rows actually carry* and
+    joins each group on the keys that group has: the image with
+    ``Grid_RowNum`` joins on it, the image without joins on the rest. Key
+    SELECTION is unchanged (user ruling, 2026-09-06) -- every column in both
+    frames remains eligible -- and no measured row is lost.
+
+    **The ordinary case is untouched.** With one pattern the caller never
+    reaches this function, so a non-ragged frame takes the same single
+    ``join`` it always did, with the same row order.
+
+    > **The tradeoff the user accepted, recorded here so the next person
+    > knows it was a decision and not an oversight.** Leaving key selection
+    > alone keeps the blast radius on join behaviour narrow -- nothing changes
+    > for the overwhelmingly common non-ragged frame. The cost is that this
+    > class of problem RECURS whenever a metadata CSV happens to share a
+    > column name with a measurement column: that column silently becomes a
+    > join key. Here that is now survivable rather than lossy, but it is still
+    > a join nobody asked for. The alternative -- restricting keys to an
+    > explicit or metadata-declared set -- was considered and not taken.
+
+    Args:
+        metadata_df: Normalized metadata frame (the LEFT frame).
+        df: Normalized measurement frame, already carrying every key column.
+        common: The join keys, as selected by column intersection.
+        how: ``"left"`` or ``"inner"``, as passed to :func:`join_metadata`.
+        flag: The ``QC_MetadataOnly`` header.
+        patterns: The distinct key null-patterns, from
+            :func:`_structural_key_patterns`.
+
+    Returns:
+        The joined frame, metadata columns first, with ``QC_MetadataOnly``
+        under ``how="left"``.
+    """
+    indexed = metadata_df.with_row_index(_METADATA_ROW_INDEX)
+    mask_names = [f"{_KEY_NULL_MASK_PREFIX}{key}" for key in common]
+    tagged = df.with_columns(
+        [
+            pl.col(key).is_null().alias(name)
+            for key, name in zip(common, mask_names)
+        ]
+    )
+
+    matched: list[pl.DataFrame] = []
+    unjoinable: list[pl.DataFrame] = []
+    for pattern in patterns:
+        predicate = pl.lit(True)
+        for name, is_null in zip(mask_names, pattern):
+            predicate = predicate & (pl.col(name) == is_null)
+        group = tagged.filter(predicate).drop(mask_names)
+        usable = [
+            key for key, is_null in zip(common, pattern) if not is_null
+        ]
+        if not usable:
+            # Every key is structurally absent for these rows, so there is no
+            # key to join them ON -- distinct from a row whose key VALUE is
+            # absent from the metadata, which is dropped deliberately. Losing
+            # them would break the invariant this function exists for, so they
+            # are kept with null metadata.
+            logger.warning(
+                "%d measurement row(s) carry none of the join columns %s and "
+                "cannot be matched to metadata; kept with null metadata",
+                group.height,
+                common,
+            )
+            unjoinable.append(group)
+            continue
+        logger.info(
+            "Ragged join group: %d row(s) joined on %s", group.height, usable
+        )
+        matched.append(
+            indexed.join(group, on=usable, how="inner", maintain_order="left")
+        )
+
+    parts: list[pl.DataFrame] = []
+    measured = (
+        pl.concat(matched, how="diagonal_relaxed") if matched else None
+    )
+    if measured is not None:
+        parts.append(
+            measured.with_columns(pl.lit(False).alias(flag))
+            if how == "left"
+            else measured
+        )
+    if how == "left":
+        # A metadata row is a phantom only when it matched in NO group --
+        # computed once, globally, against a row index carried through the
+        # joins. Per-group phantoms would double-count every metadata row that
+        # matched one image's schema and not another's.
+        phantoms = (
+            indexed
+            if measured is None
+            else indexed.join(
+                measured.select(_METADATA_ROW_INDEX).unique(),
+                on=_METADATA_ROW_INDEX,
+                how="anti",
+            )
+        )
+        if phantoms.height:
+            parts.append(phantoms.with_columns(pl.lit(True).alias(flag)))
+        parts.extend(
+            group.with_columns(pl.lit(False).alias(flag))
+            for group in unjoinable
+        )
+
+    if not parts:
+        return df.clear().with_columns(pl.lit(True).alias(flag)).clear()
+    out = pl.concat(parts, how="diagonal_relaxed")
+    return out.drop(_METADATA_ROW_INDEX)
+
+
 def join_metadata(
     df: "pl.DataFrame",
     metadata_csv: Path,
@@ -194,13 +345,25 @@ def join_metadata(
     n_rows_before = df.height
     n_cols_before = len(df.columns)
     flag = str(METADATA_MATCH.METADATA_ONLY)
-    if how == "left":
-        df = df.with_columns(pl.lit(True).alias(_MEAS_PRESENT_SENTINEL))
-    out = metadata_df.join(df, on=common, how=how, maintain_order="left")
-    if how == "left":
-        out = out.with_columns(
-            pl.col(_MEAS_PRESENT_SENTINEL).is_null().alias(flag)
-        ).drop(_MEAS_PRESENT_SENTINEL)
+    # A RAGGED frame -- more than one structural null pattern over the join
+    # keys -- cannot take the single join below: a key that is null because
+    # the image never measured that column anti-matches, and every one of that
+    # image's rows is silently dropped. One pattern is the ordinary case and
+    # keeps the original path, byte for byte, including its row order.
+    patterns = _structural_key_patterns(df, common)
+    ragged = len(patterns) > 1
+    if ragged:
+        out = _join_ragged_key_groups(
+            metadata_df, df, common, how, flag, patterns
+        )
+    else:
+        if how == "left":
+            df = df.with_columns(pl.lit(True).alias(_MEAS_PRESENT_SENTINEL))
+        out = metadata_df.join(df, on=common, how=how, maintain_order="left")
+        if how == "left":
+            out = out.with_columns(
+                pl.col(_MEAS_PRESENT_SENTINEL).is_null().alias(flag)
+            ).drop(_MEAS_PRESENT_SENTINEL)
     n_new_cols = len(out.columns) - n_cols_before
 
     # Three independently computed signals. Height arithmetic can no longer
@@ -224,7 +387,11 @@ def join_metadata(
 
     # (2) Measurement rows that matched no metadata — real under both modes,
     #     since measurements are the right frame.
-    n_dropped = prepared.analysis.unmatched_measurement_count
+    # Computed by `prepare_metadata_join_keys` against the FULL key set, which
+    # no group of a ragged frame uses -- it would report as "dropped" every row
+    # that the ragged path deliberately joined on a subset. Suppressed there
+    # rather than reported wrongly; the per-group counts are logged above.
+    n_dropped = 0 if ragged else prepared.analysis.unmatched_measurement_count
     if n_dropped > 0:
         logger.warning(
             "Metadata %s join dropped %d/%d measurement rows "
@@ -871,107 +1038,11 @@ def _image_metadata_from_mirror(mirror_df: "pl.DataFrame") -> list[dict]:
     ]
 
 
-def _append_metadata_only_rows(
-    master_df: "pl.DataFrame",
-    metadata_csv: Path,
-    join_keys: tuple[str, ...],
-) -> "pl.DataFrame":
-    """Append the external metadata anti-join without rejoining measured rows."""
-    working = normalize_measurement_metadata_columns(master_df)
-    metadata = normalize_external_metadata_columns(
-        working, pl.read_csv(metadata_csv)
-    )
-    missing = [
-        key
-        for key in join_keys
-        if key not in working.columns or key not in metadata.columns
-    ]
-    if missing:
-        raise ValueError(
-            "Recorded metadata join keys are absent during finalization: "
-            + ", ".join(missing)
-        )
-    flag = str(METADATA_MATCH.METADATA_ONLY)
-    measured = working.with_columns(pl.lit(False).alias(flag))
-    if not join_keys:
-        return measured
-
-    comparable_measurements = working.with_columns(
-        pl.col(key).cast(pl.String) for key in join_keys
-    )
-    comparable_metadata = metadata.with_columns(
-        pl.col(key).cast(pl.String) for key in join_keys
-    )
-    measured_keys = comparable_measurements.select(join_keys).unique()
-    phantoms = comparable_metadata.join(
-        measured_keys,
-        on=list(join_keys),
-        how="anti",
-    ).with_columns(pl.lit(True).alias(flag))
-    return pl.concat([measured, phantoms], how="diagonal_relaxed")
-
-
-def _consistent_embedded_join_keys(
-    paths: list[Path],
-) -> tuple[str, ...] | None:
-    """Return one embedded-table join generation or reject a mixed snapshot."""
-    import pyarrow.parquet as pq  # type: ignore[import-untyped]
-
-    from phenotypic.sdk_ import (
-        EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS,
-        MEASUREMENT_TABLE_RELATIVE_PATH,
-    )
-
-    suffix = MEASUREMENT_TABLE_RELATIVE_PATH.parts
-    embedded = [
-        path
-        for path in paths
-        if tuple(Path(path).parts[-len(suffix) :]) == suffix
-    ]
-    if not embedded:
-        return None
-    if len(embedded) != len(paths):
-        raise ValueError(
-            "Cannot aggregate mixed embedded and legacy measurement authority"
-        )
-
-    keys = EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS
-    generations: set[tuple[str, tuple[str, ...]]] = set()
-    for path in embedded:
-        metadata = pq.read_schema(path).metadata or {}
-        required = (
-            keys.JOIN_STATUS,
-            keys.JOIN_KEYS,
-            keys.METADATA_SNAPSHOT_SHA256,
-        )
-        missing = [key for key in required if key.encode() not in metadata]
-        if missing:
-            raise ValueError(
-                f"Embedded measurement table {path} lacks provenance: {missing}"
-            )
-        status = metadata[keys.JOIN_STATUS.encode()].decode()
-        raw_join_keys = json.loads(metadata[keys.JOIN_KEYS.encode()].decode())
-        if not isinstance(raw_join_keys, list) or not all(
-            isinstance(key, str) for key in raw_join_keys
-        ):
-            raise ValueError(f"Invalid embedded join-key provenance in {path}")
-        digest = metadata[keys.METADATA_SNAPSHOT_SHA256.encode()].decode()
-        if status == "joined" and (not raw_join_keys or not digest):
-            raise ValueError(f"Incomplete joined-table provenance in {path}")
-        generations.add((digest, tuple(raw_join_keys)))
-    if len(generations) != 1:
-        raise ValueError(
-            "Embedded measurement tables have mixed metadata digests or join keys"
-        )
-    return next(iter(generations))[1]
-
-
 def finalize_post_master_outputs(
     output_dir: Path,
     master_df: "pl.DataFrame",
     pipeline: Optional["ImagePipeline"],
     metadata_csv: Optional[Path] = None,
-    metadata_join_keys: tuple[str, ...] | None = None,
     no_qc: bool = False,
     study_config: Optional[dict] = None,
     commit_guard: "CommitGuard | None" = None,
@@ -979,24 +1050,31 @@ def finalize_post_master_outputs(
     """Run every CLI side effect that follows a freshly written master file.
 
     This is the single canonical entry point for the work that happens after
-    :data:`~phenotypic.sdk_.MASTER_MEASUREMENTS_PARQUET` (and its CSV
-    counterpart) land on disk. Every code path that writes the master —
-    :func:`aggregate_measurements`, the recompile sentinel, future
-    re-aggregators — should call this so the post-applied
-    :data:`~phenotypic.sdk_.MEASUREMENTS_PARQUET` mirror, the persisted
-    :data:`~phenotypic.sdk_.PIPELINE_JSON`, the analysis output, and the
-    per-feature splits stay in lock-step.
+    :data:`~phenotypic.sdk_.MASTER_MEASUREMENTS_PARQUET` lands on disk. Every
+    code path that writes the master — :func:`finalize_run`,
+    :func:`aggregate_measurements`, the recompile sentinel — should call this
+    so the post-applied :data:`~phenotypic.sdk_.MEASUREMENTS_PARQUET` mirror,
+    the persisted :data:`~phenotypic.sdk_.PIPELINE_JSON`, the analysis output,
+    and the per-feature splits stay in lock-step.
 
     The order is:
 
-    1. If *metadata_csv* and recorded *metadata_join_keys* are provided,
-       append only metadata rows whose keys are absent from *master_df*,
-       flagging them ``QC_MetadataOnly = true``. Measured rows already
-       carry their publication-time metadata from the embedded tables and are
-       not joined again. Legacy metadata-free masters without recorded keys
-       retain the historical left join. This runs **before** post so
+    1. When *metadata_csv* is supplied, join it onto the master with
+       :func:`join_metadata` (``how="left"``): user metadata reaches every
+       matched measured row, and a metadata identity that matched no measured
+       object survives as a phantom row flagged ``QC_MetadataOnly = true``.
+       **One call, both halves.** This runs **before** post so
        :class:`PostMeasurement` ops can reference joined columns through
        their schema member names.
+
+       Spec §7.3 moved the join here. Before the inversion the master's rows
+       already carried their publication-time metadata from the embedded
+       tables, and this function's other branch appended only the anti-join.
+       P4 falsified that premise: the embedded tables now carry measurements
+       alone, so the branch that "does not join measured rows again" would
+       leave every measured row's user metadata null. It is deleted, not
+       kept alongside — an unjoined master reaching it is the silent failure,
+       not a tolerable one.
     2. Apply ``pipeline._post`` to the (optionally metadata-joined)
        working frame via :func:`_apply_post_to_master`. The resulting
        ``post_df`` is what the GUI viewer/curation layer reads from
@@ -1022,20 +1100,19 @@ def finalize_post_master_outputs(
 
     Args:
         output_dir: Output root that already contains
-            :data:`~phenotypic.sdk_.MASTER_MEASUREMENTS_PARQUET` (and the
-            CSV counterpart).
-        master_df: Exact concatenation of authorized embedded tables: joined
-            measured rows before post operations. Legacy callers may still
-            supply a metadata-free master.
+            :data:`~phenotypic.sdk_.MASTER_MEASUREMENTS_PARQUET`.
+        master_df: Exact concatenation of authorized embedded tables:
+            un-joined measured rows before post operations, carrying
+            intrinsic identity only.
         pipeline: Recovered pipeline, or ``None`` when it can't be
             located (the SLURM sentinel may run before any pipeline.json
             is persisted).
-        metadata_csv: Optional effective metadata snapshot. For embedded
-            masters, measured rows already contain its joined columns; only
-            the anti-join rows absent from measurements are appended to the
-            mirror before post operations. Legacy metadata-free masters use
-            the historical left join. Undetected metadata identities survive
-            as phantom rows carrying ``QC_MetadataOnly = true``.
+        metadata_csv: Optional effective metadata snapshot. It is joined onto
+            the master here, once, with metadata as the left frame:
+            measurement-unmatched metadata identities survive as phantom rows
+            carrying ``QC_MetadataOnly = true``, and a measured object whose
+            key appears in no metadata row is dropped from the mirror — an
+            object outside the described experiment. The master keeps it.
         no_qc: When ``True``, skip the QC compute step entirely (no ``qc/``
             artifact is written and the GUI review state is left as-is).
             When ``False`` (default), QC runs whenever the pipeline has a
@@ -1074,17 +1151,16 @@ def finalize_post_master_outputs(
     working_df = normalize_measurement_metadata_columns(master_df)
     if metadata_csv is not None:
         try:
-            if metadata_join_keys is None:
-                # Legacy masters are metadata-free and retain the historical
-                # join path. Embedded masters supply their recorded keys and
-                # must never join measured rows a second time.
-                working_df = join_metadata(
-                    working_df, metadata_csv, how="left"
-                )
-            else:
-                working_df = _append_metadata_only_rows(
-                    working_df, metadata_csv, metadata_join_keys
-                )
+            # ONE call, and it identifies its own common columns -- which is
+            # why the stores' recorded join keys stop being read at all
+            # (CAN-2) rather than needing to be tolerated once D-A makes them
+            # deliberately inconsistent. Metadata is the LEFT frame by design:
+            # `join_metadata` keeps metadata-unmatched rows as phantoms and
+            # drops measurement-unmatched ones, because "absence of a colony
+            # is data" while an object outside the described experiment is
+            # not. See its docstring; the orientation is a scientific
+            # decision, not an accident of argument order.
+            working_df = join_metadata(working_df, metadata_csv, how="left")
         except ValueError:
             # Metadata normalization uses ValueError for conflicting aliases,
             # incompatible duplicate dtypes, and lossy coalescing. A fallback
@@ -1358,19 +1434,18 @@ def _aggregate_measurements_unlocked(
     study_config: Optional[dict] = None,
     commit_guard: "CommitGuard | None" = None,
 ) -> Optional[Path]:
-    """Aggregate per-image Parquet files into a master CSV via DuckDB.
+    """Aggregate the authorized measurement sources into the master files.
 
-    Scans ``results/{name}/measurements/`` for each dataset, looking for
-    Parquet (``.parquet``) files.  Prefers pre-aggregated
-    ``_dataset_aggregated.parquet`` files when available, falling back to
-    individual per-image files.
+    Source selection and concatenation are
+    :func:`phenotypic._cli._cli_finalize_run.build_master_frame` -- marker-
+    authorized embedded tables on a forward tree, legacy external Parquets
+    (with the ``_dataset_aggregated.parquet`` preference) on a pre-record one,
+    staged through ``$SCRATCH`` when it is available. This function adds only
+    the master writes and the post-master delegation.
 
-    Uses :func:`aggregate_parquet_files` for efficient in-memory concatenation
-    and writes both ``master_measurements.csv`` and
-    ``master_measurements.parquet`` to *output_dir* using atomic writes.
-
-    When ``$SCRATCH`` is available (node-local SSD), files are staged
-    there first to avoid GPFS metadata overhead.
+    **Task 4 collapses it into a :func:`finalize_run` call outright.** It
+    survives this task because it still writes ``master_measurements.csv``,
+    which D8 deletes along with its ten dependent modules.
 
     Works without an :class:`OutputManager` instance so it can be called
     from the SLURM sentinel job.
@@ -1380,10 +1455,9 @@ def _aggregate_measurements_unlocked(
         dataset_names: Names of datasets to scan.
         include_dataset_column: Whether to insert ``Metadata_Dataset``
             into each file that lacks it.
-        metadata_csv: Optional path to an external CSV file. When
-            provided, shared columns are used as join keys for an inner
-            join with metadata on the left.  Only measurement rows that
-            match the metadata are kept.
+        metadata_csv: Optional path to the run's metadata snapshot. When
+            provided, :func:`finalize_post_master_outputs` joins it onto the
+            master with metadata as the left frame -- see that function.
         pipeline: Optional :class:`ImagePipeline` used for post, analysis,
             QC, and pipeline persistence.  When omitted, the pipeline is
             recovered from ``processing_state.json`` / the pipeline JSON
@@ -1410,74 +1484,27 @@ def _aggregate_measurements_unlocked(
         into ``analysis.{csv,parquet}``.
 
         ``master_measurements.{csv,parquet}`` are the exact concatenation
-        of authorized embedded tables (joined measured rows, pre-post), while
-        ``measurements.{csv,parquet}`` additionally carry exactly-once
-        metadata-only phantoms and the post-applied frame that the GUI viewer
-        reads/curates. Split and analysis failures never change the return
-        value.
+        of authorized embedded tables: **un-joined** measured rows carrying
+        intrinsic identity only, pre-post (§7.3). ``measurements.{csv,parquet}``
+        carry the metadata join, its exactly-once phantoms, and the
+        post-applied frame the GUI viewer reads/curates. Split and analysis
+        failures never change the return value.
     """
-    from ._cli_completion import authorized_measurement_sources
+    # ONE source-selection and concatenation, shared with `finalize_run`.
+    # Task 4 collapses this function into that call outright; until then the
+    # two must not be able to drift, because the phase's headline claim is
+    # that every mode produces a byte-identical master.
+    from ._cli_finalize_run import build_master_frame
 
-    authorized_sources = authorized_measurement_sources(output_dir)
-    if authorized_sources is None:
-        # Legacy chunked runs publish from `_dataset_aggregated.parquet`.
-        from ._cli_chunk_writer import flush_trailing_measurements_if_chunked
-
-        flush_trailing_measurements_if_chunked(output_dir)
-        path_to_dataset = measurement_sources_by_path(
-            discover_measurement_sources(output_dir, dataset_names)
-        )
-    else:
-        # Schema-3 terminal publication never trusts checkpoint aggregates or
-        # an unmarked per-image Parquet merely because it exists.
-        path_to_dataset = authorized_sources
-
-    metadata_join_keys = (
-        _consistent_embedded_join_keys(list(path_to_dataset))
-        if authorized_sources is not None
-        else None
-    )
-
-    # -- Stage to $SCRATCH ---------------------------------------------
-    scratch_dir = _stage_to_scratch(list(path_to_dataset.keys()))
-    if scratch_dir is not None:
-        active_mapping = _remap_to_scratch(path_to_dataset, scratch_dir)
-    else:
-        active_mapping = path_to_dataset
-
-    # -- Polars aggregation --------------------------------------------
-    master_df = aggregate_parquet_files(
-        file_paths=list(active_mapping.keys()),
-        path_to_dataset=active_mapping,
+    master_df, authorized = build_master_frame(
+        output_dir,
+        dataset_names,
         include_dataset_column=include_dataset_column,
-        keep_filename=True,
     )
-
-    if scratch_dir is not None and master_df is not None:
-        staged_to_original = {
-            str(scratch_dir / _scratch_dest_name(original)).replace(
-                "\\", "/"
-            ): str(original)
-            for original in path_to_dataset
-        }
-        master_df = master_df.with_columns(
-            pl.col(SOURCE_PATH_COLUMN)
-            .str.replace_all(r"\\", "/")
-            .replace_strict(
-                staged_to_original,
-                default=pl.col(SOURCE_PATH_COLUMN),
-            )
-            .alias(SOURCE_PATH_COLUMN)
-        )
-
-    if scratch_dir is not None:
-        _cleanup_scratch(scratch_dir)
 
     if master_df is None:
         logger.warning("No valid measurements found for aggregation")
         return None
-
-    master_df = add_metadata_image_name_from_filename(master_df)
 
     # -- Write master CSV and Parquet ----------------------------------
     master_csv_path = master_measurements_csv_path(output_dir)
@@ -1528,13 +1555,12 @@ def _aggregate_measurements_unlocked(
         master_df,
         resolved_pipeline,
         metadata_csv=metadata_csv,
-        metadata_join_keys=metadata_join_keys,
         no_qc=no_qc,
         study_config=study_config,
         commit_guard=commit_guard,
     )
 
-    if authorized_sources is not None:
+    if authorized:
         from ._cli_completion import publish_aggregate_snapshot
 
         publish_aggregate_snapshot(output_dir, commit_guard=commit_guard)

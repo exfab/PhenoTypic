@@ -674,9 +674,28 @@ It does not exist yet, so minting it would manufacture tracked state rather than
 it; the plan's own reader story was broken (the prescribed grep finds four hits, all
 writers); and P6 deletes an identical write-with-no-reader pattern *as a finding*.
 
-Decisively: **the master already self-describes.** A v1 master carries `Metadata_*`
-columns, a v2 master does not. A stamp asserting the schema is a second home for a fact the
-file already carries -- rule 3 one level up.
+Decisively: **the master already self-describes.** A v1 master carries **user** metadata
+columns because the join happened per-image; a v2 master carries only the **intrinsic**
+identity metadata every master has. A stamp asserting the schema is a second home for a fact
+the file already carries -- rule 3 one level up.
+
+> **⛔ CORRECTED 2026-09-06 — the first statement of this ruling used a PREFIX test and was
+> wrong.** It said *"a v1 master carries `Metadata_*` columns, a v2 master does not."* A v2
+> master carries `Metadata_Dataset` and `Metadata_ImageName`; the probe run for the
+> `()`-vs-`None` hazard printed them
+> (`columns=['Object_Label', 'Shape_Area', 'Metadata_ImageName', 'Metadata_Dataset']`), so
+> the rule as written misclassifies **every** v2 master as v1.
+>
+> **The discriminator is OWNERSHIP, not the prefix** — `metadata_owner_for_header()`, which
+> separates user metadata from `IMAGE`/`EXPERIMENT`-owned intrinsic identity.
+> `Metadata_Strain` is itself a schema member (`GENETIC.STRAIN`), so a prefix test cannot
+> even separate the two by inspection.
+>
+> This is the repo's own documented rule, in `CLAUDE.md`: *"Metadata queries use schema
+> ownership, never string prefixes … Do not use `startswith("Metadata_")` … as a semantic
+> metadata check."* **A ruling is not exempt from the rules of the codebase it rules on.**
+> `master_carries_user_metadata` / `user_metadata_headers` (`sdk_/_master_io.py`) are the
+> ownership-based form and are what shipped.
 
 > **The known ambiguity, to be tested and not reasoned about:** a v1 run with no
 > `metadata.csv` also has no `Metadata_*` columns, so column-presence conflates it with v2.
@@ -684,6 +703,38 @@ file already carries -- rule 3 one level up.
 > inference, and this change has been punished for exactly that twice. **If the two cases
 > are behaviourally distinguishable, mint the stamp and register it as tracked state
 > properly.**
+
+### The ragged join: key selection stays, the nulls get fixed (user, 2026-09-06)
+
+`join_metadata` (`_cli_output_manager.py:125`) selects its join keys by **raw column
+intersection** between the measurements and the metadata CSV -- no ownership or namespace
+filter. Measured on the failing Task 3 fixture:
+
+```
+Metadata left join dropped 2/4 measurement rows with no matching metadata
+  on columns ['Grid_RowNum', 'Metadata_Well']
+```
+
+`Grid_RowNum` is a **measurement** column (`is_metadata_header` False, no owner). After a
+`diagonal_relaxed` concat over images with different measured columns it is null for the
+ragged image, null keys anti-match, and those measured rows are dropped from the mirror. It
+warns; it does not stop.
+
+**Ruled: leave key selection alone; fix the ragged nulls.** A measurement column remains
+eligible as a join key.
+
+**The tradeoff the user accepted, recorded so a later reader does not mistake it for an
+oversight:** this keeps the blast radius on join behaviour narrow -- no existing run's join
+changes -- at the cost that the same class recurs whenever a metadata CSV happens to share a
+measurement column name. The rejected alternative was filtering candidate keys with
+`is_metadata_header()`, which excludes `Grid_RowNum` and keeps `Metadata_Well`.
+
+**The constraint is not negotiable**: no measured row may be lost.
+`test_a_heterogeneous_master_loses_no_measured_row` stands unweakened. And a concat cannot
+invent a value -- if an image genuinely never measured a column there is no correct fill, so
+the fix must stop a null column anti-matching rows out of the join rather than fabricate
+data. If those two cannot both hold, the ruling and the test are incompatible and that goes
+back to the user rather than being resolved by weakening either.
 
 ### Compatibility code states its own retirement condition (user, 2026-09-06)
 
@@ -694,9 +745,11 @@ the branch becomes dead:
 ```python
 # V1/V2 MASTER DISCRIMINATION -- DELETE WHEN: no run predating <this change> is
 # still readable, i.e. every master in the wild was written by finalize_run's
-# post-inversion path. A v1 master carries Metadata_* columns because the join
-# happened per-image; a v2 master does not, because the join moved to
-# finalization. Nothing else distinguishes them, and nothing stamps them.
+# post-inversion path. A v1 master carries USER metadata columns because the
+# join happened per-image; a v2 master carries only intrinsic identity
+# metadata, because the join moved to finalization. Test by OWNERSHIP
+# (metadata_owner_for_header), never by the "Metadata_" prefix -- a v2 master
+# still carries Metadata_Dataset and Metadata_ImageName. Nothing stamps them.
 ```
 
 The reason is this register's own recurring finding, seen from the far end: **compatibility

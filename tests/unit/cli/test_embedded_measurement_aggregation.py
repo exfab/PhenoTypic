@@ -1,4 +1,4 @@
-"""Aggregation semantics for metadata already joined into embedded tables."""
+"""Aggregation semantics after §7.3 moved the metadata join to finalization."""
 
 from __future__ import annotations
 
@@ -6,33 +6,37 @@ import inspect
 from pathlib import Path
 from unittest.mock import patch
 
-import pandas as pd
 import polars as pl
 import pytest
 
 from phenotypic._cli import _cli_recompile_worker
 from phenotypic._cli._cli_output_manager import (
-    _consistent_embedded_join_keys,
     _remap_to_scratch,
     _stage_to_scratch,
     finalize_post_master_outputs,
 )
 from phenotypic.schema import IMAGE, METADATA_MATCH, OBJECT, SIZE
-from phenotypic.sdk_ import (
-    PreparedEmbeddedMeasurementTable,
-    measurements_parquet_path,
-    write_embedded_measurement_table,
-)
+from phenotypic.sdk_ import measurements_parquet_path
 
 
-def test_finalize_appends_metadata_only_rows_once_without_rejoining_master(
+def test_finalize_joins_measured_rows_and_appends_phantoms_in_one_call(
     tmp_path: Path,
 ) -> None:
-    """The master is already joined; only the metadata anti-join belongs here."""
+    """P4 §7.3: ONE ``join_metadata`` call, both halves.
+
+    Rewritten from ``test_finalize_appends_metadata_only_rows_once_without_
+    rejoining_master``, which asserted ``metadata_join_keys`` was in the
+    signature and exercised the append-phantoms branch. That branch's premise
+    -- "measured rows already carry their publication-time metadata from the
+    embedded tables" -- is exactly what the inversion falsified, so the
+    parameter and the branch are gone. The frame handed in here is now
+    UN-joined, which is what a post-inversion master is.
+    """
     assert (
         "metadata_join_keys"
-        in inspect.signature(finalize_post_master_outputs).parameters
-    )
+        not in inspect.signature(finalize_post_master_outputs).parameters
+    ), "the retired parameter is still on the signature"
+
     image_name = str(IMAGE.IMAGE_NAME)
     metadata_only = str(METADATA_MATCH.METADATA_ONLY)
     object_label = str(OBJECT.LABEL)
@@ -40,7 +44,6 @@ def test_finalize_appends_metadata_only_rows_once_without_rejoining_master(
     master = pl.DataFrame(
         {
             image_name: ["plate-1.tiff"],
-            "Metadata_Strain": ["WT"],
             object_label: [1],
             area: [12.5],
         }
@@ -58,11 +61,14 @@ def test_finalize_appends_metadata_only_rows_once_without_rejoining_master(
         master,
         pipeline=None,
         metadata_csv=metadata_csv,
-        metadata_join_keys=(image_name,),
         no_qc=True,
     )
 
     assert master.height == 1
+    assert "Metadata_Strain" not in master.columns, (
+        "the master under test is not un-joined; this is the pre-inversion "
+        "shape and the join below proves nothing"
+    )
     assert mirror.height == 2
     measured = mirror.filter(~pl.col(metadata_only))
     phantom = mirror.filter(pl.col(metadata_only))
@@ -84,10 +90,18 @@ def test_finalize_appends_metadata_only_rows_once_without_rejoining_master(
     )
 
 
-def test_recompile_finalizer_reads_provenance_after_shard_rewrite(
+def test_recompile_finalizer_no_longer_carries_submit_time_join_keys(
     tmp_path: Path,
 ) -> None:
-    """Finalization must derive keys from rewritten stores, not submit-time state."""
+    """CAN-2: the recompile finalizer derives nothing from recorded keys.
+
+    Rewritten from ``test_recompile_finalizer_reads_provenance_after_shard_
+    rewrite``. Re-reading the stores' provenance after the shards were
+    rewritten was the right fix for a design where the finalizer needed those
+    keys; after P4 it needs none, and the ``measurement_sources`` /
+    ``metadata_join_keys`` split in ``_run_post_master_steps`` goes with them.
+    What survives is the mixed-AUTHORITY refusal (H6).
+    """
     table_path = (
         tmp_path / "store.ome.zarr" / "tables/measurements/table.parquet"
     )
@@ -99,10 +113,6 @@ def test_recompile_finalizer_reads_provenance_after_shard_rewrite(
 
     with (
         patch(
-            "phenotypic._cli._cli_output_manager._consistent_embedded_join_keys",
-            return_value=("Metadata_ImageName",),
-        ) as consistent,
-        patch(
             "phenotypic._cli._cli_output_manager._load_pipeline_from_output_dir",
             return_value=None,
         ),
@@ -113,40 +123,38 @@ def test_recompile_finalizer_reads_provenance_after_shard_rewrite(
     ):
         _cli_recompile_worker._run_post_master_steps(
             tmp_path,
-            {
-                "measurement_sources": [str(table_path)],
-                "metadata_join_keys": [],
-            },
+            {"measurement_sources": [str(table_path)]},
             pl.DataFrame({"Metadata_ImageName": ["plate.tiff"]}),
         )
 
-    consistent.assert_called_once_with([table_path])
-    assert observed["metadata_join_keys"] == ("Metadata_ImageName",)
+    assert observed, "the finalizer was never called; the negative is vacuous"
+    assert "metadata_join_keys" not in observed
 
 
-def test_aggregation_rejects_mixed_embedded_metadata_generations(
+def test_the_recompile_finalizer_still_refuses_mixed_authority(
     tmp_path: Path,
 ) -> None:
-    """A finalizer must not publish stores with different metadata digests."""
-    table_paths: list[Path] = []
-    for index, digest in enumerate(("a" * 64, "b" * 64)):
-        store = tmp_path / f"image-{index}.ome.zarr"
-        prepared = PreparedEmbeddedMeasurementTable(
-            frame=pd.DataFrame(
-                {"Metadata_ImageName": [f"plate-{index}.tiff"]}
-            ),
-            measurement_columns=("Metadata_ImageName",),
-            join_status="joined",
-            join_keys=("Metadata_ImageName",),
-            metadata_snapshot_sha256=digest,
-        )
-        table_paths.append(write_embedded_measurement_table(store, prepared))
+    """H6: retiring the mixed-GENERATION guard must not retire this one.
+
+    Replaces ``test_aggregation_rejects_mixed_embedded_metadata_generations``.
+    That test pinned the refusal D-A deliberately manufactures -- stores keep
+    the snapshot they were built against, so mixed digests are the NORMAL
+    rolling-input state and a finalizer that aborts on them is the defect.
+    Its tolerance is pinned in ``test_finalize_run.py``
+    (``test_stores_with_mixed_metadata_snapshots_do_not_abort_finalization``);
+    what must still raise is a mixture of embedded and legacy AUTHORITY.
+    """
+    embedded = tmp_path / "store.ome.zarr" / "tables/measurements/table.parquet"
+    legacy = tmp_path / "results" / "plate" / "measurements" / "b.parquet"
 
     with pytest.raises(
-        ValueError,
-        match="mixed metadata digests or join keys",
+        ValueError, match="mixed embedded and legacy measurement authority"
     ):
-        _consistent_embedded_join_keys(table_paths)
+        _cli_recompile_worker._run_post_master_steps(
+            tmp_path,
+            {"measurement_sources": [str(embedded), str(legacy)]},
+            pl.DataFrame({"Metadata_ImageName": ["plate.tiff"]}),
+        )
 
 
 def test_scratch_staging_keeps_embedded_table_sources_distinct(

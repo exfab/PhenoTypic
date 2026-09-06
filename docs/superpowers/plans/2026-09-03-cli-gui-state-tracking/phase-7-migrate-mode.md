@@ -962,9 +962,16 @@ inverted. Two options, and the plan takes the cheaper one:
 **Decision: migrate leaves embedded tables alone; `finalize_run` projects them at read.**
 > **⛔ CORRECTED (user ruling, 2026-09-06): there is no master schema stamp.** CAN-9 moved
 > the minting to P4; the ruling then **cut it entirely**. The master already self-describes —
-> a v1 master carries `Metadata_*` columns because the join happened per-image, a v2 master
-> does not because the join moved to finalization — so a stamp asserting the schema was a
-> second home for a fact the file already carries.
+> a v1 master carries **user** metadata columns because the join happened per-image, a v2
+> master carries only the **intrinsic** identity metadata every master has — so a stamp
+> asserting the schema was a second home for a fact the file already carries.
+>
+> **Test by OWNERSHIP (`metadata_owner_for_header`), never by the `Metadata_` prefix.** A v2
+> master still carries `Metadata_Dataset` and `Metadata_ImageName`, so a prefix test
+> misclassifies every v2 master as v1 — and `Metadata_Strain` is itself a schema member
+> (`GENETIC.STRAIN`), so inspection cannot separate them either. This is the repo's own rule
+> (`CLAUDE.md`, "schema ownership, never string prefixes"); the first statement of this
+> ruling broke it.
 >
 > `read_master_measurements` does not exist and is not coming. The helper is
 > **`master_carries_user_metadata`** in `sdk_/_master_io.py`, minted by P4, and it **classifies
@@ -1139,8 +1146,10 @@ projects each table onto its own recorded measurement_columns, so a pre-inversio
 store aggregates identically, subject to the fan-out and dtype corrections in CAN-10.
 
 There is no master schema stamp (CAN-9, then cut outright by the 2026-09-06
-ruling). The master self-describes: v1 carries Metadata_* columns because the
-join was per-image, v2 does not because the join moved to finalization. Migrate
+ruling). The master self-describes: v1 carries USER metadata columns because the
+join was per-image, v2 carries only intrinsic identity metadata because the join
+moved to finalization -- tested by OWNERSHIP, never by the "Metadata_" prefix,
+since a v2 master still carries Metadata_Dataset and Metadata_ImageName. Migrate
 does not re-run finalization, so it leaves a v1-shaped master, and
 master_carries_user_metadata classifies it as such rather than refusing it
 (U-3)."

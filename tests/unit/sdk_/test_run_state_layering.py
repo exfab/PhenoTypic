@@ -19,12 +19,13 @@ from pathlib import Path
 import phenotypic.sdk_ as sdk_package
 import phenotypic.sdk_._image_record as image_record
 import phenotypic.sdk_._io_constants as io_constants
+import phenotypic.sdk_._master_io as master_io
 import phenotypic.sdk_._run_state as run_state
 import phenotypic.sdk_._schema_shape as schema_shape
 import phenotypic.sdk_._state_types as state_types
 import phenotypic.sdk_._verification_cache as verification_cache
 
-# All SEVEN modules. Three of them are the cycle-breaking split (gen-r3 C5):
+# All EIGHT modules. Three of them are the cycle-breaking split (gen-r3 C5):
 # the dataclasses live in their own leaf so _verification_cache can cache
 # whole ImageState objects without it and _run_state importing each other, and
 # INV-LAYER binds the leaf exactly as it binds the other two.
@@ -57,6 +58,14 @@ import phenotypic.sdk_._verification_cache as verification_cache
 # -- INV-LAYER would hold in each watched file and be violated in practice on
 # every import path through the package. A guarantee that five files are clean
 # is worth very little if the door they all come through is not.
+#
+# _master_io is the EIGHTH, added in P4. It is the one home of the v1/v2
+# master discrimination, `sdk_/__init__.py` re-exports it, and the readers
+# that will branch on it are GUI modules (P6) -- so it is reached through the
+# seventh module's door by exactly the consumers INV-LAYER exists for. A new
+# sdk_ module that the package __init__ re-exports is unwatched until it is
+# named here, and the cost of noticing that later is a violation that already
+# shipped.
 _MODULES = (
     Path(state_types.__file__),
     Path(verification_cache.__file__),
@@ -65,6 +74,7 @@ _MODULES = (
     Path(io_constants.__file__),
     Path(sdk_package.__file__),
     Path(run_state.__file__),
+    Path(master_io.__file__),
 )
 
 

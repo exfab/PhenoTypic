@@ -1835,11 +1835,24 @@ The truth, measured: the preference **is** in the current code
 (`_measurement_sources.py:132-134`, `:161-166`), but only on the arm reached when
 `authorized_measurement_sources` returns `None` (`_cli_output_manager.py:1421-1431`). So:
 
-1. Run `test_finalize_run_ignores_a_stale_aggregate_on_the_legacy_arm` (Step 1) against the
-   **unmodified** `finalize_run`. If option (b) was taken and the legacy arm survives, this
-   test *is* the mutation — it should already be red before the fix, and green after. Record
-   which. If option (a) was taken and the arm is gone, it passes trivially, and the mutation
-   below is the only proof available.
+1. ~~Run `test_finalize_run_ignores_a_stale_aggregate_on_the_legacy_arm` against the
+   **unmodified** `finalize_run` … it should already be red before the fix, and green
+   after.~~
+
+   > **⛔ WITHDRAWN: this step inherits Step 1's legacy-arm contradiction and cannot be
+   > performed.** It presupposes a "fix" that makes the legacy arm stop preferring
+   > `_dataset_aggregated.parquet`. The later ⚠ RULED decision — *KEEP the arm, narrow §7.5
+   > to the authorized path* — makes that preference **the specified behaviour**, so there
+   > is no fix and no state in which the test is green-after. Step 1's test body
+   > (`assert "GHOST.tif" not in master`) was written for the *drop the arm* option and was
+   > never updated when the ruling landed; the same draft is the source of both.
+   >
+   > **What ships instead:** `test_the_legacy_arm_still_prefers_its_dataset_aggregate`,
+   > which pins the preference as deliberate and asserts BOTH preconditions
+   > (`authorized_measurement_sources(...) is None`, and
+   > `not _aggregate_needs_image_name_recovery(<aggregate>)`) — each of which, missing,
+   > makes the test green for the wrong reason. The mutation in (2) is therefore the only
+   > INV-INPUTS proof available, which is what (2) already said.
 2. Mutate step 1 to prefer `_dataset_aggregated.parquet` **on the authorized arm too**.
    Confirm `test_finalize_run_ignores_every_stale_intermediate` goes red. Remove the
    mutation.
@@ -1865,10 +1878,37 @@ Two mutations, because one test cannot reach both arms.
 >    (`sdk_/_io_constants.py:2681-2683`) — see the reader table below. So the stamp would
 >    have shipped with a reader no consumer calls, which is precisely the
 >    `DashboardManifestKey.VERSION` pattern P6 deletes *as a finding*.
-> 3. **Decisively: the master already self-describes.** A v1 master carries `Metadata_*`
->    user-metadata columns because the join happened per-image; a v2 master does not, because
->    the join moved to finalization. A stamp asserting the schema is a **second home for a
->    fact the file already carries** — rule 3, one level up from the digest question.
+> 3. **Decisively: the master already self-describes.** A v1 master carries **user**
+>    metadata because the join happened per-image; a v2 master carries only **intrinsic
+>    identity** metadata, because the join moved to finalization. A stamp asserting the
+>    schema is a **second home for a fact the file already carries** — rule 3, one level up
+>    from the digest question.
+>
+>    > **⛔ CORRECTED (user, 2026-09-06): the discriminator is OWNERSHIP, never the prefix.**
+>    > This clause used to read *"a v1 master carries `Metadata_*` user-metadata columns; a
+>    > v2 master does not"*. **That misclassifies every v2 master**, which carries
+>    > `Metadata_Dataset` and `Metadata_ImageName` — measured on a real finalized tree:
+>    > `['Object_Label', 'Shape_Area', 'Metadata_ImageName', 'Metadata_Dataset']`. And
+>    > `Metadata_Strain` is itself a schema member (`GENETIC.STRAIN`), so "is it in the
+>    > schema" does not separate them either.
+>    >
+>    > It also broke a documented rule of this codebase *in a ruling about that codebase* —
+>    > root `CLAUDE.md`: *"Metadata queries use schema ownership, never string prefixes …
+>    > Do not use `startswith("Metadata_")`, prefix splitting … as a semantic metadata
+>    > check."* A ruling is not exempt from the rules of the thing it rules on.
+>    >
+>    > The test is: a header is **user** metadata when it is in the metadata namespace
+>    > (`is_metadata_header`, the centralized predicate) and its owner
+>    > (`metadata_owner_for_header`) is neither `IMAGE` nor `EXPERIMENT.DATASET`. The
+>    > substance of the ruling is unchanged — no stamp, discriminate from the artifact —
+>    > only its discriminator.
+>    >
+>    > **The limit this leaves, stated rather than discovered later:** column provenance is
+>    > not recoverable from a column name. A master carrying a non-`IMAGE` metadata header
+>    > that a *custom operation* produced reads as v1 though no CSV was ever joined into it.
+>    > The forward pipeline emits no such column, which is what keeps this a limit rather
+>    > than a defect. Pinned by
+>    > `test_master_carries_user_metadata_reads_ownership_not_the_prefix`.
 
 **What ships instead.** `sdk_/_master_io.py` still exists, and it exists for exactly one
 reason: to be the **single home** of the v1/v2 discrimination and — more importantly — of
@@ -1880,9 +1920,11 @@ modules would give the condition seven homes and, in practice, none.
 
 # V1/V2 MASTER DISCRIMINATION -- DELETE WHEN: no run predating this change is
 # still readable, i.e. every master in the wild was written by finalize_run's
-# post-inversion path. A v1 master carries Metadata_* user-metadata columns
-# because the join happened per-image; a v2 master does not, because the join
-# moved to finalization. Nothing else distinguishes them, and nothing stamps
+# post-inversion path. A v1 master carries USER metadata because the join
+# happened per-image; a v2 master carries only INTRINSIC identity metadata,
+# because the join moved to finalization. Ownership decides which is which
+# (`metadata_owner_for_header`), NEVER the `Metadata_` prefix -- both shapes
+# carry that prefix. Nothing else distinguishes them, and nothing stamps
 # them. When that condition holds, this function and every branch on it are
 # dead code and should go together.
 def master_carries_user_metadata(frame: "pl.DataFrame") -> bool:
@@ -1911,8 +1953,10 @@ earlier prose said seven and disagreed with its own table):
 
 Which of these actually need the discrimination? Most do not: curation keys on dataset /
 image / object-label, all intrinsic. The ones that matter are readers that *filter or group
-on a `Metadata_*` column* — those return empty rather than raising on a v2 master, which
-§7.3 calls "the one genuinely dangerous failure mode in §7".
+on a **user**-metadata column* — one whose owner is neither `IMAGE` nor `EXPERIMENT.DATASET`
+— because those return empty rather than raising on a v2 master, which §7.3 calls "the one
+genuinely dangerous failure mode in §7". A reader grouping on `Metadata_Dataset` or
+`Metadata_ImageName` is unaffected: a v2 master still carries both.
 
 > ### ⚠ RULED (user, 2026-09-06): P4 owns the helper and the `sdk_` readers; P6 owns the GUI readers
 >
@@ -1930,9 +1974,17 @@ on a `Metadata_*` column* — those return empty rather than raising on a v2 mas
 
 - [ ] **Step 6b: Settle the known ambiguity by test, not by reasoning**
 
-**A v1 run with no `metadata.csv` also has no `Metadata_*` columns**, so column-presence
-conflates it with v2. That is *expected* to be harmless — neither has anything to join — but
-it is an inference, and this change has been punished for exactly that twice.
+**A v1 run with no `metadata.csv` carries no user-metadata columns either**, so
+column-presence conflates it with v2. That is *expected* to be harmless — neither has
+anything to join — but it is an inference, and this change has been punished for exactly
+that twice.
+
+*(Note this is the ambiguity in one direction only: v1-no-metadata reading as v2. The
+opposite direction exists too — a v2 master carrying a non-`IMAGE` metadata column that a
+custom operation produced reads as v1 — and is pinned separately by
+`test_master_carries_user_metadata_reads_ownership_not_the_prefix`. It does not trigger this
+step's flip, whose condition is v1-no-metadata and v2 being **behaviourally
+distinguishable**.)*
 
 ```python
 def test_a_v1_metadata_free_master_is_indistinguishable_from_v2_and_that_is_harmless(tmp_path):
@@ -2098,8 +2150,9 @@ the stores' recorded join keys -- which D-A deliberately makes inconsistent -- s
 being read at all rather than needing to be tolerated (CAN-2).
 
 NO master schema stamp is minted (user ruling): the master self-describes -- a v1 master
-carries Metadata_* columns, a v2 does not -- so a stamp would be a second home for a fact
-the file already carries. sdk_/_master_io.py is the one home of the v1/v2 discrimination
+carries USER metadata, a v2 carries only INTRINSIC identity metadata -- so a stamp would be
+a second home for a fact the file already carries. Ownership decides which is which
+(`metadata_owner_for_header`), never the `Metadata_` prefix: both shapes carry it. sdk_/_master_io.py is the one home of the v1/v2 discrimination
 and of its retirement condition. source_set_digest and source_image_count move into the
 run proof, replacing the cut publication_id, in the same commit that cuts it from the
 aggregate proof; P1's _source_set_binding fallback stays for pre-P4 trees and now carries

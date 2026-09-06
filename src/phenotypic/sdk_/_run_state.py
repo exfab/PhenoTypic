@@ -1032,10 +1032,11 @@ def run_proof(output_dir: Path) -> dict[str, object] | None:
 def run_proof_is_current(output_dir: Path) -> bool:
     """Return whether the run proof's bindings still match the run's inputs.
 
-    The other half of :func:`run_proof`, and the four comparisons
+    The other half of :func:`run_proof`, and the comparisons
     ``_cli_completion.valid_run_completion`` makes once it has the marker:
     ``inventory_digest``, ``scientific_config_digest``,
-    ``finalization_input_digest`` and ``publication_id``.
+    ``finalization_input_digest`` and -- since U-4 replaced the opaque
+    ``publication_id`` -- ``source_set_digest``.
 
     **Not** the per-image walk. ``valid_run_completion`` also requires
     ``current_run_is_complete``, and that is a separate conjunct kept at the
@@ -1084,14 +1085,24 @@ def run_proof_is_current(output_dir: Path) -> bool:
         return False
     process_layer = config.get("process_only_layer")
     if process_layer:
-        return proof.get("publication_id") is None and proof.get(
-            "finalization_input_digest"
-        ) == canonical_digest({"process_only_layer": process_layer})
+        # The `publication_id is None` conjunct that opened this arm is
+        # DELETED, not repointed (U-4). With the field cut it would read
+        # `None is None` -- true unconditionally -- and the arm would silently
+        # lose half its test while still looking like a two-part check.
+        return proof.get("finalization_input_digest") == canonical_digest(
+            {"process_only_layer": process_layer}
+        )
     aggregate = _valid_aggregate_proof(output_dir)
     if aggregate is None:
         return False
-    return proof.get("publication_id") == aggregate.get(
-        "publication_id"
+    # `source_set_digest` replaces `publication_id` here for the same reason:
+    # after the cut, `proof.get("publication_id") == aggregate.get(...)` is
+    # `None == None`, true for every input, and only the
+    # `finalization_input_digest` half would have survived. This function is
+    # exported with no in-repo caller, so nothing in the tree would have
+    # failed to report the loss.
+    return proof.get("source_set_digest") == aggregate.get(
+        "source_set_digest"
     ) and proof.get("finalization_input_digest") == aggregate.get(
         "finalization_input_digest"
     )
@@ -1235,13 +1246,29 @@ def _source_set_binding(
 
     U-4 cuts ``publication_id`` and puts ``source_set_digest`` in the **run**
     proof, so the aggregate-to-run binding is stated directly instead of
-    through an opaque hash. That writer change lands in P4; until it does,
-    today's run proof carries neither field and the values live in the
+    through an opaque hash. **That writer change landed in P4**; a run proof
+    written before it carries neither field, and the values live in the
     aggregate proof, bound to the run proof by ``publication_id``.
 
     Both shapes are read here so that P1 lands on today's trees and keeps
     working across P4's writer bump, with no window in which the two
     comparisons silently stop being made -- which is the failure CAN-5 names.
+
+    PRE-P4 RUN-PROOF ARM -- DELETE WHEN: no run proof predating P4 is still
+    readable, i.e. every run proof in the wild carries ``source_set_digest``
+    directly.
+
+    **Narrower than it looks, and deliberately kept anyway.** P4 also bumped
+    ``AGGREGATE_PROOF_VERSION``, so on a wholly pre-P4 tree
+    :func:`_valid_aggregate_proof` rejects the aggregate and this arm returns
+    ``None`` before the ``publication_id`` comparison is reached. What it
+    still covers is the transient inside a re-finalization: the aggregate
+    proof is re-published (new shape, no ``publication_id``) before the run
+    proof is, and during that window an old run proof's ``publication_id``
+    compares unequal to the new aggregate's absent one, so the binding
+    reports "not current" -- which is the correct verdict, because it is not.
+    Deleting the arm would make that window return the aggregate as a binding
+    and read a half-migrated pair as complete.
     """
     if "source_set_digest" in proof:
         return proof

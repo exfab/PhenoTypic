@@ -1526,6 +1526,105 @@ confirmed here by executing the two predicates rather than reading them.)*
 
 ---
 
+### Entry 37 — THE RULE HELD IN THE DELIVERABLE AND NOT IN THE INSTRUMENT. 2026-09-06.
+
+P4's plan carries a standing rule, written after entry 36:
+
+> **Every assertion of a negative, or of an equality, must be preceded by an assertion that
+> the fixture produced the thing whose absence or equality is being claimed.**
+
+The implementing cluster applied it **fourteen times** in the test file it shipped —
+correctly, including cases nobody had marked. It then wrote a throwaway probe to settle
+whether `finalize_post_master_outputs` silently drops metadata, and the probe asserted an
+absence with nothing behind it:
+
+```
+No measurement files provided to aggregate.
+authorized_measurement_sources -> 0 authorized sources
+_consistent_embedded_join_keys -> None        <- not (), because nothing was aggregated
+Metadata_Strain in master: False              <- the "finding", over an empty fixture
+  exit: 0
+```
+
+It **did** carry a guard — `exit 2` if it landed on the legacy path — so the author was
+thinking about false results. The guard covered the failure mode they had in mind and not
+the one that happened. An empty source set produced the same printed output as a confirmed
+hazard, and the script reported success.
+
+#### What is new here, against entries 21, 31, 33 and 34
+
+Those are all *operator tooling failing silently*. This one adds the distribution:
+
+> **The discipline was applied to the artifact and not to the instrument measuring it — by
+> the same author, in the same hour, having just written the rule fourteen times.**
+
+The deliverable gets the standard because it is the deliverable. The probe does not, because
+it is "just a check" — and the check is what the decision rests on. Entry 33 said the
+throwaway command does not feel like a check; this says the exemption survives even when
+the author has the rule fully in mind and has been executing it flawlessly minutes earlier.
+
+**So it is not a knowledge problem and cannot be fixed by writing the rule down again.** The
+operational form has to attach to the *moment*, not the artifact:
+
+> **A script written to settle a question is a test of that question.** Before reading its
+> output, ask what it prints when the fixture fails to materialise — and if that is the same
+> thing it prints when the answer is "yes", it has not been run yet.
+
+*(The hazard the probe was meant to settle remains unmeasured and was handed to the next
+task as an explicit unverified prediction, rather than being carried as established. That
+disposition is the part that worked.)*
+
+---
+
+### Entry 38 — THE FAILING LINE NUMBER IS A POSITIVE CLAIM ABOUT EVERY LINE ABOVE IT. 2026-09-06.
+
+A test reported `assert not True` at `:517`. The orchestrator read it as *"the master carries
+user metadata"*, concluded the unconditional join was landing **before the master write**,
+and told the implementer the master/mirror boundary had collapsed -- adding a warning against
+making the tests pass by adjusting them rather than the placement.
+
+The test's assertions:
+
+```
+515  assert "Metadata_Strain" not in master.columns
+516  assert "Metadata_Strain" in mirror.columns
+517  assert not master_carries_user_metadata(master)      <- reported failure
+```
+
+**pytest stops at the first failure. A failure at `:517` is a statement that 515 and 516
+passed** -- the master has no user metadata column, the mirror does. The boundary was intact,
+and the diagnosis was refuted by the very output the orchestrator had pasted into its own
+message one turn earlier.
+
+#### The mechanism, which is not sampling
+
+Every other misreading in this register came from looking at **part** of the evidence. Here
+the whole of it was present, in hand, and quoted. The failure was not extracting a fact the
+output states implicitly:
+
+> **In a sequence of assertions, the failing line is a positive claim about all of them
+> above it.** A traceback does not only say what broke; it certifies everything that ran
+> first.
+
+That inverts how a failure is usually read. The eye goes to the assertion that failed and
+treats the rest of the function as unexamined context, when the lines above it are the
+strongest evidence available -- they are *passing assertions*, executed on the same fixture,
+seconds earlier.
+
+#### The compounding error
+
+Having mis-diagnosed, the orchestrator then warned the implementer *"these four tests would
+be very easy to make green by adjusting the tests instead of the placement."* The warning was
+sound in general and, applied here, was pressure toward defending a defect that did not
+exist. **A confident wrong diagnosis attached to a correct principle is worse than either
+alone**, because the principle makes the diagnosis harder to contradict.
+
+The implementer contradicted it anyway, with the line numbers, and was right on all three
+counts -- an unowned column in a fixture, a key-format bug, and a pre-existing ordering
+defect that predates the phase.
+
+---
+
 ## What the pattern says
 
 **Nothing failed, and nothing could have.** Not one entry would have been caught by a test,
@@ -1539,7 +1638,7 @@ acts on it.
    holding a future state in mind — the author is describing the system they are reasoning
    about rather than the one on disk. It comes true one task later, which is the most
    forgiving version and still the same error.
-2. **A claim about what a check does** (10, 12, 13, 21, 22, 27, 28, 30, 31, 32, 33, 34, 36). The most dangerous, because
+2. **A claim about what a check does** (10, 12, 13, 21, 22, 27, 28, 30, 31, 32, 33, 34, 36, 37). The most dangerous, because
    it converts a green gate into false assurance. Entry 27 is its limit case: no claim was
    made and none went stale — a *test* silently stopped covering what its own comment says it
    covers, because a path it depended on moved three files away. Ask of every one: *what would this have looked

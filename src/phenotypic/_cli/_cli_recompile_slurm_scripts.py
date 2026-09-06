@@ -183,23 +183,19 @@ def build_recompile_tasks(
         tasks.extend(overlay_tasks)
 
     if tasks:
-        from ._cli_output_manager import _consistent_embedded_join_keys
-
-        metadata_join_keys = (
-            None
-            if transition_sources
-            else (
-                _consistent_embedded_join_keys(measurement_sources)
-                if measurement_sources
-                else None
-            )
-        )
+        # CAN-2: no join keys are computed at SUBMISSION time any more, and the
+        # task no longer carries a `metadata_join_keys` field. Retiring the
+        # function from the finalizer alone would have left its mixed-generation
+        # abort firing HERE -- before any worker runs -- on exactly the state
+        # D-A deliberately manufactures. The finalizer derives its own common
+        # columns from the master and the snapshot; the mixed-AUTHORITY refusal
+        # it also carried is re-asserted in the worker, where the sources are
+        # read.
         finalizer_task = {
             "task_type": TASK_FINALIZE,
             "dataset_names": list(dataset_names),
             "include_dataset_column": include_dataset_column,
             JobMetadataKey.METADATA_CSV: None,
-            "metadata_join_keys": list(metadata_join_keys or ()),
             # Re-read provenance after measurement shards finish: a recompile
             # with new metadata rewrites these tables after task submission.
             "measurement_sources": [

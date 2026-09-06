@@ -9,7 +9,6 @@ from collections.abc import Callable, Iterable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Mapping
-from uuid import uuid4
 
 from phenotypic.sdk_ import (
     AGGREGATE_PROOF_VERSION,
@@ -25,7 +24,6 @@ from phenotypic.sdk_ import (
     atomic_write_json,
     file_fingerprint,
     image_completion_marker_path,
-    master_measurements_csv_path,
     master_measurements_parquet_path,
     measurements_csv_path,
     measurements_parquet_path,
@@ -1008,8 +1006,14 @@ def publish_aggregate_snapshot(
     if counts is None or counts[0] == 0:
         raise RuntimeError("No marker-authorized measurements to publish")
 
+    # D8: three descriptors, not four. `master_measurements.csv` is gone --
+    # the un-joined master is no longer the file a human opens, the mirror is
+    # -- and `finalize_run` writes no CSV, so certifying one would make every
+    # forward finalization fail on a `resolve(strict=True)` for a file nothing
+    # writes. `valid_aggregate_snapshot` and the sdk_ reader both validate
+    # whatever the proof LISTS, so a three-entry proof validates on its own
+    # terms.
     required_paths = {
-        "master_csv": master_measurements_csv_path(output_dir),
         "master_parquet": master_measurements_parquet_path(output_dir),
         "measurements_csv": measurements_csv_path(output_dir),
         "measurements_parquet": measurements_parquet_path(output_dir),
@@ -1027,9 +1031,12 @@ def publish_aggregate_snapshot(
 
     work_ids = state.config.get("work_ids", {})
     source_work_ids = _current_success_work_ids(output_dir, work_ids)
+    # U-4: no `publication_id`. It was an opaque uuid4 whose only job was to
+    # bind this proof to the run proof; the run proof now COPIES
+    # `source_set_digest`/`source_image_count` from here instead, which states
+    # the same binding in the clear and is checkable against live state.
     marker = {
         "version": AGGREGATE_PROOF_VERSION,
-        "publication_id": uuid4().hex,
         "processing_generation": state.config.get("processing_generation"),
         "inventory_digest": canonical_digest(work_ids),
         "finalization_input_digest": canonical_digest(
@@ -1148,8 +1155,23 @@ def publish_run_completion_evidence(
             )
         ),
         "scientific_config_digest": state.config.get("pipeline_sha256"),
-        "publication_id": (
-            aggregate.get("publication_id") if aggregate is not None else None
+        # U-4: a COPY of the aggregate proof's values, exactly as
+        # `publication_id` was copied. **Not recomputed.** The copy IS the
+        # binding: it asserts "I was published against THAT aggregate", which
+        # rule 1 then checks against a live re-derivation of the verified
+        # image set. Recomputing here would assert only "here is my own view,
+        # at my own moment" -- and a stale aggregate proof beside a fresh run
+        # proof would then pass both checks independently, with nothing
+        # noticing they disagree.
+        "source_set_digest": (
+            aggregate.get("source_set_digest")
+            if aggregate is not None
+            else None
+        ),
+        "source_image_count": (
+            aggregate.get("source_image_count")
+            if aggregate is not None
+            else None
         ),
         "execution_epoch": execution_epoch,
         "gui_record_generation": gui_record_generation,
@@ -1170,12 +1192,17 @@ def publish_run_completion_evidence(
         existing = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError, TypeError):
         existing = None
+    # `publication_id` was minted fresh on every aggregate publication, so it
+    # was the entry that made this comparison meaningful. With it gone the
+    # entry would compare `None == None` and contribute nothing --
+    # `source_set_digest` is the value that belongs there instead: it changes
+    # exactly when the certified success set does.
     stable_keys = (
         "version",
         "inventory_digest",
         "finalization_input_digest",
         "scientific_config_digest",
-        "publication_id",
+        "source_set_digest",
         "status",
     )
     if isinstance(existing, dict) and all(
@@ -1217,7 +1244,11 @@ def valid_run_completion(output_dir: Path) -> dict[str, object] | None:
         "scientific_config_digest": state.config.get("pipeline_sha256"),
     }
     if state.config.get("process_only_layer"):
-        expected["publication_id"] = None
+        # The `publication_id = None` entry that stood here is DELETED, not
+        # repointed. It asserted "a process-only run has no aggregate
+        # binding"; with no such field to be absent it would compare
+        # `None != None` and say nothing at all. A comparison that cannot
+        # fail is worse than a deleted one, because it still reads as a guard.
         expected["finalization_input_digest"] = canonical_digest(
             {"process_only_layer": state.config.get("process_only_layer")}
         )
@@ -1225,7 +1256,12 @@ def valid_run_completion(output_dir: Path) -> dict[str, object] | None:
         aggregate = valid_aggregate_snapshot(output_dir)
         if aggregate is None:
             return None
-        expected["publication_id"] = aggregate.get("publication_id")
+        # U-4: the aggregate<->run binding, stated in the clear. This is the
+        # live one -- five call sites in four modules read this function's
+        # verdict -- so leaving it as a `None != None` tautology would stop
+        # the binding being checked at all.
+        expected["source_set_digest"] = aggregate.get("source_set_digest")
+        expected["source_image_count"] = aggregate.get("source_image_count")
         expected["finalization_input_digest"] = aggregate.get(
             "finalization_input_digest"
         )

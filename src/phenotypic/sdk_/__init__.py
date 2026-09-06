@@ -274,6 +274,10 @@ from ._image_record import (
     record_provenance,
     record_rejection,
 )
+from ._master_io import (
+    master_carries_user_metadata,
+    user_metadata_headers,
+)
 from ._pipeline_publication import pipeline_publication_lock
 from ._run_state import (
     ImageState,
@@ -611,6 +615,8 @@ __all__ = [
     "load_master_measurements",
     "logs_dir",
     "manifest_json_path",
+    "master_carries_user_metadata",
+    "user_metadata_headers",
     "master_measurements_csv_path",
     "master_measurements_parquet_path",
     "measurements_by_feature_dir",

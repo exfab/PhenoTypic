@@ -1978,12 +1978,22 @@ class TestAggregateMeasurements:
         import pandas as pd
         import polars as pl
 
-        from phenotypic._cli import _cli_output_manager
+        from phenotypic._cli import _cli_parquet_agg
         from phenotypic._cli._cli_parquet_agg import SOURCE_PATH_COLUMN
 
-        aggregate_parquet_files = _cli_output_manager.aggregate_parquet_files
+        # PATCH THE DEFINING MODULE, not `_cli_output_manager`. P4 moved
+        # aggregation into `_cli_finalize_run.build_master_frame`, which
+        # imports this symbol from `_cli_parquet_agg` INSIDE the function --
+        # so the name is looked up on that module at call time. Patching any
+        # re-export would set an attribute nothing reads, the unpatched
+        # function would run, and this test would pass without ever injecting
+        # a Windows-style source path: a silent false green in the one test
+        # whose entire purpose is that injection.
+        aggregate_parquet_files = _cli_parquet_agg.aggregate_parquet_files
+        calls: list[int] = []
 
         def _aggregate_with_windows_source_paths(*args, **kwargs):
+            calls.append(1)
             frame = aggregate_parquet_files(*args, **kwargs)
             if frame is None:
                 return None
@@ -1994,7 +2004,7 @@ class TestAggregateMeasurements:
             )
 
         monkeypatch.setattr(
-            _cli_output_manager,
+            _cli_parquet_agg,
             "aggregate_parquet_files",
             _aggregate_with_windows_source_paths,
         )
@@ -2027,6 +2037,15 @@ class TestAggregateMeasurements:
             dataset_names=["plate"],
             include_dataset_column=True,
             metadata_csv=metadata_path,
+        )
+
+        # The patch actually ran. Without this the assertions below hold on a
+        # frame that never saw a backslash, so a patch aimed at the wrong
+        # module reads as a pass -- which is exactly what happened when the
+        # re-export it used to target was removed.
+        assert calls, (
+            "the aggregation wrapper was never invoked; no Windows-style "
+            "source path was injected and this test proves nothing"
         )
 
         assert result is not None

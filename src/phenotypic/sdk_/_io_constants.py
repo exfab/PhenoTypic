@@ -735,7 +735,22 @@ ARTIFACT_KIND_STORE: Final[str] = "store"
 
 #: Marker-last proof schema versions, read by the run-state resolver and
 #: written by ``_cli_completion``'s two publishers.
-AGGREGATE_PROOF_VERSION: Final[int] = 1
+#:
+#: ``AGGREGATE_PROOF_VERSION`` moved 1 -> 2 in P4. Two independent reasons, and
+#: the second is the decisive one: the proof lost its ``master_csv`` required
+#: output and its ``publication_id`` (D8, U-4); and **the master's own shape
+#: changed** -- it is now un-joined and carries intrinsic identity only. Every
+#: pre-P4 aggregate proof is therefore stale in substance whether or not the
+#: version moves, and a stale proof that still validates is indistinguishable
+#: from a current one. Invalidating costs **re-aggregation, not
+#: reprocessing**: the master is rebuilt from embedded tables already on disk,
+#: with no image re-measured and no store rewritten.
+#:
+#: ``RUN_PROOF_VERSION`` is deliberately NOT bumped alongside it. The run
+#: proof's new ``source_set_digest`` is read through
+#: ``_run_state._source_set_binding``, which handles both shapes on purpose so
+#: P1's comparison keeps being made across P4's writer bump.
+AGGREGATE_PROOF_VERSION: Final[int] = 2
 RUN_PROOF_VERSION: Final[int] = 2
 
 #: Per-dataset measurements subdirectory: ``<output>/results/<ds>/measurements/``.
