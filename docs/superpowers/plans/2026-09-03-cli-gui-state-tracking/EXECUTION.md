@@ -169,6 +169,36 @@ Read the changed files, run the cluster's own test selection plus `ruff check --
 **explicit changed paths only**, review the diff. **Pause and surface to the user** any
 design question the review raises before the next cluster.
 
+### Push the branch after every phase
+
+**Standing instruction (user, 2026-09-05).** Once a phase's gate is green and its commit
+lands, push `cli-gui-state-tracking` to `origin`. Not at the end of the change — after each
+phase, so the work is recoverable if a session or the worktree is lost.
+
+**`git push` fails by default in this environment**, and the error names the wrong cause:
+
+```
+gnome-ssh-askpass: cannot open display
+git@github.com: Permission denied (publickey)
+```
+
+There is no `ssh-agent` (`SSH_AUTH_SOCK` is unset) and the default-selected
+`~/.ssh/id_ed25519` is **not** the key registered with GitHub. The working key is
+`~/.ssh/github_agent`, which is passphrase-less:
+
+```bash
+GIT_SSH_COMMAND="ssh -i /rhome/anguy344/.ssh/github_agent -o IdentitiesOnly=yes -o BatchMode=yes" \
+  git push origin cli-gui-state-tracking
+```
+
+Spell the key path absolutely — `$HOME` inside an exported `GIT_SSH_COMMAND` trips the
+worktree-isolation guard, as does `git -c credential.helper='!gh ...'`. Use the per-command
+prefix, not `export`.
+
+**The backlog this discharged is the argument for the rule.** When the instruction arrived the
+branch was **97 commits ahead of `origin`** — every commit of P0, P1 and P2 existed in exactly
+one place, a worktree on a shared filesystem, with no second copy anywhere.
+
 ### Per phase — three agents, all frontier
 Never review with a weaker model than implemented.
 
@@ -406,6 +436,184 @@ shims, no per-layer copies, and INV-LAYER holds by construction rather than by d
 **The gate checks this.** A reviewer with this remit runs each phase alongside the
 correctness and spec-drift reviewers.
 
+### Enumerate with the OLD name — and use the same grep to find the work and to check it
+
+**Three instances in one session, one from each participant.** This is the single most
+reusable procedure P3 produced, and P4's repoint will need it.
+
+**The rule:**
+
+> **After a partial migration, grep for the OLD name, not the new one.** The new name shows
+> you what you *did*; the old one shows you what you did *not*.
+>
+> **And the grep that finds the work must be the same grep that verifies it.** If they
+> differ, the first one encoded an assumption.
+
+**The three instances:**
+
+| Who | Enumerated with | Missed | Found by |
+|---|---|---|---|
+| agent | the four sites it had read | a fifth, in the file it had just edited | the orchestrator grepping the old name for *retained* sites |
+| agent | `marker_path.unlink()\|write_bytes` — a **mutation-shaped** pattern | three read-only sites: two digests, one `is_file()` | running the old-name grep afterwards, as a check |
+| orchestrator | `\.marker_path` — a **use-shape** pattern requiring a leading dot | a keyword argument `marker_path=(` | re-running without the assumed prefix |
+
+**Each miss came from a pattern encoding what the searcher expected the uses to look like** —
+mutations, attribute access, or "the sites I already classified." The name is the population;
+everything else is a hypothesis about the population.
+
+**Why reviewing the change cannot substitute.** Checking the sites someone repointed can never
+find a site they did not. Only asking *what is left* can — which is why the verification must
+enumerate the **remaining** population, not re-inspect the changed one.
+
+**And it applies to your own diff.** Both agent instances were in a file it had just finished
+editing. *"Re-derive the population"* is not only for numbers you are handed.
+
+#### The category bug: a symbol grep cannot see a site that bypasses the symbol
+
+**The fifth and last variant, and the only one no pattern refinement could have fixed.**
+
+Four earlier variants were *pattern bugs* — too narrow, too broad, wrong anchoring, wrong
+shape. This one is a pattern **category** bug. The sweep enumerated with the helper's name:
+
+```
+grep image_completion_marker_path       ->  22 files
+grep '"image_complete"'                 ->   7 hand-joined sites in 5 files
+```
+
+**Seven sites hand-join the path segment by segment**, never calling the helper:
+
+```python
+root / ".phenotypic" / "progress" / "image_complete" / "day1" / "plateA.json"
+```
+
+A helper-name grep is **structurally incapable** of seeing them — not mis-tuned, incapable.
+No anchoring, unanchoring or word-boundary fix reaches a site that does not contain the
+symbol.
+
+> **A sweep keyed on a symbol cannot see a site that does not use the symbol.** Enumerate the
+> *thing*, not the *way it is usually spelled* — and where a helper exists, the sites that
+> bypass it are exactly the ones a helper-name grep will miss.
+
+**The cruel part:** this repository's own `CLAUDE.md` says *"Always resolve paths via the
+`phenotypic.sdk_` helpers (never hand-join names)"*. The rule exists for precisely this
+reason, and **its violations are invisible to every tool you would use to enforce it** — a
+grep for the helper finds the compliant sites and only those.
+
+**So enumerate a path change on the LITERAL as well as the helper.** One extra grep, and it
+is the only one that finds the sites that broke the convention the change depends on. The
+same holds for any refactor keyed on a symbol: constants, key names, directory segments,
+status strings.
+
+#### No pattern is right in general — the candidates come from the grep, the answer from reading
+
+**A fourth variant closed the rule, and it is the one that shows why no pattern suffices.**
+After adding word-anchoring to fix the substring over-match, the anchored grep went blind to
+the *compound* name: `_` is a word character, so `grep -w marker_path` **cannot match inside**
+`image_completion_marker_path`. Measured across the five remaining files:
+
+```
+                                        -w    compound    plain
+test_cli_migrate_image                  19        2        20
+test_embedded_measurement_migration      0        3        11
+```
+
+**Each anchoring is blind to what the other finds.** One file's 19 sites are invisible to the
+compound grep; another file is entirely invisible to the anchored one.
+
+**And plain is not the answer either.** That file's 11 plain hits include eight
+`aggregate_publication_marker_path` / `run_completion_marker_path` uses — different functions
+sharing a substring, untouched by the change. So:
+
+| Pattern | Gives you |
+|---|---|
+| anchored | a **total** you can assert |
+| unanchored | the **candidates** you must act on |
+| neither | the actionable set |
+
+> **Anchored patterns are for totals you will assert; unanchored ones are for populations you
+> will act on — and an unanchored grep gives candidates, never the answer. Read every hit.**
+
+The classification is the work. A pattern that appears to do it for you has encoded the
+answer you expected, in whichever direction it errs.
+
+#### The mirror hazard: a fix credited to the wrong change
+
+The same sweep found `test_cli_migrate_mode.py` with **zero hits of either name and seven
+failures**. Those failures were the CLI raising in `_cli_migrate_image.py`, already repaired
+by the source fix. Had that file been reported as "swept", **the next run's green would have
+been credited to an edit nobody made.**
+
+That is worse than a masked failure, because it is *confirmed by a passing run*. It leaves a
+false causal record: the next person believes those tests depend on a repoint that does not
+exist, and reasons from it. **A file listed as swept with no diff is indistinguishable from an
+oversight** — say what actually fixed it.
+
+### Isolate a mechanism by construction; do not assert its name
+
+**Earned twice in P3, once against the orchestrator's own instruction.**
+
+The rule *"assert the reason, not the verdict"* is right in spirit and unbuildable as stated
+whenever the code does not surface a reason. Told to pin a "stale artifact" case by asserting
+on `record_rejection`'s reason string, the agent checked the function first:
+
+- `record_rejection` tests **five clauses, all identity and shape** — version, dataset,
+  image_stem, work_id, artifacts-non-empty — and its docstring says *"artifact contents are
+  not checked here"*. A well-formed record naming an absent file passes all five and returns
+  `None`. **The reason string for the case in question does not exist.**
+- `fenced_artifact_path`, the other half, returns `None` for *"malformed, escapes the root, or
+  no longer matches disk"* — **three causes, one value**, which is the same conflation, one
+  layer along.
+
+**What works instead is two assertions that isolate the mechanism by construction:**
+
+1. **A negative on form** — `record_rejection(...) is None`, proving no shape or identity
+   clause is what rejects it. This is what fails loudly if a later change makes the fixture
+   invalid for a *new* reason, which is the degradation the original rule was reaching for.
+2. **A positive control** — create the missing artifact, assert the verdict flips; remove it,
+   assert it flips back. This establishes the absence as the **cause** rather than as a fact
+   that merely co-occurs with the verdict.
+
+Neither alone suffices: (1) without (2) is consistent with rejection for an unrelated reason;
+(2) without (1) is the bare verdict check the rule exists to forbid.
+
+> **A construction that isolates a mechanism beats an assertion that names one**, because a
+> name can stay correct while the mechanism moves underneath it — which is exactly how the
+> coverage in entry 27 died without the test changing.
+
+**And the corollary for whoever is giving the instruction:** naming a function as an
+assertion target is a claim about that function's contract. Check that it can carry the
+assertion before requiring it. Two rulings in this phase named a function without that check;
+both were caught by the recipient re-deriving rather than complying. **A ruling is not
+evidence.**
+
+### Silent-and-wrong beats loud-and-broken — the criterion for in-phase vs deferred
+
+**Two scope calls in one phase, opposite answers, and the difference is not size.**
+
+| | Failure mode | Ruling |
+|---|---|---|
+| `--mode measure` skips its re-publish | **silent** — no exception, returns `True`, an image quietly stops being certified | **fix in-phase** |
+| `--mode recompile` reads a marker that is gone | **loud** — `FileNotFoundError` on the first call | **candidate for deferral** |
+
+Both are real regressions introduced by the same change. Both cross into another phase's file
+mapping. The first was obviously in-scope and the second is not, and the reason is the shape
+of the failure rather than the size of the fix:
+
+> **A bad interval is recoverable; a bad artifact is not.** A loud break wastes a user's
+> afternoon and is fixed by the next commit. A silent one writes wrong state to disk that
+> outlives the interval, and nothing in the tree records that it happened.
+
+So the question to ask of a regression you are tempted to defer is **not** "how big is the
+fix" or "whose phase owns the file" — it is **"what does the tree look like afterwards?"** If
+the answer is "indistinguishable from correct", fix it now regardless of whose module it is.
+If the answer is "obviously broken until someone fixes it", deferral is arguable and the
+decision belongs to whoever owns the schedule.
+
+**The phase-gate contract still binds**: a phase ends at a commit passing its own gate. So a
+deferral is not "leave the suite red" — it is a decision, made explicitly and recorded, that
+a named mode is knowingly non-functional for a named interval. **That is a user's call, not
+an implementer's**, because it trades their working software against our sequencing.
+
 ### ⛔ HARD STOP: a fix may not increase the state-artifact count
 
 **Standing rule (user, 2026-09-05).** Execution runs to completion without checking in,
@@ -518,6 +726,106 @@ missed overlap costs two invalidated freeze runs that still print green. So the 
 > **Escalate on the cost asymmetry, and send the whole disjunction.** State what would make
 > you wrong, and how the recipient can check it in one command.
 
+### Disjoint FILES is necessary and not sufficient — check the shared CONTRACTS
+
+**Earned dispatching P3's two parallel clusters, and the check that caught it was not mine.**
+
+Before running clusters 3.2 and 3.3 concurrently, the orchestrator verified they shared no
+source file **and** no test file, and treated that as sufficient. It is not.
+
+`classify_staged_image` lives in 3.3's `_cli_staged_resume.py` and opens with
+`valid_image_success(...)`. **3.2 changes what that function reads** — from
+`image_complete/<ds>/<stem>.json` to `images/<ds>/<stem>.json`, a clean break with no dual
+write. 3.3's whole purpose is asserting resume decisions are unchanged, so had its fixtures
+hand-planted `image_complete/` markers, every one of its tests would have gone red the
+moment 3.2 landed — **and it would have looked like 3.3 broke something**, which is the
+expensive part.
+
+> **When two parallel tasks touch no common file, the remaining coupling is through the
+> functions one of them CHANGES and the other CALLS.**
+
+**The check, before dispatching anything in parallel:** for each function either cluster
+modifies the *behaviour or output contract* of, grep the other cluster's files for calls to
+it. A file-overlap check cannot see this, because the shared thing is a contract, not a
+path.
+
+**Two things made it cheap here rather than costly:**
+
+1. **It was caught before writing**, so it became an instruction ("build fixtures through
+   the real publisher, never hand-plant markers") instead of a debugging session across two
+   agents' work.
+2. **The agent asked the orchestrator to run one grep** rather than opening a file it had
+   been told not to touch. The isolation held *and* the question got answered — the routing
+   rule doing exactly what it exists for.
+
+#### Line-level disjointness is insufficient for EDITS — the lost update
+
+**The same afternoon, one level down from the contract coupling.** Two clusters each needed
+one export line in `sdk_/__init__.py`: 3.3's `DIR_STAGE2_DONE` and 3.2's `record_rejection`.
+Different lines, two sorted lists, **no textual overlap — git would not have conflicted.**
+
+The failure is not a merge conflict, it is a **lost update**: whichever agent read the file
+before the other's write, and then wrote back its own whole-file view, silently drops the
+other's line. And the result **imports cleanly and passes ruff**, so the first signal is an
+`ImportError` in whichever suite runs second, pointing at a name whose author did nothing
+wrong.
+
+> **A file two parallel agents both need to append to has one writer: the orchestrator.**
+> Claim it, and take both edits as text.
+
+**The generalization this run kept re-deriving, in three sizes:**
+
+| Level | What looked sufficient | What it missed |
+|---|---|---|
+| files | disjoint source *and* test files | the shared **contract** of a function one changes and the other calls |
+| imports | the caller's own file is clean | a **function-local** import into a file someone else is rewriting |
+| lines | disjoint lines, no git conflict | a **whole-file write-back** dropping the other's line |
+
+In every one, **the tooling's safety check is structurally blind to the failure**: a green
+suite, a clean merge, a passing lint. Ask of each check what it would look like if the thing
+you fear had happened — a clean `git diff` looks identical whether or not a line was lost.
+
+**Corollary, earned the same hour:** a mitigation can retire the tradeoff it was chosen
+over, and the recommendation does not update itself. An agent weighed "add the export" against
+"lost-update hazard on a contested file" — correctly, from a state that had changed half a
+message earlier, when the orchestrator claimed the file and left it with one writer. When you
+impose a mitigation, re-ask the questions that were open because of the risk it removes.
+
+#### And the dependency may be one import deeper, inside a function body
+
+**The same hazard, caught an hour later, and neither party saw it from the file lists.**
+
+Cluster 3.3 was ready to capture a frozen behaviour table for `classify_staged_image`,
+reasoning — correctly — that its own file was unmodified. But:
+
+```python
+# _cli_staged_resume.py:210, INSIDE the function, not the module header
+from ._cli_completion import valid_image_success
+```
+
+and at that moment `_cli_completion.py` was **+90/−67** under cluster 3.2. The capture would
+have frozen the behaviour of a half-rewritten function as the *pre-change baseline*, and
+every later comparison against it would have been meaningless while looking authoritative.
+
+**A function-local import is invisible to the check you would naturally run.** It is not in
+the module's import block, so scanning headers finds nothing; and the caller's own file is
+genuinely clean, so `git status` on your own scope says you are safe.
+
+> **Before freezing, capturing, or baselining anything, ask what it TRANSITIVELY calls that
+> someone else owns** — and grep the function bodies, not just the import headers.
+
+**Capture twice rather than arguing about ordering.** Where a baseline must be taken near
+another cluster's work, take it *after* that cluster lands and again after your own change,
+in one window with no commit between. A single difference then has exactly one possible
+cause. Under a single-capture plan, a red gate has two candidate explanations and separating
+them costs more than the extra run.
+
+**The general form for parallel dispatch:** fixtures in either cluster should construct
+state through the **real writers**, never by hand-planting the files those writers produce.
+A hand-planted fixture freezes a path; a fixture built through the writer follows it. That
+is worth requiring even when no parallel work is planned, because it is what makes a test
+survive the refactor it is meant to guard.
+
 ### A long document states its load-bearing facts twice — check both before trusting one
 
 **Earned at P3's open, and it is the sibling of the rule below.** The orchestrator's brief
@@ -545,6 +853,61 @@ were legitimate. Three of those were false, in the two files the agent had never
 
 The check re-derived the **arithmetic** and inherited the **classification**, and the
 classification was the half that was wrong.
+
+#### And the population belongs to whoever quotes the number, not to whoever chose the command
+
+**The same rule, one level up, and it cost this phase four hours.** Every count in P3 —
+119 failures, 37 errors, 31 items, 24 markers, three families — came from one command:
+
+```
+pytest tests/unit/sdk_ tests/unit/cli
+```
+
+`pyproject.toml:220` sets `testpaths = ["tests/unit", "tests/smoke", "tests/integration",
+"tests/gui"]`. **`tests/integration` runs in the default lane and was never measured**, and it
+held two files reading the marker the change had just orphaned — one of them on the forward
+path.
+
+The orchestrator chose the command; the agent ran every count through it for a day. **The
+agent's framing is the right one:**
+
+> The scoping was as available to me as to you… a one-sided attribution makes the fix look
+> like *"the lead should pick better commands"* rather than **"whoever quotes a number owns
+> its population."**
+
+That is the rule. A number you repeat is a number you are asserting, and its scope is part of
+the assertion. *"I ran the command I was given"* does not transfer ownership of what the
+command covered.
+
+#### A caveat does not travel with the number
+
+**The same rule at its highest-stakes point: escalation to the user.**
+
+An agent reported the migrate fix as *"a field split across ~16 sites and a manifest JSON
+schema"* and attached an explicit caveat — *"What I have not established: whether `:369` and
+`:684` are input-fingerprints or read-backs."* The orchestrator escalated to the user carrying
+the number and **not** the caveat. The user ruled to defer, largely because the fix had been
+framed as a P7-sized slice.
+
+The real size, established minutes later and independently verified: **four read-back call
+sites in one file, no new field, no schema change.** The user was re-asked and **reversed**.
+
+> **A caveat attached to a number does not survive being repeated by someone else.** The
+> number is quotable and the caveat is not; it stays in the message it was written in.
+
+**So: never escalate an unestablished number.** Either establish it, or escalate the
+*question* rather than the estimate — *"the fix is somewhere between one comparison and a
+sixteen-site field split, and here is the check that decides which"* is a ripe thing to bring
+someone; a worst-case estimate presented as the size is not.
+
+**And when it happens anyway, re-ask.** A decision made on bad information is not made. Going
+back costs one round trip and owning the error costs nothing; acting on the first answer
+spends the user's ruling on a premise they were never given.
+
+**The cheap discharge:** before quoting any count a second time, state the population in the
+same breath — "119 failures **in `tests/unit/{sdk_,cli}`**". A count carrying its own scope
+invites the question; a bare count suppresses it. And when a phase gate says *"the suite
+passes"*, resolve *suite* against the config, not against habit.
 
 **These have different fixes, which is why the distinction matters.** A narrow grep is fixed
 by widening it. **Accepting the frame is not** — you can widen the search forever and still
@@ -603,6 +966,112 @@ one: missing `QT_QPA_PLATFORM=offscreen` aborts the interpreter partway with no 
 streams uncaptured output and can triple runtime when stdout is on shared storage; `-x`
 truncates a run that then gets recorded as a baseline; and leaking `SLURM_ARRAY_TASK_ID` into
 tests that mock scheduler state makes them read the *gate's* identity instead of their own.
+
+### A gate measures ONE tree — hash it, or the result is void, not merely stale
+
+**I invalidated gate lane 1 myself.** 48 shards spread over 8m30s; `_run_state.py` was
+edited at 13:49:41, *inside* that window. The result was not an old reading of one tree — it
+was a **union across two**: some shards imported the pre-edit module, some the post-edit one,
+and **no single tree ever produced that failure set.** Incoherent, not stale. There is no
+partial credit and nothing to salvage; the only response is to re-run.
+
+**The freeze protocol, five steps, all five load-bearing:**
+
+1. **Declare final.** Every agent holding an edit says so and stops.
+2. **Snapshot.**
+   `find src tests -name '*.py' | sort | xargs sha256sum > pre.txt`
+3. **Submit.**
+4. **Nobody edits — *including docs* — until every shard has exited.**
+5. **Re-hash and diff.** Only then read the results. A non-empty diff voids the lane.
+
+**Docs are inside the freeze, and the reason is not that a doc changes behaviour.** It is
+that "nobody touches the tree" survives contact with a long wait and "nobody touches the tree
+except harmless things" does not — it requires a judgment call at precisely the moment you
+are bored and impatient. The exception is where the next `src/` edit gets rationalised.
+
+**Report the shard spread with every gate result.** The spread *is* the window in which the
+invariant could have been violated, so a result quoted without it cannot be audited later.
+Lane 2: spread 1m53s, tree `470c69f4faef6277`, held still — that is the shape of a quotable
+line.
+
+### Mechanical gates go through the same array
+
+**Standing instruction (user, 2026-09-04): for future mechanical gates, consider dispatching
+over SLURM to parallelize.**
+
+The array harness is **not test-specific.** Any set of independent, deterministic checks is a
+task list: the AST invariant sweeps (INV-LAYER), the enumerate-with-the-old-name grep sweeps,
+`ruff`, `mypy`, `check_features_md.py` / `check_workflows_md.py`, the doc-anchor checks. One
+check per array task, one line of output each, one collector.
+
+Constraints, each of which has already cost this change something:
+
+- **Compare names, never counts** — the same rule as the test array, for the same reason.
+- **Results go to shared storage.** `/scratch/<user>/<jobid>` is node-local *and* per-job, so
+  a collector running anywhere else sees an empty directory. The symptom is `FAILED` with
+  `ExitCode 0:53` and **no log file at all**, and it is intermittent — a task that lands on
+  the submitting node appears to work.
+- **`sbatch --parsable` fails silently.** On rejection it prints the error and returns an
+  empty id, so a driver loop "runs" for hours having submitted nothing. Verify the captured
+  id matches `^[0-9]+$` and surface the raw output on failure.
+- **The same tree-hash freeze applies, and a mechanical gate is *more* exposed, not less.**
+  Its checks finish in seconds, so the window between submit and result is exactly when
+  "let me just fix that one thing" is most tempting and least survivable.
+- **Do not submit this beside an active ordinary array.** Allocation and submission bounds are
+  already consumed by the cohort; see the sidecar rule in `_cli/CLAUDE.md`.
+
+### Each shard gets its own worktree, and the finalizer removes them
+
+**Standing instruction (user, 2026-09-05): create worktrees, run the checks inside them, and
+clean the worktrees up afterwards.**
+
+This **supersedes** the exclusion drafted immediately above, which said mutation harnesses
+must stay serial because they rewrite `src/` in place. That was true only while every shard
+shared one checkout. Give each shard its own worktree and they no longer share a mutable
+target, so **the mutation harnesses parallelize like everything else** — the constraint was
+never about the harnesses, it was about the checkout.
+
+**It also converts the freeze from a procedure into a property.** A worktree is created from
+a **commit**, so a shard physically cannot observe an edit made in the main checkout while it
+runs. The union-across-two-trees failure that voided lane 1 becomes *impossible* rather than
+*forbidden*, and "which tree did we measure?" is answerable forever by SHA instead of by a
+hash file in scratch that outlives nothing.
+
+**The cost is that the freeze point must be a commit.** Uncommitted work is invisible to a new
+worktree. Make a temporary WIP commit (never `git stash` — the stash stack is shared with
+every other worktree and another session may pop yours), gate that SHA, and amend or reword
+afterwards.
+
+**Layout and lifecycle:**
+
+- **Create them all in the submitting script, serially, before the array is submitted.**
+  `git worktree add` mutates the shared `.git/worktrees/` administrative directory; 48
+  concurrent adds contend on it for no benefit. Serial creation also means a task body never
+  runs a git command at all.
+- **`--detach`, always.** `git worktree add <path> -b <name>` would demand 48 unique branch
+  names and leave 48 branches behind to clean up.
+- **Shared storage, in a job-scoped directory** — `/bigdata/.../.gate-worktrees/<jobid>/NN`.
+  Not `/scratch/<user>/<jobid>` (node-local *and* per-job, so other nodes see nothing), and
+  **not the repo's own `.worktrees/`**, where other sessions keep live work that a cleanup
+  glob would take with it.
+- **One venv per worktree via `uv sync`, with a shared `UV_CACHE_DIR` on `/bigdata`** so
+  packages hardlink instead of re-downloading. Do not try to point many worktrees at one
+  pre-built venv: an editable install resolves through a finder pinned to one path, so the
+  shards would silently all import the *same* tree and every result would be a copy of one.
+- **Clean up from a terminal `afterany` finalizer, not from the task body.** A task that is
+  OOM-killed, timed out, or preempted never reaches its own cleanup line; `afterany` runs
+  regardless of how the cohort ended. `git worktree remove --force` (mutation harnesses leave
+  their worktree dirty by design, and an unforced remove refuses), then `git worktree prune`
+  to clear administrative entries for anything already gone from disk. An `afterany`
+  finalizer is not a parallel sidecar — the `_cli/CLAUDE.md` rule permits it explicitly.
+- **Removal is serial too**, and for the same reason as creation.
+
+**Read-only checks do not actually need a worktree** — `ruff`, `mypy`, the grep and AST
+sweeps, the doc-anchor scripts. `git archive <SHA> | tar -x` into node-local
+`/scratch/$SLURM_JOB_ID` is faster, touches no shared git metadata, and is reclaimed by the
+scheduler with no cleanup step to forget. Worktrees earn their cost where a check **writes**
+— which is exactly the mutation harnesses, and exactly the case that could not be
+parallelized before.
 
 ### End of run
 One `code-simplifier` pass (quality only, no behaviour change), apply fixes, then the full

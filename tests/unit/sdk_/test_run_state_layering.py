@@ -16,12 +16,13 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+import phenotypic.sdk_._image_record as image_record
 import phenotypic.sdk_._run_state as run_state
 import phenotypic.sdk_._schema_shape as schema_shape
 import phenotypic.sdk_._state_types as state_types
 import phenotypic.sdk_._verification_cache as verification_cache
 
-# All FOUR modules. Three of them are the cycle-breaking split (gen-r3 C5):
+# All FIVE modules. Three of them are the cycle-breaking split (gen-r3 C5):
 # the dataclasses live in their own leaf so _verification_cache can cache
 # whole ImageState objects without it and _run_state importing each other, and
 # INV-LAYER binds the leaf exactly as it binds the other two.
@@ -32,10 +33,25 @@ import phenotypic.sdk_._verification_cache as verification_cache
 # _run_state imports it, so a phenotypic._cli import there would be a
 # TRANSITIVE INV-LAYER violation this walk would otherwise miss. The guarantee
 # has to follow the code, or it silently stops covering it.
+#
+# _image_record is the FIFTH, added in P3 -- and the one whose *whole reason
+# for existing* is this invariant. Its own module docstring calls the
+# reader/writer split "forced rather than stylistic" because INV-LAYER forbids
+# sdk_ importing phenotypic._cli "at module scope or inside a function": the
+# readers live here precisely so sdk_ never has to. _run_state's deep path asks
+# it for record_rejection, so the same transitive argument that added
+# _schema_shape applies, and P6 Task 0 makes the edge unconditional when
+# valid_image_success moves here.
+#
+# A module created to satisfy a rule is the last one that should be exempt from
+# testing it. It was unwatched from its creation in P3 cluster 3.1 until this
+# line -- clean throughout, which is the point: nothing would have noticed if it
+# had stopped being.
 _MODULES = (
     Path(state_types.__file__),
     Path(verification_cache.__file__),
     Path(schema_shape.__file__),
+    Path(image_record.__file__),
     Path(run_state.__file__),
 )
 

@@ -498,11 +498,11 @@ def test_process_single_cli_marker_certifies_the_store(tmp_path: Path) -> None:
     from phenotypic._cli._cli_completion import valid_image_success
     from phenotypic.sdk_ import (
         file_fingerprint,
-        image_completion_marker_path,
+        image_record_path,
     )
 
     marker = json.loads(
-        image_completion_marker_path(out, "in", "img").read_text(
+        image_record_path(out, "in", "img").read_text(
             encoding="utf-8"
         )
     )

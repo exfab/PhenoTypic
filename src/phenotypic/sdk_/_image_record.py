@@ -22,6 +22,7 @@ tree that had already satisfied it. Import them from ``_io_constants``.
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Final
 
@@ -37,6 +38,7 @@ __all__ = [
     "STAGE_STAGE3",
     "read_image_record",
     "record_provenance",
+    "record_rejection",
 ]
 
 #: The stage names, as shared constants imported by every writer and reader
@@ -121,3 +123,68 @@ def record_provenance(record: object) -> str:
         return PROVENANCE_FORWARD
     value = record.get("provenance", PROVENANCE_FORWARD)
     return value if value == PROVENANCE_MIGRATED else PROVENANCE_FORWARD
+
+
+def record_rejection(
+    record: Mapping[str, object],
+    *,
+    work_id: str,
+    dataset: str,
+    image_stem: str,
+) -> str | None:
+    """Return why ``record`` cannot certify this image, or ``None``.
+
+    **The single implementation of per-image record validity**, and the one
+    reason this function exists rather than the check being written twice.
+    ``_cli_completion.valid_image_success`` and
+    ``_run_state``'s deep path both ask it, exactly as they both asked
+    :func:`~phenotypic.sdk_._run_state.marker_rejection` of the marker this
+    record replaces. Splitting them again -- after gate finding IMPL-F3 spent
+    a whole increment merging them -- would look like progress in a diff and
+    be the same defect returning.
+
+    A sentence rather than a bool, because the sentence lands in
+    ``ImageState.reason`` and is what makes "which images are missing, and
+    why?" answerable without re-running anything.
+
+    Two clauses are worth reading twice:
+
+    * **The ``work_id`` comparison is skipped for a migrated record** (U-10).
+      A pre-markers tree never had a ``work_id`` to match, so comparing it
+      unconditionally would reject every migrated image. The relaxation is
+      per-record and read through :func:`record_provenance`, so an absent or
+      unrecognized value keeps the fence.
+    * **A record with no artifacts certifies nothing** (CAN-23), and after
+      the collapse that is one missing check away from being wrong. A Stage-2
+      worker writes ``stages.stage2`` and no artifacts into this same file;
+      before the collapse the two facts lived in two trees and mistaking one
+      for the other was impossible.
+
+    Args:
+        record: The record mapping, as returned by :func:`read_image_record`.
+        work_id: The identity this image is expected to carry.
+        dataset: The dataset the caller is asking about.
+        image_stem: The image stem the caller is asking about.
+
+    Returns:
+        A sentence naming the first failed clause, or ``None`` when the
+        record may certify this image. Artifact *contents* are not checked
+        here -- that is ``fenced_artifact_path``'s half, kept separate so a
+        caller asking "is this record even about my image?" pays no I/O.
+    """
+    if record.get("version") != RECORD_VERSION:
+        return (
+            f"record schema version {record.get('version')!r} is not "
+            f"{RECORD_VERSION}"
+        )
+    if record.get("dataset") != dataset:
+        return "record was written for a different dataset"
+    if record.get("image_stem") != image_stem:
+        return "record was written for a different image"
+    if record_provenance(record) != PROVENANCE_MIGRATED:
+        if record.get("work_id") != work_id:
+            return "record was written for a different work_id"
+    artifacts = record.get("artifacts")
+    if not isinstance(artifacts, dict) or not artifacts:
+        return "record declares no artifacts"
+    return None

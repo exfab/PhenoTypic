@@ -321,10 +321,10 @@ def _leave_untouched(root):
 
 
 def _remove_one_image_marker(root):
-    from phenotypic.sdk_ import image_completion_marker_path
+    from phenotypic.sdk_ import image_record_path
     from tests._output_layout import FIXTURE_DATASET, FIXTURE_STEMS
 
-    image_completion_marker_path(
+    image_record_path(
         root, FIXTURE_DATASET, FIXTURE_STEMS[1]
     ).unlink()
 
@@ -465,10 +465,10 @@ def _mark_migrated(root, stem):
     that no longer matches the inventory, which is the whole point: a
     pre-markers tree never had one to match.
     """
-    from phenotypic.sdk_ import image_completion_marker_path
+    from phenotypic.sdk_ import image_record_path
     from tests._output_layout import FIXTURE_DATASET
 
-    path = image_completion_marker_path(root, FIXTURE_DATASET, stem)
+    path = image_record_path(root, FIXTURE_DATASET, stem)
     marker = json.loads(path.read_text(encoding="utf-8"))
     marker["provenance"] = "migrated"
     marker["work_id"] = "work-id-that-never-existed"
@@ -569,26 +569,53 @@ def test_the_schema_advisory_is_gated_and_never_a_lie(
     """§4.3's reader half, and the reason it waits for the same flag the
     refusal waits for.
 
-    `requires_conversion` returns CONVERT for **every tree the current build
-    writes** -- `publish_image_success` always creates `image_complete/`
-    (signal 1) and `save_processing_state` always writes
-    `datasets.<ds>.completed` (signal 3). This fixture is built by those very
-    publishers, so an ungated advisory would banner "run `--mode migrate`" on
-    every GUI output until P3, advising a conversion that does not convert
-    `.phenotypic/` until P7. An advisory that is always on teaches people to
-    ignore the one that will matter.
-
     Armed, the advisory appears and the verdict is **unchanged** -- which is
     the whole of "informational, not a gate".
+
+    **The premise inverted at P3, and the legacy shape is now PLANTED rather
+    than inherited.** This test used to open by asserting that
+    `requires_conversion(complete_run)` is `CONVERT`, on the grounds that
+    "the current shape IS the legacy shape" -- true at P1, because
+    `publish_image_success` created `image_complete/` (signal 1) and
+    `save_processing_state` wrote `datasets.<ds>.completed` (signal 3). P3
+    stopped both, so this fixture -- built by those very publishers -- is now
+    a *current* tree and `requires_conversion` returns `None`. The old
+    assertion did not merely go stale: **it was measuring P3's success and
+    failing because P3 succeeded.**
+
+    So signal 1 is planted explicitly. An empty directory is the faithful
+    plant: `_schema_shape.py:255` probes `(progress / segment).is_dir()`, and
+    `test_schema_gate.py` pins that emptying the tree leaves the verdict at
+    `CONVERT` while removing it flips to `None` -- a half-migrated tree is not
+    a converted one. Planting a marker *file* would additionally imply a
+    publisher that no longer exists.
+
+    What the gating protects is unchanged and is why the advisory waits for
+    the same flag the refusal does: an advisory that fires on every output
+    teaches people to ignore the one that will matter.
     """
-    from phenotypic.sdk_ import _schema_shape, resolve_run_state
+    from phenotypic.sdk_ import (
+        DIR_IMAGE_COMPLETE,
+        _schema_shape,
+        resolve_progress_dir,
+        resolve_run_state,
+    )
     from phenotypic.sdk_._schema_shape import (
         ConversionVerdict,
         requires_conversion,
     )
 
+    assert requires_conversion(complete_run) is None, (
+        "this fixture is supposed to be a CURRENT tree before the plant; a "
+        "verdict here means some other signal is live and the plant below "
+        "would prove nothing about signal 1"
+    )
+    (resolve_progress_dir(complete_run) / DIR_IMAGE_COMPLETE).mkdir(
+        parents=True, exist_ok=True
+    )
     assert requires_conversion(complete_run) is ConversionVerdict.CONVERT, (
-        "the premise of this test: at P1 the current shape IS the legacy shape"
+        "the premise of this test: the tree must need conversion, or the "
+        "advisory being absent below would mean nothing"
     )
 
     disarmed = resolve_run_state(complete_run, depth="deep")
@@ -1042,10 +1069,10 @@ def test_an_unmarked_record_is_still_fenced_by_work_id(complete_run):
     """The control for U-10: the acceptance is scoped to marked records.
     Without this, "skip the work_id comparison" could have been implemented
     unconditionally and every test above would still pass."""
-    from phenotypic.sdk_ import image_completion_marker_path, resolve_run_state
+    from phenotypic.sdk_ import image_record_path, resolve_run_state
     from tests._output_layout import FIXTURE_DATASET, FIXTURE_STEMS
 
-    path = image_completion_marker_path(
+    path = image_record_path(
         complete_run, FIXTURE_DATASET, FIXTURE_STEMS[0]
     )
     marker = json.loads(path.read_text(encoding="utf-8"))
@@ -1508,14 +1535,14 @@ def test_run_proof_is_current_is_the_bindings_half_not_the_image_walk(
     surface polls, which is what pushed callers into open-coding to begin
     with.
     """
-    from phenotypic.sdk_ import image_completion_marker_path
+    from phenotypic.sdk_ import image_record_path
     from phenotypic.sdk_._run_state import run_proof_is_current
     from tests._output_layout import FIXTURE_DATASET, FIXTURE_STEMS
 
     assert run_proof_is_current(complete_run) is True
 
     for stem in FIXTURE_STEMS:
-        image_completion_marker_path(
+        image_record_path(
             complete_run, FIXTURE_DATASET, stem
         ).unlink()
 
@@ -1612,12 +1639,12 @@ def test_fenced_artifact_path_dispatches_on_kind(complete_run):
     returns the store's root `zarr.json` -- the path to stat next time, not a
     bool -- because a directory's mtime tracks only its own entries.
     """
-    from phenotypic.sdk_ import STORE_ROOT_JSON, image_completion_marker_path
+    from phenotypic.sdk_ import STORE_ROOT_JSON, image_record_path
     from phenotypic.sdk_._run_state import fenced_artifact_path
     from tests._output_layout import FIXTURE_DATASET, FIXTURE_STEMS
 
     marker = json.loads(
-        image_completion_marker_path(
+        image_record_path(
             complete_run, FIXTURE_DATASET, FIXTURE_STEMS[0]
         ).read_text(encoding="utf-8")
     )

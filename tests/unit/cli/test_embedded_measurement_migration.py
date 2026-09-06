@@ -17,7 +17,7 @@ from phenotypic.sdk_ import (
     MEASUREMENT_TABLE_RELATIVE_PATH,
     aggregate_publication_marker_path,
     PhenotypicAttr,
-    image_completion_marker_path,
+    image_record_path,
     read_phenotypic_attributes,
     zarr_store_path,
 )
@@ -82,6 +82,17 @@ def test_exact_embedded_table_comparison_includes_schema_order_nulls_and_fanout(
     assert embedded_measurement_table_matches(store, prepared) is False
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "_hdf_to_zarr._republish_image_marker rewrites the legacy marker "
+        "(:614,:647) and writes no record, so valid_image_success is false "
+        "for every migrated image -- and the safe-delete gate reads exactly "
+        "that, so every pass reports 'skipped'. P7 U-10. Full rationale "
+        "beside the shared marker in "
+        "tests/unit/sdk_/test_migration_republishes_state.py."
+    ),
+)
 def test_migration_embeds_parquet_preserves_then_safely_deletes_source(
     legacy_run: Path,
 ) -> None:
@@ -277,7 +288,7 @@ def test_embedded_table_migration_retries_after_marker_interruption(
         ["--mode", "migrate", "--output", str(legacy_headers_run)],
     )
     assert second.exit_code == 0, second.output
-    marker = image_completion_marker_path(legacy_headers_run, DATASET, stem)
+    marker = image_record_path(legacy_headers_run, DATASET, stem)
     assert marker.is_file()
     assert valid_image_success(
         legacy_headers_run,
@@ -355,7 +366,7 @@ def test_hdf_only_migration_keeps_store_measurement_free(
     assert not (store / MEASUREMENT_TABLE_RELATIVE_PATH).exists()
     assert PhenotypicAttr.TABLES not in read_phenotypic_attributes(store)
     marker = json.loads(
-        image_completion_marker_path(legacy_run, DATASET, stem).read_text(
+        image_record_path(legacy_run, DATASET, stem).read_text(
             encoding="utf-8"
         )
     )

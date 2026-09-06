@@ -10,7 +10,7 @@ from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_types import Dataset
 from phenotypic.sdk_ import (
     MEASUREMENT_TABLE_RELATIVE_PATH,
-    image_completion_marker_path,
+    image_record_path,
     zarr_store_path,
 )
 
@@ -143,7 +143,7 @@ def test_marker_binds_the_embedded_table_hash(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.output
 
     marker = json.loads(
-        image_completion_marker_path(output, "in", "plate").read_text(
+        image_record_path(output, "in", "plate").read_text(
             encoding="utf-8"
         )
     )

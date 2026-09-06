@@ -29,9 +29,10 @@ from phenotypic._cli._cli_completion import (
 )
 from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic.sdk_ import (
+    RECORD_VERSION,
     atomic_write_json,
     file_fingerprint,
-    image_completion_marker_path,
+    image_record_path,
     zarr_store_path,
 )
 
@@ -42,11 +43,19 @@ WORK_ID = "w-1"
 
 @dataclass
 class PublishedStore:
-    """A published run whose per-image marker certifies an OME-Zarr store."""
+    """A published run whose per-image RECORD certifies an OME-Zarr store.
+
+    The field is ``record``, not ``marker``: ``publish_image_success`` returns
+    the path it wrote, and after P3's clean break that is
+    ``images/<ds>/<stem>.json``. Leaving the old name would have made every
+    reader of this fixture believe they were looking at ``image_complete/``,
+    which is the class of wrongness this change exists to remove -- a name
+    that survives the thing it named.
+    """
 
     output_dir: Path
     store: Path
-    marker: Path
+    record: Path
 
 
 def _output_manager(output_dir: Path) -> OutputManager:
@@ -72,7 +81,7 @@ def published_store(tmp_path: Path) -> PublishedStore:
     key, path = image_data_artifact(
         output_dir, _output_manager(output_dir), DATASET, STEM
     )
-    marker = publish_image_success(
+    record = publish_image_success(
         output_dir,
         work_id=WORK_ID,
         dataset=DATASET,
@@ -83,20 +92,33 @@ def published_store(tmp_path: Path) -> PublishedStore:
         lifecycle_epoch="e-1",
         artifacts={key: path},
     )
-    return PublishedStore(output_dir=output_dir, store=store, marker=marker)
+    return PublishedStore(output_dir=output_dir, store=store, record=record)
 
 
 @pytest.fixture
 def legacy_file_marker(tmp_path: Path) -> dict[str, object]:
-    """A hand-written marker whose file descriptor carries no ``kind``."""
+    """A hand-written record whose file descriptor carries no ``kind``.
+
+    **The "legacy" here is the DESCRIPTOR's shape, not the file's location.**
+    A v1 descriptor omitted ``kind``, and an absent ``kind`` must still read
+    as ``"file"`` -- that is the compatibility this fixture exists to
+    exercise, and it is a property of `fenced_artifact_path`, which the
+    current reader reaches through the record.
+
+    So it plants at ``image_record_path`` with ``RECORD_VERSION``: pointing
+    it at ``image_complete/`` would test nothing, because `valid_image_success`
+    no longer looks there and would return ``False`` for the trivial reason
+    rather than the interesting one. The fixture name is kept -- the subject
+    really is the legacy descriptor shape.
+    """
     output_dir = tmp_path / "out"
     artifact = output_dir / "results" / DATASET / "measurements" / "img.parquet"
     artifact.parent.mkdir(parents=True)
     artifact.write_bytes(b"measurements")
     atomic_write_json(
-        image_completion_marker_path(output_dir, DATASET, STEM),
+        image_record_path(output_dir, DATASET, STEM),
         {
-            "version": SUCCESS_MARKER_VERSION,
+            "version": RECORD_VERSION,
             "work_id": WORK_ID,
             "dataset": DATASET,
             "relative_image_path": f"{STEM}.tif",
@@ -137,11 +159,32 @@ def test_marker_version_is_bumped() -> None:
     assert SUCCESS_MARKER_VERSION >= 2
 
 
-def test_a_v1_marker_is_rejected(published_store: PublishedStore) -> None:
-    """The bump has to bite: a marker stamped v1 must not validate."""
-    marker = json.loads(published_store.marker.read_text(encoding="utf-8"))
-    marker["version"] = 1
-    atomic_write_json(published_store.marker, marker)
+def test_a_record_with_an_uninterpretable_version_is_rejected(
+    published_store: PublishedStore,
+) -> None:
+    """The version check has to bite: a record this build cannot read fails.
+
+    **Renamed and re-numbered at P3, and the number is the whole story.** It
+    was `test_a_v1_marker_is_rejected`, planting `version: 1` against
+    `SUCCESS_MARKER_VERSION == 2`. The publisher now writes a record, and
+    `RECORD_VERSION == 1` -- so the old body plants the **current** version
+    and the assertion inverts.
+
+    That inversion fails loudly rather than passing green, which is the
+    saving grace: `assert True is False`. The hazard is the *repair* -- the
+    two-character `is False` -> `is True` that makes the red go away and
+    leaves a test named "rejected" asserting acceptance. Nothing in a diff
+    objects to it, least of all inside a sweep updating dozens of files.
+
+    So the fix is not a new number but a stated property: **the invariant is
+    "a version this build cannot interpret is refused", and `1` was only ever
+    the stale value by accident of the marker constant having been bumped.**
+    `RECORD_VERSION + 1` says that directly and cannot rot when the constant
+    next moves.
+    """
+    marker = json.loads(published_store.record.read_text(encoding="utf-8"))
+    marker["version"] = RECORD_VERSION + 1
+    atomic_write_json(published_store.record, marker)
     assert (
         valid_image_success(
             published_store.output_dir,
@@ -191,14 +234,14 @@ def test_publishing_a_store_artifact_does_not_raise(
     published_store: PublishedStore,
 ) -> None:
     """_sha256 opens its argument as a file; on a directory that is fatal."""
-    assert published_store.marker.is_file()
+    assert published_store.record.is_file()
 
 
 def test_the_store_descriptor_keys_on_the_root_zarr_json(
     published_store: PublishedStore,
 ) -> None:
     """Kind-tagged, content-only, and relative -- all three at once."""
-    marker = json.loads(published_store.marker.read_text(encoding="utf-8"))
+    marker = json.loads(published_store.record.read_text(encoding="utf-8"))
     descriptor = marker["artifacts"]["store"]
     assert descriptor["kind"] == "store"
     assert descriptor["path"] == published_store.store.relative_to(
@@ -350,7 +393,7 @@ def test_an_unknown_descriptor_kind_is_rejected(
     the file branch for the wrong reason, and the test would pass against a
     build that silently treats every unknown kind as a file.
     """
-    marker_path = image_completion_marker_path(
+    marker_path = image_record_path(
         legacy_file_marker["output_dir"],  # type: ignore[arg-type]
         DATASET,
         STEM,
@@ -391,20 +434,100 @@ def _state_requiring_markers(output_dir: Path) -> None:
     )
 
 
+#: The third deferred consumer, alongside `--mode recompile` (P4) and the two
+#: GUI readers (P6). `refresh_success_markers_after_metadata_migration` reads
+#: `image_completion_marker_path` at `_cli_completion.py:431`, which D1's clean
+#: break stopped writing -- so `read_text` raises `FileNotFoundError`, `:436`
+#: catches it as `OSError`, and EVERY image is skipped. The function returns 0
+#: having examined nothing.
+#:
+#: **Deferred, not fixed, and the fix is not one line.** `:441` compares
+#: `marker.get("version") != SUCCESS_MARKER_VERSION`, which is **2**, while a
+#: record carries `RECORD_VERSION`, which is **1**. Repointing only the path
+#: leaves every record failing the version check and `continue`-ing -- the same
+#: silent skip through a different door. Path and constant move together, or
+#: the repoint is cosmetic. That is REUSE-F10's work, deferred by ruling at the
+#: P2 gate and owned by P7.
+#:
+#: Nothing user-facing is broken meanwhile: the function has **zero production
+#: callers** (`grep -rn` finds the definition, one docstring reference in
+#: `sdk_/_run_state.py:532`, and these tests). But the failure direction is the
+#: dangerous one -- it returns 0 and raises nothing for a tree whose artifact
+#: changed uncertified, which is a verdict improving without verification.
+#:
+#: **All THREE tests below carry this mark, and the third had to be made to
+#: fail before it could.** Two failed loudly (`DID NOT RAISE`); the third
+#: asserted `== 0` and stayed GREEN, because a bridge that examines nothing
+#: returns 0 just as surely as one that examines a store and finds it
+#: unchanged. It was given a spy as a positive control so it fails for the
+#: real reason. A vacuous green between two reds reporting the same cause is
+#: worse than a third red: it tells a reviewer the store handling is fine.
+#:
+#: So P7 gets three XPASSes at once, which is the point -- the repoint is not
+#: done until all three go green together.
+_BRIDGE_READS_THE_LEGACY_MARKER_UNTIL_P7 = pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "refresh_success_markers_after_metadata_migration reads "
+        "image_completion_marker_path (_cli_completion.py:431), which D1 "
+        "stopped writing, so every image is skipped at :436 and the guard "
+        "never runs. REUSE-F10, deferred to P7; the path and "
+        "SUCCESS_MARKER_VERSION must move together."
+    ),
+)
+
+
+@_BRIDGE_READS_THE_LEGACY_MARKER_UNTIL_P7
 def test_the_refresh_bridge_tolerates_a_store_descriptor(
     published_store: PublishedStore,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """FLOW-31: the whole comparison block dispatches on kind, not just the
-    ``is_file()`` guard -- ``_sha256`` on a store raises IsADirectoryError."""
+    ``is_file()`` guard -- ``_sha256`` on a store raises IsADirectoryError.
+
+    **This assertion was green and vacuous, which made it the dangerous third
+    of the trio.** Since D1 the bridge skips every image at
+    ``_cli_completion.py:436`` and returns 0 without reaching the store branch
+    at all, so ``== 0`` held for the trivial reason instead of the interesting
+    one -- identically true of a bridge that dispatched on nothing. A green
+    "the store branch works" sitting between two reds reporting the same cause
+    tells a reviewer the store handling is fine.
+
+    **The positive control is the spy below**, and it is what converts this
+    from a comment into a test: a comment saying "this proves nothing" does
+    not run. The spy fails today, XPASSes when P7 repoints the bridge, and is
+    self-cleaning by the same mechanism as the two GUI tripwires.
+
+    It returns ``True`` so the original claim is preserved exactly: the bridge
+    must still reach the store branch, find it unchanged, and refresh nothing.
+    """
+    from phenotypic._cli import _cli_completion
+
+    reached: list[Path] = []
+
+    def _spy(artifact: Path, descriptor: object) -> bool:
+        reached.append(artifact)
+        return True
+
+    monkeypatch.setattr(_cli_completion, "_store_artifact_matches", _spy)
+
     _state_requiring_markers(published_store.output_dir)
-    assert (
-        refresh_success_markers_after_metadata_migration(
-            published_store.output_dir
-        )
-        == 0
+    refreshed = refresh_success_markers_after_metadata_migration(
+        published_store.output_dir
+    )
+
+    assert reached, (
+        "the bridge never reached the store branch, so `refreshed == 0` "
+        "below would hold for the trivial reason -- it is skipping every "
+        "image at _cli_completion.py:436 (REUSE-F10)"
+    )
+    assert refreshed == 0, (
+        "a store descriptor is verified, never refreshed: metadata migration "
+        "does not rewrite a store"
     )
 
 
+@_BRIDGE_READS_THE_LEGACY_MARKER_UNTIL_P7
 def test_the_refresh_bridge_rejects_an_uncertified_store_change(
     published_store: PublishedStore,
 ) -> None:
@@ -421,6 +544,7 @@ def test_the_refresh_bridge_rejects_an_uncertified_store_change(
         )
 
 
+@_BRIDGE_READS_THE_LEGACY_MARKER_UNTIL_P7
 def test_the_refresh_bridge_rejects_a_missing_store(
     published_store: PublishedStore,
 ) -> None:
@@ -611,7 +735,7 @@ def test_legacy_migration_certifies_the_store_for_a_store_era_run(
     promoted, output_dir = _run_legacy_migration(tmp_path, with_store=True)
     assert promoted == 1
     marker = json.loads(
-        image_completion_marker_path(output_dir, DATASET, STEM).read_text(
+        image_record_path(output_dir, DATASET, STEM).read_text(
             encoding="utf-8"
         )
     )
@@ -631,7 +755,7 @@ def test_legacy_migration_still_certifies_the_hdf_for_a_legacy_run(
     promoted, output_dir = _run_legacy_migration(tmp_path, with_store=False)
     assert promoted == 1
     marker = json.loads(
-        image_completion_marker_path(output_dir, DATASET, STEM).read_text(
+        image_record_path(output_dir, DATASET, STEM).read_text(
             encoding="utf-8"
         )
     )

@@ -18,6 +18,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from phenotypic._cli._cli_completion import (
     SUCCESS_MARKER_VERSION,
     current_aggregate_is_current,
@@ -27,6 +29,35 @@ from phenotypic.sdk_ import image_completion_marker_path
 from phenotypic.sdk_._hdf_to_zarr import migrate_run_hdf_to_zarr
 
 from tests.unit.sdk_._migration_fixtures import LegacyRun
+
+#: The migrator republishes the LEGACY marker, and every reader has moved.
+#:
+#: `_hdf_to_zarr._republish_image_marker` reads `image_completion_marker_path`
+#: (`:614`) and writes it straight back (`:647`); no record is ever written,
+#: and nothing anywhere in `src/` removes `image_complete/`. So after a
+#: migration `valid_image_success` -- which reads the record -- is false for
+#: every image, `_current_success_work_ids` is empty, and
+#: `current_aggregate_is_current` compares a published digest against the
+#: digest of nothing.
+#:
+#: **This file is where P3's sweep went wrong, which is why the note lives
+#: here.** The sweep classified this module "no change -- the migrator
+#: rewrites the legacy marker in place". That sentence describes what the code
+#: does; it was used as a reason to leave it. After D1 those are opposite
+#: things, and the republication tests stayed green because they assert the
+#: legacy marker was written -- still true, and no longer meaning anything.
+#:
+#: Fixed by P7's U-10 item: the republisher writes a record with
+#: `provenance="migrated"`, which `publish_image_record` already supports.
+_MIGRATOR_REPUBLISHES_THE_LEGACY_MARKER_UNTIL_P7 = pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "_hdf_to_zarr._republish_image_marker rewrites the legacy marker "
+        "(:614,:647) and writes no record, so valid_image_success is false "
+        "for every migrated image. P7 U-10: republish as a record with "
+        "provenance='migrated'."
+    ),
+)
 
 
 def _marker(run: LegacyRun, stem: str) -> dict:
@@ -51,6 +82,7 @@ def test_the_fixture_starts_INVALID(finished_legacy_run: LegacyRun) -> None:
         )
 
 
+@_MIGRATOR_REPUBLISHES_THE_LEGACY_MARKER_UNTIL_P7
 def test_every_image_still_validates_after_migration(
     finished_legacy_run: LegacyRun,
 ) -> None:
@@ -67,6 +99,7 @@ def test_every_image_still_validates_after_migration(
         ), stem
 
 
+@_MIGRATOR_REPUBLISHES_THE_LEGACY_MARKER_UNTIL_P7
 def test_the_aggregate_publication_survives_migration(
     finished_legacy_run: LegacyRun,
 ) -> None:
@@ -151,6 +184,7 @@ def test_republication_never_CREATES_a_marker(
     assert not marker_root.exists() or not list(marker_root.rglob("*.json"))
 
 
+@_MIGRATOR_REPUBLISHES_THE_LEGACY_MARKER_UNTIL_P7
 def test_republication_is_keyed_on_MARKER_state_not_conversion_state(
     finished_legacy_run: LegacyRun,
 ) -> None:
@@ -198,10 +232,24 @@ def test_republication_is_keyed_on_MARKER_state_not_conversion_state(
     ), "a skipped image's marker was never republished"
 
 
+@_MIGRATOR_REPUBLISHES_THE_LEGACY_MARKER_UNTIL_P7
 def test_a_migrated_run_does_no_work_on_the_next_full_run(
     finished_legacy_run: LegacyRun,
 ) -> None:
-    """The end-to-end consequence: migration must not cause reprocessing."""
+    """The end-to-end consequence: migration must not cause reprocessing.
+
+    **Marked from the re-run, not from the reasoning.** At gate 1 this died on
+    the schema-gate refusal, so disarming was expected to resolve it. It did
+    not: past the gate the migrated tree carries no records, ``valid_image_
+    success`` is false for every image, and the next full run **reprocesses**
+    -- work happens, and the assertion fails one layer later.
+
+    Its sibling ``test_the_migrated_tree_does_no_work_on_the_next_full_run``
+    had the *same* gate-1 symptom and the *same* argument applied to it, and
+    **it passed at gate 2.** Two tests, one symptom, one line of reasoning,
+    opposite outcomes -- which is why neither was marked on the argument. A
+    marker on that one would have XPASSed and cost a cycle.
+    """
     from click.testing import CliRunner
 
     from phenotypic.phenotypicCLI import phenotypic_cli

@@ -36,9 +36,9 @@ nothing in the partitioning argument notices.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Mapping
 
 from phenotypic.sdk_ import CommitGuard, atomic_write_json, image_record_path
 from phenotypic.sdk_._image_record import (
@@ -90,6 +90,8 @@ def publish_image_record(
     attempt_id: str,
     lifecycle_epoch: str,
     provenance: str = PROVENANCE_FORWARD,
+    source_provenance: Mapping[str, object] | None = None,
+    pre_replace: Callable[[], None] | None = None,
     commit_guard: CommitGuard | None = None,
 ) -> Path:
     """Certify one image's artifacts and publish its record last.
@@ -129,6 +131,12 @@ def publish_image_record(
             run that rewrites this record restores ``"forward"`` by taking the
             default -- which is what makes U-10 self-limiting rather than a
             permanent hole.
+        source_provenance: Optional migration bookkeeping, recorded verbatim.
+        pre_replace: Re-validated immediately before the rename, inside the
+            publication commit. ``publish_image_success`` threads its
+            expected-descriptor check through here so an artifact rewritten
+            between validation and publication is caught at the last possible
+            moment rather than certified.
         commit_guard: Publication guard threaded to the atomic replace.
 
     Returns:
@@ -164,8 +172,12 @@ def publish_image_record(
         "lifecycle_epoch": lifecycle_epoch,
         "completed_at": _now(),
     }
+    if source_provenance is not None:
+        record["source_provenance"] = dict(source_provenance)
     path = image_record_path(output_dir, dataset, image_stem)
-    atomic_write_json(path, record, commit_guard=commit_guard)
+    atomic_write_json(
+        path, record, pre_replace=pre_replace, commit_guard=commit_guard
+    )
     return path
 
 

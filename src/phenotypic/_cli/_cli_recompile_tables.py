@@ -92,7 +92,7 @@ def _replace_and_republish_table(
     lifecycle_epoch: str | None,
 ) -> None:
     """Journal, replace, marker-publish, and clear under one store lock."""
-    from phenotypic.sdk_ import image_completion_marker_path
+    from phenotypic.sdk_ import image_record_path
     from phenotypic.sdk_._measurement_tables import (
         PreparedEmbeddedMeasurementTable,
     )
@@ -121,14 +121,18 @@ def _replace_and_republish_table(
             staged,
             commit_guard=commit_guard,
         )
-        marker_path = image_completion_marker_path(output_dir, dataset, stem)
+        # The record, for the same reason as the measure path -- see
+        # `_cli_process_single`. This is the recompile half of the same
+        # defect: after D1 the legacy marker is absent on a forward tree, so
+        # `_republish_table_marker` would read a file that is not there.
+        record_path = image_record_path(output_dir, dataset, stem)
         _republish_table_marker(
             output_dir,
-            marker_path,
+            record_path,
             commit_guard=commit_guard,
             lifecycle_epoch=lifecycle_epoch,
         )
-        _fsync_recompile_directory(marker_path.parent)
+        _fsync_recompile_directory(record_path.parent)
         clear_recompile_table_transition(output_dir, dataset, stem)
 
 

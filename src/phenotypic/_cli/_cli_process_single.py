@@ -455,14 +455,27 @@ def process_single_store_measure_core(
     # Marker refresh is the final successful per-image publication. If any
     # earlier table or plot work raises, the old marker remains stale against
     # the new table/root and therefore cannot authorize a partial update.
-    from phenotypic.sdk_ import image_completion_marker_path
+    # THE RECORD, not `image_complete/` (P3 Task 2). This probe used to name
+    # the legacy marker, and after D1's clean break that file does not exist
+    # on a forward tree -- so `is_file()` was False, the re-publish was
+    # SKIPPED with no exception and no log, and this function still returned
+    # True. A `--mode measure` that changed the table's descriptor rewrote
+    # the store root, leaving the record's store descriptor stale, and the
+    # image read as unprocessed after successfully re-measuring.
+    #
+    # It falsifies `_cli/CLAUDE.md`'s "no store write outlives the
+    # publication that certifies it", which is load-bearing for the
+    # root-only fingerprint argument. Found by regenerating the plan's own
+    # marker-consumer table, which names every module that reads this
+    # surface and did not name this one.
+    from phenotypic.sdk_ import image_record_path
 
-    marker_path = image_completion_marker_path(output_dir, dataset_name, stem)
-    if marker_path.is_file():
+    record_path = image_record_path(output_dir, dataset_name, stem)
+    if record_path.is_file():
         from ._cli_recompile_tables import _republish_table_marker
 
         _republish_table_marker(
-            output_dir, marker_path, commit_guard=commit_guard
+            output_dir, record_path, commit_guard=commit_guard
         )
 
     return True

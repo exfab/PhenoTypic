@@ -777,10 +777,10 @@ def test_the_persisted_tier_carries_the_advisories_with_it(complete_run):
     fixture can raise today; the metadata-divergence advisory needs the store
     attribute P4 Task 2 has not written yet.
     """
-    from phenotypic.sdk_ import image_completion_marker_path
+    from phenotypic.sdk_ import image_record_path
     from tests._output_layout import FIXTURE_DATASET, FIXTURE_STEMS
 
-    marker_path = image_completion_marker_path(
+    marker_path = image_record_path(
         complete_run, FIXTURE_DATASET, FIXTURE_STEMS[0]
     )
     marker = json.loads(marker_path.read_bytes())

@@ -31,8 +31,8 @@ from phenotypic._cli._cli_staged_strategy import StagedGpuStrategy
 from phenotypic._cli._cli_staged_resume import (
     build_staged_resume_plan,
     reconcile_stage3_publications,
+    remove_stage3_completion_marker,
     stage3_completion_exists,
-    stage3_completion_marker_path,
 )
 from phenotypic._cli._cli_state_management import (
     load_processing_state,
@@ -570,9 +570,14 @@ def test_cli_continuation_backfills_completed_overlay_before_early_exit(
     overlay = dataset_overlays_dir(out, images.name) / "img.png"
     overlay.unlink()
     if legacy_markerless:
-        stage3_completion_marker_path(
-            out, images.name, image_path.stem
-        ).unlink()
+        # The stage-3 fact is an entry in the per-image record now, not a
+        # file, so it is consumed through its own remover rather than unlinked
+        # by path (spec 6.1). The bare `.unlink()` this replaces would have
+        # raised had the marker been absent; the remover is idempotent by
+        # design, so that implicit assertion is made explicit here rather than
+        # quietly dropped.
+        assert stage3_completion_exists(out, images.name, image_path.stem)
+        remove_stage3_completion_marker(out, images.name, image_path.stem)
         state = load_processing_state(out)
         assert state is not None
         state.config["staged_stage3_markers"] = False

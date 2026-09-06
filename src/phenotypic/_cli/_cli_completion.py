@@ -35,10 +35,12 @@ from phenotypic.sdk_ import (
     validated_published_metadata_migration_targets,
 )
 from phenotypic.sdk_._digests import canonical_digest
-from phenotypic.sdk_._run_state import (
-    fenced_artifact_path,
-    marker_rejection,
+from phenotypic.sdk_._image_record import (
+    STAGE_MEASURED,
+    read_image_record,
+    record_rejection,
 )
+from phenotypic.sdk_._run_state import fenced_artifact_path
 
 # ``SUCCESS_MARKER_VERSION``, ``ARTIFACT_KIND_FILE``/``ARTIFACT_KIND_STORE``
 # and the two proof versions are imported above from ``sdk_/_io_constants``
@@ -194,19 +196,22 @@ def publish_image_success(
             raise RuntimeError(
                 "Cannot publish image success for a stale SLURM lifecycle"
             )
-    descriptors: dict[str, dict[str, object]] = {}
+    # Resolves only. The DESCRIPTORS are built by `publish_image_record`,
+    # which owns the record's shape -- this loop stays because it is what
+    # turns an escaping artifact into a named `ValueError` rather than the
+    # writer's generic failure, and because `_validate_expected_artifacts`
+    # needs the resolved paths.
     resolved_artifacts: dict[str, Path] = {}
     output_root = output_dir.resolve()
     for name, artifact in artifacts.items():
         resolved = artifact.resolve(strict=True)
         try:
-            relative = resolved.relative_to(output_root)
+            resolved.relative_to(output_root)
         except ValueError as exc:
             raise ValueError(
                 f"Artifact escapes output root: {artifact}"
             ) from exc
         resolved_artifacts[name] = resolved
-        descriptors[name] = _artifact_descriptor(resolved, relative)
 
     def _validate_expected_artifacts() -> None:
         if expected_artifact_descriptors is None:
@@ -227,26 +232,38 @@ def publish_image_success(
                 )
 
     _validate_expected_artifacts()
-    marker = {
-        "version": SUCCESS_MARKER_VERSION,
-        "work_id": work_id,
-        "dataset": dataset,
-        "relative_image_path": Path(relative_image_path).as_posix(),
-        "image_stem": image_stem,
-        "mode": mode,
-        "attempt_id": attempt_id,
-        "lifecycle_epoch": lifecycle_epoch,
-        "artifacts": descriptors,
-        "completed_at": datetime.now(timezone.utc).isoformat(
-            timespec="milliseconds"
-        ),
-    }
-    if source_provenance is not None:
-        marker["source_provenance"] = dict(source_provenance)
-    marker_path = image_completion_marker_path(output_dir, dataset, image_stem)
-    atomic_write_json(
-        marker_path,
-        marker,
+
+    # D1 is a CLEAN BREAK: the record replaces `image_complete/`, and nothing
+    # dual-writes. A tree carrying `image_complete/` and no `images/` is a
+    # legacy tree, which `--mode migrate` converts and every writing mode now
+    # refuses -- which is why `SCHEMA_GATE_ARMED` flips in this same commit.
+    # A dual write would leave the gate unable to tell the two shapes apart.
+    #
+    # DELEGATED, not restated. `publish_image_record` owns the record's shape,
+    # its `stages` merge (CAN-6 rule 1) and the provenance default, so this
+    # function contributes only the `measured` stage and its own artifact
+    # revalidation. Rebuilding the payload here would be the second writer of
+    # one schema, which is the defect P3 exists to remove.
+    from ._cli_image_record import publish_image_record
+
+    return publish_image_record(
+        output_dir,
+        work_id=work_id,
+        dataset=dataset,
+        image_stem=image_stem,
+        relative_image_path=Path(relative_image_path).as_posix(),
+        mode=mode,
+        stages={
+            STAGE_MEASURED: {
+                "at": datetime.now(timezone.utc).isoformat(
+                    timespec="milliseconds"
+                )
+            }
+        },
+        artifacts=artifacts,
+        attempt_id=attempt_id,
+        lifecycle_epoch=lifecycle_epoch,
+        source_provenance=source_provenance,
         pre_replace=(
             _validate_expected_artifacts
             if expected_artifact_descriptors is not None
@@ -254,7 +271,6 @@ def publish_image_success(
         ),
         commit_guard=commit_guard,
     )
-    return marker_path
 
 
 def valid_image_success(
@@ -264,40 +280,63 @@ def valid_image_success(
     image_stem: str,
     work_id: str,
 ) -> bool:
-    """Return whether the marker and every declared artifact match disk.
+    """Return whether the record and every declared artifact match disk.
 
     A ``bool`` over the shared readers, deliberately: the predicate is
-    ``marker_rejection`` and the artifact walk is ``fenced_artifact_path``,
-    both from ``sdk_._run_state``, so this and ``resolve_run_state`` cannot
-    return opposite verdicts for the same image. Keeping the signature keeps
-    this function's ~20 callers untouched.
+    ``record_rejection`` and the artifact walk is ``fenced_artifact_path``,
+    so this and ``resolve_run_state`` cannot return opposite verdicts for the
+    same image. Keeping the signature keeps this function's ~20 callers
+    untouched.
 
-    What changed in behaviour, and only this: a marker carrying
-    ``provenance: "migrated"`` is now accepted on artifact validity alone.
-    That is U-10's ruling -- a pre-markers tree never had a ``work_id`` to
-    compare against -- and until this landed, the unconditional comparison
-    here rejected every migrated image while the sdk reader accepted it.
+    **It reads the record now, not ``image_complete/``** (D1, clean break).
+    The predicate moved with it, and moved *as one function* -- gate finding
+    IMPL-F3 spent an increment merging two readers that disagreed on migrated
+    markers, and re-splitting them here would have reproduced that defect
+    against the new schema while looking like ordinary migration in the diff.
+
+    Two clauses this function no longer spells and must not start spelling
+    again: the ``work_id`` relaxation for a migrated record (U-10), and
+    CAN-23's "a record with no artifacts certifies nothing" -- which matters
+    more after the collapse than before it, because a Stage-2 worker now
+    writes ``stages.stage2`` into this same file with no artifacts at all.
+    Both live in ``record_rejection``.
     """
-    marker_path = image_completion_marker_path(output_dir, dataset, image_stem)
+    record = read_image_record(output_dir, dataset, image_stem)
+    if record is None:
+        return False
+    if (
+        record_rejection(
+            record,
+            work_id=work_id,
+            dataset=dataset,
+            image_stem=image_stem,
+        )
+        is not None
+    ):
+        return False
+    # `record_rejection` has already established that `artifacts` is a
+    # non-empty `dict` (CAN-23), so neither guard below can fire today.
+    # They are guards rather than a `cast` on purpose: a `cast` asserts the
+    # ordering and goes silent if someone reorders these two blocks, while a
+    # guard that survives the reorder returns `False` -- INV-VERDICT's degrade
+    # half. Previously this narrowing was done by `AttributeError` in the
+    # `except` clause below, i.e. by a crash the handler swallowed.
+    #
+    # `dict` and not `Mapping`, because this restates `record_rejection`'s own
+    # `isinstance(artifacts, dict)` and has to use the same predicate: a
+    # non-dict mapping passing here and failing there would put the two
+    # readers back into the disagreement IMPL-F3 spent an increment merging.
+    artifacts = record.get("artifacts")
+    if not isinstance(artifacts, dict):
+        return False
     try:
-        marker = json.loads(marker_path.read_text(encoding="utf-8"))
-        if not isinstance(marker, dict):
-            return False
-        if (
-            marker_rejection(
-                marker,
-                work_id=work_id,
-                dataset=dataset,
-                image_stem=image_stem,
-            )
-            is not None
-        ):
-            return False
         output_root = output_dir.resolve()
-        for descriptor in marker["artifacts"].values():
+        for descriptor in artifacts.values():
+            if not isinstance(descriptor, dict):
+                return False
             if fenced_artifact_path(output_root, descriptor) is None:
                 return False
-    except (OSError, ValueError, json.JSONDecodeError, AttributeError):
+    except (OSError, ValueError, AttributeError):
         return False
     return True
 
@@ -834,25 +873,37 @@ def authorized_measurement_sources(
                 work_id=work_id,
             ):
                 continue
+            # CAN-22: the RECORD, not `image_complete/`. This arm used to
+            # re-open the legacy marker after `valid_image_success` passed --
+            # and after D1's clean break that file is gone, so every image
+            # would hit `OSError`, `continue`, and leave `sources` empty.
+            #
+            # That failure is silent and severe: `{}` is a VALID schema-3
+            # result meaning "no successful measurements yet", so P4's
+            # `finalize_run` would write an empty master and raise nothing.
+            # A successful-looking run that discarded every measurement.
+            record = read_image_record(output_dir, dataset, stem)
+            if record is None:
+                continue
+            # Narrowed rather than indexed-and-caught. The old shape leaned
+            # on `KeyError`/`TypeError` in the `except` to mean "malformed",
+            # which reads as error handling but was the only thing typing the
+            # payload -- and it shares its `continue` with the genuinely
+            # different `OSError`/`ValueError` path resolution below. Each
+            # `continue` here now names the one thing that was wrong.
+            artifacts = record.get("artifacts")
+            if not isinstance(artifacts, dict):
+                continue
+            descriptor = artifacts.get("measurements")
+            if not isinstance(descriptor, dict):
+                continue
+            relative = descriptor.get("path")
+            if not isinstance(relative, str):
+                continue
             try:
-                marker = json.loads(
-                    image_completion_marker_path(
-                        output_dir, dataset, stem
-                    ).read_text(encoding="utf-8")
-                )
-                descriptor = marker["artifacts"]["measurements"]
-                relative = descriptor["path"]
-                if not isinstance(relative, str):
-                    continue
                 source = (output_root / relative).resolve()
                 source.relative_to(output_root)
-            except (
-                KeyError,
-                OSError,
-                ValueError,
-                TypeError,
-                json.JSONDecodeError,
-            ):
+            except (OSError, ValueError):
                 continue
             sources[source] = dataset
     return sources

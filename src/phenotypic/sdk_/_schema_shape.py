@@ -110,15 +110,54 @@ STATE_SCHEMA_VERSION: Final[int] = 3
 #: The name predates the second consumer and is now slightly narrow; renaming
 #: it would churn cluster 1.4's suite mid-phase, so P3 Task 2 -- where someone
 #: next has this constant in front of them -- is where that happens.
+#:
+#: **STILL DISARMED after P3, by user ruling, and the coupling that governs
+#: it CHANGED.** P3 armed this and P3 un-armed it again; the reversal is the
+#: useful record, so it is written down rather than tidied away.
+#:
+#: The original rule was *arm in the same commit that moves the publisher onto
+#: the record*, because moving the publisher alone leaves a legacy tree with
+#: no valid records (CAN-11). P3 did arm it on that reasoning -- and the gate
+#: lane then showed the consequence nobody had traced: **``--mode migrate``
+#: does not discharge this gate.** ``_hdf_to_zarr._republish_image_marker``
+#: rewrites the *legacy* marker and nothing removes ``image_complete/``, so
+#: signal 1 fires on a tree migrate has just finished. Armed, the error
+#: message names migrate as the remedy, migrate succeeds, and the tree is
+#: refused again -- a loop with no exit but ``--overwrite``, which destroys
+#: the outputs. INV-DISCHARGEABLE, on the escape hatch itself.
+#:
+#: So the binding constraint is not *"arm with the publisher"* but **"arm with
+#: DISCHARGEABILITY"**, and that lands in **P7 Task 5 Step 1b**, which renames
+#: the legacy trees into ``.phenotypic/legacy-v2/`` -- outside ``progress/``
+#: and therefore invisible to signal 1 (see the note at the directory probe
+#: below). Arm here in that commit, not before.
+#:
+#: **What disarming costs, stated so P7 does not have to rediscover it.** It
+#: is not a clean return to pre-P3 behaviour. Pre-P3 the publisher *and* the
+#: reader were both on ``image_complete/``, so a legacy tree resumed
+#: correctly. Now the reader is on the record and nothing stops a legacy tree
+#: from entering a writing mode, so ``valid_image_success`` is false for every
+#: image and the run **reprocesses from source** instead of resuming -- which
+#: on a migrated archive whose inputs are gone is a failure rather than a
+#: waste. That is worse than pre-P3 and better than the refusal loop, which is
+#: the trade the ruling makes.
 SCHEMA_GATE_ARMED: bool = False
 
-#: ``<progress>/stage3_complete/``. A module-private literal for the same
-#: reason ``_cli_stage2_token._STAGE2_DIR`` is one: the segment is hand-joined
-#: by its writer (``_cli_staged_resume.stage3_completion_marker_path``) and P3
-#: deletes the tree, so promoting it to ``sdk_/_io_constants.py`` now would add
-#: a constant this change is about to remove.
-#: ``test_the_stage3_directory_name_matches_the_writer`` pins the two
-#: together meanwhile.
+#: ``<progress>/stage3_complete/``. A module-private literal, and as of P3 a
+#: **read-only** one: the writer it used to be pinned against
+#: (``_cli_staged_resume.stage3_completion_marker_path``) is deleted, and the
+#: only remaining reference is signal 1's directory probe at ``:247``. So it
+#: stays out of ``sdk_/_io_constants.py`` -- that module names paths the
+#: project *writes*, and nothing writes this tree any more.
+#:
+#: **It therefore has no anchor test. That is a gap, not a simplification.**
+#: ``test_the_stage3_directory_name_matches_the_writer`` compared this constant
+#: to the writer's own path and was deleted with the writer; a replacement
+#: could only compare the constant to itself. A wrong value here fails
+#: silently and in the dangerous direction -- signal 1 stops firing, and a
+#: legacy staged tree is neither converted nor refused (INV-DISCHARGEABLE).
+#: Its remaining ground truth is P7's migrate tests against the real pre-record
+#: test bed.
 _DIR_STAGE3_COMPLETE: Final[str] = "stage3_complete"
 
 #: A JSON object carrying neither key is not a processing state at all:

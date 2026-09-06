@@ -77,6 +77,7 @@ from ._io_constants import (
     DIR_RESULTS,
     DIR_SLURM_SCRIPTS,
     DIR_SPLITS,
+    DIR_STAGE2_DONE,
     DIR_ZARR,
     MIGRATION_REMEDY,
     FAILURES_JSONL,
@@ -271,6 +272,7 @@ from ._image_record import (
     STAGE_STAGE3,
     read_image_record,
     record_provenance,
+    record_rejection,
 )
 from ._pipeline_publication import pipeline_publication_lock
 from ._run_state import (
@@ -526,6 +528,7 @@ __all__ = [
     "DIR_RESULTS",
     "DIR_SLURM_SCRIPTS",
     "DIR_SPLITS",
+    "DIR_STAGE2_DONE",
     "DIR_ZARR",
     # Namespace classes for JSON keys + dispatch
     "ChunkManifestKey",
@@ -582,6 +585,7 @@ __all__ = [
     "image_record_path",
     "read_image_record",
     "record_provenance",
+    "record_rejection",
     "PROVENANCE_FORWARD",
     "PROVENANCE_MIGRATED",
     "RECORD_VERSION",

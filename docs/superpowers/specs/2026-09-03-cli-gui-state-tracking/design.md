@@ -272,7 +272,7 @@ All other audit findings are recorded in [`DEFERRED.md`](DEFERRED.md).
 | Was evidence | Becomes |
 |---|---|
 | `manifest.json` counts | `RunState.diagnostics`. Nothing branches. The resume spec already calls the manifest "itself a cache"; this enforces it. |
-| `processing_state.datasets.{completed,failed,started}` | **Deleted from the file.** Already re-aggregated from the event log on every load — a cache of a cache. |
+| `processing_state.datasets.{completed,failed,errors}` | **Deleted from the file.** Already re-aggregated from the event log on every load — a cache of a cache. `initial_images` is **kept**: it is accepted inventory, set at acceptance and never emitted as an event, so no replay can reconstruct it. |
 | `processing_events.log` as completion evidence | Diagnostics and live dashboard progress only. Deletes the second event-log replay. |
 | `stage2_done/*.json` | `stages.stage2` in the merged record. |
 | `stage3_complete/*.json` | `stages.stage3` in the merged record. |
@@ -280,6 +280,26 @@ All other audit findings are recorded in [`DEFERRED.md`](DEFERRED.md).
 Per-image markers, the aggregate proof and the run proof are **retained and
 reclassified**: they are not tracked facts, they are content proofs — digest
 manifests over artifacts that already exist.
+
+> **Corrected in P3; the original row named a different closed set.** It read
+> `datasets.{completed,failed,started}` — which is exactly the **event-log
+> status** set (`_cli_update_state.py:237`) and exactly the
+> **`DashboardManifestKey`** set (`_io_constants.py:2388-2391`), but not this
+> file's keys. `processing_state.datasets.<ds>` has never carried `started`:
+> the writer emits four keys and no fifth (`_cli_state_management.py:83-88` at
+> `9480dd5b`), and `ProcessingStateKey.STARTED` — which does exist, at
+> `:2453` — has no producer or consumer anywhere in the tree.
+>
+> The two keys the original row omitted, `errors` and `initial_images`, are
+> precisely the two with no event-status counterpart, which is the signature of
+> the substitution rather than of a typo. **Both documents were wrong in
+> opposite directions**: this row demoted a key that is not in the file and
+> spared one that is, while P3's task callout said "the four keys" and would
+> have destroyed `initial_images`. Only the writer and the load path settle it,
+> so the correction is not a preference.
+>
+> Recorded as entry 29 in
+> `docs/superpowers/reports/2026-09-03-cli-gui-state-tracking/document-drift.md`.
 
 ### 4.3 The verdict type
 

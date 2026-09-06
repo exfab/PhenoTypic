@@ -37,7 +37,6 @@ from phenotypic._cli._cli_schema_gate import (
     describe_required_conversion,
     requires_conversion,
 )
-from phenotypic._cli._cli_staged_resume import stage3_completion_marker_path
 from phenotypic.phenotypicCLI import phenotypic_cli
 from phenotypic.sdk_ import (
     DIR_IMAGE_COMPLETE,
@@ -151,8 +150,19 @@ def _build_stage3_only(root: Path) -> Path:
         datasets=_DATASETS_CONVERTED,
         config={"work_ids": _WORK_IDS, "restart_epoch": 0},
     )
+    # The gate's subject is the OLD tree, so this plants the old file. P3
+    # collapsed `stage3_complete/` into the per-image record, so the live
+    # writer now writes `stages.stage3` -- using it here would leave nothing
+    # for the gate to find and the detection test would pass by detecting
+    # nothing. Anchored on the constant the gate actually reads, and built
+    # from this file's own progress-path idiom (`:373`) rather than
+    # hand-joined literals.
     _write_json(
-        stage3_completion_marker_path(root, "plate", "a"),
+        phenotypic_cache_dir(root)
+        / DIR_PROGRESS
+        / _cli_schema_gate._DIR_STAGE3_COMPLETE
+        / "plate"
+        / "a.json",
         {"image_stem": "a", "dataset": "plate"},
     )
     return root
@@ -161,9 +171,17 @@ def _build_stage3_only(root: Path) -> Path:
 def _build_derived_dataset_sets_only(root: Path) -> Path:
     """Signal 3 in isolation: identity is current, ``datasets`` is not.
 
-    This is also the shape a **forward run writes after the whole change
-    lands**, because no phase doc changes ``save_processing_state`` -- see the
-    finding recorded against this task.
+    **No longer the shape a forward run writes.** That claim held while
+    ``save_processing_state`` still wrote ``datasets.<ds>.completed`` and the
+    other three demoted sets unconditionally; P3 Task 2 stopped it, so a
+    forward run now writes neither. The fixture stays valid as *signal 3 in
+    isolation* -- which is all this builder is for -- but it no longer doubles
+    as a description of live output.
+
+    Kept as a correction rather than deleted: the original sentence reasoned
+    "no phase doc changes ``save_processing_state``", and the phase that
+    changed it did so from a task callout rather than from a Files block,
+    which is exactly how a true-when-written claim goes stale unnoticed.
     """
     root.mkdir(parents=True, exist_ok=True)
     _write_state(
@@ -665,11 +683,19 @@ def test_the_gate_never_reaches_the_writing_state_reader() -> None:
 # --------------------------------------------------------------------------
 
 
-def test_the_stage3_directory_name_matches_the_writer() -> None:
-    """``_DIR_STAGE3_COMPLETE`` copies a segment its writer hand-joins."""
-    written = stage3_completion_marker_path(Path("/out"), "plate", "a")
-
-    assert written.parent.parent.name == _cli_schema_gate._DIR_STAGE3_COMPLETE
+# ``test_the_stage3_directory_name_matches_the_writer`` was deleted by P3.
+# It pinned ``_DIR_STAGE3_COMPLETE`` against ``stage3_completion_marker_path``,
+# and P3 Task 3 deletes that writer -- ``_schema_shape.py:115-122`` anticipated
+# exactly this, keeping the segment module-private "because P3 deletes the tree"
+# and pinning it only "meanwhile".
+#
+# NAMING THE GAP RATHER THAN HIDING IT: nothing anchors this segment to a
+# writer any more, because there is no writer -- the tree it names is only ever
+# *read*, to recognise a pre-P3 layout. A wrong value here fails silently and in
+# the dangerous direction: the gate stops firing, and a legacy tree is neither
+# converted nor refused (INV-DISCHARGEABLE). Its remaining ground truth is P7's
+# migrate tests against the real pre-record test bed -- not a unit test that
+# would only compare the constant to itself.
 
 
 def test_the_image_complete_directory_name_matches_the_writer() -> None:
@@ -849,41 +875,91 @@ def test_migrate_mode_is_never_refused_by_the_gate(
     assert "cannot read this output" not in result.output
 
 
-def test_a_current_tree_is_not_refused_while_the_gate_is_unarmed(
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "The gate stays DISARMED through P3 by user ruling, so a legacy tree "
+        "is detected but not refused. Kept under this name rather than "
+        "reverted: the assertion it gained -- that the refusal must name "
+        "MIGRATION_REMEDY -- is new knowledge, and P7 Task 5 Step 1b arms the "
+        "gate and turns this green."
+    ),
+)
+def test_a_legacy_tree_is_refused_now_that_the_gate_is_armed(
     tmp_path: Path,
 ) -> None:
-    """The inertness is a contract, not an accident.
+    """Detection and **surfacing** agree, which is the pairing that matters.
 
-    On this build the forward path still writes ``image_complete/``, still
-    writes ``datasets.<ds>.completed`` and does not yet write
-    ``restart_epoch``, so an armed gate would refuse every resume of every
-    mode. ``requires_conversion`` is already correct; only the refusal waits.
+    **Inverted at P3 Task 2, then marked when P3 disarmed again.** This was
+    ``test_a_current_tree_is_not_refused_while_the_gate_is_unarmed``, whose
+    premise was that the forward path still wrote ``image_complete/`` and
+    ``datasets.<ds>.completed`` — so an armed gate would have refused every
+    resume of every mode. P3 stopped both, so that premise is gone for good
+    and **reverting the rename would not restore a true test**; it would
+    re-create one asserting inertness for a reason that no longer holds, and
+    discard the ``MIGRATION_REMEDY`` assertion with it. Marked instead.
 
-    Calls the refusal directly rather than through the CLI: with the gate
-    inert, a full invocation would run past validation and start a real run.
+    What survives either way is the property the old test was really pinning —
+    that ``requires_conversion`` and ``_refuse_unmigrated_output`` do not
+    disagree. A **legacy** tree still classifies ``CONVERT``; whether that is
+    surfaced as a refusal is what waits for P7.
+
+    The tree is unchanged (``_build_markers_era`` builds the genuine old
+    shape), which is what keeps this a rewrite rather than a new test: the
+    input is the same, the classification is the same, and the surfacing is
+    what this commit changed.
     """
+    import click
+    import pytest
+
     from phenotypic.phenotypicCLI import _refuse_unmigrated_output
 
     tree = _build_markers_era(tmp_path / "run")
 
     assert requires_conversion(tree) is ConversionVerdict.CONVERT
 
-    _refuse_unmigrated_output(tree, mode="full")  # must not raise
+    with pytest.raises(click.UsageError) as excinfo:
+        _refuse_unmigrated_output(tree, mode="full")
+
+    assert MIGRATION_REMEDY in str(excinfo.value), (
+        "the refusal must name the command that discharges it -- a verdict "
+        "the user cannot act on is the bug class this gate exists to remove"
+    )
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "P3 moved the publisher onto the record but the gate stays DISARMED "
+        "by user ruling, so this coupling is deliberately broken in the "
+        "interval. It is not wrong -- it describes the end state, and P7 Task "
+        "5 Step 1b arms the gate in the commit that makes `--mode migrate` "
+        "discharge it. Strict, so that arming turns this green and drops the "
+        "marker rather than leaving a stale one."
+    ),
+)
 def test_the_gate_is_armed_exactly_when_the_forward_path_stops_writing_markers(
     tmp_path: Path,
 ) -> None:
     """The arming condition, checked instead of remembered.
 
-    ``SCHEMA_GATE_ARMED`` is ``False`` only because
-    ``publish_image_success`` still writes ``image_complete/`` -- signal 1 --
-    on this build. The moment P3 makes it write the consolidated record
-    instead, that reason is gone and the gate must be armed in the same commit,
-    or a legacy tree silently produces an empty master (CAN-11).
+    **The coupling this asserts is still right; its TIMING moved.** The
+    original rule was *arm in the commit that moves the publisher*, because
+    moving the publisher alone leaves a legacy tree with no valid records
+    (CAN-11). P3 did exactly that -- and the gate lane showed the half nobody
+    had traced: ``--mode migrate`` does not discharge the gate it is named as
+    the remedy for, because ``_republish_image_marker`` rewrites the legacy
+    marker and nothing removes ``image_complete/``. Armed, a legacy-tree user
+    is refused, told to migrate, migrates, and is refused again.
 
-    This test is what forces the two to move together: it fails whichever one
-    moves first.
+    So the binding constraint became **arm with dischargeability**, which is
+    P7 Task 5 Step 1b. The assertion below is unchanged and still describes
+    the state the build must reach; only the commit it becomes true in moved.
+
+    **This is the interval the test was written to make impossible**, which is
+    why it is marked rather than weakened: a deliberate, ruled-on, marked gap
+    is a different object from the silent drift the assertion guards against,
+    and the strict marker is what keeps the difference visible.
     """
     from phenotypic._cli._cli_completion import publish_image_success
 
@@ -909,8 +985,8 @@ def test_the_gate_is_armed_exactly_when_the_forward_path_stops_writing_markers(
 
     assert writes_legacy_marker is not _schema_shape.SCHEMA_GATE_ARMED, (
         "publish_image_success and SCHEMA_GATE_ARMED disagree: arm the gate "
-        "in the same commit that moves the publisher onto the consolidated "
-        "record (P3 Task 2), or a legacy tree publishes an empty master"
+        "in the commit that makes `--mode migrate` discharge it (P7 Task 5 "
+        "Step 1b), or a legacy tree publishes an empty master"
     )
 
 
@@ -938,11 +1014,22 @@ def test_the_gui_reports_rather_than_refuses(
     earlier draft wrote ``advisories == () or not any(...)``, which passes two
     ways: a future change that empties ``advisories`` entirely would satisfy
     the first branch and the test would stop noticing.
+
+    **Both halves now patch the flag explicitly (P3 Task 2).** The disarmed
+    half used to read the live constant, which was ``False``; P3 armed it, so
+    that half was asserting the absence of an advisory the build now emits.
+
+    Patching *both* rather than flipping which one is implicit is the point:
+    the property under test is that the advisory **tracks the flag**, and a
+    test that reads the live value for one side re-breaks on the next flip
+    while looking like it still covers the pair. Neither half depends on
+    which way the default points any more.
     """
     from phenotypic.sdk_ import _schema_shape, resolve_run_state
 
     tree = _build_markers_era(tmp_path / "run")
 
+    monkeypatch.setattr(_schema_shape, "SCHEMA_GATE_ARMED", False)
     disarmed = resolve_run_state(tree, depth="deep")
     assert not any("migrate" in a for a in disarmed.advisories)
 

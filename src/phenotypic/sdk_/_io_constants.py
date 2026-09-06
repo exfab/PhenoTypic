@@ -673,6 +673,18 @@ DIR_IMAGE_COMPLETE: Final[str] = "image_complete"
 #: bulk replay data, not a record.
 DIR_IMAGE_RECORDS: Final[str] = "images"
 
+#: ``<progress>/stage2_done/`` -- the consumable Stage-2 token's tree.
+#:
+#: **Retained, not collapsed** (U-9), which is why it is here and
+#: ``stage3_complete/`` is not. The stage-3 marker's segment stayed a
+#: module-private literal in :mod:`._schema_shape` on the reasoning that P3
+#: deletes the tree, so promoting it would add a constant the change was about
+#: to remove. That reasoning does not transfer: this tree survives the collapse
+#: with its file and its atomic ``unlink`` intact, so its segment is a durable
+#: layout fact with two readers -- the token's path helper and the schema gate,
+#: which must keep *not* firing on it -- and belongs beside its siblings.
+DIR_STAGE2_DONE: Final[str] = "stage2_done"
+
 #: ``<output>/.phenotypic/verification_cache.json`` -- the on-disk second tier
 #: of the verification cache (spec §9.1, as reversed back on by U-11).
 #:

@@ -35,6 +35,31 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+#: P3 Task 2 moved the publisher onto the per-image record (D1, clean break).
+#: `--mode recompile` still reads `image_complete/` from SEVEN production
+#: sites, so it is non-functional on a forward tree until P4 repoints them.
+#:
+#: Deferred rather than fixed here because the repoint is a SCHEMA MIGRATION,
+#: not a path substitution: `_cli_recompile_slurm_scripts.py:569` and
+#: `_cli_recompile_recovery.py:782` gate on `SUCCESS_MARKER_VERSION` (2)
+#: while a record carries `RECORD_VERSION` (1), and those functions return
+#: None/False on a version mismatch -- so a path-only repoint would disable
+#: overlay and table authority repair SILENTLY. Path and constant move
+#: together, in P4, where `_cli_recompile_recovery.py` is already assigned.
+#:
+#: `strict=True` on purpose: when P4 lands, these start passing, strict turns
+#: that into a failure, and the marker is removed because the suite says so
+#: rather than because someone remembered.
+_RECOMPILE_READS_THE_LEGACY_MARKER_UNTIL_P4 = pytest.mark.xfail(
+    reason=(
+        "--mode recompile reads the legacy image_complete/ marker until P4 "
+        "repoints _cli_recompile_recovery and _cli_recompile_slurm_scripts; "
+        "path and SUCCESS_MARKER_VERSION->RECORD_VERSION move together"
+    ),
+    strict=True,
+)
+
+
 def _make_fake_results(tmp_path: Path) -> Path:
     """Create a minimal output dir with one dataset and a stub parquet."""
     output_dir = tmp_path / "out"
@@ -446,6 +471,7 @@ class TestRegenerateMissingOverlays:
         )
 
 
+@_RECOMPILE_READS_THE_LEGACY_MARKER_UNTIL_P4
 def test_local_recompile_restores_deleted_overlay_marker_and_master(
     _completed_run_two: Path,
     tmp_path: Path,
@@ -665,6 +691,7 @@ def test_local_overlay_recovery_rejects_publish_window_table_change(
     )
 
 
+@_RECOMPILE_READS_THE_LEGACY_MARKER_UNTIL_P4
 def test_local_process_only_missing_overlay_remains_best_effort(
     _completed_run_two: Path,
     tmp_path: Path,

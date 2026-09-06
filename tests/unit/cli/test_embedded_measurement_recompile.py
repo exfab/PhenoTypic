@@ -8,6 +8,7 @@ import importlib.util
 from pathlib import Path
 
 import polars as pl
+import pytest
 
 from phenotypic._cli._cli_completion import valid_image_success
 from phenotypic.schema import IMAGE
@@ -27,6 +28,17 @@ def _pixel_digest(store: Path) -> str:
     return digest.hexdigest()
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "--mode recompile still reads image_completion_marker_path "
+        "(_cli_recompile_recovery.py:52,387,477,637,709 and "
+        "_cli_recompile_slurm_scripts.py:557), which D1's clean break stopped "
+        "writing. Deferred to P4 by user ruling; this is the same deferral as "
+        "the 28 marks in test_cli_recompile{,_slurm}.py, carried here because "
+        "the file has no shared marker of its own."
+    ),
+)
 def test_recompile_replaces_each_embedded_table_and_refreshes_marker(
     tmp_path: Path,
 ) -> None:

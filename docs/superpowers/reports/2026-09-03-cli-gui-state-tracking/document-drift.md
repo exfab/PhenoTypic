@@ -594,6 +594,68 @@ the argument for recording them, not against it.** A shape that has been harmles
 times is one nobody is looking for on the fourth, and the fourth is the one where the
 unnamed site is on the path that matters.
 
+#### The fix-side variant, which is worse
+
+**A fourth instance, and the first where the under-count was in a FIX rather than a
+dismissal.** Reporting the `--mode measure` repair, an agent wrote *"the defect was purely
+that two callers handed it the wrong path"*. Counted properly, the recompile path alone had
+**six** orphaned production readers, plus one in `phenotypicCLI.py` that neither party had.
+
+Its own diagnosis:
+
+> My "two call sites" was the count of readers **I happened to touch**, presented as the
+> count that *needed* touching.
+
+**The fix-side version is more dangerous than the dismissal-side version**, for a reason
+worth stating: a dismissal invites scrutiny — a reader who doubts *"this is the only place"*
+goes looking. A completed fix does not. "I changed the two sites" reads as a report of work
+done, and nobody re-derives the denominator of a job someone says is finished.
+
+**It also propagated into a ruling.** The orchestrator had approved fixing that defect
+in-phase partly *because* "the fix is two call sites, not a refactor" — a premise supplied by
+the same under-count. The ruling was right for a different reason than the one given, which
+nobody would have discovered had the agent not corrected itself.
+
+**What caught it:** an instruction to classify a *sample* before fixing. The first sample
+happened to be fixture-shaped, so the sample lied too. What settled it was measuring the
+**population** — one command asking, for each of 119 failures, whether its traceback contains
+a `src/` frame:
+
+```
+PROD   32     ->  31 real regressions + 1 non-regression (a gate correctly RAISING)
+TEST  1275
+```
+
+Note the 32nd. The proxy (`src/` frame ⇒ production regression) was checked rather than
+trusted, and it failed once out of 32 — a gate whose `src/` frame is the behaviour under
+test. **A count that gets reported as the thing it proxies for is how the original
+under-count happened, one direction over.**
+
+#### The mechanism behind most of these: identical lines in different functions
+
+**Named by the agent that kept hitting it**, and it explains why under-counts recur even
+when the person counting is careful:
+
+> Structurally identical lines, different call paths; **I pattern-matched on the line I had
+> already read.**
+
+`_cli_migrate_image.py` computes `sha256(task.marker_path.read_bytes())` in `_dry_run_result`
+and again in `migrate_image_task`. Same expression, same variable, different functions,
+different reasons. Having read and classified the first, **the second reads as
+already-handled** — recognition of the *line* substitutes for enumeration of the *sites*.
+
+That is what produced "four sites" when there were five in one file, and it is the same
+mechanism as reading a fact stated twice in a long document and updating one instance.
+
+**The counter is mechanical and it is the only one that works here:** enumerate by
+`grep -n`, and classify every hit including the ones that look like duplicates of hits you
+have already classified. **A hit that looks familiar is the dangerous kind**, because
+familiarity is exactly the signal that suppresses the second look.
+
+*(And it applies to your own edits, not only to counts you are handed: the agent repointed
+four sites, reported four as complete, and the fifth was in the file it had just finished
+editing. Re-derive the population of your own diff.)*
+
 **The cheap discipline:** when writing *only* or *the one*, paste the command that
 establishes it. `grep -rn '<symbol>' src/ | grep -v '.pyc'` in the commit message is
 falsifiable by the next reader in one keystroke; a line number is not.
@@ -748,6 +810,384 @@ parsing its own output, which is also entry 25's provenance.)*
 
 ---
 
+### Entry 26 — A SCHEMA IS NOT A RENAME: two discriminators for repointing a reader
+
+**Both found while repointing readers after P3's clean break, and both matter for P4-P7,
+which repoint the rest.**
+
+#### 1. Path sites are mechanical; VERSION sites are a migration
+
+Seven production readers were orphaned when the publisher stopped writing
+`image_complete/`. Five read `work_id` and `artifacts`, which the record carries with
+identical shape — pure path repoints. One (`recompile_store_lock_path`) never opens the
+file at all, deriving a lock name by `.with_suffix()`, so the break does not reach it and
+repointing it **moves a lock**, which is a concurrency change, not a read change.
+
+**The seventh decides everything:**
+
+```
+_cli_recompile_slurm_scripts.py:569   if marker.get("version") != SUCCESS_MARKER_VERSION
+_cli_recompile_recovery.py:782        (same shape)
+
+SUCCESS_MARKER_VERSION = 2      (_io_constants.py:728)
+RECORD_VERSION         = 1      (_image_record.py:64)
+```
+
+A path-only repoint makes **every record fail that check** — and those functions return
+`None`/`False` on a bad marker, so the outcome is not an error but *"this image has no valid
+authority"*. **Silent-and-wrong, wearing a completed fix's clothes.**
+
+> **The record is not a marker with a different name. It is a different schema with its own
+> version line.** A site that resolves a *path* is mechanical. A site that also asserts a
+> *version* is a migration, and the constant must move with the path.
+
+That discriminator is settleable by `grep` rather than judgement, which is what makes it
+usable at scale — and it is why doing the five mechanically while deferring the version pair
+would have been worse than doing nothing: a half-migrated authority path whose un-migrated
+half fails **closed**, and quietly.
+
+#### 2. A fixture's INTENT and its MECHANISM diverge silently
+
+The same sweep, in test fixtures, produced the opposite lesson — and a blanket
+find-and-replace would have been wrong in both directions at once.
+
+**`repoint_marker_at_hdf` reads the RECORD and writes the LEGACY MARKER** — two different
+paths, deliberately, because its job is turning current publisher output into the shape a
+genuine legacy tree carries. It also had to start **deleting the record**: a tree carrying
+both shapes is not a legacy tree, and distinguishing those is the schema gate's entire
+purpose. A path substitution would have built a tree that is legacy by one signal and
+current by another — an input the gate is *entitled* to classify either way, used to test
+the gate.
+
+**`strip_completion_evidence` removed only `image_complete/`**, which *was* every per-image
+publication when it was written. After the clean break, a "markerless" tree from that helper
+would still have been **fully certified by its records**. The helper's name describes an
+intent; its body encoded a mechanism; the mechanism moved and the name did not.
+
+> **A helper named for an intent goes wrong silently when the mechanism moves.** The name
+> still reads true, the body still runs, and the tree it produces is no longer the tree the
+> name promises.
+
+#### The sharpest sub-case: which NOUN does "legacy" modify?
+
+**Five right answers emerged under one grep pattern** (`reads image_completion_marker_path`),
+and the fifth is the one a careful implementer still gets wrong:
+
+| Site | Correct action |
+|---|---|
+| the ordinary fixtures | **repoint** to the record |
+| `repoint_marker_at_hdf` | read record, write marker, **delete** the record |
+| `strip_completion_evidence` | delete **both** trees |
+| `test_migration_republishes_state` | **no change** — the migrator rewrites the legacy marker in place |
+| `legacy_file_marker` | **repoint, but keep the descriptor** — see below |
+
+`legacy_file_marker` was first classified as "no change", by reading *legacy* as naming the
+**file's location**. It names the **descriptor's shape** — a v1 descriptor carrying no
+`kind`, which must still read as `"file"`. That property now lives behind the record, so
+leaving the fixture on `image_complete/` makes its test return `False` **for the trivial
+reason instead of the interesting one: passing while testing nothing.**
+
+> **A fixture whose name describes an intent can survive a mechanism change while quietly
+> ceasing to test that intent.** The name is not stale — it is *correct about a different
+> noun* than the one the repoint concerns.
+
+**In this codebase "legacy" modifies at least four different nouns** — a file's location, a
+descriptor's shape, an image format (`.h5`), and a publisher era — and they call for opposite
+actions. Before repointing anything whose name carries the word, establish which one.
+
+**And not every "version" test is about the same version.**
+`test_marker_version_is_bumped` asserts `SUCCESS_MARKER_VERSION >= 2` about the **legacy**
+constant, which still exists and still guards the retained-`.h5` case. A sweep that treats
+"version" as one subject collapses two.
+
+**The combined rule for any repointing sweep:** ask of each site *which shape is it
+building*, not *which path is it reading*. Those have different answers, and only the first
+one is the question.
+
+---
+
+### Entry 27 — COVERAGE DECAY BY REMOTE CHANGE: an axis dies, the suite stays green
+
+**The first entry here that is not about a document at all.** Everything above is prose that
+stopped being true. This is a *test* that stopped testing what it says it tests, without
+anyone editing it.
+
+`tests/unit/cli/conftest.py`'s `ArtifactWorld._write_success_marker` has two branches. The
+`parquet` branch calls the real `publish_image_success` and therefore followed P3's clean
+break automatically. **The else branch hand-writes a legacy `image_complete/` marker**, and
+its comment states its purpose:
+
+> *"No artifact to describe: write the marker anyway, pointing at the parquet that is not
+> there. `valid_image_success` then returns False — identically in both worlds — which is the
+> **stale marker** case."*
+
+After the break, `valid_image_success` reads `images/`. That hand-written marker is never
+consulted. **It still returns False — but because the record is ABSENT, not because a marker
+is STALE.** The stale-marker path is exercised nowhere in the harness.
+
+**Nothing reports it, because the test passes.** And the axis goes inert: wherever
+`parquet=False`, both values of `success` produce "no record" and therefore the same verdict.
+`ARTIFACTS` is `product([False, True], repeat=5)`, so 16 of 32 combinations have
+`parquet=False` — the axis is **dead in 192 of the parity suite's 384 cases**, at full green.
+
+**The citation that makes it damning.** `test_staged_resume_parity.py:26-32` exists to
+prevent this, on this axis:
+
+> *"The FIFTH axis is load-bearing… Without this axis that branch is never exercised —
+> `valid_image_success` returns False in both worlds — and the parity test passes while
+> production breaks."*
+
+Someone hit this once, added the axis, and wrote down why. **A source change three files away
+then half-removed it, and the warning could not fire because the warning is prose in the file
+that was not edited.**
+
+#### Why this is its own shape
+
+A stale document misleads a reader who consults it. A decayed test **withdraws a guarantee
+nobody asked for again** — the suite's green is unchanged, the diff is empty, and the loss
+is invisible at every point where someone might look.
+
+> **A test's coverage is a property of the production paths it reaches, not of its own text.
+> So it can stop covering without changing.** Any test whose fixture hand-builds an artifact
+> the production writer also builds is holding a copy of a contract, and the copy does not
+> follow the original.
+
+**The detection that works** is the one the agent used: for each axis, assert that *some*
+group of otherwise-identical cases holds more than one verdict. An axis that no longer moves
+any outcome is either a fixture bug or a real finding, and it names itself. That check was
+written for a different harness in the same phase and would have caught this one on the day
+it broke.
+
+**And the fix has the same trap one level down.** Restoring the axis means hand-writing a
+*record* that is rejected — but rejected **for staleness rather than for shape**. A record
+that fails for the wrong reason restores the axis's appearance and not its content, and the
+second instance would be harder to find because someone would already have fixed it. So the
+fix must assert on `record_rejection`'s **reason string**, never on the boolean.
+
+---
+
+### Entry 28 — A PROXY THAT DEGRADES INSIDE ITS OWN USE CASE
+
+**The best instance of this register's central class, and it invalidated a conclusion both
+parties had already acted on.**
+
+To separate "test churn" from "production regression" across 119 failures, the agent asked of
+each traceback: **does it contain a `src/phenotypic/…: in` frame?** A sound proxy, applied to
+the population rather than a sample, and it correctly caught its own one exception — a 32nd
+`PROD` hit that was a gate legitimately *raising*.
+
+It reported **79 of 79 migrate failures as `TEST`-frame**, and both parties concluded migrate
+needed no behaviour change. It then swept migrate's fixtures on that basis.
+
+**`--mode migrate` was in fact totally broken.** `_cli_migrate_manifest.py:392` builds
+`task.marker_path` from `image_completion_marker_path`; `publish_image_success` now returns
+the *record* path; and `_cli_migrate_image.py:580` compares them and raises when they differ.
+The guard fires on the first image of every tree.
+
+#### Why the proxy could not see it
+
+**The migrate unit tests die in their fixtures — reading a marker — before execution ever
+reaches `:580`.** So the traceback contains only test frames, truthfully, and the production
+defect beneath is never exercised.
+
+> **A frame check tells you where a test DIED, not whether the code beneath it is sound.**
+> It is **sound as a LOWER bound on production regressions and unsound as an UPPER bound** --
+> and it was presented, and acted on, as both.
+
+**The consequence for anything built on the count.** P3's 24 `xfail` markers were derived
+from that upper bound, so **24 is a floor, not a total.** A test that dies in its fixture and
+would *then* hit deferred production code is invisible to the check: repointing the fixture
+moves the death downstream into the deferred region, turning a `TEST` classification into a
+`PROD` failure outside the marked set. `test_embedded_measurement_recompile.py:97` is exactly
+that case.
+
+**The true deferred set is knowable only by re-running after the fixture sweep.** Any
+classification of failures taken *before* fixtures are repaired is provisional by
+construction.
+
+And the failure is not random: a fixture that reads an artifact the change just moved dies
+*early*, in exactly the population where the change is most likely to have broken production
+code. **The proxy degrades hardest precisely where it is being relied upon** — it
+under-reports production defects in proportion to how thoroughly the change broke the
+fixtures.
+
+#### The two misses were one miss
+
+The only test reaching `:580` runs full `--mode migrate` and lives in `tests/integration`,
+which was outside the measured population (see the population-ownership rule in
+`EXECUTION.md`). So the narrow lane did not merely omit two files: **it produced a confident
+classification that was an artifact of where execution stopped.** The gap and the regression
+are one defect seen twice.
+
+#### What to do instead
+
+- **Fix fixtures first, then re-measure.** A frame check is only meaningful over a suite whose
+  fixtures reach the code. Classifying before repairing inverts the dependency.
+- **Ask of any proxy: in what conditions does it degrade, and am I in them?** "Does the
+  traceback reach `src/`?" is sound when tests run and vacuous when they abort early — and
+  aborting early is what a schema change causes.
+- **An end-to-end test is not redundant with unit tests of its parts.** It is the only thing
+  that reaches the code *after* the fixtures, and it is the first thing a narrow lane drops.
+
+*(The agent revised its own conclusion unprompted and said plainly that "79 of 79 are
+`TEST`-frame" had been true and had not meant what both parties took it to mean. The
+correction is the reason the defect was found before the commit rather than after.)*
+
+---
+
+### Entry 29 — A LIST COPIED FROM THE ADJACENT VOCABULARY. 2026-09-05.
+
+**The spec's demotion list is not a garbled version of the right list. It is verbatim the
+*wrong* list — a different, neighbouring closed set that shares two of its three members.**
+
+`design.md:275` demotes `processing_state.datasets.{completed, failed, started}`. Compare
+what the writer actually wrote (`_cli_state_management.py` at HEAD, `:83-88`) against what
+the event log actually carries (`_cli_update_state.py:237`):
+
+| key | in `datasets.<ds>` | an event `status` | spec demotes | P3 drops |
+|---|---|---|---|---|
+| `completed` | ✅ | ✅ | ✅ | ✅ |
+| `failed` | ✅ | ✅ | ✅ | ✅ |
+| `errors` | ✅ | ❌ | **❌ omitted** | ✅ |
+| `initial_images` | ✅ | ❌ | **❌ omitted** | **❌ kept** |
+| `started` | **❌ never written** | ✅ | **✅ demoted** | n/a |
+
+`{completed, failed, started}` is exactly the event-status set. The two dict keys the spec
+omits — `errors` and `initial_images` — are exactly the two with **no** event counterpart.
+That is not a typo distribution; it is the signature of copying one closed set where the
+other belonged.
+
+#### There are THREE overlapping sets here, not two
+
+Found while checking the correction itself, and it explains why the collision was so easy to
+make:
+
+| set | `completed` | `failed` | `started` | written where |
+|---|---|---|---|---|
+| event-log `status` | ✅ | ✅ | ✅ | `processing_events.log` |
+| `DashboardManifestKey` | ✅ | ✅ | ✅ | `manifest.json` (`_manifest_builder.py:780`) |
+| `ProcessingStateKey` | ✅ | ✅ | **constant only, no writer** | `processing_state.json` |
+
+**`started` is a live, correct key in two of the three files** — which is exactly why writing
+it in a sentence about the third feels right and reads right. `_io_constants.py` declares
+`STARTED` twice, at `:2391` and `:2453`, because two different classes legitimately need it;
+only the second has nothing behind it.
+
+So the discriminator cannot be *"is this key real?"* — it is real three times over. It can
+only be *"which file is this sentence about, and does that file's writer emit it?"*
+
+#### Why this one is worse than a wrong name
+
+The usual drift (entries 5, 6, 7, 9) points at a name that does not exist, so the reader's
+first grep refutes it. **This one survives the grep.** `ProcessingStateKey.STARTED` is a
+real constant at `_io_constants.py:2452`, so a reader checking "is `started` a thing?" gets
+*yes*. The false part is not the name — it is the **container**: `started` has never once
+been written into `datasets.<ds>`, and its only reference in the entire tree is
+`test_io_constants.py:827` asserting its own spelling against itself.
+
+> **When two closed sets share most of their members, naming a member is not evidence you
+> named the right set.** The check that discriminates is *where is it written*, never *does
+> it exist*.
+
+#### The cost it nearly imposed
+
+An implementer following §4.2 literally drops three keys and keeps `errors` — the opposite
+of correct on both counts. The P3 agent instead followed a task callout that said **four**,
+dropped all four, and destroyed `initial_images`, which no event can reconstruct. So the
+spec and the callout were wrong in *opposite directions*, and the intersection of "what both
+documents agree on" was the only safe subset. Neither document alone gets you there; the
+writer and the load path do.
+
+**The corrective is the same one entry 23 reached from the other side:** the authority for
+what a file contains is the code that writes it. Here that is nine lines, and reading them
+settles in seconds a question two documents disagreed about.
+
+*(Recorded at the team lead's instruction after the lead independently traced the load path.
+The lead's summary said "there is no `started` key"; the constant does exist, and the
+sharper claim — no writer has ever put it in this file — is the one that survives the grep a
+reader will run.)*
+
+---
+
+### Entry 30 — A SAMPLE ORDERED BY THE WRONG THING. 2026-09-05.
+
+**The eighth sampling error of this change, and the only one where the whole population was
+addressable in a single command that was already half-typed.**
+
+57 `tests/migration/test_equivalence.py` goldens failed in gate lane 2. The disposition
+offered three legs — scope, coupling, and magnitude — and named the third **"the decisive
+one"**:
+
+> `Max absolute difference among violations: 2.5933718981185905e-06 /
+> 5.124068070544441e-08 / 2.8299792897057332e-08` — **Machine-precision jitter, not
+> behaviour.**
+
+The population, read across all 48 shard logs and sorted numerically:
+
+```
+7 values at 1e-08 ... 2.4e-05, then
+0.0013848   0.0015385   0.0039216   1.0   1.5156933
+
+mismatched elements: 15% .. 37% .. 54% .. 71.4% .. 99.5% x2 .. 100%
+```
+
+**A 100% mismatch at 1.5157 is a different array.** The distribution is bimodal; the claim
+described one mode.
+
+#### The mechanism, which is narrower than "it sampled"
+
+The read was `grep ... | head -12` **on one shard log**. `head` is **position-ordered**. The
+claim was about **magnitude**. The 1e-08 cluster happened to sit at the top of that file, so
+the sample looked homogeneous — which is precisely what made it persuasive and what removed
+the impulse to look further.
+
+> **A sample ordered by anything other than the quantity you are claiming about is not a
+> sample of that quantity.** It is a sample of file layout.
+
+The correct read differs by one flag and one glob: `grep -h ... gate_*.log | sort -g`. Not a
+tool gap and not a pattern insight — the population was already addressable in the command
+that was written.
+
+#### The tell was in the sentence that made the claim
+
+The author wrote *"the decisive one."* **That label is the trigger condition for the
+population check**, not a licence to skip it: a leg carrying that much weight is the one that
+must rest on everything. The same author had applied that rule twice that hour — to the
+orchestrator's `13` and to its own `17` — and not here.
+
+#### Why the disposition survived anyway, and this is the transferable part
+
+Scope (all seven operation subpackages) and coupling (zero P3 files under any operation
+package) were **independent** of magnitude, and were presented as three separate lines rather
+than braided into one argument. So a refuted third leg cost the argument its strongest-
+sounding support and **changed none of its conclusion**.
+
+> **An argument assembled from independent legs degrades gracefully; one resting on a single
+> "decisive" leg fails completely.** The structural choice is worth more than the care taken
+> on any one leg — it is what makes being wrong survivable.
+
+#### What the correction actually changed — severity, not action
+
+The disposition was identical either way: leave the 57 red, do not mark them, **do not
+regenerate them**. What moved was what the finding *means*:
+
+| | Reported | Actual |
+|---|---|---|
+| Character | machine-precision jitter | substantive drift, up to a wholly different array |
+| Why unseen | — | `tests/migration` is **outside `testpaths`**; it entered only via the sbatch's `SCOPE=full` |
+| Filed as | noise | an undetected behaviour change nobody has run |
+
+**The wrong version was the one that buries it.** A finding filed as noise is closed, and a
+suite outside `testpaths` has no second chance to raise it. It also inverts the strength of
+the do-not-regenerate argument: at 1e-08 regenerating is merely wrong; at a 100% mismatch it
+would bless something real and unexamined.
+
+*(The author verified the refutation rather than accepting it, reproduced the numbers, and
+identified its own error more precisely than the refutation had — that the ordering, not the
+sample size, was the defect. That distinction is the entry.)*
+
+---
+
 ## What the pattern says
 
 **Nothing failed, and nothing could have.** Not one entry would have been caught by a test,
@@ -761,8 +1201,10 @@ acts on it.
    holding a future state in mind — the author is describing the system they are reasoning
    about rather than the one on disk. It comes true one task later, which is the most
    forgiving version and still the same error.
-2. **A claim about what a check does** (10, 12, 13, 21, 22). The most dangerous, because
-   it converts a green gate into false assurance. Ask of every one: *what would this have looked
+2. **A claim about what a check does** (10, 12, 13, 21, 22, 27, 28, 30). The most dangerous, because
+   it converts a green gate into false assurance. Entry 27 is its limit case: no claim was
+   made and none went stale — a *test* silently stopped covering what its own comment says it
+   covers, because a path it depended on moved three files away. Ask of every one: *what would this have looked
    like if it had failed?* Entry 21 extends it past the gates to the **operator's own
    tooling**: a `pgrep` that could only say *absent* and a wait-loop that could only say
    *present*, both written as the safeguard against this exact class. **A tool's output is a
@@ -777,6 +1219,51 @@ acts on it.
    reader's natural check — follow the citation — *cannot fail*. Refuting it needs the
    enumeration the citation appeared to have done. Tell: the claim quantifies (*only*, *the
    one*, a bare count) while the evidence exemplifies (a line number).
+5. **A list copied from the adjacent vocabulary** (29). Shares shape 4's defence — the
+   reader's natural check cannot fail, because every name in it is real — but the error is
+   in the *container*, not the name. It appears wherever two closed sets overlap: statuses
+   versus keys, labels versus headers, stages versus modes. Tell: the list's members are
+   exactly some *other* set's members, and the keys it omits are exactly the ones that other
+   set never had.
+
+### The single mechanism behind most of this register
+
+**Named by the P3 agent after hitting it three times in one phase, and it is a better
+statement of the register's theme than the question this document opens with.**
+
+> **Presence and reachability differ by a branch.** Something is *there*, so it is assumed to
+> be *doing work*, and nothing checks the gap.
+
+Its three instances, all P3, all green throughout:
+
+| Finding | Present | Not reaching |
+|---|---|---|
+| **F6** | `_image_record.py` exists *because* of INV-LAYER | the layering test's `_MODULES` tuple never listed it |
+| **F7** | the `success` axis is enumerated in 384 cases | inert in 192 of them — both values produced "no record" |
+| the triage count | the `record_rejection` assertion is written into every world build | reached in 96 of 384 — the other branch never sees it |
+
+And the same mechanism, restated, covers most of what precedes it here: a **guard whose scope
+is enumerated rather than derived** (F6, and the harness `TARGETS` list); a **proxy that
+terminates early** (entry 28's frame check, present in every traceback, reaching past the
+fixture in none); a **helper named for an intent** whose mechanism moved beneath it
+(`strip_completion_evidence`); a **constant still spelled correctly** for a noun that is no
+longer the one at issue (`legacy_file_marker`).
+
+**In every case the artifact is present, correct-looking, and not doing the job its name
+claims** — and the suite is green, because green measures what ran, not what was reachable.
+
+**The operational form** is narrower and more checkable than *"ask what a green result would
+look like if it had failed"*, which is the question this register opens with and which
+requires imagination:
+
+> **For every guard, axis, assertion or watched-module list: what fraction of the cases does
+> it actually reach?** If the answer is "all of them" and you have not measured it, that is
+> the assumption to test first.
+
+The P3 gate's `test_every_axis_changes_at_least_one_outcome` is exactly that check made
+executable — it groups by every axis but one and requires some group to hold more than one
+verdict, so an axis that reaches nothing names itself. **It is the one mitigation here that
+generalises to all four shapes above.**
 
 **The mitigation that actually worked**, and it is not "be careful": **prefer a pointer to a
 real symbol over a restatement.** A pointer to a symbol that exists is the one form of these

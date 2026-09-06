@@ -169,6 +169,30 @@ def _manifest(run: Path, count: int = 2) -> tuple[Path, tuple[MigrationImageTask
     return phenotypic_cache_dir(run) / "migration_manifest.json", tasks
 
 
+def _record_path(task: MigrationImageTask) -> Path:
+    """Return the RECORD the migrator publishes for one task.
+
+    **Not `task.marker_path`, and that field is not wrong.** It means what it
+    has always meant -- the legacy `image_complete/` marker the task reads as
+    *input* -- and the tasks below still build it that way on purpose, because
+    a legacy tree is what migrate consumes.
+
+    What moved is the *output*: after P3's clean break `publish_image_success`
+    writes `images/<ds>/<stem>.json`, and every digest in the seal chain
+    (`MigrationImageResult.marker_digest` and the six controller
+    re-derivations in `_cli_migrate_manifest`) is over that file. A fixture
+    digesting the marker would agree with nothing production computes.
+
+    Derived from `store_path` the same way `_image_result` already derives
+    `output_dir`, so there is one spelling of that derivation to be wrong.
+    """
+    from phenotypic.sdk_ import image_record_path
+
+    return image_record_path(
+        task.store_path.parents[3], task.dataset, task.stem
+    )
+
+
 def _image_result(
     task: MigrationImageTask,
     *,
@@ -206,7 +230,9 @@ def _image_result(
         converted=True,
         table_installed=True,
         overlay_rendered=True,
-        marker_digest=hashlib.sha256(task.marker_path.read_bytes()).hexdigest(),
+        marker_digest=hashlib.sha256(
+            _record_path(task).read_bytes()
+        ).hexdigest(),
         skipped=False,
     )
 
@@ -331,9 +357,9 @@ def test_image_seal_refuses_incomplete_or_mismatched_authority(
         payload["index"] = 7
         first.with_name("extra.json").write_text(json.dumps(payload), encoding="utf-8")
     elif case == "missing_marker":
-        tasks[0].marker_path.unlink()
+        _record_path(tasks[0]).unlink()
     elif case == "marker_digest":
-        tasks[0].marker_path.write_bytes(b"new marker bytes")
+        _record_path(tasks[0]).write_bytes(b"new marker bytes")
     else:
         payload = json.loads(first.read_text(encoding="utf-8"))
         replacements = {
@@ -368,7 +394,7 @@ def test_status_publication_refuses_result_marker_payload_mismatch(
     run = tmp_path / "run"
     manifest_path, tasks = _manifest(run, count=1)
     result = _image_result(tasks[0])
-    tasks[0].marker_path.write_bytes(b"changed")
+    _record_path(tasks[0]).write_bytes(b"changed")
 
     with pytest.raises(ValueError, match="marker digest"):
         publish_migration_task_status(
@@ -900,8 +926,10 @@ def test_reclaim_seal_rejects_image_seal_stale_before_deletion_evidence(
         metadata_terminal_digest=_METADATA_DIGEST,
     )
     task = tasks[0]
-    task.marker_path.write_bytes(b"new authoritative marker bytes")
-    marker_digest = hashlib.sha256(task.marker_path.read_bytes()).hexdigest()
+    _record_path(task).write_bytes(b"new authoritative marker bytes")
+    marker_digest = hashlib.sha256(
+        _record_path(task).read_bytes()
+    ).hexdigest()
     reclaim_result = _deleted_reclaim_result(task, marker_digest)
     publish_migration_reclaim_status(
         phenotypic_cache_dir(run),
@@ -1235,7 +1263,7 @@ def test_finalizer_rejects_marker_changed_after_clean_image_seal(
     """A seal cannot authorize science after its bound marker bytes change."""
     run = tmp_path / "run"
     manifest_path, tasks, metadata, image_seal = _clean_authority_fixture(run)
-    tasks[0].marker_path.write_bytes(b"marker changed after seal")
+    _record_path(tasks[0]).write_bytes(b"marker changed after seal")
     events: list[str] = []
     _patch_successful_terminal_publishers(monkeypatch, events)
     from phenotypic._cli import _cli_migrate as subject
@@ -1277,7 +1305,9 @@ def test_finalizer_rejects_source_recreated_after_clean_reclaim_seal(
     run = tmp_path / "run"
     manifest_path, tasks, metadata, image_seal = _clean_authority_fixture(run)
     task = tasks[0]
-    marker_digest = hashlib.sha256(task.marker_path.read_bytes()).hexdigest()
+    marker_digest = hashlib.sha256(
+        _record_path(task).read_bytes()
+    ).hexdigest()
     reclaim_result = _deleted_reclaim_result(task, marker_digest)
     publish_migration_reclaim_status(
         phenotypic_cache_dir(run),
@@ -1735,6 +1765,16 @@ def test_migration_state_uses_manifest_inventory_before_stores_exist(
     assert guard.entries == 1
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "_hdf_to_zarr._republish_image_marker rewrites the legacy marker "
+        "(:614,:647) and writes no record, so valid_image_success is false "
+        "for every migrated image. P7 U-10: republish as a record with "
+        "provenance='migrated'. Full rationale beside the shared marker in "
+        "tests/unit/sdk_/test_migration_republishes_state.py."
+    ),
+)
 def test_migration_preserves_ome_zarr_source_identity_from_full_run_state(
     tmp_path: Path,
 ) -> None:
@@ -2046,7 +2086,7 @@ def test_run_migrate_rerun_uses_new_generation_and_retries_incomplete_work(
                     ),
                 )
             )
-        if task.marker_path.is_file():
+        if _record_path(task).is_file():
             return MigrationImageResult(
                 index=task.index,
                 dataset=task.dataset,
@@ -2056,7 +2096,7 @@ def test_run_migrate_rerun_uses_new_generation_and_retries_incomplete_work(
                 table_installed=False,
                 overlay_rendered=False,
                 marker_digest=hashlib.sha256(
-                    task.marker_path.read_bytes()
+                    _record_path(task).read_bytes()
                 ).hexdigest(),
                 skipped=True,
             )

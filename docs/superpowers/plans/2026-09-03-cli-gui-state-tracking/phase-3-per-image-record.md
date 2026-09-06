@@ -1084,12 +1084,33 @@ Run the parametrized test against unmodified `main` with `_EXPECTED` empty, capt
 actual classification, and write those values into `_EXPECTED` **as a literal table**. Then
 re-run: all of them pass. That table is now the contract.
 
-**The count is 384, not sixteen (flow-r4).** `_COMBOS` is a seven-axis product —
-4 stores × 2 × 2 × 2 × 3 layers × 2 × 2 — since CAN-16 replaced the original four-boolean
-`product(repeat=4)`. Four places in this task still said "sixteen", including Step 4's gate
-criterion, which is the one that matters: a hard gate whose success condition names the wrong
-number cannot be checked. If you take the evidence-based axis reduction the note below
-licenses, **write the reduced number here once it is decided** — not before.
+**The count is 1152, not 384, and not sixteen (flow-r4, then measured at execution).**
+`_COMBOS` grew a third time. CAN-16 replaced the original four-boolean `product(repeat=4)`
+with a seven-axis product (4 stores × 2 × 2 × 2 × 3 layers × 2 × 2 = 384); execution found
+three more gaps and the shipped enumeration is **9 store/table × 2 × 2 × 2 × 4 layers × 2 × 2
+= 1152**:
+
+- a **measurement-table axis**, coupled to the store because the table lives inside it (9
+  store/table combinations, not 10). Without it the branch at `:248-257` can never fire in
+  the True direction — and that is one of only *two* branches this task rewrites. The
+  CAN-16 note above lists this axis in its own prose and then omits it from the product.
+- a **fifth store state**, `(valid_staged_store=T, valid_stage1_store=F, work_id matches)` —
+  a structurally valid store whose journal is `in_progress` but which carries the expected
+  work id. That is precisely the state the comment at `:235-238` exists for, and four
+  store names cannot express it.
+- the **objmap layer splits** on whether its terminal output exists, since `:220-224` only
+  consults it under `process_only_layer == "objmap"`.
+
+Each gap had the same shape: an axis the table did not carry is not a case the table
+permits, it is a branch the table cannot see — and the table goes green either way. This
+repo had already paid for that once on this same function; see
+`test_staged_resume_parity.py:26-32`, which added a fifth axis for exactly that reason and
+wrote down why.
+
+A hard gate whose success condition names the wrong number cannot be checked, so **1152 is
+the number Step 4 must assert**. The evidence-based reduction the note below licenses was
+*not* taken: the full product was measured first, as that note requires, and came in well
+inside budget.
 
 Do **not** derive `_EXPECTED` by reasoning about what the classifier should do. The point is
 to freeze what it *does*, so the collapse is provably behaviour-preserving. If one of the
@@ -1124,8 +1145,8 @@ delete it (U-9). Delete the inline `"stage3_complete"` literal
 - [ ] **Step 4: Re-run the equivalence gate**
 
 Run: `uv run pytest tests/unit/cli/test_staged_resume_equivalence.py -v`
-Expected: all 384 PASS, against the table captured in Step 2 — or the reduced count, if
-Step 2's evidence-based reduction was taken and recorded.
+Expected: all **1152** PASS, against the table captured in Step 2. No reduction was taken —
+the full product was measured first, as this step requires, and came in well inside budget.
 
 **If any combination changes, stop.** The collapse has altered a resume decision, and that
 is the failure this task exists to prevent.
@@ -1159,7 +1180,7 @@ moves. An earlier draft of this message said three; collapsing the token was the
 thing the user overruled.
 
 Two trees, spelled in three places, become one
-record. The 384-combination classify_staged_image table was captured from the
+record. The 1152-combination classify_staged_image table was captured from the
 pre-change behaviour and is unchanged after -- the resume decisions are the risk
 here, not the format."
 ```

@@ -78,12 +78,35 @@ def save_processing_state(
         ProcessingStateKey.CONFIG: state.config
     }
 
-    # Add dataset states
+    # Spec §4.2: the DEMOTED sets are not written. Writing `completed` is
+    # what made schema signal 3 un-dischargeable -- P7 deletes it from the
+    # file, the next forward run puts it straight back, and the gate fires
+    # again: migrate, run, refused, forever, with `--overwrite` (which
+    # destroys the outputs) the only escape.
+    #
+    # `completed`, `failed` and `errors` are safe to drop because
+    # `load_processing_state` re-derives all three from the event log
+    # (`aggregate_state_from_events`), which is why §4.2 calls the stored
+    # copy "a cache of a cache".
+    #
+    # **`initial_images` is NOT one of them and is still written.** It is the
+    # accepted inventory, not a derived set: `:166` reads it back with the
+    # comment "preserve initial_images from stored state", and nothing in the
+    # event log can reconstruct it -- an image that was accepted and has not
+    # yet emitted an event appears nowhere else. Dropping it emptied every
+    # dataset's inventory across one save/load round trip.
+    #
+    # An earlier version of this comment said all four were droppable,
+    # following the task callout's "stop writing the four keys". The callout
+    # justified it with "the reader re-aggregates from the event log", which
+    # is true of three of them; §4.2 itself demotes only
+    # `{completed, failed, started}`.
+    #
+    # This moves in the SAME commit as the publisher and the gate arming.
+    # Splitting them opens the window `test_the_gate_is_armed_exactly_when
+    # _the_forward_path_stops_writing_markers` exists to close.
     for dataset_name, ds_state in state.datasets.items():
         dataset_entries[dataset_name] = {
-            ProcessingStateKey.COMPLETED: list(ds_state.completed),
-            ProcessingStateKey.FAILED: list(ds_state.failed),
-            ProcessingStateKey.ERRORS: ds_state.errors,
             ProcessingStateKey.INITIAL_IMAGES: list(ds_state.initial_images)
         }
     

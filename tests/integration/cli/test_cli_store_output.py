@@ -41,7 +41,7 @@ from phenotypic.prefab import RoundPeaksPipeline
 from phenotypic.sdk_ import (
     MEASUREMENT_TABLE_RELATIVE_PATH,
     aggregate_publication_marker_path,
-    image_completion_marker_path,
+    image_record_path,
     manifest_json_path,
     run_completion_marker_path,
     zarr_store_path,
@@ -206,7 +206,7 @@ class TestForwardRunStoreLayout:
         ]
         first = runner.invoke(phenotypic_cli, args)
         assert first.exit_code == 0, first.output
-        old_marker = image_completion_marker_path(
+        old_marker = image_record_path(
             output_dir, "plates", "plate_001"
         )
         old_marker_bytes = old_marker.read_bytes()
@@ -326,7 +326,7 @@ class TestMeasureRerun:
 
         store = zarr_store_path(output_dir, "plates", "plate_001")
         table_path = store / MEASUREMENT_TABLE_RELATIVE_PATH
-        marker_path = image_completion_marker_path(
+        marker_path = image_record_path(
             output_dir, "plates", "plate_001"
         )
         overlay_path = (
@@ -457,7 +457,7 @@ class TestMeasureRerun:
         assert not frame.empty
         assert any(column.startswith("Shape_") for column in frame.columns)
         assert any(column.startswith("Intensity_") for column in frame.columns)
-        marker_path = image_completion_marker_path(
+        marker_path = image_record_path(
             output_dir, "plates", "plate_001"
         )
         marker = json.loads(marker_path.read_text(encoding="utf-8"))

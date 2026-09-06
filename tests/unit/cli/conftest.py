@@ -18,10 +18,7 @@ import pytest
 from PIL import Image as PILImage
 
 from phenotypic import Image
-from phenotypic._cli._cli_completion import (
-    SUCCESS_MARKER_VERSION,
-    publish_image_success,
-)
+from phenotypic._cli._cli_completion import publish_image_success
 from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_stage2_token import (
     write_stage2_raw,
@@ -32,15 +29,25 @@ from phenotypic._cli._cli_types import ExecutionConfig
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.prefab import RoundPeaksPipeline
 from phenotypic.sdk_ import (
+    ARTIFACT_KIND_FILE,
     atomic_write_json,
     dataset_measurements_dir,
-    image_completion_marker_path,
+    image_record_path,
     zarr_store_path,
+)
+from phenotypic.sdk_._image_record import (
+    RECORD_VERSION,
+    read_image_record,
+    record_rejection,
 )
 from tests._legacy_staged_resume import (
     classify_staged_image as legacy_classify_staged_image,
 )
-from tests._legacy_staged_resume import legacy_hdf_path, legacy_sidecar_path
+from tests._legacy_staged_resume import (
+    legacy_hdf_path,
+    legacy_sidecar_path,
+    legacy_stage3_marker_path,
+)
 
 
 @pytest.fixture
@@ -162,9 +169,16 @@ class ArtifactWorld:
     The five booleans are, in order,
     ``(image_state, stage2_signal, parquet, stage3_marker, image_success)`` --
     the axes ``classify_staged_image`` actually distinguishes. Everything
-    format-neutral (parquet, Stage-3 marker, success marker) is built
-    identically by both worlds, so any divergence the parity test reports is a
-    divergence in the ported artifact probes and nothing else.
+    format-neutral is built identically by both worlds, so any divergence the
+    parity test reports is a divergence in the ported artifact probes and
+    nothing else.
+
+    **The Stage-3 marker left that neutral set at P3 §6.1** and is now a
+    format-specific half; see :meth:`_write_stage3_marker`. The parquet and the
+    success marker remain neutral, the latter because both classifiers call the
+    *live* ``valid_image_success`` -- the frozen module imports it rather than
+    freezing it, precisely so a change there moves both worlds together and
+    parity keeps meaning what it says.
     """
 
     DATASET = "ds"
@@ -194,9 +208,7 @@ class ArtifactWorld:
             parquet_path.parent.mkdir(parents=True, exist_ok=True)
             parquet_path.write_bytes(b"measurements")
         if stage3_marker:
-            write_stage3_completion_marker(
-                self.root, self.DATASET, f"{self.STEM}.tif", self.STEM
-            )
+            self._write_stage3_marker()
         if success:
             self._write_success_marker(work_id, parquet_path)
         return self.root
@@ -219,6 +231,33 @@ class ArtifactWorld:
         store.parent.mkdir(parents=True, exist_ok=True)
         Image(np.zeros((4, 4, 3), dtype=np.uint8)).save2zarr(
             store, work_id=work_id
+        )
+
+    def _write_stage3_marker(self) -> None:
+        """The stage-3 fact, in whichever form this world's classifier reads.
+
+        **This became a format-specific half at P3 §6.1**, and the class
+        docstring's "everything format-neutral … is built identically by both
+        worlds" no longer covers it. The live writer moved the fact out of
+        ``stage3_complete/<ds>/<stem>.json`` and into ``stages.stage3`` of the
+        per-image record; the frozen classifier reads the old path and, being
+        frozen, always will.
+
+        So calling the live writer for both worlds -- which is what this did --
+        would leave the HDF side blind on the ``stage3_marker`` axis and make
+        the parity test fail on every cell where that axis changes the frozen
+        answer. That failure would look like a defect in the port and would in
+        fact be a fixture pointing at a path that moved.
+        """
+        if self.kind == "hdf":
+            path = legacy_stage3_marker_path(
+                self.root, self.DATASET, self.STEM
+            )
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("{}", encoding="utf-8")
+            return
+        write_stage3_completion_marker(
+            self.root, self.DATASET, f"{self.STEM}.tif", self.STEM
         )
 
     def _write_stage2_signal(self) -> None:
@@ -300,29 +339,85 @@ class ArtifactWorld:
                 artifacts=artifacts,
             )
             return
-        # No artifact to describe: write the marker anyway, pointing at the
-        # parquet that is not there. valid_image_success then returns False --
-        # identically in both worlds -- which is the "stale marker" case.
-        atomic_write_json(
-            image_completion_marker_path(self.root, self.DATASET, self.STEM),
-            {
-                "version": SUCCESS_MARKER_VERSION,
-                "work_id": work_id or "unused",
-                "dataset": self.DATASET,
-                "relative_image_path": f"{self.STEM}.tif",
-                "image_stem": self.STEM,
-                "mode": "full",
-                "attempt_id": "a-1",
-                "lifecycle_epoch": "e-1",
-                "artifacts": {
-                    "measurements": {
-                        "path": parquet_path.relative_to(self.root).as_posix(),
-                        "size": 12,
-                        "sha256": "0" * 64,
-                    }
-                },
-                "completed_at": "2026-08-19T00:00:00.000+00:00",
+        # No artifact to describe: write the RECORD anyway, describing the
+        # parquet that is not there. `valid_image_success` then returns False
+        # -- identically in both worlds -- which is the "stale record" case.
+        #
+        # **This branch wrote an `image_complete/` marker until P3's clean
+        # break, and the break silently hollowed it out.** `valid_image_success`
+        # moved to `images/`, so the legacy marker stopped being read: the
+        # verdict stayed False, but because the record was ABSENT rather than
+        # stale, and the stale path went unexercised. Nothing reported it,
+        # because a parity test comparing False to False passes.
+        #
+        # The cost was exactly half the suite. `success` and its negation both
+        # produced "no record" wherever `parquet=False`, so the axis was inert
+        # in 16 of the 32 `ARTIFACTS` combinations -- **192 of the parity
+        # suite's 384 cases, at full green**. That is the failure
+        # `test_staged_resume_parity.py:26-32` was written to prevent, on this
+        # same axis, and a source change three files away undid half of it
+        # without touching a line of that test.
+        identity = work_id or "unused"
+        # **`stages` is merged, never replaced** -- CAN-6 rule 1, which the
+        # real `publish_image_record` obeys and which this hand-written path
+        # has to obey for the same reason. `__call__` writes the stage-3 entry
+        # BEFORE this branch runs, so a replacing write drops it, and the image
+        # then looks unprocessed: `stage3_completion_exists` reads the record
+        # now, so clobbering `stages` un-marks Stage 3 rather than merely
+        # losing a field. That is one file's worth of the exact lost-update
+        # `publish_image_record`'s docstring warns about, reproduced in a
+        # fixture -- and it diverged only in the zarr world, because the HDF
+        # world's stage-3 half writes a separate legacy file this cannot
+        # touch.
+        existing = read_image_record(self.root, self.DATASET, self.STEM) or {}
+        carried = existing.get("stages")
+        record = {
+            "version": RECORD_VERSION,
+            "work_id": identity,
+            "dataset": self.DATASET,
+            "image_stem": self.STEM,
+            "relative_image_path": f"{self.STEM}.tif",
+            "mode": "full",
+            "stages": dict(carried) if isinstance(carried, dict) else {},
+            "artifacts": {
+                "measurements": {
+                    "path": parquet_path.relative_to(self.root).as_posix(),
+                    "kind": ARTIFACT_KIND_FILE,
+                    "size": 12,
+                    "sha256": "0" * 64,
+                }
             },
+            "attempt_id": "a-1",
+            "lifecycle_epoch": "e-1",
+            "completed_at": "2026-08-19T00:00:00.000+00:00",
+        }
+        # `is None` is the ASSERTION, not an oversight, and it is the one that
+        # keeps this branch honest. It says every identity and shape clause
+        # passes -- version, dataset, image_stem, work_id, artifacts non-empty
+        # -- so the only thing left that can reject this record is the file it
+        # names being absent. If a later change makes the shape invalid for
+        # some new reason, `record_rejection` returns a sentence and this fails
+        # loudly, instead of the branch quietly reverting to "rejected for the
+        # wrong reason" and looking fixed.
+        #
+        # Asserting on a reason *string* is impossible here and that is by
+        # design: `record_rejection` checks identity and shape only, leaving
+        # artifact contents to `fenced_artifact_path`, whose `None` covers
+        # malformed, escapes-the-root and missing-on-disk alike. Neither
+        # function names staleness, so the mechanism is isolated by
+        # construction instead -- this clause plus the positive control in
+        # `test_staged_resume_parity.py`.
+        assert (
+            record_rejection(
+                record,
+                work_id=identity,
+                dataset=self.DATASET,
+                image_stem=self.STEM,
+            )
+            is None
+        )
+        atomic_write_json(
+            image_record_path(self.root, self.DATASET, self.STEM), record
         )
 
     @staticmethod
@@ -415,14 +510,19 @@ def legacy_headers_run(
         root["attributes"]["phenotypic"].pop("tables", None)
         atomic_write_json(root_path, root)
 
-        marker_path = image_completion_marker_path(
-            output_dir, _MIGRATION_DATASET, stem
-        )
-        marker = json.loads(marker_path.read_text(encoding="utf-8"))
-        marker["artifacts"]["measurements"]["path"] = external.relative_to(
+        # The RECORD, on both the read and the write. This fixture degrades a
+        # tree the CURRENT publisher wrote -- only the measurement table's
+        # location and headers are made legacy -- so the thing binding that
+        # table is the record P3 moved to `images/`, not `image_complete/`.
+        # `refresh_marker_descriptors` two lines below already reads the
+        # record, and a fixture that repoints one file and re-fingerprints a
+        # different one is incoherent whichever shape you take it for.
+        record_path = image_record_path(output_dir, _MIGRATION_DATASET, stem)
+        record = json.loads(record_path.read_text(encoding="utf-8"))
+        record["artifacts"]["measurements"]["path"] = external.relative_to(
             output_dir
         ).as_posix()
-        atomic_write_json(marker_path, marker)
+        atomic_write_json(record_path, record)
 
     make_measurement_headers_legacy(output_dir, _MIGRATION_DATASET)
     for stem in run_stems(output_dir):

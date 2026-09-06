@@ -42,7 +42,13 @@ from pathlib import Path
 
 from . import _schema_shape
 from ._digests import canonical_digest
-from ._image_record import PROVENANCE_MIGRATED, STAGE_MEASURED
+from ._image_record import (
+    PROVENANCE_MIGRATED,
+    STAGE_MEASURED,
+    read_image_record,
+    record_provenance,
+    record_rejection,
+)
 from ._io_constants import (
     AGGREGATE_PROOF_VERSION,
     ARTIFACT_KIND_FILE,
@@ -53,7 +59,7 @@ from ._io_constants import (
     aggregate_publication_marker_path,
     datasets_needing_migration,
     gui_launch_owner_path,
-    image_completion_marker_path,
+    image_record_path,
     resolve_processing_state_path,
     run_completion_marker_path,
     slurm_lifecycle_path,
@@ -510,13 +516,35 @@ def marker_rejection(
     dataset: str,
     image_stem: str,
 ) -> str | None:
-    """Return why ``marker`` cannot certify this image, or ``None``.
+    """Return why a legacy ``image_complete/`` marker cannot certify an image.
+
+    > **⚠ THIS HAS NO CALLER IN ``src/`` AS OF P3, AND IS NOT DEAD CODE.**
+    >
+    > Be precise about that, because the obvious paraphrase is wrong: it is
+    > not that the remaining consumers are elsewhere. **There are none.**
+    > P3's clean break moved both forward readers -- ``valid_image_success``
+    > and the deep path -- onto the record and
+    > :func:`~phenotypic.sdk_._image_record.record_rejection`, and nothing
+    > took their place.
+    >
+    > It is kept because the **legacy** shape still has a reader that should
+    > be calling it and does not:
+    > ``_cli_completion.refresh_success_markers_after_metadata_migration``
+    > open-codes these exact clauses inline, which is gate finding
+    > **REUSE-F10** -- deferred, not withdrawn, because rewiring it changes
+    > what that function *does* on a migrated marker. P7's migrator is the
+    > second. Deleting this now would mean re-deriving the legacy predicate
+    > when either lands.
+    >
+    > So a reader who greps for callers, finds none, and deletes it is doing
+    > the reasonable thing on the evidence -- which is why the evidence is
+    > written here instead of left to be rediscovered.
 
     A sentence, not a bool, because the sentence lands in
     ``ImageState.reason`` and is what makes "which images are missing, and
     why?" answerable without re-running anything.
 
-    **The single implementation of per-image record validity**, and the
+    **The single implementation of legacy marker validity**, and the
     ``provenance: "migrated"`` branch below is why it had to become one.
     ``_cli_completion.valid_image_success`` compared ``work_id``
     unconditionally, so on U-10's migrated marker the two readers returned
@@ -663,23 +691,21 @@ def _verify_image(
         an image that might yet succeed needs.
     """
     image_stem = source_image_stem(Path(image_name))
-    marker_path = image_completion_marker_path(
-        output_dir, dataset, image_stem
-    )
-    marker = _read_json_object(marker_path)
+    record_path = image_record_path(output_dir, dataset, image_stem)
+    marker = read_image_record(output_dir, dataset, image_stem)
     fence: dict[str, tuple[int, int]] = {}
     provenance: str | None = None
-    reason: str | None = "no readable success marker"
+    reason: str | None = "no readable image record"
     if marker is not None:
-        provenance = _optional_str(marker.get("provenance"))
-        reason = marker_rejection(
+        provenance = record_provenance(marker)
+        reason = record_rejection(
             marker, work_id=work_id, dataset=dataset, image_stem=image_stem
         )
-        marker_tuple = _stat_tuple(marker_path)
+        marker_tuple = _stat_tuple(record_path)
         if reason is None and marker_tuple is None:
-            reason = "success marker is not a readable regular file"
+            reason = "image record is not a readable regular file"
         elif reason is None and marker_tuple is not None:
-            key = marker_path.relative_to(output_dir).as_posix()
+            key = record_path.relative_to(output_dir).as_posix()
             fence[key] = marker_tuple
         artifacts = marker.get("artifacts")
         if reason is None and isinstance(artifacts, dict):
@@ -697,10 +723,41 @@ def _verify_image(
                 fence[fenced] = fenced_tuple
 
     if reason is None and marker is not None:
-        stage: dict[str, object] = {
-            "at": marker.get("completed_at"),
-            "mode": marker.get("mode"),
-        }
+        # THE RECORD'S OWN STAGES, not a single-key projection. The comment
+        # that used to stand here said the one `measured` key was "a
+        # consequence of what today's marker records, not the design, and P3
+        # swaps the reader without touching any caller" -- this is that swap,
+        # so a run's `stage1`/`stage2`/`stage3` entries now reach
+        # `ImageState.stages` verbatim.
+        #
+        # The `measured` entry is then ENRICHED rather than replaced: `mode`,
+        # the metadata snapshot and the provenance are projections this
+        # reader adds, and `_stage_value` reads them from exactly there. A
+        # record with no `measured` entry cannot reach this branch, because
+        # `record_rejection` refuses a record with no artifacts (CAN-23).
+        # Typed as the nested shape `ImageState.stages` declares, not as
+        # `dict[str, object]`. The looser annotation type-checked at the
+        # comprehension and failed at the constructor 19 lines later, which
+        # is the tell that it described the container rather than the payload:
+        # a stage entry is itself a mapping, and every reader below indexes
+        # into one. The inner comprehension also coerces the payload keys to
+        # `str`, which `dict(entry)` did not -- JSON keys always are, but the
+        # type had no way to say so.
+        raw_stages = marker.get("stages")
+        stages: dict[str, dict[str, object]] = (
+            {
+                str(name): {
+                    str(key): value for key, value in entry.items()
+                }
+                for name, entry in raw_stages.items()
+                if isinstance(entry, Mapping)
+            }
+            if isinstance(raw_stages, Mapping)
+            else {}
+        )
+        stage: dict[str, object] = dict(stages.get(STAGE_MEASURED) or {})
+        stage.setdefault("at", marker.get("completed_at"))
+        stage["mode"] = marker.get("mode")
         # Derived, never tracked (D-A): the store already carries which
         # metadata snapshot it was built against, so the divergence advisory
         # is a projection over `images` rather than a second file to keep in
@@ -711,12 +768,13 @@ def _verify_image(
             stage[_SNAPSHOT_SHA256_ATTR] = snapshot
         if provenance is not None:
             stage["provenance"] = provenance
+        stages[STAGE_MEASURED] = stage
         return CachedVerification(
             state=ImageState(
                 work_id=work_id,
                 dataset=dataset,
                 image_stem=image_stem,
-                stages={STAGE_MEASURED: stage},
+                stages=stages,
                 verdict="verified",
             ),
             stat_tuples=fence,

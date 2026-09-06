@@ -300,6 +300,15 @@ def write_processing_state(
         config={
             "success_markers_required": True,
             "work_ids": work_ids,
+            # Signal 4 fires on `work_ids` present with `restart_epoch`
+            # absent -- a shape no real run produces, because
+            # `_cli_state_management.py:279` writes the epoch alongside the
+            # inventory. Without this the fixture built a tree the schema
+            # gate classifies CONVERT, which cost nothing while the gate was
+            # unarmed and became a live refusal the moment P3 armed it.
+            # A fixture that is unfaithful in a direction nothing checks is
+            # a latent failure waiting for the check to arrive.
+            "restart_epoch": 0,
             "processing_generation": "fixture-generation",
             "pipeline_sha256": pipeline_sha256,
             "metadata_sha256": metadata_sha256,
@@ -365,7 +374,11 @@ def _publish_one_image(
         image_stem=stem,
         mode=mode,
         attempt_id=f"attempt-{stem}",
-        # `scheduler_epoch` from P2 Task 4 onward.
+        # `lifecycle_epoch` is the name, permanently. An earlier comment here
+        # promised `scheduler_epoch` "from P2 Task 4 onward"; §5.1's five-token
+        # collapse was WITHDRAWN, so that rename never happened and the writers
+        # keep this name. `scheduler_epoch` survives only on the reader side
+        # (`RunIdentity.scheduler_epoch`) -- see the drift register's entry 24.
         lifecycle_epoch="local",
         artifacts=artifacts,
     )
@@ -523,12 +536,20 @@ def build_incomplete_run(tmp_path: Path) -> Path:
     Returns:
         The run output root.
     """
-    from phenotypic.sdk_ import image_completion_marker_path
+    from phenotypic.sdk_ import image_record_path
 
     output = build_complete_run(tmp_path)
-    image_completion_marker_path(
-        output, FIXTURE_DATASET, FIXTURE_STEMS[1]
-    ).unlink()
+    # The RECORD, not the legacy marker. P3's clean break (D1) moved the
+    # per-image publication from `image_complete/` to `images/`, and this
+    # fixture's whole job is removing one image's publication -- so it has to
+    # remove the one the publisher now writes.
+    #
+    # `unlink()` without `missing_ok` on purpose: the bare call is an
+    # assertion that the publication was there to remove. Pointed at the old
+    # path it raised FileNotFoundError, which is how this surfaced; pointed at
+    # a `missing_ok=True` call it would have built a *complete* run named
+    # "incomplete" and every caller would have tested the wrong thing.
+    image_record_path(output, FIXTURE_DATASET, FIXTURE_STEMS[1]).unlink()
     return output
 
 

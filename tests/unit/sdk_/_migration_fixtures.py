@@ -40,6 +40,7 @@ from phenotypic.sdk_ import (
     dataset_zarr_dir,
     deliverables_dir,
     image_completion_marker_path,
+    image_record_path,
     load_image_from_store,
     metadata_csv_deliverable_path,
     zarr_store_path,
@@ -275,17 +276,19 @@ def refresh_marker_descriptors(
         dataset: Dataset name.
         stem: Image stem.
     """
-    marker_path = image_completion_marker_path(output_dir, dataset, stem)
-    if not marker_path.is_file():
+    # The RECORD: this runs on a tree the current publisher wrote, and P3's
+    # clean break moved that from `image_complete/` to `images/`.
+    record_path = image_record_path(output_dir, dataset, stem)
+    if not record_path.is_file():
         return
-    marker = json.loads(marker_path.read_text(encoding="utf-8"))
+    marker = json.loads(record_path.read_text(encoding="utf-8"))
     output_root = Path(output_dir).resolve()
     for name, descriptor in list(marker["artifacts"].items()):
         resolved = (output_root / descriptor["path"]).resolve(strict=True)
         marker["artifacts"][name] = _artifact_descriptor(
             resolved, resolved.relative_to(output_root)
         )
-    atomic_write_json(marker_path, marker)
+    atomic_write_json(record_path, marker)
 
 
 #: The marker version a genuine legacy tree carries. Phase 3 bumped
@@ -325,8 +328,19 @@ def repoint_marker_at_hdf(output_dir: Path, dataset: str, stem: str) -> Path:
     Returns:
         The marker path.
     """
+    # READ the record, WRITE the legacy marker. This function's whole job is
+    # to turn what the current publisher wrote into the shape a genuine
+    # legacy tree carries, so the two paths are deliberately different: the
+    # source is `images/` because that is where P3's publisher writes, and
+    # the destination is `image_complete/` because that is what "legacy"
+    # means. The record is removed at the end -- a tree carrying BOTH shapes
+    # is not a legacy tree, and the schema gate's whole job is telling those
+    # two apart.
+    record_path = image_record_path(output_dir, dataset, stem)
     marker_path = image_completion_marker_path(output_dir, dataset, stem)
-    marker = json.loads(marker_path.read_text(encoding="utf-8"))
+    marker = json.loads(record_path.read_text(encoding="utf-8"))
+    marker.pop("stages", None)
+    marker.pop("provenance", None)
     marker["version"] = LEGACY_SUCCESS_MARKER_VERSION
     artifacts = marker["artifacts"]
     artifacts.pop("store", None)
@@ -362,6 +376,7 @@ def repoint_marker_at_hdf(output_dir: Path, dataset: str, stem: str) -> Path:
     descriptor.pop("kind", None)
     artifacts["hdf"] = descriptor
     atomic_write_json(marker_path, marker)
+    record_path.unlink(missing_ok=True)
     return marker_path
 
 
@@ -424,9 +439,18 @@ def strip_completion_evidence(output_dir: Path) -> None:
         run_completion_marker_path,
     )
 
-    marker_root = progress_dir(output_dir) / "image_complete"
-    if marker_root.is_dir():
-        shutil.rmtree(marker_root)
+    # BOTH shapes. This used to remove only `image_complete/`, which was
+    # every per-image publication there was; after P3's clean break the
+    # current publisher writes `images/` instead, so removing the legacy
+    # directory alone would leave a "markerless" tree still fully certified.
+    # `DIR_IMAGE_COMPLETE` rather than the literal it used to spell, so the
+    # legacy half tracks its own constant.
+    from phenotypic.sdk_ import DIR_IMAGE_COMPLETE, DIR_IMAGE_RECORDS
+
+    for directory in (DIR_IMAGE_COMPLETE, DIR_IMAGE_RECORDS):
+        root = progress_dir(output_dir) / directory
+        if root.is_dir():
+            shutil.rmtree(root)
     for path in (
         aggregate_publication_marker_path(output_dir),
         run_completion_marker_path(output_dir),

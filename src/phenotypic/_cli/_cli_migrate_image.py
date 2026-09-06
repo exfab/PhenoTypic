@@ -28,6 +28,7 @@ from phenotypic.sdk_ import (
     CommitGuard,
     MEASUREMENT_TABLE_RELATIVE_PATH,
     image_completion_marker_path,
+    image_record_path,
     load_image_from_store,
     publication_commit,
     replace_embedded_measurement_table,
@@ -211,7 +212,20 @@ def _valid_migration_marker(
     *,
     table_authoritative: bool | None = None,
 ) -> bool:
-    """Return whether a marker binds exactly this task's migrated authority."""
+    """Return whether the RECORD binds exactly this task's migrated authority.
+
+    **Reads the record, not ``task.marker_path``** -- this is a read-back of
+    what ``publish_image_success`` just wrote, and P3's clean break moved that
+    to ``images/<ds>/<stem>.json``. It used to work by accident of the two
+    being the same file: the publisher overwrote the path it was handed, so
+    reading that path back got fresh bytes.
+
+    ``task.marker_path`` still means what it always meant -- **the legacy
+    marker this task reads as input** -- and `:163`, the canonicality check
+    in `_cli_migrate_manifest`, the `_stage_error` target and the manifest's
+    JSON round-trip all keep using it. Nothing was renamed; four read-backs
+    stopped borrowing an input path to find an output.
+    """
     embedded = task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
     if table_authoritative is None:
         table_authoritative = embedded.is_file()
@@ -227,7 +241,8 @@ def _valid_migration_marker(
     ):
         return False
     try:
-        marker = json.loads(task.marker_path.read_text(encoding="utf-8"))
+        record_path = image_record_path(output_dir, task.dataset, task.stem)
+        marker = json.loads(record_path.read_text(encoding="utf-8"))
         declared = marker["artifacts"]
         if not isinstance(declared, dict) or set(declared) != set(expected):
             return False
@@ -365,8 +380,15 @@ def _dry_run_result(
             table_authoritative=table_valid,
         )
     )
+    # Read-back: the digest of what was just published, so a later reclaim
+    # can prove nothing changed underneath it. The RECORD, for the same
+    # reason as `_valid_migration_marker` -- see its docstring.
     marker_digest = (
-        hashlib.sha256(task.marker_path.read_bytes()).hexdigest()
+        hashlib.sha256(
+            image_record_path(
+                output_dir, task.dataset, task.stem
+            ).read_bytes()
+        ).hexdigest()
         if marker_valid
         else ""
     )
@@ -577,9 +599,18 @@ def migrate_image_task(
                     source_provenance=source_provenance,
                     commit_guard=None,
                 )
-                if marker_path != task.marker_path:
+                # The publisher's canonical path is the RECORD's, not
+                # `task.marker_path`. Comparing against the task field made
+                # this guard fire unconditionally after P3's clean break --
+                # `--mode migrate` raised on the first image of every tree.
+                # The guard itself is sound and is kept: it catches a
+                # publisher returning somewhere unexpected, which is exactly
+                # what it just caught.
+                if marker_path != image_record_path(
+                    output_dir, task.dataset, task.stem
+                ):
                     raise RuntimeError(
-                        "marker publisher returned a non-canonical path"
+                        "record publisher returned a non-canonical path"
                     )
                 if not _valid_migration_marker(
                     output_dir,
@@ -611,7 +642,17 @@ def migrate_image_task(
                 table_authoritative=table_valid,
             ):
                 raise RuntimeError("migrated marker validation failed")
-            marker_digest = hashlib.sha256(task.marker_path.read_bytes()).hexdigest()
+            # Read-back, and the one that CROSSES THE PROCESS BOUNDARY: this
+            # value becomes `MigrationImageResult.marker_digest`, which the
+            # controller re-derives and compares at six sites in
+            # `_cli_migrate_manifest`. All seven must digest the same file or
+            # the seal binds the wrong one -- silently, if they agree on the
+            # wrong file, and loudly if they disagree.
+            marker_digest = hashlib.sha256(
+                image_record_path(
+                    output_dir, task.dataset, task.stem
+                ).read_bytes()
+            ).hexdigest()
             return MigrationImageResult(
                 index=task.index,
                 dataset=task.dataset,
@@ -679,9 +720,29 @@ def _current_marker_digest(
     task: MigrationImageTask,
     work_id: str,
 ) -> str:
-    """Return the digest of the current marker payload, valid or invalid."""
+    """Return the digest of the current RECORD payload, valid or invalid.
+
+    **This one guards a deletion.** ``_marker_still_current`` is the check
+    immediately before ``--delete-sources`` unlinks a user's ``.h5``, so a
+    wrong answer here is the only place in this module where a mistake costs
+    data rather than raising.
+
+    It reads the record for the same reason as the other three read-backs,
+    and the ordering it restores is worth naming: while the publisher and
+    this reader disagreed, ``_valid_migration_marker`` failed first and
+    reclaim refused -- correct, but for an unrelated reason. Now that both
+    resolve the record, this digest comparison is load-bearing for the first
+    time since the break, which is why
+    ``test_reclaim_refuses_when_the_record_changed_after_publication``
+    asserts the **source file still exists** rather than that a digest
+    differs.
+    """
     try:
-        return hashlib.sha256(task.marker_path.read_bytes()).hexdigest()
+        return hashlib.sha256(
+            image_record_path(
+                output_dir, task.dataset, task.stem
+            ).read_bytes()
+        ).hexdigest()
     except OSError:
         return ""
 
