@@ -703,16 +703,23 @@ finalize_run(output_dir, …):
   3. join metadata + append metadata-only phantoms + apply post ops
   4. write  →  deliverables/measurements.{parquet,csv}
   5. persist pipeline.json, analysis outputs, per-feature splits
-  6. backfill pht-metadata.parquet per store          (certified re-promote)
-  7. publish aggregate proof → run proof
+  6. publish aggregate proof → run proof
 ```
+
+> **⚠ CORRECTED (D-A).** This block used to list **seven** steps, with
+> *"6. backfill pht-metadata.parquet per store (certified re-promote)"* between
+> steps 5 and the proof publication.
+> [D-A](../../plans/2026-09-03-cli-gui-state-tracking/OPEN-QUESTIONS.md#d-a-per-store-metadata-is-written-at-promote-time-not-backfilled)
+> **cut that step**: the metadata table is written at promote time, in the same
+> `.part` as the measurements, so **no new path writes into a promoted store**
+> (INV-PROVEN, first obligation). `finalize_run` is six steps, not seven.
 
 | Mode | Per-image work | Then |
 |---|---|---|
 | `full` | stage1→2→3, embed pure measurements | `finalize_run` |
 | `measure` | re-measure from stores, embed | `finalize_run` |
 | `recompile` | none | `finalize_run` |
-| `process` | one layer, no measurement | skips 1–6 (`process_only_layer` already short-circuits the aggregate proof) |
+| `process` | one layer, no measurement | skips 1–5 (`process_only_layer` already short-circuits step 6's aggregate proof) |
 
 **`recompile` becomes "call `finalize_run` again"** — not a parallel
 implementation that must be kept in sync. This deletes recompile's separate
@@ -722,15 +729,42 @@ arrive with differently-shaped inputs.
 
 It also gives late-arriving metadata a first-class answer: a `metadata.csv` edit
 changes `metadata_sha256`, invalidating `finalization_input_digest`, so the next
-invocation re-runs `finalize_run` — re-joining the mirror and re-backfilling
-every store — **without touching a single image's measurement**.
+invocation re-runs `finalize_run` — re-joining the mirror — **without touching a
+single image's measurement**.
+
+> **⚠ CORRECTED (D-A).** This sentence used to promise *"re-joining the mirror
+> **and re-backfilling every store**"*. With the backfill cut, the guarantee
+> narrows: **stores keep the metadata snapshot they were built against.** Each
+> store's `attributes.phenotypic.metadata_table.snapshot_sha256` records which
+> one, and `resolve_run_state` raises an **advisory** — never a gate — when a
+> store's recorded snapshot diverges from the run's current `metadata_sha256`.
 
 ### 7.5 INVARIANT: aggregation inputs are embedded tables only
 
-> **`finalize_run` step 1 selects exactly the marker-authorized embedded
-> measurement tables. It never reads a prior master, chunk parquet,
-> measurement shard, `analysis_full.parquet`, or `_dataset_aggregated.parquet`
-> as an aggregation input.**
+> **On the authorized path, `finalize_run` step 1 selects exactly the
+> marker-authorized embedded measurement tables. It never reads a prior master,
+> chunk parquet, measurement shard, `analysis_full.parquet`, or
+> `_dataset_aggregated.parquet` as an aggregation input.**
+
+> **⚠ NARROWED (user ruling, 2026-09-06): "on the authorized path".** The
+> invariant as originally written was unconditional, and the code has a second
+> arm it does not hold on. When `authorized_measurement_sources` returns `None`
+> — a **legacy tree**, with no per-image payload under `.phenotypic/progress/`
+> and authority in external Parquets under `results/<ds>/measurements/` —
+> aggregation falls back to `discover_measurement_sources`, which *does* prefer
+> `_dataset_aggregated.parquet`.
+>
+> **That arm is kept deliberately, not overlooked.** The schema gate that would
+> refuse a legacy tree before it reaches finalization is disarmed until P7, so
+> dropping the arm would be a behaviour change for real trees across the whole
+> P4→P7 window. It carries a retirement condition at its site, triggered by the
+> gate being armed, so it retires with the rest of the legacy surface.
+>
+> The unconditional form is what the invariant becomes once that condition
+> holds. Until then, stating it unconditionally would describe code that does
+> not exist — and a test written against the unconditional claim passes on a
+> forward tree without ever reaching the arm that violates it, which is how this
+> was found.
 
 Those files are *outputs and intermediates of a previous finalization*, not
 inputs to this one. Under a rolling input dataset, reusing any of them silently
@@ -745,10 +779,36 @@ Consequences, each of which is a test:
   ignores them.
 - `finalize_run` invalidates them on success, so a later invocation cannot
   mistake them for inputs.
-- Measurement shards are **per-invocation scratch, namespaced by
-  `scheduler_epoch`**, so a prior run's shards can never be merged. Recompile
-  already does this (`recompile/attempts/<attempt_id>/…`); the pattern
-  generalises.
+- Measurement shards are **per-invocation scratch, emptied when fan-out
+  begins**, so a prior run's shards can never be merged.
+
+  > **⚠ CORRECTED (user ruling, P2 close).** This bullet used to read
+  > *"per-invocation scratch, **namespaced by `scheduler_epoch`**, so a prior
+  > run's shards can never be merged. Recompile already does this
+  > (`recompile/attempts/<attempt_id>/…`); the pattern generalises."*
+  > **That guarantee did not hold on the local path.**
+  > `_run_state._scheduler_epoch()` returns `None` whenever there is no
+  > `slurm_lifecycle.json` — every local run — and P5 gives itself a local
+  > process-pool driver. So the namespace key is `None` for every local
+  > invocation, consecutive local runs share one directory, and a prior run's
+  > shards merge into this one's master. Silently, and against the very
+  > invariant this section states.
+  >
+  > **Clearing is strictly stronger than namespacing**, which was not obvious
+  > going in: namespacing leaves every prior run's shards on disk forever,
+  > accumulating. Emptying closes the hole and stops the accretion. A
+  > per-invocation shard id was rejected for taking the state-artifact budget
+  > from four to five; falling back to `processing_generation` was rejected
+  > because it is content-derived, so two consecutive identical local runs mint
+  > the same generation and collide anyway — it narrows the window instead of
+  > closing it, which is **worse than either alternative, because it looks like
+  > a fix**.
+  >
+  > `scheduler_epoch` may stay in the path — that is P5's call — but the
+  > guarantee no longer depends on it. The clearing happens at fan-out
+  > **start, before any worker writes**, never at merge time; that caveat is
+  > what makes it a fix rather than a data-loss bug, and it lives in
+  > `plans/…/phase-5-fanout.md` where the clearing is implemented.
 - Master is therefore a **pure function of the currently authorized embedded
   tables** — which is the derivability property this whole design is for.
 

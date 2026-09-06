@@ -1464,6 +1464,68 @@ call graph instead of against the function it describes.)*
 
 ---
 
+### Entry 36 — THREE LEVELS OF GREEN-BY-CONSTRUCTION, IN ONE TEST. 2026-09-05.
+
+**The register's central mechanism, found three times in a row inside successive fixes for
+itself.** Each layer was caught only because someone looked one level below the last fix.
+
+**Level 1 — the original gate (review finding B7).** P4's plan proved INV-INPUTS by adding a
+`_dataset_aggregated.parquet` fast path and asserting a test failed. But the fast path is on
+the **legacy** discovery arm only, and the test ran on a **forward** tree. The gate was green
+whether or not the violating arm survived.
+
+**Level 2 — the fix for B7 (finding NEW-1).** The repair added a dedicated legacy-arm test.
+Its fixture claimed to force the legacy arm via *"no processing state, or
+`success_markers_required` false"* -- but `authorized_measurement_sources` delegates **both**
+conditions to `_sources_without_state` (`_cli_completion.py:932-935`), which returns `None`
+only when **neither** progress tree holds a single `*/*.json` (`:889-895`). The fixture
+*published two images*, so it got a mapping back and took the authorized arm. **The
+replacement gate was green for the same reason the original was.**
+
+**Level 3 — below the fix for the fix.** Reaching the legacy arm is necessary and **not
+sufficient**: the arm must also *prefer* the poisoned aggregate. `discover_measurement_sources`
+skips it when `_aggregate_needs_image_name_recovery` is true and individual Parquets exist
+(`_measurement_sources.py:161-167`). Measured by execution:
+
+```
+_image_name_column(['Metadata_ImageFile']) -> None            # -> needs_recovery -> SKIPPED
+_image_name_column(['Metadata_ImageName']) -> Metadata_ImageName
+metadata_member_for_header('Metadata_ImageFile') -> None
+```
+
+The plan's poison frame carried only `Metadata_ImageFile`. **The aggregate would have been
+skipped, and the test would have passed having chosen nothing.**
+
+#### The distinction that was missing at every level
+
+> **Reaching a branch is not the same as the branch doing the thing under test.**
+
+Level 1 failed to reach the *arm*. Level 2 reached the arm but not via the *route* it claimed.
+Level 3 reached the arm by the right route and then failed the arm's own *precondition* for
+doing the work. Three different senses of "the test exercises the code", and a fixture can
+satisfy any two while failing the third.
+
+The operational form, which is narrower than "ask what a green result would look like if it
+had failed":
+
+> **State the precondition of every layer between the fixture and the assertion, and assert
+> each one before the act.** Not "this fixture forces the legacy arm" but: *no payload under
+> progress/* → `authorized_measurement_sources` returns `None` → legacy arm → aggregate
+> exists AND carries a valid `Metadata_ImageName` → the aggregate is preferred → the poison is
+> read. Five links; the plan asserted one.
+
+#### Why three rounds of review found three levels rather than one
+
+Each reviewer looked at what the previous fix *claimed*, and checked the layer that claim
+named. Nobody had reason to look below it until the layer above was sound. **That is not a
+failure of the reviewers -- it is a property of layered preconditions**, and the only defence
+is to enumerate the chain up front rather than discover it one round at a time.
+
+*(Level 3 was found by the implementing agent while applying the fix for level 2, and
+confirmed here by executing the two predicates rather than reading them.)*
+
+---
+
 ## What the pattern says
 
 **Nothing failed, and nothing could have.** Not one entry would have been caught by a test,
@@ -1477,7 +1539,7 @@ acts on it.
    holding a future state in mind — the author is describing the system they are reasoning
    about rather than the one on disk. It comes true one task later, which is the most
    forgiving version and still the same error.
-2. **A claim about what a check does** (10, 12, 13, 21, 22, 27, 28, 30, 31, 32, 33, 34). The most dangerous, because
+2. **A claim about what a check does** (10, 12, 13, 21, 22, 27, 28, 30, 31, 32, 33, 34, 36). The most dangerous, because
    it converts a green gate into false assurance. Entry 27 is its limit case: no claim was
    made and none went stale — a *test* silently stopped covering what its own comment says it
    covers, because a path it depended on moved three files away. Ask of every one: *what would this have looked

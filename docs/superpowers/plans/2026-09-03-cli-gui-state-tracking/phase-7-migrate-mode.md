@@ -257,7 +257,7 @@ Each gets a row in `requires_conversion`'s docstring and a test:
 
 | Shape | Correct classification | Why it is not obvious |
 |---|---|---|
-| **Bundle-only** — `deliverables/` with no `.phenotypic/` | `None` (nothing to convert) | `BundleLayout.detect` explicitly supports it (`_io_constants.py:2468-2482`). It trips none of the **five** signals, because signal 5 requires a *present* state file — see INV-DISCHARGEABLE. Its master stays unstamped, which under P4's stamp-at-finalize is the **correct** pre-v2 signal. |
+| **Bundle-only** — `deliverables/` with no `.phenotypic/` | `None` (nothing to convert) | `BundleLayout.detect` explicitly supports it (`_io_constants.py:2468-2482`). It trips none of the **five** signals, because signal 5 requires a *present* state file — see INV-DISCHARGEABLE. Its master is classified by shape, not by a stamp (there is none) — see P4 Task 3 Step 6b. **A bundle-only tree is the ambiguous case**: if it was built without `--metadata` its master carries no `Metadata_*` columns and is indistinguishable from v2 by shape alone. 6b's test settles whether that matters; do not assume here. |
 | **Unreadable `processing_state.json`** | a distinct verdict, **not `CONVERT`** | Migrate cannot repair a truncated state file, so pointing at it would strand the tree (INV-DISCHARGEABLE). Name the file; do not name `--mode migrate`. |
 | **modern `--mode process` tree** | `None` after P3 converts its records | Process **does** call `publish_image_success` (`_cli_process_single.py:789,943`), so signal 1 fires — but it has **no master at all**, so any master-touching step must no-op rather than raise. |
 | **pre-markers `--mode process` tree** | **needs a process arm in migrate** — see below | `_cli_process_only.py` ships in v0.17.3, so this is *inside* the supported range. It has no `image_complete/`, so signal 1 does **not** fire; it trips signal 3 and classifies `CONVERT`. But migrate's discovery enumerates `.h5` and `results/<ds>/zarr/*.ome.zarr` (`_cli_migrate.py:611,1377`) — **a process-only run wrote neither.** Its outputs are process layers under the mirrored input tree. |
@@ -950,7 +950,7 @@ the canonical view emitted alongside it."
 
 ---
 
-## Task 4: The embedded-table question, and the master's schema stamp
+## Task 4: The embedded-table question, and the master's v1 shape
 
 **Files:**
 - Modify: `src/phenotypic/_cli/_cli_migrate_state.py`
@@ -960,8 +960,16 @@ Existing trees have embedded tables that are **already metadata-joined** — the
 inverted. Two options, and the plan takes the cheaper one:
 
 **Decision: migrate leaves embedded tables alone; `finalize_run` projects them at read.**
-The master **stamp moved to P4** (CAN-9) — migrate leaves a legacy master *unstamped*,
-which is the honest pre-v2 signal, and `read_master_measurements` refuses it.
+> **⛔ CORRECTED (user ruling, 2026-09-06): there is no master schema stamp.** CAN-9 moved
+> the minting to P4; the ruling then **cut it entirely**. The master already self-describes —
+> a v1 master carries `Metadata_*` columns because the join happened per-image, a v2 master
+> does not because the join moved to finalization — so a stamp asserting the schema was a
+> second home for a fact the file already carries.
+>
+> `read_master_measurements` does not exist and is not coming. The helper is
+> **`master_carries_user_metadata`** in `sdk_/_master_io.py`, minted by P4, and it **classifies
+> rather than refuses**: migrate leaves a legacy master v1-shaped, and that is correct output,
+> not an error. Nothing in this phase writes or reads a stamp.
 
 Rewriting every store's embedded table would reintroduce exactly the post-proof store
 mutation D-A removed, for trees that already have a correct master. Instead,
@@ -1053,29 +1061,30 @@ def test_migrate_writes_no_byte_into_any_store(tmp_path):
     assert before == after
 
 
-def test_migrate_leaves_a_legacy_master_unstamped(tmp_path):
-    """CAN-9 / U-3. The first draft stamped the master during migrate while
-    explicitly NOT re-running finalization -- so the stamped file was still the
-    legacy metadata-joined master, and the stamp certified a shape it would not
-    have until the next finalize_run. Its own two tests contradicted each other.
+def test_migrate_leaves_a_legacy_master_v1_shaped(tmp_path):
+    """CAN-9 / U-3, as ruled 2026-09-06: classify the shape, do not stamp it.
 
-    P4 mints the stamp where finalize_run writes the master, so stamp and shape
-    come from one code path. Migrate leaves the legacy master unstamped, which
-    read_master_measurements correctly refuses as pre-v2.
+    **The version this replaces was a vacuous green.** It asserted
+    ``b"phenotypic.master_schema_version" not in schema.metadata`` -- the
+    ABSENCE of a key that nothing in the codebase writes -- so it passed
+    without exercising anything, and would have kept passing if migrate had
+    started stamping. It also called ``read_master_measurements``, which the
+    ruling deleted before it existed.
+
+    What is actually worth pinning: migrate does not re-run finalization, so
+    the master it leaves behind is still the per-image-joined v1 shape, and
+    ``master_carries_user_metadata`` must SAY so. That is a positive assertion
+    about a value a real function returns, which the old one was not.
     """
-    import pyarrow.parquet as pq
-    import pytest
-
     from phenotypic.sdk_ import master_measurements_parquet_path
-    from phenotypic.sdk_._master_io import read_master_measurements
+    from phenotypic.sdk_._master_io import master_carries_user_metadata
 
-    _build_legacy_tree(tmp_path)
+    _build_legacy_tree(tmp_path, metadata=True)   # see the precondition below
     _invoke_cli(mode="migrate", output=tmp_path)
 
-    schema = pq.read_schema(master_measurements_parquet_path(tmp_path))
-    assert b"phenotypic.master_schema_version" not in (schema.metadata or {})
-    with pytest.raises(ValueError, match="migrate|schema"):
-        read_master_measurements(tmp_path)
+    master = master_measurements_parquet_path(tmp_path)
+    assert master.is_file()
+    assert master_carries_user_metadata(master) is True
 
 
 def test_a_legacy_fanout_store_and_a_fresh_store_produce_equal_masters(tmp_path):
@@ -1129,9 +1138,11 @@ D-A applied to migrate: not one byte is written into any store. finalize_run
 projects each table onto its own recorded measurement_columns, so a pre-inversion
 store aggregates identically, subject to the fan-out and dtype corrections in CAN-10.
 
-The master schema stamp is NOT minted here (CAN-9). finalize_run mints it where it
-writes the master, so stamp and shape come from one code path; migrate leaves a
-legacy master unstamped, which read_master_measurements correctly refuses as pre-v2
+There is no master schema stamp (CAN-9, then cut outright by the 2026-09-06
+ruling). The master self-describes: v1 carries Metadata_* columns because the
+join was per-image, v2 does not because the join moved to finalization. Migrate
+does not re-run finalization, so it leaves a v1-shaped master, and
+master_carries_user_metadata classifies it as such rather than refusing it
 (U-3)."
 ```
 

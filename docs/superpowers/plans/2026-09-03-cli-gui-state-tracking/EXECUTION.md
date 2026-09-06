@@ -645,6 +645,66 @@ the moment everyone is focused on the defect being fixed rather than on the coun
   support in every reader is *more* state to keep in sync — a change whose stated purpose
   is reducing tracked state would have ended by adding some.
 
+### P4's two rule-3 questions, ruled (user, 2026-09-06)
+
+**1. The metadata-snapshot digest gets ONE home: the store root. It is not mirrored.**
+
+P4's draft said *"Write both; never derive one from the other at read time"* -- literally
+what rule 3 rejects. The resolution is not an exception; it is that the premise changed.
+
+Today the digest is one leg of a **self-describing provenance triple** in the measurements
+Parquet -- `join_status`, `join_keys`, `snapshot_sha256` -- whose coherence two readers
+check (`_measurement_tables.py:215`, `_cli_output_manager.py:940`). **After P4's inversion
+the measurements table carries no join at all**, so by that contract's own rule its triple
+becomes `not_requested` / empty / empty. The digest stops being true of that file.
+
+So the digest **relocates** to `attributes.phenotypic.metadata_table.snapshot_sha256` on the
+store root -- where P1 already shipped the reader -- and the join provenance belongs to the
+new *metadata* table. One home, every consumer reading it there. **This satisfies rule 3
+rather than excepting it**, which is why no register row for a second home is needed.
+
+> **Must be measured, not assumed:** the mixed-authority refusal
+> (`_cli_output_manager.py:940`) currently gets the digest free, because it is already
+> opening each Parquet's schema for the other two legs. Reading N store roots instead is a
+> **cost inversion for that reader**. Prove it is acceptable before committing the design.
+
+**2. No `master_schema_version` stamp. Branch on the schema itself.**
+
+It does not exist yet, so minting it would manufacture tracked state rather than describe
+it; the plan's own reader story was broken (the prescribed grep finds four hits, all
+writers); and P6 deletes an identical write-with-no-reader pattern *as a finding*.
+
+Decisively: **the master already self-describes.** A v1 master carries `Metadata_*`
+columns, a v2 master does not. A stamp asserting the schema is a second home for a fact the
+file already carries -- rule 3 one level up.
+
+> **The known ambiguity, to be tested and not reasoned about:** a v1 run with no
+> `metadata.csv` also has no `Metadata_*` columns, so column-presence conflates it with v2.
+> That is expected to be harmless -- neither has anything to join -- but it is an
+> inference, and this change has been punished for exactly that twice. **If the two cases
+> are behaviourally distinguishable, mint the stamp and register it as tracked state
+> properly.**
+
+### Compatibility code states its own retirement condition (user, 2026-09-06)
+
+**Any check that discriminates an old artifact shape from a new one must say, at the site,
+what it is for and when it may be deleted.** Not "handle v1" -- the *condition* under which
+the branch becomes dead:
+
+```python
+# V1/V2 MASTER DISCRIMINATION -- DELETE WHEN: no run predating <this change> is
+# still readable, i.e. every master in the wild was written by finalize_run's
+# post-inversion path. A v1 master carries Metadata_* columns because the join
+# happened per-image; a v2 master does not, because the join moved to
+# finalization. Nothing else distinguishes them, and nothing stamps them.
+```
+
+The reason is this register's own recurring finding, seen from the far end: **compatibility
+branches outlive the thing they were compatible with**, and the knowledge of *why* they
+exist evaporates first. A branch whose retirement condition is written down can be deleted
+by someone who was not there. One whose condition is not written down survives forever,
+because deleting it is an unbounded risk to whoever finds it.
+
 **The test to apply to any proposed fix**, in this order:
 
 1. Does it add a file, key, or field that something **branches on**? → tracked state. **Stop
@@ -966,6 +1026,61 @@ one: missing `QT_QPA_PLATFORM=offscreen` aborts the interpreter partway with no 
 streams uncaptured output and can triple runtime when stdout is on shared storage; `-x`
 truncates a run that then gets recorded as a baseline; and leaking `SLURM_ARRAY_TASK_ID` into
 tests that mock scheduler state makes them read the *gate's* identity instead of their own.
+
+### `pytest` exit **5** is the falsifier for a zero-collection run
+
+The rule *"every verification command states an expected output a zero-collection run cannot
+satisfy"* needs a mechanism, or it is advice. This is the mechanism:
+
+| exit | meaning |
+|---|---|
+| 0 | tests ran and passed |
+| 1 | tests ran, some failed |
+| **5** | **`NO_TESTS_COLLECTED` — nothing ran** |
+
+Verified against the installed pytest **9.0.1**, not recalled. **5 is a distinct code from 0**,
+which is what makes it usable: a step that says "expected: PASS" cannot tell those apart, and
+under `-q` an empty run prints `no tests ran` — a line that reads past easily in a scrollback.
+
+Two consequences for how a verification step is written:
+
+- **A pass/fail check is not enough.** Assert the *count*: `1 passed`, `8 passed`, or a floor
+  paired with a path check. A bare floor (`>= 1 passed`) is still satisfiable by a run that
+  collects one unrelated test because the path was wrong.
+- **A multi-path invocation is the dangerous case.** `pytest a.py b.py c.py` where `b.py`
+  collects nothing still exits **0**, because the others collected and passed. The zero is
+  invisible. Either split the paths into separate commands, or add a
+  `--collect-only` recipe per path with its expected count.
+
+**Measured in P4's plan before this was written: nine verification points, six could not
+distinguish "passed" from "collected nothing", and four had no command at all.** That is most
+of a phase's own gates unable to fail correctly — including, at the time it was measured, the
+step that had just been repaired for exactly this defect.
+
+### An insertion script that prints `ok` has not told you the text landed
+
+Both this session and the implementing cluster edit long documents with anchored Python
+inserts of the shape:
+
+```python
+assert t.count(anchor) == 1, "anchor"
+t = t.replace(anchor, block + anchor, 1)
+p.write_text(t); print("ok | ...")
+```
+
+**The assert guards the anchor's uniqueness, not its suitability.** An anchor that occurs
+exactly once *inside a fenced code block* passes the assert, the replace succeeds, the script
+prints `ok`, and the inserted prose lands **inside the code fence** where it is neither
+executed nor read as prose. The implementing cluster hit exactly this and caught it by
+grepping for the inserted text rather than trusting the exit message.
+
+**`ok` means "the script ran", not "the edit is where you wanted it".** Same class as entries
+21, 33 and 34: a success message that cannot distinguish success from a specific failure.
+
+**After any anchored insert, grep for a distinctive phrase from the inserted text and look at
+its surroundings** -- `grep -n -B2 -A2 '<phrase>' <file>` -- or assert the insertion point's
+context in the script itself. One command, and it is the only thing that distinguishes a
+correct insert from a well-formed misplaced one.
 
 ### Auditing an `xfail` census: the reason is the CLAIM, the traceback is the EVIDENCE
 

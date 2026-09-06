@@ -92,13 +92,29 @@ per-image proofs and does **not** rebuild stores. §7.4's guarantee therefore na
 >
 > **Becomes:** a `metadata.csv` edit re-runs `finalize_run`, re-joining the mirror.
 > Stores keep the metadata snapshot they were built against; each store's
-> `phenotypic.metadata.snapshot_sha256` records which one.
+> `attributes.phenotypic.metadata_table.snapshot_sha256` records which one.
 
 That divergence must be **derived and surfaced, never tracked**: `resolve_run_state` adds
 one advisory when any store's recorded `snapshot_sha256` differs from the current
 `metadata_sha256`. It is a `stat` + one attribute read per store on the deep path, it
 reuses a value the store already carries, and — per §4.3 — **an advisory is never a gate**.
-See P1 Task 5 and P4 Task 6.
+The reader is `_store_metadata_snapshot` (`sdk_/_run_state.py:641-667`, shipped in **P1
+Task 5**); the writer is **P4 Task 2**.
+
+> **⚠ CORRECTED, twice.** This entry originally spelled the root key
+> `phenotypic.metadata.snapshot_sha256` and pointed at *"P4 Task 6"*.
+>
+> - **The key is `metadata_table`, not `metadata`.** `phenotypic.metadata` is already taken
+>   by the `{protected, public, imported}` image-metadata sections
+>   (`sdk_/ngff_.py:569-580`). P1 shipped the correct spelling and its reasoning at
+>   `sdk_/_run_state.py:364-378`.
+> - **P4 has five tasks**, so "P4 Task 6" named nothing — and the work it was reaching for
+>   (the reader) had already shipped in P1. The *writer* is P4 Task 2. A pointer to a name
+>   that does not exist is drift-register Entry 32's shape.
+>
+> Note also that the digest's **only** home is this root key. After P4's inversion the
+> measurements Parquet carries no join, so its `snapshot_sha256` is `""` by that file's own
+> contract; the digest is not mirrored (user ruling, 2026-09-06 — see `EXECUTION.md`).
 
 ### Consequences, phase by phase
 

@@ -1169,6 +1169,82 @@ fail only on compute nodes. **A fifth failure is this phase's**, not the baselin
 
 ---
 
+## Task 7b: Convert the GUI's master readers to P4's v1/v2 helper
+
+**Files:**
+- Modify: `src/phenotypic/gui/results_viewer/_output_root.py:320`,
+  `_curation_labels.py:417`, `:763`, `_error_tab/_publication.py:125`,
+  `_qc_tab/review/_data.py:84`
+- Test: alongside each module's existing suite
+
+**Added by user ruling (2026-09-06), which split this work between P4 and P6.** P4 changes
+the master's shape — after §7.3's inversion it carries **intrinsic identity only**, with
+user metadata living in the mirror — and creates the helper that tells the two shapes apart.
+**P4 owns the helper and the `sdk_` readers; P6 owns these GUI readers**, because P6 owns
+this surface and is already rewriting them. The ruling is recorded in
+[`phase-4-finalize-run.md`](phase-4-finalize-run.md) Task 3 Step 6; this task is its other
+half, and it exists because a split written down in only one plan is how the second half
+never happens.
+
+**The helper, created in P4** (`sdk_/_master_io.py`):
+
+```python
+# V1/V2 MASTER DISCRIMINATION -- DELETE WHEN: no run predating the P4 inversion is
+# still readable, i.e. every master in the wild was written by finalize_run's
+# post-inversion path. A v1 master carries Metadata_* user-metadata columns
+# because the join happened per-image; a v2 master does not, because the join
+# moved to finalization. Nothing else distinguishes them, and nothing stamps them.
+def master_carries_user_metadata(frame: "pl.DataFrame") -> bool: ...
+```
+
+**There is no schema stamp** — that was cut by user ruling, because the master already
+self-describes and a stamp would be a second home for a fact the file carries. Do not add
+one here, and do not write a reader that expects one.
+
+- [ ] **Step 1: Establish which of the five readers actually branch**
+
+Most do not. Curation keys on dataset / image / object-label — all intrinsic — so it should
+be unaffected; `_processing_inventory.py:202,373` only add the path to an existence/mtime
+inventory and never read the frame at all. **The readers that matter are those that filter
+or group on a `Metadata_*` column**, which on a v2 master return **empty rather than
+raising** — §7.3's "one genuinely dangerous failure mode in §7".
+
+```bash
+grep -rn 'Metadata_' src/phenotypic/gui/results_viewer/_output_root.py \
+  src/phenotypic/gui/results_viewer/_curation_labels.py \
+  src/phenotypic/gui/results_viewer/_error_tab/_publication.py \
+  src/phenotypic/gui/results_viewer/_qc_tab/review/_data.py
+```
+
+**Expected: a non-empty list of candidate sites, each classified in the plan before any
+edit** — "branches on user metadata" or "intrinsic only, no change". A reader you convert
+without needing to is churn; one you skip because it *looked* intrinsic is the failure this
+task exists to prevent.
+
+- [ ] **Step 2: Convert only those, and test both shapes**
+
+For each converting reader, add a test that feeds it **a v1 master and a v2 master** and
+asserts the outcomes differ in the intended way — not that the column sets differ, which is
+true by construction and proves nothing about behaviour.
+
+- [ ] **Step 3: Verify no reader still assumes the v1 shape**
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui tests/gui -q
+```
+
+**Expected: 0 failures and a non-zero collected count for each path.** A bare PASS does not
+distinguish "ran and passed" from "collected nothing" — see P4 Task 2 Step 4 for why that
+distinction is load-bearing in this change.
+
+> **One overlap to check before deleting anything here:** P4 Task 4 Step 4 deletes
+> `load_master_measurements` as part of D8, and Task 7's ledger above greps for the same
+> symbol. If P4 landed first the grep returns 0 and that ledger item is already discharged —
+> which is the correct outcome, not a missing deletion. Confirm which, rather than
+> re-deleting or recording it as skipped.
+
+---
+
 ## Task 8: Record what the GUI tracks, in `gui/CLAUDE.md`
 
 **Files:**
