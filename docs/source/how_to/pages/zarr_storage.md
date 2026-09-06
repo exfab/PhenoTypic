@@ -171,14 +171,17 @@ violation on its own** — so breaking one is silent:
 1. **A store is promoted by directory rename, with the root `zarr.json`
    written last.** An interrupted write therefore has no valid root and reads
    as absent, never as partial.
-2. **Nothing writes into a promoted store.** A re-publish builds a new `.part`
-   and replaces the directory wholesale.
+2. **A store is replaced wholesale, never merged into.** A re-publish — a
+   re-measure included — builds a new `.part` and replaces the directory. The
+   refreshed root is written last there too, so a store is never left
+   describing content it does not have.
 
 Because of (1) and (2), both the per-image completion marker and the results
 viewer's staleness scan identify a store by its root `zarr.json` alone. Add a
-code path that writes into a promoted store and both start reporting stale
-data as fresh, with nothing failing to say so. The guard is
-`tests/unit/sdk_/test_ngff_promote.py::test_nothing_writes_into_a_promoted_store`,
+code path that writes into a promoted store *without* rewriting that root and
+both start reporting stale data as fresh, with nothing failing to say so. The
+guard on the promote itself is
+`tests/unit/sdk_/test_ngff_promote.py::test_promote_store_replaces_rather_than_merges`,
 which asserts inode identity rather than content — a merge-in-place
 implementation leaves the old directory in position with new bytes inside it,
 which passes any content comparison.

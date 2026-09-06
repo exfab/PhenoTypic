@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from phenotypic.sdk_ import CommitGuard
 
 from ._cli_types import Dataset
-from ._embedded_measurement_tables import prepare_embedded_measurement_table
+from ._embedded_measurement_tables import prepare_image_tables
 from ._metadata_join import (
     normalize_external_metadata_columns,
     normalize_measurement_metadata_columns,
@@ -1933,7 +1933,7 @@ class OutputManager:
                 metadata_snapshot = metadata_csv_deliverable_path(
                     self.base_dir
                 )
-                table = prepare_embedded_measurement_table(
+                table = prepare_image_tables(
                     baseline,
                     metadata_snapshot if metadata_snapshot.is_file() else None,
                 )
@@ -1976,8 +1976,19 @@ class OutputManager:
         durable: bool | None = None,
         commit_guard: CommitGuard | None = None,
     ) -> Path:
-        """Replace an existing store's authoritative measurement table."""
-        from phenotypic.sdk_ import replace_embedded_measurement_table
+        """Replace an existing store's authoritative measurement and metadata
+        tables.
+
+        Both move together, through the same producer the forward writer uses.
+        Feeding this path the joined producer instead would silently
+        **un-invert** every image ``--mode measure`` touches: a joined
+        ``table.parquet`` and no ``pht-metadata.parquet``, on a tree whose
+        other stores are inverted.
+        """
+        from phenotypic.sdk_ import (
+            MEASUREMENT_TABLE_RELATIVE_PATH,
+            replace_image_tables,
+        )
 
         baseline = measurements.copy()
         if (
@@ -1990,16 +2001,17 @@ class OutputManager:
                 dataset_name,
             )
         metadata_snapshot = metadata_csv_deliverable_path(self.base_dir)
-        table = prepare_embedded_measurement_table(
+        tables = prepare_image_tables(
             baseline,
             metadata_snapshot if metadata_snapshot.is_file() else None,
         )
-        return replace_embedded_measurement_table(
+        replace_image_tables(
             store_path,
-            table,
+            tables,
             durable=self.durable_writes if durable is None else durable,
             commit_guard=commit_guard,
         )
+        return Path(store_path) / MEASUREMENT_TABLE_RELATIVE_PATH
 
     def aggregate_master_csv(
         self,

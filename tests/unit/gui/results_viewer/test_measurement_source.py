@@ -26,7 +26,7 @@ from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.schema import IMAGE, OBJECT
 from phenotypic.sdk_ import (
     MEASUREMENT_TABLE_RELATIVE_PATH,
-    PreparedEmbeddedMeasurementTable,
+    PreparedImageTables,
     zarr_store_path,
 )
 
@@ -37,15 +37,16 @@ MEASURED = "img-measured"
 UNMEASURED = "img-unmeasured"
 
 
-def _table() -> PreparedEmbeddedMeasurementTable:
-    return PreparedEmbeddedMeasurementTable(
-        frame=pd.DataFrame(
+def _table() -> PreparedImageTables:
+    return PreparedImageTables(
+        measurements=pd.DataFrame(
             {
                 str(OBJECT.LABEL): [1, 2],
                 "Shape_Area": [12.0, 512.0],
                 "ColorLab_MedoidColorHex": ["#a08866", "#62605f"],
             }
         ),
+        metadata=None,
         measurement_columns=(
             str(OBJECT.LABEL),
             "Shape_Area",

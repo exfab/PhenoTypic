@@ -84,6 +84,53 @@ def _republish_table_marker(
     )
 
 
+def _refuse_inverted_store(store_path: Path) -> None:
+    """Refuse a store whose tables this producer would silently un-invert.
+
+    **Compatibility guard. Delete it when the recompile repoint lands** --
+    that is, when :func:`recompile_embedded_measurement_tables` builds its
+    payload with ``prepare_image_tables`` instead of
+    ``prepare_embedded_measurement_table``.
+
+    Recompile still uses the **pre-inversion** producer: it re-joins the
+    metadata snapshot into ``tables/measurements/table.parquet`` and writes no
+    ``tables/metadata/pht-metadata.parquet``. Run against an inverted store,
+    that un-inverts it -- a joined measurements table, and a dropped metadata
+    table, on a tree whose other stores are split. Nothing raises and nothing
+    reads differently until someone aggregates.
+
+    P4 Task 1 expected the ``isinstance`` check above to catch this by
+    failing closed. **It does not**: the producer still returns the legacy
+    type, so the check passes and the un-inversion is silent. Loud-and-broken
+    beats silent-and-wrong, so this restores the refusal the phase intended
+    until the producer is repointed.
+
+    Args:
+        store_path: The promoted store recompile is about to rewrite.
+
+    Raises:
+        RuntimeError: If the store declares an embedded metadata table.
+    """
+    from phenotypic.sdk_.ngff_ import METADATA_TABLE_GROUP
+
+    try:
+        attrs = read_phenotypic_attributes(store_path)
+    except (OSError, KeyError, ValueError):
+        # Unreadable attributes are the existing code's problem to report a
+        # few lines later, with its own message. Refusing here would replace
+        # a specific diagnosis with a vaguer one.
+        return
+    tables = attrs.get(PhenotypicAttr.TABLES)
+    if isinstance(tables, dict) and METADATA_TABLE_GROUP in tables:
+        raise RuntimeError(
+            "Cannot recompile an inverted store: "
+            f"{store_path} declares tables.{METADATA_TABLE_GROUP}, and "
+            "recompile still rejoins metadata into the measurement table. "
+            "Rewriting it here would drop the store's metadata table and "
+            "un-invert its measurements."
+        )
+
+
 def _replace_and_republish_table(
     output_dir: Path,
     dataset: str,
@@ -103,6 +150,7 @@ def _replace_and_republish_table(
         raise TypeError(
             "Recompile table preparation returned an invalid payload"
         )
+    _refuse_inverted_store(store_path)
     stem = store_stem(store_path)
     with exclusive_path_lock(
         recompile_store_lock_path(output_dir, dataset, stem),

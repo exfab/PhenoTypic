@@ -131,11 +131,19 @@ ContrastAdjustment)` yields `['gamma', 'gain', 'norm', 'input_layer']`.
   (grouped by task — layout, geometry, reading, the commit protocol,
   durability); user-facing view, including the on-disk tree and how to open a
   store in napari/QuPath/Vizarr: `docs/source/how_to/pages/zarr_storage.md`.
-  **Nothing writes into a promoted store**, and the root `zarr.json` is written
-  **last** — the completion marker and the viewer's staleness scan both key on
-  that root alone, so violating either makes both report stale data as fresh
-  with nothing failing. Guard:
-  `tests/unit/sdk_/test_ngff_promote.py::test_nothing_writes_into_a_promoted_store`.
+  The root `zarr.json` is written **last**, and `promote_store` is a rename
+  rather than a merge — the completion marker and the viewer's staleness scan
+  both key on that root alone, so violating either makes both report stale
+  data as fresh with nothing failing. Guard:
+  `tests/unit/sdk_/test_ngff_promote.py::test_promote_store_replaces_rather_than_merges`.
+  **"Nothing writes into a promoted store" is the stronger claim, and it is
+  false** — this guide asserted it until P4. `replace_embedded_measurement_table`
+  rewrites a promoted store, and until P4 its in-place branch did so *without*
+  a `.part` and without refreshing the root, so the per-image proof went on
+  certifying content that had changed underneath it. The branch is gone: every
+  table replacement is now a root-last re-promote. What holds is the narrower
+  invariant — **no path writes into a promoted store without rewriting its
+  root last**, which is what the two readers above actually depend on.
 - `slurm_.py` / `submitit_.py` / `monitor_slurm_jobs.py` — SLURM integration.
 - `generate_report.py` — report generation.
 - `viz/` — shared visualization layer: the centralized Plotly theme

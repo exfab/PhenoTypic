@@ -166,16 +166,17 @@ def _fixture_measurement_table() -> Any:
     import pandas as pd
 
     from phenotypic.schema import OBJECT
-    from phenotypic.sdk_._measurement_tables import (
-        PreparedEmbeddedMeasurementTable,
-    )
+    from phenotypic.sdk_._measurement_tables import PreparedImageTables
 
-    return PreparedEmbeddedMeasurementTable(
-        frame=pd.DataFrame({str(OBJECT.LABEL): [1], "Size_Area": [16.0]}),
+    return PreparedImageTables(
+        measurements=pd.DataFrame(
+            {str(OBJECT.LABEL): [1], "Size_Area": [16.0]}
+        ),
+        metadata=None,
         measurement_columns=("Size_Area",),
         join_status="not_requested",
         join_keys=(),
-        metadata_snapshot_sha256="0" * 64,
+        metadata_snapshot_sha256="",
     )
 
 

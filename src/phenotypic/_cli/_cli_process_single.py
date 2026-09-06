@@ -433,9 +433,11 @@ def process_single_store_measure_core(
     # nothing raises on.
     stem = store_stem(store_path)
 
-    # Publish the authoritative table inside the existing store. Descriptor
-    # changes use a root-last store transaction; compatible tables use one
-    # validated same-directory atomic file replacement.
+    # Publish the authoritative tables inside the existing store, through a
+    # root-last store transaction. There is no same-directory fast path: it
+    # rewrote a promoted store's Parquet without refreshing the root, so the
+    # per-image proof went on certifying content that had changed underneath
+    # it (CAN-3).
     output_manager.replace_image_store_measurements(
         store_path,
         measurements,

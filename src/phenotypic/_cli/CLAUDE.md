@@ -306,22 +306,34 @@ protocol, so a valid root implies a complete store. An absent `kind` reads as
 
 > **"Nothing writes into the store after publication" is FALSE, and root-only
 > fingerprinting is sound anyway.** The stronger claim was written here and is
-> withdrawn — `replace_embedded_measurement_table` has **three** call sites, not
-> the one (`_cli_migrate_image.py:281`) an earlier note named. The third,
-> `_cli_output_manager.py:1997` ← `_cli_process_single.py:439`, runs on the
-> ordinary **`--mode measure`** path and writes into a store that is already
-> published.
+> withdrawn — the table replacers have **three** call sites, not the one
+> (`_cli_migrate_image.py:281`) an earlier note named. The third,
+> `OutputManager.replace_image_store_measurements` ←
+> `_cli_process_single.py`, runs on the ordinary **`--mode measure`** path and
+> writes into a store that is already published. *(P4 split the replacer in
+> two: that path now calls `replace_image_tables`, which moves the measurement
+> table, the metadata table and the root's `metadata_table` block together;
+> `replace_embedded_measurement_table` survives for `--mode migrate` and
+> `--mode recompile` until their producers are repointed. Both go through the
+> same root-last transaction.)*
 >
-> What actually holds is narrower and is what the fingerprint needs. Both write
-> shapes preserve *"a valid root implies a complete store"*:
+> What actually holds is narrower and is what the fingerprint needs: **every
+> table replacement is a root-last store transaction**, so the root is rewritten
+> last exactly as at promote time.
 >
-> - **descriptor changed** → a root-last store transaction, so the root is
->   rewritten last exactly as at promote time;
-> - **descriptor unchanged** → one validated same-directory atomic file
->   replacement, and `_measurement_tables.py:283-289` returns **without touching
->   the root** at all.
+> **There used to be a second write shape, and P4 deleted it.** When the
+> descriptor was unchanged, `replace_embedded_measurement_table` took a
+> same-directory atomic file replacement and returned **without touching the
+> root** at all. That preserved *"a valid root implies a complete store"* —
+> which is all the fingerprint needs — but it also meant the per-image proof's
+> store digest still matched after the table's bytes had changed underneath it,
+> and it left the root's recorded metadata snapshot stale. Both failures were
+> silent. After P4's inversion the descriptor became a pure function of the
+> measurement schema and the objmap target, so *every* metadata-driven
+> re-measure would have taken that branch. The fast path is gone; the cost is
+> that a `--mode measure` re-promote now runs on every image it touches.
 >
-> So the root never observes a partial store either way. The root fingerprint is
+> So the root never observes a partial store. The root fingerprint is
 > a **completeness** check, not a content-version one, and it was never asked to
 > distinguish two tables carrying the same columns — the descriptor holds
 > `schema_version`, `type`, `format`, `path`, `measurement_columns` and `target`,

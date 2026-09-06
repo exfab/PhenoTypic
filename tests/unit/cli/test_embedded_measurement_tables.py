@@ -14,8 +14,8 @@ import pyarrow.parquet as pq
 import pytest
 
 from phenotypic import Image
-from phenotypic._cli._cli_output_manager import (
-    OutputManager,
+from phenotypic._cli._cli_output_manager import OutputManager
+from phenotypic._cli._embedded_measurement_tables import (
     prepare_embedded_measurement_table,
 )
 from phenotypic.schema import OBJECT

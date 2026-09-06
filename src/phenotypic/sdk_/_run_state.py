@@ -86,6 +86,12 @@ from ._verification_cache import (
     warm_states,
 )
 
+# Module scope, unlike this module's other `ngff_` imports, because the two
+# constants below are module-level bindings and cannot be resolved lazily.
+# `ngff_` imports only `._atomic_io` at module scope, so there is no cycle,
+# and it is `phenotypic.sdk_` -- INV-LAYER is untouched.
+from .ngff_ import PhenotypicAttr as _PhenotypicAttr
+
 #: Grows one name at a time, in the task that defines it. ``run_identity``,
 #: ``assert_identity_current``, ``finalization_input_object`` and
 #: ``resolve_run_state`` are named by spec §5.2 and belong here, but listing a
@@ -374,8 +380,14 @@ def assert_identity_current(output_dir: Path, identity: RunIdentity) -> None:
 #: Parquet footer where the digest lives today: a Parquet open per store, on
 #: the deep path, from ``sdk_``, is not "one attribute read from a value the
 #: store already carries".
-_METADATA_TABLE_ATTR = "metadata_table"
-_SNAPSHOT_SHA256_ATTR = "snapshot_sha256"
+#:
+#: **Bound, not respelled.** P4 Task 2 made the writer emit these keys, so the
+#: strings now have a producer and a consumer. They are declared once, on
+#: ``PhenotypicAttr`` beside every other ``attributes.phenotypic`` key, and
+#: the two names below are local bindings to those members -- one value, two
+#: references, rather than two literals that can drift apart silently.
+_METADATA_TABLE_ATTR = _PhenotypicAttr.METADATA_TABLE
+_SNAPSHOT_SHA256_ATTR = _PhenotypicAttr.SNAPSHOT_SHA256
 
 #: U-10's marking. ``--mode migrate`` (P7) publishes per-image records
 #: carrying this, and such a record is accepted on **artifact validity alone**

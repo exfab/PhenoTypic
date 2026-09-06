@@ -63,29 +63,25 @@ def test_promote_replaces_a_non_empty_existing_store(tmp_path: Path) -> None:
     assert (final / "zarr.json").read_text(encoding="utf-8") == '{"marker": "new"}'
 
 
-def test_nothing_writes_into_a_promoted_store(tmp_path: Path) -> None:
-    """FLOW-5: a promoted store is **replaced wholesale**, never mutated in place.
+def test_promote_store_replaces_rather_than_merges(tmp_path: Path) -> None:
+    """FLOW-5: a promoted store is **replaced wholesale**, never merged into.
 
-    This is the invariant three separate subsystems now rest on, none of which
-    can detect its violation on its own:
+    **Renamed from ``test_nothing_writes_into_a_promoted_store``, which named
+    more than it proved.** This exercises ``promote_store`` and nothing else.
+    It says the *promote* is a rename; it never touched
+    ``replace_embedded_measurement_table``, which until P4 rewrote a promoted
+    store's Parquet in place -- the one path that actually wrote into a
+    promoted store. A reader who took the old name at face value would have
+    concluded the invariant held, which is exactly the inference CAN-3 showed
+    was false. The claim about the three dependent subsystems moved with the
+    correction, to
+    ``tests/unit/cli/test_embedded_table_inversion.py``'s coverage of the
+    repaired branch.
 
-    * per-image completion markers fingerprint a store by its root ``zarr.json``
-      alone (Task 3.8), because the promote writes the root **last**;
-    * the results viewer's staleness scan is bounded to that same root (user
-      ruling 2026-08-20), so an in-place chunk write would be invisible to it;
-    * ``valid_staged_store`` treats a parseable root as evidence the whole store
-      is complete.
-
-    Each of those is *correct only while this holds*. Add one code path that
-    opens an array inside a promoted store for writing and all three start
-    lying, with nothing failing to say so -- which is precisely why the guard
-    belongs here, at the primitive, rather than in any one of them.
-
-    Proven by identity, not by content: the promoted directory is a **different
-    inode** from the one it replaced, and so is every chunk beneath it. A
-    merge-in-place implementation would leave the old directory in position with
-    new bytes inside it, passing any content assertion while breaking all three
-    readers above.
+    Proven by identity, not by content: the promoted directory is a
+    **different inode** from the one it replaced, and so is every chunk
+    beneath it. A merge-in-place implementation would leave the old directory
+    in position with new bytes inside it, passing any content assertion.
     """
     final = _fake_store(tmp_path / "plate_01.ome.zarr", "old")
     before_dir = final.stat().st_ino
