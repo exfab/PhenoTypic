@@ -788,6 +788,65 @@ def test_reclaim_noop_records_missing_marker_without_deleting_sources(
     assert task.measurement_path.is_file()
 
 
+def test_retained_reclaim_digests_the_record_when_both_files_exist(
+    tmp_path: Path,
+) -> None:
+    """The retained path digests the RECORD, like its producer and validator.
+
+    **This is the branch the two sibling tests cannot reach.** Both
+    ``test_reclaim_noop_records_missing_marker_without_deleting_sources`` and
+    its neighbour plant the sources but neither a legacy marker nor a record,
+    so ``_retained_reclaim_result``'s digest and
+    ``_validate_reclaim_result``'s digest are both ``""``,
+    ``retained_after_unclean_image`` is True, and the comparison that would
+    disagree is never entered. Presence and reachability differ by a branch.
+
+    P3 repointed the validator onto the record and left this producer on
+    ``task.marker_path``. On a migrating tree BOTH files exist -- migrate's
+    ``_republish_image_marker`` still writes the legacy one -- with different
+    bytes, so the seal appended *"reclaim result marker digest does not match
+    current bytes"* and retained the sources for a reason that was an artifact
+    of the split repoint rather than the condition that caused it.
+
+    Planting both with deliberately different bytes is what makes this a
+    regression test rather than a restatement: before the fix it fails, and it
+    fails on the digest sentence specifically.
+    """
+    from phenotypic._cli._cli_migrate import _retained_reclaim_result
+    from phenotypic._cli._cli_migrate_manifest import _validate_reclaim_result
+
+    run = tmp_path / "run"
+    manifest_path, tasks = _manifest(run, count=1)
+    task = tasks[0]
+    assert task.hdf_path is not None
+    assert task.measurement_path is not None
+    task.hdf_path.parent.mkdir(parents=True, exist_ok=True)
+    task.measurement_path.parent.mkdir(parents=True, exist_ok=True)
+    task.hdf_path.write_bytes(b"retained hdf")
+    task.measurement_path.write_bytes(b"retained parquet")
+
+    # BOTH, with different bytes -- the state a migrating tree is actually in.
+    record = _record_path(task)
+    record.parent.mkdir(parents=True, exist_ok=True)
+    record.write_bytes(b'{"record": "current authority"}')
+    task.marker_path.parent.mkdir(parents=True, exist_ok=True)
+    task.marker_path.write_bytes(b'{"legacy": "superseded marker"}')
+    assert record.read_bytes() != task.marker_path.read_bytes()
+
+    result = _retained_reclaim_result(run, task, None)
+    _payload, failures = _validate_reclaim_result(run, task, result)
+
+    # The precise claim: not "no failures" -- other clauses may legitimately
+    # fire on this fixture -- but that the DIGEST clause does not, because the
+    # producer and the validator now read the same file.
+    assert "reclaim result marker digest does not match current bytes" not in (
+        failures
+    ), f"producer and validator digest different files; failures={failures}"
+
+    assert task.hdf_path.is_file()
+    assert task.measurement_path.is_file()
+
+
 def test_reclaim_status_rejects_tampered_well_formed_prestate(
     tmp_path: Path,
 ) -> None:

@@ -19,6 +19,8 @@ and returned verbatim.
 - `tests/unit/cli/test_staged_resume_equivalence.py` → **1158 passed** in 12.90 s.
 - The `record_rejection` clause-order probe (F4) → output inline below.
 - The parent-tree reconstruction probe (F2/F3) → output inline below.
+- `tests/unit/cli/test_cli_recompile{,_slurm}.py` under `--runxfail --tb=line`
+  → **45 passed, 35 xfailed, 0 xpassed**; per-traceback breakdown below.
 
 **Every line and line number in this report resolves against `1cc6740c`**, quoted via
 `git show` rather than from the working tree. The working tree has since moved — F2's fix
@@ -784,10 +786,156 @@ Recorded so a later phase does not re-audit them.
 - **F5's reachability.** Whether `--mode measure` enumerates an image whose only record
   is a stage entry. The guard is wrong either way.
 - **F6's magnitude.** Unmeasured.
-- **The 30 recompile marks.** The census covered eight files and did **not** include
-  `tests/unit/cli/test_cli_recompile.py` (2 marks) or `test_cli_recompile_slurm.py` (28).
-  Those are still unverified as failing for their stated cause rather than incidentally —
-  which is the failure mode that survives P4 silently, since an incidentally-failing
-  strict xfail stays XFAIL after the repoint and nobody notices the tripwire did not
-  fire. `pytest -rxXf` over those two files is the check.
+- **Nine of the 35 recompile marks — root cause not established.** Eight fail through a
+  handled error; the ninth is a `DID NOT RAISE` whose success criterion is inverted, and
+  which is currently leaving the property it is named for unverified. See the section
+  below — this is the one item P4 has to close rather than inherit.
 - **`tests/migration`'s 57 goldens.** Excluded as instructed; not examined.
+
+---
+
+## The recompile deferral: 26 of 35 confirmed, 9 not
+
+Run under `--runxfail --tb=line` over `test_cli_recompile.py` and
+`test_cli_recompile_slurm.py`: **45 passed, 35 xfailed, 0 xpassed.**
+
+**Why not `-rxXf`, which is what I first asked for and was wrong to.** That flag prints
+the `reason` string the author wrote, not what the test did — so all 35 lines recite
+*"--mode recompile reads the legacy `image_complete/` marker until P4…"*, which is the
+claim under test. Reading it as confirmation is circular. The reason is a claim; the
+traceback is the evidence, and `--runxfail --tb=line` is what pairs a location with an
+exception.
+
+| count | exception |
+|---|---|
+| **26** | `FileNotFoundError: [Errno 2] .../.phenotypic/progress/image_complete/ds/img.json` |
+| 3 | `RuntimeError: Cannot safely restore measurement authority for ds/img` |
+| 3 | `RuntimeError: Cannot restore marker authority: a non-overlay artifact changed` |
+| 1 | `RuntimeError: Cannot safely restore marker authority for ds/img` |
+| 1 | `Failed: Regex pattern did not match.` |
+| 1 | `AssertionError: {'error': 'Ru…', 'status': 'failed'} == {…'status': 'completed'}` |
+
+**26 confirm the stated mechanism exactly** — a raw `FileNotFoundError` with the
+`image_complete/` path in the message.
+
+**Nine do not.** They fail one layer up, through *handled* domain errors. Those messages
+are **consistent** with the missing marker being the root cause — a caller that catches
+the absence and re-raises as "cannot restore authority" produces exactly this — but
+consistent is not confirmed, and asserting the cause from the message text is the same
+inference that produced F3's inverted attribution. **Recorded as: fails, mark is not
+stale, root cause not established.**
+
+Those nine are where the concern behind this whole section bites hardest. A strict xfail
+that fails *incidentally* stays XFAIL after P4 repoints the reader, so the tripwire never
+fires and nobody learns the deferral was discharged. The 26 are safe — repoint the reader
+and the `FileNotFoundError` cannot survive. **P4 must confirm the raise disappears for
+the nine rather than assuming it**, and should treat a still-XFAIL among them after the
+repoint as an unexplained failure, not as a marker to leave in place.
+
+### The nine, and the one that is not like the others
+
+Paired to their exceptions from the junit XML rather than by eye.
+
+**Eight fail through a handled error — "too much failure":**
+
+| test | exception |
+|---|---|
+| `test_finalizer_overlay_refresh_locks_store_before_lifecycle` | `RuntimeError: Cannot restore marker authority: a non-overlay artifact changed` |
+| `test_finalizer_refreshes_nested_overlay_repair_authority` | same |
+| `test_overlay_refresh_holds_generation_guard_only_for_marker_commit` | same |
+| `test_local_recompile_restores_deleted_overlay_marker_and_master` | `RuntimeError: Cannot safely restore marker authority for ds/img` |
+| `test_measurement_worker_refreshes_marker_with_active_slurm_generation` | `RuntimeError: Cannot safely restore measurement authority for ds/img` |
+| `test_recoverable_overlay_and_table_share_one_slurm_task` | same |
+| `test_slurm_recompile_schedules_table_bound_to_missing_overlay` | same |
+| `test_slurm_overlay_worker_restores_marker_authority` | `AssertionError: {…'status': 'failed'} == {…'status': 'completed'}` |
+
+For these eight the success criterion is the same as for the 26: **repoint the reader and
+the raise must disappear.**
+
+**The ninth is the opposite shape and needs its own line in the P4 brief:**
+
+```
+test_stale_slurm_overlay_worker_does_not_publish_rendered_bytes
+    Failed: DID NOT RAISE SlurmGenerationInactiveError
+```
+
+Every other failure in this population is *too much* failure. This one is *too little* —
+a guard that was expected to fire and did not. Its success criterion is therefore
+**inverted: repointing must make `SlurmGenerationInactiveError` appear.** A repoint that
+leaves it still not raising is a live defect, not a stale marker. Folded into "the nine",
+an implementer who fixed the other eight would reasonably call the batch done.
+
+(The class exists only as `SlurmGenerationInactiveError`,
+`_cli_slurm_lifecycle.py:47` — there is no `SlurmGenerationError` to grep for.)
+
+**And there is a second thing to check on this one, which the marker currently hides.**
+Reading the test (`test_cli_recompile_slurm.py:2862-2905`): it deletes the overlay,
+initializes a SLURM lifecycle, deactivates the generation, and then asserts two separate
+properties —
+
+```python
+with pytest.raises(SlurmGenerationInactiveError):
+    _run_overlay_task(..., {"restore_marker_authority": True, ...},
+                      slurm_generation=generation)
+
+assert not overlay.exists()
+```
+
+When the block does not raise, `pytest.raises` fails at the `with` exit and **the second
+assertion never executes.** So the property this test is *named for* — that a stale
+worker does not publish rendered bytes — is currently not being checked at all, by this
+test or any other, and the strict marker means nobody sees that it isn't.
+
+The likely mechanism is that the missing marker short-circuits `_run_overlay_task` before
+it reaches the lifecycle fence, in which case the fence is not *silenced* but never
+reached — and the no-publish outcome may well still hold, by a different route. That is
+**consistent, not confirmed**, and the same discipline applies as for the other eight. But
+the direction matters: a code path that returns early past a generation fence is the one
+failure mode that is silent in production, so P4 should assert **both** halves when it
+repoints — the error appears, *and* the overlay is still absent — rather than treating the
+restored raise as sufficient.
+
+### On the count
+
+The population is **28 decorations across the two files** (26 + 2, measured) and **35
+test instances at runtime** — five of the decorated tests are parametrized, which
+accounts for the gap. My earlier "30" was neither: I read this repo's own marker comment
+("the 28 marks in `test_cli_recompile{,_slurm}.py`") as a slurm-only figure and added the
+two from the sibling file, when the brace expansion already covered both. Recording it
+because the same shape — a stated total nobody re-measured — is what the drift register
+exists for, and because a decoration count and an instance count are different questions
+that the word "marks" hides.
+
+### F2's fix discharged none of them
+
+**0 XPASS.** The possibility was raised that F2 might route some of these into
+`_cli_recompile_tables.py:238`'s *"Legacy external measurement Parquets require --mode
+migrate"* branch and change their outcome. It did not — all 35 still fail. The deferral
+is intact and still entirely P4's.
+
+---
+
+## Disposition
+
+Recorded because it changes what a P4 reader should expect from the tree, and because two
+of these outcomes are themselves evidence about the findings.
+
+Five fixes landed while this review was in progress, verified at **152 passed, 10
+skipped, 4 xfailed**. I have not confirmed which five — that is the lead's tally, not a
+measurement of mine, so a P4 reader should check the tree rather than assume this
+report's numbering maps onto it. Two were named explicitly, and both are evidence:
+
+- **F3's marker was deleted, not reworded**, and the checkpoint test now passes. That is
+  the outcome the attribution predicted: if the failure had been pre-existing, repointing
+  the legacy arm would have left it red. It went green, which confirms the finding from
+  the other direction.
+- **`test_the_republish_probe_names_the_record_not_the_legacy_marker` was rewritten** from
+  a substring check into an `ImportFrom`/`Name`/`Attribute` walk. The substring form
+  asserted `"image_completion_marker_path" not in <source>`, which cannot distinguish a
+  *use* from a *mention* — so it forbade the module from explaining, in a comment, the
+  probe it had just replaced. F5's fix needed exactly that comment. Worth noting as a
+  small instance of the report's recurring theme: the test was structural on purpose and
+  said so, but the structure it checked was the file's text rather than its syntax.
+
+**Which of F5–F8 remain open is not established here.** F5 is the one that still changes
+behaviour if it does; F6 and F7 are notes rather than defects.

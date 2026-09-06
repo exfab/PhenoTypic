@@ -1365,6 +1365,62 @@ its output is load-bearing.
 
 ---
 
+### Entry 34 — AN `xfail` CAN TAKE A SECOND ASSERTION OFFLINE, SILENTLY. 2026-09-05.
+
+Auditing 35 deferred `xfail(strict=True)` marks, one failed in the opposite direction from
+the other 34 — `Failed: DID NOT RAISE`, a guard expected to fire that did not. Flagged for a
+separate P4 instruction on the grounds that its success criterion is inverted: the repoint
+must make the error *appear*, not disappear.
+
+**That understated it.** `test_cli_recompile_slurm.py:2862-2905`:
+
+```python
+with pytest.raises(SlurmGenerationInactiveError):
+    _run_overlay_task(..., {"restore_marker_authority": True, ...}, ...)
+
+assert not overlay.exists()          # <- the property the test is NAMED for
+```
+
+When the block does not raise, `pytest.raises` fails at the `with` **exit**, so the line below
+it **never executes.** The test is `test_stale_slurm_overlay_worker_does_not_publish_rendered
+_bytes`, and *whether a stale worker publishes rendered bytes is currently checked by nothing*
+— not by this test, not by any other. The strict marker means no one sees that.
+
+> **An `xfail` says "expected to fail." It does not say "and everything after the first
+> failure is now unverified."** A marker applied for one known reason quietly takes every
+> later assertion in that test out of service, including ones motivated by something else
+> entirely.
+
+The consequence for the receiving phase is precise: **restoring the raise alone would leave
+the no-publish property exactly as unverified as it is today, and would look fixed.** So the
+P4 instruction asserts both halves.
+
+#### The general form
+
+A deferral marker's blast radius is the **whole test body after the failure point**, not the
+one behaviour named in its `reason`. Before marking, ask what *else* that test asserts — and
+if it is more than one property, either split it or say in the reason which assertions the
+marker is also suspending. Neither had been done here across 35 marks.
+
+#### And a fabricated identifier, in the same exchange
+
+The class is `SlurmGenerationInactiveError`. The traceback line was truncated by the
+orchestrator's own extraction script — `re.search(..., ".{0,70}")` — to
+`...SlurmGenera`, and the orchestrator then wrote **`SlurmGenerationError`** in the brief:
+a plausible completion of a truncated string, and a name that **does not exist in the
+codebase**. A P4 implementer grepping it would have found nothing.
+
+> **A truncated identifier completed from context is a fabricated identifier.** It differs
+> from the sampling errors elsewhere in this register only in what got sampled — there, a
+> subset of values; here, a prefix of a name. Both produced something plausible, and
+> plausible is the failure mode: a mangled name looks wrong and gets checked, while a
+> well-formed wrong one gets grepped once and quietly abandoned.
+
+*(Caught by the reviewer reading the source rather than the brief. The truncation was in a
+throwaway analysis script — operator tooling again, as in entries 21 and 33.)*
+
+---
+
 ## What the pattern says
 
 **Nothing failed, and nothing could have.** Not one entry would have been caught by a test,
@@ -1378,7 +1434,7 @@ acts on it.
    holding a future state in mind — the author is describing the system they are reasoning
    about rather than the one on disk. It comes true one task later, which is the most
    forgiving version and still the same error.
-2. **A claim about what a check does** (10, 12, 13, 21, 22, 27, 28, 30, 31, 32, 33). The most dangerous, because
+2. **A claim about what a check does** (10, 12, 13, 21, 22, 27, 28, 30, 31, 32, 33, 34). The most dangerous, because
    it converts a green gate into false assurance. Entry 27 is its limit case: no claim was
    made and none went stale — a *test* silently stopped covering what its own comment says it
    covers, because a path it depended on moved three files away. Ask of every one: *what would this have looked

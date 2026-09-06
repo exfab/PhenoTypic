@@ -967,6 +967,51 @@ streams uncaptured output and can triple runtime when stdout is on shared storag
 truncates a run that then gets recorded as a baseline; and leaking `SLURM_ARRAY_TASK_ID` into
 tests that mock scheduler state makes them read the *gate's* identity instead of their own.
 
+### Auditing an `xfail` census: the reason is the CLAIM, the traceback is the EVIDENCE
+
+This change defers work behind `xfail(strict=True)` markers, so before briefing the receiving
+phase you have to ask: **does each mark fail for the reason it states?** A mark that fails
+*incidentally* stays XFAIL after the owning phase repoints the reader, the tripwire never
+fires, and nobody learns the debt was discharged.
+
+**`-rxXf` cannot answer that question.** It prints the `reason=` string the author typed. Over
+35 marks it recited *"--mode recompile reads the legacy `image_complete/` marker until P4…"*
+35 times — which is the proposition under test. Reading it as confirmation is circular, and it
+came back looking exactly like a clean census.
+
+```bash
+# WRONG -- prints the author's claim, once per mark
+pytest <files> -q -rxXf
+
+# RIGHT -- runs them for real and prints what actually raised
+pytest <files> -q --runxfail --tb=line
+```
+
+**Two more traps in the same audit, both of which returned a confirmation-shaped answer:**
+
+- **`--runxfail -rf` summary lines carry no exception text.** So `grep -v FileNotFoundError`
+  over them keeps every line, and "9 of 35 are something else" would have been a number from a
+  filter structurally unable to say otherwise. Use `--tb=line`, or `--junitxml` and read
+  `<failure>` per `<testcase>` when you need name-to-exception pairing.
+- **Decorations and instances are different numbers, and answer different questions.** Here:
+  **28 decorations, 35 instances** — five decorated tests are parametrized. *"How many markers
+  must the next phase delete?"* is 28. *"How many results does the lane produce?"* is 35. The
+  word **"marks" hides which one you mean**, and a brief carrying the wrong one is wrong twice.
+
+**What the audit actually found**, and the shape to expect: 26 of 35 raised the stated
+`FileNotFoundError` with the path in the message; **9 failed one layer up**, through *handled*
+domain errors (`Cannot restore marker authority`). Consistent with the stated cause — but
+consistent is not confirmed, and inferring cause from an error message is what produced this
+phase's one inverted attribution. Record those as **fails, mark is not stale, root cause not
+established**, and make the receiving phase confirm the raise disappears when it repoints.
+
+**Sort the survivors by direction, not just by count.** One of the nine was
+`Failed: DID NOT RAISE` — a guard expected to fire that did not. Every other failure in that
+population is *too much* failure; that one is *too little*, which is the direction that fails
+silently in production. Its success criterion after the repoint is **inverted** (the error must
+*appear*), so folded into "the nine" an implementer who fixed the other eight would reasonably
+call the batch done.
+
 ### A phase gate does NOT run the full suite
 
 **Standing instruction (user, 2026-09-05): do not run the whole suite at every gate.**
