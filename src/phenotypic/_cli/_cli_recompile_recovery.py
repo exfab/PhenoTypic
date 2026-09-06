@@ -24,6 +24,7 @@ from phenotypic.sdk_ import (
     atomic_write_bytes,
     dataset_measurements_dir,
     image_completion_marker_path,
+    image_record_path,
     progress_dir,
     zarr_store_path,
 )
@@ -48,10 +49,31 @@ _TRANSITION_DIR = "table-transitions"
 def recompile_store_lock_path(
     output_dir: Path, dataset_name: str, stem: str
 ) -> Path:
-    """Return the lock shared by canonical recompile mutations for one store."""
-    return image_completion_marker_path(
-        output_dir, dataset_name, stem
-    ).with_suffix(".recompile-store.lock")
+    """Return the lock shared by canonical recompile mutations for one store.
+
+    **Derived from the record path, and it must not go back to the marker
+    path.** ``exclusive_path_lock`` does ``path.parent.mkdir(parents=True,
+    exist_ok=True)`` before opening, so deriving this from
+    ``image_completion_marker_path`` made merely *taking* the lock create
+    ``.phenotypic/progress/image_complete/<ds>/`` on a tree the current build
+    wrote. Nothing removes it, and schema signal 1
+    (``sdk_/_schema_shape.py``) is a **directory-existence** probe -- so one
+    ``--mode recompile`` was enough to make ``requires_conversion`` answer
+    ``CONVERT`` for a forward tree, and every writing mode would then refuse
+    it and point at ``--mode migrate``, which does not remove that directory.
+
+    That is the exact proposition
+    ``test_a_tree_this_build_wrote_needs_no_conversion`` exists to hold up --
+    the standing evidence P7 Task 5 Step 1d needs before arming the gate --
+    and it could not see this, because it never runs recompile.
+
+    A lock is not a marker and has no business being keyed off one. Under
+    ``progress/images/`` it sits beside the records it guards, and signal 1
+    does not probe that directory.
+    """
+    return image_record_path(output_dir, dataset_name, stem).with_suffix(
+        ".recompile-store.lock"
+    )
 
 
 def _transition_root(output_dir: Path, dataset_name: str) -> Path:

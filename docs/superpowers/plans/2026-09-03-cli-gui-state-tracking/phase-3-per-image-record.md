@@ -719,7 +719,13 @@ RunState advisory rather than silently reading as not-done (O-2)."
 
 ## Task 2: Migrate `publish_image_success` and `valid_image_success` onto the record
 
-> ### This task must ARM the schema gate, in the same commit
+> ### ~~This task must ARM the schema gate, in the same commit~~ — WITHDRAWN
+>
+> **⛔ SUPERSEDED BY USER RULING (2026-09-05). P3 ships the gate DISARMED, and arming moved to P7.** Everything below is kept because its *reasoning* is still correct and still needed — it is the derivation of why the flag cannot be armed before the migrator can discharge it. Only the assignment changed.
+>
+> The ruling: arming here would leave `--mode migrate` the only path able to discharge a verdict it cannot yet reach, violating **INV-DISCHARGEABLE**. The honest cost, stated because it is worse than 'no change': a legacy tree now **reprocesses from source** rather than resuming. That is worse than pre-P3 and better than a refusal loop nothing can clear.
+>
+> **Arming is owned by P7 Task 5, Step 1d** (`phase-7-migrate-mode.md`), which exists for this and nothing else. It is NOT Step 1b — that step renames legacy trees (CAN-12) and an implementer following it would never touch the flag. Two strict tripwires in `tests/unit/cli/test_schema_gate.py` turn green the moment it is armed.
 >
 > **`_schema_shape.SCHEMA_GATE_ARMED` is `False` when it ships from P1, deliberately.**
 >
@@ -1021,7 +1027,9 @@ _COMBOS = [
 #: Captured from the PRE-CHANGE behaviour in Step 2, as a literal table. Do not
 #: derive these by reasoning about what the classifier should do -- the point is to
 #: freeze what it DOES, so the collapse is provably behaviour-preserving.
-#: The key is the full seven-axis tuple, matching _COMBOS. An earlier draft typed it
+#: The key is the full EIGHT-axis tuple, matching _COMBOS (1152 cells; the
+#: measurement-table axis and the objmap terminal split were both added after
+#: the seven-axis/384 draft). An earlier draft typed it
 #: as four bools, left over from the product(repeat=4) CAN-16 replaced.
 _EXPECTED: dict[
     tuple[str, bool, bool, bool, str | None, bool, bool], str

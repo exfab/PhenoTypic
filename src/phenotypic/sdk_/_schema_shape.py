@@ -64,26 +64,35 @@ __all__ = [
 #: silently changing what "current" means.
 STATE_SCHEMA_VERSION: Final[int] = 3
 
-#: Whether a ``CONVERT`` verdict may be **surfaced**. **Flipped to ``True`` by
-#: P3 Task 2**, in the same commit that makes ``publish_image_success`` write
-#: the consolidated record -- see
-#: ``test_the_gate_is_armed_exactly_when_the_forward_path_stops_writing_the``
-#: ``_legacy_marker``, which fails the moment those two disagree.
+#: Whether a ``CONVERT`` verdict may be **surfaced**. **Armed by P7 Task 5
+#: Step 1d** -- not by P3, whose plan callout instructing exactly that was
+#: withdrawn by user ruling (2026-09-05): arming before ``--mode migrate`` can
+#: discharge a verdict violates **INV-DISCHARGEABLE**. The honest cost, since
+#: it is worse than "no change": a legacy tree **reprocesses from source**
+#: rather than resuming, until P7. Two ``xfail(strict=True)`` markers in
+#: ``tests/unit/cli/test_schema_gate.py`` fail the moment it is armed, forcing
+#: their own removal.
 #:
-#: It is ``False`` today because the legacy shape and the **current** shape
-#: still overlap: the forward path writes ``image_complete/`` and writes
-#: ``datasets.<ds>.completed``, so **two** of the five signals below fire on a
-#: tree the running build has just written. **Detection is correct now; only
-#: the surfacing waits.**
+#: **HOW MANY SIGNALS FIRE ON A TREE THIS BUILD WROTE: DO NOT ASK THIS
+#: DOCSTRING. RUN THE TEST.**
 #:
-#: It said *three* until P2, and P2 is what made that false: signal 4 is the
-#: **absence** of ``restart_epoch``, and ``create_initial_state`` now writes it
-#: (``_cli_state_management.py:261``). The count is not decoration -- it is the
-#: claim that decides whether arming this flag would refuse trees the current
-#: build wrote, so a stale one is a wrong answer to the only question a reader
-#: opens this docstring to ask (gate IMPL-F6 / SPEC-C3, found independently by
-#: two reviewers). Signal 3 (``datasets.<ds>.completed``) is §4.2's to remove
-#: in P3+, and the count drops to one when it does.
+#: ``tests/unit/cli/test_image_record.py``
+#: ``::test_a_tree_this_build_wrote_needs_no_conversion``
+#:
+#: That test asserts ``requires_conversion(root) is None`` over a tree the
+#: current build just wrote, and it is the standing evidence P7 Step 1d needs
+#: before flipping the flag. **It is executable; this paragraph is not.**
+#:
+#: The count used to live here as prose, and it went stale **three times** --
+#: *three* until P2 (signal 4 is the **absence** of ``restart_epoch``, which
+#: ``create_initial_state`` began writing), then *two* until P3 stopped writing
+#: both ``image_complete/`` and ``datasets.<ds>.completed``, taking it to zero.
+#: The third recurrence landed in the very commit that quoted the warning about
+#: the first two (gate IMPL-F6 / SPEC-C3 / P3 SPEC-1.5, found independently by
+#: three reviewers). A number in prose beside code that moves is a number that
+#: will be wrong, and this one is not decoration: it is the claim that decides
+#: whether arming would refuse trees the current build wrote. **A pointer to a
+#: test cannot go stale without something failing. A sentence can, and did.**
 #:
 #: It gates **both** consumers, because both are surfacings of one detection:
 #: an armed gate would refuse every resume of every mode, and an armed

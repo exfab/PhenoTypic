@@ -1256,6 +1256,52 @@ merge-not-overwrite conversion is the second half — with the legacy trees rena
 than deleted, a late old-build write lands in a directory nothing reads, which is the safer
 failure.
 
+- [ ] **Step 1d: ARM the schema gate — the step P3 deferred to this phase**
+
+**This step exists because P3 could not do it, and because nothing else in this plan
+would.** P3's own callout was withdrawn by user ruling (2026-09-05): arming there would
+have left `--mode migrate` the only path able to discharge a verdict it cannot yet
+reach, violating **INV-DISCHARGEABLE**. This task is where the migrator finally *can*
+discharge it, so this is where the flag flips.
+
+**It was very nearly lost.** The code's deferral note named *"P7 Task 5 Step 1b"* as the
+owner — a step that exists but renames legacy trees (CAN-12). An implementer following
+that pointer would never touch the flag, and the two strict tripwires guarding this only
+fire **when arming happens**, so nothing would have failed. A tripwire that fires on the
+fix cannot report that the fix was never scheduled.
+
+Set both, in one commit:
+
+```python
+# src/phenotypic/sdk_/_schema_shape.py
+SCHEMA_GATE_ARMED: bool = True
+```
+
+There is **no re-export** of this flag, deliberately (P1): a re-exported copy would read
+correctly while being inert under monkeypatch. Grep before assuming one home:
+
+```bash
+grep -rn "SCHEMA_GATE_ARMED" src/ tests/
+```
+
+**Before flipping it, re-derive the signal count — do not trust the docstring.** That
+paragraph has gone stale three times, twice while narrating its own previous staleness.
+The standing evidence is `tests/unit/cli/test_image_record.py::test_a_tree_this_build_wrote_needs_no_conversion`,
+which asserts `requires_conversion(root) is None` over a tree the current build wrote.
+**Run it, and read its result — not the prose.**
+
+These two turn green (XPASS → failure under `strict=True`, so the markers must be
+deleted in this commit):
+
+```
+tests/unit/cli/test_schema_gate.py::test_a_legacy_tree_is_refused_now_that_the_gate_is_armed
+tests/unit/cli/test_schema_gate.py::test_the_gate_is_armed_exactly_when_the_forward_path_stops_writing_markers
+```
+
+Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/cli/test_schema_gate.py -q`
+Expected: green, with **both** `xfail` markers removed. If either still reads XFAIL, the
+flag is not actually reaching the gate — check for a second copy.
+
 - [ ] **Step 2: Implement, run.**
 
 - [ ] **Step 3: Phase gate — a real tree**

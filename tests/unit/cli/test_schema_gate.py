@@ -881,7 +881,7 @@ def test_migrate_mode_is_never_refused_by_the_gate(
         "The gate stays DISARMED through P3 by user ruling, so a legacy tree "
         "is detected but not refused. Kept under this name rather than "
         "reverted: the assertion it gained -- that the refusal must name "
-        "MIGRATION_REMEDY -- is new knowledge, and P7 Task 5 Step 1b arms the "
+        "MIGRATION_REMEDY -- is new knowledge, and P7 Task 5 Step 1d arms the "
         "gate and turns this green."
     ),
 )
@@ -933,7 +933,7 @@ def test_a_legacy_tree_is_refused_now_that_the_gate_is_armed(
         "P3 moved the publisher onto the record but the gate stays DISARMED "
         "by user ruling, so this coupling is deliberately broken in the "
         "interval. It is not wrong -- it describes the end state, and P7 Task "
-        "5 Step 1b arms the gate in the commit that makes `--mode migrate` "
+        "5 Step 1d arms the gate in the commit that makes `--mode migrate` "
         "discharge it. Strict, so that arming turns this green and drops the "
         "marker rather than leaving a stale one."
     ),
@@ -953,7 +953,7 @@ def test_the_gate_is_armed_exactly_when_the_forward_path_stops_writing_markers(
     is refused, told to migrate, migrates, and is refused again.
 
     So the binding constraint became **arm with dischargeability**, which is
-    P7 Task 5 Step 1b. The assertion below is unchanged and still describes
+    P7 Task 5 Step 1d. The assertion below is unchanged and still describes
     the state the build must reach; only the commit it becomes true in moved.
 
     **This is the interval the test was written to make impossible**, which is
@@ -986,7 +986,7 @@ def test_the_gate_is_armed_exactly_when_the_forward_path_stops_writing_markers(
     assert writes_legacy_marker is not _schema_shape.SCHEMA_GATE_ARMED, (
         "publish_image_success and SCHEMA_GATE_ARMED disagree: arm the gate "
         "in the commit that makes `--mode migrate` discharge it (P7 Task 5 "
-        "Step 1b), or a legacy tree publishes an empty master"
+        "Step 1d), or a legacy tree publishes an empty master"
     )
 
 

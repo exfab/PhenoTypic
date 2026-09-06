@@ -54,6 +54,7 @@ from ._cli_migrate_image import (
     MigrationImageStageFailure,
     ReclaimResult,
     _configured_work_id,
+    _current_marker_digest,
     _existing_marker_identity,
     _migration_work_id,
     _source_artifact_state,
@@ -971,11 +972,35 @@ def _retained_reclaim_result(
     task: MigrationImageTask,
     result: MigrationImageResult | None,
 ) -> ReclaimResult:
-    """Record an exact no-op when the image barrier forbids deletion."""
-    try:
-        marker_digest = hashlib.sha256(task.marker_path.read_bytes()).hexdigest()
-    except OSError:
-        marker_digest = ""
+    """Record an exact no-op when the image barrier forbids deletion.
+
+    **Digests the RECORD, through the same helper the clean path uses.** This
+    site was the one read-back D1's sweep missed: the plan's consumer table
+    lists ``_cli_migrate.py`` and ``_cli_migrate_image.py`` as a single row
+    deferred to P7, but execution had to convert the second (it calls
+    ``publish_image_success``, which moved) and left this one behind. The pair
+    was split, and the halves then digested different files -- this one the
+    legacy marker, its validator
+    (``_cli_migrate_manifest._validate_reclaim_result``) the record.
+
+    On a migrating tree where the image was published, both exist with
+    different bytes, so the comparison appended *"reclaim result marker digest
+    does not match current bytes"* -- retaining the sources for a reason that
+    was an artifact of the split rather than the condition that caused it. It
+    failed safe and reported the wrong cause.
+
+    Neither of the two tests covering this function planted a marker OR a
+    record, so both digests were ``""``, ``retained_after_unclean_image`` was
+    True, and the disagreeing branch was never entered: **presence and
+    reachability differ by a branch.** Calling the shared helper rather than
+    re-deriving the digest here is the fix that keeps them from re-splitting.
+    """
+    work_id = (
+        result.work_id
+        if result is not None
+        else _configured_work_id(output_dir, task.dataset, task.stem)
+    )
+    marker_digest = _current_marker_digest(output_dir, task, work_id)
     hdf_state = _source_artifact_state(task.hdf_path)
     parquet_state = _source_artifact_state(task.measurement_path)
     intended = tuple(
@@ -990,11 +1015,7 @@ def _retained_reclaim_result(
         index=task.index,
         dataset=task.dataset,
         stem=task.stem,
-        work_id=(
-            result.work_id
-            if result is not None
-            else _configured_work_id(output_dir, task.dataset, task.stem)
-        ),
+        work_id=work_id,
         marker_digest=marker_digest,
         intended_deletions=intended,
         hdf_prestate=hdf_state,

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from click.testing import CliRunner
 from skimage.io import imsave
 
@@ -21,21 +20,18 @@ from phenotypic.sdk_ import (
 )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "PRE-EXISTING, and not P3's: this test drives `_cli_process_single."
-        "main` directly, and that worker never writes processing_state.json "
-        "(grep finds no save_processing_state / work_ids in the module). So "
-        "`authorized_measurement_sources` takes its LEGACY arm and returns "
-        "None -- never reaching the record reader P3 changed -- and the "
-        "fallback `_scan_unchunked_parquets` finds nothing, because forward "
-        "runs stopped writing results/<ds>/measurements/*.parquet when "
-        "embedded tables landed. Both preconditions predate this change. "
-        "Owned by whoever next revisits the chunk writer; strict so a fix "
-        "surfaces here instead of leaving a stale marker."
-    ),
-)
+# The strict xfail that stood here is REMOVED, not reworded. Its mechanism was
+# right and its attribution was inverted: it called the failure "PRE-EXISTING,
+# and not P3's", when two long-standing preconditions plus one new one is a
+# regression caused by the new one. The new one was P3 repointing only arm 2 of
+# `authorized_measurement_sources`, leaving arm 1 -- the arm this stateless
+# worker takes -- globbing `image_complete/`, which the publisher had just
+# stopped writing. Arm 1 now scans both shapes, so the cause is gone.
+#
+# A strict xfail with a wrong cause is worse than none, because it becomes the
+# record: it pointed a future reader at the chunk writer, where there was
+# nothing to fix, and assigned it to "whoever next revisits" it -- an owner who
+# does not exist in any phase.
 def test_checkpoint_reads_authorized_embedded_table_into_hidden_cache(
     tmp_path: Path,
 ) -> None:

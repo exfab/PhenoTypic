@@ -518,27 +518,31 @@ def marker_rejection(
 ) -> str | None:
     """Return why a legacy ``image_complete/`` marker cannot certify an image.
 
-    > **⚠ THIS HAS NO CALLER IN ``src/`` AS OF P3, AND IS NOT DEAD CODE.**
+    > **THE LEGACY HALF OF THE PREDICATE PAIR.** Its counterpart is
+    > :func:`~phenotypic.sdk_._image_record.record_rejection`, which judges
+    > the record P3 replaced the marker with; this one judges the
+    > ``image_complete/`` marker a pre-P3 tree still carries.
     >
-    > Be precise about that, because the obvious paraphrase is wrong: it is
-    > not that the remaining consumers are elsewhere. **There are none.**
-    > P3's clean break moved both forward readers -- ``valid_image_success``
-    > and the deep path -- onto the record and
-    > :func:`~phenotypic.sdk_._image_record.record_rejection`, and nothing
-    > took their place.
+    > **Its caller is ``_cli_completion._sources_without_state``**, the arm of
+    > ``authorized_measurement_sources`` that serves trees with no
+    > ``success_markers_required`` in their state -- legacy trees and
+    > stateless worker invocations. That arm scans both shapes and gates each
+    > on its own predicate.
     >
-    > It is kept because the **legacy** shape still has a reader that should
-    > be calling it and does not:
+    > An earlier draft of this note said, emphatically, that there were
+    > **no** callers in ``src/`` and that a reader who grepped and deleted it
+    > would be right on the evidence. That was true for exactly one window:
+    > P3's clean break moved both forward readers onto the record, and the
+    > repoint of this arm was missed in the same sweep -- so during that
+    > window arm 1 opened a *legacy marker* and asked a *record* predicate
+    > whether it was valid, which silently returned ``{}`` for every legacy
+    > tree. The note documented the gap as if it were the design.
+    >
+    > Two other would-be callers remain, and are still deferred:
     > ``_cli_completion.refresh_success_markers_after_metadata_migration``
-    > open-codes these exact clauses inline, which is gate finding
-    > **REUSE-F10** -- deferred, not withdrawn, because rewiring it changes
-    > what that function *does* on a migrated marker. P7's migrator is the
-    > second. Deleting this now would mean re-deriving the legacy predicate
-    > when either lands.
-    >
-    > So a reader who greps for callers, finds none, and deletes it is doing
-    > the reasonable thing on the evidence -- which is why the evidence is
-    > written here instead of left to be rediscovered.
+    > open-codes these exact clauses inline (gate finding **REUSE-F10**,
+    > deferred because rewiring it changes what that function *does* on a
+    > migrated marker), and P7's migrator.
 
     A sentence, not a bool, because the sentence lands in
     ``ImageState.reason`` and is what makes "which images are missing, and

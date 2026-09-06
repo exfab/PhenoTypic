@@ -1188,6 +1188,183 @@ sample size, was the defect. That distinction is the entry.)*
 
 ---
 
+### Entry 31 — THE REMEDY EXHIBITS THE DEFECT IT WAS WRITTEN TO PREVENT. 2026-09-05.
+
+Entry 28 cost this change a production regression: a narrow lane dropped `tests/integration`,
+which was precisely where `--mode migrate`'s total breakage lived. The remedy written into
+`EXECUTION.md` was a rule — *derive the gate's scope from the diff, never from intuition* —
+with a one-line recipe to make it mechanical:
+
+```bash
+git show --stat --format= <sha> | grep 'src/' | xargs -n1 dirname | sort -u
+```
+
+**The recipe returns an empty scope on exactly the commits that matter.** `git show --stat`
+abbreviates long paths — `.../_core/_pipeline_parts/_image_pipeline_core.py` — so the
+`src/phenotypic` prefix is elided and `grep 'src/'` matches nothing. Deep packages are the
+ones that get truncated. An empty scope is **the narrowest possible lane**: a phase gate that
+runs no `src/` suite at all.
+
+> The tool introduced to prevent a too-narrow gate silently produces the narrowest one.
+
+#### It also fails the other way, from the same bug
+
+On a commit whose `src/` lines are *not* truncated, `xargs` splits the `|` separator and the
+`+++--` counts into their own arguments, `dirname` obliges, and the output gains a bare `.` —
+**the entire repository**. So one bug yields an empty scope on some commits and a whole-repo
+scope on others, and neither is the answer.
+
+#### Why it survived being "checked"
+
+**It was verified against P3's own commit, where it printed the two correct packages.** That
+commit has **nine** truncated stat lines; all nine happened to be under `docs/` and `tests/`,
+so the `src/` answer survived by luck. The check was real, the output was right, and the
+recipe was broken — a green result over the one case that does not exercise the defect.
+
+The corrected form, checked against both a deep-path commit and a merge:
+
+```bash
+git diff --name-only <base>..<head> | grep '^src/' | xargs -n1 dirname | sort -u
+```
+
+A **range**, because a phase is several commits and `--name-only` returns nothing for a merge
+commit by default; `^src/` anchored, because the path is now complete.
+
+#### The transferable part
+
+Entry 28's lesson was *ask in what conditions a proxy degrades, and whether you are in them*.
+This is that question aimed one level up: **a remedy is a check too, and it inherits the
+obligation.** The instinct that a fix needs no verification because it is the fix is what
+carried this one into the document as the mechanical, no-judgment-required version of a rule
+whose whole purpose was to remove judgment from scoping.
+
+*(Found by a session reading `EXECUTION.md` cold, and confirmed here by running both forms
+against `c8eeafba` — mine printed a `dirname: missing operand` error and nothing else; the
+corrected one printed `src/phenotypic/_core/_pipeline_parts`.)*
+
+---
+
+### Entry 32 — A TRIPWIRE THAT FIRES ON THE FIX, WHEN NOTHING SCHEDULES THE FIX. 2026-09-05.
+
+P3 deferred arming the schema gate to P7 under a user ruling, and guarded the deferral the
+way this change guards every deferral — two `xfail(strict=True)` markers that become
+**failures** the moment the flag is armed, forcing their own removal. The markers name their
+owner:
+
+> *"P7 Task 5 Step 1b arms the gate and turns this green."*
+
+**P7 Task 5 Step 1b exists. It renames legacy trees (CAN-12).** It has nothing to do with the
+flag, and `SCHEMA_GATE_ARMED` appeared **zero** times in the entire P7 plan. An implementer
+working that plan top to bottom would rename the trees, finish the phase, and never touch the
+flag.
+
+#### Why the guard cannot report this
+
+A strict `xfail` is self-cleaning **only if something eventually does the thing**. It fires on
+the *fix*. With a fictional owner there is no fix, so the marker sits at XFAIL — which is a
+**passing** state — indefinitely, and every gate reports green.
+
+> **The mechanism that prevents a stale deferral cannot detect an unscheduled one.** Those are
+> different failures, and the tripwire only covers the first.
+
+Worse, it looks *especially* healthy: the reason string is specific, cites a real phase, a
+real task and a real step, and would survive any check that the pointer resolves. It is a
+**pointer to a name that exists** — normally the one form of claim that cannot be false
+(see the mitigation note at the end of this register) — pointing at the wrong thing.
+
+#### The two-sided repair
+
+Neither half is sufficient alone:
+
+- **The claim** — P3's plan still carried `### This task must ARM the schema gate` as a live
+  instruction, 4 months of context after the ruling withdrew it. Struck through and marked
+  ⛔ SUPERSEDED, with the derivation kept (the *reasoning* stayed correct; only the
+  assignment moved).
+- **The work** — P7 gained a real **Step 1d**, existing for this and nothing else, carrying
+  the flip, the no-re-export warning, the two marker names to delete, and an instruction to
+  **re-derive the signal count rather than trust the docstring** that had by then gone stale
+  three times.
+
+#### The general form
+
+> A deferral needs **three** things, and this change had been shipping two: a **tripwire**
+> that fails when the debt is paid, a **reason** that survives being read cold — and a
+> **step in the receiving plan that will actually be executed.** Without the third, the first
+> two document a debt that nobody is scheduled to pay.
+
+*(Found by the P3 spec-adherence reviewer, which checked whether the ruling had propagated
+rather than whether it had been recorded. It had been recorded — in the code, accurately, with
+the honest cost stated. It had propagated nowhere else.)*
+
+---
+
+### Entry 33 — A QUIESCENCE CHECK THAT COULD ONLY SAY "QUIET". 2026-09-05.
+
+**Entry 21's defect, in a different tool, committed by the same operator who wrote entry 21.**
+
+Before snapshotting the tree for a gate, and again before running a probe while an
+implementing cluster was working, the orchestrator asked whether anything had changed
+recently:
+
+```bash
+find src tests -name '*.py' -newermt '-3 hours'    # "nothing -- tree is still"
+find src tests -name '*.py' -newermt '-4 minutes'  # "nothing -- safe to probe"
+```
+
+Both printed nothing. **Neither could have printed anything.** `find` here is `bfs`, which
+rejects that timestamp form outright:
+
+```
+bfs: error: ... -newermt "-4 minutes" -print
+bfs: error: Invalid timestamp.
+```
+
+The error goes to **stderr**; stdout is empty. So the check's failure output and its
+"all quiet" output are the same empty stream — and the empty stream is the one that
+**authorises the next action**.
+
+#### What it cost
+
+The second call was immediately followed by a probe against `_cli_completion.py`, which had
+been modified **fifty seconds earlier** by a cluster mid-edit on it. The probe raised
+`NameError: DIR_IMAGE_RECORDS is not defined` — the import had landed at `:20`, the use at
+`:885`, and the read fell between them. That traceback was very nearly written up as a
+defect in a review report.
+
+The first call is worse, because nothing failed: **"no edits in the last 3 hours" was
+reported as an established fact and was never a measurement.** Only the SHA-256 snapshot
+taken beside it was real evidence — which is the one reason the gate lane it guarded is
+still trustworthy.
+
+#### How it was caught, and why that generalises
+
+Not by suspicion. By an **independent measurement that contradicted it**: a `stat` showing
+`_cli_completion.py` modified 50 seconds ago, next to a "nothing changed in 4 minutes"
+result. Two readings of the same question disagreed, and only then was the predicate
+itself tested — against a file already known to be recent, which is a **known-positive
+control** and costs exactly one command.
+
+> **When a check's NEGATIVE result authorises an action, prove it can produce a POSITIVE.**
+> Ask it something you already know the answer to. A predicate that has never been seen to
+> say "yes" has not been shown to be a predicate.
+
+#### The pattern across 21, 28 and 33
+
+| | The check | Could it report the bad case? |
+|---|---|---|
+| **21** | `pgrep -af "a\|b"` — BRE alternation to an ERE matcher | No. Only ever "absent". |
+| **21** | `until ! pgrep -f <script>` — self-matching wait loop | No. Only ever "present". Ran 5-7 h. |
+| **28** | "does the traceback reach `src/`?" | Not when the fixture dies first. |
+| **33** | `find -newermt '-N minutes'` under `bfs` | No. Errors to stderr, empty stdout. |
+
+All four are **operator tooling**, not product code; all four fail **silently**; and three of
+the four fail in the direction that says *proceed*. The register's standing question — *what
+would this have looked like if it had failed?* — is hardest to apply to the throwaway command
+you type on the way to the real work, because it does not feel like a check. It is one, and
+its output is load-bearing.
+
+---
+
 ## What the pattern says
 
 **Nothing failed, and nothing could have.** Not one entry would have been caught by a test,
@@ -1201,7 +1378,7 @@ acts on it.
    holding a future state in mind — the author is describing the system they are reasoning
    about rather than the one on disk. It comes true one task later, which is the most
    forgiving version and still the same error.
-2. **A claim about what a check does** (10, 12, 13, 21, 22, 27, 28, 30). The most dangerous, because
+2. **A claim about what a check does** (10, 12, 13, 21, 22, 27, 28, 30, 31, 32, 33). The most dangerous, because
    it converts a green gate into false assurance. Entry 27 is its limit case: no claim was
    made and none went stale — a *test* silently stopped covering what its own comment says it
    covers, because a path it depended on moved three files away. Ask of every one: *what would this have looked

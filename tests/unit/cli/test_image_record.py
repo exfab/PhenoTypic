@@ -411,6 +411,116 @@ def test_a_stage2_only_record_is_not_a_success_proof(tmp_path):
     ), "a record with no artifacts certified an image"
 
 
+def test_a_matching_record_with_no_artifacts_certifies_nothing(tmp_path):
+    """CAN-23 **in isolation** -- the sibling above cannot reach the clause.
+
+    ``record_stage`` writes no ``work_id``, so in
+    :func:`record_rejection` the identity clause fires first and returns
+    ``"record was written for a different work_id"``. Execution never reaches
+    ``if not isinstance(artifacts, dict) or not artifacts``: **delete the
+    CAN-23 clause entirely and that test still passes.**
+
+    The clause is load-bearing, which is what makes the gap worth closing
+    rather than the clause worth removing. With a *matching* ``work_id`` and
+    ``artifacts={}``, ``record_rejection`` would return ``None``, the
+    descriptor loop in ``valid_image_success`` would iterate zero times, and
+    the function would return ``True`` -- certifying an image that produced
+    nothing. ``publish_image_record(..., artifacts={})`` is reachable; three
+    tests in this file call it that way.
+
+    So this asserts the **reason**, not just the verdict. A bool alone would
+    pass again the moment some other clause started firing first, which is
+    exactly how the sibling went vacuous.
+    """
+    from phenotypic._cli._cli_completion import valid_image_success
+    from phenotypic._cli._cli_image_record import publish_image_record
+    from phenotypic.sdk_._image_record import read_image_record, record_rejection
+
+    publish_image_record(
+        tmp_path,
+        work_id="w",
+        dataset="plate",
+        image_stem="a",
+        relative_image_path="a.tif",
+        mode="full",
+        stages={"measured": {"at": "t"}},
+        artifacts={},
+        attempt_id="x",
+        lifecycle_epoch="e",
+    )
+
+    assert (
+        record_rejection(
+            read_image_record(tmp_path, "plate", "a"),
+            work_id="w",
+            dataset="plate",
+            image_stem="a",
+        )
+        == "record declares no artifacts"
+    ), "CAN-23 is not the clause doing the rejecting"
+    assert not valid_image_success(
+        tmp_path, dataset="plate", image_stem="a", work_id="w"
+    )
+
+
+def test_record_rejection_names_each_identity_clause(tmp_path):
+    """Direct coverage for the predicate every completion verdict runs through.
+
+    ``record_rejection`` had **no direct unit test**: every assertion on it
+    was indirect, through ``valid_image_success`` or ``resolve_run_state``,
+    and ``dataset`` / ``image_stem`` were uncovered in both directions. A
+    predicate reached only through its callers is one whose clauses can be
+    reordered, weakened or deleted while every caller-level test stays green
+    -- the sibling above is that failure, already realised once.
+
+    Each clause is asserted by the sentence it returns, because the sentence
+    is the part that lands in ``ImageState.reason`` and answers "which images
+    are missing, and why?".
+    """
+    from phenotypic._cli._cli_image_record import publish_image_record
+    from phenotypic.sdk_._image_record import (
+        RECORD_VERSION,
+        read_image_record,
+        record_rejection,
+    )
+
+    marker = tmp_path / "artifact.txt"
+    marker.write_text("measurements", encoding="utf-8")
+    publish_image_record(
+        tmp_path,
+        work_id="w",
+        dataset="plate",
+        image_stem="a",
+        relative_image_path="a.tif",
+        mode="full",
+        stages={},
+        artifacts={"measurements": marker},
+        attempt_id="x",
+        lifecycle_epoch="e",
+    )
+    record = read_image_record(tmp_path, "plate", "a")
+    identity = {"work_id": "w", "dataset": "plate", "image_stem": "a"}
+
+    # The accepting direction, so the rejections below are not vacuous.
+    assert record_rejection(record, **identity) is None
+
+    assert (
+        record_rejection(record, **{**identity, "dataset": "other"})
+        == "record was written for a different dataset"
+    )
+    assert (
+        record_rejection(record, **{**identity, "image_stem": "b"})
+        == "record was written for a different image"
+    )
+    assert (
+        record_rejection(record, **{**identity, "work_id": "w2"})
+        == "record was written for a different work_id"
+    )
+    bumped = dict(record)
+    bumped["version"] = RECORD_VERSION + 1
+    assert str(RECORD_VERSION) in str(record_rejection(bumped, **identity))
+
+
 def test_authorized_sources_reads_records_not_the_deleted_tree(tmp_path):
     """CAN-22, and an empty result here is VALID, which is what makes it bad.
 
@@ -669,7 +779,7 @@ def test_a_tree_this_build_wrote_needs_no_conversion(tmp_path):
 
     Under the disarmed gate the test earns more than it did armed: it is the
     standing evidence that arming is safe for forward-written trees, which is
-    what P7 Task 5 Step 1b needs before it flips the flag. It passes in both
+    what P7 Task 5 Step 1d needs before it flips the flag. It passes in both
     states, which is the property a piece of evidence should have.
     """
     from tests._output_layout import build_complete_run
@@ -682,6 +792,57 @@ def test_a_tree_this_build_wrote_needs_no_conversion(tmp_path):
         "a tree this build just wrote classifies as needing conversion, so "
         "arming the gate would make every writing mode refuse its own "
         "output -- the publisher and the demoted-set writer are out of step"
+    )
+
+
+def test_a_forward_tree_still_needs_no_conversion_after_a_recompile(tmp_path):
+    """F1: no code path may *create* ``image_complete/`` on a forward tree.
+
+    The sibling above certifies a freshly written tree and stops there, so it
+    could not see this: ``recompile_store_lock_path`` derived the recompile
+    store lock from ``image_completion_marker_path``, and
+    ``exclusive_path_lock`` does ``parent.mkdir(parents=True)`` before
+    opening. **Merely taking the lock created
+    ``.phenotypic/progress/image_complete/<ds>/``**, nothing removed it, and
+    schema signal 1 is a *directory-existence* probe -- so one recompile made
+    ``requires_conversion`` answer ``CONVERT`` for a tree this build wrote,
+    and `--mode migrate`, the remedy it names, does not remove that
+    directory.
+
+    The failure is about *creation*, not about recompile succeeding, so the
+    exception is suppressed deliberately: on a forward tree
+    ``begin_recompile_table_transition`` may still raise for its own reasons,
+    and the assertion that matters holds either way. Testing the directory
+    rather than the lock's location is what keeps this honest if the lock
+    moves again.
+    """
+    import contextlib
+
+    from tests._output_layout import build_complete_run
+
+    from phenotypic.sdk_ import DIR_IMAGE_COMPLETE, progress_dir
+    from phenotypic._cli._cli_recompile_recovery import (
+        recompile_store_lock_path,
+    )
+    from phenotypic.sdk_._file_locking import exclusive_path_lock
+    from phenotypic.sdk_._schema_shape import requires_conversion
+
+    root = build_complete_run(tmp_path)
+    assert requires_conversion(root) is None
+
+    with contextlib.suppress(Exception):
+        with exclusive_path_lock(
+            recompile_store_lock_path(root, "plate", "a"), timeout=5.0
+        ):
+            pass
+
+    assert not (progress_dir(root) / DIR_IMAGE_COMPLETE).exists(), (
+        "taking the recompile store lock created progress/image_complete/; "
+        "signal 1 now fires on a tree this build wrote, and P7 cannot arm "
+        "the gate"
+    )
+    assert requires_conversion(root) is None, (
+        "a recompile lock resurrected the legacy tree shape"
     )
 
 
@@ -705,6 +866,13 @@ def test_the_republish_probe_names_the_record_not_the_legacy_marker():
     this worth having anyway is that the failure it guards is **silent** --
     a behavioural test that forgot to assert re-publication would pass too.
     Here the wrong path cannot be spelled without the assertion seeing it.
+
+    **Both halves are AST walks, and the second one was a substring search
+    until it failed on a comment.** A source-text check cannot tell a
+    *mention* of a symbol from a *use* of it, so it forbade the module from
+    explaining the probe it had just replaced -- documentation a reader
+    needs precisely because the old behaviour is no longer visible in the
+    code. Do not simplify either half back to `in source`.
     """
     import ast
     from pathlib import Path
@@ -728,13 +896,41 @@ def test_the_republish_probe_names_the_record_not_the_legacy_marker():
             "its re-publish probe cannot be looking at the right file"
         )
 
-    republish_sources = Path(process_single.__file__).read_text(
-        encoding="utf-8"
+    # **AST, not a substring search over the source text, and the difference
+    # is not pedantry.** The substring form could not distinguish a *use* of
+    # `image_completion_marker_path` from a *mention* of it, so it failed on
+    # a comment explaining what the old probe guaranteed and why the record
+    # differs -- forbidding the module from documenting its own removed
+    # history, which is how that history gets re-learned expensively.
+    #
+    # This walks for a binding or a reference instead: an `ImportFrom` that
+    # binds the name, or any `Name`/`Attribute` node that resolves to it.
+    # That asserts what this test's name claims -- the probe *names* the
+    # record -- rather than a property of the file's bytes, and it stays true
+    # through any future comment.
+    tree = ast.parse(
+        Path(process_single.__file__).read_text(encoding="utf-8")
     )
-    assert "image_completion_marker_path" not in republish_sources, (
-        "the measure path still names the legacy marker; after the clean "
-        "break that probe is False on every forward tree and the "
-        "re-publish is skipped silently"
+    legacy_references = [
+        node.lineno
+        for node in ast.walk(tree)
+        if (isinstance(node, ast.Name) and node.id == "image_completion_marker_path")
+        or (
+            isinstance(node, ast.Attribute)
+            and node.attr == "image_completion_marker_path"
+        )
+        or (
+            isinstance(node, ast.ImportFrom)
+            and any(
+                alias.name == "image_completion_marker_path"
+                for alias in node.names
+            )
+        )
+    ]
+    assert not legacy_references, (
+        "the measure path still resolves the legacy marker at lines "
+        f"{legacy_references}; after the clean break that probe is False on "
+        "every forward tree and the re-publish is skipped silently"
     )
 
 

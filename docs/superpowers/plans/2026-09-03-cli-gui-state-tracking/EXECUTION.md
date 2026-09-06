@@ -967,6 +967,56 @@ streams uncaptured output and can triple runtime when stdout is on shared storag
 truncates a run that then gets recorded as a baseline; and leaking `SLURM_ARRAY_TASK_ID` into
 tests that mock scheduler state makes them read the *gate's* identity instead of their own.
 
+### A phase gate does NOT run the full suite
+
+**Standing instruction (user, 2026-09-05): do not run the whole suite at every gate.**
+
+The full scope costs ~23 min of wall clock and re-discovers the same known-red set every
+time. It is also almost entirely wasted: P3's diff touches **two packages**, `_cli/` and
+`sdk_/`, so `detect/`, `enhance/`, `measure/`, `refine/`, `grid/`, `correction/` and
+`analysis/` cannot be affected — and `tests/smoke/test_operation.py`, which exercises exactly
+those and costs **18m50s in a single file**, is the largest line item in the bill.
+
+**Derive the scope from the diff, never from intuition** — and one suite is never dropped:
+
+```bash
+# what the phase actually touched
+git diff --name-only <base>..<head> | grep '^src/' | xargs -n1 dirname | sort -u
+```
+
+**Do not use `git show --stat` here.** It abbreviates long paths (`.../\_core/_pipeline_parts/x.py`),
+so `grep 'src/'` misses exactly the deep packages, and it emits the `|` and `+++--` columns as
+separate words that `dirname` turns into a bare `.`. The failure is silent and goes **both
+ways**: an empty scope (no `src/` suite runs at all) when truncation hits a `src/` line, and
+`.` — the whole repo — when it does not. Neither is the scope, and neither announces itself.
+Use a **range** and `--name-only`: a phase is several commits, and `--name-only` on a merge
+commit returns nothing by default.
+
+- **Phase gate** = the packages the diff touches, every suite that imports them, and
+  **`tests/integration` unconditionally**.
+- **Full scope** = once per phase-set, and at end of run.
+
+**`tests/integration` is not optional, and this change has already paid to learn why.** Drift
+entry 28: a narrow lane dropped it, and that is precisely where `--mode migrate`'s total
+breakage lived. The narrow lane then produced a *confident* classification — "79 of 79
+failures are test-frame" — that was an artifact of where execution stopped rather than a fact
+about the code. **A narrow gate's silence is scoped, and the scope has to be stated with the
+result.** "Green" from a phase gate means "green over these paths", never "green".
+
+### Gates never run on `preempt`
+
+**Standing instruction (user, 2026-09-05): do not use `preempt`.**
+
+The reason is not capacity — a gate is not CPU-bound (101 min of CPU across ~23 min of wall
+clock, with most shards idle). It is that **`preempt` requeues rather than resumes**:
+`PreemptMode=REQUEUE` with `GraceTime=0` restarts a job from line one, same job id,
+`SLURM_RESTART_COUNT` incremented. A shard that is evicted and restarted mid-run leaves a
+junit XML from one attempt beside logs from another, which is **the same incoherence that
+voided lane 1** — a union across two worlds that no single run ever produced. A gate's whole
+value is that its result describes one determinate state.
+
+Use `short` (2 h cap, 149 nodes) for gates. It is the right partition and it is sufficient.
+
 ### A gate measures ONE tree — hash it, or the result is void, not merely stale
 
 **I invalidated gate lane 1 myself.** 48 shards spread over 8m30s; `_run_state.py` was

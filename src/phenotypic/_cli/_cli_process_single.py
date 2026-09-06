@@ -468,10 +468,33 @@ def process_single_store_measure_core(
     # root-only fingerprint argument. Found by regenerating the plan's own
     # marker-consumer table, which names every module that reads this
     # surface and did not name this one.
+    # **Ask whether this image was PUBLISHED, not whether the file exists.**
+    # The path repoint was right; the predicate that came with it was not.
+    # `image_completion_marker_path(...).is_file()` was true only after a full
+    # `publish_image_success`, so the payload was guaranteed complete. The
+    # record file is different: `record_stage` creates it too, so a
+    # **partial** record -- `stages` and identity, no `artifacts` -- also
+    # satisfies `.is_file()`, and `_republish_table_marker` then does
+    # `marker["work_id"]` unconditionally and raises `KeyError` where this
+    # path used to skip cleanly.
+    #
+    # Partial records are a normal product of the staged engine, not a
+    # corruption case: `_cli_staged_slurm_worker` guards its publish with
+    # `if item.work_id:` while its `write_stage3_completion_marker` is
+    # unconditional, `_cli_staged_workers` writes stage 3 in its
+    # `work_id is None` branch, and `migrate_legacy_stage3_markers` writes
+    # stage-3 entries with no publish at all on the ordinary resume path.
+    #
+    # Non-empty `artifacts` is the property that makes the payload
+    # republishable, and it is the same clause `record_rejection` calls
+    # CAN-23 -- a record with no artifacts certifies nothing.
     from phenotypic.sdk_ import image_record_path
+    from phenotypic.sdk_._image_record import read_image_record
 
     record_path = image_record_path(output_dir, dataset_name, stem)
-    if record_path.is_file():
+    record = read_image_record(output_dir, dataset_name, stem)
+    artifacts = record.get("artifacts") if record is not None else None
+    if isinstance(artifacts, dict) and artifacts:
         from ._cli_recompile_tables import _republish_table_marker
 
         _republish_table_marker(

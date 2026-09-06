@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=16G
 #SBATCH --time=02:00:00
-#SBATCH --array=0-47%32
+#SBATCH --array=0-15%16
 #SBATCH --output=/bigdata/exfab/anguy344/slurm_logs/gate_%A_%a.log
 set -euo pipefail
 
@@ -15,7 +15,17 @@ set -euo pipefail
 # shards and parameterised by SCOPE so every phase gate runs through the same
 # harness instead of a bespoke pytest line per phase.
 #
-# WIDTH AND WHY IT IS NOT WIDER. 48 shards, at most 32 resident (`%32`).
+# WIDTH, AND WHY MORE SHARDS BUY NOTHING. 16 shards, all resident (`%16`).
+# The wall clock is set by the slowest single FILE, because a file is the
+# atomic unit of the round-robin below. Measured over the `cligui` scope, LPT
+# bin-packing gives an identical 5.22 min slowest-shard at 16, 24 AND 48 bins
+# -- the floor is `integration/cli/test_phenotypic_cache_layout` (5.22 min for
+# three tests). Widening past 16 halves the short shards and leaves the long
+# one exactly where it is, while consuming account cap that other jobs need.
+# To go below 5.22 min, split INSIDE that file (`file::class`, and the junit
+# XML already exposes the class-level split points) -- not by adding shards.
+#
+# Historical note: this was 48 shards at `%32`.
 # 32 x 8 CPU = 256 CPU against the iwheeldonlab cap of 384 CPU / 1 TB, which
 # every running job in the account shares -- the headroom is deliberate so a
 # concurrent spike or interactive job does not queue behind the gate. Exceeding
@@ -35,8 +45,8 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 
 WORKTREE="${WORKTREE:-/bigdata/exfab/anguy344/PhenoTypic/.worktrees/cli-gui-state-tracking}"
-SHARDS="${SHARDS:-48}"
-SCOPE="${SCOPE:-full}"
+SHARDS="${SHARDS:-16}"
+SCOPE="${SCOPE:-cligui}"
 RESULTS_DIR="${RESULTS_DIR:-/bigdata/exfab/anguy344/slurm_logs/gate_${SLURM_ARRAY_JOB_ID}}"
 
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
@@ -61,7 +71,33 @@ echo
 
 # --- Scope selection -------------------------------------------------------
 case "$SCOPE" in
+    cligui)
+        # THE DEFAULT, and the routine phase gate (user, 2026-09-05). This
+        # branch edits `_cli/`, `sdk_/` and `gui/`; nothing else is reachable
+        # from it, and the excluded suites are where all the wall clock lives.
+        #
+        # Measured on the lane-3 junit XML, not estimated:
+        #   in  scope  611 files  7117 tests   38.1 min CPU
+        #   out scope  692 files  4983 tests  109.0 min CPU
+        # so this keeps 59% of the TESTS while dropping 74% of the TIME.
+        #
+        # The four heaviest dropped entries alone are ~58 min of CPU and touch
+        # no `_cli/` or `sdk_/` module:
+        #   20.67 min ( 7 tests) unit/measure/test_measure_grid_spatial
+        #   17.85 min (149     ) migration/test_equivalence   <- known-red
+        #   11.47 min ( 53     ) unit/measure/test_measure_orientation_zones
+        #    8.17 min ( 20     ) unit/core/test_image_pipeline
+        #
+        # `integration/cli` is IN, deliberately and non-negotiably: a narrow
+        # lane that dropped tests/integration is what hid `--mode migrate`'s
+        # total breakage (drift entry 28).
+        SEARCH_ROOTS=(
+            tests/unit/cli tests/unit/sdk_ tests/unit/gui
+            tests/gui tests/integration/cli tests/integration/gui
+        )
+        ;;
     full)
+        # End of run, and once per phase-set -- NOT per gate.
         SEARCH_ROOTS=(tests/unit tests/gui tests/integration tests/smoke tests/migration)
         ;;
     unit)

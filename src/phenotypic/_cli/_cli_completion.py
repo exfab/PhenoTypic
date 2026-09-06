@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Mapping
@@ -17,6 +17,7 @@ from phenotypic.sdk_ import (
     ARTIFACT_KIND_STORE,
     CommitGuard,
     DIR_IMAGE_COMPLETE,
+    DIR_IMAGE_RECORDS,
     RUN_PROOF_VERSION,
     STORE_ROOT_JSON,
     SUCCESS_MARKER_VERSION,
@@ -40,7 +41,10 @@ from phenotypic.sdk_._image_record import (
     read_image_record,
     record_rejection,
 )
-from phenotypic.sdk_._run_state import fenced_artifact_path
+from phenotypic.sdk_._run_state import (
+    fenced_artifact_path,
+    marker_rejection,
+)
 
 # ``SUCCESS_MARKER_VERSION``, ``ARTIFACT_KIND_FILE``/``ARTIFACT_KIND_STORE``
 # and the two proof versions are imported above from ``sdk_/_io_constants``
@@ -804,6 +808,113 @@ def current_run_is_complete(output_dir: Path) -> bool | None:
     return current_aggregate_is_current(output_dir) is True
 
 
+def _payload_authorizes(
+    output_root: Path,
+    payload: object,
+    rejection: Callable[..., str | None],
+) -> bool:
+    """Return whether one certification payload may authorize its sources.
+
+    The shape-specific predicate is passed in -- ``record_rejection`` for a
+    record, ``marker_rejection`` for a legacy ``image_complete/`` marker --
+    and the artifact walk after it is identical for both, because
+    :func:`~phenotypic.sdk_._run_state.fenced_artifact_path` reads a
+    descriptor, not a schema.
+
+    The identity is taken **from the payload itself**, which is what this arm
+    has always done: with no ``processing_state.json`` there is no
+    ``work_ids`` map to check against, so the question is only whether the
+    payload is internally coherent and its artifacts still match disk.
+    """
+    if not isinstance(payload, dict):
+        return False
+    try:
+        dataset = str(payload["dataset"])
+        stem = str(payload["image_stem"])
+        work_id = str(payload["work_id"])
+    except (KeyError, TypeError, ValueError):
+        return False
+    if (
+        rejection(payload, work_id=work_id, dataset=dataset, image_stem=stem)
+        is not None
+    ):
+        return False
+    artifacts = payload.get("artifacts")
+    if not isinstance(artifacts, dict):
+        return False
+    return all(
+        isinstance(descriptor, dict)
+        and fenced_artifact_path(output_root, descriptor) is not None
+        for descriptor in artifacts.values()
+    )
+
+
+def _sources_without_state(output_dir: Path) -> dict[Path, str] | None:
+    """Authorized sources for a tree with no ``success_markers_required``.
+
+    **Both shapes, each on its own predicate.** After D1's clean break this
+    arm globbed ``image_complete/`` and then asked ``valid_image_success`` --
+    a *record* predicate -- whether a *legacy marker* was valid. The two
+    consequences were both silent:
+
+    * a legacy tree returned ``{}`` rather than its real sources, because
+      every image failed a record read that a legacy tree cannot satisfy. And
+      ``{}`` is not ``None``: ``_cli_chunk_writer`` treats a non-``None``
+      result as embedded authority and skips its legacy fallback, while
+      ``_cli_recompile_tables`` never reaches the branch that raises *"Legacy
+      external measurement Parquets require --mode migrate"*. **A loud,
+      actionable migration error became a silent no-op.**
+    * a forward tree with no processing state returned ``None``, because
+      ``image_complete/`` no longer exists for it to glob.
+
+    So the record tree is scanned first and the legacy tree second, each
+    gated by the predicate written for it. ``marker_rejection`` exists
+    precisely for the second and this is its caller in ``src/`` -- its
+    docstring's "no caller" note was true only in the window between the
+    clean break and this repair.
+
+    Returns:
+        A mapping of authorized source Parquet to dataset, or ``None`` when
+        neither tree exists at all -- which is the signal callers read as
+        "fall back to legacy source discovery", and must not be confused with
+        an empty mapping meaning "authority exists and authorizes nothing".
+    """
+    output_root = Path(output_dir).resolve()
+    progress = progress_dir(output_dir)
+    shapes = (
+        (progress / DIR_IMAGE_RECORDS, record_rejection),
+        (progress / DIR_IMAGE_COMPLETE, marker_rejection),
+    )
+
+    payload_paths = [
+        (path, rejection)
+        for root, rejection in shapes
+        for path in sorted(root.glob("*/*.json"))
+    ]
+    if not payload_paths:
+        return None
+
+    sources: dict[Path, str] = {}
+    for path, rejection in payload_paths:
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if not _payload_authorizes(output_root, payload, rejection):
+                continue
+            relative = payload["artifacts"]["measurements"]["path"]
+            source = (output_root / str(relative)).resolve()
+            source.relative_to(output_root)
+        except (
+            KeyError,
+            OSError,
+            ValueError,
+            TypeError,
+            json.JSONDecodeError,
+        ):
+            continue
+        sources[source] = str(payload["dataset"])
+    return sources
+
+
 def authorized_measurement_sources(
     output_dir: Path,
 ) -> dict[Path, str] | None:
@@ -821,38 +932,7 @@ def authorized_measurement_sources(
     if state is None or not state.config.get(
         "success_markers_required", False
     ):
-        marker_root = progress_dir(output_dir) / DIR_IMAGE_COMPLETE
-        marker_paths = sorted(marker_root.glob("*/*.json"))
-        if not marker_paths:
-            return None
-        marker_sources: dict[Path, str] = {}
-        output_root = Path(output_dir).resolve()
-        for marker_path in marker_paths:
-            try:
-                marker = json.loads(marker_path.read_text(encoding="utf-8"))
-                dataset = str(marker["dataset"])
-                stem = str(marker["image_stem"])
-                work_id = str(marker["work_id"])
-                if not valid_image_success(
-                    output_dir,
-                    dataset=dataset,
-                    image_stem=stem,
-                    work_id=work_id,
-                ):
-                    continue
-                relative = marker["artifacts"]["measurements"]["path"]
-                source = (output_root / str(relative)).resolve()
-                source.relative_to(output_root)
-            except (
-                KeyError,
-                OSError,
-                ValueError,
-                TypeError,
-                json.JSONDecodeError,
-            ):
-                continue
-            marker_sources[source] = dataset
-        return marker_sources
+        return _sources_without_state(output_dir)
     raw_work_ids = state.config.get("work_ids")
     if not isinstance(raw_work_ids, dict):
         return {}
