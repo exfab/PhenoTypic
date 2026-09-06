@@ -910,7 +910,6 @@ def test_a_legacy_tree_is_refused_now_that_the_gate_is_armed(
     what this commit changed.
     """
     import click
-    import pytest
 
     from phenotypic.phenotypicCLI import _refuse_unmigrated_output
 

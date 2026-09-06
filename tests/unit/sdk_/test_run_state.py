@@ -1120,7 +1120,7 @@ def _mark_one_image_migrated(root):
     **The one input on which the two readers provably differed**, and the one
     the parametrization excluded. U-10 rules that a migrated record is
     accepted on artifact validity alone -- a pre-markers tree never had a
-    `work_id` to match -- so `marker_rejection` skips the comparison when
+    `work_id` to match -- so `record_rejection` skips the comparison when
     `provenance == "migrated"`, while `valid_image_success` used to compare
     `work_id` unconditionally with no provenance branch.
 
@@ -1132,7 +1132,7 @@ def _mark_one_image_migrated(root):
     were never in question. It could not have gone red for the reason its
     own name gives.
 
-    It passes now because `valid_image_success` reads `marker_rejection`
+    It passes now because `valid_image_success` reads `record_rejection`
     rather than restating it, so there is one implementation to agree with.
     """
     from tests._output_layout import FIXTURE_STEMS
@@ -1155,8 +1155,8 @@ def test_the_sdk_reader_agrees_with_the_cli_validator(complete_run, tamper):
 
     INV-LAYER once forced `_run_state` to re-derive what `valid_image_success`
     decides, because it may not import the CLI half. It no longer does: the
-    predicate is `marker_rejection` and the artifact walk is
-    `fenced_artifact_path`, both exported from `sdk_/_run_state` and both read
+    predicate is `record_rejection` (`sdk_/_image_record`) and the artifact
+    walk is `fenced_artifact_path` (`sdk_/_run_state`), both read
     by the CLI function, which is the direction INV-LAYER permits.
 
     So this test's remit has changed and is worth stating. It no longer keeps

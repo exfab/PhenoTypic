@@ -10,6 +10,7 @@ import pyarrow.parquet as pq  # type: ignore[import-untyped]
 from phenotypic.sdk_ import (
     CommitGuard,
     DIR_IMAGE_COMPLETE,
+    DIR_IMAGE_RECORDS,
     MEASUREMENT_TABLE_RELATIVE_PATH,
     PhenotypicAttr,
     STORE_SUFFIX,
@@ -21,7 +22,6 @@ from phenotypic.sdk_ import (
 from ._cli_completion import (
     authorized_measurement_sources,
     publish_image_success,
-    valid_image_success,
 )
 from ._embedded_measurement_tables import prepare_embedded_measurement_table
 from ._cli_recompile_recovery import (
@@ -34,6 +34,8 @@ from ._cli_recompile_recovery import (
     recompile_store_lock_path,
 )
 from phenotypic.sdk_._file_locking import exclusive_path_lock
+from phenotypic.sdk_._image_record import record_rejection
+from phenotypic.sdk_._run_state import marker_rejection
 
 
 def _marker_artifacts(output_dir: Path, marker: dict) -> dict[str, Path]:
@@ -125,6 +127,15 @@ def _replace_and_republish_table(
         # `_cli_process_single`. This is the recompile half of the same
         # defect: after D1 the legacy marker is absent on a forward tree, so
         # `_republish_table_marker` would read a file that is not there.
+        #
+        # **That was only half of what this function did with the legacy
+        # path.** The other half was the lock taken above: it derived from
+        # `image_completion_marker_path`, and `exclusive_path_lock` mkdirs the
+        # parent, so entering this block *created* `progress/image_complete/`
+        # on a forward tree -- which schema signal 1 probes by directory
+        # existence, making `requires_conversion` answer CONVERT for a tree
+        # this build wrote. Both halves are fixed; `recompile_store_lock_path`
+        # now derives from the record path too, and carries the reasoning.
         record_path = image_record_path(output_dir, dataset, stem)
         _republish_table_marker(
             output_dir,
@@ -137,38 +148,64 @@ def _replace_and_republish_table(
 
 
 def _standalone_marker_sources(output_dir: Path) -> dict[Path, str]:
-    """Discover valid embedded authority when no processing state is present."""
+    """Discover valid embedded authority when no processing state is present.
+
+    **Both shapes, each on its own predicate** -- the seventh site of the
+    defect fixed in ``authorized_measurement_sources``. This globbed the
+    legacy ``image_complete/`` tree and then asked ``valid_image_success``, a
+    *record* predicate, whether each legacy marker was valid, so after D1's
+    clean break every image on a legacy tree was skipped and this returned
+    ``{}``.
+
+    Its consequence is narrower than arm 1's and worth stating exactly,
+    because "returns empty" is not by itself a bug here. At the call site,
+    ``{}`` with no recovery sources still falls through to the ``--mode
+    migrate`` error -- correct, but by accident. **With recovery sources
+    present, ``authorized`` becomes recovery-only and every image whose
+    authority came from a marker is silently dropped from the authorized
+    set.** Not a loud error going quiet, but authority missing for a subset.
+
+    ``_payload_authorizes`` is imported rather than reimplemented: the
+    identity check and the ``fenced_artifact_path`` walk are the same work
+    whichever shape is in hand, and a second copy is how this arm and arm 1
+    drifted apart in the first place. The embedded-table filter below stays
+    local, because it is this function's own question -- arm 1 authorizes any
+    described measurement source, while recompile only rewrites tables that
+    live *inside* a store.
+    """
+    from ._cli_completion import _payload_authorizes
+
     sources: dict[Path, str] = {}
-    marker_root = progress_dir(output_dir) / DIR_IMAGE_COMPLETE
-    for marker_path in sorted(marker_root.glob("*/*.json")):
-        try:
-            marker = json.loads(marker_path.read_text(encoding="utf-8"))
-            dataset = str(marker["dataset"])
-            stem = str(marker["image_stem"])
-            work_id = str(marker["work_id"])
-            descriptor = marker["artifacts"]["measurements"]
-            relative = descriptor["path"]
-            table_path = (output_dir / str(relative)).resolve()
-            if not valid_image_success(
-                output_dir,
-                dataset=dataset,
-                image_stem=stem,
-                work_id=work_id,
+    output_root = Path(output_dir).resolve()
+    progress = progress_dir(output_dir)
+    shapes = (
+        (progress / DIR_IMAGE_RECORDS, record_rejection),
+        (progress / DIR_IMAGE_COMPLETE, marker_rejection),
+    )
+    for root, rejection in shapes:
+        for payload_path in sorted(root.glob("*/*.json")):
+            try:
+                payload = json.loads(
+                    payload_path.read_text(encoding="utf-8")
+                )
+                if not _payload_authorizes(output_root, payload, rejection):
+                    continue
+                dataset = str(payload["dataset"])
+                relative = payload["artifacts"]["measurements"]["path"]
+                table_path = (output_dir / str(relative)).resolve()
+                if tuple(table_path.parts[-3:]) != (
+                    MEASUREMENT_TABLE_RELATIVE_PATH.parts
+                ):
+                    continue
+            except (
+                KeyError,
+                TypeError,
+                ValueError,
+                OSError,
+                json.JSONDecodeError,
             ):
                 continue
-            if tuple(table_path.parts[-3:]) != (
-                MEASUREMENT_TABLE_RELATIVE_PATH.parts
-            ):
-                continue
-        except (
-            KeyError,
-            TypeError,
-            ValueError,
-            OSError,
-            json.JSONDecodeError,
-        ):
-            continue
-        sources[table_path] = dataset
+            sources[table_path] = dataset
     return sources
 
 

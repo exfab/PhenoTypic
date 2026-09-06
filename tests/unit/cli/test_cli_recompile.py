@@ -36,8 +36,30 @@ pytestmark = pytest.mark.skipif(
 
 
 #: P3 Task 2 moved the publisher onto the per-image record (D1, clean break).
-#: `--mode recompile` still reads `image_complete/` from SEVEN production
-#: sites, so it is non-functional on a forward tree until P4 repoints them.
+#: `--mode recompile` still reads `image_complete/` from **FIVE** production
+#: call sites, so it is non-functional on a forward tree until P4 repoints
+#: them. Measured, not decremented:
+#:
+#:   `_cli_recompile_recovery.py`      :409, :499, :659, :731   (4)
+#:   `_cli_recompile_slurm_scripts.py` :557                     (1)
+#:
+#: This said SEVEN, and the count was the thread the P3 gate review pulled.
+#: Two of the seven were not deferrable and are now fixed:
+#:
+#:   * `_cli_recompile_tables._standalone_marker_sources` globbed the legacy
+#:     tree and gated it on `valid_image_success`, a RECORD predicate -- so a
+#:     legacy tree yielded `{}`, and with recovery sources present the
+#:     authorized set silently became recovery-only. It now scans both shapes,
+#:     each under its own predicate. That was the same defect as
+#:     `authorized_measurement_sources` arm 1, in a second file.
+#:   * `recompile_store_lock_path` derived the store lock from
+#:     `image_completion_marker_path`, and `exclusive_path_lock` mkdirs the
+#:     parent -- so taking the lock CREATED `progress/image_complete/` on a
+#:     forward tree, which schema signal 1 probes by directory existence.
+#:
+#: `_cli_recompile_tables.py:183` still names `DIR_IMAGE_COMPLETE` and is not
+#: one of the five: it reads the legacy tree deliberately, under
+#: `marker_rejection`, which is the predicate written for that shape.
 #:
 #: Deferred rather than fixed here because the repoint is a SCHEMA MIGRATION,
 #: not a path substitution: `_cli_recompile_slurm_scripts.py:569` and
@@ -52,9 +74,12 @@ pytestmark = pytest.mark.skipif(
 #: rather than because someone remembered.
 _RECOMPILE_READS_THE_LEGACY_MARKER_UNTIL_P4 = pytest.mark.xfail(
     reason=(
-        "--mode recompile reads the legacy image_complete/ marker until P4 "
-        "repoints _cli_recompile_recovery and _cli_recompile_slurm_scripts; "
-        "path and SUCCESS_MARKER_VERSION->RECORD_VERSION move together"
+        "--mode recompile reads the legacy image_complete/ marker at five "
+        "call sites until P4 repoints them: _cli_recompile_recovery (409, "
+        "499, 659, 731) and _cli_recompile_slurm_scripts (557). Path and "
+        "SUCCESS_MARKER_VERSION->RECORD_VERSION move together, because those "
+        "functions return None/False on a version mismatch and a path-only "
+        "repoint would disable overlay and table authority repair silently."
     ),
     strict=True,
 )

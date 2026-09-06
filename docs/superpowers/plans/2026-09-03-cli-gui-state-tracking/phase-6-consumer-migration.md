@@ -900,6 +900,36 @@ nothing read them."
 
 ## Task 6: SLURM observer — call sites only
 
+> ### ⚠ BEFORE YOU START: the observer's poll loop got more expensive in P3, by design
+>
+> **If you are here because the observer feels slow, this is why — it is not a bug you
+> introduced and not one to fix in this task.**
+>
+> P3 collapsed the stage-3 marker into the per-image record, so
+> `stage3_completion_exists` went from a bare `is_file()` to `read_image_record` +
+> `json.loads` + two dict lookups (`_cli_staged_resume.py:135-160`).
+>
+> The spec's efficiency argument for that collapse — *"one JSON read replaces one read plus
+> three `is_file()` probes across three directory trees"* (`design.md:578`) — **is true of
+> the per-image decision point it describes, which was already reading a marker.** It says
+> nothing about the callers that were doing *zero* reads, and there are three, all
+> whole-inventory:
+>
+> | Caller | Scope | Short-circuits? |
+> |---|---|---|
+> | `gui/run_console/_slurm_observer.py:1338-1354` `_all_stage3_markers_exist` | every image of every dataset in `job_metadata.json`, **on the polling path** | yes, on first miss |
+> | `_cli_staged_orchestration.py:264-289` `completed_inventory_images` | per dataset, per poll | no |
+> | `_cli_staged_controller.py:76-98` retryable/terminal split | per controller round | no |
+>
+> On a 6,000-image run on GPFS a poll that was 6,000 `stat()`s is now 6,000
+> `open`/`read`/`close`/`json.loads`. **Not measured** — flagged from reading, and recorded
+> because the observer is user-facing and the cost is invisible in the spec's framing.
+>
+> **The collapse is the design; do not undo it here.** If it needs addressing, the shape is
+> a cached or batched inventory read at these three call sites, and it is its own change
+> with its own measurement — not a revision of §6.1.
+
+
 **Files:**
 - Modify: `src/phenotypic/gui/run_console/_slurm_observer.py:536,909,1312`
 - Test: `tests/unit/gui/run_console/`

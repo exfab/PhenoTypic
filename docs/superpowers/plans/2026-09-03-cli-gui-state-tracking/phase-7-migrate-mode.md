@@ -582,6 +582,26 @@ So the pre-markers path already works end to end. What is required:
 >
 > ### U-10: mark the record; do not fabricate the identity
 >
+> > **P3 built the reader; nothing writes the value yet, so this branch arrives here
+> > untested against any real writer.** Recorded by the P3 gate review (F8 item 4), and
+> > it is a precondition for this task rather than a defect in it.
+> >
+> > `PROVENANCE_MIGRATED` has **zero production writers** as of P3.
+> > `publish_image_success` has no `provenance` parameter, so `--mode migrate` takes
+> > `publish_image_record`'s `"forward"` default and every migrated record is fenced on
+> > `work_id` like any other. The relaxation described below is therefore **unreachable
+> > today**, and `record_rejection`'s migrated branch — the `if
+> > record_provenance(record) != PROVENANCE_MIGRATED` guard around the `work_id`
+> > comparison — is exercised only by tests that hand-write the field.
+> >
+> > This was deliberately **not** "fixed" in P3: adding a writer there would have
+> > shipped the fence relaxation ahead of the migrator that needs it, which is the
+> > larger hole point 3 below warns about. So the first thing this task must do is
+> > **thread `provenance` through the publisher**, and the first test it must write is
+> > one that drives the *real* migrator and asserts the record it produces is accepted
+> > without a `work_id` match — not one that constructs the record by hand. Until that
+> > exists, U-10 is a design that has never run.
+>
 > **Migrate publishes per-image records carrying `provenance: "migrated"`.** For a record so
 > marked:
 >

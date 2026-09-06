@@ -698,10 +698,8 @@ def _verify_image(
     record_path = image_record_path(output_dir, dataset, image_stem)
     marker = read_image_record(output_dir, dataset, image_stem)
     fence: dict[str, tuple[int, int]] = {}
-    provenance: str | None = None
     reason: str | None = "no readable image record"
     if marker is not None:
-        provenance = record_provenance(marker)
         reason = record_rejection(
             marker, work_id=work_id, dataset=dataset, image_stem=image_stem
         )
@@ -770,8 +768,15 @@ def _verify_image(
         snapshot = _store_metadata_snapshot(output_dir, dataset, image_stem)
         if snapshot is not None:
             stage[_SNAPSHOT_SHA256_ATTR] = snapshot
-        if provenance is not None:
-            stage["provenance"] = provenance
+        # Unconditional, and the guard it replaces was dead. This block is
+        # only reachable with a non-`None` marker -- it dereferences one two
+        # statements above -- and `record_provenance` returns FORWARD or
+        # MIGRATED, never `None`, because an absent or unrecognised value is
+        # the fence-keeping default rather than a missing answer. So
+        # `if provenance is not None` could not fail, while reading as though
+        # it could: a dead guard costs the next reader the work of proving it
+        # dead, and invites a "defensive" second one beside it.
+        stage["provenance"] = record_provenance(marker)
         stages[STAGE_MEASURED] = stage
         return CachedVerification(
             state=ImageState(

@@ -1421,6 +1421,49 @@ throwaway analysis script — operator tooling again, as in entries 21 and 33.)*
 
 ---
 
+### Entry 35 — A JUSTIFICATION TRUE OF THE PATH IT DESCRIBES, READ AS A PROPERTY OF THE CHANGE. 2026-09-05.
+
+The spec justifies collapsing the stage-3 marker into the record with a cost argument
+(`design.md:578`):
+
+> *"one JSON read replaces one read plus three `is_file()` probes across three directory
+> trees."*
+
+**Every word is true, and it is true only of the per-image decision point** — which was
+already reading a marker, so the extra read is genuinely free there.
+
+`stage3_completion_exists` has **three whole-inventory callers that previously did zero
+reads**: the SLURM observer's polling path, the orchestration inventory, and the
+controller's retryable/terminal split. For those, a bare `is_file()` became
+`open`/`read`/`close`/`json.loads`. On a 6,000-image GPFS run the observer's poll goes from
+6,000 stats to 6,000 parses.
+
+#### The shape
+
+The sentence is a **claim about one call site, positioned as the rationale for the
+change**. Nothing in it is false; the defect is scope, and scope is the part a reader
+supplies for themselves. Compare the `initial_images` wipe earlier in this change: a plan
+callout said *"stop writing four keys"* over a justification true of **three**. Same error,
+opposite direction — there the scope was too wide, here too narrow — and both were invisible
+because the sentence read as complete.
+
+> **A justification is a measurement of the case it names.** When it appears as the reason
+> for a change, ask which *other* call sites the change touches, and whether the argument
+> survives them. It usually has not been asked.
+
+#### Why this one is not a bug and is still worth an entry
+
+The collapse **is** the design, and no fix is proposed. The cost is real, unmeasured, and
+sits under a user-facing surface — so the failure mode is not a wrong answer but a future
+engineer meeting a mystery slowdown with a spec paragraph that says the change made things
+cheaper. It is now written into P6 Task 6, which owns the observer, as a ⚠ block before the
+first step rather than filed only here.
+
+*(Found by the P3 implementation reviewer, which read the spec's justification against the
+call graph instead of against the function it describes.)*
+
+---
+
 ## What the pattern says
 
 **Nothing failed, and nothing could have.** Not one entry would have been caught by a test,
