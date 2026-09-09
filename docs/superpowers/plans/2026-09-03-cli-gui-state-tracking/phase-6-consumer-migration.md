@@ -367,13 +367,70 @@ def test_the_resume_worklist_uses_the_cache_assisted_path():
 >
 > | Deleted | Replaced by |
 > |---|---|
-> | `current_run_is_complete(d)` | ⚠ **TRI-STATE — two questions, see below.** Not this expression alone. |
+> | `current_run_is_complete(d)` | ⚠ **NO MIGRATION. Privatised, every caller keeps it.** See below — the mapping is wrong at all eight sites, not some. |
 > | `current_success_counts(d)` | ⚠ **three questions under one name — see the split below.** Not `diagnostics`. |
 > | `current_aggregate_is_current(d)` | **`_run_proof_covers_current_inventory`'s clause 2** (`_run_state.py:1164`), reached through `resolve_run_state` — its docstring: *"Clause 2 is the **five** comparisons `current_aggregate_is_current` makes today, not the one an earlier draft kept (CAN-4)."* Private, one internal caller, and it takes already-loaded `config`/`identity`/`images`, so it is **not** callable directly the way the pair above is |
 >
 > With that, Step 1's scoped grep and Task 7's unrestricted one are both satisfiable, and
 > the test's message ("the old O(N)-hashing readers survive") means what it says.
 >
+> ### ⚠⚠ MEASURED: the mapping is wrong at **every** call site, not some
+>
+> The row said `current_run_is_complete(d)` → `resolve_run_state(d).completion == "complete"`.
+> Applied at all eight call sites and gated, **eight of eight were wrong**, in two waves:
+>
+> * **six writers** — the read gates the publish that would satisfy it, so it is `False`
+>   forever (174 fixture errors at `_cli_gui_lifecycle` alone);
+> * **two readers** — `_manifest_builder:738` and `_runs_registry:613`, which publish
+>   nothing, pass every writer-shaped filter, and *still* ask the wrong question.
+>
+> **The reason is structural and should have been derivable without a gate: a predicate's
+> callers all ask the predicate's question.** `current_run_is_complete` answered *"have the
+> accepted images succeeded?"* — marker-derived, no proof involved. Every caller wanted
+> that. `resolve_run_state(...).completion` answers *"is there a valid run proof covering
+> the inventory?"*. Mapping one to the other cannot be right at *any* site, and the
+> appearance that it was right at some was an artefact of which ones had been tested.
+>
+> The two readers say so in their own text: `_manifest_builder`'s comment compares
+> **"marker evidence"** against a counting path, and `_runs_registry`'s `is False` message
+> is *"marker evidence is incomplete"* while its `is True` branch reads the run proof
+> **separately, itself** — which `.completion` would have made dead code.
+>
+> **What Task 0 actually migrates**, measured at the end:
+>
+> | Retired | Outcome |
+> |---|---|
+> | `current_run_is_complete` | privatised as `_all_accepted_images_succeeded`; **all eight callers keep it**. No migration. |
+> | `current_success_counts` — count uses | → `resolve_run_state(...).diagnostics.verified/.accepted`, **3 sites** |
+> | `current_success_counts` — `is not None` | → `state_requires_success_markers` (O(1) config field) |
+> | `current_aggregate_is_current` | deleted; one internal caller uses the private form |
+>
+> **Three `resolve_run_state` calls survive: two read only `.diagnostics`, one reads both.**
+>
+> ```
+> _cli_checkpoint_handler.py:310   .diagnostics.verified
+> phenotypicCLI.py:2507            -> :2508 .diagnostics.verified
+>                                     :2509 .diagnostics.accepted
+>                                     :2518 .completion != "complete"      <- LIVE
+> phenotypicCLI.py:2980            .diagnostics.verified
+> ```
+>
+> `:2518` gates `publication_refresh_required` and genuinely asks *"does a valid run proof
+> cover the inventory?"* — the second question — so it is **correct and stays**. It is the
+> one site in the phase where `.completion` is the right read.
+>
+> > ⚠ **An earlier version of this callout said "none reading `.completion`".** That was
+> > measured with `grep 'resolve_run_state(.*)\.completion'`, which matches only the form
+> > that *chains* the attribute onto the call and is blind to the bound-variable form
+> > (`startup_state = resolve_run_state(...)` … `startup_state.completion`). A **syntactic
+> > proxy for a semantic property** — the same defect as the three enumeration failures the
+> > paragraph above records, committed inside the correction of them. The measurement that
+> > works is an AST walk for `Attribute` nodes named `completion`, which finds it.
+>
+> Step 5's commit message must not say "ten CLI call sites moved onto `resolve_run_state`" —
+> it is three, and the double walk this removes is the one at `phenotypicCLI.py:2497-2516`,
+> where three readers became one call at `:2507`.
+
 > ### ⚠ `current_run_is_complete` is TRI-STATE and its replacement is a bool
 >
 > ```python
@@ -720,10 +777,35 @@ here is per-image, so no O(N²) arises.
 QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/cli -q
 ```
 
-Then count: a single completion query must walk the images **once**. Instrument
-`valid_image_success` with a counter in a throwaway patch, run one `--mode full` resume
-over a 6-image fixture, and assert the count equals 6 rather than 12. That doubling is
-audit §4's finding, and it is the thing §9.2's number depends on.
+Then count: a single completion query must walk the images **once**.
+
+> ### ⚠ CORRECTED — instrument `_verify_image`, not `valid_image_success`
+>
+> The original instruction said *"instrument `valid_image_success` with a counter in a
+> throwaway patch … assert the count equals 6 rather than 12."* **After this task that
+> function is not on the reader path.** `resolve_run_state` re-derives the same judgement
+> through `sdk_/_run_state._verify_image` (`:682`, called at `:1424`), and `_run_state`'s
+> only mentions of `valid_image_success` are **prose** (`:22`, `:565`, `:574`).
+>
+> So the original instrument would report **0 against an expected 6** — and 0-vs-6 does not
+> read as a refuted measurement, it reads as a broken fixture, so the step would have been
+> abandoned as "the harness is wrong" rather than corrected.
+>
+> **And name the site, which the step did not.** The doubling lived at
+> `phenotypicCLI.py:2497-2516`, where three readers — `current_success_counts`,
+> `current_aggregate_is_current` and `valid_run_completion` — each made their own O(N) pass.
+> It is now **one** `resolve_run_state` at `:2508`. That is the fact the measurement exists
+> to demonstrate.
+>
+> **A permanent test, not a throwaway patch** (`test_one_completion_query_walks_each_image_
+> exactly_once`). The regression this guards is **silent**: a reintroduced second walk fails
+> nothing, it merely doubles the run, and stays invisible until someone re-derives §9.2 by
+> hand. A measurement taken once and discarded protects nothing after the day it ran — which
+> is the failure mode this change's own register has fifteen entries about.
+>
+> **Assert exactly N, and say what the alternatives mean.** `2N` is audit §4's double walk
+> returning; `0` is `resolve_run_state` no longer reaching `_verify_image` at all. An
+> assertion written `<= N` calls the second one a pass.
 
 - [ ] **Step 5: Commit**
 

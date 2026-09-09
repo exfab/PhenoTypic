@@ -593,25 +593,21 @@ class RunRegistry:
     ) -> str | None:
         """Return why a zero-exit local generation cannot publish complete."""
         from phenotypic._cli._cli_completion import (
-            state_requires_success_markers,
+            _all_accepted_images_succeeded,
         )
-        from phenotypic.sdk_ import resolve_run_state
 
-        # Tri-state preserved: this site branches on `is False` and must not
-        # treat a legacy tree as incomplete. Task 4 owns this file; converted
-        # here because P6 Task 0's deletion is not local to its own task.
-        marker_complete = (
-            None
-            if not state_requires_success_markers(record.output_dir)
-            # ⚠ P6 TASK 4 OWES A DEPTH DECISION HERE. §9's caller table gives
-            # GUI **pollers** `shallow`; this is a poller and this call uses
-            # the `deep` default. Choosing its depth is Task 4's, not
-            # Task 0's. `deep` preserves exactly what the retired
-            # `current_run_is_complete` cost here -- the same O(N) marker
-            # walk -- so this is not a regression; it is an unmade decision,
-            # marked rather than silently defaulted.
-            else resolve_run_state(record.output_dir).completion == "complete"
-        )
+        # P6 Task 0: NOT `resolve_run_state(...).completion`. This site asks
+        # *"have the accepted images succeeded?"* -- its `is False` message
+        # says "marker evidence is incomplete", and its `is True` branch then
+        # reads the run proof **itself**, separately, below. `.completion`
+        # already requires that proof, which would make the branch below dead
+        # and make `is False` report the wrong cause whenever the images had
+        # succeeded but nothing had published yet.
+        #
+        # Task 4 owns this file; converted here because P6 Task 0's deletion
+        # is not local to its own task. No depth decision is owed after all:
+        # this call is not `resolve_run_state`.
+        marker_complete = _all_accepted_images_succeeded(record.output_dir)
         if marker_complete is False:
             return (
                 "local process exited successfully but current marker evidence "

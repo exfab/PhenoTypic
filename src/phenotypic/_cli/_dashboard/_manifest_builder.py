@@ -721,22 +721,19 @@ def build_manifest(
 
     failure_categories = categorize_failures(matched_terminal_records)
     from phenotypic._cli._cli_completion import (
-        state_requires_success_markers,
+        _all_accepted_images_succeeded,
         valid_aggregate_snapshot,
     )
-    from phenotypic.sdk_ import resolve_run_state
 
     aggregate_marker = valid_aggregate_snapshot(output_dir)
-    # P6 Task 0: the retired `current_run_is_complete` was tri-state. Its two
-    # questions are asked separately -- `legacy` is the O(1) config field that
-    # produced its `None`, completion is the O(N) question the migration makes
-    # cheap. Folding them back into one helper would recreate the predicate.
-    legacy = not state_requires_success_markers(output_dir)
-    marker_completion = (
-        None
-        if legacy
-        else resolve_run_state(output_dir, depth="deep").completion == "complete"
-    )
+    # P6 Task 0: NOT `resolve_run_state(...).completion`. This site asks
+    # *"have the accepted images succeeded?"* -- see the comment below, which
+    # compares **marker evidence** against a counting path -- and it runs
+    # during recompile, before any run proof exists. `.completion` asks
+    # whether a valid run proof COVERS the inventory, which is a different
+    # question and is `False` here for a reason that has nothing to do with
+    # the images.
+    marker_completion = _all_accepted_images_succeeded(output_dir)
     is_complete = (
         global_completed == total_images
         if marker_completion is None

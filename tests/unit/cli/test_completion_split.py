@@ -233,3 +233,67 @@ def test_each_retired_predicate_has_a_reachable_replacement(
         "reverted, and every consumer guard above passes on a private rename "
         "rather than on a deletion"
     )
+
+
+def test_one_completion_query_walks_each_image_exactly_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Audit §4's double walk, and the number §9.2 rests on.
+
+    A single completion query must verify each image **once**. Before Task 0
+    the CLI's startup block (``phenotypicCLI.py:2497-2516``) called three
+    readers -- ``current_success_counts``, ``current_aggregate_is_current``
+    and ``valid_run_completion`` -- each doing its own O(N) pass over the
+    images. It is now one ``resolve_run_state`` at ``:2508``.
+
+    **Counts ``_verify_image``, NOT ``valid_image_success``.** The plan's
+    original instruction named the latter, and after this migration that
+    function is not on the reader path at all: ``resolve_run_state``
+    re-derives the same judgement through ``_run_state._verify_image``
+    (``:682``, called at ``:1424``), and ``_run_state``'s only mentions of
+    ``valid_image_success`` are prose. Instrumenting it here would report
+    **0 against an expected 6** -- which does not read as a refuted
+    measurement, it reads as a broken fixture, and the step would have been
+    abandoned rather than corrected.
+
+    **What each other answer means**, because an assertion that cannot tell
+    them apart is worth much less than one that names both:
+
+    * **2N** -- the double walk is back. That is the specific regression Task
+      0 removed, and it is *silent*: nothing fails, the run is merely twice as
+      slow, and it stays invisible until someone re-derives §9.2 by hand.
+    * **0** -- ``resolve_run_state`` no longer reaches ``_verify_image``, so
+      the query is answering from somewhere else entirely. An assertion
+      written as ``<= N`` would call that a pass.
+
+    A permanent test rather than the throwaway counter the plan describes:
+    the regression it guards has no failure mode of its own, so a measurement
+    taken once and discarded protects nothing after the day it ran.
+    """
+    from phenotypic.sdk_ import _run_state, resolve_run_state
+
+    from .conftest import _publish_successful_images
+
+    stems = ["a", "b", "c"]
+    _publish_successful_images(tmp_path, stems=stems)
+
+    calls: list[str] = []
+    real_verify = _run_state._verify_image
+
+    def counting_verify(*args: object, **kwargs: object) -> object:
+        calls.append(str(args[:2]))
+        return real_verify(*args, **kwargs)
+
+    monkeypatch.setattr(_run_state, "_verify_image", counting_verify)
+
+    state = resolve_run_state(tmp_path, depth="deep")
+
+    assert len(state.images) == len(stems), (
+        f"the fixture produced {len(state.images)} images, not {len(stems)}; "
+        "the call-count assertion below would be measuring the wrong tree"
+    )
+    assert len(calls) == len(stems), (
+        f"one completion query verified {len(calls)} times over "
+        f"{len(stems)} images. {2 * len(stems)} means audit §4's double walk "
+        f"is back; 0 means resolve_run_state no longer reaches _verify_image"
+    )
