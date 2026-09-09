@@ -674,6 +674,41 @@ completion predicate reappears."
 > floor** — about 20,000 `stat` calls at a measured **7.63 ms each**. The 2 s tick is 75×
 > short of what one poll costs.
 >
+> > ### ⚠ MEASURED AND REFUTED: a `stat` here is 0.012 ms, not 7.63 ms
+> >
+> > **Neither input has provenance.** `grep -rn "7\.63\|20,000\|20000"` across this
+> > change's entire plan and spec directories returns **one hit: the line above.** A figure
+> > labelled *"a measured 7.63 ms"* with no measurement on record.
+> >
+> > Measured at `6987f646` on GPFS, over 2,000 real files under the subset bed:
+> >
+> > ```
+> > os.stat                     0.012 ms   <- 620x faster than the figure used
+> > read + parse a marker JSON  0.346 ms
+> > sha256 an overlay PNG      67.277 ms
+> > ```
+> >
+> > **The internal arithmetic is sound and the input is not.** 20,000 x 7.63 ms = 152.6 s,
+> > which does give 76.3x ("75x"), 1403/152.6 = 9.19x ("~9x"), and 2 x 7.63 = 15.3 ms
+> > ("~15 ms"). Every derived figure follows correctly from a number that is wrong by
+> > two-and-a-half orders of magnitude — which is why none of them looked suspicious.
+> >
+> > At the measured rate, **20,000 stats cost 0.24 s**, which *fits inside a 2 s tick* with
+> > room to spare rather than exceeding it 75-fold. **Task 6's quantitative case inverts.**
+> >
+> > **And 7.63 ms is not a mismeasurement of a `stat` — it is the wrong operation.** It is
+> > within an order of magnitude of hashing, not of stat-ing. So the paragraph below,
+> > *"an on-disk cache tier does not help here — it saves the hashing, not the stat-ing"*,
+> > is arguing against the cache using **the hashing cost as if it were the stat cost**. If
+> > the floor is really 0.24 s, the cache tier is exactly what removes the expensive part
+> > and the "irreducible floor" claim does not hold.
+> >
+> > **What this does NOT settle:** whether Task 6 should still happen. A sentinel gate is
+> > defensible on other grounds — 20,000 stats per tick is wasteful even at 0.24 s, and the
+> > *hashing* cost is real and large (67 ms per overlay PNG). What is refuted is the
+> > specific case as argued. **Re-derive the rationale before executing Task 6**, and state
+> > which operation each figure measures.
+>
 > **This is not a regression this change introduces.** Today those pollers call the full
 > predicate and pay the ~1403 s path; the change makes it ~9× cheaper and still not cheap
 > enough. The cadence was already unachievable — the change only makes it visible.
