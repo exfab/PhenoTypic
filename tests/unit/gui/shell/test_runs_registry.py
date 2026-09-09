@@ -1536,3 +1536,223 @@ def test_rehydrate_invalid_owner_does_not_invent_generation(
     record = restored.get("invalid-owner")
     assert record is not None
     assert record.generation is None
+
+
+# ----------------------------------------------------------------------
+# P6 Task 5 / DEFERRED D-2: a dead GUI must not own an output forever.
+# ----------------------------------------------------------------------
+
+
+def _a_dead_pid() -> int:
+    """Return a pid no live process holds.
+
+    Racy in principle -- the kernel could hand this number out between the
+    probe and the assertion -- and safe in practice, because it starts above
+    every pid currently allocated and pids are handed out ascending.
+    """
+    import psutil
+
+    pid = max(psutil.pids()) + 1
+    while psutil.pid_exists(pid):
+        pid += 1
+    return pid
+
+
+def _abandoned_owner(
+    output: Path,
+    *,
+    pid: int | None,
+    mode: str = "local",
+) -> RunRegistry:
+    """Leave a nonterminal owner record on disk, written by the real writer.
+
+    Deliberately not hand-written JSON. ``tests/unit/sdk_/test_run_state.py``
+    hand-writes this record and says so, noting that P6 Task 5 "is where this
+    record's reader and writer land in one place" -- so this is that place,
+    and driving ``allocate`` / ``update_pid`` / ``update_status`` is what
+    makes the fixture fail if the persisted schema ever moves.
+    """
+    registry = RunRegistry()
+    record = registry.allocate(
+        mode=mode,  # type: ignore[arg-type]
+        output_dir=output,
+        rel_path=output.name,
+        command_digest="first",
+    )
+    if pid is not None:
+        assert registry.update_pid(record.run_id, pid)
+    assert registry.update_status(record.run_id, "running")
+    return registry
+
+
+def test_a_sigkilled_gui_does_not_lock_the_output_forever(
+    tmp_path: Path,
+) -> None:
+    """DEFERRED D-2 / audit S7: the permanent dead end.
+
+    Nothing in ``src/`` ever deletes or repairs ``gui_launch_owner.json``:
+    ``remove`` and ``clear`` drop the in-memory record and leave the file,
+    and ``rehydrate_from_sandbox`` downgrades with ``persist=False``. So the
+    record a SIGKILLed GUI leaves behind said ``running`` forever and every
+    later claim was refused, with no affordance anywhere in the UI to clear
+    it. The record already stored the pid; nothing read it.
+    """
+    output = tmp_path / "run"
+    _abandoned_owner(output, pid=_a_dead_pid())
+
+    claimed = RunRegistry().allocate(
+        mode="local",
+        output_dir=output,
+        rel_path="run",
+        command_digest="second",
+    )
+    assert claimed.generation is not None
+
+
+def test_a_live_owner_still_refuses_the_claim(tmp_path: Path) -> None:
+    """The liveness check must not become a rubber stamp.
+
+    An owner whose process is alive still owns the output; releasing it
+    would let two launches write one tree, which is the failure the refusal
+    exists to prevent and is worse than the dead end it replaces.
+    """
+    import os
+
+    output = tmp_path / "run"
+    _abandoned_owner(output, pid=os.getpid())
+
+    with pytest.raises(RuntimeError, match="durable nonterminal"):
+        RunRegistry().allocate(
+            mode="local",
+            output_dir=output,
+            rel_path="run",
+            command_digest="second",
+        )
+
+
+def test_an_owner_carrying_no_pid_still_refuses_the_claim(
+    tmp_path: Path,
+) -> None:
+    """Absence of evidence is not proof of death.
+
+    A GUI killed between ``allocate`` and ``update_pid`` leaves a
+    nonterminal record with ``pid: None``. Within one boot that is
+    indistinguishable from a live owner, so it must keep refusing -- the
+    repair is for records that are *provably* dead, and widening it to
+    "cannot prove alive" would hand out an output someone is writing.
+    """
+    output = tmp_path / "run"
+    _abandoned_owner(output, pid=None)
+
+    with pytest.raises(RuntimeError, match="durable nonterminal"):
+        RunRegistry().allocate(
+            mode="local",
+            output_dir=output,
+            rel_path="run",
+            command_digest="second",
+        )
+
+
+def test_a_slurm_owner_is_never_released_by_a_pid_probe(
+    tmp_path: Path,
+) -> None:
+    """A scheduler job outlives the GUI that submitted it, by design.
+
+    Its ``pid`` is legitimately ``None`` and its liveness belongs to the
+    scheduler, so a pid probe can only ever be wrong about it. These are the
+    same modes ``rehydrate_from_sandbox`` already excludes from its own
+    downgrade.
+    """
+    output = tmp_path / "run"
+    _abandoned_owner(output, pid=None, mode="slurm")
+
+    with pytest.raises(RuntimeError, match="durable nonterminal"):
+        RunRegistry().allocate(
+            mode="local",
+            output_dir=output,
+            rel_path="run",
+            command_digest="second",
+        )
+
+
+def test_a_record_predating_the_boot_is_released_without_any_pid(
+    tmp_path: Path,
+) -> None:
+    """Nothing survives a reboot, so the pid stops mattering.
+
+    This is the only arm that can retire a record carrying no pid at all,
+    which is otherwise the one hole the repair cannot close.
+    """
+    from dataclasses import replace
+
+    output = tmp_path / "run"
+    registry = _abandoned_owner(output, pid=None)
+    record = registry.list()[0]
+    registry._persist_record_locked(
+        replace(record, started_at=0.0, status="running", pid=None)
+    )
+
+    claimed = RunRegistry().allocate(
+        mode="local",
+        output_dir=output,
+        rel_path="run",
+        command_digest="second",
+    )
+    assert claimed.generation is not None
+
+
+def test_releasing_a_dead_owner_reads_its_status_off_the_tree(
+    tmp_path: Path,
+) -> None:
+    """A GUI killed *after* its child finished owns a complete run.
+
+    Writing ``failed`` over that would put a second wrong answer where the
+    first one was. The released record therefore carries the verdict the
+    output's own evidence supports, and lands terminal -- ``unknown`` is
+    nonterminal by ``run_status_is_nonterminal``, so a repair that wrote it
+    would leave the dead end in place under a new name.
+    """
+    output = build_complete_run(tmp_path)
+    _abandoned_owner(output, pid=_a_dead_pid())
+
+    registry = RunRegistry()
+    registry._assert_output_claimable_locked(
+        output_dir=output,
+        rel_path=output.name,
+    )
+
+    released = registry._read_owner_record(output, output.name)
+    assert released is not None
+    assert released.status == "complete"
+    assert not runs_registry_module.run_status_is_nonterminal(
+        released.status
+    )
+    assert released.pid is None
+
+
+def test_the_registry_and_the_ladder_share_one_liveness_probe(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Two authorities for one fact is the defect this change removes.
+
+    Spec §4.1 makes the owner record a liveness authority and P1 Task 5
+    taught the Q2 ladder to believe it only while its pid is alive. A second
+    probe here could disagree with the ladder about the same pid. Patching
+    the ladder's probe must therefore move this verdict too -- if it does
+    not, the registry grew its own.
+    """
+    output = tmp_path / "run"
+    _abandoned_owner(output, pid=_a_dead_pid())
+
+    monkeypatch.setattr(
+        "phenotypic.sdk_._run_state._process_is_alive",
+        lambda pid: True,
+    )
+    with pytest.raises(RuntimeError, match="durable nonterminal"):
+        RunRegistry().allocate(
+            mode="local",
+            output_dir=output,
+            rel_path="run",
+            command_digest="second",
+        )

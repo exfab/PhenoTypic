@@ -132,6 +132,22 @@ def _owner_record_path(output_dir: Path) -> Path:
     return gui_launch_owner_path(output_dir)
 
 
+def _system_boot_time() -> float | None:
+    """Return this host's boot time in epoch seconds, or ``None``.
+
+    ``None`` on any failure, which makes every caller fall through to the
+    pid probe rather than declaring an owner dead on missing evidence.
+    """
+    try:
+        import psutil
+    except ImportError:  # pragma: no cover - psutil is a hard dependency
+        return None
+    try:
+        return float(psutil.boot_time())
+    except (OSError, RuntimeError):  # pragma: no cover - defensive
+        return None
+
+
 def _owner_lock_path(output_dir: Path) -> Path:
     """Return the interprocess acquisition lock beside the owner record."""
     return _owner_record_path(output_dir).with_suffix(".lock")
@@ -1155,14 +1171,120 @@ class RunRegistry:
                     f"output has an invalid generation owner: {owner_path}"
                 )
             if persisted.status not in _TERMINAL_STATUSES:
-                raise RuntimeError(
-                    "output already has a durable nonterminal launch "
-                    f"generation: {persisted.generation}"
-                )
+                dead = self._dead_owner_reason(persisted)
+                if dead is None:
+                    raise RuntimeError(
+                        "output already has a durable nonterminal launch "
+                        f"generation: {persisted.generation}"
+                    )
+                self._release_dead_owner_locked(persisted, reason=dead)
 
         foreign_conflict = self._foreign_run_conflict(output_dir)
         if foreign_conflict is not None:
             raise RuntimeError(foreign_conflict)
+
+    @staticmethod
+    def _dead_owner_reason(record: RunRecord) -> str | None:
+        """Return why a nonterminal owner is provably gone, or ``None``.
+
+        DEFERRED D-2 / audit S7 **[verified against the tree]**: nothing in
+        this codebase ever deletes or repairs ``gui_launch_owner.json``.
+        :meth:`remove` and :meth:`clear` drop the in-memory record and leave
+        the file; :meth:`rehydrate_from_sandbox`'s downgrade is
+        ``persist=False``; and no ``unlink`` of that path exists anywhere in
+        ``src/``. So a SIGKILLed GUI leaves ``status: "running"`` on disk
+        permanently and :meth:`_assert_output_claimable_locked` refuses the
+        output forever, with no UI affordance to clear it.
+
+        **The liveness probe is imported, not rewritten.** Spec §4.1 makes
+        this record one of three liveness authorities, and P1 Task 5 already
+        taught the Q2 ladder to believe it only while the pid it names is
+        alive (``_run_state._process_is_alive``). A second probe here could
+        disagree with the ladder about the same pid -- two authorities for
+        one fact, which is the defect class this whole change exists to
+        remove. The import is function-local so that patching the ladder's
+        probe visibly moves this verdict too.
+
+        ``None`` -- refuse the claim -- for everything that is not *proof* of
+        death:
+
+        * a SLURM launch, whose liveness belongs to the scheduler and whose
+          ``pid`` is legitimately ``None``. These are the same modes
+          :meth:`rehydrate_from_sandbox` already excludes from its downgrade.
+        * a record carrying no ``pid`` and no pre-boot ``started_at``. A GUI
+          killed between :meth:`allocate` and :meth:`update_pid` is a real
+          state and is indistinguishable from a live owner within one boot.
+        * a live pid.
+
+        A pid recycled **within one boot** is a real but bounded risk, left
+        undefended on purpose: ``started_at`` records when the *registry
+        record* was created, which precedes the subprocess, so comparing it
+        against the process's own creation time does not discriminate a
+        recycled pid from the legitimate one. It would only look like it did.
+        """
+        from phenotypic.sdk_._run_state import _process_is_alive
+
+        if record.mode not in {"local", "validate"}:
+            return None
+        boot_time = _system_boot_time()
+        if boot_time is not None and record.started_at < boot_time:
+            # Nothing survives a reboot. This is the only arm that can
+            # retire a record carrying no pid at all.
+            return "it predates the current system boot"
+        pid = record.pid
+        if pid is None:
+            return None
+        if _process_is_alive(pid):
+            return None
+        return f"its owning process {pid} is no longer running"
+
+    def _release_dead_owner_locked(
+        self,
+        record: RunRecord,
+        *,
+        reason: str,
+    ) -> None:
+        """Persist a terminal downgrade for an owner whose process is gone.
+
+        **The replacement status is read off the tree, not asserted.** A GUI
+        killed after its CLI child finished owns a run that is *complete*,
+        and writing ``failed`` over it would put a second wrong answer where
+        the first one was. :meth:`_rehydrated_status` is this file's one
+        producer of "what does this output's own evidence say", and the
+        ladder underneath it already disbelieves the dead pid in the record
+        being replaced, so asking it here is not circular.
+
+        A verdict that is still nonterminal is written as ``failed``: an
+        ``incomplete`` run nothing is working on resolves to ``"unknown"``,
+        and ``"unknown"`` is nonterminal by
+        :func:`run_status_is_nonterminal`. The record has to land terminal or
+        the dead end survives its own repair.
+
+        The caller holds ``exclusive_path_lock`` on the owner record, so this
+        write cannot race another GUI's claim.
+        """
+        status, detail = self._rehydrated_status(record.output_dir)
+        if status not in _TERMINAL_STATUSES:
+            status = "failed"
+            detail = "no terminal publication evidence survives it"
+        repaired = replace(
+            record,
+            status=status,
+            pid=None,
+            terminal_at=datetime.now(timezone.utc),
+            status_detail=(
+                f"released a dead GUI launch generation ({reason}); {detail}"
+            ),
+            record_revision=record.record_revision + 1,
+        )
+        self._persist_record_locked(repaired)
+        logger.warning(
+            "Released a dead GUI launch generation for %s (%s); "
+            "its evidence reads %s.",
+            record.output_dir,
+            reason,
+            status,
+        )
 
     @staticmethod
     def _foreign_run_conflict(output_dir: Path) -> str | None:
