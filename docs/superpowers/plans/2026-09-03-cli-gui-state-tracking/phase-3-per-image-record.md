@@ -240,7 +240,7 @@ def consume_stage(
 > **`scheduler_epoch` is still a real name — on the reader side only.**
 > `RunIdentity.scheduler_epoch` (`sdk_/_state_types.py:79`) and
 > `_run_state._scheduler_epoch()` are live, and P4/P5 legitimately namespace
-> `measurement_shards/<scheduler_epoch>/` by that value. The withdrawal killed
+> `aggregation_shards/<scheduler_epoch>/` by that value. The withdrawal killed
 > the *rename of the writers*, not the reader's field. Do not "fix" those.
 >
 > This record's field is `lifecycle_epoch` because the value it carries already

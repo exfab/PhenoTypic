@@ -825,7 +825,7 @@ therefore does one pass over its images and produces both outputs.
 array task i ∈ [0, K):                          # aggregate + backfill
     for image in shard_i:
         read tables/measurements/table.parquet
-        ├─ append → measurement_shards/<scheduler_epoch>/shard_i.parquet
+        ├─ append → aggregation_shards/<scheduler_epoch>/shard_i.parquet
         └─ project metadata rows → certified re-promote
                                    → tables/metadata/pht-metadata.parquet
                                    → record stages.backfilled

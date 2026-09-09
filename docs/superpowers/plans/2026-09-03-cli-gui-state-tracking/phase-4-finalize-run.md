@@ -1251,7 +1251,7 @@ def finalize_run(output_dir, *, dataset_names, include_dataset_column=True,
     ``shard_paths`` is P5's fan-out hook: when supplied, step 2 merges those instead
     of reading the tables directly. It does not weaken INV-INPUTS, because the shards
     were themselves produced from authorized embedded tables **in this invocation**,
-    and ``measurement_shards/`` is emptied when fan-out begins, so a prior run's
+    and ``aggregation_shards/`` is emptied when fan-out begins, so a prior run's
     shards can never be merged.
     """
 ```
@@ -1268,7 +1268,10 @@ def finalize_run(output_dir, *, dataset_names, include_dataset_column=True,
 > shards merge into this one's master. Silently, and against the INV-INPUTS this
 > very paragraph invokes two lines earlier.
 >
-> **The ruling: empty `measurement_shards/` when fan-out begins.** Three options
+> **The ruling: empty `aggregation_shards/` when fan-out begins.** (Named
+> `measurement_shards` when this was written; renamed in P5 Task 1 `b8ef480f`,
+> because `measurement_shards` is `DIR_RECOMPILE_SHARDS` and already denotes two
+> live recompile paths.) Three options
 > went to the user; this one was chosen, and the two rejections are the
 > instructive part:
 >
