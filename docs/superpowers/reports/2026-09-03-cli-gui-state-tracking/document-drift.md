@@ -3735,3 +3735,202 @@ as though the exact field were missing from the marker.
 The generalisation, for Step-4-style verification anywhere in this change: **verify the
 identifier, not only the address.** For a claim shaped *"X reads Y at F:N"*, resolving
 `F:N` proves only that `F:N` exists and concerns X. Reading the line is what proves Y.
+
+---
+
+### Entry 72 — A CHECK THAT RESOLVES AN ADDRESS AND NEVER READS WHAT IS AT IT. 2026-09-09.
+
+**Kind: never true** — of the confidence a green result licenses. Three instances in one
+hour, at three layers, and the entry is the shape rather than any of them.
+
+**Instance 1 — the ledger gate.** `scripts/check_features_md.py` validates that every
+`✅ shipping` row's `Test ref` **resolves**: the file exists and defines a test of that
+name (`:164-180`). It does not run it. So `[features-check] OK (473 feature rows, 294
+shipping)` is compatible with a shipping row pointing at a **failing** test — which is the
+live state right now: P6-T1's Task 2 row cites
+`test_mutation_guard.py::test_inconsistent_results_layout_keeps_views_and_disables_mutations`,
+one of the failures that task is fixing. Both of us ran that gate green in the same hour
+and neither run was evidence about the row's subject.
+
+**Instance 2 — a `file:line` citation.** Entry 71: `:718` resolved, in the right function,
+in the right file, and the claim attached to it named the wrong key.
+
+**Instance 3 — a probe's own precondition.** The first curation-fence probe printed
+`aggregate_proof_is_current = True` with three `match=True` lines and never reached the
+curation those lines were supposed to bracket. The measurement resolved; it was a
+before-vs-before comparison printed twice.
+
+## The shape
+
+Every check has a **subject** and an **address**, and it is cheap to verify the address
+and expensive to verify the subject — so checks drift toward the cheap half and keep
+reporting in the vocabulary of the expensive one. `check_features_md.py` says `OK` and
+means *"the refs resolve"*; the reader hears *"the features work"*. A citation says
+`file.py:718` and means *"this line exists"*; the reader hears *"this claim is true"*.
+
+**A green address check is not weak evidence about the subject. It is no evidence about
+the subject**, and its danger is proportional to how much it looks like the check you
+wanted.
+
+## What distinguishes this from Entry 45
+
+Entry 45 (and its repeats) is **enumerating a class against a proxy**: the population
+measured is not the population meant. This is different — the population is right and each
+member is checked, but the *predicate* applied to each member is a weaker one than the
+claim being made.
+
+The two are easy to conflate and worth keeping apart, because the fixes differ. A proxy
+error is fixed by re-scoping the enumeration. An address/subject error cannot be fixed by
+scoping at all: the check has to do more work, or the claim has to be weakened to what
+the check actually establishes.
+
+Both happened today within the hour. A grep for `tests/….py::name` across FEATURES.md
+returned five apparently-dead refs which turned out to be prose in the file's history
+sections — the gate was right and the *measurement* was reading rows it was not scoped to.
+That one is Entry 45. The three above are not.
+
+## Disposition
+
+Not "make the gate run the tests" — a ledger gate that executed 294 tests would be the
+suite, and it is deliberately cheap so it can run on every PR.
+
+**Rename what it reports.** A gate whose output says `refs resolve` cannot be misread as
+`features pass`, and the two-line change costs nothing. The general form: **a check should
+report in the vocabulary of what it verified, never of what it was written for.**
+
+For citations, the rule from Entry 71 stands and generalises here: for a claim shaped
+*"X reads Y at F:N"*, resolving `F:N` proves only that `F:N` exists. Reading the line is
+what proves Y.
+
+For probes, the rule the second version of the curation probe now enforces: **an arm
+asserts its own precondition before measuring.** An arm that silently ran under the other
+condition produces a clean-looking number for a question nobody asked.
+
+---
+
+### Entry 73 — CURATING A RUN MAKES IT UNDISCOVERABLE, AND S2's FIX WAS NEVER CARRIED DOWN. 2026-09-09.
+
+**Kind: true but incomplete** — of audit S2's disposition. S2 established that GUI-owned
+mutable state must be excluded from a currency check, because its writer carries its own
+guard and comparing it against a frozen fingerprint makes the viewer report *its own
+writes* as external drift. That was applied to `snapshot_is_current()` and **not carried
+to the aggregate proof, which fences the same kind of file.** Nothing was false; a
+consequence was not followed.
+
+**The defect, measured end to end on a tree built by production publishers.** Marking one
+colony in the results viewer makes that run refuse to open, permanently, with no remedy
+in the message.
+
+```
+ARM FENCED  (success_markers_required == True)   -- as published
+  core_readable (before) = True     discover (before) = OK
+  curating 'a' object 1 as 'oversegmented'  -> curation WRITTEN
+  core_readable (after)  = False
+      master_parquet        match=True   1593 -> 1593
+      measurements_csv      match=False    89 -> 74
+      measurements_parquet  match=False  1593 -> 1570
+  discover (after) = ValueError: Core aggregate files are not authorized by a
+                     valid aggregate publication marker
+```
+
+The chain: `publish_aggregate_snapshot` fences three artifacts by size + sha256
+(`_cli_completion.py:1119-1122`) — the master **and both mirror files**.
+`CurationLabels._write_curated_mirror` rewrites two of the three
+(`_curation_labels.py:846,848`) and republishes nothing. `publish_aggregate_snapshot` has
+exactly two call sites, `_cli_finalize_run.py:484` and `sdk_/_hdf_to_zarr.py:746`, neither
+reachable from the GUI, and there is no recertify path under `src/phenotypic/gui/`.
+
+**Pre-existing, not introduced by this change.** The retired classifier computed
+`core_readable` the same way and `discover` raised at the same site with the same string.
+What is new is only that P6-T1's fixture is the first to set `success_markers_required`,
+so it is the first to reach the predicate's second disjunct at all.
+
+## The method note, which is the transferable half
+
+The probe ran **two arms differing only in `success_markers_required`**, and that is what
+turned a demonstration into a measurement:
+
+| | byte damage | `aggregate_proof_is_current` | `core_readable` | `discover` |
+|---|---|---|---|---|
+| FENCED | csv + mirror parquet | **False** | **False** | raises |
+| UNFENCED | csv + mirror parquet | **False** | **True** | OK |
+
+Identical damage, opposite outcomes. The proof breaks in **both** arms, so *the proof
+breaking is not the deciding term* — the divergence is entirely
+`state_requires_success_markers`. A single-arm probe would have established "the fence
+raises" and left "would a legacy tree also break?" open, which is the question that says
+how many existing trees are affected.
+
+**A control arm turns "X happens" into "X is caused by Y", and those have different
+consequences.** The first licenses a fix; only the second says who is affected.
+
+Two negatives worth recording, because both were live hypotheses:
+
+* **`_publish_if_current` does not save this.** Its CAS guard refuses a write when a
+  curation source changed; nothing had changed, so it wrote. `curation WRITTEN` in both
+  arms retires the "undocumented guard prevents it" hypothesis as *dead*, not unobserved.
+* **`master_parquet` is untouched in both arms.** The damage is exactly the two artifacts
+  the GUI is designed to rewrite — which is the whole shape of the finding rather than
+  incidental.
+
+## Severity is higher than "an exception is raised"
+
+* **The sidebar classifier consults neither `core_readable` nor the proof**
+  (`shell/_classifier.py`), so the directory still presents as viewer-openable. The
+  affordance says open; the open fails.
+* **The hub** turns it into an HTTP 400 carrying the raw string
+  (`shell/_routes.py:376-381`).
+* **The standalone launcher does not catch it at all** — `results_viewer/__main__.py:94`
+  lets the `ValueError` escape, so `python -m phenotypic.gui.results_viewer` fails to
+  start on a curated run.
+* **The message names no remedy**, unlike its neighbour in the same function, which ends
+  *"Re-run `python -m phenotypic` with the current version to regenerate the master."*
+* **The remedy that does exist costs the user work.** Re-running finalization republishes
+  the proof over current bytes and rewrites the mirror from the master, replacing the
+  curated bytes. `curation_labels.parquet` is not fenced and survives, so the labels are
+  not lost — but the curated mirror is regenerated uncurated, and the run is inaccessible
+  until the user runs the CLI again.
+
+## Disposition
+
+Argued separately and at length; the short form is that the aggregate proof has **two
+consumers asking different questions** — `resolve_run_state` asks *"did the CLI's
+finalization publish a complete set?"* and `core_readable` asks *"are these bytes safe to
+read now?"* — and one artifact is answering both. The mirror's dual ownership is what
+makes the difference visible. **After curation the claim the fence makes about the mirror
+is false, and no re-issued certificate can make it true**, which is why republishing from
+the GUI is the wrong shape.
+
+**Owed engineering item, its own task, red-first.** It touches
+`sdk_/_run_state.py:1131-1133` and `_cli_completion.py:1119-1122`, both live under other
+agents while P6 lands.
+
+## The probe's own two versions, and why 71, 72 and 73 are one thing
+
+The first version of this probe had **an arm whose label could be read two ways**:
+`force_schema3` was the parameter, so the arm printed `force success_markers_required =
+False` meaning *forcing disabled*, which reads equally well as *forced to False*. The
+logic was right — that arm was designed not to force, and did not — but a label with two
+readings is not a labelling problem. It meant the run could not say **which condition it
+had measured**, and it was read as the wrong one within minutes of being produced.
+
+Had `discover` not failed first for an unrelated reason, that arm would have printed a
+clean-looking result under a condition nobody could confirm. The second version names the
+arms for the state they run under and **asserts its own precondition** —
+`state_requires_success_markers(root)` compared against the arm's own claim — before
+measuring anything.
+
+**That is the same defect as entries 71 and 72, and stating it once is worth more than
+three separate lessons:**
+
+| | Verified | Reported as |
+|---|---|---|
+| **71** — a citation | the line exists at `F:N` | the claim about the identifier at `F:N` is true |
+| **72** — a ledger gate | 294 refs resolve | 294 features work |
+| **73** — a probe arm | a measurement ran | a measurement of *this condition* ran |
+
+Each verified something adjacent to its claim and reported in the claim's vocabulary. The
+common repair is not more checking; it is **making the report say what was actually
+established** — read the identifier, print `refs resolve`, assert the arm's condition. A
+check, a citation and an experiment are the same object here: something that licenses a
+conclusion, and can license the wrong one for free by describing itself generously.

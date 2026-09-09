@@ -282,7 +282,7 @@ confined to fixtures that write or assert the CSV.
 
 ## Still open, not blocking — raised for a later pass
 
-Neither of these changes what P0–P7 build. Both are recorded so they are visibly
+None of these changes what P0–P7 build. All are recorded so they are visibly
 *deferred* rather than unnoticed.
 
 ### O-1. `scheduler_epoch` may be five names collapsing to one owner, not five tokens to one
@@ -321,3 +321,161 @@ rest of the collapse is a follow-up.
 name, so `"stage_2"` reads as "stage 2 not done" and never errors. P3 Task 2 keeps the map
 open but shares `STAGE_*` constants between writer and reader, closing the typo class rather than reporting it. **Superseded by CAN-27.** The original wording proposed a `KNOWN_STAGES` frozenset and an advisory for
 an unrecognised key — surfacing the typo without closing the map.
+
+### O-3. Curating a run makes it undiscoverable — the aggregate proof fences two files the GUI owns
+
+**Status: established by measurement, not implemented. Owed task, red-first, after P6.**
+
+> ## Read this first: do NOT bump `AGGREGATE_PROOF_VERSION`
+>
+> The obvious implementation is "the proof's meaning changed, so bump the version". It is
+> worse than the bug. `_valid_aggregate_proof` returns `None` on a version mismatch
+> (`sdk_/_run_state.py:1122`), so a bump makes `aggregate_proof_is_current` `False` for
+> **every existing schema-3 tree on disk** → `core_readable` `False` → every run
+> undiscoverable until re-finalized. That converts a bug which fires when a user curates
+> into one that fires when a user **upgrades**, for everyone, with no action on their
+> part. The fix below needs no version change.
+
+#### The finding
+
+Marking one colony in the results viewer makes that run refuse to open, permanently, with
+no remedy in the message. Measured end to end on a tree built by production publishers —
+`docs/superpowers/plans/2026-09-03-cli-gui-state-tracking/curation_fence_probe.py`:
+
+```
+ARM FENCED  (success_markers_required == True)   -- as published
+  core_readable (before) = True     discover (before) = OK
+  curating 'a' object 1 as 'oversegmented'  -> curation WRITTEN
+  core_readable (after)  = False
+      master_parquet        match=True   1593 -> 1593
+      measurements_csv      match=False    89 -> 74
+      measurements_parquet  match=False  1593 -> 1570
+  discover (after) = ValueError: Core aggregate files are not authorized by a
+                     valid aggregate publication marker
+
+ARM UNFENCED (success_markers_required == False)
+  ... identical byte damage ...
+  core_readable (after)  = True      discover (after) = OK
+```
+
+The chain: `publish_aggregate_snapshot` fences three artifacts by size + sha256
+(`_cli_completion.py:1119-1122`) — the master **and both mirror files**.
+`CurationLabels._write_curated_mirror` rewrites two of the three
+(`_curation_labels.py:846,848`) and republishes nothing. `publish_aggregate_snapshot` has
+exactly two call sites, `_cli_finalize_run.py:484` and `sdk_/_hdf_to_zarr.py:746`, neither
+reachable from the GUI, and there is no recertify path under `src/phenotypic/gui/`.
+
+**Two arms, because the control is what makes this a measurement.** Identical byte damage,
+opposite outcomes; `aggregate_proof_is_current` goes `False` in **both**, so the proof
+breaking is not the deciding term — the divergence is entirely
+`state_requires_success_markers`. A single-arm probe would have shown the raise and left
+"would a legacy tree also break?" open, which is the question that says how many trees are
+affected.
+
+**Two hypotheses are dead, not merely unobserved:**
+
+* `_publish_if_current`'s CAS guard does **not** save this. It refuses a write when a
+  curation source changed; nothing had changed, so it wrote. `curation WRITTEN` in both
+  arms.
+* `master_measurements.parquet` is untouched in both arms. The damage is exactly the two
+  artifacts the GUI is *designed* to rewrite.
+
+**Pre-existing.** The retired classifier computed `core_readable` the same way and
+`discover` raised at the same site with the same string. What is new is only that P6-T1's
+fixture is the first to set `success_markers_required`, so it is the first to reach the
+predicate's second disjunct at all. **Nothing about P6 landing makes it worse**, which is
+why it is owed rather than in-scope.
+
+#### Disposition: unfence the mirror
+
+The aggregate proof has **two consumers asking different questions** — `resolve_run_state`
+asks *"did the CLI's finalization publish a complete set?"*, `core_readable` asks *"are
+these bytes safe to read now?"* — and one artifact answers both. The mirror's dual
+ownership is what makes the difference visible.
+
+**The deciding argument is the claim's truth value, not a principle about mutability.**
+The fence asserts *"these are the bytes finalization published"*. After a curation click
+that is **false, by design** — the curated mirror is intentionally not the CLI's output.
+The response to a certificate whose statement has become false is to stop making the
+statement.
+
+* **Rejected — GUI republishes the proof.** It makes the proof mean "the bytes as of the
+  last write by anyone", a weaker and *different* claim than the one the fence exists to
+  make, and it puts a publisher call on the GUI side of one-writer.
+* **Rejected — a second receipt certifying the current mirror.** That is a *provenance*
+  record, not an integrity fence, and the GUI already has one: `curation_labels.parquet`
+  is the durable authority for what changed. A receipt would be a third producer of that
+  fact.
+
+**This is audit S2's disposition not carried down one layer.** S2 excluded GUI-owned
+mutable state from `snapshot_is_current()` because its writer carries its own guard and a
+frozen fingerprint made the viewer report its own writes as external drift
+(`_output_root.py`'s docstring says so). The aggregate proof fences the same kind of file
+and never got the same treatment. That framing also predicts where else to look: **any
+other place this change froze a fingerprint over a file with a live second writer.**
+
+> **A trap for the implementer, from `gui/CLAUDE.md`'s "Master versus mirror" section.**
+> `OutputRoot.master_df` holds the **mirror** (23 read sites in `gui/`);
+> `clean_master_df` holds the **master** (4). Unfencing "the mirror" therefore stops
+> certifying the frame the viewer reads everywhere and keeps certifying the one it barely
+> touches. That is the correct outcome here — there is nothing true left to certify about
+> the curated mirror — but anyone implementing this without that section in front of them
+> will think they are unfencing the less important file.
+
+#### The shape of the fix — reader-side, no version bump
+
+`sdk_/_run_state.py:1131-1133` is:
+
+```python
+    for descriptor in outputs.values():
+        if fenced_artifact_path(output_root, descriptor) is None:
+            return None
+```
+
+**Keep writing all three descriptors; enforce only the CLI-owned one.** The proof stays a
+complete record of what finalization published — provenance worth having — while
+validation stops asserting a claim curation legitimately falsifies.
+
+> *Record what happened; enforce what must not change.*
+
+Being reader-side is not a stylistic preference: it **repairs trees already on disk with
+no migration**, which a writer-side change cannot do.
+
+**Rewrite `_cli_completion.py:1113-1118` in the same commit.** Its comment states the
+contract this fix falsifies — *"`valid_aggregate_snapshot` and the sdk_ reader both
+validate whatever the proof LISTS"*. Leaving it is a correction that leaves a false
+sentence behind it.
+
+#### Severity — higher than "an exception is raised"
+
+* **The sidebar classifier consults neither `core_readable` nor the proof**
+  (`shell/_classifier.py`), so the directory still presents as viewer-openable. The
+  affordance says open; the open fails.
+* **The hub** returns HTTP 400 carrying the raw string (`shell/_routes.py:376-381`).
+* **The standalone launcher does not catch it at all** — `results_viewer/__main__.py:94`
+  lets the `ValueError` escape, so `python -m phenotypic.gui.results_viewer` fails to
+  start on a curated run.
+* **The message names no remedy**, unlike its neighbour in the same function, which ends
+  *"Re-run `python -m phenotypic` with the current version to regenerate the master."*
+* **The remedy that exists costs the user work.** Re-running finalization republishes the
+  proof over current bytes and rewrites the mirror from the master, replacing the curated
+  bytes. `curation_labels.parquet` is not fenced and survives, so the labels are not lost
+  — but the run is inaccessible until the user runs the CLI again, which is a heavy price
+  for one click.
+
+#### Open, needs a user ruling — not answered here
+
+**Should the sidebar classifier consult `core_readable`?** Today it advertises as openable
+a directory that cannot be opened, and that is true independently of this fix: any
+`core_readable` `False` tree has the same gap. Making the classifier ask would remove the
+dead affordance, at the cost of putting a run-state read on the sandbox walk — which is
+the cost `_rehydrated_status` already pays elsewhere and which the boot walk is already
+documented as synchronous. **Left open deliberately; it is a UX decision, not a
+correctness one.**
+
+#### What the owed task needs
+
+The red test is the probe's FENCED arm, already written and committed beside this plan.
+Then the reader-side filter, the comment rewrite, and a decision on the open question
+above. It edits `sdk_/_run_state.py` and `_cli_completion.py`, so it needs its own commit
+and cannot share one with consumer-migration work.
