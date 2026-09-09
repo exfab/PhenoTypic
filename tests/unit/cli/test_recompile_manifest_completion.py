@@ -139,7 +139,12 @@ def _build_run(tmp_path: Path) -> Path:
     ):
         core.parent.mkdir(parents=True, exist_ok=True)
         core.write_bytes(b"aggregated")
-    publish_aggregate_snapshot(tmp_path)
+    # Both images: the stub core bytes stand for a master over the whole
+    # run, which is what makes `current_run_is_complete` True below and the
+    # invariant test non-vacuous.
+    publish_aggregate_snapshot(
+        tmp_path, source_work_ids=["work-measured", "work-empty"]
+    )
     assert current_run_is_complete(tmp_path) is True
     return tmp_path
 

@@ -19,8 +19,9 @@ clamp at all.
 from __future__ import annotations
 
 import math
-
 from pathlib import Path
+
+import pytest
 
 #: The cluster's real ``MaxArraySize``, from ``scontrol show config`` as
 #: recorded in ``spikes/RESULTS.md``. ``MaxSubmitJobs`` is 5,000 there and
@@ -209,4 +210,218 @@ def test_the_aggregation_shard_dir_does_not_collide_with_recompiles(
     assert recompile_shards not in shard_dir.parents
     assert shard_dir.is_relative_to(progress_dir(tmp_path)), (
         "aggregation shards are machine state and belong under .phenotypic/"
+    )
+
+
+# ---------------------------------------------------------------------------
+# The shard worker and the CAN-5 gate
+# ---------------------------------------------------------------------------
+#
+# Real stores throughout, via the promoted conftest helpers. The standing rule
+# from `test_finalize_run.py` binds here for the same reason it binds there:
+# a shard worker that was only ever handed a literal DataFrame would pass on
+# day one against code that never read an embedded table.
+
+
+def _fanout(tmp_path, *, shards: int, epoch: str | None = "epoch-1"):
+    """Start a fan-out and run every shard, returning the statuses."""
+    from phenotypic._cli._cli_finalize_fanout import (
+        begin_aggregation_fanout,
+        write_measurement_shard,
+        write_shard_status,
+    )
+
+    begin_aggregation_fanout(
+        tmp_path, scheduler_epoch=epoch, shards=shards, dataset_names=["plate"]
+    )
+    merged = []
+    for shard_id in range(shards):
+        work_ids = write_measurement_shard(
+            tmp_path, scheduler_epoch=epoch, shard_id=shard_id, shards=shards
+        )
+        write_shard_status(
+            tmp_path,
+            scheduler_epoch=epoch,
+            shard_id=shard_id,
+            source_work_ids=work_ids,
+        )
+        merged.append(work_ids)
+    return merged
+
+
+@pytest.mark.parametrize("shards", [1, 2, 3])
+def test_the_shards_partition_the_authorized_sources_exactly(
+    tmp_path: Path, shards: int
+) -> None:
+    """Every authorized image lands in exactly one shard, for every K.
+
+    Both halves matter and they fail differently: a **dropped** image is
+    missing measurements, a **duplicated** one is double-counted rows in the
+    master. A partition test that only checked the union would pass on the
+    second.
+    """
+    import polars as pl
+
+    from phenotypic._cli._cli_completion import authorized_measurement_sources
+    from phenotypic._cli._cli_finalize_fanout import collect_shard_paths
+    from .conftest import _publish_successful_images
+
+    _publish_successful_images(tmp_path, stems=["a", "b", "c"])
+    authorized = authorized_measurement_sources(tmp_path)
+    assert authorized and len(authorized) == 3, (
+        f"fixture produced {authorized}; the partition claim below would be "
+        "vacuous against an empty source set"
+    )
+
+    merged = _fanout(tmp_path, shards=shards)
+
+    flat = [work_id for shard in merged for work_id in shard]
+    assert sorted(flat) == sorted(set(flat)), (
+        f"an image landed in more than one shard: {flat}"
+    )
+    assert set(flat) == {"work-a", "work-b", "work-c"}, (
+        f"the shards did not cover every authorized image: {sorted(set(flat))}"
+    )
+
+    paths = collect_shard_paths(tmp_path, "epoch-1")
+    assert len(paths) == shards, (
+        "one Parquet per shard, including empty ones -- index K counts FILES "
+        f"against the carried K; got {paths}"
+    )
+    rows = sum(pl.read_parquet(path).height for path in paths if path.stat().st_size)
+    assert rows == 6, f"3 images x 2 objects should survive sharding, got {rows}"
+
+
+def test_a_shard_partition_is_stable_across_repeated_runs(
+    tmp_path: Path,
+) -> None:
+    """Assignment is deterministic, which is what makes the local master
+    byte-identical across ``--njobs`` (Task 3).
+
+    If the assignment could vary, two runs of identical data would produce
+    different masters and ``source_set_digest`` would certify nothing.
+    """
+    from phenotypic._cli._cli_completion import authorized_measurement_sources
+    from phenotypic._cli._cli_finalize_fanout import shard_sources
+    from .conftest import _publish_successful_images
+
+    _publish_successful_images(tmp_path, stems=["a", "b", "c"])
+    authorized = authorized_measurement_sources(tmp_path)
+    assert authorized, "no authorized sources; the comparison is vacuous"
+
+    first = [
+        sorted(shard_sources(authorized, shard_id=i, shards=2)) for i in range(2)
+    ]
+    second = [
+        sorted(shard_sources(dict(reversed(list(authorized.items()))), shard_id=i, shards=2))
+        for i in range(2)
+    ]
+    assert first == second, (
+        "shard assignment depended on dict iteration order, so the merge "
+        "order and therefore the master's bytes are not reproducible"
+    )
+
+
+def test_a_missing_shard_refuses_to_publish_rather_than_certifying_a_short_master(
+    tmp_path: Path,
+) -> None:
+    """CAN-5, at the writer.
+
+    The finalizer is ``afterany``, so it runs when a shard task dies, and
+    ``publish_aggregate_snapshot`` used to derive its source set from the
+    MARKERS rather than from what was merged. Without this check a master
+    missing a shard receives a proof asserting the full success set.
+
+    **K is carried, not counted**: the manifest says 3, and deleting a shard
+    file must be detected by comparing files against that carried 3 -- not
+    against ``len(glob(...))``, which is the number of files that happen to
+    exist and would compare the list against itself.
+    """
+    from phenotypic._cli._cli_finalize_fanout import (
+        resolve_finalizer_shard_inputs,
+    )
+    from phenotypic.sdk_ import aggregation_shard_dir
+    from .conftest import _publish_successful_images
+
+    _publish_successful_images(tmp_path, stems=["a", "b", "c"])
+    _fanout(tmp_path, shards=3)
+
+    shards = sorted(aggregation_shard_dir(tmp_path, "epoch-1").glob("shard_*.parquet"))
+    assert len(shards) == 3, f"fixture did not produce three shards: {shards}"
+    shards[1].unlink()
+
+    with pytest.raises(RuntimeError, match="shard"):
+        resolve_finalizer_shard_inputs(tmp_path, "epoch-1")
+
+
+def test_the_refusal_tells_the_user_what_to_do_next(tmp_path: Path) -> None:
+    """The finalizer is TERMINAL: by the time anyone reads this message the
+    job has exited, so a traceback containing the word 'shard' and no cue is
+    the whole of the user's information. Re-running the same command is the
+    documented recovery and must be *in the message*.
+    """
+    from phenotypic._cli._cli_finalize_fanout import (
+        resolve_finalizer_shard_inputs,
+    )
+    from phenotypic.sdk_ import aggregation_shard_dir
+    from .conftest import _publish_successful_images
+
+    _publish_successful_images(tmp_path, stems=["a", "b"])
+    _fanout(tmp_path, shards=2)
+    next(iter(sorted(aggregation_shard_dir(tmp_path, "epoch-1").glob("shard_*.parquet")))).unlink()
+
+    with pytest.raises(RuntimeError) as excinfo:
+        resolve_finalizer_shard_inputs(tmp_path, "epoch-1")
+    assert "re-run" in str(excinfo.value).lower()
+
+
+def test_no_manifest_means_no_fanout_rather_than_an_error(tmp_path: Path) -> None:
+    """``None`` is the ordinary local path, not a failure.
+
+    A run that never fanned out has no task manifest, and the finalizer must
+    aggregate the embedded tables directly exactly as it did before this
+    phase. Raising here would break every non-fan-out invocation.
+    """
+    from phenotypic._cli._cli_finalize_fanout import (
+        resolve_finalizer_shard_inputs,
+    )
+    from .conftest import _publish_successful_images
+
+    _publish_successful_images(tmp_path, stems=["a"])
+    assert resolve_finalizer_shard_inputs(tmp_path, "epoch-1") is None
+
+
+def test_fanout_start_empties_a_prior_invocations_shards(
+    tmp_path: Path,
+) -> None:
+    """§7.5 and the P2-close ruling: a prior run's shards can never be merged.
+
+    ``_scheduler_epoch`` returns ``None`` for every local run, so consecutive
+    local invocations share ONE shard directory and the namespace cannot carry
+    this guarantee. Clearing at fan-out start is what carries it -- and the
+    epoch used here is ``None`` deliberately, because that is the case the
+    namespace does not cover.
+    """
+    import polars as pl
+
+    from phenotypic._cli._cli_finalize_fanout import (
+        begin_aggregation_fanout,
+    )
+    from phenotypic.sdk_ import aggregation_shard_dir
+    from .conftest import _publish_successful_images
+
+    _publish_successful_images(tmp_path, stems=["a", "b"])
+    stale_dir = aggregation_shard_dir(tmp_path, None)
+    stale_dir.mkdir(parents=True, exist_ok=True)
+    ghost = stale_dir / "shard_0099.parquet"
+    pl.DataFrame({"Metadata_ImageName": ["GHOST.tif"]}).write_parquet(ghost)
+    assert ghost.is_file(), "the fixture planted no stale shard to clear"
+
+    begin_aggregation_fanout(
+        tmp_path, scheduler_epoch=None, shards=1, dataset_names=["plate"]
+    )
+
+    assert not ghost.exists(), (
+        "a prior local invocation's shard survived fan-out start and would be "
+        "merged into this run's master"
     )

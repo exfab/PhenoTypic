@@ -15,6 +15,7 @@ import os
 import shutil
 import uuid
 from pathlib import Path
+from collections.abc import Sequence
 from typing import (
     Any,
     Callable,
@@ -1430,6 +1431,8 @@ def _aggregate_measurements_unlocked(
     pipeline: Optional["ImagePipeline"] = None,
     no_qc: bool = False,
     study_config: Optional[dict] = None,
+    shard_paths: Optional[Sequence[Path]] = None,
+    planned_work_ids: Optional[Sequence[str]] = None,
     commit_guard: "CommitGuard | None" = None,
 ) -> Optional[Path]:
     """Finalize this run through the one aggregation + join + publish path.
@@ -1478,6 +1481,8 @@ def _aggregate_measurements_unlocked(
         metadata_csv=metadata_csv,
         no_qc=no_qc,
         study_config=study_config,
+        shard_paths=shard_paths,
+        planned_work_ids=planned_work_ids,
         commit_guard=commit_guard,
     )
 
@@ -1490,6 +1495,8 @@ def aggregate_measurements(
     pipeline: Optional["ImagePipeline"] = None,
     no_qc: bool = False,
     study_config: Optional[dict] = None,
+    shard_paths: Optional[Sequence[Path]] = None,
+    planned_work_ids: Optional[Sequence[str]] = None,
     commit_guard: "CommitGuard | None" = None,
 ) -> Optional[Path]:
     """Serialize aggregate publication across forward and recompile finalizers."""
@@ -1508,6 +1515,8 @@ def aggregate_measurements(
             pipeline=pipeline,
             no_qc=no_qc,
             study_config=study_config,
+            shard_paths=shard_paths,
+            planned_work_ids=planned_work_ids,
             commit_guard=commit_guard,
         )
 

@@ -274,6 +274,18 @@ def _run_finalize(
     metadata_csv_str = job_metadata.get(JobMetadataKey.METADATA_CSV)
     metadata_csv = Path(metadata_csv_str) if metadata_csv_str else None
 
+    # P5, CAN-19: this job is index K of its own array -- the reserved
+    # TASK_FINALIZE entry -- and indices 0..K-1 have aggregated the embedded
+    # tables into shards. `resolve_finalizer_shard_inputs` waits for them,
+    # refuses to proceed unless the shard set is complete, and hands back the
+    # source set the shards actually merged so the proof describes this
+    # master. `None` means this invocation never fanned out, which is the
+    # ordinary local path and not an error.
+    from ._cli_finalize_fanout import resolve_finalizer_shard_inputs
+
+    fanout_inputs = resolve_finalizer_shard_inputs(output_dir, slurm_generation)
+    shard_paths, planned_work_ids = fanout_inputs or (None, None)
+
     aggregate_path = aggregate_measurements(
         output_dir=output_dir,
         dataset_names=list(datasets_totals.keys()),
@@ -282,6 +294,8 @@ def _run_finalize(
         ),
         metadata_csv=metadata_csv,
         no_qc=bool(job_metadata.get(JobMetadataKey.NO_QC, False)),
+        shard_paths=shard_paths,
+        planned_work_ids=planned_work_ids,
     )
     if aggregate_path is None:
         message = "No current-epoch measurements were available to aggregate"

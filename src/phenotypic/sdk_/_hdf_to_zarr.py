@@ -712,6 +712,7 @@ def republish_aggregate(
         Whether an aggregate marker was published.
     """
     from phenotypic._cli._cli_completion import (
+        _current_success_work_ids,
         current_success_counts,
         publish_aggregate_snapshot,
     )
@@ -728,8 +729,23 @@ def republish_aggregate(
     counts = current_success_counts(output_dir)
     if counts is None or counts[0] == 0:
         return False
+    # `source_work_ids` is REQUIRED, and this site now says out loud what it
+    # used to inherit silently: the live success set is the right answer HERE.
+    # Migrate re-certifies deliverables that already exist over a tree it has
+    # just rewritten wholesale -- there is no master being built in this call
+    # for the proof to describe, so "everything currently authorized" is the
+    # set, not a stale stand-in for one. That is the opposite of the forward
+    # path, where a live derivation would let the proof assert images the
+    # master does not carry (flow-r3 C2). Making the parameter required is
+    # what forced this distinction to be stated rather than assumed.
     try:
-        publish_aggregate_snapshot(output_dir, commit_guard=commit_guard)
+        publish_aggregate_snapshot(
+            output_dir,
+            source_work_ids=_current_success_work_ids(
+                output_dir, state.config.get("work_ids", {})
+            ),
+            commit_guard=commit_guard,
+        )
     except (OSError, RuntimeError, ValueError):
         return False
     return True

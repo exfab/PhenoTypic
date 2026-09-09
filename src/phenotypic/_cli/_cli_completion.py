@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Mapping
@@ -1000,9 +1000,36 @@ def authorized_measurement_sources(
 def publish_aggregate_snapshot(
     output_dir: Path,
     *,
+    source_work_ids: Sequence[str],
     commit_guard: CommitGuard | None = None,
 ) -> Path:
-    """Publish marker-last integrity evidence for the canonical core snapshot."""
+    """Publish marker-last integrity evidence for the canonical core snapshot.
+
+    Args:
+        output_dir: Run output root.
+        source_work_ids: The source set the master being certified was built
+            from. **Required, deliberately, and not optional-with-a-live-
+            derive-fallback** (flow-r3 C2, flow-r4).
+
+            This value used to be re-derived here from the markers
+            (``_current_success_work_ids``). Under a rolling input more images
+            can succeed between the master being built and this proof being
+            written, so the master would hold ``planned`` while the proof
+            asserted ``authorized``, a strict superset -- **and no reader
+            could detect it**, because the reader compares proof-to-*live*
+            with the same predicate the writer used. Proof-to-master is
+            compared by nothing, before or after this change.
+
+            Making it required rather than defaulted is what puts the type
+            checker on the job of finding every caller. There are two in
+            shipped code and only one is ``finalize_run``; an optional
+            parameter would have left ``sdk_/_hdf_to_zarr.py`` on the old
+            live-derive behaviour, unmodified and unnoticed.
+        commit_guard: Publication guard threaded to the marker write.
+
+    Returns:
+        Path to the aggregate publication marker.
+    """
     from ._cli_state_management import load_processing_state
 
     state = load_processing_state(output_dir)
@@ -1040,7 +1067,6 @@ def publish_aggregate_snapshot(
         }
 
     work_ids = state.config.get("work_ids", {})
-    source_work_ids = _current_success_work_ids(output_dir, work_ids)
     # U-4: no `publication_id`. It was an opaque uuid4 whose only job was to
     # bind this proof to the run proof; the run proof now COPIES
     # `source_set_digest`/`source_image_count` from here instead, which states
@@ -1060,7 +1086,7 @@ def publish_aggregate_snapshot(
         ),
         "scientific_config_digest": state.config.get("pipeline_sha256"),
         "source_set_digest": canonical_digest(sorted(source_work_ids)),
-        "source_image_count": len(source_work_ids),
+        "source_image_count": len(set(source_work_ids)),
         "required_outputs": descriptors,
         "published_at": datetime.now(timezone.utc).isoformat(
             timespec="milliseconds"

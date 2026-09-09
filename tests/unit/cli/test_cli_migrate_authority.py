@@ -1084,7 +1084,9 @@ def test_aggregate_snapshot_replaces_only_inside_commit_guard(
     guard = _RejectingGuard()
 
     with pytest.raises(RuntimeError, match="guard rejected"):
-        publish_aggregate_snapshot(run, commit_guard=guard)
+        publish_aggregate_snapshot(
+            run, source_work_ids=["work-a"], commit_guard=guard
+        )
 
     assert guard.entries == 1
     assert not aggregate_publication_marker_path(run).exists()
@@ -1094,7 +1096,7 @@ def test_run_completion_replaces_only_inside_commit_guard(tmp_path: Path) -> Non
     """Run completion remains absent when its generation loses ownership."""
     run = tmp_path / "run"
     _install_completion_fixture(run)
-    publish_aggregate_snapshot(run)
+    publish_aggregate_snapshot(run, source_work_ids=["work-a"])
     guard = _RejectingGuard()
 
     with pytest.raises(RuntimeError, match="guard rejected"):
@@ -1114,7 +1116,7 @@ def test_compatible_run_completion_still_validates_commit_guard(
     """An idempotent completion return cannot bypass generation revocation."""
     run = tmp_path / "run"
     _install_completion_fixture(run)
-    publish_aggregate_snapshot(run)
+    publish_aggregate_snapshot(run, source_work_ids=["work-a"])
     completion = publish_run_completion_evidence(
         run,
         execution_epoch="generation",

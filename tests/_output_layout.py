@@ -451,7 +451,19 @@ def build_complete_run(
         frame = _fixture_measurements_frame(work_ids)
         write_master(output, frame)
         write_measurements_mirror(output, frame)
-        publish_aggregate_snapshot(output)
+        # The master was built from `work_ids` two lines up, so that is the
+        # set the proof asserts. Taken from the fixture's own data rather
+        # than re-derived from live state: a fixture that asked the tree what
+        # it currently authorizes could not build a run whose proof and master
+        # deliberately DISAGREE, which is what several readers are tested on.
+        publish_aggregate_snapshot(
+            output,
+            source_work_ids=[
+                work_id
+                for images in work_ids.values()
+                for work_id in images.values()
+            ],
+        )
     publish_run_completion_evidence(output, execution_epoch="local")
     return output
 
@@ -491,7 +503,19 @@ def extend_complete_run(root: Path, *, stem: str) -> Path:
     frame = _fixture_measurements_frame(work_ids)
     write_master(root, frame)
     write_measurements_mirror(root, frame)
-    publish_aggregate_snapshot(root)
+    # The EXTENDED set -- the master was just rewritten over it. A proof left
+    # on the pre-extension set would make this fixture build the stale tree
+    # that `test_partial_aggregate_becomes_stale_when_new_success_appears`
+    # constructs deliberately, and every caller of `extend_complete_run`
+    # expects a *current* run.
+    publish_aggregate_snapshot(
+        root,
+        source_work_ids=[
+            work_id
+            for images in work_ids.values()
+            for work_id in images.values()
+        ],
+    )
     publish_run_completion_evidence(root, execution_epoch="local")
     return root
 

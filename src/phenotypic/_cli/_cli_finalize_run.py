@@ -126,7 +126,7 @@ def build_master_frame(
     *,
     include_dataset_column: bool = True,
     shard_paths: Sequence[Path] | None = None,
-) -> tuple["pl.DataFrame | None", bool]:
+) -> tuple["pl.DataFrame | None", bool, dict[Path, str]]:
     """Concatenate this invocation's measurement sources into the master frame.
 
     Args:
@@ -138,8 +138,15 @@ def build_master_frame(
             instead of reading the sources directly.
 
     Returns:
-        ``(master_df, authorized)``. ``master_df`` is ``None`` when no source
-        could be read.
+        ``(master_df, authorized, path_to_dataset)``. ``master_df`` is ``None``
+        when no source could be read.
+
+        The third element is **the source set this call actually selected**,
+        returned rather than re-derived by the caller. ``finalize_run`` needs
+        it to publish an aggregate proof that describes the master it just
+        wrote; asking ``authorized_measurement_sources`` a second time would
+        make the proof and the master answers to two different questions
+        asked at two different moments, which is flow-r3 C2 exactly.
     """
     import polars as pl
 
@@ -159,8 +166,12 @@ def build_master_frame(
     if shard_paths is not None:
         frames = [pl.read_parquet(path) for path in shard_paths]
         if not frames:
-            return None, authorized
-        return pl.concat(frames, how="diagonal_relaxed"), authorized
+            return None, authorized, path_to_dataset
+        return (
+            pl.concat(frames, how="diagonal_relaxed"),
+            authorized,
+            path_to_dataset,
+        )
 
     # -- Stage to $SCRATCH ---------------------------------------------
     scratch_dir = _stage_to_scratch(list(path_to_dataset.keys()))
@@ -197,8 +208,12 @@ def build_master_frame(
         _cleanup_scratch(scratch_dir)
 
     if master_df is None:
-        return None, authorized
-    return add_metadata_image_name_from_filename(master_df), authorized
+        return None, authorized, path_to_dataset
+    return (
+        add_metadata_image_name_from_filename(master_df),
+        authorized,
+        path_to_dataset,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -304,6 +319,7 @@ def finalize_run(
     no_qc: bool = False,
     study_config: dict | None = None,
     shard_paths: Sequence[Path] | None = None,
+    planned_work_ids: Sequence[str] | None = None,
     commit_guard: "CommitGuard | None" = None,
 ) -> Path | None:
     """Aggregate, join, publish -- one path for ``full``, ``measure`` and ``recompile``.
@@ -340,8 +356,15 @@ def finalize_run(
     ``shard_paths`` is P5's fan-out hook: when supplied, step 2 merges those
     instead of reading the tables directly. It does not weaken INV-INPUTS,
     because the shards were themselves produced from authorized embedded
-    tables **in this invocation**, and ``measurement_shards/`` is emptied
-    when fan-out begins, so a prior run's shards can never be merged.
+    tables **in this invocation**, and ``aggregation_shards/<epoch>/`` is
+    emptied by
+    :func:`~phenotypic._cli._cli_finalize_fanout.begin_aggregation_fanout`
+    when fan-out begins -- at submission on SLURM, at driver start locally,
+    and never at merge time -- so a prior run's shards can never be merged.
+
+    The directory is ``aggregation_shards``, not ``measurement_shards``: that
+    name is :data:`~phenotypic.sdk_.DIR_RECOMPILE_SHARDS` and already denotes
+    two different live paths.
 
     Args:
         output_dir: Run output root.
@@ -356,6 +379,11 @@ def finalize_run(
         no_qc: Skip the QC compute step.
         study_config: REMBI Study-level fields forwarded to the manifest.
         shard_paths: P5's pre-merged measurement shards.
+        planned_work_ids: The source set the shards recorded merging, from
+            :func:`~phenotypic._cli._cli_finalize_fanout.resolve_finalizer_shard_inputs`.
+            ``None`` on the non-fan-out path, where the set is taken from the
+            sources this call itself selected -- the same moment the master
+            was built from, so the proof still describes the master.
         commit_guard: Publication guard threaded to every terminal write.
 
     Returns:
@@ -375,7 +403,7 @@ def finalize_run(
     )
 
     output_dir = Path(output_dir)
-    master_df, authorized = build_master_frame(
+    master_df, authorized, aggregated_sources = build_master_frame(
         output_dir,
         dataset_names,
         include_dataset_column=include_dataset_column,
@@ -431,8 +459,23 @@ def finalize_run(
 
     if authorized:
         from ._cli_completion import publish_aggregate_snapshot
+        from ._cli_finalize_fanout import _work_ids_for_sources
 
-        publish_aggregate_snapshot(output_dir, commit_guard=commit_guard)
+        # The proof describes the master that was just written, and says so by
+        # being GIVEN that master's source set rather than re-deriving one.
+        # On the fan-out path the shards recorded what they merged; otherwise
+        # it is the set this call selected a few lines above. Either way it is
+        # the set the master came from, at the moment the master came from it.
+        source_work_ids = (
+            list(planned_work_ids)
+            if planned_work_ids is not None
+            else _work_ids_for_sources(output_dir, aggregated_sources)
+        )
+        publish_aggregate_snapshot(
+            output_dir,
+            source_work_ids=source_work_ids,
+            commit_guard=commit_guard,
+        )
         # AFTER the proof, so "invalidate on success" is literal. Publication
         # can still raise here -- a tree with no current state, an artifact
         # that moved -- and invalidating first would destroy the previous

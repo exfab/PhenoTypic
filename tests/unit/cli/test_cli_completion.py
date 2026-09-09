@@ -141,7 +141,9 @@ def test_aggregate_and_run_markers_reject_mixed_core_bytes(tmp_path: Path) -> No
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(f"core-{index}".encode())
 
-    publish_aggregate_snapshot(tmp_path)
+    # One image in the run, so the stub core files stand for a master
+    # covering exactly it.
+    publish_aggregate_snapshot(tmp_path, source_work_ids=["work-a"])
     assert valid_aggregate_snapshot(tmp_path) is not None
     assert current_run_is_complete(tmp_path) is True
     run_marker = publish_run_completion_evidence(
@@ -208,7 +210,13 @@ def test_partial_aggregate_becomes_stale_when_new_success_appears(
     ):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(f"partial-{index}".encode())
-    publish_aggregate_snapshot(tmp_path)
+    # `work-a` ALONE, and this is the whole test. The state declares both
+    # `work-a` and `work-b` from the start, but only `a` has a published
+    # record here, so the partial aggregate covers only `a`. Passing both --
+    # the mechanical repoint -- would make the aggregate already claim `b`,
+    # the assertion below would flip to False, and the staleness this test
+    # exists to detect could never be observed.
+    publish_aggregate_snapshot(tmp_path, source_work_ids=["work-a"])
     assert current_aggregate_is_current(tmp_path) is True
 
     b_path = measurements_dir / "b.parquet"

@@ -145,7 +145,11 @@ as a baseline. The suite is ~65 minutes, not two — so it is a Slurm job
   an append-only ledger. After a Stage-2 timeout, the controller derives remaining work
   from complete Stage-2 signals and submits another round. No worker signal handler or self-requeue
   is used. Without `--wait`, the CLI reports submission only; the dependent finalizer is
-  the sole publisher of aggregated outputs and the completion marker.
+  the sole publisher of aggregated outputs and the completion marker. **P5 does not
+  change that.** The forward run's dependent finalizer becomes a `0-K` array whose
+  indices `0..K-1` aggregate measurement shards and whose index K is the reserved
+  `TASK_FINALIZE` entry — running the same command it always ran. The finalizer is
+  still the sole publisher; it now has K helpers that publish nothing.
   Staged GPU flags (Spec 1 §10):
     - `--gpu-slurm key=value` — Stage-2 GPU SBATCH profile; **inherits/deltas over
       `--slurm`** (put a separate GPU partition/account here); auto-adds
