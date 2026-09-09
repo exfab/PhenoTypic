@@ -46,7 +46,7 @@ written at promote time (P4 Task 2). Shard workers **aggregate only**:
 array task i ∈ [0, K):                          # aggregate
     for image in shard_i:
         read tables/measurements/table.parquet
-        └─ append → measurement_shards/<scheduler_epoch>/shard_i.parquet
+        └─ append → aggregation_shards/<scheduler_epoch>/shard_i.parquet
 
 array task K (TASK_FINALIZE, dependent):        # reduce
     merge shard_*.parquet → master_measurements.parquet
@@ -72,7 +72,7 @@ proof. There is no aggregated-not-backfilled state, because there is no backfill
 | **Create** `src/phenotypic/_cli/_cli_finalize_fanout.py` | Shard-count sizing, shard worker body, local process-pool driver. ~200 lines. |
 | **Modify** `src/phenotypic/_cli/_cli_finalize_run.py` | Accept `shard_paths`; merge instead of concat when supplied. |
 | **Modify** `src/phenotypic/_cli/_cli_slurm_array_scripts.py:30` | Add the finalize trigger beside `_CHECKPOINT_SENTINEL` and `_MANIFEST_SENTINEL`. |
-| **Modify** `src/phenotypic/sdk_/_io_constants.py` | `measurement_shard_dir(output_dir, scheduler_epoch)`. **The name is deliberate — see the note below.** |
+| **Modify** `src/phenotypic/sdk_/_io_constants.py` | `aggregation_shard_dir(output_dir, scheduler_epoch)`. **Renamed from `measurement_shard_dir` in Task 1 (`b8ef480f`)** — `measurement_shards` is `DIR_RECOMPILE_SHARDS` and already denotes two different live paths. |
 | **Test** `tests/unit/cli/test_finalize_fanout.py` *(new)* | Sizing, epoch namespacing, partial-failure matrix. |
 | **Test** `tests/unit/cli/test_array_auxiliary_routing.py` *(new)* | **The rule from `_cli/CLAUDE.md`: no standalone parallel job.** |
 
@@ -99,7 +99,7 @@ proof. There is no aggregated-not-backfilled state, because there is no backfill
 > let the real defect through: a live name with a `None` half is not a live
 > *value*, and only a live value supports a namespacing guarantee.
 
-> ### ⚠ REQUIRED (user-ruled at P2 close): empty `measurement_shards/` when fan-out begins
+> ### ⚠ REQUIRED (user-ruled at P2 close): empty `aggregation_shards/` when fan-out begins
 >
 > **The namespacing guarantee does not hold locally, so the fan-out must clear
 > the directory instead.**
@@ -113,7 +113,7 @@ proof. There is no aggregated-not-backfilled state, because there is no backfill
 >
 > #### What to build
 >
-> **Empty `measurement_shards/` at fan-out start — on both paths, at the same
+> **Empty `aggregation_shards/` at fan-out start — on both paths, at the same
 > logical point.** No per-invocation token: that would take the state-artifact
 > budget from four to five, which P7 Task 6's register calls a design
 > regression.
@@ -144,7 +144,7 @@ proof. There is no aggregated-not-backfilled state, because there is no backfill
 > #### What is still unverified, and it is yours to resolve
 >
 > **What the local driver actually passes is not established.** The file table
-> names the parameter (`measurement_shard_dir(output_dir, scheduler_epoch)`) and
+> names the parameter (`aggregation_shard_dir(output_dir, scheduler_epoch)`) and
 > not the caller, so this plan may already intend a different value locally. The
 > defect stands either way — a namespacing guarantee whose key is `None` on half
 > its paths has to say what it uses there — but confirm the caller before
@@ -192,10 +192,10 @@ def test_shards_are_namespaced_by_scheduler_epoch(tmp_path):
     """§7.5: measurement shards are per-invocation scratch, so a prior run's shards
     can never be merged. Recompile already does this
     (recompile/attempts/<attempt_id>/...); the pattern generalises."""
-    from phenotypic.sdk_ import measurement_shard_dir
+    from phenotypic.sdk_ import aggregation_shard_dir
 
-    a = measurement_shard_dir(tmp_path, "epoch-a")
-    b = measurement_shard_dir(tmp_path, "epoch-b")
+    a = aggregation_shard_dir(tmp_path, "epoch-a")
+    b = aggregation_shard_dir(tmp_path, "epoch-b")
     assert a != b
     assert a.parent == b.parent
 ```
@@ -359,7 +359,7 @@ for one dispatch pattern is the cardinality problem this whole change is about.
 
 The shard worker body is one pass over its images: read
 `tables/measurements/table.parquet`, append to
-`measurement_shards/<scheduler_epoch>/shard_i.parquet`. Nothing else — no store write, no
+`aggregation_shards/<scheduler_epoch>/shard_i.parquet`. Nothing else — no store write, no
 metadata projection (D-A), no global frame.
 
 `TASK_FINALIZE` calls `finalize_run(..., shard_paths=[...])` — **and refuses to publish
@@ -367,7 +367,7 @@ unless the shard set is complete (CAN-5).** Two checks, each stated carefully, b
 obvious form of both is vacuous (flow-r2 C3):
 
 1. **It received exactly K shard files, where K is *carried*, not counted.** If
-   `TASK_FINALIZE` globs `measurement_shards/<epoch>/` to build `shard_paths`, then
+   `TASK_FINALIZE` globs `aggregation_shards/<epoch>/` to build `shard_paths`, then
    `len(shard_paths)` is the number of files that happen to exist and "exactly K" compares
    the list against itself. **K comes from the task payload**, written at planning time. The
    precedent already exists in this codebase: `"expected_non_finalizer_tasks": len(tasks)`
@@ -564,11 +564,11 @@ def test_a_prior_epochs_shards_are_never_merged(tmp_path):
     import polars as pl
 
     from phenotypic._cli._cli_finalize_run import finalize_run
-    from phenotypic.sdk_ import master_measurements_parquet_path, measurement_shard_dir
+    from phenotypic.sdk_ import master_measurements_parquet_path, aggregation_shard_dir
 
     _publish_two_successful_images(tmp_path)
 
-    stale = measurement_shard_dir(tmp_path, "old-epoch")
+    stale = aggregation_shard_dir(tmp_path, "old-epoch")
     stale.mkdir(parents=True)
     pl.DataFrame({"Metadata_ImageFile": ["GHOST.tif"]}).write_parquet(
         stale / "shard_0000.parquet"
@@ -600,7 +600,7 @@ def test_a_missing_shard_refuses_to_publish_rather_than_certifying_a_short_maste
 
 **Say what a user does after this fires (flow-r4).** A dead shard task gives `RuntimeError`
 → no proof → no completion marker, and the documented recovery — re-run the same command —
-plans a fresh epoch's shards. `measurement_shard_dir` is epoch-namespaced, so the stale
+plans a fresh epoch's shards. `aggregation_shard_dir` is epoch-namespaced, so the stale
 shards are not in the way and this is not a deadlock. But the finalizer is **terminal**: the
 user sees a traceback containing the word "shard" from a job that has already exited, with
 no cue that re-running is the answer. Put that cue in the error message itself, not only

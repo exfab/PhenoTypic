@@ -2508,3 +2508,399 @@ has no correct literal value, only a correct method. Where a count must appear, 
 worked example of the method and must be labelled as one; where it appears as a fact, it is
 false on save. The test is mechanical — *would appending to this file change this number?*
 If yes, the number does not belong in the file.
+
+---
+
+### Entry 54 — A FAILURE MESSAGE THAT NAMES A CAUSE IT CANNOT OBSERVE. 2026-09-08.
+
+**Kind: never true.** Pre-existing, not this change's to fix, and recorded because it is a
+variant the register has no instance of yet.
+
+`test_transition_fifo_evidence_is_rejected_without_blocking` fails under `-n auto` with:
+
+```
+Failed: FIFO receipt blocked recovery discovery
+```
+
+Nothing blocked. What the test measures is:
+
+```
+assert ready.is_file(), "FIFO recovery probe did not finish importing"   # PASSED
+process.wait(timeout=1.0)                                                # TimeoutExpired
+```
+
+— *"the subprocess did not exit within 1.0 s"*. It cannot distinguish a blocking `open()` on
+the FIFO from an interpreter descheduled under 16-way xdist load, and it reports the first
+with certainty.
+
+**The variant.** The register already carries *a check accurate about what it measured and
+silent about what it could not reach* (10, 12, 13, 21, 27, 28, 30-34, 36, 37, 40, 46). Every
+one of those under-reports. This one **over-reports**: the message names a **cause**, not a
+symptom, so a reader who trusts it is pointed at FIFO handling and at
+`_cli_recompile_recovery` — the wrong subsystem entirely. An under-reporting check wastes a
+reader's time; an over-reporting one spends it in the wrong file.
+
+**And it is invisible where anyone would look.** Serial runs never trip the 1.0 s window, so
+the defect appears only under parallel load, which is where a reader is least likely to
+suspect the assertion and most likely to suspect their own change.
+
+**It nearly did exactly that.** The first hypothesis when this fired was that P5 Task 2
+caused it, and the hypothesis was *specific* rather than vague: `_cli_completion` is a Task 2
+file and **is** in the probe's import chain — 459 modules, 4.4 s cold. What refuted it was
+going to the assertion rather than to the plausibility: `ready` is written **after** the
+import completes, and `ready.is_file()` passed. So the import finished inside its 15 s budget
+and import cost — the only channel by which a Task 2 file could reach this test — is
+excluded. Three independent legs, none load-bearing alone: the import gate passed; it fails
+only under load (2 of 3 loaded runs, 0 of 1 serial); and the diff touches neither
+`_cli_recompile_recovery` nor any FIFO handling.
+
+**The rule.** A message may name only what the check observed. *"The process did not exit
+within 1.0 s"* is true and diagnostic; *"a FIFO blocked recovery discovery"* is an inference
+presented as a measurement, and it survives precisely because it sounds like a finding. The
+register's standing question — *what would this have looked like if it had failed?* — needs
+its complement here: **what else would have looked exactly like this?**
+
+**Owed, not fixed:** the fix is a message naming the timeout, and a timeout budget that
+survives xdist load or a marker that excludes the test from it. Out of P5's scope.
+
+---
+
+### Entry 55 — THE HOUSE PATTERN WAS DOCUMENTED, AND NEW CODE REACHED PAST IT. 2026-09-08.
+
+**Kind: rule written without checking compliance** — where the rule already existed, with
+its reasoning recorded at the call site, and was never consulted. The cost was not a style
+inconsistency: it was a **ten-minute hang that no gate in this plan could have reported.**
+
+`run_local_aggregation_fanout` used `ProcessPoolExecutor`. On Linux that defaults to
+**fork**, and `fork()` copies only the calling thread, so any lock held by another thread at
+that instant is copied in the **held** state into a child where nothing releases it.
+Measured at the ten-minute mark:
+
+```
+pid 3719060  pytest parent   state=S   threads=82   13 open pipes
+pid 3727680  child           state=S   threads=1
+pid 3727689  child           state=S   threads=1
+```
+
+Eighty-two threads — numpy/OpenMP pools, polars, pytest's own capture machinery holding
+locks around I/O. Two children, both parked at start.
+
+**The pattern that would have prevented it is three files away and explains itself.**
+`_cli_overlay_rendering.py:165-180` is the same function shape:
+`resolve_local_worker_count` → a `workers == 1` short-circuit → a **`ThreadPoolExecutor`**.
+The new code already used the same helper and the same short-circuit *with the same
+justification*, and diverged only at the executor. And the choice is documented, at
+`phenotypicCLI.py:3156-3160`:
+
+> *"Threading rather than multiprocessing because the heavy ops … all release the GIL, and
+> per-image memory is large enough that fan-out to processes risks exhausting RAM."*
+
+Both halves carry to aggregation shards, the second harder: polars releases the GIL and is
+internally multithreaded, so processes buy nothing threads do not already have, while S-3
+measured 2.5 GB peak RSS for N=6,529 in **one** process — N processes each materialising a
+slice is precisely the multiplication that comment warns about.
+
+**The search that would have found it was one `grep`**, on the helper the new code was
+already calling. Before this change the project contained exactly **one**
+`ProcessPoolExecutor` (`detect/_filfinder_detector.py:104`); every other pool in `src/`,
+seven of them, is a `ThreadPoolExecutor`.
+
+## The second finding: a hang is the absence of a statement
+
+Recorded here rather than separately because it is what made the first one expensive.
+
+A failing gate says `failed`. An aborted collection says `Interrupted` (entry 46). **A hang
+says nothing** — no pass, no fail, no summary line — so every check that greps for `failed`
+or parses `N passed` reads it as *no failures*. It cost ten minutes here; on a Slurm shard it
+costs the whole wall clock and surfaces as a scheduler timeout with no failing test name.
+
+**It defeats the guard settled two entries earlier.** Entry 46 adopted
+`p4_finalize_run.py`'s **green-baseline refusal** as covering both a red baseline and an
+empty collection. It covers neither case here: that refusal is evaluated on a run that
+*completed*. **Two guards were specified — one against a wrong answer, one against an absent
+answer — and neither covers an answer that never arrives.** Every gate in this change needs a
+wall-clock bound as well as a verdict check.
+
+**Three details of the fix, because only the first is the fix.**
+
+1. **`ThreadPoolExecutor`**, matching the house pattern. The deadlock disappears rather than
+   being configured around: there is no fork, so there is no inherited-lock hazard.
+   `spawn` would also have worked, by paying a whole extra mechanism to avoid a hazard one
+   can simply not create.
+2. **A per-shard timeout naming the shard**, which converts a recurrence from a hang into a
+   failure with a name. Not the fix — a correctness fix that leaves the failure mode silent
+   has fixed one instance and none of the class.
+3. **`pool.shutdown(wait=False, cancel_futures=True)` in a `finally`, not a `with` block.**
+   A stuck *thread* cannot be killed, and `with` performs `shutdown(wait=True)` on exit —
+   which would block on it forever and turn the timeout in (2) straight back into the hang
+   it exists to prevent. The thread version has this hazard and the process version did not,
+   so porting the fix without porting this would have preserved the symptom while appearing
+   to remove it.
+
+**The general form:** *a gate's contract includes terminating.* The register's standing
+questions are now three — *what would this have looked like if it had failed?* (27), *what
+else would have looked exactly like this?* (54), and **what would this have looked like if
+it had never answered?** — because that last outcome is indistinguishable from success to
+every output-parsing gate ever written.
+
+**And the smaller lesson, which is the cheaper one:** before reaching for a more powerful
+primitive, grep for the helper you are already calling. The pattern, its rationale, and the
+reason not to use processes were all sitting at the other call site of
+`resolve_local_worker_count`.
+
+---
+
+### Entry 56 — A DOCSTRING THAT JUSTIFIED THE DEFECT IT INTRODUCED. 2026-09-09.
+
+**Kind: never true.** `shard_sources` assigned sources to shards by **stride**
+(`index % K == shard_id`) and defended the choice in its own docstring:
+
+> *"strided rather than blocked so an uneven tail does not land entirely on one worker."*
+
+That is true of **naive** blocking — `chunk = ceil(n/K)`, remainder piled on the last shard.
+It is false of a **balanced** block split (the first `n % K` shards take one extra), whose
+spread is identical to the stride's. Measured across `(n, K)` of (3,2), (10,2), (10,3),
+(10,4), (7,3) and (6529,8):
+
+```
+balance spread:  stride <= 1,  block <= 1        (identical)
+merge ordered:   stride False, block True        (every case)
+```
+
+**So the stride bought nothing and cost an invariant.** The finalizer merges shards by sorted
+filename, so a non-contiguous assignment makes the master's row order a function of K:
+
+```
+ten sources, merged in shard order
+  K=1  ->  abcdefghij      K=3  ->  adgjbehcfi
+  K=2  ->  acegibdfhj      K=4  ->  aeibfjcgdh
+```
+
+Two runs of identical data producing different masters, with `source_set_digest` certifying a
+byte sequence that depended on the worker count.
+
+**It was not a local-only defect, and the phase structure hid that.** The SLURM path merges by
+the same sorted glob and used the same `shard_sources`, so it had the bug identically —
+latent only because `shard_count` returns 1 below N ~= 34,600, which is above anything run so
+far. It was introduced in Task 1/2 and found by Task 3's test, which was the first instrument
+sensitive enough to see it. **A defect confined to one path by accident of scale is not a
+defect of that path.**
+
+**The register has no instance of this shape: two accurate statements whose conjunction is
+false.** Every other entry here is a single claim that is wrong. Here, both ends were
+individually defensible and each documented itself correctly:
+
+| Site | Said | True? |
+|---|---|---|
+| `shard_sources` | strided assignment, balanced across workers | balanced: **yes** |
+| `collect_shard_paths` | *"a re-run of identical inputs produces byte-identical master bytes"* | at a **fixed K**: yes |
+
+`collect_shard_paths` is *true but incomplete* in the register's own taxonomy: it states the
+determinism that holds and is silent on the axis along which it fails — identical inputs at a
+**different K**. And that unmentioned axis is exactly the guarantee Task 3's test existed to
+check. A reader auditing byte-identity would have read that sentence, found it accurate, and
+stopped.
+
+**Neither file was the place a reader would look for the other's assumption**, which is why
+reading either alone could not find it. That is the mechanism, and it dictated the fix:
+all three sites — the assignment, the ordering, and the concatenation in
+`_cli_finalize_run.py` — now **name the dependency they rest on and point at each other**.
+`collect_shard_paths` says in terms that its ordering means nothing if the assignment stops
+being contiguous.
+
+**Three further things made it nearly invisible, and the third is the transferable one.**
+
+1. It contradicted the precedent this phase claims to generalise. Recompile's `_chunk_paths`
+   (`_cli_recompile_slurm_scripts.py:662`) slices **contiguously**. The stride diverged from
+   the very pattern it was written to reuse — the same shape as entry 55, one task later.
+2. The docstring made the wrong choice look considered. A bare `%` would have invited the
+   question; a stated rationale closes it. **A justification is not evidence, and a wrong one
+   is worse than none** — it converts a reviewer's question into a settled matter.
+3. **The end-to-end test caught it by luck of fixture size.** `test_local_fanout_produces_a_
+   byte_identical_master` parametrizes `njobs in {1, 2, 8}` over **three** sources. `njobs=8`
+   clamps to K=3, where the stride degenerates to one source per shard and *is* sorted;
+   `njobs=1` is trivially sorted. So it passed at both ends and failed only in the middle. A
+   fixture of two sources would have made `[2]` and `[8]` identical and hidden which knob
+   mattered; a fixture of four would have failed both and looked like a different bug.
+
+**The fix is structural, not restorative**, and the distinction was the ruling. The
+alternative — keep the stride, sort after merging — also produces a correct master, but it
+puts the guarantee in the **merge step**, so any other route that merges shards reintroduces
+the bug. And another route exists: recompile hands its own shards to the same
+`build_master_frame`. A balanced contiguous split makes *"shard order equals sorted order"*
+true **by construction**, in the decomposition, where every merger inherits it.
+
+**And the replacement test does not depend on fixture luck.** A pure-function grid over
+`(n_sources, shards)` — 30 cases — asserts merged-order-equals-sorted-order, no drops or
+duplicates, and a size spread of at most 1. The end-to-end test stays, but it is no longer
+the only thing standing between this invariant and silence.
+
+---
+
+### Entry 57 — A PAGER THAT DESTROYED THE EXIT STATUS IT WAS ADDED TO READ. 2026-09-09.
+
+**Kind: never true**, of what the shell idiom claims to report. It occurred **while running
+the gate for entry 55**, whose subject is checks that report something other than what they
+appear to.
+
+Entry 55 established that every gate in this change needs a wall-clock bound, so command 1
+was issued as:
+
+```bash
+timeout 300 uv run pytest … ; echo "exit=$?"
+```
+
+Run with a pager appended to see the output, it became:
+
+```bash
+timeout 300 uv run pytest … | tail -12 ; echo "exit=$?"
+```
+
+which reported **`exit=0`** while pytest had failed. `$?` after a pipeline is the **last**
+command's status — `tail`'s — and `tail` succeeds whatever it is fed.
+
+**The failure is silent and inverted.** It does not garble the status, it replaces it with a
+success. The un-piped form reports `exit=1` correctly, so the check was sound as specified
+and destroyed by a change made *to inspect its output* — the least suspicious kind of edit
+there is.
+
+**It is entry 21's shape at one more remove.** Entry 21 recorded an operator's own tooling
+producing a sample that could only say one thing. This is the operator's tooling producing a
+sample that says the **opposite** thing, introduced by a habit — piping to a pager — that has
+no relationship to the property under test and no visible effect on the output.
+
+**The rule, and it is mechanical:** `$?` reports the pipeline's last stage. If a status is
+being read, nothing may follow the command; capture to a file and read the file instead, or
+use `PIPESTATUS[0]`. Concretely, for any gate in this change:
+
+```bash
+timeout 300 <cmd> > /tmp/gate.log 2>&1; echo "exit=$?"; tail -12 /tmp/gate.log
+```
+
+The general form belongs beside entry 55's: a bound on a gate is only as good as the reading
+of it, and **the reading is itself a check that can be wrong** — most easily by an edit whose
+purpose is convenience rather than measurement.
+
+---
+
+### Entry 58 — THE INVOCATION DEGRADED AT THE HANDOVER, IN THE HALF NOBODY WAS BEING CAREFUL ABOUT. 2026-09-09.
+
+**Kind: true but incomplete** — of a command sent as a reproducible artifact, which was
+complete as a command and incomplete as an *invocation*.
+
+Command 3 was sent as an exact string, deliberately, so it could be run verbatim. Run that
+way it returned **`exit=134`** — SIGABRT:
+
+```
+........................................  [ 69%]
+<no summary line, ever>
+Extension modules: … PyQt6.QtCore, PyQt6.QtGui, PyQt6.QtWidgets, PyQt6.QtTest …
+QT_QPA_PLATFORM=<unset>
+```
+
+Re-run identically with `QT_QPA_PLATFORM=offscreen`, it gave `5244 passed`. `tests/CLAUDE.md`
+documents the failure precisely — *"a missing `QT_QPA_PLATFORM=offscreen` aborts the
+interpreter at 79% with no summary"*.
+
+**The mechanism is the round-trip protocol, not Qt.** The earlier run of the same file set
+was green because the operator's shell carried `export QT_QPA_PLATFORM=offscreen`. When the
+command was standardised into a message as *the* artifact, the environment did not travel
+with it — **an environment is not part of a command string.** The invocation degraded exactly
+at the handover, and the part that degraded was invisible in the part being scrutinised. Both
+parties were reviewing the command; neither was reviewing the shell.
+
+## Three no-verdict modes in two days, and each defeats a different guard
+
+This is the third time in this change that a gate produced **no verdict**, and the set is
+worth stating together because no one bound catches them all:
+
+| Mode | What it emits | Which guard misses it | Why |
+|---|---|---|---|
+| Hang (entry 55) | nothing, forever | the green-baseline refusal | that refusal is evaluated on a run that **completed** |
+| `$?` after a pipe (entry 57) | `exit=0` on a failure | any exit-status check | the status read is the pager's |
+| SIGABRT (this entry) | partial dots, no summary | **`timeout`** | it did not hang, it **died** — 134, not 124 |
+
+The `timeout 900` bound was correct and did not fire, because there was nothing to time out.
+
+**The generalisation, and it is the actionable part:** all three guards are **negative** — they
+detect the absence of a bad outcome. A **positive** check catches all three at once:
+
+> Assert the gate stated what it did. Grep the summary line for a **non-zero pass count**,
+> in addition to the exit status and the wall-clock bound.
+
+A hang emits no summary; a piped failure emits a summary that disagrees with `exit=0`; a
+SIGABRT emits no summary. One positive assertion covers what three negative ones do not,
+which is the same lesson as entry 27's *"what would this have looked like if it had failed?"*
+turned around: **ask what it would have looked like if it had succeeded, and require that.**
+
+## Two operational rules
+
+1. **`QT_QPA_PLATFORM=offscreen` goes inside any command naming `tests/gui`**, not in the
+   shell that runs it. `regression_shard.sbatch` already exports it, which is why the phase
+   gate would not have hit this — the defect is specific to the ad-hoc commands traded in
+   messages, which are the ones with no file to carry an environment.
+2. **A command sent for someone else to run is an invocation, not a command.** If it depends
+   on an environment variable, a working directory, or a module load, those are part of the
+   artifact and belong in the string.
+
+---
+
+### Entry 59 — A RENAME IS INVISIBLE TO EVERY OVERLAP CHECK THIS PLAN HAS. 2026-09-09.
+
+**Kind: stale** in its symptom and **rule written without checking compliance** in its cause,
+and the second is why it gets an entry of its own rather than joining 49.
+
+`phase-5-fanout.md` Task 4's code block reads:
+
+```python
+from phenotypic.sdk_ import master_measurements_parquet_path, measurement_shard_dir
+```
+
+```
+def measurement_shard_dir   ->  NOT IN THE TREE
+def aggregation_shard_dir   ->  sdk_/_io_constants.py:2096
+```
+
+**Task 1 of the same phase renamed it** — commit `b8ef480f`, whose message is *"one name that
+means one thing."* Transcribing Task 4's snippet produces an `ImportError` at collection.
+
+**Entry 49 is a phase boundary; this is four tasks apart inside one document**, written by
+the author of the rename, in a file that author had open. That is the difference worth
+recording.
+
+## Why nothing could have caught it
+
+The plan's own machinery reasons about **files**, and a rename is a fact about **symbols**.
+
+| Check | What it inspects | Sees a rename? |
+|---|---|---|
+| `dag.py`'s veto table | `Files:` blocks — path strings | **no** — Task 1 lists `sdk_/_io_constants.py`, Task 4 lists `tests/unit/cli/test_finalize_fanout.py`; no conflict, correctly |
+| cluster assignment | shared files | **no** — same reason |
+| `ruff` F821 | whether a name is *bound* | **no** — `from X import Y` binds `Y` regardless of whether it resolves (entry 46) |
+| `mypy` over `src/` | shipped callers | **no** — the stale name is in a plan document, not in `src/` |
+
+So a rename in Task 1 silently invalidated code in Task 4 and **every gate this change owns
+reported green**, each correctly answering its own question. The rename was even reviewed —
+it was ruled on explicitly, and the ruling included carrying the new name to the other
+cluster's Task 4 *text*. What was not done was carrying it to the **snippet inside the phase
+document the renamer was editing**.
+
+## The rule
+
+> **When a plan contains code, renaming a symbol is a plan edit as well as a source edit.**
+> `Files:` blocks make a plan's *file* dependencies checkable and its *symbol* dependencies
+> invisible, so the symbol half has no mechanism and must be done by hand at the moment of
+> the rename — not deferred to whoever transcribes the snippet, who will meet it as an
+> `ImportError` with no context.
+
+The mechanical form, cheap enough to be worth doing every time:
+
+```bash
+grep -rn '<old_symbol>' docs/superpowers/plans/<change>/ docs/superpowers/specs/<change>/
+```
+
+**And treat every plan code block as pseudocode against a tree that has moved.** Task 4's
+block also calls `_write_current_epoch_shards` and `_publish_six_successful_images`, neither
+of which exists. A snippet in a plan is a statement of intent that was true when written; it
+is not code, and the register now has two entries (49, 59) whose whole content is that
+distinction being forgotten.
