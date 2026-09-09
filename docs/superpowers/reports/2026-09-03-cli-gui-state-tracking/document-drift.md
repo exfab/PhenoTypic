@@ -1976,6 +1976,49 @@ the register's four kinds are all about claims regarding the tree, and this is a
 about the future. Left as-is rather than minting a fifth kind unilaterally; a reviewer
 should decide.*
 
+### Entry 44 — A MUTATION THAT LOOKS DIFFERENT AND BEHAVES IDENTICALLY. 2026-09-08.
+
+**Kind: never true** — of the mutation's own claim about itself. Not drift in a document;
+drift between what a mutation is labelled and what it does. Recorded here because the
+register's subject is claims nothing checks, and **a mutation is the one artifact whose
+entire purpose is to be checked, which is what makes a broken one so quiet.**
+
+Two occurred in this change, four days apart, and both passed review because the mutated
+line plainly differs from the original.
+
+| # | Labelled | Actually did | Detected by |
+|---|---|---|---|
+| 1 | *"an existing active fence is RE-DATED"* | set a key on the in-memory dict the early return returns; **nothing writes it**, and the fence reads the file | `NOT PROVED` against a correct test |
+| 2 | *"the scan becomes a per-store guard"* (M2) | moved the call inside the loop, but the scan takes the **whole** `authorized` mapping, so iteration one still scans everything and raises before any write | `PROVED`-shaped **pass**, which read as the test being vacuous |
+
+**The second is the dangerous polarity.** A broken mutation that comes back `NOT PROVED`
+sends you to look at a test; you find the test is fine and eventually find the mutation.
+A broken mutation that **passes** tells you the test is worthless — and the author had
+pre-registered exactly that reading (*"if M2 passes, my test is not testing ordering"*).
+Accepting it would have deleted a working ordering test on the strength of a mutation
+that could not have failed.
+
+**The generalisable form**, due to the author of the mutation that failed:
+
+> A mutation that narrows a function's **input** to something the function's own
+> signature already tolerates is a no-op. The scope that has to change is the
+> **caller's**, not the callee's.
+
+`_refuse_inverted_stores_before_any_write({table_path: dataset})` is the mutation that
+works, because it changes what the caller *asks about*. Moving the call site alone changes
+only when a whole-tree question is asked, and the answer to a whole-tree question does not
+depend on when you ask it.
+
+**The rule this yields, and it is the counterpart to the one this register already
+carries about checks:** *what would this have looked like if it had failed?* has a twin
+for mutations — **what would this have looked like if it had done nothing?** If a
+mutation's pass and its no-op are the same observation, it proves nothing either way, and
+it will sit in a harness reading as a proved row indefinitely.
+
+**Operationally:** for each mutation, state the expected red **and** the mechanism by
+which the mutated code reaches the assertion differently. A mutation whose mechanism
+cannot be stated in one sentence is usually not modelling the bug it names.
+
 ## What the pattern says
 
 **Nothing failed, and nothing could have.** Not one entry would have been caught by a test,
