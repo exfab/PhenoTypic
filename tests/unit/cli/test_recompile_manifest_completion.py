@@ -42,7 +42,6 @@ from phenotypic._cli._cli_types import DatasetState, ProcessingState
 from phenotypic._cli._dashboard._generator import regenerate_dashboard_artifacts
 from phenotypic.sdk_ import (
     manifest_json_path,
-    master_measurements_csv_path,
     master_measurements_parquet_path,
     measurements_csv_path,
     measurements_parquet_path,
@@ -134,7 +133,6 @@ def _build_run(tmp_path: Path) -> Path:
     # run had published one; a fixture that had not was not reproducing
     # it.
     for core in (
-        master_measurements_csv_path(tmp_path),
         master_measurements_parquet_path(tmp_path),
         measurements_csv_path(tmp_path),
         measurements_parquet_path(tmp_path),

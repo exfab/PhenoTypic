@@ -57,7 +57,7 @@ Examples:
     # Rerun measurements on a previous forward run without re-detecting
     # (reads image stores from <previous-output-dir>/results/*/zarr/,
     # rewrites
-    # parquet measurements + master CSV, skips detection, does NOT
+    # embedded measurement tables + master parquet, skips detection, does NOT
     # regenerate overlays, does NOT touch processing state):
     uv run python -m phenotypic --mode measure --pipeline pipeline.json \
         --output <previous-output-dir>
@@ -3017,7 +3017,8 @@ def phenotypic_cli(
             else:
                 finalization_succeeded = False
                 click.echo(
-                    "⚠ Warning: Could not aggregate master CSV (check logs for details)",
+                    "⚠ Warning: Could not aggregate master measurements "
+                    "(check logs for details)",
                     err=True,
                 )
 

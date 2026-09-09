@@ -52,8 +52,6 @@ from phenotypic.sdk_ import (
     atomic_write_with_writer,
     dataset_overlays_dir,
     deliverables_dir,
-    master_measurements_csv_path,
-    master_measurements_parquet_path,
     metadata_csv_deliverable_path,
     measurements_by_feature_dir,
     measurements_csv_path,
@@ -1434,138 +1432,54 @@ def _aggregate_measurements_unlocked(
     study_config: Optional[dict] = None,
     commit_guard: "CommitGuard | None" = None,
 ) -> Optional[Path]:
-    """Aggregate the authorized measurement sources into the master files.
+    """Finalize this run through the one aggregation + join + publish path.
 
-    Source selection and concatenation are
-    :func:`phenotypic._cli._cli_finalize_run.build_master_frame` -- marker-
-    authorized embedded tables on a forward tree, legacy external Parquets
-    (with the ``_dataset_aggregated.parquet`` preference) on a pre-record one,
-    staged through ``$SCRATCH`` when it is available. This function adds only
-    the master writes and the post-master delegation.
+    **The body is :func:`~phenotypic._cli._cli_finalize_run.finalize_run`**
+    (spec §7.4, Task 4). This function survives as the name
+    :func:`aggregate_measurements` locks around, and because the forward CLI,
+    the SLURM sentinel, the checkpoint handler and ``--mode migrate`` all reach
+    aggregation through it. Everything it used to do itself -- source
+    selection, concatenation, the master write, the post-master delegation and
+    the aggregate proof -- now happens in exactly one place, so ``full``,
+    ``measure`` and ``recompile`` cannot drift into three masters.
 
-    **Task 4 collapses it into a :func:`finalize_run` call outright.** It
-    survives this task because it still writes ``master_measurements.csv``,
-    which D8 deletes along with its ten dependent modules.
-
-    Works without an :class:`OutputManager` instance so it can be called
-    from the SLURM sentinel job.
+    Works without an :class:`OutputManager` instance so it can be called from
+    the SLURM sentinel job.
 
     Args:
         output_dir: Base output directory (contains ``results/``).
         dataset_names: Names of datasets to scan.
         include_dataset_column: Whether to insert ``Metadata_Dataset``
-            into each file that lacks it.
-        metadata_csv: Optional path to the run's metadata snapshot. When
-            provided, :func:`finalize_post_master_outputs` joins it onto the
-            master with metadata as the left frame -- see that function.
+            into each source that lacks it.
+        metadata_csv: Optional path to the run's metadata snapshot. The join
+            happens once, at finalization, against the whole master.
         pipeline: Optional :class:`ImagePipeline` used for post, analysis,
             QC, and pipeline persistence.  When omitted, the pipeline is
             recovered from ``processing_state.json`` / the pipeline JSON
-            copy in *output_dir*. Per-feature splits are derived from the
-            aggregated frame's ``MeasurementInfo`` columns even when the
-            pipeline cannot be recovered.
-        no_qc: Forwarded to :func:`finalize_post_master_outputs` to skip
-            the QC compute step. See that function for details.
+            copy in *output_dir*.
+        no_qc: Skip the QC compute step.
         study_config: Optional REMBI Study-level fields (parsed ``--study``
-            YAML) forwarded to :func:`finalize_post_master_outputs`, where they
-            override constant ``Metadata_*`` study columns in the emitted
-            ``deliverables/rembi.yaml``.
+            YAML) forwarded to the manifest.
+        commit_guard: Publication guard threaded to every terminal write.
 
     Returns:
-        Path to ``master_measurements.csv``, or ``None`` if no
-        measurements were found.
-
-    Side effects:
-        Delegates the post-master work to
-        :func:`finalize_post_master_outputs`, which always seeds
-        ``measurements.{csv,parquet}``, writes per-feature sub-spreadsheets
-        into ``output_dir/measurements_by_feature/``, and — when a pipeline
-        is available — persists ``pipeline.json`` and runs the analysis chain
-        into ``analysis.{csv,parquet}``.
-
-        ``master_measurements.{csv,parquet}`` are the exact concatenation
-        of authorized embedded tables: **un-joined** measured rows carrying
-        intrinsic identity only, pre-post (§7.3). ``measurements.{csv,parquet}``
-        carry the metadata join, its exactly-once phantoms, and the
-        post-applied frame the GUI viewer reads/curates. Split and analysis
-        failures never change the return value.
+        Path to ``master_measurements.parquet``, or ``None`` if no
+        measurements were found. **Parquet, not CSV** (D8) -- the CSV and its
+        path helper are gone, and the Parquet write is now the gate that
+        decides whether finalization proceeds.
     """
-    # ONE source-selection and concatenation, shared with `finalize_run`.
-    # Task 4 collapses this function into that call outright; until then the
-    # two must not be able to drift, because the phase's headline claim is
-    # that every mode produces a byte-identical master.
-    from ._cli_finalize_run import build_master_frame
+    from ._cli_finalize_run import finalize_run
 
-    master_df, authorized = build_master_frame(
+    return finalize_run(
         output_dir,
-        dataset_names,
+        dataset_names=dataset_names,
         include_dataset_column=include_dataset_column,
-    )
-
-    if master_df is None:
-        logger.warning("No valid measurements found for aggregation")
-        return None
-
-    # -- Write master CSV and Parquet ----------------------------------
-    master_csv_path = master_measurements_csv_path(output_dir)
-    master_pq_path = master_measurements_parquet_path(output_dir)
-
-    def write_master_csv() -> bool:
-        atomic_write_with_writer(
-            master_csv_path,
-            master_df.write_csv,
-        )
-        return True
-
-    master_csv_saved = _guarded_terminal_best_effort(
-        commit_guard,
-        write_master_csv,
-        warning="Failed to save master CSV",
-        default=False,
-    )
-    if not master_csv_saved:
-        return None
-
-    def write_master_parquet() -> None:
-        atomic_write_with_writer(
-            master_pq_path,
-            lambda p: master_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
-        )
-
-    _guarded_terminal_best_effort(
-        commit_guard,
-        write_master_parquet,
-        warning="Failed to save master Parquet (CSV was saved)",
-    )
-
-    logger.info(
-        "Aggregated %d rows x %d cols into %s",
-        master_df.height,
-        master_df.width,
-        master_csv_path.name,
-    )
-
-    resolved_pipeline = (
-        pipeline
-        if pipeline is not None
-        else _load_pipeline_from_output_dir(output_dir)
-    )
-    finalize_post_master_outputs(
-        output_dir,
-        master_df,
-        resolved_pipeline,
+        pipeline=pipeline,
         metadata_csv=metadata_csv,
         no_qc=no_qc,
         study_config=study_config,
         commit_guard=commit_guard,
     )
-
-    if authorized:
-        from ._cli_completion import publish_aggregate_snapshot
-
-        publish_aggregate_snapshot(output_dir, commit_guard=commit_guard)
-
-    return master_csv_path
 
 
 def aggregate_measurements(
@@ -2047,7 +1961,14 @@ class OutputManager:
         no_qc: bool = False,
         study_config: Optional[dict] = None,
     ) -> Optional[Path]:
-        """Aggregate per-image measurement Parquet files into master CSV.
+        """Finalize the run: aggregate, join, and publish every deliverable.
+
+        **The name is historical.** D8 deleted ``master_measurements.csv``, so
+        this writes only ``master_measurements.parquet``. It is kept because
+        two suites bind the method by name
+        (``tests/integration/cli/test_staged_gpu_local.py`` monkeypatches it,
+        ``tests/unit/cli/test_cli_v2.py`` calls it) and renaming it buys a
+        reader nothing the return type does not already say.
 
         Args:
             datasets: List of all datasets processed.
@@ -2062,7 +1983,8 @@ class OutputManager:
                 REMBI manifest writer in :func:`finalize_post_master_outputs`.
 
         Returns:
-            Path to master_measurements.csv, or None if no measurements found.
+            Path to ``master_measurements.parquet``, or ``None`` if no
+            measurements were found.
         """
         return aggregate_measurements(
             output_dir=self.base_dir,

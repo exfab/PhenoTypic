@@ -412,11 +412,15 @@ enforces this for ruff, but the rule binds regardless of the tool.
   state lives in `results/<ds>/zarr/<stem>.ome.zarr/`, with authoritative
   object measurements at `tables/measurements/table.parquet` inside each
   store. Forward runs do not create external per-image measurement Parquets.
-  `master_measurements.*` is the exact pre-post concatenation of authorized
-  embedded tables (already metadata-joined measured rows);
-  `measurements.*` appends metadata-only phantoms once and is the post-applied
-  mirror the GUI reads/curates — feed analysis and dashboards from the
-  **mirror**, not the master. Always resolve paths via the
+  `master_measurements.parquet` is the exact pre-post concatenation of
+  authorized embedded tables: **un-joined**, carrying intrinsic identity only
+  and no user metadata at all. **Parquet only** — D8 deleted
+  `master_measurements.csv` along with its constant, its path helper and its
+  reader, because the un-joined master is not the file a human opens.
+  `measurements.{csv,parquet}` carries the metadata join, appends
+  metadata-only phantoms once, and is the post-applied mirror the GUI
+  reads/curates — feed analysis and dashboards from the **mirror**, not the
+  master. Always resolve paths via the
   `phenotypic.sdk_` helpers (never hand-join names), and route any FINAL master
   write through `finalize_post_master_outputs`. Full file inventory,
   master-vs-mirror rules, and the finalize/chunk-writer carve-out are in

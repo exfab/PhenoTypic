@@ -33,6 +33,8 @@ from phenotypic.sdk_._measurement_tables import (
     _write_validated_parquet,
 )
 
+from phenotypic.sdk_._image_record import RECORD_VERSION
+
 from ._cli_completion import (
     ARTIFACT_KIND_FILE,
     ARTIFACT_KIND_STORE,
@@ -44,6 +46,85 @@ from ._cli_completion import (
 
 _TRANSITION_VERSION = 1
 _TRANSITION_DIR = "table-transitions"
+
+
+def _image_authority_shapes(
+    output_root: Path, dataset_name: str, stem: str
+) -> tuple[tuple[Path, int], ...]:
+    """Return ``(payload path, the version that shape must carry)``, best first.
+
+    **Both shapes, each on its own predicate** -- P3's precedent, and the
+    ruling that governs every repointed site in this module. The record is
+    what a forward tree writes (D1's clean break); the legacy
+    ``image_complete/`` marker is what a pre-record tree still has, and a
+    legacy tree can still reach ``--mode recompile`` until the schema gate is
+    armed.
+
+    The version travels **with** the path rather than being checked against a
+    single constant, because the two shapes disagree on it -- ``RECORD_VERSION``
+    is 1 and ``SUCCESS_MARKER_VERSION`` is 2. A shape-blind ``version in {1, 2}``
+    would accept a marker found at the record path, which is the confusion this
+    pairing exists to make impossible.
+
+    LEGACY MARKER ARM -- DELETE WHEN: the schema gate is armed and refuses
+    legacy trees before they reach recompile (P7 Task 5 Step 1d sets
+    ``_schema_shape.SCHEMA_GATE_ARMED = True``). The same trigger retires
+    ``_standalone_marker_sources``' second arm and every other legacy arm this
+    phase adds, so they go together rather than one at a time. When it holds,
+    this returns the record shape alone and the pairing collapses.
+    """
+    return (
+        (image_record_path(output_root, dataset_name, stem), RECORD_VERSION),
+        (
+            image_completion_marker_path(output_root, dataset_name, stem),
+            SUCCESS_MARKER_VERSION,
+        ),
+    )
+
+
+def image_authority_path(
+    output_root: Path, dataset_name: str, stem: str
+) -> Path:
+    """Return the payload path recompile should read for one image.
+
+    The record when it exists, the legacy marker when only that does, and the
+    record path when neither does -- the shape a forward tree is supposed to
+    have, so a caller that only asks "does this claim authority?" gets ``False``
+    rather than a path pointing at the wrong schema.
+    """
+    shapes = _image_authority_shapes(output_root, dataset_name, stem)
+    for path, _version in shapes:
+        if path.is_file():
+            return path
+    return shapes[0][0]
+
+
+def image_authority_payload(
+    output_root: Path, dataset_name: str, stem: str
+) -> tuple[Path, dict[str, Any], int]:
+    """Read one image's authority payload and say which shape it is.
+
+    Args:
+        output_root: Resolved run output root.
+        dataset_name: Dataset name.
+        stem: Image stem.
+
+    Returns:
+        ``(path, payload, expected_version)``.
+
+    Raises:
+        FileNotFoundError: Neither shape is present.
+        OSError: The payload could not be read.
+        json.JSONDecodeError: The payload is not JSON. **Deliberately not
+            caught**: a corrupt record must not silently fall back to a legacy
+            marker, which would let a tree be judged on the wrong schema.
+    """
+    shapes = _image_authority_shapes(output_root, dataset_name, stem)
+    for path, version in shapes:
+        if not path.is_file():
+            continue
+        return path, json.loads(path.read_text(encoding="utf-8")), version
+    raise FileNotFoundError(str(shapes[0][0]))
 
 
 def recompile_store_lock_path(
@@ -406,8 +487,9 @@ def begin_recompile_table_transition(
         strict=True
     ):
         raise ValueError("Recompile transition store is not canonical")
-    marker_path = image_completion_marker_path(output_root, dataset_name, stem)
-    marker = json.loads(marker_path.read_text(encoding="utf-8"))
+    marker_path, marker, _authority_version = image_authority_payload(
+        output_root, dataset_name, stem
+    )
     prior_table_size, prior_table_sha256 = _marker_measurement_fingerprint(
         output_root,
         marker,
@@ -496,10 +578,9 @@ def promote_recompile_table_transition(
             transition = json.loads(
                 _read_regular_file_at(directory_fd, receipt_name)
             )
-            marker_path = image_completion_marker_path(
+            marker_path, marker, authority_version = image_authority_payload(
                 output_root, dataset_name, stem
             )
-            marker = json.loads(marker_path.read_text(encoding="utf-8"))
             prior_size, prior_sha256 = _marker_measurement_fingerprint(
                 output_root,
                 marker,
@@ -535,7 +616,12 @@ def promote_recompile_table_transition(
                 or _fingerprint_bytes(staged_bytes)
                 != (intended_size, intended_sha256)
                 or not _marker_allows_table_transition(
-                    output_root, dataset_name, stem, marker, table
+                    output_root,
+                    dataset_name,
+                    stem,
+                    marker,
+                    table,
+                    expected_version=authority_version,
                 )
                 or not _valid_embedded_measurement_contract(store)
             ):
@@ -656,10 +742,9 @@ def recoverable_recompile_table_transition(
                 output_root, dataset_name, stem
             ).resolve(strict=True)
             table = store / MEASUREMENT_TABLE_RELATIVE_PATH
-            marker_path = image_completion_marker_path(
+            marker_path, marker, authority_version = image_authority_payload(
                 output_root, dataset_name, stem
             )
-            marker = json.loads(marker_path.read_text(encoding="utf-8"))
             prior_table_size, prior_table_sha256 = (
                 _marker_measurement_fingerprint(
                     output_root,
@@ -695,7 +780,12 @@ def recoverable_recompile_table_transition(
                 or prepared_fingerprint != table_fingerprint
                 or store != canonical_store
                 or not _marker_allows_table_transition(
-                    output_root, dataset_name, stem, marker, table
+                    output_root,
+                    dataset_name,
+                    stem,
+                    marker,
+                    table,
+                    expected_version=authority_version,
                 )
                 or not _valid_embedded_measurement_contract(store)
             ):
@@ -728,9 +818,7 @@ def assert_no_unrecoverable_measurement_authority(
                 continue
             stem = store.name[: -len(STORE_SUFFIX)]
             table = store / MEASUREMENT_TABLE_RELATIVE_PATH
-            marker_path = image_completion_marker_path(
-                output_root, dataset_name, stem
-            )
+            marker_path = image_authority_path(output_root, dataset_name, stem)
             if table.resolve() in accepted:
                 continue
             marker_source = _marker_measurement_source(
@@ -797,11 +885,21 @@ def _marker_allows_table_transition(
     stem: str,
     marker: dict[str, Any],
     table_path: Path,
+    *,
+    expected_version: int,
 ) -> bool:
-    """Validate marker identity and every artifact except replaced table bytes."""
+    """Validate payload identity and every artifact except replaced table bytes.
+
+    ``expected_version`` travels with the payload from
+    :func:`image_authority_payload` rather than being a module constant: a
+    record carries ``RECORD_VERSION`` and a legacy marker
+    ``SUCCESS_MARKER_VERSION``, and checking one shape against the other's
+    number returns ``False`` silently -- which is exactly how a path-only
+    repoint would have disabled table-authority repair with nothing failing.
+    """
     work_id = marker.get("work_id")
     if (
-        marker.get("version") != SUCCESS_MARKER_VERSION
+        marker.get("version") != expected_version
         or marker.get("dataset") != dataset_name
         or marker.get("image_stem") != stem
         or not isinstance(work_id, str)

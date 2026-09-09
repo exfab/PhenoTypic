@@ -397,7 +397,7 @@ the very trees it exists to rescue — reprocessing all of them.
 ## Output layout & deliverables
 
 User-facing run outputs live under `<output>/deliverables/` (hard cutover):
-`master_measurements.{csv,parquet}`, `measurements.{csv,parquet}`,
+`master_measurements.parquet` (**parquet only** since D8), `measurements.{csv,parquet}`,
 `measurements_by_feature/<feature>.{csv,parquet}`,
 `<AnalysisClass>.{csv,parquet}`, `analysis_manifest.json`,
 `plots/<plot-id>/...`,
@@ -506,12 +506,18 @@ no flag column to exist, and is automatically a no-op on frames that have none.
 Feed configured analysis and GUI result exploration from `measurements.parquet`, not
 `master_measurements.*`.
 
-**Finalize for FINAL master writes.** Any code path that writes
-`deliverables/master_measurements.{csv,parquet}` *as the run's final output* must
-immediately call `phenotypic._cli._cli_output_manager.finalize_post_master_outputs(
-output_dir, master_df, pipeline)` (it writes into `<output>/deliverables/` and emits the
-per-feature splits + analysis chain). The `aggregate_measurements` (forward CLI) and
-`--recompile` worker (`_run_post_master_steps`) callers already do this. Mid-run checkpoint writers (`_aggregate_chunks_locked` in
+**There is one FINAL master writer, and it is `finalize_run`.** Every mode
+reaches it: the forward CLI and `--mode measure` through `aggregate_measurements`
+(which is `finalize_run` under the publication lock), and the recompile SLURM
+finalizer through `_run_post_master_steps`, which hands its per-shard Parquets
+in as `shard_paths` rather than merging and writing a master of its own. That
+collapse is the point of §7.4 — recompile is *"call `finalize_run` again"*, not
+a second implementation to keep in sync — and it is also what keeps **one
+writer per artifact, per pass** true of `master_measurements.parquet`. A new
+code path that needs a final master calls `finalize_run`; it does not write the
+file and then call `finalize_post_master_outputs` itself.
+
+Mid-run checkpoint writers (`_aggregate_chunks_locked` in
 `_cli_chunk_writer.py`) intentionally bypass it and keep their rolling state
 under `.phenotypic/progress/`; post, per-feature splits, analysis, and
 `pipeline.json` persistence are deferred to final aggregation. Do not add

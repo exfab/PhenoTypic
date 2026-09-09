@@ -23,7 +23,6 @@ from typing import TYPE_CHECKING
 import polars as pl
 
 from phenotypic.gui._config import (
-    MASTER_MEASUREMENTS_CSV,
     MASTER_MEASUREMENTS_PARQUET,
     MEASUREMENTS_CSV,
     MEASUREMENTS_PARQUET,
@@ -36,11 +35,16 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-#: ``source -> (parquet filename, csv filename)``. Resolution always
+#: ``source -> (parquet filename, csv filename or None)``. Resolution always
 #: prefers the parquet footer; the CSV mirror is the no-pyarrow fallback.
-_FILES_BY_SOURCE: "dict[ColumnSource, tuple[str, str]]" = {
+#:
+#: **The master has no CSV half since D8** -- ``master_measurements.csv`` is
+#: not written any more, so naming it here would only make the schema cache
+#: stat a path that never exists. The mirror keeps its fallback, and the
+#: mirror is the file a human opens.
+_FILES_BY_SOURCE: "dict[ColumnSource, tuple[str, str | None]]" = {
     "measurements": (MEASUREMENTS_PARQUET, MEASUREMENTS_CSV),
-    "master_measurements": (MASTER_MEASUREMENTS_PARQUET, MASTER_MEASUREMENTS_CSV),
+    "master_measurements": (MASTER_MEASUREMENTS_PARQUET, None),
 }
 
 
@@ -127,8 +131,10 @@ class MeasurementSchema:
             else deliverables_dir(self.output_root)
         )
         parquet_path = deliverables / files[0]
-        csv_path = deliverables / files[1]
-        sentinel = _max_mtime_ns(parquet_path, csv_path)
+        csv_path = deliverables / files[1] if files[1] is not None else None
+        sentinel = _max_mtime_ns(
+            *(path for path in (parquet_path, csv_path) if path is not None)
+        )
 
         with self._lock:
             cached = self._cache.get(source_str)
@@ -159,8 +165,12 @@ def _max_mtime_ns(*paths: Path) -> int:
     return max(mtimes, default=-1)
 
 
-def _read_columns(parquet_path: Path, csv_path: Path) -> list[str]:
-    """Read the column list from parquet (preferred) or CSV (fallback)."""
+def _read_columns(parquet_path: Path, csv_path: Path | None) -> list[str]:
+    """Read the column list from parquet (preferred) or CSV (fallback).
+
+    ``csv_path`` is ``None`` for a source that has no CSV half -- the master,
+    since D8.
+    """
     if parquet_path.exists():
         try:
             return pl.scan_parquet(parquet_path).collect_schema().names()
@@ -171,7 +181,7 @@ def _read_columns(parquet_path: Path, csv_path: Path) -> list[str]:
                 exc_info=True,
             )
 
-    if csv_path.exists():
+    if csv_path is not None and csv_path.exists():
         try:
             return pl.scan_csv(csv_path, n_rows=0).collect_schema().names()
         except Exception:  # noqa: BLE001

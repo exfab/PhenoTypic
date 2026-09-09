@@ -24,7 +24,7 @@ Module layout
 
     - **`output_dir: Path`** — the run output root (e.g. ``./out``).
       Use these from any caller that has the run root in scope:
-      ``master_measurements_csv_path``, ``manifest_json_path``,
+      ``master_measurements_parquet_path``, ``manifest_json_path``,
       ``job_metadata_path``, ``pipeline_json_path``, ``task_status_path``,
       ``logs_dir``, ``slurm_scripts_dir``, ``processing_report_html_path``,
       ``measurements_by_feature_dir``,
@@ -44,8 +44,8 @@ Module layout
   cleanly with ``progress_dir(output_dir)`` if you need the progress
   directory separately. Helpers that take ``progress_dir_`` are noted
   in their individual docstrings.
-* **Reader helpers** — `read_run_manifest`, `load_master_measurements`,
-  `resolve_execution_mode` consolidate three high-frequency duplicates.
+* **Reader helpers** — `read_run_manifest` and `resolve_execution_mode`
+  consolidate two high-frequency duplicates.
 * **JSON contract keys** (`JobMetadataKey`, `DashboardManifestKey`,
   `ChunkStateKey`, `ChunkManifestKey`) — namespace classes
   whose class-level ``Final[str]`` attributes are the keys writers and
@@ -87,7 +87,6 @@ from .typing_ import (
 )
 
 if TYPE_CHECKING:
-    import polars as pl  # type: ignore[import-not-found]
 
     from phenotypic._core._grid_image import GridImage as _GridImage
     from phenotypic._core._image import Image as _Image
@@ -310,18 +309,21 @@ def generation_staging_path(target: Path, generation: str) -> Path:
 
 
 #: Master archive of all aggregated measurements (clean, pre-post). Written by
-#: :func:`phenotypic._cli._cli_output_manager.aggregate_measurements` after
-#: every per-image Parquet has been concatenated and joined with optional
-#: external metadata. Treated as the authoritative source by downstream
-#: tooling; never edited in place.
-MASTER_MEASUREMENTS_CSV: Final[str] = "master_measurements.csv"
-
-#: Parquet companion of :data:`MASTER_MEASUREMENTS_CSV`. Preserves dtypes the
-#: CSV cannot and is the format the GUI viewer prefers when present.
+#: :func:`phenotypic._cli._cli_finalize_run.finalize_run` as the exact
+#: concatenation of the authorized embedded measurement tables: **un-joined**,
+#: carrying intrinsic identity only. Treated as the authoritative source by
+#: downstream tooling; never edited in place.
+#:
+#: **Parquet-only since D8.** ``master_measurements.csv`` is gone, along with
+#: its path helper, its reader and its entry in the aggregate proof's
+#: ``required_outputs``. The un-joined master is no longer the file a human
+#: opens -- :data:`MEASUREMENTS_CSV`, which carries the metadata join and the
+#: post-applied frame, is -- and the master's dtypes are exactly what a CSV
+#: could not preserve.
 MASTER_MEASUREMENTS_PARQUET: Final[str] = "master_measurements.parquet"
 
-#: Editable curated CSV mirror seeded by the CLI as a copy of
-#: :data:`MASTER_MEASUREMENTS_CSV` after :func:`_apply_post_to_master`. The
+#: Editable curated CSV mirror seeded by the CLI from the post-applied master
+#: frame after :func:`_apply_post_to_master`. The
 #: results viewer rewrites this file in place when the user removes/restores
 #: colonies. Re-running the CLI overwrites it with a fresh full copy.
 MEASUREMENTS_CSV: Final[str] = "measurements.csv"
@@ -350,7 +352,6 @@ def _reserved_analysis_artifact_stems() -> frozenset[str]:
     return frozenset(
         Path(filename).stem.casefold()
         for filename in (
-            MASTER_MEASUREMENTS_CSV,
             MASTER_MEASUREMENTS_PARQUET,
             MEASUREMENTS_CSV,
             MEASUREMENTS_PARQUET,
@@ -1281,11 +1282,6 @@ def clear_machine_state(output_dir: Path) -> bool:
             legacy_file.unlink()
             removed = True
     return removed
-
-
-def master_measurements_csv_path(output_dir: Path) -> Path:
-    """Return ``<output>/deliverables/master_measurements.csv``."""
-    return deliverables_dir(output_dir) / MASTER_MEASUREMENTS_CSV
 
 
 def master_measurements_parquet_path(output_dir: Path) -> Path:
@@ -2302,23 +2298,6 @@ def read_run_manifest(output_dir: Path) -> Optional[dict]:
         return None
 
 
-def load_master_measurements(output_dir: Path) -> Optional["pl.DataFrame"]:
-    """Read ``<output>/master_measurements.csv`` into a polars DataFrame.
-
-    Args:
-        output_dir: Run output directory.
-
-    Returns:
-        DataFrame, or :data:`None` when the file is missing.
-    """
-    import polars as pl  # type: ignore[import-not-found]  # lazy
-
-    path = master_measurements_csv_path(output_dir)
-    if not path.exists():
-        return None
-    return pl.read_csv(path)
-
-
 def resolve_execution_mode(job_meta: Optional[dict]) -> ExecutionMode:
     """Extract :data:`ExecutionMode` from job metadata, defaulting to ``"local"``.
 
@@ -2696,11 +2675,6 @@ class BundleLayout:
     def master_parquet(self) -> Path:
         """Return path to ``master_measurements.parquet`` in the deliverables base."""
         return self.deliverables_base / MASTER_MEASUREMENTS_PARQUET
-
-    @property
-    def master_csv(self) -> Path:
-        """Return path to ``master_measurements.csv`` in the deliverables base."""
-        return self.deliverables_base / MASTER_MEASUREMENTS_CSV
 
     @property
     def mirror_parquet(self) -> Path:

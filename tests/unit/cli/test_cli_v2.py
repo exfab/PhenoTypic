@@ -60,7 +60,6 @@ from phenotypic.prefab import RoundPeaksPipeline
 from phenotypic.sdk_ import (
     MEASUREMENT_TABLE_RELATIVE_PATH,
     deliverables_dir,
-    master_measurements_csv_path,
     master_measurements_parquet_path,
     measurements_csv_path,
     measurements_parquet_path,
@@ -1918,7 +1917,7 @@ class TestAggregateMeasurements:
                 )
 
     def test_aggregate_measurements_standalone(self, temp_output_dir):
-        """Single dataset: master CSV has correct rows and Metadata_Dataset column."""
+        """Single dataset: master parquet has correct rows and Metadata_Dataset column."""
         import pandas as pd
 
         self._create_measurement_csvs(temp_output_dir, {
@@ -1935,8 +1934,8 @@ class TestAggregateMeasurements:
         )
 
         assert result is not None
-        assert result.name == "master_measurements.csv"
-        master = pd.read_csv(result)
+        assert result.name == "master_measurements.parquet"
+        master = pd.read_parquet(result)
         assert len(master) == 3
         assert DATASET_HEADER in master.columns
         assert list(master[DATASET_HEADER].unique()) == ["ds1"]
@@ -1966,7 +1965,7 @@ class TestAggregateMeasurements:
         )
 
         assert result is not None
-        master = pd.read_csv(result)
+        master = pd.read_parquet(result)
         assert len(master) == 3
         assert set(master[DATASET_HEADER]) == {"plate_A", "plate_B"}
         assert master.loc[master[DATASET_HEADER] == "plate_A", "area"].iloc[0] == 10
@@ -2049,7 +2048,7 @@ class TestAggregateMeasurements:
         )
 
         assert result is not None
-        master = pd.read_csv(result)
+        master = pd.read_parquet(result)
         assert master[IMAGE_NAME_HEADER].tolist() == [image_stem]
         mirror = pd.read_csv(measurements_csv_path(temp_output_dir))
         assert mirror[IMAGE_NAME_HEADER].tolist() == [image_stem]
@@ -2073,7 +2072,16 @@ class TestAggregateMeasurements:
         )
 
         assert result is not None
-        master = pd.read_csv(result)
+        master = pd.read_parquet(result)
+        # STANDING RULE, and PRE-EXISTING -- not something D8 removed. The
+        # negative below is satisfied by an empty frame, so it would pass on a
+        # master that had lost every column rather than just this one. Its own
+        # sibling `..._metadata_no_common_columns` already establishes a
+        # surviving column beside its negatives; this one never did.
+        assert "area" in master.columns, (
+            "the master lost the measurement column too, so the absence of "
+            "Metadata_Dataset says nothing about include_dataset_column"
+        )
         assert DATASET_HEADER not in master.columns
 
     def test_aggregate_measurements_empty(self, temp_output_dir):
@@ -2085,8 +2093,16 @@ class TestAggregateMeasurements:
         )
         assert result is None
 
-    def test_aggregate_master_csv_delegates(self, temp_output_dir):
-        """OutputManager.aggregate_master_csv() produces same result as standalone."""
+    def test_aggregate_master_csv_delegates_and_returns_a_parquet(
+        self, temp_output_dir
+    ):
+        """``OutputManager.aggregate_master_csv`` matches the standalone call.
+
+        The method keeps its historical name on purpose -- see its own
+        docstring -- so the test keeps it too, and stays greppable from it.
+        What the name no longer implies is the return: D8 made the master
+        parquet-only, and this asserts on that rather than on a CSV.
+        """
         import pandas as pd
 
         self._create_measurement_csvs(temp_output_dir, {
@@ -2105,7 +2121,7 @@ class TestAggregateMeasurements:
         result = om.aggregate_master_csv(datasets)
 
         assert result is not None
-        master = pd.read_csv(result)
+        master = pd.read_parquet(result)
         assert len(master) == 2
         assert DATASET_HEADER in master.columns
 
@@ -2136,7 +2152,7 @@ class TestAggregateMeasurements:
 
         assert result is not None
         # Master archive stays clean: no external metadata columns join here.
-        master = pd.read_csv(result)
+        master = pd.read_parquet(result)
         assert TREATMENT_HEADER not in master.columns
         assert len(master) == 3
         # Mirror carries the joined external metadata.
@@ -2170,7 +2186,7 @@ class TestAggregateMeasurements:
         )
 
         assert result is not None
-        master = pd.read_csv(result)
+        master = pd.read_parquet(result)
         # No new columns added since there were no shared columns to join on
         assert "strain" not in master.columns
         assert "concentration" not in master.columns
@@ -2206,7 +2222,7 @@ class TestAggregateMeasurements:
 
         assert result is not None
         # Master archive is unfiltered: all source rows preserved, no metadata.
-        master = pd.read_csv(result)
+        master = pd.read_parquet(result)
         assert TREATMENT_HEADER not in master.columns
         assert set(master["plate"].tolist()) == {"A", "B", "C"}
         # Mirror drops plate C (measurement-unmatched), treatment present.
@@ -2251,7 +2267,7 @@ class TestAggregateMeasurements:
 
         assert result is not None
         # Master archive stays at the original row count (no join applied).
-        master = pd.read_csv(result)
+        master = pd.read_parquet(result)
         assert len(master) == 1
         assert TREATMENT_HEADER not in master.columns
         # Mirror reflects the duplicate-key inflation.
@@ -2300,7 +2316,7 @@ class TestAggregateMeasurements:
 
         assert result is not None
         # Master archive stays clean: only measured rows, no metadata, no flag.
-        master = pd.read_csv(result)
+        master = pd.read_parquet(result)
         assert set(master["plate"].tolist()) == {"A", "B"}
         assert TREATMENT_HEADER not in master.columns
         assert METADATA_ONLY_HEADER not in master.columns
@@ -2445,7 +2461,7 @@ class TestAggregateMeasurements:
 
         assert result is not None
         # Master archive stays clean — no metadata-join side effects.
-        master = pd.read_csv(result)
+        master = pd.read_parquet(result)
         assert len(master) == 2
         assert TREATMENT_HEADER not in master.columns
         # Mirror carries the join even across int/str dtype mismatch on the key.
@@ -2479,7 +2495,7 @@ class TestAggregateMeasurements:
         )
 
         assert result is not None
-        master = pd.read_csv(result)
+        master = pd.read_parquet(result)
         assert len(master) == 3
         assert DATASET_HEADER in master.columns
 
@@ -2519,7 +2535,9 @@ class TestAggregateMeasurements:
 
         assert result is not None
 
-        master = pd.read_csv(master_measurements_csv_path(temp_output_dir))
+        master = pd.read_parquet(
+            master_measurements_parquet_path(temp_output_dir)
+        )
         mirror = pd.read_csv(measurements_csv_path(temp_output_dir))
 
         # Master is clean — post column is absent.
@@ -2555,11 +2573,8 @@ class TestAggregateMeasurements:
 
         # Pre-write the master files so the helper's invariants match
         # what the real callers produce.
-        master_measurements_csv_path(temp_output_dir).parent.mkdir(
+        master_measurements_parquet_path(temp_output_dir).parent.mkdir(
             parents=True, exist_ok=True
-        )
-        master_measurements_csv_path(temp_output_dir).write_text(
-            master_df.write_csv()
         )
         master_df.write_parquet(
             master_measurements_parquet_path(temp_output_dir),
@@ -2656,7 +2671,9 @@ class TestAggregateMeasurements:
         )
 
         assert result is not None
-        master = pd.read_csv(master_measurements_csv_path(temp_output_dir))
+        master = pd.read_parquet(
+            master_measurements_parquet_path(temp_output_dir)
+        )
         mirror = pd.read_csv(measurements_csv_path(temp_output_dir))
         expected = master[order_measurement_columns(master.columns)]
         pd.testing.assert_frame_equal(expected, mirror)

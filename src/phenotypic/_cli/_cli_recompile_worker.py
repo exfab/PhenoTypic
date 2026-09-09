@@ -36,12 +36,9 @@ from phenotypic.sdk_ import (
     atomic_write_with_writer,
     load_image_from_store,
     store_stem,
-    master_measurements_csv_path,
-    master_measurements_parquet_path,
     task_status_filename,
     shard_parquet_filename,
     progress_dir as progress_dir_helper,
-    recompile_dir as recompile_dir_helper,
 )
 
 logger = logging.getLogger(__name__)
@@ -666,31 +663,29 @@ def _run_finalizer_task(
         # mutation also acquires the lifecycle guard independently, allowing a
         # newer generation to fence this worker between publication phases.
         # Marker-last evidence keeps any interrupted mixed snapshot unreadable.
-        merged_df = _write_master_outputs_from_shards(
-            output_dir,
-            attempt_dir,
-            slurm_generation=slurm_generation,
-        )
-        _run_post_master_steps(
+        master_path = _run_post_master_steps(
             output_dir,
             task,
-            merged_df,
+            attempt_dir=attempt_dir,
             slurm_generation=slurm_generation,
         )
         from ._cli_completion import current_success_counts
 
         if (
-            merged_df is not None
+            master_path is not None
             and current_success_counts(output_dir) is not None
         ):
             from ._cli_completion import (
                 current_run_is_complete,
-                publish_aggregate_snapshot,
                 publish_run_completion_evidence,
             )
 
+            # No `publish_aggregate_snapshot` here any more: `finalize_run`
+            # publishes the aggregate proof itself, on the authorized arm,
+            # immediately after the outputs it certifies. Publishing it a
+            # second time from out here would be a second writer for one
+            # artifact within a single pass.
             with generation_publication_guard(output_dir, slurm_generation):
-                publish_aggregate_snapshot(output_dir)
                 if current_run_is_complete(output_dir) is True:
                     publish_run_completion_evidence(
                         output_dir,
@@ -743,58 +738,6 @@ def _read_expected_non_finalizer_statuses(
     return statuses
 
 
-def _write_master_outputs_from_shards(
-    output_dir: Path,
-    attempt_dir: Path | None = None,
-    *,
-    slurm_generation: str | None = None,
-) -> Any | None:
-    """Concatenate shard Parquets and write master CSV/Parquet outputs."""
-    import polars as pl
-
-    shard_dir = (
-        attempt_dir
-        if attempt_dir is not None
-        else recompile_dir_helper(progress_dir_helper(output_dir))
-    ) / DIR_RECOMPILE_SHARDS
-    shard_files = sorted(shard_dir.glob("shard_*.parquet"))
-    if not shard_files:
-        return None
-
-    frames = [pl.read_parquet(path) for path in shard_files]
-    master_df = pl.concat(frames, how="diagonal_relaxed")
-
-    # Recompiled embedded tables already carry their publication-time metadata.
-    # The master stays their exact, pre-post concatenation; finalization appends
-    # only metadata identities absent from all measured tables to the mirror.
-
-    def publish_master_outputs() -> None:
-        try:
-            atomic_write_with_writer(
-                master_measurements_csv_path(output_dir), master_df.write_csv
-            )
-        except Exception:
-            logger.error("Failed to save master CSV during recompile finalize")
-            raise
-        atomic_write_with_writer(
-            master_measurements_parquet_path(output_dir),
-            lambda p: master_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
-        )
-
-    if slurm_generation is None:
-        publish_master_outputs()
-    else:
-        with generation_publication_guard(output_dir, slurm_generation):
-            publish_master_outputs()
-
-    # Seeding ``measurements.{csv,parquet}``, persisting pipeline.json,
-    # emitting configured analysis outputs, and per-feature splits all happen in
-    # ``_run_post_master_steps`` via ``finalize_post_master_outputs`` so
-    # the post-applied frame seeded into the GUI mirror matches the one
-    # fed to the analysis chain.
-    return master_df
-
-
 def _deactivate_generation_value(output_dir: Path, generation: str) -> None:
     """Deactivate a generation supplied independently of task metadata."""
     from ._cli_slurm_lifecycle import deactivate_generation
@@ -802,18 +745,57 @@ def _deactivate_generation_value(output_dir: Path, generation: str) -> None:
     deactivate_generation(output_dir, generation)
 
 
+def _recompile_shard_paths(attempt_dir: Path) -> list[Path]:
+    """Return this attempt's measurement shards, in merge order."""
+    return sorted(
+        (attempt_dir / DIR_RECOMPILE_SHARDS).glob("shard_*.parquet")
+    )
+
+
 def _run_post_master_steps(
     output_dir: Path,
     task: dict[str, Any],
-    merged_df: Any | None,
     *,
+    attempt_dir: Path,
     slurm_generation: str | None = None,
-) -> None:
-    """Run canonical post-master outputs before marker publication."""
-    from ._cli_finalize_run import refuse_mixed_measurement_authority
-    from ._cli_output_manager import (
-        _load_pipeline_from_output_dir,
-        finalize_post_master_outputs,
+) -> Path | None:
+    """Finalize recompile through the one aggregation + join + publish path.
+
+    **This is where recompile's separate master-merge used to live.**
+    ``_write_master_outputs_from_shards`` concatenated the per-shard Parquets,
+    wrote its own master CSV and Parquet, and only then handed the frame to
+    ``finalize_post_master_outputs`` -- a second implementation of
+    finalization that had to be kept in sync with the forward one by hand.
+    Spec §7.4 makes recompile *"call finalize_run again"* instead.
+
+    The shards are not dropped: they are handed to :func:`finalize_run` as
+    ``shard_paths``, the fan-out hook its signature already declares. That
+    keeps the merge exactly where it was -- these workers are why the hook
+    exists -- while leaving **one** writer for the master, which is what
+    "one writer per artifact, per pass" requires and what two independent
+    master writes in a single finalizer would have broken.
+
+    An empty shard directory yields ``None``, as the merge it replaces did.
+
+    ``generation_publication_guard`` still wraps the whole thing under SLURM,
+    unchanged -- an ``if slurm_generation is None`` / ``else`` pair around two
+    otherwise identical calls.
+
+    Args:
+        output_dir: Run output root.
+        task: The finalizer task dict. ``include_dataset_column``, the
+            metadata snapshot and ``no_qc`` are read back off it -- the
+            serialization boundary ``_cli_recompile_slurm_scripts`` writes.
+        attempt_dir: This attempt's directory, holding ``measurement_shards/``.
+        slurm_generation: Active lifecycle generation, or ``None`` locally.
+
+    Returns:
+        Path to ``master_measurements.parquet``, or ``None`` when no
+        measurement source could be read.
+    """
+    from ._cli_finalize_run import (
+        finalize_run,
+        refuse_mixed_measurement_authority,
     )
 
     # CAN-2: the recorded per-store join keys are gone. `finalize_post_master_
@@ -828,35 +810,23 @@ def _run_post_master_steps(
             [Path(str(path)) for path in measurement_sources]
         )
 
-    if merged_df is not None:
-        # Single canonical post-master finalize: appends metadata-only
-        # identities once, applies post to the joined measured + phantom
-        # frame, seeds ``measurements.{csv,parquet}``,
-        # persists ``pipeline.json``, emits configured analysis outputs, and
-        # writes per-feature splits, matching the forward CLI path.
-        pipeline = _load_pipeline_from_output_dir(output_dir)
-        metadata_csv_str = task.get(JobMetadataKey.METADATA_CSV)
-        metadata_csv = (
-            Path(str(metadata_csv_str)) if metadata_csv_str else None
-        )
-        no_qc = bool(task.get(JobMetadataKey.NO_QC, False))
-        if slurm_generation is None:
-            finalize_post_master_outputs(
-                output_dir,
-                merged_df,
-                pipeline,
-                metadata_csv=metadata_csv,
-                no_qc=no_qc,
-            )
-        else:
-            with generation_publication_guard(output_dir, slurm_generation):
-                finalize_post_master_outputs(
-                    output_dir,
-                    merged_df,
-                    pipeline,
-                    metadata_csv=metadata_csv,
-                    no_qc=no_qc,
-                )
+    metadata_csv_str = task.get(JobMetadataKey.METADATA_CSV)
+    metadata_csv = Path(str(metadata_csv_str)) if metadata_csv_str else None
+    kwargs: dict[str, Any] = {
+        "dataset_names": [
+            str(name) for name in task.get("dataset_names", [])
+        ],
+        "include_dataset_column": bool(
+            task.get("include_dataset_column", True)
+        ),
+        "metadata_csv": metadata_csv,
+        "no_qc": bool(task.get(JobMetadataKey.NO_QC, False)),
+        "shard_paths": _recompile_shard_paths(attempt_dir),
+    }
+    if slurm_generation is None:
+        return finalize_run(output_dir, **kwargs)
+    with generation_publication_guard(output_dir, slurm_generation):
+        return finalize_run(output_dir, **kwargs)
 
 
 def _regenerate_recompile_dashboard(

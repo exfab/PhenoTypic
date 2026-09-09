@@ -68,7 +68,6 @@ from phenotypic.sdk_ import (
     MEASUREMENT_TABLE_RELATIVE_PATH,
     aggregate_publication_marker_path,
     deliverables_dir,
-    master_measurements_csv_path,
     master_measurements_parquet_path,
     measurements_csv_path,
     measurements_parquet_path,
@@ -1050,7 +1049,6 @@ def _install_completion_fixture(run: Path) -> None:
     )
     for index, path in enumerate(
         (
-            master_measurements_csv_path(run),
             master_measurements_parquet_path(run),
             measurements_csv_path(run),
             measurements_parquet_path(run),
@@ -1649,8 +1647,8 @@ def test_aggregate_core_outputs_replace_only_inside_commit_guard(
         )
 
     assert guard.entries == 1
-    assert not master_measurements_csv_path(run).exists()
     assert not master_measurements_parquet_path(run).exists()
+    assert not (run / "deliverables" / "master_measurements.csv").exists()
 
 
 def test_measurement_mirror_does_not_swallow_generation_rejection(

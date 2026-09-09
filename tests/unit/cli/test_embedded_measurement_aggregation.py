@@ -111,6 +111,12 @@ def test_recompile_finalizer_no_longer_carries_submit_time_join_keys(
         observed.update(kwargs)
         return args[1]  # type: ignore[return-value]
 
+    shard_dir = tmp_path / "attempt" / "measurement_shards"
+    shard_dir.mkdir(parents=True)
+    pl.DataFrame({"Metadata_ImageName": ["plate.tiff"]}).write_parquet(
+        shard_dir / "shard_0.parquet"
+    )
+
     with (
         patch(
             "phenotypic._cli._cli_output_manager._load_pipeline_from_output_dir",
@@ -124,7 +130,7 @@ def test_recompile_finalizer_no_longer_carries_submit_time_join_keys(
         _cli_recompile_worker._run_post_master_steps(
             tmp_path,
             {"measurement_sources": [str(table_path)]},
-            pl.DataFrame({"Metadata_ImageName": ["plate.tiff"]}),
+            attempt_dir=tmp_path / "attempt",
         )
 
     assert observed, "the finalizer was never called; the negative is vacuous"
@@ -153,7 +159,7 @@ def test_the_recompile_finalizer_still_refuses_mixed_authority(
         _cli_recompile_worker._run_post_master_steps(
             tmp_path,
             {"measurement_sources": [str(embedded), str(legacy)]},
-            pl.DataFrame({"Metadata_ImageName": ["plate.tiff"]}),
+            attempt_dir=tmp_path / "attempt",
         )
 
 

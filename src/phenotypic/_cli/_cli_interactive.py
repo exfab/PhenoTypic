@@ -147,7 +147,7 @@ def _display_save_configuration(config: ExecutionConfig) -> None:
 
     if config.include_dataset_column:
         click.echo(
-            f"  Master CSV will include {str(EXPERIMENT.DATASET)!r} column"
+            f"  Master will include {str(EXPERIMENT.DATASET)!r} column"
             " for multi-dataset analysis"
         )
 

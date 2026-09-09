@@ -390,6 +390,116 @@ def _build_legacy_external_parquet_tree(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Task 4 -- the three entry points, one master
+# ---------------------------------------------------------------------------
+
+
+def _remeasure_every_store(output_dir: Path, stems: list[str]) -> None:
+    """Drive the ``--mode measure`` shape: rewrite each store, republish.
+
+    ``replace_image_store_measurements`` is the real measure-path writer
+    (``_cli_process_single.py`` calls it), and it re-promotes the store, so
+    every artifact digest the record certifies changes and the record has to
+    be republished exactly as ``_republish_table_marker`` does.
+    """
+    manager = _manager(output_dir)
+    for stem in stems:
+        store = zarr_store_path(output_dir, DATASET, stem)
+        manager.replace_image_store_measurements(
+            store, _measurements(stem), DATASET
+        )
+        publish_image_success(
+            output_dir,
+            work_id=f"work-{stem}",
+            dataset=DATASET,
+            relative_image_path=f"{stem}.tiff",
+            image_stem=stem,
+            mode="measure",
+            attempt_id="attempt-1",
+            lifecycle_epoch="epoch-1",
+            artifacts={
+                "measurements": store / MEASUREMENT_TABLE_RELATIVE_PATH,
+                "store": store,
+            },
+        )
+
+
+def _run_mode(output_dir: Path, mode: str) -> Path:
+    """Build a two-image tree and finalize it the way *mode* does.
+
+    Every mode reaches finalization through ``aggregate_measurements``, which
+    is ``finalize_run`` under the publication lock -- that is the property
+    under test. What differs is what happened to the stores first: ``full``
+    promotes them, ``measure`` rewrites their tables in place, ``recompile``
+    re-derives each table from the store's own baseline.
+
+    **No metadata snapshot**, deliberately. Post-D8 the master carries no user
+    metadata at all, so a snapshot could only change the mirror; running
+    without one keeps the comparison about the thing being compared.
+    """
+    from phenotypic._cli._cli_output_manager import aggregate_measurements
+
+    stems = ["a", "b"]
+    output_dir.mkdir(parents=True, exist_ok=True)
+    _publish_successful_images(output_dir, stems=stems)
+
+    if mode == "measure":
+        _remeasure_every_store(output_dir, stems)
+    elif mode == "recompile":
+        from phenotypic._cli._cli_recompile_tables import (
+            recompile_embedded_measurement_tables,
+        )
+
+        rewritten = recompile_embedded_measurement_tables(output_dir, None)
+        assert rewritten == len(stems), (
+            f"recompile rewrote {rewritten} of {len(stems)} tables; the "
+            "comparison below would not be about recompile"
+        )
+    elif mode != "full":  # pragma: no cover - guards a typo in a param id
+        raise AssertionError(f"unknown mode {mode!r}")
+
+    aggregate_measurements(
+        output_dir=output_dir,
+        dataset_names=[DATASET],
+        include_dataset_column=True,
+    )
+    return output_dir
+
+
+def _master_bytes(output_dir: Path) -> bytes:
+    return master_measurements_parquet_path(output_dir).read_bytes()
+
+
+@pytest.mark.parametrize("mode", ["full", "measure", "recompile"])
+def test_every_mode_produces_a_byte_identical_master(
+    tmp_path: Path, mode: str
+) -> None:
+    """§7.4: recompile becomes "call finalize_run again", not a parallel
+    implementation that must be kept in sync. Three modes, one master.
+
+    ``PARQUET_WRITE_OPTIONS`` is deterministic, so byte equality is the
+    strongest available statement of "the same frame, written the same way" --
+    and it is what catches a mode that quietly adds a column, reorders one, or
+    joins something the others do not.
+    """
+    output = _run_mode(tmp_path / "run", mode)
+    reference = _run_mode(tmp_path / "ref", "full")
+
+    # STANDING RULE. This is the phase's HEADLINE CLAIM, and the bare equality
+    # is satisfied by two FAILED runs -- `finalize_run` returns None and writes
+    # nothing when no source could be read. Establish that both runs produced a
+    # master with rows in it, then compare.
+    for out in (output, reference):
+        master = master_measurements_parquet_path(out)
+        assert master.is_file(), (
+            f"{out} produced no master; the comparison is vacuous"
+        )
+        assert pl.read_parquet(master).height > 0, f"{out}'s master is empty"
+
+    assert _master_bytes(output) == _master_bytes(reference)
+
+
+# ---------------------------------------------------------------------------
 # Step 1 -- INV-INPUTS, the phase's gate
 # ---------------------------------------------------------------------------
 

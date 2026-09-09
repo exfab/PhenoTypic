@@ -80,7 +80,7 @@ A finished `full` run leaves three things under `--output`:
 ```text
 out/
 ├── deliverables/            # what you read and share
-│   ├── master_measurements.{csv,parquet}   # clean, pre-post archive
+│   ├── master_measurements.parquet         # clean, un-joined, pre-post archive
 │   ├── measurements.{csv,parquet}          # post-applied mirror (the GUI reads this)
 │   ├── measurements_by_feature/            # one file per measurer
 │   ├── overlays/<dataset>/                 # detection overlay PNGs
@@ -175,7 +175,7 @@ to `LiDetector` in the pipeline you pass will not re-segment anything.
 
 `recompile` takes neither `--input` nor `--pipeline`; both are reloaded from the
 output root. It re-aggregates marker-authorized embedded tables into
-`master_measurements.csv`, regenerates any missing overlay PNGs from their stores,
+`master_measurements.parquet`, regenerates any missing overlay PNGs from their stores,
 rebuilds the progress manifest, and regenerates the progress dashboard.
 
 ```bash

@@ -26,7 +26,6 @@ from typing import TYPE_CHECKING, Any
 
 from phenotypic.sdk_ import (
     deliverables_dir,
-    master_measurements_csv_path,
     master_measurements_parquet_path,
     measurements_csv_path,
     measurements_parquet_path,
@@ -55,13 +54,17 @@ def _to_polars(df: Any) -> "pl.DataFrame":
     return pl.from_pandas(df)
 
 
-def write_master(root: Path, master: Any, *, csv: bool = True, parquet: bool = True) -> Path:
-    """Write ``master_measurements.{csv,parquet}`` under ``<root>/deliverables/``.
+def write_master(root: Path, master: Any, *, parquet: bool = True) -> Path:
+    """Write ``master_measurements.parquet`` under ``<root>/deliverables/``.
+
+    **Parquet only since D8.** The ``csv=`` keyword is gone with the file: the
+    master is no longer the artifact a human opens, ``measurements.csv`` is,
+    and a fixture that still seeded a master CSV would be building a tree no
+    version of the CLI produces.
 
     Args:
         root: Run output root (``tmp_path``).
         master: A polars or pandas DataFrame.
-        csv: Write the CSV master archive.
         parquet: Write the parquet master archive.
 
     Returns:
@@ -69,8 +72,6 @@ def write_master(root: Path, master: Any, *, csv: bool = True, parquet: bool = T
     """
     deliv = _ensure_deliverables(root)
     frame = _to_polars(master)
-    if csv:
-        frame.write_csv(master_measurements_csv_path(root))
     if parquet:
         frame.write_parquet(master_measurements_parquet_path(root))
     return deliv

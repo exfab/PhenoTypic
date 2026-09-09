@@ -19,7 +19,6 @@ from phenotypic._cli._cli_completion import (
 from phenotypic._cli._cli_state_management import save_processing_state
 from phenotypic._cli._cli_types import DatasetState, ProcessingState
 from phenotypic.sdk_ import (
-    master_measurements_csv_path,
     master_measurements_parquet_path,
     measurements_csv_path,
     measurements_parquet_path,
@@ -134,7 +133,6 @@ def test_aggregate_and_run_markers_reject_mixed_core_bytes(tmp_path: Path) -> No
         tmp_path,
     )
     core_paths = (
-        master_measurements_csv_path(tmp_path),
         master_measurements_parquet_path(tmp_path),
         measurements_csv_path(tmp_path),
         measurements_parquet_path(tmp_path),
@@ -203,7 +201,6 @@ def test_partial_aggregate_becomes_stale_when_new_success_appears(
     )
     for index, path in enumerate(
         (
-            master_measurements_csv_path(tmp_path),
             master_measurements_parquet_path(tmp_path),
             measurements_csv_path(tmp_path),
             measurements_parquet_path(tmp_path),

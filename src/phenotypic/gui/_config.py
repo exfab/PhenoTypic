@@ -64,7 +64,6 @@ from phenotypic.sdk_ import (
     DIR_RESULTS,
     JOB_METADATA_JSON,
     MANIFEST_JSON,
-    MASTER_MEASUREMENTS_CSV,
     MASTER_MEASUREMENTS_PARQUET,
     MEASUREMENTS_CSV,
     MEASUREMENTS_PARQUET,
@@ -134,7 +133,6 @@ __all__ = [
     "IMAGE_EXTS",
     "RAW_IMAGE_EXTS",
     # Output filenames (CLI ↔ GUI shared layout) — re-exported from phenotypic.sdk_
-    "MASTER_MEASUREMENTS_CSV",
     "MASTER_MEASUREMENTS_PARQUET",
     "MEASUREMENTS_CSV",
     "MEASUREMENTS_PARQUET",
@@ -471,8 +469,7 @@ RAW_IMAGE_EXTS: frozenset[str] = frozenset(
 # keep working with zero downstream churn. Do NOT redefine these as inline literals.
 #
 # Available re-exports (imported at module top):
-#   MASTER_MEASUREMENTS_CSV, MASTER_MEASUREMENTS_PARQUET,
-#   MEASUREMENTS_CSV, MEASUREMENTS_PARQUET,
+#   MASTER_MEASUREMENTS_PARQUET, MEASUREMENTS_CSV, MEASUREMENTS_PARQUET,
 #   PIPELINE_JSON, JOB_METADATA_JSON, MANIFEST_JSON, STDOUT_LOG,
 #   QC_REVIEW_STATE_JSON,
 #   DIR_RESULTS, DIR_PROGRESS, DIR_QC, DIR_DELIVERABLES, DASHBOARD_HTML

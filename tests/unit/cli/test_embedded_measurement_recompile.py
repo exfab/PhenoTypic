@@ -8,13 +8,12 @@ import importlib.util
 from pathlib import Path
 
 import polars as pl
-import pytest
 
 from phenotypic._cli._cli_completion import valid_image_success
 from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import (
     MEASUREMENT_TABLE_RELATIVE_PATH,
-    image_completion_marker_path,
+    image_record_path,
     zarr_store_path,
 )
 
@@ -28,17 +27,6 @@ def _pixel_digest(store: Path) -> str:
     return digest.hexdigest()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "--mode recompile still reads image_completion_marker_path "
-        "(_cli_recompile_recovery.py:52,387,477,637,709 and "
-        "_cli_recompile_slurm_scripts.py:557), which D1's clean break stopped "
-        "writing. Deferred to P4 by user ruling; this is the same deferral as "
-        "the 28 marks in test_cli_recompile{,_slurm}.py, carried here because "
-        "the file has no shared marker of its own."
-    ),
-)
 def test_recompile_replaces_each_embedded_table_and_refreshes_marker(
     tmp_path: Path,
 ) -> None:
@@ -105,12 +93,17 @@ def test_recompile_replaces_each_embedded_table_and_refreshes_marker(
     table = pl.read_parquet(store / MEASUREMENT_TABLE_RELATIVE_PATH)
     assert table["Metadata_Strain"].to_list() == ["mutant"] * table.height
     assert _pixel_digest(store) == pixels_before
-    marker = __import__("json").loads(
-        image_completion_marker_path(output, "input", "plate").read_text()
+    # The RECORD. `_cli_process_single.main` above is the forward publisher,
+    # and D1's clean break moved what it writes out of `image_complete/`, so
+    # the legacy path is simply absent on the tree this test just built.
+    record = __import__("json").loads(
+        image_record_path(output, "input", "plate").read_text(
+            encoding="utf-8"
+        )
     )
     assert valid_image_success(
         output,
         dataset="input",
         image_stem="plate",
-        work_id=marker["work_id"],
+        work_id=record["work_id"],
     )

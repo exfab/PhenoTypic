@@ -17,7 +17,6 @@ from phenotypic.sdk_ import (
     DIR_RESULTS,
     JOB_METADATA_JSON,
     MANIFEST_JSON,
-    MASTER_MEASUREMENTS_CSV,
     MASTER_MEASUREMENTS_PARQUET,
     MEASUREMENTS_CSV,
     MEASUREMENTS_PARQUET,
@@ -56,7 +55,6 @@ from phenotypic.sdk_ import (
     job_metadata_path,
     manifest_json_path,
     matches_any_suffix,
-    master_measurements_csv_path,
     master_measurements_parquet_path,
     measurements_by_feature_dir,
     measurements_csv_path,
@@ -182,8 +180,19 @@ class TestCompositeBlendLiteral:
 
 class TestFilenameConstants:
     def test_master_measurements_filenames(self) -> None:
-        assert MASTER_MEASUREMENTS_CSV == "master_measurements.csv"
         assert MASTER_MEASUREMENTS_PARQUET == "master_measurements.parquet"
+
+    def test_the_master_csv_constant_is_gone(self) -> None:
+        """D8: the master is parquet-only, and the name went with the file.
+
+        A constant left behind after its artifact is deleted is how a later
+        caller reintroduces the write.
+        """
+        import phenotypic.sdk_ as sdk_
+
+        assert not hasattr(sdk_, "MASTER_MEASUREMENTS_CSV")
+        assert not hasattr(sdk_, "master_measurements_csv_path")
+        assert not hasattr(sdk_, "load_master_measurements")
 
     def test_measurements_mirror_filenames(self) -> None:
         assert MEASUREMENTS_CSV == "measurements.csv"
@@ -340,7 +349,6 @@ class TestPathHelpers:
 
     def test_master_measurements_paths(self, output: Path) -> None:
         deliv = output / "deliverables"
-        assert master_measurements_csv_path(output) == deliv / "master_measurements.csv"
         assert master_measurements_parquet_path(output) == deliv / "master_measurements.parquet"
 
     def test_measurements_mirror_paths(self, output: Path) -> None:
@@ -514,7 +522,6 @@ class TestDeliverablesLayout:
         """
         deliv = deliverables_dir(output)
         moved = {
-            "master_measurements_csv_path": master_measurements_csv_path,
             "master_measurements_parquet_path": master_measurements_parquet_path,
             "measurements_csv_path": measurements_csv_path,
             "measurements_parquet_path": measurements_parquet_path,
@@ -903,14 +910,6 @@ class TestReadRunManifest:
 
         # Should not raise; should warn and return None
         assert read_run_manifest(tmp_path) is None
-
-
-class TestLoadMasterMeasurements:
-    def test_missing_file_returns_none(self, tmp_path: Path) -> None:
-        from phenotypic.sdk_ import load_master_measurements
-
-        # master_measurements.csv doesn't exist
-        assert load_master_measurements(tmp_path) is None
 
 
 class TestLoadImageFromHdf:

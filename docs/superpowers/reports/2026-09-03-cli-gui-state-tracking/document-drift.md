@@ -30,6 +30,25 @@ about each.
 
 ## The register
 
+**Counting this register takes two queries, and one of them nests.** Entries run in a
+single sequence across two shapes: **rows in the table below** (1-20) and **`### Entry N`
+sections after it** (14, 19 and 20 expand their own rows; 21 onward are narrative-only,
+plus one sub-entry, 22b). A *third* numbered table -- the dismissals, 1/2/3 -- lives
+**inside entry 23's body** and is not part of this sequence.
+
+So neither obvious count is the answer, and today both of them return the same wrong
+number: `grep -cE '^\| [0-9]+ \|'` gives **23** (twenty register rows plus the three
+nested dismissal rows) and `grep -cE '^### Entry [0-9]+'` also gives **23** (only the
+sections, since entries 1-13 and 15-18 have none). The highest index is:
+
+```bash
+grep -oE '^(\| [0-9]+ \||### Entry [0-9]+)' document-drift.md \
+  | grep -oE '[0-9]+' | sort -n | tail -1
+```
+
+Entry 40 records what that cost. **Before quoting a total from this file, run the command.**
+
+
 | # | Document | Claim | Kind | Resolved |
 |---|---|---|---|---|
 | 1 | P1 T3b, P7 T1 | *"Create `_cli/_cli_schema_gate.py`"* — no document named `sdk_/_schema_shape.py`, where the detection actually lives | stale | `c29167bb` |
@@ -1625,6 +1644,281 @@ defect that predates the phase.
 
 ---
 
+### Entry 39 — A SENTINEL RETARGETED ONTO AN OBJECT THAT NO LONGER CONTAINS IT. 2026-09-08.
+
+`test_finalizer_does_not_publish_after_master_parquet_failure` was rewritten by P4 Task 4
+for D8's inversion -- the master CSV was required and the Parquet best-effort; now the
+Parquet is the master, so its failure must stop finalization. The rewrite is **right about
+the inversion**. It is wrong about the object it retargeted the test's sentinel onto.
+
+Before:
+
+```python
+assert pl.read_csv(master_measurements_csv_path(output_dir))[
+    "Size_Area"
+].to_list() == [999999]
+```
+
+After:
+
+```python
+assert 999999 not in pl.read_parquet(master_path)["Size_Area"].to_list()
+```
+
+**`Size_Area` was real in the first and cannot exist in the second**, and neither fact is
+about the column. Pre-D8, `_write_master_outputs_from_shards` wrote the master CSV *from
+the shards* before attempting the Parquet, so that CSV **was** the shard concat -- and the
+fixture's shard (`_write_parquet(..., [999999])`) has exactly one column, `Size_Area`.
+Post-D8 the CSV is deleted and the Parquet write is the one the test blocks, so the only
+master on disk afterwards is the fixture's own, produced by a pipeline whose measurers are
+`MeasureShape`/`MeasureIntensity`/`MeasureTexture`/`MeasureColor` and which therefore
+carries no `Size_*` column at all. `ColumnNotFoundError`, not a failed assertion.
+
+**Kind: wrong while correcting.** The amendment carries the authority of a fix, is correct
+about the thing it set out to fix, and is wrong about a name it carried across unexamined.
+
+#### The generalization
+
+> **A column reference is a claim about a specific frame. Retargeting the read retargets
+> the claim.** When an edit changes *which file* an assertion opens, every name inside it
+> has to be re-checked against the new file -- even though not one character of the name
+> changed, which is exactly why the diff does not look like a place to check.
+
+Root `CLAUDE.md` already carries this rule ("Ask the schema for the spelling, then assert
+the column is in the frame ... Spellability and presence are different questions, and only
+presence is a property of the run") and uses **`Size_Area` as its own worked example**. The
+rule was documented, in this repository, against this column, and was not applied.
+
+#### The half a gate caught, and the half it could not
+
+This is the first entry in the register that a gate reported, so it is worth being exact
+about which part the gate saw. It saw the loud half: the column does not exist, the test
+errors, the suite is red.
+
+**It could not have seen the larger half, which is that the sign flipped.** `== [999999]`
+was a *positive control*: it proved the shards had been merged and written. `not in` is a
+negative, and negatives of that shape are satisfied by a run that merged nothing at all --
+an empty shard glob, a frame that came back `None`, a finalizer that raised earlier. Had
+the rewrite happened to name a column the fixture *does* emit, the test would have been
+green, and green for a run that never reached the write it exists to describe.
+
+So the summary above -- *"Nothing failed, and nothing could have"* -- still holds of the
+register-relevant defect here. The two halves share one cause and are recorded together.
+
+D8 leaves no successfully-written artifact carrying the shard concat, so the control could
+not be restored where it was. It was rebuilt on the one thing the inversion does leave
+behind: the write **attempt**, recorded by the fault injector and asserted before the two
+"nothing changed" equalities. That assertion fails for the empty-shard case, which no
+reading of the master can detect.
+
+---
+
+### Entry 40 — A REGISTER WHOSE OWN SIZE NO SINGLE QUERY RETURNS. 2026-09-08.
+
+The brief handing P4 cluster 4.2 to a fresh agent said this register kept **"23 entries"**.
+It keeps 38. Nobody had counted; the number came from `grep -c '^| [0-9]'`, which spans the
+register table *and* the three-row dismissals table nested inside entry 23's body.
+
+The reply proposed **21** as the next index, from
+`git show cd0ffb82 -- document-drift.md | grep '^+| [0-9]'` returning nothing — reasoning
+that a commit message saying *"and drift entry 21"* had named an entry it never wrote, and
+flagging that as a register candidate in its own right.
+
+**It wrote one.** The grep was shaped for table rows; entry 21 is a narrative section:
+
+```
+$ git show cd0ffb82 -- document-drift.md | grep -E '^\+### Entry'
++### Entry 21 — A TOOL'S OUTPUT IS A SAMPLE TOO. 2026-09-05.
+```
+
+`cd0ffb82`'s message is accurate. Appending at 21 would have **duplicated a live entry** —
+the one whose subject is that a tool's output is a sample.
+
+#### The measurement, and the coincidence that hid it
+
+| Query | Returns | What it actually counts |
+|---|---|---|
+| `grep -cE '^\| [0-9]+ \|'` | **23** | 20 register rows **+ 3 nested dismissal rows** |
+| `grep -cE '^### Entry [0-9]+'` | **23** | only the sections; entries 1-13 and 15-18 have none |
+| max index across both shapes | **39** | the answer |
+
+Two structurally unrelated wrong queries returning the same number is luck, not
+corroboration — the second only reached 23 once entry 39 was appended. Had either party
+cross-checked the other's 23 with their own grep, it would have agreed, and both would have
+been wrong together.
+
+#### Why this is not drift in a claim
+
+No sentence in this register is false. Every entry is correct, and so is `cd0ffb82`'s
+message. The defect is in the **instrument**: a document that collects claims about totals,
+whose own total is not obtainable by any query its structure invites, and which offers two
+plausible queries that both mislead.
+
+That is the register's most common pattern — *a claim about what a check does* — one level
+up, as **a claim about what a count counts**. Nearest kind: **true but incomplete**. The
+omitted consequence is that the file's size cannot be read off it, so anyone who needs the
+number derives it, and derives it wrong.
+
+#### Both directions of the error appeared, which is the useful part
+
+The two failures are opposites and neither is carelessness:
+
+* **Over-count by nesting** (23 for 20) — a query that reaches past the structure it meant
+  to sample, into a table that belongs to an entry rather than to the register.
+* **Under-count by shape** (0 for 1) — a query that samples the right region in the wrong
+  form, and reports absence for something present.
+
+The second is the dangerous one, because absence reads as a finding. It produced a
+confident, well-evidenced, wrong hypothesis — *a commit claimed an entry it never wrote* —
+which is exactly the shape entry 38 records under a different mechanism. **A `grep` that
+returns nothing is a claim about the pattern, not about the file.**
+
+#### Remedy, applied
+
+The header of `## The register` now states the two shapes, names the nested table, and
+carries the command that returns the highest index. It deliberately does **not** record the
+count itself: a number written into a file that grows is the same defect one turn later.
+
+---
+
+### Entry 41 — A COMMENT THAT ASSERTS ITS OWN COMMIT'S CO-CHANGE. 2026-09-08.
+
+`_cli_completion.py:238-242`, written by P3 (`1cc6740c`) to justify D1's clean break:
+
+> D1 is a CLEAN BREAK: the record replaces `image_complete/`, and nothing dual-writes. A
+> tree carrying `image_complete/` and no `images/` is a legacy tree, which `--mode migrate`
+> converts and every writing mode now refuses — **which is why `SCHEMA_GATE_ARMED` flips in
+> this same commit.** A dual write would leave the gate unable to tell the two shapes apart.
+
+```
+$ grep -n 'SCHEMA_GATE_ARMED: bool' src/phenotypic/sdk_/_schema_shape.py
+153:SCHEMA_GATE_ARMED: bool = False
+$ git log --oneline -S 'SCHEMA_GATE_ARMED: bool' -- src/phenotypic/sdk_/_schema_shape.py
+17f144ef feat(sdk): resolve_run_state -- the one reader, completing Phase 1
+```
+
+The flag's value was last changed in **P1**, and is still `False`. `1cc6740c` did not touch
+it. **Kind: never true** — the sentence is about the commit that contains it, so unlike a
+pointer to a name that arrives one task later, there is no later moment at which it becomes
+true. It was false when written and false in the same breath.
+
+Three other comments get it right — `_cli_recompile_recovery.py:71`, `_cli_finalize_run.py:94`
+and `_cli_migrate.py:719` all name P7 Task 5 Step 1d as the arming site. One comment out of
+four, and the outlier is the one that states it as accomplished rather than scheduled.
+
+#### What it would have cost
+
+Not the clean break, which is correct — it is justified by P7 arming the gate *later*, not
+by this commit. The damage is downstream of the tense.
+
+**An armed gate refuses legacy trees before they reach any writing mode. That is precisely
+the condition under which `_image_authority_shapes`' second arm is dead code** — and that
+function's own docstring says so, naming the same P7 step as its deletion trigger. So a
+reader who believes this comment is told, four files away, that a live and load-bearing
+legacy arm is unreachable. P4 repointed five production sites onto exactly that pairing; a
+maintainer acting on the false half would have deleted the arm as unreachable and made
+`--mode recompile` silently non-functional on the legacy trees it exists to rescue.
+
+The falsehood is one clause. What it contradicts is a whole compatibility surface.
+
+#### The mechanism: a ruling that revised one site and not the other
+
+The disarming was deliberate. `tests/unit/cli/test_image_record.py:769-778` records it in
+detail — a test that had opened with `assert SCHEMA_GATE_ARMED is True` was renamed and its
+guard removed, because *"the ruling that disarmed the gate for P3 would have failed that
+guard and renamed nothing."* That site was revised carefully, with reasoning. This one, in
+a different file, was not touched.
+
+> **A ruling that changes a plan has to be applied to every sentence written under the old
+> plan, and nothing enumerates those sentences.** The elaborate revision at one site is not
+> evidence the sweep happened; it is evidence that whoever revised it was looking at that
+> file.
+
+#### Resolved
+
+The comment is corrected in place, in the same commit as this entry: it now states the flag
+is `False`, cites the three sites that name P7, and says explicitly that the legacy arm is
+live because of it — so the next reader meets the compensating code rather than a reason to
+delete it.
+
+---
+
+### Entry 42 — A DELETION'S BLAST RADIUS IS NOT THE SET OF SITES THAT NAME IT. 2026-09-08.
+
+D8 deleted `master_measurements_csv_path`. P4 Task 4 Step 4 prescribes the sweep that finds
+what breaks:
+
+```bash
+grep -rn "MASTER_MEASUREMENTS_CSV\|master_measurements_csv_path\|load_master_measurements\|master_csv" src/
+```
+
+and the same step counts the test side (`phase-4-finalize-run.md:2314`, reporting Q6):
+*"ten test files reference `master_measurements_csv_path` — **verified exactly ten**."*
+Both are correct. Both are also **blind to the largest affected cluster in the change**,
+which contains not one occurrence of any deleted name:
+
+```python
+result = aggregate_measurements(...)      # returns the master path
+master = pd.read_csv(result)              # <- 11 of these, in one class
+```
+
+`aggregate_measurements`' return **type** changed from a CSV path to a Parquet path. Every
+caller holding that value is affected, and not one of them mentions a symbol the grep can
+see. The execution bore this out exactly: `tests/unit/cli/test_cli_v2.py` shows the four
+sites that *spell* `master_measurements_csv_path(...)` correctly repointed, and all eleven
+that spell `result` untouched — one file, one editing session, a clean split along
+grep-ability.
+
+> **A symbol deletion's blast radius is not the set of sites that name the symbol. It is
+> every site that holds its value.** A return value is an alias, and an alias carries no
+> name for the grep the deletion invites you to run.
+
+#### It propagated into two scope claims, neither of them careless
+
+| Claim | Basis | Missed |
+|---|---|---|
+| *"8 failures"* | the two files that had been run | a 9th site, `test_embedded_measurement_recompile.py:97` |
+| *"the affected suites"* | the three files known to be red | these 11, in a file neither party had run |
+
+Both were honest reports of what had been executed. Neither was the change's blast radius,
+and the gap between those two things is the entry. **The same root as entry 40:** a total
+asserted from a query that covers part of its subject. There it was a register's own size;
+here it is a deletion's reach. In both cases the query was well-formed and the answer was
+right about what it measured.
+
+#### What actually closes it
+
+Not a better grep — no lexical query can see an alias. Two things do:
+
+1. **Run the suite that exercises the function, not the suite that names the symbol.** The
+   eleven surfaced the moment `tests/unit/cli` was run whole instead of by named file.
+2. **Treat a changed return type as a changed contract and enumerate the callers**, which
+   is a different question from enumerating the references. Here that is one line and the
+   set is closed: `grep -c 'pd.read_csv(result)'` returns **11**, matching the 11 failures
+   exactly.
+
+**Kind: true but incomplete.** The Step 4 grep and Q6's "exactly ten" are both accurate
+about what they measured. The omitted consequence is that their shape cannot reach a
+value-carrying call site — and nothing fails to say so, because a grep that misses a site
+returns a smaller number, not an error.
+
+#### Audited, not assumed
+
+Before repointing, each of the eleven was checked for the entry-39 defect — a positive
+control silently lost when a read is retargeted. **None had one.** Nine assert master
+*content* (row counts, plate sets, column presence) and those claims are format-independent;
+the row-level claims in that class live on the **mirror**, which is genuinely CSV and was
+never affected. A mechanical format swap is the right fix here, which is only knowable
+by having asked.
+
+One pre-existing gap surfaced while checking: `test_aggregate_measurements_no_dataset_column`
+asserted a bare negative with nothing establishing the frame had content, while its own
+sibling `..._metadata_no_common_columns` does it correctly. Fixed in passing, and **not**
+given a register entry — it is a missing assertion, not a false claim, and inflating the
+register with those would cost it the property that makes it worth reading.
+
+---
+
 ## What the pattern says
 
 **Nothing failed, and nothing could have.** Not one entry would have been caught by a test,
@@ -1638,7 +1932,7 @@ acts on it.
    holding a future state in mind — the author is describing the system they are reasoning
    about rather than the one on disk. It comes true one task later, which is the most
    forgiving version and still the same error.
-2. **A claim about what a check does** (10, 12, 13, 21, 22, 27, 28, 30, 31, 32, 33, 34, 36, 37). The most dangerous, because
+2. **A claim about what a check does** (10, 12, 13, 21, 22, 27, 28, 30, 31, 32, 33, 34, 36, 37, 40). The most dangerous, because
    it converts a green gate into false assurance. Entry 27 is its limit case: no claim was
    made and none went stale — a *test* silently stopped covering what its own comment says it
    covers, because a path it depended on moved three files away. Ask of every one: *what would this have looked

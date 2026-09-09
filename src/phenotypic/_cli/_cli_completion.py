@@ -237,9 +237,19 @@ def publish_image_success(
 
     # D1 is a CLEAN BREAK: the record replaces `image_complete/`, and nothing
     # dual-writes. A tree carrying `image_complete/` and no `images/` is a
-    # legacy tree, which `--mode migrate` converts and every writing mode now
-    # refuses -- which is why `SCHEMA_GATE_ARMED` flips in this same commit.
-    # A dual write would leave the gate unable to tell the two shapes apart.
+    # legacy tree, which `--mode migrate` converts; a dual write would leave
+    # the schema gate unable to tell the two shapes apart, which is the whole
+    # reason the break is clean.
+    #
+    # **The gate is not armed**, and from P3 (`1cc6740c`) until P4 this
+    # comment said it flipped "in this same commit". It did not:
+    # `SCHEMA_GATE_ARMED` is `False` (`sdk_/_schema_shape.py:153`) and was
+    # last set in `17f144ef`. P7 Task 5 Step 1d flips it, as
+    # `_cli_recompile_recovery.py:71`, `_cli_finalize_run.py:94` and
+    # `_cli_migrate.py:719` all say. Until then a legacy tree still reaches
+    # every writing mode -- which is exactly why `_image_authority_shapes`
+    # carries a second, legacy arm, code an armed gate would have made dead.
+    # Drift register entry 41.
     #
     # DELEGATED, not restated. `publish_image_record` owns the record's shape,
     # its `stages` merge (CAN-6 rule 1) and the provenance default, so this

@@ -12,7 +12,6 @@ from typing import Any, Final
 from ._cli_completion import (
     ARTIFACT_KIND_FILE,
     ARTIFACT_KIND_STORE,
-    SUCCESS_MARKER_VERSION,
     _sha256,
     _store_artifact_matches,
     authorized_measurement_sources,
@@ -20,6 +19,7 @@ from ._cli_completion import (
 from ._measurement_sources import discover_recompile_measurement_sources
 from ._cli_recompile_recovery import (
     assert_no_unrecoverable_measurement_authority,
+    image_authority_payload,
     recoverable_recompile_measurement_sources,
     recompile_store_lock_path,
 )
@@ -33,7 +33,6 @@ from phenotypic.sdk_ import (
     source_image_stem,
     store_stem,
     dataset_overlays_dir,
-    image_completion_marker_path,
     JobMetadataKey,
     RECOMPILE_TASK_MANIFEST_JSON,
     logs_dir,
@@ -550,10 +549,14 @@ def _overlay_recovery_marker(
         if overlay_present != Path(overlay_path).is_file():
             return None
 
-        marker_path = image_completion_marker_path(
+        # Both shapes, each on its own predicate, and the version travels
+        # with the shape: a record carries `RECORD_VERSION` and a legacy
+        # marker `SUCCESS_MARKER_VERSION`. Repointing the path alone would
+        # have left this comparing a record against 2, returning None, and
+        # disabling overlay-authority repair with nothing raising.
+        _marker_path, marker, authority_version = image_authority_payload(
             output_root, dataset_name, stem
         )
-        marker = json.loads(marker_path.read_text(encoding="utf-8"))
         work_id = marker.get("work_id")
         identity_values = (
             marker.get("relative_image_path"),
@@ -562,7 +565,7 @@ def _overlay_recovery_marker(
             marker.get("lifecycle_epoch"),
         )
         if (
-            marker.get("version") != SUCCESS_MARKER_VERSION
+            marker.get("version") != authority_version
             or marker.get("dataset") != dataset_name
             or marker.get("image_stem") != stem
             or not isinstance(work_id, str)

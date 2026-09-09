@@ -27,7 +27,6 @@ import pytest
 from phenotypic import ImagePipeline
 from phenotypic.measure import MeasureColor, MeasureShape, MeasureSize
 from phenotypic.sdk_ import (
-    master_measurements_csv_path,
     master_measurements_parquet_path,
     measurements_by_feature_dir,
     measurements_csv_path,
@@ -368,8 +367,12 @@ class TestAggregateMeasurementsAutoResolve:
 
         mock_emit_measurements.assert_called_once()
 
-        assert master_path == master_measurements_csv_path(output_dir)
+        # D8: aggregation returns the master PARQUET, and writes no CSV.
+        assert master_path == master_measurements_parquet_path(output_dir)
         assert master_path.exists()
+        assert not (
+            output_dir / "deliverables" / "master_measurements.csv"
+        ).exists()
 
         # The CLI also seeds an editable measurements.{csv,parquet}
         # copy that the GUI results viewer mutates in place.
@@ -378,10 +381,8 @@ class TestAggregateMeasurementsAutoResolve:
         assert seed_csv.exists()
         assert seed_parquet.exists()
 
-        master_df = pl.read_csv(master_path)
-        master_pq = pl.read_parquet(
-            master_measurements_parquet_path(output_dir)
-        )
+        master_pq = pl.read_parquet(master_path)
+        master_df = master_pq
         seed_df = pl.read_csv(seed_csv)
         seed_pq_df = pl.read_parquet(seed_parquet)
         # CSV round-trip: shapes + columns match (CSV always re-encodes
