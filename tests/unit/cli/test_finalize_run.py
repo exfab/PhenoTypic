@@ -371,6 +371,47 @@ def _plant_stale_master(tmp_path: Path, poison: pl.DataFrame) -> Path:
     return path
 
 
+def _publish_legacy_external_record(output_dir: Path, stem: str) -> Path:
+    """Publish a record whose measurement authority is a LEGACY external Parquet.
+
+    ``authorized_measurement_sources`` reads each record's
+    ``artifacts["measurements"]`` path verbatim, so a record pointing at
+    ``results/<ds>/measurements/<stem>.parquet`` puts a legacy-shaped source
+    into the **authorized** mapping. That is the only way the authorized arm
+    can hold a mixture, and it is the state
+    ``refuse_mixed_measurement_authority`` exists for -- the reachability half
+    that the direct-call test below cannot supply.
+
+    Args:
+        output_dir: Run output root.
+        stem: Image stem for the legacy Parquet and its record.
+
+    Returns:
+        The legacy external Parquet the record certifies.
+    """
+    path = (
+        output_dir
+        / DIR_RESULTS
+        / DATASET
+        / DIR_MEASUREMENTS
+        / f"{stem}.parquet"
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pl.from_pandas(_measurements(stem)).write_parquet(path)
+    publish_image_success(
+        output_dir,
+        work_id=f"work-{stem}",
+        dataset=DATASET,
+        relative_image_path=f"{stem}.tiff",
+        image_stem=stem,
+        mode="full",
+        attempt_id="attempt-1",
+        lifecycle_epoch="epoch-1",
+        artifacts={"measurements": path},
+    )
+    return path
+
+
 def _build_legacy_external_parquet_tree(tmp_path: Path) -> None:
     """A genuine pre-record tree: external Parquets, NO progress payloads.
 
@@ -1342,6 +1383,51 @@ def _reader_outcomes(master_path: Path) -> dict[str, object]:
     return outcomes
 
 
+def _publish_v1_run(output_dir: Path, *, snapshot: str | None) -> None:
+    """Build a genuine PRE-INVERSION tree and finalize it.
+
+    **The v1 arm cannot be a second call to the forward writer.** That is two
+    runs of one function, and an equality between them holds by construction
+    -- which is what this test used to do, and what made it unable to fail.
+
+    It is built through the producer the inversion replaced instead.
+    ``prepare_embedded_measurement_table`` still ships (``06809fbc`` retains
+    it for the consumers that read and rewrite pre-inversion stores), and
+    ``recompile_embedded_measurement_tables`` is the caller that drives it
+    over a whole tree: it projects each store's recorded baseline, re-joins
+    the snapshot into ``table.parquet``, and writes no
+    ``pht-metadata.parquet``. That is the v1 store shape, so the master
+    aggregated from those stores is a v1 master.
+
+    The stores are written WITHOUT a snapshot and the snapshot installed
+    afterwards, because a store built with ``--metadata`` is inverted and
+    ``_refuse_inverted_stores_before_any_write`` refuses the whole run. Absent
+    the snapshot at write time the tree is un-inverted, which is exactly the
+    pre-inversion shape this arm needs.
+
+    Args:
+        output_dir: Directory to build the run in.
+        snapshot: The metadata CSV text to re-join, or ``None`` for the
+            metadata-free arm.
+    """
+    from phenotypic._cli._cli_recompile_tables import (
+        recompile_embedded_measurement_tables,
+    )
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    _publish_successful_images(output_dir, snapshot=None, include_well=False)
+    metadata_csv = (
+        _install_snapshot(output_dir, snapshot) if snapshot is not None else None
+    )
+    rewritten = recompile_embedded_measurement_tables(output_dir, metadata_csv)
+    assert rewritten == 2, (
+        f"the pre-inversion producer rewrote {rewritten} of 2 stores; this "
+        "arm is not a v1 tree and every comparison below is about something "
+        "else"
+    )
+    assert finalize_run(output_dir, dataset_names=[DATASET]) is not None
+
+
 def test_a_v1_metadata_free_master_is_indistinguishable_from_v2_and_that_is_harmless(
     tmp_path: Path,
 ) -> None:
@@ -1357,25 +1443,58 @@ def test_a_v1_metadata_free_master_is_indistinguishable_from_v2_and_that_is_harm
     the ruling flips: mint the stamp and register it as tracked state
     properly. **That raises the state-artifact count, which is a HARD STOP:
     stop and report, do not decide.**
-    """
-    v1 = tmp_path / "v1"
-    v2 = tmp_path / "v2"
 
-    # v2: the real post-inversion path, no --metadata.
+    ⛔ **THE ARMS MUST COME FROM DIFFERENT PRODUCERS, or this test cannot
+    fail.** An earlier version built both with ``_publish_successful_images``
+    + ``finalize_run`` -- same code, same inputs -- so ``outcomes_v1 ==
+    outcomes_v2`` was true by construction and could only break on
+    nondeterminism. Inverting ``sdk_/_master_io.py``'s predicate changed both
+    dicts identically and left it green. The v1 arm now runs the retained
+    **pre-inversion** producer (see :func:`_publish_v1_run`), so the equality
+    is a claim about two producers agreeing on the metadata-free path rather
+    than about one function being deterministic.
+
+    **``v1_joined`` is the positive control**, and it is what makes the
+    equality mean something: a v1 run that WAS given a snapshot must come out
+    distinguishable. Without it, a ``_reader_outcomes`` that discriminated
+    nothing at all would satisfy the equality just as well.
+    """
+    from phenotypic.sdk_ import master_carries_user_metadata
+
+    # v2: the real post-inversion path, no --metadata. `include_well=False`
+    # matches `test_the_master_carries_no_user_metadata`'s fixture: with
+    # `Metadata_Well` in the baseline BOTH arms would carry an unowned
+    # metadata header and `master_carries_user_metadata` would be True for
+    # every arm, collapsing the control below.
+    v2 = tmp_path / "v2"
     v2.mkdir()
-    _publish_successful_images(v2, snapshot=None)
+    _publish_successful_images(v2, snapshot=None, include_well=False)
     assert finalize_run(v2, dataset_names=[DATASET]) is not None
 
-    # v1: the pre-inversion shape of the same metadata-free run -- the
-    # PRE-INVERSION producer's output, written as the legacy finalizer wrote
-    # it. With no snapshot the two producers agree by construction, which is
-    # precisely the premise under test.
-    v1.mkdir()
-    _publish_successful_images(v1, snapshot=None)
-    assert finalize_run(v1, dataset_names=[DATASET]) is not None
+    v1 = tmp_path / "v1"
+    _publish_v1_run(v1, snapshot=None)
+
+    v1_joined = tmp_path / "v1-joined"
+    _publish_v1_run(v1_joined, snapshot=_SNAPSHOT_BY_IMAGE)
+
+    # STANDING RULE, the control half. Establish that the pre-inversion
+    # producer really did join user metadata into the master when given a
+    # snapshot, and that the v2 arm really did not -- otherwise "the two are
+    # indistinguishable" is a statement about two empty differences.
+    joined_master = _master(v1_joined)
+    assert joined_master.height > 0, "the joined v1 arm produced no master"
+    assert "Metadata_Strain" in joined_master.columns, (
+        "the pre-inversion producer did not join the snapshot into the "
+        "embedded tables; the v1_joined arm is not a joined v1 master"
+    )
+    assert master_carries_user_metadata(joined_master) is True
+    assert master_carries_user_metadata(_master(v2)) is False
 
     outcomes_v1 = _reader_outcomes(master_measurements_parquet_path(v1))
     outcomes_v2 = _reader_outcomes(master_measurements_parquet_path(v2))
+    outcomes_joined = _reader_outcomes(
+        master_measurements_parquet_path(v1_joined)
+    )
 
     # STANDING RULE, and the highest stakes in the file: this test is the
     # designated falsifier for a HARD-STOP ruling. An outcome collector that
@@ -1389,7 +1508,20 @@ def test_a_v1_metadata_free_master_is_indistinguishable_from_v2_and_that_is_harm
     assert len(outcomes_v1) == _EXPECTED_READER_COUNT, (
         "a reader was added or dropped without updating this falsifier"
     )
+    assert outcomes_joined != outcomes_v2, (
+        "a JOINED v1 master read the same as a v2 master through every "
+        "reader -- `_reader_outcomes` discriminates nothing, so the "
+        "equality below proves nothing either"
+    )
 
+    # The two claims, in the order they can fail. Byte equality is the
+    # stronger one and is a statement about the two PRODUCERS; the outcome
+    # equality is the ruling's own wording.
+    assert _master_bytes(v1) == _master_bytes(v2), (
+        "the pre-inversion and post-inversion producers disagree on a "
+        "metadata-free run -- v1 and v2 masters are not interchangeable and "
+        "the no-stamp ruling has to be revisited"
+    )
     assert outcomes_v1 == outcomes_v2
 
 
@@ -1427,6 +1559,121 @@ def test_mixed_embedded_and_legacy_authority_is_still_refused(
         ValueError, match="mixed embedded and legacy measurement authority"
     ):
         refuse_mixed_measurement_authority([embedded, legacy])
+
+
+def test_the_authorized_arm_refuses_a_mixed_authority_tree(
+    tmp_path: Path,
+) -> None:
+    """H6, reachability half 1 -- ``select_measurement_sources``.
+
+    The test above proves the guard REFUSES; it does not prove anything ever
+    hands it a mixture. ``_cli_finalize_run.py``'s call site runs on every
+    authorized finalization, but every other fixture in this file builds a
+    homogeneous authorized set, so deleting that line left the whole suite
+    green.
+
+    The mixture is manufactured the way production would reach it: a record
+    whose ``artifacts["measurements"]`` names a legacy external Parquet
+    instead of a store's embedded table. ``authorized_measurement_sources``
+    reads that path verbatim, so the authorized mapping carries both shapes.
+    """
+    from phenotypic._cli._cli_completion import authorized_measurement_sources
+
+    _publish_successful_images(tmp_path, stems=["a", "b"])
+
+    # POSITIVE CONTROL, on this same tree and before the mixture exists: a
+    # homogeneous authorized set finalizes. Without it, the raise below is
+    # indistinguishable from a fixture that could never finalize at all.
+    assert finalize_run(tmp_path, dataset_names=[DATASET]) is not None, (
+        "the homogeneous tree did not finalize; the refusal below would be "
+        "attributable to the fixture rather than to the mixture"
+    )
+
+    legacy = _publish_legacy_external_record(tmp_path, "c")
+    _install_state(tmp_path, ["a", "b", "c"])
+
+    # STANDING RULE. Establish the authorized set really is MIXED -- if the
+    # legacy record failed to authorize, `pytest.raises` would be waiting for
+    # an exception nothing could throw.
+    sources = authorized_measurement_sources(tmp_path)
+    assert sources is not None, "the tree fell back to the legacy arm"
+    assert legacy.resolve() in sources, (
+        "the legacy external Parquet did not reach the AUTHORIZED set; the "
+        "mixture this test needs was never built"
+    )
+    suffix = MEASUREMENT_TABLE_RELATIVE_PATH.parts
+    embedded = [
+        path
+        for path in sources
+        if tuple(Path(path).parts[-len(suffix) :]) == suffix
+    ]
+    assert embedded, "no embedded tables in the authorized set"
+    assert len(embedded) != len(sources), "the authorized set is not mixed"
+
+    with pytest.raises(
+        ValueError, match="mixed embedded and legacy measurement authority"
+    ):
+        finalize_run(tmp_path, dataset_names=[DATASET])
+
+
+def test_the_recompile_finalizer_refuses_a_mixed_authority_task(
+    tmp_path: Path,
+) -> None:
+    """H6, reachability half 2 -- ``_run_post_master_steps``.
+
+    The recompile SLURM finalizer re-checks the mixture over the task's
+    serialized ``measurement_sources`` rather than over a live scan, because
+    by the time it runs the sources were chosen in a different job. Nothing
+    drove that call site with a mixed list, so deleting the whole
+    ``if measurement_sources is not None:`` block left the suite green.
+    """
+    from phenotypic.sdk_ import DIR_RECOMPILE_SHARDS
+    from phenotypic._cli._cli_recompile_worker import _run_post_master_steps
+
+    _publish_successful_images(tmp_path, stems=["a", "b"])
+
+    attempt_dir = progress_dir(tmp_path) / "recompile" / "attempt-1"
+    shard_dir = attempt_dir / DIR_RECOMPILE_SHARDS
+    shard_dir.mkdir(parents=True, exist_ok=True)
+    _concat_of_embedded_tables(tmp_path).write_parquet(
+        shard_dir / "shard_0.parquet"
+    )
+
+    embedded = [
+        str(
+            zarr_store_path(tmp_path, DATASET, stem)
+            / MEASUREMENT_TABLE_RELATIVE_PATH
+        )
+        for stem in ("a", "b")
+    ]
+    legacy = str(
+        tmp_path / DIR_RESULTS / DATASET / DIR_MEASUREMENTS / "c.parquet"
+    )
+
+    def _task(sources: list[str]) -> dict[str, object]:
+        return {
+            "dataset_names": [DATASET],
+            "include_dataset_column": True,
+            "measurement_sources": sources,
+        }
+
+    # POSITIVE CONTROL: the identical call with a HOMOGENEOUS source list runs
+    # all the way through `finalize_run` and publishes a master. So the raise
+    # below is the mixture, not the task shape, the shard, or the tree.
+    master = _run_post_master_steps(
+        tmp_path, _task(embedded), attempt_dir=attempt_dir
+    )
+    assert master is not None and master.is_file(), (
+        "the homogeneous task published no master; the refusal below is "
+        "attributable to the fixture"
+    )
+
+    with pytest.raises(
+        ValueError, match="mixed embedded and legacy measurement authority"
+    ):
+        _run_post_master_steps(
+            tmp_path, _task([*embedded, legacy]), attempt_dir=attempt_dir
+        )
 
 
 def test_the_run_proof_copies_the_aggregates_source_set_digest(

@@ -581,23 +581,13 @@ def test_the_recompile_guard_still_accepts_a_pre_inversion_store(
     _refuse_inverted_store(store)
 
 
-def test_the_recompile_guard_is_wired_into_the_rewrite_path() -> None:
-    """A guard that is defined and never called is worse than no guard: it
-    reads as coverage. The two tests above exercise ``_refuse_inverted_store``
-    directly, because driving the whole rewrite needs records and store
-    locks -- so this one pins the call site instead.
-
-    It proves the guard is *invoked*, not that the surrounding transaction is
-    correct. Delete all three with the recompile repoint.
-    """
-    import inspect
-
-    from phenotypic._cli import _cli_recompile_tables
-
-    source = inspect.getsource(
-        _cli_recompile_tables._replace_and_republish_table
-    )
-    assert "_refuse_inverted_store(store_path)" in source
+# ``_refuse_inverted_store``'s CALL SITE is proved in
+# ``test_embedded_measurement_recompile.py`` by
+# ``test_the_inverted_store_guard_runs_before_the_rewrite_transaction``, which
+# drives the real single-store rewrite and asserts the store's bytes are
+# unchanged after the raise. It replaced a substring test that lived here and
+# was blind to where in the transaction the call sat. Delete the two tests
+# above and that one together with the recompile repoint (P7 Task 5 Step 1e).
 
 
 def test_re_measuring_without_metadata_clears_the_stores_metadata_block(

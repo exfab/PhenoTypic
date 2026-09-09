@@ -20,6 +20,7 @@ reason.
 | `p1_task3_verification_cache.py` | P1 Task 3 Step 6 — the **in-process (tier 1)** INV-VERDICT tests, over `sdk_/_verification_cache.py`. |
 | `p2_task0_disk_verification_cache.py` | P2 Task 0 (U-11) — the **on-disk (tier 2)** tests, including §9.1's six corruption cases. |
 | `p2_task1_restart_epoch.py` | P2 Task 1 — the `restart_epoch` and **rule-2 fence** tests, over the identity, lifecycle and state-writing modules. |
+| `p4_finalize_run.py` | P4 — the finalization suite: INV-INPUTS, INV-PROVEN, the v1/v2 master discrimination, the metadata join and its ragged path, and the mixed-authority refusal at **both** production call sites. |
 | `check_mutation_coverage.py` | Read-only, no pytest. Name integrity, coverage, and anchor drift for every harness here. |
 
 ### Why this table carries no counts
@@ -287,9 +288,24 @@ Scope rule warns about, applied to itself.
 | `tests/unit/sdk_/test_verification_cache.py` | `p1_task3_verification_cache.py` |
 | `tests/unit/sdk_/test_verification_cache_disk.py` | `p2_task0_disk_verification_cache.py` |
 | `tests/unit/cli/test_run_identity.py` | `p2_task1_restart_epoch.py` |
+| `tests/unit/cli/test_finalize_run.py` | `p4_finalize_run.py` |
 | **`tests/unit/sdk_/test_run_state.py`** | **nothing** |
 | **`tests/unit/sdk_/test_run_state_layering.py`** | **nothing** |
 | **`tests/unit/cli/test_schema_gate.py`** | **nothing** |
+| **`tests/unit/cli/test_embedded_table_inversion.py`** | **nothing** |
+| **`tests/unit/cli/test_embedded_measurement_recompile.py`** | **nothing** |
+
+The last two are P4's, and they are named here rather than left implicit
+because P4's fix pass moved work *into* them. The order-blind substring test
+that used to pin ``_refuse_inverted_store``'s call site was deleted, and the
+behavioural test that replaced it — plus the two tests that pin
+``_image_authority_shapes``' path→version pairing — live in
+`test_embedded_measurement_recompile.py`. Their mutations are written down in
+the P4 review (`docs/superpowers/reports/2026-09-03-cli-gui-state-tracking/
+p4-implementation-test-review.md`, findings 3 and 4) and were each run by hand
+against those tests; what does not exist is a committed harness that keeps
+re-running them. Until one does, those two suites are unwatched, exactly as
+this table's own Scope rule requires be stated.
 
 This table's counts are gone for the reason the Files table's are, and it is the
 sharper case of the two: what this table argues is **watched or not**, which is a

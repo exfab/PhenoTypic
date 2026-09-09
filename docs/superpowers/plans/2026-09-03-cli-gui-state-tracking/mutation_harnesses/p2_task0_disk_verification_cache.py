@@ -301,9 +301,16 @@ MUTATIONS: list[tuple[str, str, str, tuple[str, ...]]] = [
     ),
     (
         "the reader drops `stages` -- the same advisory loss, from the other"
-        " side of the file",
-        "            stages=stages,\n",
-        "            stages={},\n",
+        " side of the file. ANCHORED WITH ITS FOLLOWING LINE, not on"
+        " `stages=stages,` alone: that 12-space text is a SUBSTRING of"
+        " `_run_state.py`'s 16-space copy of the same kwarg, so the bare"
+        " anchor matched 2x across the three targets and this mutation"
+        " printed SKIPPED -- which reads as *not run* rather than *not"
+        " proved*. A line can be unique while its text is not.",
+        "            stages=stages,\n            verdict=verdict,"
+        "  # type: ignore[arg-type]\n",
+        "            stages={},\n            verdict=verdict,"
+        "  # type: ignore[arg-type]\n",
         (
             "test_the_reader_rebuilds_every_field_of_an_entry",
             "test_persist_then_load_round_trips",
