@@ -56,7 +56,8 @@ class MeasurementSchema:
         output_root: Path to the CLI output directory whose
             ``deliverables/`` subdirectory holds
             ``measurements.{parquet,csv}`` and / or
-            ``master_measurements.{parquet,csv}``.
+            ``master_measurements.parquet`` (the master has no CSV half --
+            see ``_FILES_BY_SOURCE`` above).
         _deliverables_base: When set (via :meth:`from_layout`), the
             deliverables folder is used *directly* instead of
             ``deliverables_dir(output_root)``. This is what keeps a standalone

@@ -7,6 +7,33 @@
 **Goal:** every consumer of the nine evidence sources calls `resolve_run_state` instead,
 and the machinery they used is deleted. This is the phase that pays for the previous five.
 
+> ### ⚠ `--mode recompile` is unsupported on `--metadata` trees for the whole of this phase
+>
+> **Known, ruled on, and owned — not a bug to re-diagnose.** From P4 until
+> [P7 Task 5 Step 1e](phase-7-migrate-mode.md), `--mode recompile` **raises** on any
+> forward tree built with `--metadata`. Reproduced end to end against the shipped CLI:
+>
+> ```
+> forward run with --metadata: exit=0   store tables: ['measurements', 'metadata']
+> --mode recompile on that tree: exit=1  RuntimeError: Cannot recompile an inverted store
+> ```
+>
+> **Why:** P4 Task 2 makes every `--metadata` run write both tables; recompile still
+> builds with the pre-inversion producer, which would silently un-invert the store.
+> `_refuse_inverted_store` (`_cli_recompile_tables.py:87`) stops that. The guard is
+> correct; the repoint that makes it unnecessary is scheduled, not done.
+>
+> **What this means for you in this phase.** Metadata-free trees recompile normally. If
+> you need a `--metadata` tree recompiled to verify something here, you cannot get it —
+> plan the verification around a metadata-free tree, or defer it past P7. A P4 pre-flight
+> scan makes the refusal whole-run rather than per-store, so a mixed tree is refused
+> before anything is rewritten.
+>
+> **Do not repoint it here.** The trigger is not the schema gate — an inverted store is a
+> *forward* tree, so arming does nothing for it — and the real work is extending
+> recompile's write transaction to bind and atomically commit two tables. That belongs
+> with the phase that owns the retirement, and user ruling (2026-09-08) put it in P7.
+
 **The deletions are the deliverable.** A task here that migrates a consumer without
 deleting what it replaced has not finished — the failure mode this whole change addresses
 is nine sources that each closed a real hole and none of which was ever removed.

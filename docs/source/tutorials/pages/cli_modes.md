@@ -182,6 +182,41 @@ rebuilds the progress manifest, and regenerates the progress dashboard.
 uv run python -m phenotypic --mode recompile --output ./out
 ```
 
+```{warning}
+**`recompile` is unsupported on runs built with `--metadata`.** A run given a
+`--metadata` CSV writes each image's metadata rows into its own store, beside
+the measurements. `recompile` still builds the older shape — metadata joined
+*into* the measurement table — so rewriting such a store would drop its
+metadata table and un-invert its measurements.
+
+It **refuses rather than doing that**, before rewriting anything: you get a
+non-zero exit and a message naming the stores, and every store is left exactly
+as it was. Nothing is damaged, and re-running changes nothing.
+
+**What to use instead.** The metadata join now happens once, at finalization,
+from `deliverables/metadata.csv` — not per image. So to attach or update a
+metadata CSV on such a run, re-run the **original forward command** with the
+new `--metadata` and `--force-local`:
+
+```bash
+uv run python -m phenotypic --input ./plates --output ./out \
+    --pipeline pipeline.json --metadata plate_layout.csv --force-local
+```
+
+Every image is already complete, so nothing is reprocessed; the changed
+snapshot re-runs finalization alone, which is where the join happens.
+`--force-local` matters: on a run submitted with `--slurm`, the same command
+routes into `recompile` internally and hits this same refusal.
+
+**`--mode measure` is not a substitute.** It never copies `--metadata` to
+`deliverables/metadata.csv`, so it would re-measure every image and silently
+re-join the *old* snapshot.
+
+This is a temporary limitation of the current release, tracked as P7 Task 5
+Step 1e; `recompile` will support these runs once its table producer is
+repointed.
+```
+
 Recompile performs neither metadata migration preflight nor metadata
 migration. Convert legacy storage or external measurement authority first with
 `--mode migrate`; recompile then rebuilds the current artifacts. Exact legacy
@@ -194,11 +229,15 @@ Reach for it when the *numbers* are right but the *presentation* is not:
 
 - You deleted or corrupted `dashboard.html`.
 - A SLURM array finished its images but died before the aggregation step.
-- You want to attach a plate-layout metadata CSV to a finished run:
+- You want to attach a plate-layout metadata CSV to a run that was finished
+  **without** one:
 
 ```bash
 python -m phenotypic --mode recompile --output ./out --metadata plate_layout.csv
 ```
+
+  A run that already had `--metadata` is the unsupported case above; use the
+  forward re-run shown there instead.
 
 `--metadata` left-joins the CSV onto the measurements mirror on shared columns.
 Every CSV row survives — one that matches no measured object is kept with null

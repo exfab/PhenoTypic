@@ -96,8 +96,8 @@ Image Type: {self.config.image_type}{grid_info}"""
 ```
 output_folder/
 +-- deliverables/                     # User-facing run outputs
-|   +-- master_measurements.csv       # Aggregated measurements (all datasets)
-|   +-- measurements.csv              # Editable copy used by the GUI results viewer (refreshed on every run)
+|   +-- master_measurements.parquet   # Clean archive: every measured object, un-joined (Parquet only)
+|   +-- measurements.csv              # Metadata-joined mirror used by the GUI results viewer (refreshed on every run)
 |   +-- measurements.parquet          # Parquet companion of measurements.csv
 |   +-- pipeline.json                 # Reproducibility spec (operations + filters + model)
 |   +-- <AnalysisClass>.csv           # Class-named model-fit output
@@ -110,8 +110,8 @@ output_folder/
 |   +-- README.md                     # This file
 +-- results/                          # All dataset results
 {dataset_list}
-|       +-- zarr/                     # Processed images as one OME-Zarr store per input (<stem>.ome.zarr: layers + objmap label image + metadata + grid state)
-|       +-- measurements/             # Per-image Parquet measurement files
+|       +-- zarr/                     # Processed images as one OME-Zarr store per input (<stem>.ome.zarr: layers + objmap label image + grid state, plus the authoritative object measurements at tables/measurements/table.parquet)
+|       +-- measurements/             # Legacy per-image Parquets — only in a tree written by an older release, never created by this run
 +-- .phenotypic/                      # Hidden machine-state cache
 |   +-- processing_state.json         # Continuation/state tracking
 |   +-- processing_events.log         # Append-only event log

@@ -1271,7 +1271,10 @@ def _print_process_only_dry_run_plan(
     help=(
         "Execution mode: full applies the pipeline and measures images; "
         "measure reruns measurement from an existing output root; recompile "
-        "refreshes aggregate outputs from an existing output root; process "
+        "refreshes aggregate outputs from an existing output root (NOT "
+        "supported on a run built with --metadata: it refuses without "
+        "changing anything -- re-run the forward command with the new "
+        "--metadata and --force-local instead); process "
         "exports a single layer selected with --layer; migrate explicitly "
         "upgrades a full legacy run, direct OME-Zarr store, or process-output "
         "tree. A full legacy run uses two passes: metadata headers in every "
@@ -1413,7 +1416,7 @@ def _print_process_only_dry_run_plan(
     "--no-dataset-column",
     "no_dataset_column",
     is_flag=True,
-    help=f"Exclude {_DATASET_COL!r} column from master_measurements.csv (included by default)",
+    help=f"Exclude {_DATASET_COL!r} column from master_measurements.parquet (included by default)",
 )
 @click.option(
     "--dry-run",
@@ -3733,7 +3736,8 @@ def _handle_recompile(
     """Recompile master measurements and dashboard from existing results.
 
     Auto-discovers datasets under ``output_dir/results``, re-aggregates
-    measurement Parquet files into ``master_measurements.csv``,
+    marker-authorized embedded measurement tables into
+    ``master_measurements.parquet``,
     regenerates any missing overlay PNGs from their image stores, rebuilds
     the progress manifest, and regenerates
     the HTML dashboard.

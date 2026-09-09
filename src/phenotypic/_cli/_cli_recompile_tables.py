@@ -84,13 +84,118 @@ def _republish_table_marker(
     )
 
 
+def _declares_metadata_table(store_path: Path) -> bool:
+    """Return whether *store_path* declares an embedded metadata table.
+
+    The single predicate behind both the whole-tree pre-flight scan and the
+    per-store guard. One producer, deliberately: a scan that answered this
+    question differently from the guard it fronts would either refuse a tree
+    the guard would have accepted, or -- far worse -- pass a tree the guard
+    then aborts halfway through, which is the exact failure the scan exists to
+    prevent.
+
+    Unreadable attributes read as "not inverted" here. That is not a judgement
+    that the store is fine; it defers to the specific diagnosis
+    :func:`recompile_embedded_measurement_table` raises a few lines later,
+    rather than replacing it with a vaguer one.
+
+    Args:
+        store_path: A promoted store's root directory.
+
+    Returns:
+        ``True`` when the store root declares ``tables.metadata``.
+    """
+    from phenotypic.sdk_.ngff_ import METADATA_TABLE_GROUP
+
+    try:
+        attrs = read_phenotypic_attributes(store_path)
+    except (OSError, KeyError, ValueError):
+        return False
+    tables = attrs.get(PhenotypicAttr.TABLES)
+    return isinstance(tables, dict) and METADATA_TABLE_GROUP in tables
+
+
+def _refuse_inverted_stores_before_any_write(
+    authorized: dict[Path, str],
+) -> None:
+    """Refuse the whole run if **any** authorized store is inverted.
+
+    **Ordered before the first store's lock, not merely before each store's
+    own write.** The per-store :func:`_refuse_inverted_store` is correctly
+    ordered *within* a store, so on a uniform tree it fails having destroyed
+    nothing. A **mixed** tree is the case it cannot cover: recompile rewrites
+    the un-inverted stores it reaches first, then aborts on an inverted one,
+    leaving exactly the mixed Parquet generations
+    :func:`recompile_embedded_measurement_tables` warns about -- and leaving
+    them by this guard's own action rather than by an interruption.
+
+    Mixed trees are reachable, not hypothetical. ``prepare_image_tables``
+    emits a metadata table only when ``deliverables/metadata.csv`` exists at
+    the moment the image is written, and ``metadata_csv`` is in **neither**
+    ``processing_configuration_digest`` nor ``compute_work_id``
+    (``_cli_failure_tracker.py``). So a run begun without ``--metadata`` and
+    resumed with it keeps every already-complete image's un-inverted store --
+    continuation does not reprocess them, because their work ids did not
+    change -- while every newly processed image gets an inverted one.
+
+    Args:
+        authorized: The full authorized ``table path -> dataset`` mapping,
+            already merged with recovery sources.
+
+    Raises:
+        RuntimeError: If any authorized store declares a metadata table.
+    """
+    inverted = sorted(
+        {
+            table_path.parents[2]
+            for table_path in authorized
+            if tuple(table_path.parts[-3:])
+            == MEASUREMENT_TABLE_RELATIVE_PATH.parts
+            and _declares_metadata_table(table_path.parents[2])
+        }
+    )
+    if not inverted:
+        return
+    listed = "\n  ".join(str(path) for path in inverted)
+    raise RuntimeError(
+        f"Cannot recompile: {len(inverted)} of {len(authorized)} authorized "
+        "store(s) are inverted -- they declare an embedded metadata table, "
+        "and recompile still rejoins metadata into the measurement table. "
+        "Refusing the whole run before rewriting any store, because "
+        "rewriting the rest first would leave mixed Parquet generations.\n  "
+        f"{listed}\n"
+        "Recompile is unsupported on runs built with --metadata. To re-join "
+        "an updated metadata CSV, re-run the original forward command with "
+        "the new --metadata and --force-local: finalization performs the "
+        "join, so it refreshes the deliverables without rewriting any store. "
+        "Note that --mode measure is NOT a substitute -- it never snapshots "
+        "the CSV, so it would silently re-join the old one."
+    )
+
+
 def _refuse_inverted_store(store_path: Path) -> None:
     """Refuse a store whose tables this producer would silently un-invert.
 
-    **Compatibility guard. Delete it when the recompile repoint lands** --
-    that is, when :func:`recompile_embedded_measurement_tables` builds its
-    payload with ``prepare_image_tables`` instead of
-    ``prepare_embedded_measurement_table``.
+    The per-store half of the refusal, kept as defence in depth behind
+    :func:`_refuse_inverted_stores_before_any_write`. The scan is what makes
+    a mixed tree safe; this is what makes a *single* store safe even if a
+    future caller reaches :func:`recompile_embedded_measurement_table`
+    directly, bypassing the scan.
+
+    INVERTED-STORE ARM -- DELETE WHEN: **P7 Task 5 Step 1e** repoints
+    :func:`recompile_embedded_measurement_tables` onto ``prepare_image_tables``
+    and deletes this guard (``phase-7-migrate-mode.md``). Retire
+    :func:`_refuse_inverted_stores_before_any_write` and
+    :func:`_declares_metadata_table` in the same edit; all three exist for
+    this one window and are meaningless after it.
+
+    **Not Step 1d, and not the schema gate.** The other legacy arms this phase
+    added (``_cli_recompile_recovery.py``, ``_cli_finalize_run.py``) retire
+    when ``SCHEMA_GATE_ARMED`` starts refusing *legacy* trees. That does
+    nothing here: an inverted store is a **forward** tree, the shape this
+    build writes, so the gate would wave it straight through to the producer
+    that un-inverts it. Folding this trigger into 1d's would retire the guard
+    while the hazard it covers is still live.
 
     Recompile still uses the **pre-inversion** producer: it re-joins the
     metadata snapshot into ``tables/measurements/table.parquet`` and writes no
@@ -113,15 +218,7 @@ def _refuse_inverted_store(store_path: Path) -> None:
     """
     from phenotypic.sdk_.ngff_ import METADATA_TABLE_GROUP
 
-    try:
-        attrs = read_phenotypic_attributes(store_path)
-    except (OSError, KeyError, ValueError):
-        # Unreadable attributes are the existing code's problem to report a
-        # few lines later, with its own message. Refusing here would replace
-        # a specific diagnosis with a vaguer one.
-        return
-    tables = attrs.get(PhenotypicAttr.TABLES)
-    if isinstance(tables, dict) and METADATA_TABLE_GROUP in tables:
+    if _declares_metadata_table(store_path):
         raise RuntimeError(
             "Cannot recompile an inverted store: "
             f"{store_path} declares tables.{METADATA_TABLE_GROUP}, and "
@@ -319,6 +416,11 @@ def recompile_embedded_measurement_tables(
     A legacy-only run is refused with a migration remedy. Once the first store
     is rewritten, any interruption leaves mixed Parquet generations; aggregate
     publication independently rejects that state until a retry converges.
+
+    An **inverted** store is refused before the first rewrite rather than on
+    reaching it -- see :func:`_refuse_inverted_stores_before_any_write`, which
+    exists precisely so this function cannot *itself* create the mixed state
+    the paragraph above describes as an interruption hazard.
     """
 
     output_dir = Path(output_dir)
@@ -359,6 +461,10 @@ def recompile_embedded_measurement_tables(
         dataset_names,
         set(authorized),
     )
+    # Before the first store's lock, never inside the loop -- see the
+    # function's docstring for why per-store ordering is not enough on a
+    # mixed tree.
+    _refuse_inverted_stores_before_any_write(authorized)
     changed = 0
     for table_path, dataset in sorted(
         authorized.items(), key=lambda item: str(item[0])

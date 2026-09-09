@@ -874,7 +874,7 @@ def _apply_post_to_master(
 ) -> "pl.DataFrame":
     """Run ``pipeline._post`` over a copy of *master_df* and return the result.
 
-    The CLI keeps ``master_measurements.{csv,parquet}`` as a clean, post-free
+    The CLI keeps ``master_measurements.parquet`` as a clean, post-free
     archive (because per-image runs now use ``apply_post=False``). This helper
     applies any configured :class:`PostMeasurement` ops to a pandas copy of
     the aggregated master so the post-applied frame can be written into

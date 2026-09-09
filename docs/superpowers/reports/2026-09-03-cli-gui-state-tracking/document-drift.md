@@ -1919,6 +1919,63 @@ register with those would cost it the property that makes it worth reading.
 
 ---
 
+### Entry 43 — A DEBT STATED CORRECTLY, IN A FORM NOTHING CAN SCHEDULE. 2026-09-08.
+
+**Kind: true but incomplete.** Same root as 40 and 42, one level out: not a claim about
+what a check measured, but a claim about *when work will happen*, written so that nothing
+can act on it.
+
+`_refuse_inverted_store` (`_cli_recompile_tables.py:87`) is a compatibility guard P4
+added. Its retirement condition, at `:90-93`, is accurate:
+
+> *"Delete it when the recompile repoint lands — that is, when
+> `recompile_embedded_measurement_tables` builds its payload with `prepare_image_tables`."*
+
+Every word is true. Nothing can act on it. It names a **code condition**, and no phase
+gate, test, or review step ever asks "is this condition now satisfiable?" Compare the two
+sibling arms the same phase added, which say *"DELETE WHEN: the schema gate is armed
+(P7 Task 5 Step 1d)"* — a **scheduled event**, tied to a step that exists and that
+someone will execute.
+
+**The consequence was a shipped mode refusing its ordinary case.** `--mode recompile`
+raises on every forward tree built with `--metadata`, reproduced end to end:
+`store tables: ['measurements','metadata']` then `exit=1`. The guard is the right
+loud-over-silent call; it was simply never made unnecessary. The plan **had** scheduled
+the repoint (`phase-4-finalize-run.md:232`, `:346` — *"→ `PreparedImageTables`. **This is
+the crash**"*), but the producer was correctly retained for migrate, so the isinstance
+check the plan expected to fire never fired, the guard went in instead, and the schedule
+silently lost its subject.
+
+**Why no gate caught it.** The phase's own §7.4 test,
+`test_every_mode_produces_a_byte_identical_master` (`test_finalize_run.py:474`), runs its
+`recompile` arm with **no metadata snapshot** — deliberately, and for a *correct* reason
+about the master's shape (`:437-439`). The side effect is that the headline claim about
+recompile is established on the only tree shape where recompile still works. A correct
+local decision removed the phase's one chance to see it.
+
+**And the guard had a destructive variant.** It is checked per store, inside the loop.
+On a uniform `--metadata` tree it fails on the first store having written nothing; on a
+**mixed** tree it rewrites the un-inverted stores first, then aborts — the mixed
+generations the function's own docstring warns about. Ordering within a store was right;
+scope across stores was not.
+
+**Resolved 2026-09-08 by user ruling:** document the limitation where a user meets it,
+add a whole-run pre-flight scan so the refusal cannot be partial, and schedule the
+repoint as **P7 Task 5 Step 1e** — a step, with a number, in the phase that owns the
+other retirements. Deliberately *not* folded into Step 1d: arming the schema gate does
+nothing for an inverted store, because an inverted store is a **forward** tree. Tying it
+there would have produced a fourth instance of this same defect — a trigger that cannot
+fire for the thing attached to it.
+
+**The rule.** A retirement condition must name **an event someone will execute**, not a
+state someone might notice. "Delete when X is true" schedules nothing. "Delete at
+P7 Task 5 Step 1e" is work.
+
+*This entry may deserve its own kind rather than sitting under "true but incomplete" —
+the register's four kinds are all about claims regarding the tree, and this is a claim
+about the future. Left as-is rather than minting a fifth kind unilaterally; a reviewer
+should decide.*
+
 ## What the pattern says
 
 **Nothing failed, and nothing could have.** Not one entry would have been caught by a test,

@@ -1342,6 +1342,63 @@ Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/cli/test_schema_gate.py
 Expected: green, with **both** `xfail` markers removed. If either still reads XFAIL, the
 flag is not actually reaching the gate — check for a second copy.
 
+- [ ] **Step 1e: Repoint `--mode recompile` onto `prepare_image_tables`, and delete the guard**
+
+**This step owns a mode that is refusing its ordinary case from P4 until now.** User
+ruling (2026-09-08): document the limitation during P4, schedule the repoint here.
+
+**The defect, reproduced end to end against the shipped CLI, not read off the code:**
+
+```
+[1] forward run with --metadata: exit=0
+    store declares tables: ['measurements', 'metadata']
+[2] --mode recompile on that tree: exit=1
+    RuntimeError: Cannot recompile an inverted store
+```
+
+P4 Task 2 makes every `--metadata` run write both tables.
+`recompile_embedded_measurement_table` (`_cli_recompile_tables.py:297`) still builds its
+payload with the **pre-inversion** `prepare_embedded_measurement_table`, which would
+re-join metadata into `tables/measurements/table.parquet` and drop
+`tables/metadata/pht-metadata.parquet`. `_refuse_inverted_store` (`:87`) stops that.
+The guard is the right loud-over-silent call; what was missing is the step that makes it
+unnecessary. This is that step.
+
+**Its trigger is NOT the schema gate, and it must not be folded into Step 1d.** An
+inverted store is a **forward** tree, not a legacy one, so arming changes nothing about
+it. Step 1d and this step are siblings in this task, not one step.
+
+**Do the repoint:**
+
+1. Swap the producer at `_cli_recompile_tables.py:297` to `prepare_image_tables`. Both
+   take the identical signature `(measurements: pd.DataFrame, metadata_csv: Path | None)`,
+   so the call site is a one-line change. **The work is not there.**
+2. **The work is the transaction.** `_replace_and_republish_table` writes through
+   `begin_recompile_table_transition`, an exclusive lock, a transition receipt binding
+   `marker_sha256` to the authority payload, fsync ordering, and a retry/recovery path.
+   `prepare_image_tables` returns **two** tables, so there are two things to bind and two
+   writes to make atomic together. A split write that is individually atomic and jointly
+   torn leaves exactly the mixed state the receipt exists to detect.
+3. Delete `_refuse_inverted_store` and its three tests
+   (`tests/unit/cli/test_embedded_table_inversion.py:536,559,584`).
+4. Delete the P4 pre-flight scan added alongside the guard, and its test — it exists only
+   to make the guard non-destructive on a mixed tree.
+5. Remove the "unsupported on `--metadata` trees" note from `--mode recompile`'s `--help`
+   and from `docs/source/tutorials/pages/cli_modes.md`.
+6. `prepare_embedded_measurement_table`'s docstring says it *"survives only for the
+   consumers that still read and rewrite pre-inversion stores byte-exactly --
+   `--mode migrate` and `--mode recompile`. **Retire it** with the last of those call
+   sites."* After this step, migrate is the last. **Do not delete it** — check that its
+   docstring still names only the surviving consumer.
+
+**The test that must exist when this is done**, because its absence is why the defect
+shipped: `test_every_mode_produces_a_byte_identical_master`
+(`tests/unit/cli/test_finalize_run.py:474`) runs its `recompile` arm with **no metadata
+snapshot**, deliberately and for a correct reason about the master's shape. The side
+effect is that the phase's headline §7.4 claim is established on the one tree shape where
+recompile still worked. Add a `--metadata` arm, or a separate test that recompiles a
+`--metadata` tree end to end. Without it this repoint has no gate either.
+
 - [ ] **Step 2: Implement, run.**
 
 - [ ] **Step 3: Phase gate — a real tree**
