@@ -283,7 +283,7 @@ def test_state_free_archive_completes_the_real_slurm_worker_chain(
     from phenotypic._cli import _cli_migrate_slurm as slurm
     from phenotypic._cli import _cli_migrate_worker as worker
     from phenotypic._cli._cli_completion import (
-        current_success_counts,
+        _current_success_counts,
         publish_image_success,
         valid_aggregate_snapshot,
     )
@@ -436,7 +436,7 @@ def test_state_free_archive_completes_the_real_slurm_worker_chain(
         generation=plan.generation,
     )
     assert terminal is not None and terminal["status"] == "succeeded"
-    assert current_success_counts(legacy_run) == (plan.task_count, plan.task_count)
+    assert _current_success_counts(legacy_run) == (plan.task_count, plan.task_count)
     assert valid_aggregate_snapshot(legacy_run) is not None
 
 

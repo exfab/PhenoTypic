@@ -367,13 +367,87 @@ def test_the_resume_worklist_uses_the_cache_assisted_path():
 >
 > | Deleted | Replaced by |
 > |---|---|
-> | `current_run_is_complete(d)` | `resolve_run_state(d).completion == "complete"` |
+> | `current_run_is_complete(d)` | ⚠ **TRI-STATE — two questions, see below.** Not this expression alone. |
 > | `current_success_counts(d)` | ⚠ **three questions under one name — see the split below.** Not `diagnostics`. |
 > | `current_aggregate_is_current(d)` | **`_run_proof_covers_current_inventory`'s clause 2** (`_run_state.py:1164`), reached through `resolve_run_state` — its docstring: *"Clause 2 is the **five** comparisons `current_aggregate_is_current` makes today, not the one an earlier draft kept (CAN-4)."* Private, one internal caller, and it takes already-loaded `config`/`identity`/`images`, so it is **not** callable directly the way the pair above is |
 >
 > With that, Step 1's scoped grep and Task 7's unrestricted one are both satisfiable, and
 > the test's message ("the old O(N)-hashing readers survive") means what it says.
 >
+> ### ⚠ `current_run_is_complete` is TRI-STATE and its replacement is a bool
+>
+> ```python
+> def current_run_is_complete(output_dir: Path) -> bool | None:
+>     """Return marker-derived current completion, or ``None`` for legacy state."""
+> ```
+>
+> `resolve_run_state(d).completion == "complete"` is a **bool**. It cannot carry the third
+> arm, and **four sites branch on `is False` while treating `None` as *not* False.**
+> Converting the row as written changes behaviour at two of them:
+>
+> | Site | Today, on a legacy (`None`) tree | After a naive conversion |
+> |---|---|---|
+> | Branch | Today, on a legacy (`None`) tree | After a naive conversion |
+> |---|---|---|
+> | `_cli_gui_lifecycle.py:91` — `is False` | not taken | **taken → raises** `"Cannot publish GUI local completion…"` |
+> | `_cli_gui_lifecycle.py:96` — `is None and generation is None` | `return False` | unreachable — `:91` raised first |
+> | `_cli_gui_lifecycle.py:98` — `is None` | manifest read | unreachable — `:91` raised first |
+> | `_cli_checkpoint_handler.py:363` — `is False` | not taken | **taken → `deactivate_orchestration(…, "terminal_incomplete")`** |
+> | `_cli_checkpoint_handler.py:365` — `else` | `mark_staged_complete` | not taken |
+> | `_cli_checkpoint_handler.py:367` — `is True` | not taken (no run proof) | not taken |
+>
+> **Keyed by branch condition, not by value.** `_cli_gui_lifecycle` has **two `None` arms
+> and one `False` arm** — three branches on the tri-state — and the two `None` arms differ
+> from each other on `generation`. A summary saying "three `None` arms" sends a reader
+> looking for a third `None` test that does not exist, and hides that `None` already
+> produces two different behaviours.
+>
+> `_cli_checkpoint_handler` is the sharper case and the strongest argument for the split:
+> the conversion does not make it stricter, it calls **the opposite function**. A tree that
+> is marked staged-complete today has its orchestration deactivated as terminally
+> incomplete instead.
+>
+> The other two (`_dashboard/_manifest_builder.py:729`, `gui/shell/_runs_registry.py:597`)
+> and the three `is True` sites convert safely. **Right for three call sites, wrong for
+> four** — which is why it survived three rounds: the name matches on both sides and the
+> majority of sites are fine.
+>
+> ### The split: two questions with different costs
+>
+> Not a missing contract. A second row collapsing a shape, and the fix is the same as the
+> other two — ask both questions explicitly:
+>
+> | Question | Cost | Target |
+> |---|---|---|
+> | *is this run complete?* | **O(N)** — what the migration exists to make cheap | `resolve_run_state(d).completion == "complete"` |
+> | *is this a legacy state?* | **O(1)** — one JSON field, `success_markers_required` | read it directly; **not** a hashing reader, so the migration does not target it |
+>
+> ```python
+> legacy = not json.loads(resolve_processing_state_path(d).read_text(encoding="utf-8")
+>                         )["config"].get("success_markers_required", False)
+> complete = resolve_run_state(d).completion == "complete"
+> # is False -> (not legacy) and not complete    is None -> legacy
+> # is True  -> (not legacy) and complete
+> ```
+>
+> **No `_cli` import, including from the GUI.** `resolve_processing_state_path` is in
+> `sdk_/_io_constants.py` and already exported — thirteen `src/` consumers, the most-used
+> resolver in the ledger item this plan refutes. So `_runs_registry.py` gets its legacy
+> signal through `sdk_` and P6's GUI-decoupling goal is unharmed.
+>
+> **⛔ Do NOT fold the two reads into a helper returning a tri-state.** That recreates
+> `current_run_is_complete` under a new name in a new place — what
+> `test_no_migrated_reader_gained_a_second_definition` exists to catch, and what §4.2
+> demotes. Two named locals at each site.
+>
+> **⛔ Do NOT route the legacy read through `_schema_shape`.** It reads
+> `success_markers_required` **zero** times, it is gated behind `SCHEMA_GATE_ARMED` which is
+> `False` until **P7 Task 5 arms it** — so a P6 dependency on it would change behaviour when
+> P7 lands, silently, at a distance.
+>
+> **This unblocks both stalled rows**: `current_success_counts`' `is not None` arm is the
+> identical read, so one O(1) field answers both.
+
 > ### ⚠ `current_success_counts` is THREE questions, and `diagnostics` answers none of them
 >
 > The row above used to send it to `resolve_run_state(d).diagnostics`. Every one of its

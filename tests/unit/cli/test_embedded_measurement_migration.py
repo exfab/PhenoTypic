@@ -304,7 +304,7 @@ def test_migration_reconstructs_authority_without_machine_state(
     """A state-free archive gains marker and aggregate authority."""
     from phenotypic._cli._cli_completion import (
         authorized_measurement_sources,
-        current_aggregate_is_current,
+        _current_aggregate_is_current,
     )
     from phenotypic._cli._cli_state_management import load_processing_state
     from phenotypic.sdk_ import phenotypic_cache_dir
@@ -324,7 +324,7 @@ def test_migration_reconstructs_authority_without_machine_state(
     sources = authorized_measurement_sources(legacy_headers_run)
     assert sources is not None
     assert len(sources) == len(run_stems(legacy_headers_run))
-    assert current_aggregate_is_current(legacy_headers_run) is True
+    assert _current_aggregate_is_current(legacy_headers_run) is True
 
 
 def test_hdf_only_migration_keeps_store_measurement_free(
@@ -334,7 +334,7 @@ def test_hdf_only_migration_keeps_store_measurement_free(
     import h5py
 
     from phenotypic._cli._cli_completion import (
-        current_aggregate_is_current,
+        _current_aggregate_is_current,
         valid_run_completion,
     )
     from phenotypic.sdk_ import dataset_overlays_dir
@@ -377,7 +377,7 @@ def test_hdf_only_migration_keeps_store_measurement_free(
         image_stem=stem,
         work_id=finished_legacy_run.work_id_for(stem),
     )
-    assert current_aggregate_is_current(legacy_run) is True
+    assert _current_aggregate_is_current(legacy_run) is True
     completion = valid_run_completion(legacy_run)
     assert completion is not None
     assert completion["version"] == 2

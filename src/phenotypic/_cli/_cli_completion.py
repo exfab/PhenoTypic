@@ -559,7 +559,7 @@ def current_success_inventory(
     Returns:
         Dataset name to the image names carrying a valid success marker,
         or ``None`` for a legacy state that does not require markers --
-        the same ``None`` contract as :func:`current_success_counts`, so a
+        the same ``None`` contract as :func:`_current_success_counts`, so a
         caller handles the legacy path once for both.
 
     Examples:
@@ -588,7 +588,7 @@ def _walk_current_success(
     """Validate every image the current state claims, once.
 
     The one traversal behind both :func:`current_success_inventory` and
-    :func:`current_success_counts`, so a count can never disagree with
+    :func:`_current_success_counts`, so a count can never disagree with
     the names it is a count of. Each answers by projecting differently:
     the inventory keeps the names that succeeded, the counts keep how
     many did against how many were claimed.
@@ -707,8 +707,52 @@ def manifest_completion_inventory(
     return totals, None
 
 
-def current_success_counts(output_dir: Path) -> tuple[int, int] | None:
+def state_requires_success_markers(output_dir: Path) -> bool:
+    """Return whether this tree's state is schema-3 rather than legacy.
+
+    **O(1) — one JSON field.** This is the question the retired predicates'
+    ``None`` arm answered, and it was never a hashing reader, so the P6
+    migration does not target it: converting an O(1) config read to
+    ``resolve_run_state`` would make it *more* expensive for no gain.
+
+    It is deliberately **not** a tri-state helper. ``current_run_is_complete``
+    returned ``bool | None`` and four call sites branched on all three arms;
+    folding "is it legacy?" and "is it complete?" back into one function would
+    recreate that predicate under a new name, which
+    ``test_no_migrated_reader_gained_a_second_definition`` exists to catch.
+    Callers ask both questions and name both answers.
+
+    It is also **not** routed through ``sdk_/_schema_shape``: that module reads
+    ``success_markers_required`` zero times, asks about tree *shape* instead,
+    and is gated behind ``SCHEMA_GATE_ARMED`` which P7 Task 5 arms — so a
+    dependency on it here would change behaviour when P7 lands, at a distance.
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        ``True`` when the state requires per-image success markers, ``False``
+        for a legacy tree or one with no readable state.
+    """
+    from ._cli_state_management import load_processing_state
+
+    try:
+        state = load_processing_state(output_dir)
+    except (KeyError, TypeError, ValueError):
+        return False
+    if state is None:
+        return False
+    return bool(state.config.get("success_markers_required", False))
+
+
+def _current_success_counts(output_dir: Path) -> tuple[int, int] | None:
     """Return marker-validated ``(successful, total)`` for the current state.
+
+    **Privatised by P6 Task 0, not deleted.** Every *consumer* moved to
+    ``resolve_run_state``; what remains are two writer preconditions in this
+    module — ``_all_accepted_images_succeeded`` and
+    ``publish_aggregate_snapshot`` — which cannot use the reader, because the
+    reader's verdict depends on the proofs these writers are about to write.
 
     ``None`` identifies a legacy state that does not require general image
     success markers. Callers may retain their schema-2 compatibility path in
@@ -753,7 +797,7 @@ def _current_success_work_ids(output_dir: Path, work_ids: object) -> list[str]:
     return sorted(successful)
 
 
-def current_aggregate_is_current(output_dir: Path) -> bool | None:
+def _current_aggregate_is_current(output_dir: Path) -> bool | None:
     """Return whether aggregate evidence matches every current success.
 
     ``None`` identifies a legacy state. A valid partial aggregate is current
@@ -797,9 +841,31 @@ def current_aggregate_is_current(output_dir: Path) -> bool | None:
     )
 
 
-def current_run_is_complete(output_dir: Path) -> bool | None:
-    """Return marker-derived current completion, or ``None`` for legacy state."""
-    counts = current_success_counts(output_dir)
+def _all_accepted_images_succeeded(output_dir: Path) -> bool | None:
+    """Return whether every accepted image has succeeded, or ``None`` if legacy.
+
+    **Renamed and privatised, not deleted — it is a WRITER'S PRECONDITION.**
+    ``publish_run_completion_evidence`` asks it before writing the run proof,
+    and the P6 mapping's replacement
+    (``resolve_run_state(d).completion == "complete"``) **requires that proof to
+    already exist**: rule 1 calls ``run_proof(output_dir)`` and returns ``False``
+    when it is absent (``sdk_/_run_state.py:1164`` ->
+    ``_run_proof_covers_current_inventory``). Converting the writer to it would
+    make the writer ask whether it has already run, get ``False`` forever, and
+    never publish.
+
+    So the two are **different questions**, not two names for one:
+
+    * this: *have all accepted images succeeded?* — marker/record-derived, and
+      independent of any run-level proof
+    * ``resolve_run_state(...).completion``: *is there a valid run proof that
+      covers the current inventory?*
+
+    Private, because every **consumer** of the old public name is migrated to
+    ``resolve_run_state``; what remains is the writer's own guard and
+    ``valid_run_completion``'s, both inside this module.
+    """
+    counts = _current_success_counts(output_dir)
     if counts is None:
         return None
     successful, total = counts
@@ -813,7 +879,7 @@ def current_run_is_complete(output_dir: Path) -> bool | None:
         return None
     if state is not None and state.config.get("process_only_layer"):
         return True
-    return current_aggregate_is_current(output_dir) is True
+    return _current_aggregate_is_current(output_dir) is True
 
 
 def _payload_authorizes(
@@ -1039,7 +1105,7 @@ def publish_aggregate_snapshot(
         raise RuntimeError(
             "Aggregate marker publication requires current state"
         )
-    counts = current_success_counts(output_dir)
+    counts = _current_success_counts(output_dir)
     if counts is None or counts[0] == 0:
         raise RuntimeError("No marker-authorized measurements to publish")
 
@@ -1140,7 +1206,7 @@ def publish_run_completion_evidence(
     """Publish all-success run evidence, idempotently for a no-op run."""
     from ._cli_state_management import load_processing_state
 
-    completion = current_run_is_complete(output_dir)
+    completion = _all_accepted_images_succeeded(output_dir)
     state = load_processing_state(output_dir)
     if (
         completion is None
@@ -1271,7 +1337,7 @@ def valid_run_completion(output_dir: Path) -> dict[str, object] | None:
         return marker if marker.get("finalizer_succeeded") is True else None
     if (
         marker.get("version") != RUN_PROOF_VERSION
-        or current_run_is_complete(output_dir) is not True
+        or _all_accepted_images_succeeded(output_dir) is not True
     ):
         return None
     work_ids = state.config.get("work_ids", {})

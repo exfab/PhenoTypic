@@ -713,8 +713,8 @@ def republish_aggregate(
     """
     from phenotypic._cli._cli_completion import (
         _current_success_work_ids,
-        current_success_counts,
         publish_aggregate_snapshot,
+        state_requires_success_markers,
     )
     from phenotypic._cli._cli_state_management import load_processing_state
 
@@ -726,8 +726,12 @@ def republish_aggregate(
         "success_markers_required", False
     ):
         return False
-    counts = current_success_counts(output_dir)
-    if counts is None or counts[0] == 0:
+    # Was `current_success_counts(...) is None or counts[0] == 0`. The first
+    # half asked "is this a legacy state?" -- an O(1) config field, not a
+    # count -- and the second is subsumed: `publish_aggregate_snapshot` raises
+    # "No marker-authorized measurements to publish" on an empty set, and this
+    # function already returns False on that (MIG-23's documented no-op).
+    if not state_requires_success_markers(output_dir):
         return False
     # `source_work_ids` is REQUIRED, and this site now says out loud what it
     # used to inherit silently: the live success set is the right answer HERE.

@@ -1310,11 +1310,14 @@ def _run_marker_observation(
             "terminal marker is visible; awaiting terminal jobs and finalizer",
         )
     from phenotypic._cli._cli_completion import (
-        current_success_counts,
+        state_requires_success_markers,
         valid_run_completion,
     )
 
-    marker_authority = current_success_counts(record.output_dir) is not None
+    # `is not None` asked "is this a schema-3 state?", an O(1) config field
+    # -- never a count. Converted here rather than in Task 6 because P6 Task 0
+    # privatises the old name and a deletion is not local to its own task.
+    marker_authority = state_requires_success_markers(record.output_dir)
     publication_incomplete = (
         valid_run_completion(record.output_dir) is None
         if marker_authority

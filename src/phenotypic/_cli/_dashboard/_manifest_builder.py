@@ -721,12 +721,22 @@ def build_manifest(
 
     failure_categories = categorize_failures(matched_terminal_records)
     from phenotypic._cli._cli_completion import (
-        current_run_is_complete,
+        state_requires_success_markers,
         valid_aggregate_snapshot,
     )
+    from phenotypic.sdk_ import resolve_run_state
 
     aggregate_marker = valid_aggregate_snapshot(output_dir)
-    marker_completion = current_run_is_complete(output_dir)
+    # P6 Task 0: the retired `current_run_is_complete` was tri-state. Its two
+    # questions are asked separately -- `legacy` is the O(1) config field that
+    # produced its `None`, completion is the O(N) question the migration makes
+    # cheap. Folding them back into one helper would recreate the predicate.
+    legacy = not state_requires_success_markers(output_dir)
+    marker_completion = (
+        None
+        if legacy
+        else resolve_run_state(output_dir).completion == "complete"
+    )
     is_complete = (
         global_completed == total_images
         if marker_completion is None

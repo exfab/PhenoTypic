@@ -669,16 +669,15 @@ def _run_finalizer_task(
             attempt_dir=attempt_dir,
             slurm_generation=slurm_generation,
         )
-        from ._cli_completion import current_success_counts
+        from ._cli_completion import state_requires_success_markers
 
-        if (
-            master_path is not None
-            and current_success_counts(output_dir) is not None
+        # `is not None` asked "is this a schema-3 state?", never a count.
+        if master_path is not None and state_requires_success_markers(
+            output_dir
         ):
-            from ._cli_completion import (
-                current_run_is_complete,
-                publish_run_completion_evidence,
-            )
+            from phenotypic.sdk_ import resolve_run_state
+
+            from ._cli_completion import publish_run_completion_evidence
 
             # No `publish_aggregate_snapshot` here any more: `finalize_run`
             # publishes the aggregate proof itself, on the authorized arm,
@@ -686,7 +685,9 @@ def _run_finalizer_task(
             # second time from out here would be a second writer for one
             # artifact within a single pass.
             with generation_publication_guard(output_dir, slurm_generation):
-                if current_run_is_complete(output_dir) is True:
+                # Guarded by the schema-3 check above, so the legacy arm
+                # cannot reach here and `== "complete"` is the whole question.
+                if resolve_run_state(output_dir).completion == "complete":
                     publish_run_completion_evidence(
                         output_dir,
                         execution_epoch=slurm_generation,

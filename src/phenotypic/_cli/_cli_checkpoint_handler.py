@@ -300,10 +300,14 @@ def _run_finalize(
     if aggregate_path is None:
         message = "No current-epoch measurements were available to aggregate"
         if epoch is not None:
-            from ._cli_completion import current_success_counts
+            from ._cli_completion import state_requires_success_markers
+            from phenotypic.sdk_ import resolve_run_state
 
-            counts = current_success_counts(output_dir)
-            if counts is None or counts[0] > 0:
+            # `counts is None` was "legacy state" (O(1)); `counts[0] > 0` was
+            # "anything verified yet", which `RunDiagnostics.verified` answers
+            # -- a projection over `images`, which the caller already holds.
+            legacy = not state_requires_success_markers(output_dir)
+            if legacy or resolve_run_state(output_dir).diagnostics.verified > 0:
                 raise RuntimeError(message)
             logger.warning(
                 "%s; closing terminal-incomplete lifecycle", message
@@ -350,16 +354,27 @@ def _run_finalize(
 
     if epoch is not None:
         _publish_staged_report_and_readme(output_dir, job_metadata, epoch)
+        from phenotypic.sdk_ import resolve_run_state
+
         from ._cli_completion import (
-            current_run_is_complete,
             publish_run_completion_evidence,
+            state_requires_success_markers,
         )
         from ._cli_staged_orchestration import (
             deactivate_orchestration,
             mark_staged_complete,
         )
 
-        marker_completion = current_run_is_complete(output_dir)
+        # P6 Task 0. The `else` arm below catches BOTH `True` and `None`, so
+        # collapsing the tri-state would send a legacy tree to
+        # `deactivate_orchestration` where it is marked staged-complete today
+        # -- the opposite function, not a stricter version of the same one.
+        legacy = not state_requires_success_markers(output_dir)
+        marker_completion = (
+            None
+            if legacy
+            else resolve_run_state(output_dir).completion == "complete"
+        )
         if marker_completion is False:
             deactivate_orchestration(output_dir, "terminal_incomplete")
         else:
@@ -410,9 +425,15 @@ def _publish_run_completion_marker(
                 "Cannot publish completion after the SLURM generation "
                 "was cancelled or superseded"
             )
-        from ._cli_completion import current_run_is_complete
+        from phenotypic.sdk_ import resolve_run_state
 
-        complete = current_run_is_complete(output_dir)
+        from ._cli_completion import state_requires_success_markers
+
+        complete = (
+            None
+            if not state_requires_success_markers(output_dir)
+            else resolve_run_state(output_dir).completion == "complete"
+        )
         if complete is None:
             try:
                 manifest = json.loads(

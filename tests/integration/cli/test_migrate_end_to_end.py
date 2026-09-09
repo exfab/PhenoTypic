@@ -19,8 +19,8 @@ from click.testing import CliRunner
 import pytest
 
 from phenotypic._cli._cli_completion import (
-    current_aggregate_is_current,
-    current_success_counts,
+    _current_aggregate_is_current,
+    _current_success_counts,
     valid_aggregate_snapshot,
     valid_run_completion,
     valid_image_success,
@@ -174,8 +174,8 @@ def _published_migration_snapshot(tree: Path, stems: tuple[str, ...]) -> dict[st
         stem: valid_staged_store(store) for stem, store in stores.items()
     }
     assert all(store_conformance.values())
-    assert current_aggregate_is_current(tree) is True
-    success_counts = current_success_counts(tree)
+    assert _current_aggregate_is_current(tree) is True
+    success_counts = _current_success_counts(tree)
     assert success_counts == (2, 2)
     return {
         "store_conformance": store_conformance,
@@ -286,7 +286,7 @@ def test_a_full_migrate_leaves_the_run_valid_and_idle(
             image_stem=stem,
             work_id=finished_legacy_run.work_id_for(stem),
         ), stem
-    assert current_aggregate_is_current(tree) is True
+    assert _current_aggregate_is_current(tree) is True
     completion = valid_run_completion(tree)
     assert completion is not None
     assert completion["version"] == 2
@@ -451,9 +451,9 @@ def test_fixture_shaped_run_completes_32_measured_and_four_zero_object_images(
     )
 
     assert result.exit_code == 0, result.output
-    assert current_success_counts(legacy_run) == (36, 36)
+    assert _current_success_counts(legacy_run) == (36, 36)
     assert len(list(dataset_overlays_dir(legacy_run, "ds").glob("*.png"))) == 36
-    assert current_aggregate_is_current(legacy_run) is True
+    assert _current_aggregate_is_current(legacy_run) is True
     assert valid_run_completion(legacy_run) is not None
     assert datasets_needing_migration(legacy_run) == []
 

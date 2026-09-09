@@ -22,7 +22,7 @@ import pytest
 
 from phenotypic._cli._cli_completion import (
     SUCCESS_MARKER_VERSION,
-    current_aggregate_is_current,
+    _current_aggregate_is_current,
     valid_image_success,
 )
 from phenotypic.sdk_ import image_completion_marker_path
@@ -37,7 +37,7 @@ from tests.unit.sdk_._migration_fixtures import LegacyRun
 #: and nothing anywhere in `src/` removes `image_complete/`. So after a
 #: migration `valid_image_success` -- which reads the record -- is false for
 #: every image, `_current_success_work_ids` is empty, and
-#: `current_aggregate_is_current` compares a published digest against the
+#: `_current_aggregate_is_current` compares a published digest against the
 #: digest of nothing.
 #:
 #: **This file is where P3's sweep went wrong, which is why the note lives
@@ -110,7 +110,7 @@ def test_the_aggregate_publication_survives_migration(
     success set, which is what this is about.
     """
     migrate_run_hdf_to_zarr(finished_legacy_run.path)
-    assert current_aggregate_is_current(finished_legacy_run.path) is True
+    assert _current_aggregate_is_current(finished_legacy_run.path) is True
 
 
 def test_work_id_and_epoch_are_preserved(finished_legacy_run: LegacyRun) -> None:

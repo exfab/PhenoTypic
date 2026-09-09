@@ -31,7 +31,7 @@ from pathlib import Path
 
 from phenotypic._cli._cli_completion import (
     authorized_measurement_sources,
-    current_run_is_complete,
+    _all_accepted_images_succeeded,
     current_success_inventory,
     manifest_completion_inventory,
     publish_aggregate_snapshot,
@@ -127,7 +127,7 @@ def _build_run(tmp_path: Path) -> Path:
     )
 
     # Publish the aggregate snapshot too, without which
-    # `current_run_is_complete` is False and `is_complete` never reaches
+    # `_all_accepted_images_succeeded` is False and `is_complete` never reaches
     # the manifest as True -- which would leave the invariant test below
     # vacuously passing on a run that never claimed completion. The real
     # run had published one; a fixture that had not was not reproducing
@@ -140,12 +140,12 @@ def _build_run(tmp_path: Path) -> Path:
         core.parent.mkdir(parents=True, exist_ok=True)
         core.write_bytes(b"aggregated")
     # Both images: the stub core bytes stand for a master over the whole
-    # run, which is what makes `current_run_is_complete` True below and the
+    # run, which is what makes `_all_accepted_images_succeeded` True below and the
     # invariant test non-vacuous.
     publish_aggregate_snapshot(
         tmp_path, source_work_ids=["work-measured", "work-empty"]
     )
-    assert current_run_is_complete(tmp_path) is True
+    assert _all_accepted_images_succeeded(tmp_path) is True
     return tmp_path
 
 

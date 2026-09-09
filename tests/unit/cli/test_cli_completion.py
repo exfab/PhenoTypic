@@ -6,9 +6,9 @@ from pathlib import Path
 from datetime import datetime
 
 from phenotypic._cli._cli_completion import (
-    current_success_counts,
-    current_aggregate_is_current,
-    current_run_is_complete,
+    _current_success_counts,
+    _current_aggregate_is_current,
+    _all_accepted_images_succeeded,
     publish_aggregate_snapshot,
     publish_image_success,
     publish_run_completion_evidence,
@@ -94,7 +94,7 @@ def test_completion_resolves_direct_store_inventory_to_canonical_marker(
         tmp_path,
     )
 
-    assert current_success_counts(tmp_path) == (1, 1)
+    assert _current_success_counts(tmp_path) == (1, 1)
 
 
 def test_aggregate_and_run_markers_reject_mixed_core_bytes(tmp_path: Path) -> None:
@@ -145,7 +145,7 @@ def test_aggregate_and_run_markers_reject_mixed_core_bytes(tmp_path: Path) -> No
     # covering exactly it.
     publish_aggregate_snapshot(tmp_path, source_work_ids=["work-a"])
     assert valid_aggregate_snapshot(tmp_path) is not None
-    assert current_run_is_complete(tmp_path) is True
+    assert _all_accepted_images_succeeded(tmp_path) is True
     run_marker = publish_run_completion_evidence(
         tmp_path, execution_epoch="local"
     )
@@ -157,7 +157,7 @@ def test_aggregate_and_run_markers_reject_mixed_core_bytes(tmp_path: Path) -> No
 
     measurements_parquet_path(tmp_path).write_bytes(b"mixed")
     assert valid_aggregate_snapshot(tmp_path) is None
-    assert current_run_is_complete(tmp_path) is False
+    assert _all_accepted_images_succeeded(tmp_path) is False
     assert valid_run_completion(tmp_path) is None
 
 
@@ -217,7 +217,7 @@ def test_partial_aggregate_becomes_stale_when_new_success_appears(
     # the assertion below would flip to False, and the staleness this test
     # exists to detect could never be observed.
     publish_aggregate_snapshot(tmp_path, source_work_ids=["work-a"])
-    assert current_aggregate_is_current(tmp_path) is True
+    assert _current_aggregate_is_current(tmp_path) is True
 
     b_path = measurements_dir / "b.parquet"
     b_path.write_bytes(b"b")
@@ -234,5 +234,5 @@ def test_partial_aggregate_becomes_stale_when_new_success_appears(
     )
 
     assert valid_aggregate_snapshot(tmp_path) is not None
-    assert current_aggregate_is_current(tmp_path) is False
-    assert current_run_is_complete(tmp_path) is False
+    assert _current_aggregate_is_current(tmp_path) is False
+    assert _all_accepted_images_succeeded(tmp_path) is False

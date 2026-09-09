@@ -592,9 +592,19 @@ class RunRegistry:
         record: RunRecord,
     ) -> str | None:
         """Return why a zero-exit local generation cannot publish complete."""
-        from phenotypic._cli._cli_completion import current_run_is_complete
+        from phenotypic._cli._cli_completion import (
+            state_requires_success_markers,
+        )
+        from phenotypic.sdk_ import resolve_run_state
 
-        marker_complete = current_run_is_complete(record.output_dir)
+        # Tri-state preserved: this site branches on `is False` and must not
+        # treat a legacy tree as incomplete. Task 4 owns this file; converted
+        # here because P6 Task 0's deletion is not local to its own task.
+        marker_complete = (
+            None
+            if not state_requires_success_markers(record.output_dir)
+            else resolve_run_state(record.output_dir).completion == "complete"
+        )
         if marker_complete is False:
             return (
                 "local process exited successfully but current marker evidence "

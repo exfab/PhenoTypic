@@ -127,11 +127,11 @@ def test_the_aggregate_publication_survives_migration(
     validate against the success set?" A description of behaviour passed for
     a justification; only a test asking about the *consequence* caught it.
     """
-    from phenotypic._cli._cli_completion import current_aggregate_is_current
+    from phenotypic._cli._cli_completion import _current_aggregate_is_current
     from phenotypic.sdk_._hdf_to_zarr import migrate_run_hdf_to_zarr
 
     migrate_run_hdf_to_zarr(finished_legacy_run.path)
-    assert current_aggregate_is_current(finished_legacy_run.path) is True
+    assert _current_aggregate_is_current(finished_legacy_run.path) is True
 
 
 def test_the_view_sits_beside_the_snapshot(legacy_run: Path) -> None:

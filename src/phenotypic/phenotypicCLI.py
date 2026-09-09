@@ -2428,12 +2428,13 @@ def phenotypic_cli(
                     config.process_only_layer is None
                 )
                 if config.process_only_layer is not None:
+                    from phenotypic.sdk_ import resolve_run_state
+
                     from phenotypic._cli._cli_completion import (
-                        current_run_is_complete,
                         publish_run_completion_evidence,
                     )
 
-                    if current_run_is_complete(output_dir) is True:
+                    if resolve_run_state(output_dir).completion == "complete":
                         publish_run_completion_evidence(
                             output_dir,
                             execution_epoch=(
@@ -2494,14 +2495,19 @@ def phenotypic_cli(
             # aggregate source set with current success markers rather than
             # trusting the presence of old core files.
             from phenotypic._cli._cli_completion import (
-                current_aggregate_is_current,
-                current_success_counts,
+                state_requires_success_markers,
                 valid_run_completion,
             )
+            from phenotypic.sdk_ import resolve_run_state
 
-            startup_counts = current_success_counts(output_dir)
-            if startup_counts is not None:
-                startup_successful, startup_total = startup_counts
+            # P6 Task 0. `current_success_counts` was three questions under one
+            # name: `is not None` (is this schema-3? -- O(1) config field),
+            # `> 0` and `== total` (counts). Only the last two are counts, and
+            # `RunDiagnostics` supplies them as projections over `images`.
+            if state_requires_success_markers(output_dir):
+                startup_state = resolve_run_state(output_dir)
+                startup_successful = startup_state.diagnostics.verified
+                startup_total = startup_state.diagnostics.accepted
                 if config.process_only_layer:
                     publication_refresh_required = bool(
                         startup_successful == startup_total
@@ -2510,7 +2516,7 @@ def phenotypic_cli(
                 elif startup_successful > 0:
                     publication_refresh_required = bool(
                         publication_refresh_required
-                        or current_aggregate_is_current(output_dir) is not True
+                        or startup_state.completion != "complete"
                         or (
                             startup_successful == startup_total
                             and valid_run_completion(output_dir) is None
@@ -2961,13 +2967,18 @@ def phenotypic_cli(
         # Aggregate every current marker-authorized success. This republishes
         # a valid partial snapshot even when this invocation ended with only
         # terminal failures, while a true no-op preserves existing outputs.
-        from phenotypic._cli._cli_completion import current_success_counts
+        from phenotypic._cli._cli_completion import (
+            state_requires_success_markers,
+        )
+        from phenotypic.sdk_ import resolve_run_state
 
-        current_counts = current_success_counts(output_dir)
+        # `current_counts is None` was the legacy arm (O(1)); `counts[0] > 0`
+        # is "anything verified yet", which `diagnostics.verified` answers.
+        legacy_state = not state_requires_success_markers(output_dir)
         should_finalize_measurements = (
             results.total_completed > 0
-            if current_counts is None
-            else current_counts[0] > 0
+            if legacy_state
+            else resolve_run_state(output_dir).diagnostics.verified > 0
             and (
                 results.total_images > 0
                 or metadata_snapshot_changed
@@ -3813,11 +3824,11 @@ def _handle_recompile(
     if master_path:
         console.print(f"[green]Master measurements: {master_path}")
         from phenotypic._cli._cli_completion import (
-            current_run_is_complete,
             publish_run_completion_evidence,
         )
+        from phenotypic.sdk_ import resolve_run_state
 
-        if current_run_is_complete(output_dir) is True:
+        if resolve_run_state(output_dir).completion == "complete":
             publish_run_completion_evidence(
                 output_dir, execution_epoch="local"
             )

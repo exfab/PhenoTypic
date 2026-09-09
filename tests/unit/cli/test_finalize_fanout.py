@@ -671,11 +671,11 @@ def _run_until(tmp_path: Path, kill_after: str) -> Path:
         return tmp_path
 
     from phenotypic._cli._cli_completion import (
-        current_run_is_complete,
+        _all_accepted_images_succeeded,
         publish_run_completion_evidence,
     )
 
-    assert current_run_is_complete(tmp_path) is True, (
+    assert _all_accepted_images_succeeded(tmp_path) is True, (
         "the fixture did not reach a publishable state, so the 'nothing' row "
         "would assert completion against a run that never completed"
     )
