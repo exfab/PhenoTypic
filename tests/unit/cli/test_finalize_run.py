@@ -72,7 +72,7 @@ _SNAPSHOT = (
 _SNAPSHOT_WITH_PHANTOM = _SNAPSHOT + "Z99,GHOSTSTRAIN\n"
 
 #: Keyed on ``Metadata_ImageName`` instead, for the tests that read the
-#: master's METADATA NAMESPACE rather than its join. ``Metadata_Well`` is
+#: master's metadata namespace rather than its join. ``Metadata_Well`` is
 #: not a schema member, so a baseline carrying it puts an *unowned*
 #: metadata header in the master -- realistic for a custom operation, but
 #: not for the forward pipeline, whose master metadata is IMAGE-owned plus
