@@ -33,18 +33,51 @@ about each.
 **Counting this register takes two queries, and one of them nests.** Entries run in a
 single sequence across two shapes: **rows in the table below** (1-20) and **`### Entry N`
 sections after it** (14, 19 and 20 expand their own rows; 21 onward are narrative-only,
-plus one sub-entry, 22b). A *third* numbered table -- the dismissals, 1/2/3 -- lives
-**inside entry 23's body** and is not part of this sequence.
+plus one sub-entry, 22b). **Two further numbered tables are not part of this sequence**:
+the dismissals (1/2/3) inside entry 23's body, and the broken-mutation table (1/2) inside
+entry 44's.
 
-So neither obvious count is the answer, and today both of them return the same wrong
-number: `grep -cE '^\| [0-9]+ \|'` gives **23** (twenty register rows plus the three
-nested dismissal rows) and `grep -cE '^### Entry [0-9]+'` also gives **23** (only the
-sections, since entries 1-13 and 15-18 have none). The highest index is:
+**No literal counts appear below, and their absence is deliberate — see entry 53.** Every
+number this header has ever carried went stale, including one that went stale *in the edit
+that corrected the previous one*, because a count of this file is invalidated by the act of
+writing the count into this file. What follows says why each naive query is wrong
+**structurally**, which does not rot:
+
+* `grep -cE '^\| [0-9]+ \|'` **over-counts.** It matches the register's own rows *plus*
+  every row of the two nested tables.
+* `grep -cE '^### Entry [0-9]+'` **under-counts.** Entries 1-13 and 15-18 have no narrative
+  section at all, so they are invisible to it — and it folds `22b` into `22`.
+
+Run the command below; do not read a total out of this prose.
+
+**Use this, and read its limit below. Two earlier commands here were wrong.**
 
 ```bash
-grep -oE '^(\| [0-9]+ \||### Entry [0-9]+)' document-drift.md \
-  | grep -oE '[0-9]+' | sort -n | tail -1
+{ grep -oE '^### Entry [0-9]+[a-z]?' document-drift.md
+  awk '/^## The register$/{f=1;next} /^## /{f=0} f' document-drift.md \
+    | grep -oE '^\| [0-9]+ \|'
+} | grep -oE '[0-9]+' | sort -n | uniq
 ```
+
+Two things it fixes. The `awk` **scopes table rows to the register section**, so no nested
+table can reach them. The `[a-z]?` makes suffixed headings visible: without it `### Entry
+22b` matches as plain `22` and folds into entry 22 silently -- and 22b **exists today**, so
+that was a live blind spot rather than a hypothetical one.
+
+**Read the whole list, not just the last line.** It prints gapless `1..N`, and gaplessness
+is the check worth running: it catches a skipped or duplicated number, which is the failure
+this header exists to prevent, and no `tail -1` can perform it.
+
+**Its limit, stated because the output does not show it.** It answers *"what number comes
+next"*. It does **not** answer *"how many entries are there"*: 22 and 22b are two entries
+sharing one number, and `uniq` folds them, so the true count is one higher than the list is
+long. A future author reaching for this to get a total will be off by one -- which is this
+file's own subject, one level up.
+
+The command that stood here until 2026-09-08 also matched `^| N |`, so it counted rows of
+the two nested tables as entries. It returned the right answer only because the register
+happened to be the longest numbered sequence in the file -- see **entry 45**, and **entry
+40**, which is the same defect in the same apparatus.
 
 Entry 40 records what that cost. **Before quoting a total from this file, run the command.**
 
@@ -2107,3 +2140,371 @@ a follow-up.
 *should* do, before running it. It caught two mis-claimed mutations and a real coverage hole
 against a suite where all 323 tests passed. See the harness
 [README](../../plans/2026-09-03-cli-gui-state-tracking/mutation_harnesses/README.md).
+
+---
+
+### Entry 45 — THE REGISTER'S OWN MEASURING COMMAND COUNTED OTHER TABLES' ROWS. 2026-09-08.
+
+**Kind: never true**, and it is entry 40's defect in the apparatus entry 40 created to
+prevent it. Recorded first among this batch because it is the one the next author uses
+before writing anything else.
+
+The header carried:
+
+```bash
+grep -oE '^(\| [0-9]+ \||### Entry [0-9]+)' document-drift.md \
+  | grep -oE '[0-9]+' | sort -n | tail -1
+```
+
+It returns **44**, which is correct. It is also not measuring what it claims to. The `^| N |`
+alternation matches numbered rows in **every** table in the document, and there are two
+besides the register:
+
+| Lines | Table | Values |
+|---|---|---|
+| 54-73 | the register's own rows | 1-20 |
+| 590-592 | the dismissals, inside entry 23 | 1, 2, 3 |
+| 1991-1992 | the broken-mutation table, inside entry 44 | 1, 2 |
+
+Twenty-five matched rows for twenty register rows. **It returns the right answer only
+because the register happens to be the longest numbered sequence in the file.** The first
+time any nested table reaches a row number above the register's highest entry, the command
+silently reports that other table's row and the next author numbers a duplicate.
+
+**And there is a second blind spot, live rather than latent.** `### Entry [0-9]+` has no
+right boundary, so it matches `### Entry 22` inside **`### Entry 22b`** (line 558) and folds
+two entries into one number. That is true of the document today. Add `### Entry 44b`
+tomorrow and neither the maximum nor the count moves. **The first replacement written for
+this entry fixed the nested-table half and reproduced this half unchanged** -- the third
+drift in this apparatus, inside the correction for the second.
+
+**Two corrections to how this was first diagnosed, both worth keeping.**
+
+The lines at 590-592 were read as a claim-vs-evidence table. They are the **dismissals**,
+and the header already accounted for them — *"a third numbered table … lives inside entry
+23's body"*. The genuinely unaccounted one is at **1991-1992**: entry 44's own M1/M2 table,
+added on 2026-09-08. So the header's enumeration of nested tables went stale **the moment
+entry 44 landed**, in the same commit, and neither the author nor the reviewer updated it.
+
+That sharpens the entry rather than softening it. The register's counting apparatus has now
+drifted **twice** — once in the command (this entry) and once in the prose that enumerates
+what the command must exclude — and both drifts are in the machinery whose entire subject is
+counting this file correctly.
+
+**The fix, in the header where the command lives, not only here.** A register row that names
+a broken command without replacing it leaves the next author with the broken one, which is
+how entry 40 stayed live long enough to bite twice:
+
+```bash
+grep -oE '^### Entry [0-9]+' document-drift.md | grep -oE '[0-9]+' | sort -n | tail -1
+```
+
+The `awk` scopes table rows to the register section so no nested table reaches them, and
+`[a-z]?` makes `22b` visible. **Read the full list rather than `tail -1`:** it is gapless
+`1..N`, and gaplessness catches the skipped-or-duplicated number this header exists to
+prevent, which no maximum can. The command answers *"what number comes next"* and **not**
+*"how many entries"* — `uniq` folds 22 with 22b — and that limit is stated in the header,
+because the output does not show it.
+
+**The general form.** A counting command is a claim about a document's structure, and it
+keeps being true only while that structure holds. This one was written against a file with
+one numbered table and survived two more being added underneath it. *Ask of a counting
+command what else its pattern matches* — not whether its answer looks right, because a wrong
+pattern and a right answer coexist comfortably for as long as the wrong matches stay small.
+
+---
+
+### Entry 46 — A STATIC CHECK'S GREEN IS A STATEMENT ABOUT ITS OWN QUESTION. 2026-09-08.
+
+**Kind: rule written without checking compliance.** Three instances inside one task, each a
+tool reporting accurately on a question narrower than the one being asked of it — and in
+every case the gap is invisible from the output.
+
+| Check | Accurate about | Silent about | Evidence |
+|---|---|---|---|
+| `mypy` over `src/` | every shipped caller of a newly-required parameter | every caller under `tests/` | 2 production sites found; **8 test sites** missed, producing 15 failures and 5 errors |
+| `ruff` F821 | whether a name is *bound* | whether `from X import Y` *resolves* | `All checks passed!` on a file where pytest then raised three `ImportError`s — same file, same batch |
+| a `pytest` summary line | what was *classified* | what was *executed* | `566 deselected, 1 error in 11.82s`, accurate, on a suite that never started |
+
+**flow-r4 specified the first as the mechanism** — *"Making it required puts the type checker
+on the job of finding all three — which is the only mechanism here that cannot be
+forgotten"* — and asserted its reach without stating what it does not reach. It **is** the
+right mechanism: making `publish_aggregate_snapshot`'s `source_work_ids` required is how
+`sdk_/_hdf_to_zarr.py:732`'s genuinely-different case surfaced (it wants the live set,
+because migrate re-certifies deliverables over a tree it has just rewritten and there is no
+master in that call for a proof to describe) instead of being papered over with the forward
+path's answer. But *"green mypy means the change is complete"* is false, and the test call
+sites outnumbered the production ones **4:1**.
+
+The second is the tightest evidence in the register for this shape, because both signals
+came from one batch over one file. Ruff's F821 is a **scope** analysis: `from X import Y`
+binds `Y` unconditionally, whatever `X` contains. Resolving it means importing `X`, which a
+linter does not do.
+
+**The third is the nastiest, because no number in it is zero.** `566 deselected` is *true* —
+those tests were deselected by `-m "not slow"` during the collection that then aborted. A
+gate grepping for `failed` finds none; a gate parsing `N passed` finds nothing to compare.
+Both read as clean. The only word carrying *nothing ran* is `Interrupted`.
+
+**Operational rule, and it corrects a weaker one proposed first.** The harness guard is
+`p4_finalize_run.py`'s **green-baseline refusal**, not a non-zero-executed-count check. The
+executed-count guard would not have caught the `ImportError` case — twelve tests passed, so
+the suite plainly executed. A green-baseline refusal catches that case and the
+collection-abort case both.
+
+---
+
+### Entry 47 — A FILE-TABLE ROW CONTRADICTED BY A CONTRACT OLDER THAN THE PLAN. 2026-09-08.
+
+**Kind: never true.** `phase-5-fanout.md`'s File Structure table:
+
+> **Modify** `src/phenotypic/_cli/_cli_slurm_array_scripts.py:30` | Add the finalize trigger
+> beside `_CHECKPOINT_SENTINEL` and `_MANIFEST_SENTINEL`.
+
+Those sentinels are inserted into the **image-processing** array's entry list. The module's
+own comment at `:28` says so — *"Sentinel value inserted into the image list"* — and
+`_cli/CLAUDE.md:104-107` forbids the instruction in as many words:
+
+> *"It also does not convert a terminal `afterany` finalizer into an array entry: a finalizer
+> runs after the array becomes terminal and is not a parallel sidecar."*
+
+That sentence predates the plan, which settles *never true* rather than *stale*.
+
+**It is independently impossible**, contract aside: array indices run concurrently, so
+aggregation of image *i*'s table cannot be ordered after image *i* within one array. No
+arrangement of the row's instruction aggregates a complete run.
+
+**The plan contradicted itself two sections later and nobody noticed.** Task 2 Step 1's own
+test describes `[{"task_type": "measurements"} × K, {"task_type": "finalize"}]` — a
+**task-dict manifest**, recompile's shape — while the file table describes a **bash
+string-sentinel list**. Two incompatible designs in one task, and the plan even says *"The
+shape already exists"* while pointing at the one its file table rejects.
+
+**Resolved by ruling:** the fan-out is its own dependent array. `task_indices=[0]` on the
+existing `pht-finalizer` becomes `range(K+1)`; line 30 is untouched. Pinned by
+`test_the_image_array_entry_list_carries_no_finalize_token` and
+`test_only_two_sentinels_are_defined_for_the_image_array`, so the rejected reading is a
+guard rather than a decision in prose.
+
+---
+
+### Entry 48 — A MISCHARACTERISED MODULE, AND AN INFERENCE THAT INVERTS WITH IT. 2026-09-08.
+
+**Kind: never true.** `phase-5-fanout.md` Task 2 Step 3:
+
+> `_cli_checkpoint_handler.py` is the in-array `__PHENOTYPIC_CHECKPOINT__` dispatch — **the
+> SLURM fan-out path itself** — […] So the shard-completeness check, as first written, does
+> not reach the path most able to publish over a short master.
+
+`__PHENOTYPIC_CHECKPOINT__` dispatches to `phenotypic._cli._cli_chunk_writer`
+(`_cli_slurm_array_scripts.py:325-333`, consumed at `:353-357`) — byte-identical at the
+plan-edit commit `ea2eb130` and at the merge-base `72f68b9b`, so never true rather than
+stale. `_cli_checkpoint_handler`'s in-array half is `__PHENOTYPIC_MANIFEST__` →
+`--checkpoint-type manifest` → `_run_manifest`, which publishes nothing.
+
+**The citation being right is what let the characterisation survive.** Both publish sites the
+plan names (`:354`, `:442`) are exactly where it says. They are inside `_run_finalize`,
+reached only via `--checkpoint-type finalize` — the dependent `pht-finalizer`. A reader who
+checks the citation finds what it promises and stops. Same shape as entry 23.
+
+**What inverts.** The plan's conclusion describes the terminal `afterany` finalizer the
+contract explicitly **permits** and that P5 replaces. So CAN-19's question is not *"what do
+we do about a second publisher"* but *"this is the job we are replacing"*: keep it, make it
+index K, and no site changes its publication behaviour. Confirmed by enumerating
+`_run_finalize` — 165 lines, 29 calls, and already the run proof's publisher twice over, so
+minting a new `TASK_FINALIZE` that published would have **created** the second publisher this
+change exists to remove, through the fix for it.
+
+**The seven-row table's value was in proving that, not in authorising the change it was
+expected to authorise.** A reader who finds a seven-row table and a one-line outcome should
+be told the table is why the outcome is safe.
+
+---
+
+### Entry 49 — P4 MOVED THE TREE UNDER FOUR SETS OF PLAN CITATIONS AT ONCE. 2026-09-08.
+
+**Kind: stale**, uniformly — every one was correct at `ea2eb130`, the commit that last wrote
+flow-r4 into `phase-5-fanout.md`. Established with `git show` against that commit and the
+merge-base, not inferred.
+
+| Plan claim | At `ea2eb130` | At `e15117e7` |
+|---|---|---|
+| *"three call sites in shipped code"* for `publish_aggregate_snapshot` | true | **two**: `_cli_finalize_run.py:435`, `sdk_/_hdf_to_zarr.py:732` |
+| seven-site rows 1-2 (`_cli_output_manager.py:1540`, `_cli_recompile_worker.py:652`) | both real | both removed by P4; `_cli_recompile_worker.py:683` now carries a comment saying so |
+| `phenotypicCLI.py:2395`, `:3726` | correct | `:2437`, `:3820` |
+| `_cli_migrate.py:1220` | correct | `:1263` |
+| `_cli_completion.py:905`, `:921`, `:922`, `:736-745` | correct, incl. `_canonical_digest` | `:1043`, `:1062`, `:1063`, `:789-797`; the name is now `canonical_digest` |
+| `_cli_recompile_slurm_scripts.py:146`, `:198`, `:339` | — | `:145`, `:194`, `:334` |
+
+**The seven-site table is also under-enumerated**, which is a different defect from being
+stale: `_cli_sentinel.py:163` (deprecated but shipped) and `_cli_migrate.py:1044` both reach
+`aggregate_measurements` and appear in no row.
+
+**The count mattered and the conclusion did not.** flow-r4 argued the parameter must be
+**required** because *"there are three call sites and only one of them is `finalize_run`"*.
+At two sites, one of which **is** `finalize_run`, the arithmetic is wrong and the conclusion
+holds unchanged — `sdk_/_hdf_to_zarr.py:732` is still a non-`finalize_run` caller, so an
+optional parameter would still have left the defect alive there. Worth separating: an
+argument can rot in its evidence and stand in its conclusion, and only re-checking tells you
+which half moved.
+
+---
+
+### Entry 50 — A SYNCHRONISATION STEP THE PLAN NEEDED, CITED, AND NEVER BUDGETED. 2026-09-08.
+
+**Kind: true but incomplete.** Task 2 Step 4 tells the implementer to reuse recompile's
+`"expected_non_finalizer_tasks": len(tasks)` key, and says what for:
+
+> **K comes from the task payload**, written at planning time. […] Reuse that key's shape
+> rather than inventing one.
+
+Every word true. Omitted: in recompile the same key drives a **blocking wait** —
+`_wait_for_non_finalizer_statuses` (`_cli_recompile_worker.py:702-718`), a 5 s poll against a
+deadline — and without it the check being specified cannot work at all.
+
+Within one SLURM array, index K has no ordering relation to `0..K-1`; the scheduler starts
+them together. So `TASK_FINALIZE` would find an incomplete shard set and raise CAN-5's
+refusal on a run where **nothing is wrong** — not intermittently, but on essentially every
+run.
+
+**Why this is the invisible kind.** Nothing can fail for a sentence that was not written. The
+key is cited and the precedent named; a reader who follows the citation lands in a file where
+the wait is three functions away and never mentioned.
+
+**And the measured K makes it worse.** S-2 puts K = 1 at the design target, so the array is
+**two tasks** — the shape where a race is least likely to be caught by eye, and most likely
+to be written off as flakiness if it ever is.
+
+---
+
+### Entry 51 — THE PLAN PRESCRIBED A WEAKER INSTRUMENT THAN THE TREE ALREADY USED. TWICE. 2026-09-08.
+
+**Kind: never true**, of the implied claim that the prescribed instrument tests what it
+names. Its own entry because it is a *shape*, and the second instance was found only because
+the first had been.
+
+**1. `fake_sbatch` versus the mandated chokepoint.** Task 2 Step 1 drafts a fixture capturing
+raw `sbatch` argv. No such fixture exists; the convention is `unittest.mock.patch` on the
+submission helper (`test_cli_recompile_slurm.py:96-113`). Argv-level is not merely
+unidiomatic, it is **weaker**: it goes green on code that bypassed the drip-feed dispatcher
+and shelled out — the failure `_cli/CLAUDE.md:120-124` records as having already happened
+(*"eager submission is what caused the `AssocMaxSubmitJobLimit` failures"*). The chokepoint
+catches the sidecar **and** the bypass; argv catches only the sidecar, and the bypass is the
+one with a history.
+
+**2. Two Task 1 tests that could not fail.**
+
+- `test_the_finalize_trigger_is_counted_against_the_array_bound` used
+  `n_images=1_000_000, seconds_per_image=1.0`, whose unclamped target is **1112** against a
+  bound of 2499. `assert k <= 2499` was green with the clamp idle, and identically green
+  against a `shard_count` containing no clamp at all.
+- `test_max_array_size_caps_the_index_not_the_task_count` asserted
+  `array_spec(k) == f"0-{k}"` — the implementation restated as its own expectation, true for
+  every K including wrong ones.
+
+**The near-miss, recorded because it is the mechanism.** Correcting (1), the first
+replacement written patched `submit_slurm_script_chain` and then **called it directly** —
+proving only that the test called the function it had just patched. Caught before review. A
+prescription's weakness propagates into its correction unless the correction states what it
+is *for*, which is why both replacement docstrings now carry their rejected alternatives.
+
+**General form:** a plan that specifies an instrument as well as a subject has doubled what
+needs checking, and the instrument is the half nobody re-derives. Ask of a prescribed test
+the question this register asks of a check — *what would this have looked like if the code
+were wrong?*
+
+---
+
+### Entry 52 — A JUSTIFICATION OFFERED BY A REVIEWER, ALMOST ACCEPTED BY ITS AUTHOR. 2026-09-08.
+
+**Kind: rule written without checking compliance — caught during manufacture rather than
+after it shipped.** Every other instance of this kind in the register was found downstream of
+the sentence; this one was refused at the moment it was offered, which is the only reason
+there is anything to record.
+
+`_cli_finalize_fanout.py` imports `aggregation_shard_dir` inside function bodies rather than
+at module scope. Three test call sites then imported it *from that module*, where it is not
+an attribute, and the reviewer proposed two dispositions — repoint the tests, or add a
+module-scope re-export — with this reasoning attached:
+
+> *"the function-local imports look deliberate (import-cycle avoidance) […] but you wrote the
+> module; if the local imports were **not** cycle-driven, say so."*
+
+**They were not.** They were the file's dominant style plus a wish to keep the pure sizing
+functions cheap to import. There is no cycle, and none was ever checked for.
+
+Had the hypothesis been accepted — and it was flattering, and it was easy — the record would
+carry *"cycle avoidance"* as the justification for a shape that is merely house style, and
+the next person to touch the module would preserve a constraint that never existed. A
+manufactured constraint is harder to remove than a real one, because removing it looks like
+risking a cycle.
+
+**The mechanism, which generalises past this file:** *an offered explanation is evidence
+about the offerer, not about the code.* The reviewer's hypothesis was an inference from the
+shape of the file, not a reading of it, and inference dressed as attribution is
+indistinguishable from a finding once it is written down.
+
+**The disposition did not depend on the answer**, which is the part that makes this cheap to
+get right. The reviewer's own argument — a re-export makes the CLI module a **second address
+for an `sdk_` symbol**, the same defect as the two `measurement_shards` paths that forced the
+`aggregation_shards` rename three commits earlier — settles it without reference to cycles at
+all. When a decision holds under both answers, resist supplying the answer.
+
+---
+
+### Entry 53 — A COUNT OF THIS FILE, INVALIDATED BY BEING WRITTEN INTO THIS FILE. 2026-09-08.
+
+**Kind: wrong while correcting** — the kind this register's own table marks **Highest**
+cost, because it carries the authority of a correction. It occurred **inside entry 45's
+fix**, which is the edit whose entire subject is that this file's counting apparatus keeps
+drifting.
+
+Entry 45's rewrite of the header stated two counts as present-tense fact:
+
+> `grep -cE '^\| [0-9]+ \|'` gives **25** … and `grep -cE '^### Entry [0-9]+'` gives **28**
+
+Both were measured, and both were correct **when measured**. Then eight entries (45-52) were
+appended to the file the measurement was about. Measured after:
+
+```
+grep -cE '^\| [0-9]+ \|'       -> 25     still correct
+grep -cE '^### Entry [0-9]+'   -> 36     was written as 28
+git show HEAD:…                -> 28     correct for the pre-append file
+```
+
+Eight new `### Entry N` headings is exactly the difference.
+
+**Why this is not simply "a stale number", and the distinction is the entry.** `25` survived
+and `28` did not, and nothing about how they were written distinguished them. The eight new
+entries added no `^| N |` rows, so the first count was unaffected; they added eight
+headings, so the second measured **its own publication**. The mechanism is narrower than
+staleness:
+
+> **A count of a file is invalidated by the act of writing the count into that file.** It is
+> not that the number aged — it was false the moment the sentence containing it was saved,
+> and it could not have been otherwise.
+
+**The instruction against it was nine lines below and was obeyed once.** The header ends
+*"Before quoting a total from this file, run the command."* The command was run — that is
+where both numbers came from. What no instruction covered is that running it *before* the
+append does not license quoting it *after*, and only one of the two numbers cared.
+
+**This is the fourth drift in the same apparatus**, and the sequence is worth stating
+because the trend is the finding: the original command (entry 40) → the command again
+(entry 45) → the nested-table prose that said what the command must exclude (entry 45) →
+this count, in the fix for all three. Each correction was written by someone who had just
+finished reading about the previous one.
+
+**The fix is removal, not a fresh number.** Correcting `28` to `36` would have been false
+again the instant this entry was appended — 37 — which is the defect reproducing itself a
+fifth time under the guise of repair. So the header now carries **no literal counts at
+all**. It states why each naive query is wrong *structurally* — one over-counts because it
+matches nested tables, one under-counts because entries 1-13 and 15-18 have no narrative
+section — and structural claims do not rot. The only number in that section is produced by
+running the command.
+
+**The general form, for any document that describes itself:** a self-referential measurement
+has no correct literal value, only a correct method. Where a count must appear, it is a
+worked example of the method and must be labelled as one; where it appears as a fact, it is
+false on save. The test is mechanical — *would appending to this file change this number?*
+If yes, the number does not belong in the file.
