@@ -3412,3 +3412,326 @@ rather than in the merge — the argument made for choosing contiguous over sort
 time.** A design choice defended on a general principle turned out to be load-bearing for a
 specific consumer discovered three commits later, and a revert would break it with nothing
 named nearby to object.
+
+---
+
+### Entry 67 — A FENCE THAT COMPARES A VALUE TO ITSELF. 2026-09-09.
+
+**Kind: never true.** Spec §11's consumer table gives `RunRegistry` local exit as
+*"8-branch refusal tree → `resolve_run_state(deep)`; refusals become advisories"*, and
+§11.1 lists *"`_local_completion_evidence_conflict`'s 8-branch tree"* under **Deleted**.
+The replacement named cannot answer the question the site asks, and never could.
+
+The site's question is **generation-fenced**: did *this GUI launch generation* publish?
+The real fence is `_runs_registry.py:718`:
+
+```python
+        if marker.get("generation") != str(record.generation):
+```
+
+compared against the completion marker the CLI stamps at publication time
+(`_cli_completion.py:1279-1280`, `"gui_record_generation"` / `"generation"`).
+
+`RunState` does not carry that value. `_run_state.py:1021-1029` reads the marker's
+`version`, `status` and `finalizer_succeeded` and nothing else; `run_proof_is_current`
+compares the three digests plus `source_set_digest`; `_advisories` (`:1310-1347`) emits
+only the schema-shape conversion note. In the whole of `sdk_`, `gui_record_generation`
+exists **only as a key constant** — `_io_constants.py:2432,2462` — read by nothing in
+the verdict path.
+
+## The near-miss that makes it survivable
+
+`RunIdentity.owner_generation` looks exactly like the missing fence. It is not:
+
+```
+_run_state.py:266   _owner_generation()  reads gui_launch_owner_path(...)["generation"]
+_runs_registry:1380 _persist_record_locked WRITES "generation": str(record.generation)
+                                           into that same file
+```
+
+So `state.identity.owner_generation == str(record.generation)` is the registry reading
+back its own write and calling it evidence. **A fence that compares a value to itself is
+not a weak fence — it is not a fence.** Converting the site would have accepted a
+*previous* launch's proof as this launch's success, which two existing tests already
+guard: `test_observe_local_zero_exit_rejects_preexisting_complete_manifest` and
+`test_cross_timezone_future_manifest_cannot_satisfy_new_generation`.
+
+**Never true rather than stale**: `RunState` has never carried the marker's generation,
+so the row could not have worked on any tree at any point in this change.
+
+## Two smaller errors in the same row
+
+* **Twelve branches, not eight.** Counted mechanically in
+  `_local_completion_evidence_conflict`: twelve refusal returns plus two `return None`.
+  P6 Task 0's `_all_accepted_images_succeeded` conversion added the schema-3 arm's three.
+  A change sized against "eight" is sized against a number that was already wrong.
+* **`deep` where every neighbouring row says shallow.** A deep pass on every local
+  process exit is a full artifact re-read. Affordable once per exit, and the opposite of
+  the row directly above it.
+
+## What would catch this class, and it is not "does the field exist"
+
+Anyone checking *"does `RunState` carry a generation?"* finds `owner_generation` and
+stops. The check that discriminates is one level further in: **who wrote the value the
+field holds.** A field populated from a file the asking component itself writes cannot
+be evidence for that component, however well it is named.
+
+## Disposition
+
+The fence belongs in `RunState`, and that is P1/P7 work — it cannot be done from inside
+`_runs_registry.py`, which is why this row has sat unbuildable across two tasks. Two
+options, both one-sided changes to `sdk_/_run_state.py`:
+
+1. carry the marker's `gui_record_generation` on `RunIdentity`, beside `owner_generation`
+   and outside `digest()` for the same reason `owner_generation` is; or
+2. expose it as its own reader, next to `run_proof_is_current`.
+
+Until then the registry's tree stays. P6 Task 5 shipped its D-2 half only.
+
+---
+
+### Entry 68 — A FIX AND ITS OWN REGRESSION IN ONE TASK. 2026-09-09.
+
+**Kind: true but incomplete** — of P6 Task 5 Step 2, which is correct about what to
+change and silent about what that change collides with two hundred lines above it.
+
+Task 5 has two halves against one file. **Half one** (DEFERRED D-2) releases an owner
+record whose process is provably dead, so a SIGKILLed GUI stops refusing its output
+forever. **Half two** was to stop `observe_local_exit` forcing `status = "failed"` when
+publication evidence cannot be verified.
+
+The only honest replacement status is `"unknown"` — and `"unknown"` is **nonterminal**
+(`run_status_is_nonterminal`: in `_RUN_STATUSES`, not in `_TERMINAL_STATUSES`). The
+claim path has two guards, not one:
+
+```python
+_runs_registry.py:325   for existing in self._records.values():      # in-memory
+                            if ... existing.status not in _TERMINAL_STATUSES:
+                                raise RuntimeError(...)
+_runs_registry.py:334   with exclusive_path_lock(...):               # durable
+                            self._assert_output_claimable_locked(...)
+```
+
+Half one's repair lives in the **second**. The first runs before the lock and never
+consults it. So half two would have made every unverifiable local exit block re-launch
+for the rest of the session, with no release path — **the exact defect half one exists
+to remove, reintroduced by its own task.**
+
+## Why the sentence that welds them is the mechanism
+
+The two halves share a task because they share a file, and the plan's justification
+welds them into one clause: *"a refusal the user cannot act on is the bug; an advisory
+they can read is the fix."* That is **true of half one** — the claim refusal genuinely
+had no UI affordance to clear it — and it *reads* as describing half two. A reader who
+accepts the sentence inherits the collision without ever seeing a second claim.
+
+## No test would have caught it
+
+Both halves' tests pass. Half one's fixtures construct a **fresh** `RunRegistry`, whose
+`_records` is empty, so the in-memory guard never fires in any of them. The collision
+appears only in a session that ran the failing run *and then retried it* — which no unit
+test in this file does, because each builds its own registry.
+
+**The guard that would have caught it is skipped by every fixture that constructs a new
+object.** That is the transferable half: a guard reached only through accumulated
+in-process state is invisible to a suite whose fixtures are all fresh.
+
+## Disposition
+
+Task 5 ships half one. **Half two is withdrawn, not deferred** — under Entry 67 there is
+no correct version of it at this site, and the priced alternative is refused on the
+record so that a later reader does not find a costed proposal with no verdict and
+re-price it.
+
+The alternative was: split the twelve refusals into *contradicts success* (stays
+`failed`) and *cannot prove success* (becomes `unknown`), and teach the in-memory guard
+the same liveness predicate so `unknown` stops blocking. **Refused** on three counts —
+it flips eight existing tests, each carrying a deliberate docstring, so it is eight
+*contract* changes to argue rather than eight fixtures to update; the split is policy
+neither the spec nor the plan makes, invented inside the task that just proved the
+spec's row for this consumer *never true*; and the user loses signal, because a run
+that genuinely failed to publish would read `unknown`.
+
+**The disposition for the underlying complaint is better text, not a different
+status.** Each of the twelve strings already names the exact path whose evidence is
+missing, unreadable or foreign. If a specific one proves unactionable in use, rewrite
+that string. Two items owed, both recorded rather than done:
+
+* **`_process_is_alive` to `sdk_`'s public surface.** The registry imports it privately
+  from `phenotypic.sdk_._run_state` so that the ladder and the claim check cannot
+  disagree about one pid. One line, held only because `sdk_/__init__.py` took two new
+  public names today already.
+* **`rehydrate_from_sandbox` persisting its downgrade.** Today it is `persist=False`
+  (`:796`), which is why the in-memory downgrade never reaches the durable claim check.
+  Persisting it requires `exclusive_path_lock` — the boot walk holds no lock and would
+  otherwise race another GUI's `allocate`. Naming the lock requirement is the point of
+  recording it.
+
+---
+
+### Entry 69 — A CORRECT VERDICT REACHED THROUGH AN ARGUMENT THAT DID NOT REACH IT. 2026-09-09.
+
+**Kind: never true** — of the framing, not of the verdict. Recorded because the verdict
+was right, which is exactly what makes this one hard to notice.
+
+Executing P6 Task 5, I put a choice to the lead: **(a)** convert the local-exit site to
+`resolve_run_state`, or **(b)** surface the refusal as an advisory without one. I framed
+P6 Task 0's comment at `_runs_registry.py:606-617` as settling it against (a). The lead
+accepted the framing and ruled (b).
+
+**The framing was wrong.** Task 0's comment objects to swapping *one predicate* for
+`.completion` **while keeping the tree below it** — its stated reason is that the branch
+below would become dead code. Spec §11 asks for something else: delete the tree
+entirely. Those are different operations, and Task 0's argument does not reach the
+second.
+
+The verdict survived anyway. (a) is unbuildable — for the reason in Entry 67, an
+inexpressible generation fence, which **neither of us had at the time**.
+
+## Why a right answer from a wrong argument is worth an entry
+
+Had the lead ruled (a) on the framing offered, the objection given would not have been
+the reason it failed. The real reason would have surfaced as two red tests *after* the
+code was written, and the recorded rationale would have pointed at dead code rather than
+at a missing field.
+
+**A correct verdict reached through the wrong argument is indistinguishable from a lucky
+one, and it fails the moment the argument is reused.** The next task that cites "Task 0
+settled this" would inherit a scope the comment never had.
+
+## What caught it, and it was not a check
+
+Going to the spec — after (b) turned out to be *already implemented*, leaving nothing to
+build and therefore nothing to justify. The collapse of the recommended path is what
+forced a second look at the rejected one. No gate, no test, and no review step was
+involved; it was the same "found by reading" property this whole register documents.
+
+## The transferable rule
+
+**When you quote an existing decision as settling a new question, check that the new
+question is the same *operation* the decision was about.** A recorded objection is scoped
+to what its author was looking at, and a comment left in code carries no marker for how
+far its authority extends. This one was two sentences long and its scope was one
+predicate; it was read as covering a whole function.
+
+---
+
+### Entry 70 — TWO INDEXES CONSULTED IN PLACE OF THE THINGS THEY INDEX. 2026-09-09.
+
+**Kind: never true**, twice, of two different indexes — and the pair is the entry, because
+neither half is interesting alone and together they are one shape.
+
+**Half one — a stale read.** After a context compaction, the Read tool returned the
+**git-HEAD** version of `src/phenotypic/gui/_snapshot_status.py` (101 lines, with
+`_completion_evidence_status` intact) while disk held a 128-line rewrite by another
+agent. No error, no staleness marker. `git diff` and `wc -l` through Bash both showed the
+new file; the harness's file-state cache had survived the boundary and the disk had not.
+
+It was caught **incidentally**: a grep for badge label strings, run to check whether
+renaming one would break another agent's test, returned hits in a test file this session
+had not written. Without that unrelated grep, the next act would have been to
+re-implement an already-implemented file, and the second write would have silently
+reverted whatever the first got right.
+
+**Half two — an unwitnessed agent.** The lead dispatched two agents onto one task, having
+consulted `dag.py`'s parallelism veto. `dag.py` derives that veto from the plan's `Files:`
+blocks: it is an index of **the plan**, and says nothing about which agents are live. The
+correction of the first collision arrived after the second agent had already implemented
+the task.
+
+## The shape they share
+
+An index was consulted in place of the thing it indexes, and **neither index reported
+staleness, because neither was observing.** A file cache is not the file. A file veto
+derived from a plan is not a statement about a session.
+
+## Why the first half is the expensive one
+
+The tool that failed is the one whose entire job is to report the state of a file. Once
+it can be silently wrong, **"I read the file" stops being evidence about the file** — and
+every downstream judgement built on that read inherits the defect with nothing to mark
+it. This is the same failure the change itself is about, one level up: state that is
+*tracked* (a cache) standing in for state that is *checked* (a stat).
+
+The second half is cheaper only because a person noticed within the hour.
+
+## Disposition
+
+* After a compaction, use a Bash read for **anything about to be edited**. Reserve the
+  cached reader for orientation.
+* An anchor assertion (`assert text.count(old) == 1`) catches the *edit* case and is
+  already established practice here — see Entry 63. It does **not** catch this case,
+  because composing a new file from scratch has no anchor to assert. The defence for
+  writing is different in kind from the defence for editing, and only one of them
+  existed.
+* A file veto is a property of a plan. Whatever answers "which agents are live" has to be
+  a property of the session, and today nothing is.
+
+---
+
+### Entry 71 — A CITATION THAT RESOLVED, ATTACHED TO A CLAIM ABOUT THE WRONG IDENTIFIER. 2026-09-09.
+
+**Kind: wrong while correcting** — the highest-cost kind, and earned here: the
+paragraph exists to correct a fence that compares a value to itself, and names the wrong
+field while doing it.
+
+P6 Task 8's new `gui/CLAUDE.md` section said the completion marker is the one the CLI
+*"stamps with `gui_record_generation` at publication time, and
+`RunRegistry._local_completion_evidence_conflict` is the only thing that reads it
+(`shell/_runs_registry.py:718`)"*.
+
+`:718` reads a different key. The marker carries **two**, written two lines apart
+(`_cli_completion.py:1279-1280`):
+
+```python
+        "gui_record_generation": gui_record_generation,          # exact; None off-GUI
+        "generation": gui_record_generation or execution_epoch,  # falls back
+```
+
+The fence compares `generation` — the **fallback** field. And `gui_record_generation` is
+read by **nothing** in `src/`: every other occurrence is a writer argument or the
+dashboard manifest, which is a different artifact.
+
+## Why the citation check passed
+
+`:718` is the right line, in the right function, in the right file. **A `file:line`
+citation verifies a location; the claim attached to it can still be about the wrong
+identifier at that location.** A check that resolves the citation cleanly never re-reads
+the field name inside it.
+
+So a citation check and a claim check are **two checks, not one** — and Task 8's own Step
+4, *"each path and function name gets a `grep`"*, mandates only the first. It caught a
+different error in the same pass (a symbol table listing 18 while its prose said 19) and
+could not have caught this one.
+
+## The variable is isolated: same author, same hour, different source
+
+Entry 67 makes the same statement **correctly**, naming both keys. It was written with
+the greps still on screen. The `gui/CLAUDE.md` paragraph was written later, from memory
+of the concept — and the concept's name *is* `gui_record_generation`, because that is
+what the design calls the idea.
+
+**The wrong name is the right name for the thing one level up.** That is what lets this
+class survive review: the identifier is not arbitrarily wrong, it is the name of the
+concept the field implements, so a reader checking *"is there such a field?"* finds one
+and stops. The two artifacts differed in nothing except whether the author was reading or
+recalling.
+
+## What the correction bought beyond accuracy
+
+Being forced to say *which* field is read produced a claim the original paragraph did not
+contain. A SLURM launch has no GUI generation, so `generation` holds `execution_epoch`,
+the comparison against the registry record fails, and **"a scheduler launch cannot
+satisfy a GUI generation" falls out of the fallback** rather than needing a rule of its
+own. The imprecise version carried that behaviour as an unexplained assertion; the
+precise version explains it.
+
+## Disposition
+
+Both edits applied, and the closing instruction rewritten: what `RunState` lacks is a
+**reader** for either field, not the value — both are present on disk. As written it read
+as though the exact field were missing from the marker.
+
+The generalisation, for Step-4-style verification anywhere in this change: **verify the
+identifier, not only the address.** For a claim shaped *"X reads Y at F:N"*, resolving
+`F:N` proves only that `F:N` exists and concerns X. Reading the line is what proves Y.
