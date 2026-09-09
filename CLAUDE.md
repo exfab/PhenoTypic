@@ -60,6 +60,35 @@ as a baseline. The suite is ~65 minutes, not two — so it is a Slurm job
 (**`slurm-job`** skill), with a committed batch script at
 `docs/superpowers/plans/2026-08-18-ome-zarr-image-store/run_unit_suite.sbatch`.
 
+#### Focused between phases; full regression only at the end
+
+**Match the instrument to the stage.** The full suite is the *last* check of an
+implementation, never a step-level one:
+
+| Stage | What to run |
+|---|---|
+| Per step | the step's own guards — seconds |
+| Per task | the directly-touched test files — ~1 minute |
+| Per phase | the affected surface, **once** |
+| End of implementation | the full sharded regression, **once** |
+
+The affected surface is wider than the directory you edited. A change to a
+shared test helper reaches every file that imports it — one such helper in
+`tests/` has 49 importers across `gui/`, `integration/` and `sdk_`. Derive the
+surface from importers, mechanically, rather than from the directory name.
+
+**Why this is a rule and not a preference.** A full run is ~30 minutes on 24
+nodes; a step-level question is usually answered by a 15-test file in under a
+minute, and running the wide instrument *first* buys nothing except a longer
+feedback loop and a result that goes stale before you act on it. Worse, a
+mid-implementation full run is thrown away: every later task invalidates it, so
+the same 30 minutes is spent again for the same answer.
+
+**A red full suite mid-implementation is also hard to read.** Its failures mix
+your change with contamination from unrelated files sharing a shard, and
+separating them costs more than the run saved. Run each failing test in
+isolation before attributing it — most of them pass.
+
 ### Linting & Type Checking
 
 - `uv run mypy src/phenotypic` — type checking
