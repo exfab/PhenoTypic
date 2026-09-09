@@ -1029,3 +1029,69 @@ def run_local_aggregation_fanout(
             source_work_ids=merged,
         )
     return resolve_finalizer_shard_inputs(output_dir, None)
+
+
+# ---------------------------------------------------------------------------
+# What the finalizer needs to hold the master in memory (S-3)
+# ---------------------------------------------------------------------------
+
+#: Peak RSS of the in-memory merge, **measured**, not projected.
+#:
+#: S-3, lane ``merge``: 2,577.6 MB at N = 6,529 on the Maresca tree, against a
+#: 32 GB threshold -- a 12.7x margin, which is why the verdict is `IN-MEMORY`
+#: and ``TASK_FINALIZE`` uses ``pl.concat`` rather than ``sink_parquet``.
+#: Streaming measured *more* peak RSS here (421.5 MB vs 314.6 MB on the same
+#: comparison), so the usual reason to adopt it is absent.
+S3_PEAK_RSS_GB = 2.5
+
+#: The N at which :data:`S3_PEAK_RSS_GB` was measured.
+#:
+#: Carried beside the value because the value alone is unusable: memory scales
+#: with N, so "2.5 GB" without "at 6,529 images" cannot be extrapolated to any
+#: other run, and a constant floor derived from it would be correct only at
+#: this one N.
+S3_MEASURED_AT_N = 6529
+
+
+def finalizer_memory_advisory(
+    *, n_images: int, configured_mem_gb: float
+) -> str | None:
+    """Return a warning when the finalizer's ``--mem`` looks too small, else ``None``.
+
+    **Projected from one measurement, and the message says so.** S-3 measured
+    :data:`S3_PEAK_RSS_GB` at :data:`S3_MEASURED_AT_N` on a single tree. Peak
+    RSS scales with the row count, so the floor is scaled linearly by
+    ``n_images`` and doubled for headroom. A *constant* floor -- the 8 GB the
+    plan names -- is correct only at the N the spike happened to run: a user
+    at N = 60,000 clears 8 GB and is OOM-killed anyway, and a user at N = 500
+    is warned about nothing.
+
+    This **warns and proceeds**. It never rewrites the user's ``--slurm``
+    profile: silently changing what an explicit flag means is worse than a
+    finalizer that runs out of memory and says why. And it is silent whenever
+    the configured value clears the floor, because a warning that fires on
+    correct configurations trains people to ignore it.
+
+    Args:
+        n_images: Images this run will aggregate.
+        configured_mem_gb: The run's configured per-task memory, in GB.
+
+    Returns:
+        A multi-line warning, or ``None`` when the configuration clears the
+        projected floor.
+    """
+    if n_images <= 0 or configured_mem_gb <= 0:
+        return None
+    projected = 2.0 * S3_PEAK_RSS_GB * (n_images / S3_MEASURED_AT_N)
+    if configured_mem_gb >= projected:
+        return None
+    return (
+        f"Finalizer memory may be too small: {configured_mem_gb:.1f} GB "
+        f"configured, ~{projected:.1f} GB projected for {n_images} images.\n"
+        f"  This is a PROJECTION from a single measurement, not a measured "
+        f"requirement for this run: spike S-3 measured "
+        f"{S3_PEAK_RSS_GB} GB peak RSS at {S3_MEASURED_AT_N} images on one "
+        f"tree, scaled linearly by image count and doubled for headroom.\n"
+        f"  A tree with wider tables or more objects per image will need "
+        f"more. Raise `--slurm mem_gb=<n>` if the finalizer is OOM-killed."
+    )

@@ -564,3 +564,276 @@ def test_merging_shards_in_shard_order_reproduces_sorted_order(
         f"K={shards}, n={n_sources}: shard sizes {sizes} differ by more than "
         "one, so the split is not balanced"
     )
+
+
+# ---------------------------------------------------------------------------
+# Task 4 -- the partial-failure matrix
+# ---------------------------------------------------------------------------
+
+
+def _remaining_phases(output_dir: Path) -> set[str]:
+    """Which phases a killed run still owes, derived from what is on disk.
+
+    **Test-local on purpose.** ``RunState`` (``sdk_/_state_types.py:157``)
+    carries ``completion``, ``identity``, ``images``, ``advisories``,
+    ``diagnostics``, ``depth`` and ``verified_at`` -- there is no
+    phase-remaining concept anywhere in ``sdk_``, and adding one whose only
+    consumer is this test would create a public notion with one caller. P6 is
+    where consumer-facing state shape gets decided.
+
+    The ordering is the pipeline's: an image that never measured owes
+    ``measure``; a complete image set with no complete shard set owes
+    ``aggregate``; a complete shard set with no run proof owes ``finalize``.
+    """
+    from phenotypic._cli._cli_completion import (
+        authorized_measurement_sources,
+        valid_run_completion,
+    )
+    from phenotypic._cli._cli_finalize_fanout import (
+        aggregation_task_manifest_path,
+        collect_shard_paths,
+    )
+    from phenotypic._cli._cli_state_management import load_processing_state
+
+    state = load_processing_state(output_dir)
+    declared = {
+        work_id
+        for images in (state.config.get("work_ids") or {}).values()
+        for work_id in images.values()
+    }
+    authorized = authorized_measurement_sources(output_dir) or {}
+    if len(authorized) < len(declared):
+        return {"measure"}
+
+    manifest = aggregation_task_manifest_path(output_dir, None)
+    if not manifest.is_file():
+        return {"aggregate"}
+    import json
+
+    carried = int(
+        json.loads(manifest.read_text(encoding="utf-8"))["tasks"][-1][
+            "expected_non_finalizer_tasks"
+        ]
+    )
+    if len(collect_shard_paths(output_dir, None)) < carried:
+        return {"aggregate"}
+
+    if valid_run_completion(output_dir) is None:
+        return {"finalize"}
+    return set()
+
+
+def _run_until(tmp_path: Path, kill_after: str) -> Path:
+    """Build a run stopped at *kill_after*, using the real writers throughout."""
+    from phenotypic._cli._cli_finalize_fanout import (
+        begin_aggregation_fanout,
+        write_measurement_shard,
+        write_shard_status,
+    )
+    from phenotypic._cli._cli_output_manager import aggregate_measurements
+
+    from .conftest import _install_state, _publish_store, _measurements
+
+    stems = ["a", "b", "c"]
+    tmp_path.mkdir(parents=True, exist_ok=True)
+
+    published = stems[:1] if kill_after == "some_images" else stems
+    for stem in published:
+        _publish_store(tmp_path, stem, _measurements(stem))
+    # State declares ALL THREE regardless, so "some_images" is a run with
+    # outstanding work rather than a smaller run that finished.
+    _install_state(tmp_path, stems)
+    if kill_after in {"some_images", "all_images"}:
+        return tmp_path
+
+    shards = 3
+    begin_aggregation_fanout(
+        tmp_path, scheduler_epoch=None, shards=shards, dataset_names=["plate"]
+    )
+    written = range(1) if kill_after == "some_shards" else range(shards)
+    for shard_id in written:
+        merged = write_measurement_shard(
+            tmp_path, scheduler_epoch=None, shard_id=shard_id, shards=shards
+        )
+        write_shard_status(
+            tmp_path,
+            scheduler_epoch=None,
+            shard_id=shard_id,
+            source_work_ids=merged,
+        )
+    if kill_after in {"some_shards", "all_shards"}:
+        return tmp_path
+
+    aggregate_measurements(
+        output_dir=tmp_path, dataset_names=["plate"], include_dataset_column=True
+    )
+    if kill_after == "master_written":
+        return tmp_path
+
+    from phenotypic._cli._cli_completion import (
+        current_run_is_complete,
+        publish_run_completion_evidence,
+    )
+
+    assert current_run_is_complete(tmp_path) is True, (
+        "the fixture did not reach a publishable state, so the 'nothing' row "
+        "would assert completion against a run that never completed"
+    )
+    publish_run_completion_evidence(tmp_path, execution_epoch="local")
+    return tmp_path
+
+
+@pytest.mark.parametrize(
+    "kill_after,expected_completion,expected_remaining",
+    [
+        ("nothing", "complete", set()),
+        ("some_images", "incomplete", {"measure"}),
+        ("all_images", "incomplete", {"aggregate"}),
+        ("some_shards", "incomplete", {"aggregate"}),
+        ("all_shards", "incomplete", {"finalize"}),
+        ("master_written", "incomplete", {"finalize"}),
+    ],
+)
+def test_a_run_killed_mid_finalization_resumes_only_the_missing_phase(
+    tmp_path: Path,
+    kill_after: str,
+    expected_completion: str,
+    expected_remaining: set,
+) -> None:
+    """Spec §14's partial-failure matrix, narrowed by D-A to two phases.
+
+    The aggregate proof asserts master + mirror; the run proof asserts
+    everything. A run that finishes aggregation and dies before the run proof
+    has a valid aggregate proof and no run proof -- a resumable state, and the
+    ``master_written`` row is exactly that.
+
+    There is no aggregated-not-backfilled state to test, because D-A removed
+    the backfill: per-store metadata is written at promote time.
+    """
+    from phenotypic.sdk_ import resolve_run_state
+
+    output = _run_until(tmp_path / kill_after, kill_after)
+    state = resolve_run_state(output, depth="deep")
+
+    assert state.completion == expected_completion
+    assert _remaining_phases(output) == expected_remaining
+
+
+def test_a_prior_epochs_shards_are_never_merged(tmp_path: Path) -> None:
+    """§7.5: shards are per-invocation scratch, so a prior run's shards can
+    never reach this run's master.
+
+    **The plan's version of this test was vacuous and this one is not.** It
+    planted a ghost under ``"old-epoch"`` and then called ``finalize_run``
+    with ``shard_paths=current`` -- passing the current shards *explicitly*.
+    Of course the ghost was not merged: the function only reads what it is
+    handed. It tested that ``finalize_run`` uses its argument.
+
+    That is the same defect the plan's own docstring warns about one paragraph
+    earlier (CAN-5: *"the first draft called finalize_run with NO shard_paths
+    -- the local concat path, which never looks at a shard directory at
+    all"*). The correction moved the vacuity rather than removing it.
+
+    Here the shard set is **derived**, by ``resolve_finalizer_shard_inputs``,
+    which is the only path on which a stale epoch's shards could be reached at
+    all -- so the epoch namespacing is what is under test rather than
+    parameter passing.
+    """
+    import polars as pl
+
+    from phenotypic._cli._cli_finalize_fanout import (
+        resolve_finalizer_shard_inputs,
+    )
+    from phenotypic.sdk_ import aggregation_shard_dir
+
+    from .conftest import _publish_successful_images
+
+    _publish_successful_images(tmp_path, stems=["a", "b"])
+
+    stale = aggregation_shard_dir(tmp_path, "old-epoch")
+    stale.mkdir(parents=True, exist_ok=True)
+    pl.DataFrame({"Metadata_ImageName": ["GHOST.tiff"]}).write_parquet(
+        stale / "shard_0000.parquet"
+    )
+    assert (stale / "shard_0000.parquet").is_file(), (
+        "the fixture planted no stale shard, so the assertion below would "
+        "hold against a tree that never had one"
+    )
+
+    _fanout(tmp_path, shards=2, epoch="new-epoch")
+    resolved = resolve_finalizer_shard_inputs(tmp_path, "new-epoch")
+    assert resolved is not None
+    shard_paths, _ = resolved
+
+    assert all("old-epoch" not in str(path) for path in shard_paths), (
+        f"a prior epoch's shard was resolved into this run's merge: "
+        f"{shard_paths}"
+    )
+    assert len(shard_paths) == 2
+
+
+# ---------------------------------------------------------------------------
+# Task 4 Step 3 -- S-3's merge verdict, applied
+# ---------------------------------------------------------------------------
+
+
+def test_the_memory_floor_scales_with_n_rather_than_being_a_constant() -> None:
+    """The plan names a constant 8 GB. A constant is wrong here.
+
+    S-3 measured 2.5 GB at N=6,529 and peak RSS scales with the row count, so
+    a fixed floor is correct only at the N the spike happened to run: a user
+    at N=60,000 clears 8 GB and is OOM-killed anyway, and a user at N=500 is
+    warned about nothing. Both ends are asserted, because a floor that is
+    merely *proportional* would pass a test that only checked the big case.
+    """
+    from phenotypic._cli._cli_finalize_fanout import (
+        S3_MEASURED_AT_N,
+        finalizer_memory_advisory,
+    )
+
+    assert finalizer_memory_advisory(n_images=500, configured_mem_gb=4.0) is None, (
+        "a small run was warned against a floor derived at N=6,529"
+    )
+    assert (
+        finalizer_memory_advisory(n_images=60_000, configured_mem_gb=8.0)
+        is not None
+    ), "the plan's constant 8 GB was accepted at ~9x the measured N"
+    assert (
+        finalizer_memory_advisory(
+            n_images=S3_MEASURED_AT_N, configured_mem_gb=4.0
+        )
+        is not None
+    ), "the DEFAULT mem_gb=4.0 clears the floor at the measured N"
+
+
+def test_the_advisory_is_silent_when_the_configuration_clears_the_floor() -> None:
+    """A warning that fires on correct configurations trains people to ignore
+    it, which costs more than the warning buys."""
+    from phenotypic._cli._cli_finalize_fanout import finalizer_memory_advisory
+
+    assert (
+        finalizer_memory_advisory(n_images=6000, configured_mem_gb=64.0)
+        is None
+    )
+
+
+def test_the_advisory_says_it_is_a_projection_and_shows_its_working() -> None:
+    """It must not become the next thing someone cites as a measured fact.
+
+    The message carries all four numbers a reader needs to audit it: the
+    projection, the measured peak, the N it was measured at, and their own
+    configured value.
+    """
+    from phenotypic._cli._cli_finalize_fanout import (
+        S3_MEASURED_AT_N,
+        S3_PEAK_RSS_GB,
+        finalizer_memory_advisory,
+    )
+
+    message = finalizer_memory_advisory(n_images=6000, configured_mem_gb=4.0)
+    assert message is not None
+    assert "PROJECTION" in message
+    assert str(S3_PEAK_RSS_GB) in message
+    assert str(S3_MEASURED_AT_N) in message
+    assert "4.0" in message, "the user's own configured value is not shown"
+    assert "6000" in message

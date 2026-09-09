@@ -1076,8 +1076,23 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         from ._cli_finalize_fanout import (
             SECONDS_PER_IMAGE_S2,
             begin_aggregation_fanout,
+            finalizer_memory_advisory,
             shard_count,
         )
+
+        # S-3's verdict is IN-MEMORY, so the finalizer holds the whole master
+        # at once and its `--mem` has to cover that. PhenoTypic does not set
+        # it -- the finalizer inherits the user's `--slurm` profile verbatim,
+        # and rewriting an explicit flag silently is worse than an
+        # OOM-killed job that says why. So: warn, and proceed.
+        memory_advisory = finalizer_memory_advisory(
+            n_images=total_images,
+            configured_mem_gb=float(
+                self.config.slurm_args.get("mem_gb", 4.0)
+            ),
+        )
+        if memory_advisory:
+            console.print(f"[yellow]{memory_advisory}[/yellow]")
 
         # `total_images` and `array_limit` are the values this method already
         # computed above. Recomputing either here would give one derived value
