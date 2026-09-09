@@ -63,9 +63,9 @@ Track these in the phase's final commit body. Spec §11.1 estimates ~1,400 lines
 | 5 | `_read_status_from_manifest`, `_manifest_is_complete` | `_runs_registry.py`, `_slurm_observer.py` | 4, 6 |
 | 5b | `local_manifest_completion_problem` — **the third manifest consumer** (M6) | `_cli_gui_lifecycle.py:41-65`, gating `publish_run_completion_evidence` at `:130-135` | 4 |
 | 6 | `DashboardManifestKey.VERSION` — written as `3` at one site, read at **zero** | `_dashboard/_manifest_builder.py:766` | 7 |
-| 7 | `sdk_/monitor_slurm_jobs.py` — zero importers in `src/` or `tests/` | whole file (241 lines) | 7 |
-| 8 | `browse/_source_render.py`'s `browse_cache_base` / `cache_png_path` / `init_cache` / `wipe_cache` — zero production callers | `_source_render.py:35-38` | 7 |
-| 9 | Eight zero-caller resolvers in `_io_constants` | `_io_constants.py:2107` | 7 |
+| 7 | `sdk_/monitor_slurm_jobs.py` — zero importers in `src/` or `tests/`, **but `sdk_/CLAUDE.md` names it**; delete the doc reference in the same commit or it is stranded | whole file (241 lines) | 7 |
+| 8 | `browse/_source_render.py`'s `browse_cache_base` / `cache_png_path` / `init_cache` / `wipe_cache` — zero production callers. ⚠ **The obvious check refutes this and is wrong:** `gui/builder/_preview_cache.py` **defines its own** `init_cache`/`wipe_cache`, so `grep -rln init_cache` returns four files. Verify with `grep -rn "_source_render import"` — nothing imports these four from here | `_source_render.py:35-38` (the `__all__` entries) | 7 |
+| 9 | ⚠ **CLAIM REFUTED — measure before deleting anything here.** *"Eight zero-caller resolvers"* is false. Measured at `99cc068c`: of eleven `resolve_*` in `_io_constants`, **nine have `src/` consumers** (`resolve_processing_state_path` 13 files, `resolve_manifest_json_path` 6, `resolve_event_log_path` 6, `resolve_tuning_spec_path` 6, `resolve_pipeline_config_path` 4, `resolve_progress_dir` 3, and three more). The only two without a `src/` caller are `resolve_best_pipeline_path` (a test pins its legacy fallback) and `resolve_qc_dir` (**documented as live in `_cli/CLAUDE.md:425` and `gui/CLAUDE.md:286`**). **Zero are safe to delete as stated.** The `:2107` citation is also dead — it now lands mid-docstring, +70 lines from P5 `b8ef480f`. | `_io_constants.py:1111-2371` | 7 |
 | 10 | Every `_legacy_*` helper and `resolve_*` fallback on the hot path | across `_cli` | P7 (they **move into** migrate, not away) |
 
 > **M6: `manifest.json` is still evidence after P6 unless this site is converted.**
@@ -73,6 +73,18 @@ Track these in the phase's final commit body. Spec §11.1 estimates ~1,400 lines
 > and `TOTAL_IMAGES` (`completed != total`, `failed != 0`) and **gates run-proof
 > publication**. It is in neither `_output_consistency.py` nor `_slurm_observer.py`, so the
 > round-1 note claiming every manifest-count reader lives in those two files was wrong.
+>
+> **Which half of the "sole publisher" sentence Task 4 relies on, and it is not the
+> obvious one.** Root `CLAUDE.md` says the dependent finalizer is *"the sole publisher of
+> aggregated outputs **and** the completion marker"*. After P5 those halves have
+> **different truth conditions**: the completion-marker half holds unconditionally (the
+> forward flow never publishes the run proof — `phenotypicCLI.py:2437` is guarded by
+> `process_only_layer is not None` and `:3821` is `--mode recompile`; only `_run_finalize`
+> publishes it), while the aggregated-outputs half is **false under `--wait`**, where
+> `AutonomousSLURMStrategy` never sets `remote_managed` and the CLI aggregates in-process at
+> `phenotypicCLI.py:2977`. **Task 4's deletions rest on the completion-marker half and are
+> therefore safe** — but a reader who follows the citation to that sentence gets the other
+> half unless this says which one.
 >
 > This does **not** disturb U-5 — that ruling was about `RunState`-mediated consumers, and
 > this one is not — but it makes two plan claims false unless fixed: P7 Task 6's register
@@ -92,15 +104,36 @@ existing tree.
 - Modify: `src/phenotypic/_cli/_cli_completion.py` — readers out, writers stay
   — ⚠ **re-grep before trusting any line number here.** P2 Task 4 renamed a
   writer parameter in this file; see below.
-- Modify: `src/phenotypic/phenotypicCLI.py:2394,2428,2439,2874,3725`
-  — ⚠ **do not reason from the comment at `:2418-2421`; P2 Task 3 deleted it.** See below.
-- Modify: `src/phenotypic/_cli/_cli_checkpoint_handler.py:291,348,401` **(gen-r4 N-1)**
-- Modify: `src/phenotypic/_cli/_cli_recompile_worker.py:643,653` **(gen-r4 N-2)**
-- Modify: `src/phenotypic/_cli/_cli_gui_lifecycle.py:90` **(gen-r4 N-1)**
-- Modify: `src/phenotypic/_cli/_dashboard/_manifest_builder.py:729`
-- Modify: `src/phenotypic/sdk_/_hdf_to_zarr.py:728`
-- Modify: `src/phenotypic/_cli/_cli_staged_resume.py:203-213` — `valid_image_success`, not the three above
-- Modify: `src/phenotypic/_cli/_cli_migrate.py:88-89` — likewise
+> **All citations below RE-DERIVED at `99cc068c`. The previous set was 2-for-13**, and
+> three of the misses were caused by P5 itself — see the callout under this list.
+
+- Modify: `src/phenotypic/phenotypicCLI.py` — completion readers at **`:2432,2436`**
+  (`current_run_is_complete`, process-only branch), **`:2497-2516`** (a dense five-reader
+  block: `current_aggregate_is_current`, `current_success_counts`, `valid_run_completion`),
+  **`:2964,2966`** (`current_success_counts`), **`:3816,3820`**
+  (`current_run_is_complete`, recompile). The old citation named five lines; there are
+  **four clusters over ten call lines**, and `:2497-2516` appeared in neither.
+- Modify: `src/phenotypic/_cli/_cli_checkpoint_handler.py:303,305,354,362,413,415`
+  (was `291,348,401`; **≈ +12, P5 `eadf0fdf`** added the fan-out block to `_run_finalize`)
+- Modify: `src/phenotypic/_cli/_cli_recompile_worker.py:672,676,679,689` (was `643,653`)
+- Modify: `src/phenotypic/_cli/_cli_gui_lifecycle.py:90` — **still correct**
+- Modify: `src/phenotypic/_cli/_dashboard/_manifest_builder.py:729` — **still correct**
+- Modify: `src/phenotypic/sdk_/_hdf_to_zarr.py:742` (was `728`; **+14, P5 `eadf0fdf`**
+  added the `source_work_ids` rationale)
+- Modify: `src/phenotypic/_cli/_cli_staged_resume.py:238,240,448` — `valid_image_success`,
+  not the three above (was `203-213`)
+- Modify: `src/phenotypic/_cli/_cli_migrate.py:88-89` — **still correct**
+
+> ### ⚠ P5 moved three of these, and nothing could have caught it
+>
+> `_cli_checkpoint_handler.py` (+12), `sdk_/_hdf_to_zarr.py` (+14) and
+> `_io_constants.py` (+70, ledger item 9) all shifted under P5's own edits. P5 and P6
+> name **different files** in their `Files:` blocks, so `dag.py`'s veto table reports no
+> conflict — correctly, because a `Files:` block is an index of write targets and
+> "this file grew" is not one. Register entry 59.
+>
+> **A hit is not evidence of a live citation, only of a coincidence not yet checked.**
+> The three marked *still correct* above were re-derived, not assumed.
 - Test: `tests/unit/cli/test_completion_split.py` *(new)*
 
 > ### ⚠ Line numbers in this file have drifted twice — regenerate, do not trust
@@ -192,24 +225,79 @@ def test_only_one_completion_predicate_survives():
     # holders -- _runs_registry.py, _slurm_observer.py, and _output_consistency.py -- are
     # migrated by Tasks 1-6 of this phase, so a whole-tree grep here is red by construction
     # at the end of Task 0. The whole-tree assertion is Task 7's, where it can pass.
+    # AST, not grep. A text search matches DOCSTRINGS and COMMENTS, and
+    # `_cli_completion.py`'s own prose references these names -- so a grep
+    # version goes red after the deletion and gets "fixed" by editing prose to
+    # satisfy a search, which is the wrong repair. Assert on CALL SITES.
+    # `tests/unit/sdk_/test_run_state_layering.py` is the precedent in-tree.
+    import ast
+
     root = Path(__file__).resolve().parents[3] / "src" / "phenotypic"
-    hits = subprocess.run(
-        ["grep", "-rn",
-         "current_run_is_complete\\|current_success_counts\\|current_aggregate_is_current",
-         str(root / "_cli"), str(root / "sdk_"), str(root / "phenotypicCLI.py")],
-        capture_output=True, text=True,
-    ).stdout.strip()
-    assert not hits, f"the old O(N)-hashing readers survive CLI-side:\n{hits}"
+    retired = {
+        "current_run_is_complete",
+        "current_success_counts",
+        "current_aggregate_is_current",
+    }
+    hits = []
+    for path in [*(root / "_cli").rglob("*.py"),
+                 *(root / "sdk_").rglob("*.py"),
+                 root / "phenotypicCLI.py"]:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            name = None
+            if isinstance(node, ast.Call):
+                func = node.func
+                name = (func.id if isinstance(func, ast.Name)
+                        else func.attr if isinstance(func, ast.Attribute) else None)
+            elif isinstance(node, ast.ImportFrom):
+                for alias in node.names:
+                    if alias.name in retired:
+                        hits.append(f"{path}:{node.lineno} imports {alias.name}")
+            if name in retired:
+                hits.append(f"{path}:{node.lineno} calls {name}")
+    assert not hits, "the old O(N)-hashing readers survive CLI-side:\n" + "\n".join(hits)
 
 
 def test_the_resume_worklist_uses_the_cache_assisted_path():
-    """§9's caller table, row 2 -- and §9.2's headline scenario IS this call."""
-    import inspect
+    """§9's caller table, row 2 -- and §9.2's headline scenario IS this call.
 
-    from phenotypic import phenotypicCLI
+    Asserted on CALL NODES, not on substrings, and not by scoping to a
+    function.
 
-    source = inspect.getsource(phenotypicCLI)
-    assert "resolve_run_state" in source
+    The first draft was `assert "resolve_run_state" in inspect.getsource(
+    phenotypicCLI)` -- a substring test over a 4,000-line module, satisfied by
+    a comment, an unused import, or a docstring ABOUT the migration.
+
+    **The first correction scoped it to `_prepare_incremental_startup` and was
+    also wrong**: that function is `:494-525`, thirty-one lines, and contains
+    no completion reader at all. The readers are at `:2497-2516`, inside
+    `phenotypic_cli` itself -- which is the 4,000-line command, so scoping to
+    the enclosing function buys nothing over scoping to the module. **The axis
+    that works here is node type, not location.**
+    """
+    import ast
+    from pathlib import Path
+
+    source = (
+        Path(__file__).resolve().parents[3]
+        / "src" / "phenotypic" / "phenotypicCLI.py"
+    ).read_text(encoding="utf-8")
+    called: set[str] = set()
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Call):
+            func = node.func
+            if isinstance(func, ast.Name):
+                called.add(func.id)
+            elif isinstance(func, ast.Attribute):
+                called.add(func.attr)
+
+    assert "resolve_run_state" in called, (
+        "phenotypicCLI never CALLS resolve_run_state -- §9.2's headline "
+        "scenario still re-hashes every marker"
+    )
+    assert not called & {"current_success_counts", "valid_run_completion"}, (
+        "a retired O(N) reader is still called from the CLI"
+    )
 ```
 
 - [ ] **Step 2: Move six readers — and DELETE three (flow-r4 M4)**
@@ -619,7 +707,15 @@ grep -rn '_output_consistency\|inspect_output_consistency\|classify_output_consi
 
 Expected from the pre-flight count: 4 in `src/`, 3 in `tests/`.
 
-- [ ] **Step 2: Write the failing test that `contradictory` is unreachable**
+- [ ] **Step 2: Add the regression guard that `contradictory` cannot come back**
+
+> ⚠ **Not a failing test — it passes today and always has.** `Completion` is
+> already exactly `{"complete", "incomplete", "failed", "active"}`
+> (`sdk_/_state_types.py:28`; re-exported at `_run_state.py:72`), because P1
+> defined it with four values and `contradictory` was never among them. As a
+> **regression** guard it is worth keeping and fires on a fifth literal. As a
+> red-green step it cannot fail, so do not run it expecting red and do not
+> treat its green as evidence that Task 2 did anything.
 
 ```python
 def test_contradictory_is_not_a_state_any_more():
@@ -643,8 +739,17 @@ def test_contradictory_is_not_a_state_any_more():
 def test_no_module_still_imports_the_deleted_classifier():
     import subprocess
 
+    # ABSOLUTE, from __file__ -- as this document's own greps at Task 0 Step 1
+    # and Task 7 Step 4 already do. A relative "src/" greps $CWD/src, which
+    # under the sharded regression harness (or any invocation not rooted at the
+    # repo) does not exist -- and an empty result is this assertion's PASS
+    # condition. The broken form and the correct one were in one document.
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[3] / "src"
+    assert root.is_dir(), f"grep root does not exist: {root}"
     hits = subprocess.run(
-        ["grep", "-rn", "_output_consistency", "src/"],
+        ["grep", "-rn", "_output_consistency", str(root)],
         capture_output=True, text=True,
     ).stdout
     assert not hits, f"dangling importers of the deleted classifier:\n{hits}"
