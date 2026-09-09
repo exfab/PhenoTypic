@@ -258,6 +258,43 @@ def test_only_one_completion_predicate_survives():
     assert not hits, "the old O(N)-hashing readers survive CLI-side:\n" + "\n".join(hits)
 
 
+def test_no_migrated_reader_gained_a_second_definition():
+    """A deletion guard that counts ZERO of the old name cannot see a NEW copy
+    under the same name in another module.
+
+    Step 2 says so itself -- *"nothing in this phase would catch a duplicate
+    landing"* -- because both greps search only the three deleted predicate
+    names. A second `valid_image_success` inside `_run_state.py` passes every
+    other gate in this plan, and it is the exact defect this phase exists to
+    remove: two parsers of one question.
+
+    Counts DEFINITIONS, not occurrences, so a docstring naming the function is
+    not a hit and cannot be "fixed" by editing prose.
+    """
+    import ast
+    from collections import defaultdict
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[3] / "src" / "phenotypic"
+    watched = {
+        "valid_image_success",
+        "valid_run_completion",
+        "valid_aggregate_snapshot",
+        "current_success_inventory",
+        "run_proof",
+        "run_proof_is_current",
+    }
+    seen = defaultdict(list)
+    for path in root.rglob("*.py"):
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if node.name in watched:
+                    seen[node.name].append(f"{path}:{node.lineno}")
+
+    duplicated = {n: w for n, w in seen.items() if len(w) > 1}
+    assert not duplicated, f"a migrated reader has two definitions: {duplicated}"
+
+
 def test_the_resume_worklist_uses_the_cache_assisted_path():
     """§9's caller table, row 2 -- and §9.2's headline scenario IS this call.
 
@@ -317,11 +354,50 @@ def test_the_resume_worklist_uses_the_cache_assisted_path():
 > | Deleted | Replaced by |
 > |---|---|
 > | `current_run_is_complete(d)` | `resolve_run_state(d).completion == "complete"` |
-> | `current_success_counts(d)` | `resolve_run_state(d).diagnostics` — `accepted`/`verified`/`failed` |
-> | `current_aggregate_is_current(d)` | the aggregate proof's own deep-verification result, surfaced in the verdict and its advisories |
+> | `current_success_counts(d)` | ⚠ **three questions under one name — see the split below.** Not `diagnostics`. |
+> | `current_aggregate_is_current(d)` | **`_run_proof_covers_current_inventory`'s clause 2** (`_run_state.py:1164`), reached through `resolve_run_state` — its docstring: *"Clause 2 is the **five** comparisons `current_aggregate_is_current` makes today, not the one an earlier draft kept (CAN-4)."* Private, one internal caller, and it takes already-loaded `config`/`identity`/`images`, so it is **not** callable directly the way the pair above is |
 >
 > With that, Step 1's scoped grep and Task 7's unrestricted one are both satisfiable, and
 > the test's message ("the old O(N)-hashing readers survive") means what it says.
+>
+> ### ⚠ `current_success_counts` is THREE questions, and `diagnostics` answers none of them
+>
+> The row above used to send it to `resolve_run_state(d).diagnostics`. Every one of its
+> eight surviving callers **branches** on the result — and `RunDiagnostics`' own docstring
+> forbids exactly that, giving the reason:
+>
+> > *"Counts derived from `images`. **Nothing branches on these** (§4.2, §9). One-line
+> > projections over `ImageState.verdict`, **not cached counts of a collection the caller
+> > already holds.**"*
+>
+> The second sentence is the ruling: a caller holding a `RunState` already holds `images`,
+> so `diagnostics` exists for **display**, not for decisions. Sending eight deciding callers
+> there either reintroduces count-based branching under a new name — the thing §4.2 demotes
+> and this change exists to end — or is simply the wrong target. It is the wrong target.
+>
+> | Question actually asked | Sites | Target |
+> |---|---|---|
+> | **`is not None`** — *is this a legacy state?* `current_success_counts`' own docstring: *"`None` identifies a **legacy state that does not require general image success markers**."* Not a count question at all | `_cli_recompile_worker.py:676`, `_slurm_observer.py:1317` | a **schema-shape** predicate — see the caveat below |
+> | **`counts[0] > 0`** — *is anything verified yet?* | `phenotypicCLI.py:2502`, `:2966`, `_cli_checkpoint_handler.py:305`, `sdk_/_hdf_to_zarr.py:729` | a projection over `state.images`, which is what the `RunDiagnostics` docstring points at instead of itself |
+> | **`successful != total`** — *is everything verified?* | inside `current_run_is_complete` only | **dies with its caller** |
+>
+> ⚠ **The schema-shape target does not exist yet, and this was checked rather than
+> assumed.** `sdk_/_schema_shape.py` exports `requires_conversion`,
+> `describe_conversion_advisory`, `describe_required_conversion`, `ConversionVerdict`,
+> `SCHEMA_GATE_ARMED`, `STATE_SCHEMA_VERSION` — and **never reads
+> `success_markers_required`**. It is also **not re-exported from `sdk_/__init__.py`**, so
+> today's consumers reach it as `phenotypic.sdk_._schema_shape` (`_cli_schema_gate.py:30`),
+> a private module path.
+>
+> `requires_conversion` asks *"is this tree in the old shape?"* by directory and version
+> signals, which is adjacent to but **not the same as** *"does this state require success
+> markers?"*. So the first row names the right **kind** of home and not an existing
+> function. Settle that before converting those two sites; it is a P1-contract question, not
+> something to close by adding a predicate here.
+>
+> **Step 2's stop rule does not fire.** Each of the three questions has a target or dies;
+> what had no equivalent was the *conflation*. A row collapsing three questions into one
+> name is a mis-shaped table, the same defect as a 1→1 mapping over a 1→2 tree one row up.
 
 > ### ⚠ Corrected: three of these six are **already in `sdk_`** and cannot be moved
 >
@@ -331,19 +407,59 @@ def test_the_resume_worklist_uses_the_cache_assisted_path():
 > below re-derive what `valid_image_success`, `valid_aggregate_snapshot` and
 > `valid_run_completion` decide today."*
 >
+> **Every line number below was re-derived at `ef436461`; the previous set was 0-for-11,
+> drifting +32 to +342. And one entry named a function that does not exist.**
+>
 > | `_cli_completion.py` | Already in `_run_state.py` | |
 > |---|---|---|
-> | `valid_image_success` (`:256`) | `_verify_image` (`:540`) | |
-> | `valid_run_completion` (`:1060`) | `_valid_run_proof` (`:771`) | |
-> | `valid_aggregate_snapshot` (`:927`) | `_valid_aggregate_proof` (`:785`) | |
-> | `current_success_inventory` (`:488`), `_walk_current_success` (`:535`), `_current_success_work_ids` (`:683`) | `_resolve_images` (`:1043`) + `_accepted_inventory` (`:651`) | |
+> | `valid_image_success` (`:288`) | `_verify_image` (`:682`) | |
+> | `valid_run_completion` (`:1253`) | **`run_proof` (`:1002`) + `run_proof_is_current` (`:1032`)** — a **pair**, see below | |
+> | `valid_aggregate_snapshot` (`:1100`) | `_valid_aggregate_proof` (`:1111`) | |
+> | `current_success_inventory` (`:538`), `_walk_current_success` (`:585`), `_current_success_work_ids` (`:733`) | `_resolve_images` (`:1385`) + `_accepted_inventory` (`:828`) | |
+>
+> ### ⚠ `_valid_run_proof` does not exist, and the mapping is 1→2
+>
+> The previous table sent `valid_run_completion` to `_valid_run_proof` (`:771`).
+> **`grep -rn "_valid_run_proof" src/` returns nothing**; the only tree match is the
+> *prose* inside the test name `test_a_live_worker_does_not_mask_a_valid_run_proof`, which
+> is why a grep for it looks almost-successful.
+>
+> The real counterpart is a **pair**, and `run_proof_is_current`'s own docstring names it:
+> *"The other half of `run_proof`, and the comparisons
+> `_cli_completion.valid_run_completion` makes once it has the marker: `inventory_digest`,
+> `scientific_config_digest`, `finalization_input_digest` and -- since U-4 replaced the
+> opaque `publication_id` -- `source_set_digest`."*
+>
+> The split is deliberate. `run_proof` (`:1002`) is **structural validity only** —
+> `version`, `status`, `finalizer_succeeded` — and its docstring gives the reason: forcing
+> a caller that only asks *"is this file a run proof at all?"* to load processing state
+> *"is what pushed four readers into open-coding this predicate, and every one of those
+> four dropped the `version` check on the way."*
+>
+> **Migrating to `run_proof` alone silently drops every digest comparison.** That is the
+> case Step 2's stop rule exists for, and a 1→1 table over a 1→2 tree is how it hides.
+>
+> ### Two conjuncts stay at the CALLER, on purpose
+>
+> Both are documented decisions; record them at each converted site rather than
+> rediscovering them:
+>
+> | Conjunct | Why it is not in `sdk_` |
+> |---|---|
+> | `current_run_is_complete` | *"a separate conjunct kept at the caller on purpose: it is O(N) in images, this is O(1), and a GUI surface polling every five seconds wants to ask the cheap question."* |
+> | `success_markers_required` | *"the caller's policy. `valid_run_completion` waives them for legacy state"* |
+>
+> So the migrated form is **`run_proof(d) and run_proof_is_current(d)`**, plus those two
+> retained locally. Folding either into `sdk_` reverses a documented decision and puts an
+> O(N) walk back on a five-second GUI poll.
 >
 > **So this is a deletion, not a move — and one of the three cannot be moved at all.**
 > `valid_run_completion` calls `load_processing_state` from `_cli_state_management`
-> (`_cli_completion.py:1062`). Carrying it into `sdk_` verbatim fails
+> (`_cli_completion.py:1255`, the third line of its body). Carrying it into `sdk_` verbatim fails
 > `test_neither_module_ever_names_the_cli_package`, which walks the AST for lazy
 > in-function imports precisely so this cannot slip through. The `sdk_` replacement is
-> 12 lines of structural validation against `RUN_PROOF_VERSION`; the original is ~40 that
+> 30 lines of structural validation against `RUN_PROOF_VERSION` (`run_proof`, `:1002-1031`;
+> re-measured — the row said 12); the original is ~40 that
 > reach back into CLI state. They are not the same function and the rewrite already happened.
 >
 > **What this task actually does:** confirm each `_run_state.py` reader covers its
@@ -355,24 +471,50 @@ def test_the_resume_worklist_uses_the_cache_assisted_path():
 > unrestricted one both search for the three *deleted predicate* names only. A second
 > `valid_image_success` inside `_run_state.py` passes every gate in this plan.
 >
-> ### And the migration Step 3 does not size: `valid_image_success` has 19 call sites
+> ### And the migration Step 3 does not size: `valid_image_success` has 14 external call sites
 >
-> Measured this turn, not carried from the audit:
+> **All three figures re-measured at `ef436461` (2026-09-09); all three were wrong, and the
+> first correction fixed only the one that carried the words "measured this turn".** The two
+> beside it were derived from the same command family and inherited its authority without
+> inheriting its check.
 >
 > ```bash
-> grep -rn "valid_image_success(" src/ | grep -v "def valid_image_success" | grep -v ">>>" | wc -l   # 19
-> grep -rn "valid_image_success(" src/ | grep -v "_cli_completion.py" | grep -v ">>>" | wc -l        # 15 outside its own file
+> grep -rn "valid_image_success(" src/ | grep -v "def valid_image_success" | grep -v ">>>" | wc -l
+> # 17   total   (was stated as 19)
+> grep -rn "valid_image_success(" src/ | grep -v "_cli_completion.py" | grep -v ">>>" | wc -l
+> # 14   outside its own file   (was stated as 15)
+> grep -rn "valid_image_success(" src/ | grep -v "_cli_completion.py" | grep -v ">>>" \
+>   | cut -d: -f1 | sort -u | wc -l
+> # 10   distinct modules   (was stated as 11)
 > ```
 >
-> 15 call sites across 11 modules, and `_run_state.__all__` exports **nine names, none of
-> them a per-image validator** — `ImageState`, `RunDiagnostics`, `RunIdentity`, `RunState`,
-> `assert_identity_current`, `clear_verification_cache`, `finalization_input_object`,
-> `resolve_run_state`, `run_identity`. "Moves into `sdk_` and becomes private there" leaves
-> all 15 with nothing to call, and Step 3 converts thirteen *other* call sites (the deleted
-> trio's). **Decide the replacement for these 15 explicitly before deleting anything:** each
+> 14 call sites across 10 modules.
+>
+> > **⚠ The export list this argument used to rest on was wrong, and wrong in the direction
+> > that mattered.** It read *"`_run_state.__all__` exports **nine names, none of them a
+> > per-image validator**"* and listed nine. Measured at `ef436461`: **sixteen**, and the
+> > seven it omitted include **`run_proof` and `run_proof_is_current`** — the exact pair the
+> > corrected mapping above sends `valid_run_completion` to — plus
+> > **`staged_image_is_complete(output_dir, dataset, image_stem)`**, which *is* a per-image
+> > reader, so the "none of them" clause was false as well.
+> >
+> > Full list: `ImageState`, `RunDiagnostics`, `RunIdentity`, `RunState`,
+> > `accepted_finalization_digests`, `assert_identity_current`, `clear_verification_cache`,
+> > `fenced_artifact_path`, `finalization_input_digest`, `finalization_input_object`,
+> > `marker_rejection`, `resolve_run_state`, `run_identity`, `run_proof`,
+> > `run_proof_is_current`, `staged_image_is_complete`.
+> >
+> > The sizing argument below still stands — none of the sixteen answers
+> > `valid_image_success`'s question — but it must be made against the real list, because a
+> > list missing the migration's own targets is the one a reader would use to conclude the
+> > migration has nowhere to go.
+>
+> "Moves into `sdk_` and becomes private there" leaves
+> all 14 with nothing to call, and Step 3 converts thirteen *other* call sites (the deleted
+> trio's). **Decide the replacement for these 14 explicitly before deleting anything:** each
 > is a per-image question, and the only exported answer is `resolve_run_state(...).images`,
 > which is a whole-run walk. Calling it once per image is the O(N²) that §9's note about a
-> per-task reader already warns of — so most of these 15 want the *record* reader in
+> per-task reader already warns of — so most of these 14 want the *record* reader in
 > `sdk_/_image_record.py`, not `_run_state`. Name which, per site, in Step 3's table.
 >
 > ### `sdk_/_hdf_to_zarr.py` has four `_cli` import statements, not one
@@ -382,9 +524,9 @@ def test_the_resume_worklist_uses_the_cache_assisted_path():
 > | Line | Imports | Fate |
 > |---|---|---|
 > | `:605` | `ARTIFACT_KIND_STORE`, `SUCCESS_MARKER_VERSION`, `_artifact_descriptor` | P3 renames `SUCCESS_MARKER_VERSION` → `RECORD_VERSION`; `_artifact_descriptor` is private |
-> | `:714` | `current_success_counts`, `publish_aggregate_snapshot` | the first is **deleted** by this task; the second stays CLI-side |
-> | `:718`, `:762` | `load_processing_state` | the progress read Step 3 counted |
-> | `:761` | `valid_image_success` | the 19-call-site problem above |
+> | `:714` | `_current_success_work_ids`, `current_success_counts`, `publish_aggregate_snapshot` | **three, not two** — P5 `eadf0fdf` added the first when `source_work_ids` became required. Two of the three are deleted by this task |
+> | `:719`, `:778` | `load_processing_state` | the progress read Step 3 counted (was cited `:718`, `:762`) |
+> | `:777` | `valid_image_success` | the 14-call-site problem above (was cited `:761`) |
 >
 > This file is not incidental: P7 Task 6 Step 3 records that the HDF→Zarr migrator **is
 > itself a producer of the record schema (CAN-7)**, not a stage that runs before one. It
