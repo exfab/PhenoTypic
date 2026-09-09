@@ -61,6 +61,13 @@ mkdir -p "$WORK"
 # the end. This job holds while an inner array runs, so hitting the 2 h wall is
 # its LIKELY failure -- and a job killed at the wall never reaches its own last
 # line. `afterany` fires on success, failure, cancellation and timeout alike.
+# `afterany` on THIS job, which is correct for a wall-clock kill and wrong for
+# a normal exit: the finalizer array this job submits OUTLIVES it, and the
+# first run of this gate deleted $WORK the same second the finalizer started
+# writing to it. Both tasks happened to finish, so that was luck. The gate
+# therefore waits for the finalizer itself (below) before exiting, which makes
+# this edge safe again -- the job does not end until its own submissions are
+# terminal.
 CLEANUP_ID=$(sbatch --parsable --dependency=afterany:"${SLURM_JOB_ID}" \
     --export=ALL,WORKTREE="$TREE",REPO="$REPO",GATE_WORK="$WORK" \
     "$REPO/.worktrees/cli-gui-state-tracking/docs/superpowers/plans/2026-09-03-cli-gui-state-tracking/p5_task4_gate_cleanup.sbatch" 2>&1)
@@ -133,8 +140,15 @@ COUNT=$(find "$IN" -type f | wc -l)
 echo "input guard OK: exactly $N_IMAGES images under $IN/$DATASET"
 
 common_args() {
+    # `--njobs 1` on BOTH arms, explicitly. The default is -1, and under
+    # `--wait` the ordinary SLURM path aggregates IN-PROCESS
+    # (`phenotypicCLI.py:2977`; `AutonomousSLURMStrategy` never sets
+    # `remote_managed`), so leaving it defaulted made the "SLURM" arm run a
+    # LOCAL fan-out at K=worker-count. The first run of this gate compared
+    # local K=2 against local K=1 and reported it as byte-identity between the
+    # scheduler and local paths.
     printf '%s\0' --pipeline "$PIPE" --input "$IN" --output "$1" \
-        --image-type Image --bit-depth 16 --ext .tiff
+        --image-type Image --bit-depth 16 --ext .tiff --njobs 1
 }
 
 # --- Local reference run, njobs 1 -------------------------------------------
@@ -167,6 +181,48 @@ uv run python -m phenotypic "${SLURM_ARGS[@]}" \
     --slurm mem_gb=16 \
     --slurm slurm_time=00:30:00 \
     --wait
+
+# `--wait` returns when the image CHUNKS are terminal, NOT when the dependent
+# finalizer has run -- it is submitted with `afterany` and starts afterwards.
+# Every assertion below would otherwise measure a pre-finalization tree, and
+# the master it read would be the one the CLI wrote in-process.
+MASTER="$WORK/slurm_out/deliverables/master_measurements.parquet"
+MASTER_MTIME_BEFORE=$( [[ -f "$MASTER" ]] && stat -c %Y "$MASTER" || echo 0 )
+FINALIZER_ID=$(uv run python - "$LEDGER" "$LEDGER_BEFORE" <<'PY'
+import json, sys
+from pathlib import Path
+rows = [json.loads(l) for l in Path(sys.argv[1]).read_text().splitlines()[int(sys.argv[2]):] if l.strip()]
+ids = [r["job_id"] for r in rows if r.get("status") == "submitted"
+       and "finaliz" in str(r.get("role", "")) and r.get("job_id")]
+print(ids[0] if len(ids) == 1 else "")
+PY
+)
+[[ "$FINALIZER_ID" =~ ^[0-9]+$ ]] || { echo "FATAL: no single finalizer id in the ledger delta: '$FINALIZER_ID'"; exit 1; }
+echo "waiting on finalizer ${FINALIZER_ID}"
+
+# Poll until every array task is terminal. An UNEXPANDED `sacct` form --
+# `12345_[0-1]` -- means "not yet dispatched" and is a RENDERING, not an index
+# set; the first run of this gate read it as one and asserted against it.
+for _ in $(seq 1 120); do
+    STATES=$(sacct -j "$FINALIZER_ID" -n -P --format=JobID,State              | grep -vE '\.(batch|extern)\|' || true)
+    if [[ -n "$STATES" ]] && ! grep -q '\[' <<<"$STATES"        && ! grep -qE '\|(PENDING|RUNNING|REQUEUED)$' <<<"$STATES"; then
+        echo "finalizer terminal:"; sed 's/^/  /' <<<"$STATES"; break
+    fi
+    sleep 10
+done
+grep -q '\[' <<<"$STATES" && { echo "FATAL: finalizer never dispatched (still $STATES)"; exit 1; }
+
+# The finalizer must have REWRITTEN the master. Without this, "we waited and
+# then read a master" cannot distinguish its output from the in-process one
+# still sitting there -- the exact indistinguishability that made the first
+# run of this gate green by construction.
+MASTER_MTIME_AFTER=$( [[ -f "$MASTER" ]] && stat -c %Y "$MASTER" || echo 0 )
+echo "master mtime: ${MASTER_MTIME_BEFORE} -> ${MASTER_MTIME_AFTER}"
+[[ "$MASTER_MTIME_AFTER" -gt "$MASTER_MTIME_BEFORE" ]] || {
+    echo "FATAL: the master was not rewritten by the finalizer; every"
+    echo "       assertion below would describe the in-process aggregation"
+    exit 1
+}
 
 # --- The one observation no unit test can make -------------------------------
 # Printed and asserted BEFORE the assertion block, deliberately. `set -e` means
@@ -333,6 +389,11 @@ for role, ids in roles.items():
             for line in out.splitlines()
             if "_" in line and ".batch" not in line and ".extern" not in line
         })
+        if any("[" in i for i in indices):
+            failures.append(
+                f"finalizer {job_id} still shows an UNEXPANDED array form "
+                f"{indices} -- not yet dispatched; the wait above did not hold"
+            )
         print(f"  finalizer {job_id} array indices: {indices}")
         if indices != ["0", "1"]:
             failures.append(

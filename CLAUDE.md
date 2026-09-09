@@ -150,6 +150,25 @@ as a baseline. The suite is ~65 minutes, not two — so it is a Slurm job
   indices `0..K-1` aggregate measurement shards and whose index K is the reserved
   `TASK_FINALIZE` entry — running the same command it always ran. The finalizer is
   still the sole publisher; it now has K helpers that publish nothing.
+  **With `--wait`, the aggregated outputs are written twice** and the sentence
+  above does not cover it: `AutonomousSLURMStrategy` never sets
+  `remote_managed` (only the staged path does, `_cli_staged_slurm.py:680,760`),
+  so the CLI falls through to `aggregate_master_csv`
+  (`phenotypicCLI.py:2977`) and aggregates **in the submitting process**, while
+  the dependent finalizer later aggregates again. The two are serialized by
+  `.aggregate_publication.lock` and read the same authorized sources, so they
+  write the same bytes — redundant, not divergent. **That last clause is a
+  property of one recent decision, not of the design**, and it was false
+  before `87f933cb`: the in-process path fans out at K = worker count while
+  the finalizer merges the scheduler's shards at its own K, and until
+  `shard_sources` became a *contiguous* split, merge order depended on K — so
+  two writers with the same lock and the same sources produced **different
+  bytes**. Reverting the decomposition to a strided assignment would silently
+  break this consumer, which is not named anywhere near it. **The completion-marker half
+  of the claim holds either way:** the main flow never publishes the run proof,
+  which only `_run_finalize` does. Note also that `--njobs` defaults to `-1`,
+  so that in-process aggregation runs the *local* fan-out at K = worker count,
+  not the scheduler's K.
   Staged GPU flags (Spec 1 §10):
     - `--gpu-slurm key=value` — Stage-2 GPU SBATCH profile; **inherits/deltas over
       `--slurm`** (put a separate GPU partition/account here); auto-adds

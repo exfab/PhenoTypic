@@ -3300,3 +3300,115 @@ a correct assertion detects a real defect regardless of whether its author under
 could. The corollary is uncomfortable and worth stating — **a passing test's stated rationale
 is not evidence that the rationale is true**, and this one only got audited because the test
 failed.
+
+---
+
+### Entry 66 — THE GATE'S CENTRAL ASSERTION NEVER TOUCHED THE THING IT NAMED. 2026-09-09.
+
+**Kind: never true**, of what the assertion claimed to compare. **The most expensive instance
+in this register**: it survived four author reads and three reviewer reads, was found only
+because an *unrelated* string-parsing bug turned the run red, and every other assertion in
+the gate passed.
+
+The P5 Task 4 gate exists to establish one thing no unit test can: that the SLURM fan-out's
+master is byte-identical to a local `--njobs 1` run. It reported:
+
+```
+masters byte-identical (194342 bytes)
+```
+
+**It compared a local fan-out to a local fan-out.**
+
+## The chain, each link measured
+
+```
+_cli_types.py:259            remote_managed: bool = False
+_cli_staged_slurm.py:680,760 remote_managed=True        <- the STAGED path only
+AutonomousSLURMStrategy      never sets it
+phenotypicCLI.py:2879        if results.remote_managed:  -> early exit NOT taken
+phenotypicCLI.py:2977        aggregate_master_csv(..., njobs=config.n_jobs)
+phenotypicCLI.py:1350        --njobs default = -1
+```
+
+So under `--wait` the ordinary SLURM path **aggregates in the submitting process**, and
+`resolve_local_worker_count(-1, 2)` caps at the work count:
+
+| arm | what actually ran | K |
+|---|---|---|
+| "SLURM" | in-process **local** fan-out | 2 |
+| local | in-process local fan-out | 1 |
+
+A real result — a genuine end-to-end confirmation of Task 3's K-independence through the real
+CLI — and already covered by `test_local_fanout_produces_a_byte_identical_master`. The
+dependent finalizer array ran **twelve seconds later**, wrote its own master, and was examined
+by nothing; the `afterany` cleanup then deleted the tree while it was still writing.
+
+## Three assumptions, each individually reasonable
+
+1. **`--wait` waits for the run.** It waits for the image *chunks*. The dependent finalizer is
+   submitted `afterany` and starts afterwards, so every assertion ran on a pre-finalization
+   tree.
+2. **A SLURM run does not aggregate locally.** True for the staged path, which is where
+   `remote_managed` is set, and false for the ordinary one.
+3. **A default flag is neutral.** `--njobs -1` is inert for a scheduler run — except that the
+   in-process fall-through made it the *only* thing choosing K.
+
+None is careless. Their conjunction made a gate that could not fail its own central claim.
+
+## What made it invisible, and it is the transferable part
+
+**Every guard this change built watches the measurement; none watches the subject.** The
+wall-clock bound (55), the redirect before `$?` (57), the environment in the invocation (58),
+the non-zero pass count (58) — all four were satisfied. The gate ran, terminated, reported,
+and its numbers were true. It was measuring the wrong tree.
+
+> A green assertion proves the *comparison* was performed. It says nothing about whether the
+> operands are the things the assertion names, and nothing in the output can tell you.
+
+The rule that follows is the one the fix implements: **assert the subject changed.** The gate
+now records the master's mtime before the wait and requires it to have moved — so "we waited
+and then read a master" can no longer be satisfied by the stale in-process one. That is
+entry 58's positive-assertion rule pointed at the operand instead of the outcome.
+
+## Disposition
+
+Five fixes, none of them "move the assertion later": wait on the finalizer by job id from the
+ledger; **assert the master's mtime moved**; treat an unexpanded `sacct` form (`12345_[0-1]`)
+as *not yet dispatched* and retry rather than parsing it as an index set; keep the cleanup
+edge but make it safe by not exiting until the submitted chain is terminal; and pin
+`--njobs 1` on both arms so the only difference is the scheduler.
+
+**The K=1 topology claim stands**, and was never at risk: `scontrol` showed
+`ArrayTaskId=0, ArrayTaskId=1` on the live finalizer and `sacct` showed both terminal. That
+went through the scheduler, not through the master.
+
+## The `--wait` documentation gap, and what is NOT wrong
+
+P5 amended `CLAUDE.md`'s *"the dependent finalizer is the sole publisher of aggregated outputs
+and the completion marker"*. That sentence is **conditioned on `--wait` being absent** and is
+true in that condition; the amendment inherits the condition and needed no retraction.
+
+What it was, was **silent about the `--wait` case** — *true but incomplete* — and that silence
+mattered more after P5 than before, because the finalizer now merges shards while the
+in-process path concatenates. Investigated and found benign: both take
+`.aggregate_publication.lock` (`_cli_output_manager.py:1528`) so they serialize, both read the
+same authorized sources, and the master is a pure function of those. **And the
+completion-marker half holds unconditionally** — `phenotypicCLI.py:2437` is guarded by
+`if config.process_only_layer is not None` and `:3821` is `--mode recompile`, so neither is
+reachable from the forward `--wait` path; only `_run_finalize` publishes it. Corrected by
+addition, not rewrite.
+
+**And the benign verdict is itself dated, which is the last trap in this entry.** *"They write
+the same bytes"* is true **now** and was **false three commits ago**. The in-process path fans
+out at K = worker count; the finalizer merges the scheduler's shards at its own K. Until
+`87f933cb` made `shard_sources` a contiguous split, merge order depended on K — so two writers
+holding the same lock over the same sources produced **different bytes**. The gate's own run is
+the demonstration: local K=2 agreed with local K=1 only because the contiguous split had
+already landed.
+
+So the redundancy is safe *because* Task 3 put the ordering guarantee in the **decomposition**
+rather than in the merge — the argument made for choosing contiguous over sort-after-merge,
+*"where every merger inherits it"*. **The second merger was one nobody knew existed at the
+time.** A design choice defended on a general principle turned out to be load-bearing for a
+specific consumer discovered three commits later, and a revert would break it with nothing
+named nearby to object.
