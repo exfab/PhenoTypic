@@ -2904,3 +2904,164 @@ block also calls `_write_current_epoch_shards` and `_publish_six_successful_imag
 of which exists. A snippet in a plan is a statement of intent that was true when written; it
 is not code, and the register now has two entries (49, 59) whose whole content is that
 distinction being forgotten.
+
+## The same instrument, a second blind spot — and it caught its own author within the hour
+
+The `Files:` block cannot represent a **symbol**, which is the finding above. It also cannot
+represent **work that produces no file**, and that one was demonstrated immediately.
+
+Task 4's `Files:` block names exactly one path, `tests/unit/cli/test_finalize_fanout.py`. On
+the strength of that, cluster 5.2 was described to the implementer as *"test-only, no sbatch,
+no real dataset, no `slurm-job` routing"* — a correction to an earlier, more accurate
+statement. **Task 4 Step 4 is "Phase gate — a real SLURM run", and Step 3 is a code change.**
+Neither appears in the `Files:` block, because a submitted job produces no file the plan
+tracks and Step 3's target is `src/`.
+
+The implementer had begun sizing a `slurm-job` submission and stopped on the strength of the
+correction; the retraction arrived before it cost anything, which is luck rather than a
+property of the process.
+
+**So the instrument has two blind spots of the same shape**, and the second was walked into
+by the person who had just finished writing a paragraph about the first:
+
+| `Files:` block cannot see | Consequence |
+|---|---|
+| a **symbol** rename | Task 1 invalidated Task 4's snippet; every gate green |
+| **work producing no file** | a phase gate requiring a real SLURM run read as test-only |
+
+**The rule generalises past both:** *a `Files:` block is an index of write targets, and scope
+is not a function of write targets.* Reading scope off it is sound only for work whose entire
+footprint is files that already exist. Everything else — renames, submissions, deletions,
+schema arming, anything measured rather than written — is invisible there **by construction,
+not by omission**, so no amount of care in maintaining the block would help. Read the task's
+Steps, which are prose and therefore have to be read rather than queried.
+
+---
+
+### Entry 60 — A CORRECTION THAT MOVED THE VACUITY INSTEAD OF REMOVING IT. 2026-09-09.
+
+**Kind: wrong while correcting** — Highest cost by this register's own table, because it
+carries the authority of a fix. **Second instance today**, the first being the
+`### Entry [0-9]+` boundary reproduced inside the correction for the nested-table match
+(entry 45).
+
+`phase-5-fanout.md` Task 4's `test_a_prior_epochs_shards_are_never_merged` carries a
+docstring diagnosing its own predecessor:
+
+> *"CAN-5: the first draft of this test called `finalize_run` with **NO** `shard_paths` — the
+> local concat path, which never looks at a shard directory at all. It proved nothing about
+> the only path where a prior epoch's shards could be merged. Pass the current epoch's shards
+> explicitly, with the stale directory present."*
+
+The diagnosis is exact. The prescribed fix is:
+
+```python
+finalize_run(tmp_path, dataset_names=["plate"], shard_paths=current)
+assert "GHOST.tif" not in master["Metadata_ImageFile"].to_list()
+```
+
+**Which is vacuous for a different reason.** The ghost is planted under `"old-epoch"` and
+`shard_paths=current` is passed **explicitly**, so the function never consults a shard
+directory at all — it reads exactly the list it was handed. The test asserts that
+`finalize_run` uses its own argument. It would pass against an implementation with no epoch
+namespacing whatsoever.
+
+**The vacuity moved from one axis to another:** the first draft never reached the shard path;
+the correction reaches it but supplies the answer as a parameter. Neither exercises the
+derivation — `resolve_finalizer_shard_inputs` deriving a shard set **from an epoch** — which
+is the only mechanism by which a prior epoch's shards could ever be reached.
+
+## Why this one is cheap to catch and was not caught
+
+The tell is in the test's own body, one line apart: the ghost is written to a path built from
+`"old-epoch"`, and the thing under test is handed a list built from `"new-epoch"`. **A test
+whose fixture and whose subject are connected by nothing cannot be testing their
+relationship.** Asking *what would this have looked like if the code were wrong?* — the
+register's standing question, and it is quoted in the file this snippet lives in — answers
+immediately: identical.
+
+## Disposition, which is not "write it correctly"
+
+The subject was **already covered**, by the right mechanism on each path, before this test
+was considered:
+
+| Test | Covers |
+|---|---|
+| `test_shards_are_namespaced_by_scheduler_epoch` | the SLURM half — distinct epochs give distinct directories, and `collect_shard_paths` globs one |
+| `test_fanout_start_empties_a_prior_invocations_shards` | the local half, at `epoch=None`, where the namespace **cannot** carry it and clearing does |
+
+Those two split the guarantee along the axis the design actually splits it on: namespacing on
+SLURM, clearing locally. The plan's third test adds a case on a covered subject, and adds it
+in the one form that asserts nothing.
+
+**The general form, and it is the reason this is an entry rather than a deleted line:** a
+correction inherits its predecessor's *frame*. The first draft asked "does the merge see the
+ghost?" and answered on the wrong path; the correction kept the question and fixed the path,
+without noticing that supplying `shard_paths` had made the question unaskable. **Ask what the
+corrected test now depends on, not whether it addresses the stated defect** — those come
+apart precisely when the correction is narrow enough to look obviously right.
+
+---
+
+### Entry 61 — A GREEN GATE IS A STATEMENT ABOUT THE WORKING TREE, NOT ABOUT THE COMMIT. 2026-09-09.
+
+**Kind: true but incomplete** — of what a passing gate licenses. Distinct from entry 58,
+which is an *invocation* losing part of itself at a handover; here the invocation was
+complete and correct, and the **artifact** was a strict subset of what it verified.
+
+`test_finalize_fanout.py` was committed at `3ae28b89` carrying **8 references** to
+`finalizer_memory_advisory`, while `_cli_finalize_fanout.py` — which defines it — was left
+uncommitted. **That commit could not pass its own tests.**
+
+## The diagnostic detail, which is the whole entry
+
+The gate run *before* the commit and the gate run *after* both reported exactly **70
+passed**. The count did not move, and could not have: the advisory tests were already in the
+file and already passing, because the **working tree** had the function. The commit was
+partial; the verification was not wrong about anything it measured.
+
+> A green gate is a statement about the working tree. It says nothing about whether the
+> commit being made is self-consistent, and the two come apart precisely when staging is
+> partial.
+
+**Every guard built during this change watches the run, and all four were satisfied:**
+
+| Guard | Entry | Saw this? |
+|---|---|---|
+| wall-clock bound | 55 | no — the run terminated normally |
+| redirect before reading `$?` | 57 | no — the status was read correctly, and was 0 |
+| environment inside the invocation | 58 | no — the invocation was complete |
+| positive non-zero pass count | 58 | no — 70, correctly |
+
+They are all checks on **the act of measuring**. None of them can observe that the thing
+being committed is smaller than the thing that was measured, because that is not a property
+of the measurement at all.
+
+## The check that does catch it is different in kind
+
+Verify **the commit**, not the run — resolve the symbols across `HEAD` rather than across the
+working tree:
+
+```bash
+git show HEAD:<test_file>   | grep -c '<symbol>'   # references
+git show HEAD:<source_file> | grep -c 'def <symbol>'  # definition
+```
+
+That is what diagnosed it and what would have prevented it. Cheaply generalised: **after
+staging, ask whether the staged set is closed under the imports it introduces.**
+
+## The proximate cause is one the process already forbids
+
+`git status` and `git add` ran in a single block, and the file was extended between the gate
+run and the commit — staging a file mid-edit, which is the discipline this change has
+enforced all day, broken by the person enforcing it. That half is ordinary and would not
+merit an entry.
+
+**What merits the entry is that the ordinary mistake produced no signal.** A partial commit
+is normally caught by the next test run — but only if the next run happens against a fresh
+checkout. Against a working tree that still holds the missing file, it is invisible
+indefinitely, and surfaces later as a bisect failure or a broken CI on a clean clone, far
+from its cause.
+
+Fixed by `--amend` rather than a follow-up: `3ae28b89` was never pushed, and a
+bisect-hostile commit left in history is worse than a rewritten one.
