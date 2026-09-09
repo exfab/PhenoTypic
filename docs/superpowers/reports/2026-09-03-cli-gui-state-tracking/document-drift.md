@@ -3233,3 +3233,70 @@ not a description of one past run** — and the failure mode is not carelessness
 **Operationally:** a gate on `short` should carry `slurm_constraint` when its timing matters,
 or state that it does not. This one did not, and its budget survived only because the inner
 array is one image per task with ~3x headroom.
+
+---
+
+### Entry 65 — A TEST THAT FOUND A REAL GAP FOR A REASON THAT WAS FALSE. 2026-09-09.
+
+**Kind: never true**, of the test's stated reason for being able to detect what it detected.
+The gap is real, the detection was real, and **the mechanism named in the test's own docstring
+had nothing to do with either.**
+
+`test_an_unready_file_is_not_accepted_into_the_inventory` was written to run **without**
+`--skip-validation`, with this justification:
+
+> *"validation is the mechanism that keeps a half-written file out of the inventory … a
+> version of this test that inherited that flag would pass on a build with no admission check
+> at all."*
+
+The reasoning is sound and the premise is false. Measured:
+
+```
+phenotypicCLI.py:2260   if not config.skip_validation:
+    Step 1  validate_execution_config(config)   <- config only
+    Step 2  validate_pipeline(...)              <- pipeline loading
+help text:  "Skip pipeline validation (for advanced users)"
+```
+
+It never opens an input image. The test would have failed **identically** with the flag on,
+so the opt-out could not change the outcome — entry 62's question (*what input would make
+this fire?*) applied to a flag rather than an assertion, and the third instance of that shape
+in this phase.
+
+**It was reviewed and agreed to before it ran.** The author reasoned it out, the reviewer read
+the reasoning, agreed with it, and neither checked what the flag gates. A justification that
+is *internally* coherent recruits agreement without ever being tested against the code.
+
+## The substantive finding is better than the one that was looked for
+
+There is no admission check to skip, and its absence is **the composition of two deliberate,
+individually-correct decisions** rather than an omission:
+
+| Decision | Where | Why it is right alone |
+|---|---|---|
+| candidates are tested **by name, never by opening** | `_cli_directory_scanner.py:28-32` | *"reading a root `zarr.json` per entry would cost an open per file at 10k-image scale"*; unreadable input is left to fail *"later, loudly, in `imread`"* |
+| `total` counts **every image the state claims** | `_cli_completion.py:710-730` | *"a run with a failed image reports `successful < total`"*, and `current_run_is_complete` requires equality |
+
+Composed: a file admitted while still being copied can **never** succeed, `total` never
+shrinks, and the run is **permanently incomplete**. The first decision defers the cost of
+readability to processing; the second makes processing failure terminal for the whole run.
+Each docstring is correct and neither mentions the other.
+
+That is entry 56's shape — *two accurate statements whose conjunction is false* — now with a
+third instance and a sharper form: here the two are not merely uncoordinated, they are
+**both justified in writing, by different authors, against different cost models.**
+
+## Disposition, and why not the obvious one
+
+`xfail(strict=True)`, with the composition in the reason. **Not** implemented in P5:
+admission checking is new product behaviour with its own failure modes — what counts as
+unready? a size check races the writer; an `imread` probe reinstates exactly the per-file open
+the scanner's docstring rejects on cost — and it belongs to whoever owns input handling.
+`strict=True` so the day the behaviour appears, the marker's staleness is a failure rather
+than a silently passing xpass.
+
+**The transferable half is not the gap.** It is that the test would have found it either way:
+a correct assertion detects a real defect regardless of whether its author understood why it
+could. The corollary is uncomfortable and worth stating — **a passing test's stated rationale
+is not evidence that the rationale is true**, and this one only got audited because the test
+failed.
