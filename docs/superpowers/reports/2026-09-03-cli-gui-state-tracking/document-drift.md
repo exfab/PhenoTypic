@@ -3798,6 +3798,15 @@ suite, and it is deliberately cheap so it can run on every PR.
 `features pass`, and the two-line change costs nothing. The general form: **a check should
 report in the vocabulary of what it verified, never of what it was written for.**
 
+> **Applied.** The success line is now `refs RESOLVE (not run)` plus a breakdown, and
+> writing it surfaced a distinction the single number had hidden: a shipping row is
+> verified at **one of three strengths** — a named test found by `def` grep (452 rows), a
+> file-only ref with no `::test` (4), or `n/a (manual)`, which this gate verifies not at
+> all (6). Reporting them as one `294 shipping` was the address/subject gap *and* a
+> collapse of three populations into one count. Only the first was noticed before the
+> rename was attempted, which is an argument for doing the cheap fix rather than only
+> filing it.
+
 For citations, the rule from Entry 71 stands and generalises here: for a claim shaped
 *"X reads Y at F:N"*, resolving `F:N` proves only that `F:N` exists. Reading the line is
 what proves Y.
