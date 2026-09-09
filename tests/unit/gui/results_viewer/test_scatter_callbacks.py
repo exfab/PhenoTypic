@@ -434,7 +434,7 @@ def test_the_fingerprint_a_figure_stores_is_the_bindings_own(
     """The producer half of the staleness guard."""
     _, _, fingerprint = _render(output_root)
 
-    assert fingerprint == output_root.consumed_state_fingerprint
+    assert fingerprint == output_root.snapshot.consumed_state_fingerprint
 
 
 def test_a_stale_fingerprint_is_refused_at_the_call_site(
@@ -443,14 +443,14 @@ def test_a_stale_fingerprint_is_refused_at_the_call_site(
     """The stored fingerprint is compared, never re-read.
 
     This is the test the tautology cannot pass: reading
-    ``consumed_state_fingerprint`` on both sides of the comparison makes
-    the stale case resolve like any other, and the guard -- still
+    ``snapshot.consumed_state_fingerprint`` on both sides of the comparison
+    makes the stale case resolve like any other, and the guard -- still
     present, still reading correctly -- stops nothing.
     """
     click = {"points": [{"customdata": [1]}]}
 
     live = resolve_inspector_click(
-        output_root, click, output_root.consumed_state_fingerprint
+        output_root, click, output_root.snapshot.consumed_state_fingerprint
     )
     stale = resolve_inspector_click(output_root, click, "a-previous-snapshot")
 
@@ -469,7 +469,9 @@ def test_a_click_that_is_not_on_a_point_leaves_the_inspector_alone(
     assert click_index(None) is None
 
     is_open, title, colony, rows = inspector_payload(
-        output_root, {"points": []}, output_root.consumed_state_fingerprint
+        output_root,
+        {"points": []},
+        output_root.snapshot.consumed_state_fingerprint,
     )
 
     assert is_open is dash.no_update
@@ -499,7 +501,7 @@ def test_a_resolved_click_names_its_colony_and_its_measurements(
     is_open, title, colony, rows = inspector_payload(
         output_root,
         {"points": [{"customdata": [1]}]},
-        output_root.consumed_state_fingerprint,
+        output_root.snapshot.consumed_state_fingerprint,
     )
 
     assert is_open is True

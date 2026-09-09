@@ -391,8 +391,8 @@ def test_mutable_state_is_always_fresh_while_processing_cache_reuses(
     assert second.snapshot.processing_inventory_cache_hit is True
     assert second.source_fingerprint == first.source_fingerprint
     assert (
-        second.consumed_state_fingerprint
-        != first.consumed_state_fingerprint
+        second.snapshot.consumed_state_fingerprint
+        != first.snapshot.consumed_state_fingerprint
     )
     assert "Mutable" in second.master_df.columns
 

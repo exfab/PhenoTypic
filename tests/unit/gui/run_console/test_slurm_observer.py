@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -33,7 +34,6 @@ from phenotypic.gui.shell._runs_registry import RunRecord, RunRegistry
 from phenotypic.sdk_ import (
     atomic_write_json,
     job_metadata_path,
-    resolve_manifest_json_path,
     run_completion_marker_path,
 )
 
@@ -107,6 +107,65 @@ def _registered_slurm_run(tmp_path: Path) -> tuple[RunRegistry, RunRecord]:
         generation=record.generation.hex,
         mode="ordinary",
     )
+    return registry, record
+
+
+def _publish_run_proof(output_dir: Path, *, generation: str) -> None:
+    """Re-publish the run proof so its ``generation`` is *generation*.
+
+    The observer matches ``marker["generation"]`` against the bound scheduler
+    generation, and ``build_complete_run`` publishes with the epoch
+    ``"local"``. The existing proof is **unlinked first**: the publisher's
+    idempotence check compares only the stable digests, none of which change
+    with the epoch, so publishing over it would return the old generation
+    untouched and the test would silently assert the wrong thing.
+    """
+    from phenotypic._cli._cli_completion import (
+        publish_run_completion_evidence,
+    )
+
+    run_completion_marker_path(output_dir).unlink(missing_ok=True)
+    publish_run_completion_evidence(output_dir, execution_epoch=generation)
+
+
+def _registered_complete_slurm_run(
+    tmp_path: Path,
+    *,
+    stems: Sequence[str] = ("a", "b"),
+) -> tuple[RunRegistry, RunRecord]:
+    """Register a SLURM record over a tree whose shallow verdict is complete.
+
+    ``_run_marker_observation``'s publication half now asks
+    ``resolve_run_state``, which wants an accepted inventory in
+    ``processing_state.json``, a per-image record for every entry in it, an
+    aggregate proof, and a run proof binding to both. A hand-written marker
+    beside a hand-written ``manifest.json`` -- what these tests used while
+    ``_manifest_is_complete`` was the fallback -- reads ``incomplete``.
+
+    ``build_complete_run`` publishes all of it through the **real**
+    publishers, so the fixture cannot keep passing after the proof format
+    changes underneath it.
+    """
+    from tests._output_layout import build_complete_run
+
+    output_dir = build_complete_run(tmp_path, stems=stems)
+    registry = RunRegistry()
+    record = RunRecord(
+        run_id=output_dir.name,
+        generation=uuid4(),
+        mode="slurm",
+        output_dir=output_dir,
+        rel_path=output_dir.name,
+        status="submitting",
+    )
+    registry.register(record)
+    assert record.generation is not None
+    initialize_slurm_lifecycle(
+        output_dir,
+        generation=record.generation.hex,
+        mode="ordinary",
+    )
+    _publish_run_proof(output_dir, generation=record.generation.hex)
     return registry, record
 
 
@@ -298,17 +357,18 @@ def test_binding_rejects_mismatched_scheduler_epoch(tmp_path: Path) -> None:
 def test_marker_must_match_explicit_scheduler_generation_not_gui_generation(
     tmp_path: Path,
 ) -> None:
-    output_dir = tmp_path / "out"
-    output_dir.mkdir()
+    from tests._output_layout import build_complete_run
+
+    output_dir = build_complete_run(tmp_path)
     gui_generation = uuid4()
     scheduler_generation = uuid4()
     registry = RunRegistry()
     record = RunRecord(
-        run_id="out",
+        run_id=output_dir.name,
         generation=gui_generation,
         mode="slurm",
         output_dir=output_dir,
-        rel_path="out",
+        rel_path=output_dir.name,
         status="submitting",
         scheduler_ids=("88",),
         primary_scheduler_id="88",
@@ -342,15 +402,6 @@ def test_marker_must_match_explicit_scheduler_generation_not_gui_generation(
         status="submitted",
         job_id="99",
     )
-    atomic_write_json(
-        resolve_manifest_json_path(output_dir),
-        {
-            "is_complete": True,
-            "failed": 0,
-            "completed": 1,
-            "total_images": 1,
-        },
-    )
     observer = SlurmLifecycleObserver(
         registry,
         FakeScheduler({"88": "RUNNING", "99": "COMPLETED"}),
@@ -361,25 +412,11 @@ def test_marker_must_match_explicit_scheduler_generation_not_gui_generation(
         scheduler_generation=scheduler_generation,
     )
 
-    atomic_write_json(
-        run_completion_marker_path(output_dir),
-        {
-            "generation": gui_generation.hex,
-            "status": "complete",
-            "finalizer_succeeded": True,
-        },
-    )
+    _publish_run_proof(output_dir, generation=gui_generation.hex)
     observer.observe_once()
     assert registry.get(record.run_id).status == "reconciling"  # type: ignore[union-attr]
 
-    atomic_write_json(
-        run_completion_marker_path(output_dir),
-        {
-            "generation": scheduler_generation.hex,
-            "status": "complete",
-            "finalizer_succeeded": True,
-        },
-    )
+    _publish_run_proof(output_dir, generation=scheduler_generation.hex)
     observer.observe_once()
     assert registry.get(record.run_id).status == "complete"  # type: ignore[union-attr]
     scheduler = observer.scheduler
@@ -583,33 +620,17 @@ def test_completed_jobs_enter_grace_before_failed(tmp_path: Path) -> None:
     assert observer.tracked_generation_counts == (0, 0)
 
 
-def test_generation_marker_manifest_and_finalizer_complete_run(
+def test_generation_marker_and_current_evidence_complete_run(
     tmp_path: Path,
 ) -> None:
-    registry, record = _registered_slurm_run(tmp_path)
+    """A matched proof over a tree that still verifies completes the run."""
+    registry, record = _registered_complete_slurm_run(tmp_path)
     assert record.generation is not None
     _write_jobs(
         record,
         {
             "chunk-0": ("601", "chunk"),
             "finalizer": ("602", "finalizer"),
-        },
-    )
-    atomic_write_json(
-        run_completion_marker_path(record.output_dir),
-        {
-            "generation": record.generation.hex,
-            "status": "complete",
-            "finalizer_succeeded": True,
-        },
-    )
-    atomic_write_json(
-        resolve_manifest_json_path(record.output_dir),
-        {
-            "is_complete": True,
-            "failed": 0,
-            "completed": 3,
-            "total_images": 3,
         },
     )
     lifecycle = json.loads(
@@ -631,30 +652,13 @@ def test_inactive_fence_with_published_ordinary_run_reconciles_finalizer(
     tmp_path: Path,
 ) -> None:
     """Publication before finalizer exit is not mistaken for cancellation."""
-    registry, record = _registered_slurm_run(tmp_path)
+    registry, record = _registered_complete_slurm_run(tmp_path)
     assert record.generation is not None
     _write_jobs(
         record,
         {
             "chunk-0": ("613", "chunk"),
             "finalizer": ("614", "finalizer"),
-        },
-    )
-    atomic_write_json(
-        run_completion_marker_path(record.output_dir),
-        {
-            "generation": record.generation.hex,
-            "status": "complete",
-            "finalizer_succeeded": True,
-        },
-    )
-    atomic_write_json(
-        resolve_manifest_json_path(record.output_dir),
-        {
-            "is_complete": True,
-            "failed": 0,
-            "completed": 1,
-            "total_images": 1,
         },
     )
     lifecycle = json.loads(
@@ -710,15 +714,6 @@ def test_explicit_cancellation_precedes_visible_publication(
             "finalizer_succeeded": True,
         },
     )
-    atomic_write_json(
-        resolve_manifest_json_path(record.output_dir),
-        {
-            "is_complete": True,
-            "failed": 0,
-            "completed": 1,
-            "total_images": 1,
-        },
-    )
     lifecycle = json.loads(
         lifecycle_state_path(record.output_dir).read_text(encoding="utf-8")
     )
@@ -768,30 +763,13 @@ def test_missing_finalizer_scheduler_row_does_not_expire_grace(
     tmp_path: Path,
 ) -> None:
     """Absent accounting evidence remains reconciliation, not timeout failure."""
-    registry, record = _registered_slurm_run(tmp_path)
+    registry, record = _registered_complete_slurm_run(tmp_path)
     assert record.generation is not None
     _write_jobs(
         record,
         {
             "chunk-0": ("618", "chunk"),
             "finalizer": ("619", "finalizer"),
-        },
-    )
-    atomic_write_json(
-        run_completion_marker_path(record.output_dir),
-        {
-            "generation": record.generation.hex,
-            "status": "complete",
-            "finalizer_succeeded": True,
-        },
-    )
-    atomic_write_json(
-        resolve_manifest_json_path(record.output_dir),
-        {
-            "is_complete": True,
-            "failed": 0,
-            "completed": 1,
-            "total_images": 1,
         },
     )
     lifecycle = json.loads(
@@ -879,15 +857,6 @@ def test_visible_marker_cannot_hide_failed_finalizer_window(
             "finalizer_succeeded": True,
         },
     )
-    atomic_write_json(
-        resolve_manifest_json_path(record.output_dir),
-        {
-            "is_complete": True,
-            "failed": 0,
-            "completed": 3,
-            "total_images": 3,
-        },
-    )
     scheduler = FakeScheduler({"603": "COMPLETED", "604": "RUNNING"})
     observer = _bound_observer(registry, record, scheduler)
 
@@ -904,9 +873,17 @@ def test_visible_marker_cannot_hide_failed_finalizer_window(
     assert "604=FAILED" in (updated.status_detail or "")
 
 
-def test_ordinary_marker_missing_manifest_fails_after_grace(
+def test_ordinary_marker_without_current_evidence_fails_after_grace(
     tmp_path: Path,
 ) -> None:
+    """A generation-matched marker over a tree that cannot be verified.
+
+    Renamed from ``..._missing_manifest_...``: ``manifest.json`` is no longer
+    read here (spec §4.2 demotes it), so the thing this tree is missing is
+    what ``resolve_run_state`` needs -- an accepted inventory, per-image
+    records, an aggregate proof. Absent all of it the verdict is
+    ``incomplete``, and a marker alone must not publish success.
+    """
     registry, record = _registered_slurm_run(tmp_path)
     assert record.generation is not None
     _write_jobs(record, {"finalizer": ("611", "finalizer")})
@@ -935,6 +912,196 @@ def test_ordinary_marker_missing_manifest_fails_after_grace(
     assert updated is not None
     assert updated.status == "failed"
     assert "grace expired" in (updated.status_detail or "")
+
+
+def _hashes_during_one_publication_check(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    stems: Sequence[str],
+) -> int:
+    """Count ``sha256`` constructions in one warm observation of a run.
+
+    The warm-up call is what a previous tick would have been: it is the
+    verification cache's cold pass, and counting it would measure the cache
+    miss rather than the steady state the observer actually lives in.
+    """
+    import hashlib
+
+    from phenotypic.sdk_ import clear_verification_cache, resolve_run_state
+
+    clear_verification_cache()
+    registry, record = _registered_complete_slurm_run(tmp_path, stems=stems)
+    _write_jobs(record, {"finalizer": ("701", "finalizer")})
+    observer = _bound_observer(
+        registry, record, FakeScheduler({"701": "COMPLETED"})
+    )
+    resolve_run_state(record.output_dir, depth="shallow")
+
+    calls = 0
+    real_sha256 = hashlib.sha256
+
+    def _counted(*args: Any, **kwargs: Any) -> Any:
+        nonlocal calls
+        calls += 1
+        return real_sha256(*args, **kwargs)
+
+    monkeypatch.setattr(hashlib, "sha256", _counted)
+    observer.observe_once()
+    monkeypatch.undo()
+
+    updated = registry.get(record.run_id)
+    assert updated is not None
+    # Without this the whole measurement is vacuous: an observation that
+    # never reached the publication check hashes nothing, and two zeroes
+    # compare equal.
+    assert updated.status == "complete", updated.status_detail
+    return calls
+
+
+def test_the_publication_check_hashes_a_constant_number_of_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Audit §4: the tick's hashing must not grow with the image count.
+
+    What this replaced walked every accepted image on **every** tick --
+    ``valid_run_completion`` -> ``_all_accepted_images_succeeded`` ->
+    ``_walk_current_success`` -> ``valid_image_success``, which re-hashes each
+    image's declared artifacts -- and then re-validated the aggregate on top.
+    ``resolve_run_state(depth="shallow")`` re-stats a warm cache entry
+    instead, so the only hashing left is over the run-level aggregate's
+    deliverables: a fixed handful, whatever N is.
+
+    **Two tree sizes rather than one bound.** A fixed bound on a single tree
+    cannot tell "constant" from "small", which is why
+    ``build_complete_run`` takes ``stems`` at all. Equality is the assertion:
+    ``<=`` would also pass for a run that hashed nothing because
+    ``resolve_run_state`` was never reached, and the non-zero assertion below
+    closes the same hole from the other side. The shape is P1 Task 6's --
+    ``tests/unit/sdk_/test_run_state.py::
+    test_shallow_reuse_is_independent_of_the_image_count`` makes the same
+    claim about the reader; this one makes it about the **tick**, which is
+    where the repeated cost actually lands.
+
+    **No absolute figure is asserted, and none should be.** The plan's
+    original ``<= 8`` came from a per-``stat`` cost that was measured to be
+    wrong by two-and-a-half orders of magnitude and, worse, was the cost of a
+    different operation. What survives that refutation is the shape --
+    per-image hashing removed from a repeating poll -- and the shape is what
+    this test pins.
+    """
+    small = _hashes_during_one_publication_check(
+        tmp_path / "small", monkeypatch, stems=("a", "b")
+    )
+    large = _hashes_during_one_publication_check(
+        tmp_path / "large", monkeypatch, stems=("a", "b", "c", "d", "e")
+    )
+
+    assert small > 0, (
+        "the observation hashed nothing at all, so it never reached the "
+        "run-level proof -- the count is not measuring what it claims"
+    )
+    assert small == large, (
+        f"a 2-image tree hashed {small} files and a 5-image tree {large}: "
+        "the publication check is linear in the image count again"
+    )
+
+
+def _resolve_run_state_call_sites() -> list[tuple[str, ast.Call]]:
+    """Return ``(enclosing function, call)`` for every ``resolve_run_state``.
+
+    Derived from the module's AST, never from ``grep``: a text search
+    measures spellings, so it counts the import line and any mention in a
+    comment or docstring, and it cannot say which function a call sits in.
+    """
+    from phenotypic.gui.run_console import _slurm_observer
+
+    source = Path(_slurm_observer.__file__).read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    functions = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    ]
+    sites: list[tuple[str, ast.Call]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        called = (
+            func.id
+            if isinstance(func, ast.Name)
+            else getattr(func, "attr", None)
+        )
+        if called != "resolve_run_state":
+            continue
+        # The innermost enclosing `def`, so a call inside a nested function
+        # is attributed to that function rather than to both.
+        enclosing = [
+            candidate
+            for candidate in functions
+            if candidate.lineno
+            <= node.lineno
+            <= (candidate.end_lineno or candidate.lineno)
+        ]
+        enclosing.sort(key=lambda candidate: candidate.lineno)
+        sites.append(
+            (enclosing[-1].name if enclosing else "<module>", node)
+        )
+    return sites
+
+
+def test_the_observer_asks_resolve_run_state_once_and_shallowly() -> None:
+    """Spec §11's observer row, and §2.2 / DEFERRED D-1's scope fence.
+
+    The row reads "1 x ``resolve_run_state(shallow)``". This fires when:
+
+    * a second call appears anywhere in the module -- including one added to
+      ``_staged_terminal_observation`` or to the poll loop, which is the
+      scope creep §2.2 and D-1 fence off;
+    * the one call leaves ``_run_marker_observation``, the only site where
+      the run proof rule 1 requires is present by construction;
+    * ``depth="shallow"`` is dropped or becomes ``"deep"``, which would put a
+      full re-verification of every image on the 2-second tick.
+    """
+    sites = _resolve_run_state_call_sites()
+
+    assert [name for name, _ in sites] == ["_run_marker_observation"]
+    depths = [
+        keyword.value.value
+        for _, call in sites
+        for keyword in call.keywords
+        if keyword.arg == "depth"
+    ]
+    assert depths == ["shallow"]
+
+
+def test_the_decision_tree_and_grace_window_are_untouched() -> None:
+    """Spec §2.2, DEFERRED D-1: scope creep should fail CI, not review.
+
+    The observer's decision tree, its reconciliation grace window and its
+    ``squeue``/``sacct`` state ranking are out of scope for the consumer
+    migration, and ``manifest.json`` is out of the evidence set (§4.2).
+
+    Each assertion below fails on a real edit rather than reading as one:
+    the module-level check fails **today**, before this task deletes
+    ``_manifest_is_complete``, and the two grace assertions fail if the
+    publication grace is dropped from the decision tree -- which is what
+    "just return the observation directly" looks like when someone
+    simplifies this method.
+    """
+    import inspect
+
+    from phenotypic.gui.run_console import _slurm_observer
+
+    assert not hasattr(_slurm_observer, "_manifest_is_complete")
+
+    source = inspect.getsource(
+        _slurm_observer.SlurmLifecycleObserver._observe_record
+    )
+    assert "_apply_publication_grace" in source
+    assert "_clear_grace" in source
 
 
 def test_staged_missing_publication_markers_fails_after_grace(

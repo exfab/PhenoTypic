@@ -37,10 +37,9 @@ from phenotypic.gui.shell._runs_registry import (
     RunStatus,
 )
 from phenotypic.sdk_ import (
-    DashboardManifestKey,
     JobMetadataKey,
     job_metadata_path,
-    resolve_manifest_json_path,
+    resolve_run_state,
     run_completion_marker_path,
     source_image_stem,
 )
@@ -1309,21 +1308,31 @@ def _run_marker_observation(
             (),
             "terminal marker is visible; awaiting terminal jobs and finalizer",
         )
-    from phenotypic._cli._cli_completion import (
-        state_requires_success_markers,
-        valid_run_completion,
-    )
-
-    # `is not None` asked "is this a schema-3 state?", an O(1) config field
-    # -- never a count. Converted here rather than in Task 6 because P6 Task 0
-    # privatises the old name and a deletion is not local to its own task.
-    marker_authority = state_requires_success_markers(record.output_dir)
-    publication_incomplete = (
-        valid_run_completion(record.output_dir) is None
-        if marker_authority
-        else not _manifest_is_complete(record.output_dir)
-    )
-    if publication_incomplete:
+    # Spec §11's observer row: ONE `resolve_run_state(depth="shallow")` in
+    # place of `valid_run_completion` and the `manifest.json` fallback beside
+    # it, which §4.2 demotes out of the evidence set entirely.
+    #
+    # `.completion` is the right question **here specifically**, and it is not
+    # the right one everywhere: rule 1 calls `run_proof(output_dir)` and
+    # returns False when no run proof exists, so a site asking "have the
+    # accepted images succeeded?" over a tree that has not been proved yet
+    # must ask `_all_accepted_images_succeeded` instead. This function has
+    # already read that proof and matched its generation forty lines up, so
+    # the proof is present by construction; what is still open is whether it
+    # covers the tree as it now stands, which is exactly rule 1's other half.
+    #
+    # The two arms this replaces are not equally represented. The
+    # markers-required arm maps across (both re-derive the proof's inventory,
+    # config and aggregate bindings). The legacy arm does NOT: a tree with no
+    # `work_ids` has no accepted inventory for a proof to cover, so rule 1
+    # cannot fire and such a run now reconciles instead of completing. That is
+    # deliberate -- spec §11.1 moves every legacy read path into `--mode
+    # migrate` and off the hot path -- but it is a behaviour change, not a
+    # refactor, and it is why the reachable case is stated rather than
+    # assumed: only a tree written before per-image success markers can take
+    # it, and the CLI has not written one since.
+    run_state = resolve_run_state(record.output_dir, depth="shallow")
+    if run_state.completion != "complete":
         return _Observation(
             "reconciling",
             (),
@@ -1354,26 +1363,6 @@ def _all_stage3_markers_exist(output_dir: Path) -> bool:
             ):
                 return False
     return True
-
-
-def _manifest_is_complete(output_dir: Path) -> bool:
-    """Require an atomic complete, failure-free inventory manifest."""
-    manifest = _read_json(resolve_manifest_json_path(output_dir))
-    if manifest.get(DashboardManifestKey.IS_COMPLETE) is not True:
-        return False
-    failed = manifest.get(DashboardManifestKey.FAILED)
-    completed = manifest.get(DashboardManifestKey.COMPLETED)
-    total = manifest.get(DashboardManifestKey.TOTAL_IMAGES)
-    return (
-        isinstance(failed, int)
-        and not isinstance(failed, bool)
-        and failed == 0
-        and isinstance(completed, int)
-        and not isinstance(completed, bool)
-        and isinstance(total, int)
-        and not isinstance(total, bool)
-        and completed == total
-    )
 
 
 def _read_json(path: Path) -> dict[str, object]:

@@ -17,8 +17,11 @@ them is invisible when broken:
   a real crop and nothing raising.
 * **The click fingerprint compared at click time is the one stored when
   the figure was drawn.** Only the *expected* side is read live. Reading
-  ``output_root.consumed_state_fingerprint`` on both sides leaves a guard
-  that still exists, still reads correctly, and can never fire.
+  ``output_root.snapshot.consumed_state_fingerprint`` on both sides leaves
+  a guard that still exists, still reads correctly, and can never fire.
+  That field is frozen at discovery, so it is a binding identity: it
+  changes when a Refresh rebinds, which is exactly when a stored click
+  index stops meaning what it meant.
 * **Curation is joined after indexing and before the phantom filter.**
   Indexing first keeps every carried index master-anchored; filtering
   after the join means a phantom is dropped by ``plottable`` rather than
@@ -667,7 +670,7 @@ def build_render_state(
         A fixed viewport height was what left six rows at ~90 px
         each.
     """
-    fingerprint = output_root.consumed_state_fingerprint
+    fingerprint = output_root.snapshot.consumed_state_fingerprint
     if not x_col or not y_col:
         return (
             _empty_figure("Choose an X and a Y column in Plot settings."),
@@ -832,7 +835,7 @@ def resolve_inspector_click(
         output_root.master_df,
         index,  # type: ignore[arg-type]
         str(fingerprint),
-        output_root.consumed_state_fingerprint,
+        output_root.snapshot.consumed_state_fingerprint,
     )
 
 
@@ -863,7 +866,10 @@ def inspector_payload(
 
     colony = resolve_inspector_click(output_root, click_data, fingerprint)
     if colony is None:
-        stale = str(fingerprint) != output_root.consumed_state_fingerprint
+        stale = (
+            str(fingerprint)
+            != output_root.snapshot.consumed_state_fingerprint
+        )
         message = _STALE_CLICK_MESSAGE if stale else _UNRESOLVED_CLICK_MESSAGE
         return True, message, None, []
 

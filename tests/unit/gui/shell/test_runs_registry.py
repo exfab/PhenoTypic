@@ -8,8 +8,8 @@ Coverage:
       final state.
     * ``rehydrate_from_sandbox`` walks a fake CLI-output layout and
       registers a record per discovered output dir.
-    * Status / mode / SLURM job-id are read from
-      ``progress/manifest.json`` when present, with sane fallbacks.
+    * Status comes from ``resolve_run_state``; mode and the SLURM job-id
+      hint come from ``job_metadata.json``, with sane fallbacks.
 """
 from __future__ import annotations
 
@@ -32,10 +32,13 @@ from phenotypic.gui.shell._runs_registry import (
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.sdk_ import (
     event_log_path,
+    job_metadata_path,
     manifest_json_path,
-    processing_state_path,
     run_completion_marker_path,
+    slurm_lifecycle_path,
+    terminal_failures_jsonl_path,
 )
+from tests._output_layout import build_complete_run, build_incomplete_run
 
 
 def _write_master_marker(out: Path) -> None:
@@ -274,99 +277,45 @@ def test_two_registries_atomically_compete_for_one_output(
     assert payload["generation"] == str(successes[0].generation)
 
 
-def _write_processing_inventory(
-    output: Path,
-    *,
-    images: list[str],
-) -> None:
-    state_path = processing_state_path(output)
-    state_path.parent.mkdir(parents=True)
-    state_path.write_text(
-        json.dumps(
-            {
-                "execution_mode": "local",
-                "datasets": {
-                    "plate": {
-                        "initial_images": images,
-                        "completed": [],
-                        "failed": [],
-                    }
-                },
-            }
-        ),
-        encoding="utf-8",
-    )
+# ---------------------------------------------------------------------------
+# Claimability -- P6 Task 4
+#
+# One `resolve_run_state` call replaced three conflict predicates. The trees
+# below are built by `tests._output_layout`'s real publishers rather than by
+# hand-written JSON: the predicates these tests retired were pinned by
+# hand-built `processing_state.json` fixtures carrying a `datasets.*.completed`
+# shape P3 stopped writing, so those fixtures had already stopped describing
+# any tree this build produces.
+# ---------------------------------------------------------------------------
+
+_RETIRED_CLAIMABILITY_MEMBERS = (
+    "_processing_state_conflict",
+    "_publication_evidence_conflict",
+    "_orchestration_state_conflict",
+    "_latest_event_states",
+    "_read_status_from_manifest",
+    "_string_set",
+)
 
 
-def _write_publication_manifest(
-    output: Path,
-    *,
-    completed: int,
-    failed: int,
-    total: int,
-    is_complete: bool,
-) -> None:
-    path = manifest_json_path(output)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(
-            {
-                "is_complete": is_complete,
-                "completed": completed,
-                "failed": failed,
-                "total_images": total,
-            }
-        ),
-        encoding="utf-8",
-    )
+def test_the_retired_claimability_predicates_are_gone() -> None:
+    """§11: three conflict predicates + two readers -> one resolve call.
+
+    ``_string_set`` goes with them: it validated the
+    ``datasets.*.{completed,failed}`` lists only ``_processing_state_conflict``
+    read, and P3 stopped writing those keys.
+
+    Fires if any of the six is reintroduced under its old name on the class or
+    at module scope -- which is what a partial revert looks like.
+    """
+    for gone in _RETIRED_CLAIMABILITY_MEMBERS:
+        assert not hasattr(RunRegistry, gone), gone
+        assert not hasattr(runs_registry_module, gone), gone
 
 
-def test_allocate_rejects_nonterminal_non_gui_processing_state(
-    tmp_path: Path,
-) -> None:
-    output = tmp_path / "run"
-    _write_processing_inventory(
-        output,
-        images=["a.tif", "b.tif"],
-    )
-    append_event(event_log_path(output), "plate", "a.tif", "started")
-    append_event(event_log_path(output), "plate", "a.tif", "completed")
-    append_event(event_log_path(output), "plate", "b.tif", "started")
-    _write_publication_manifest(
-        output,
-        completed=1,
-        failed=0,
-        total=2,
-        is_complete=False,
-    )
-
-    with pytest.raises(RuntimeError, match="non-GUI processing state"):
-        RunRegistry().allocate(
-            mode="local",
-            output_dir=output,
-            rel_path="run",
-            command_digest="digest",
-        )
-
-
-def test_allocate_accepts_completed_event_log_with_terminal_publication(
-    tmp_path: Path,
-) -> None:
-    output = tmp_path / "run"
-    _write_processing_inventory(
-        output,
-        images=["a.tif", "b.tif"],
-    )
-    for image in ("a.tif", "b.tif"):
-        append_event(event_log_path(output), "plate", image, "started")
-        append_event(event_log_path(output), "plate", image, "completed")
-    _write_publication_manifest(
-        output,
-        completed=2,
-        failed=0,
-        total=2,
-        is_complete=True,
-    )
+def test_a_finished_run_can_be_claimed(tmp_path: Path) -> None:
+    """A run whose proof covers its current inventory is not in anyone's way."""
+    output = build_complete_run(tmp_path)
 
     record = RunRegistry().allocate(
         mode="local",
@@ -377,31 +326,33 @@ def test_allocate_accepts_completed_event_log_with_terminal_publication(
     assert record.generation is not None
 
 
-def test_allocate_rejects_failed_event_log_even_when_manifest_is_terminal(
-    tmp_path: Path,
-) -> None:
-    output = tmp_path / "run"
-    _write_processing_inventory(
-        output,
-        images=["a.tif", "b.tif"],
-    )
-    append_event(event_log_path(output), "plate", "a.tif", "completed")
-    append_event(
-        event_log_path(output),
-        "plate",
-        "b.tif",
-        "failed",
-        error_msg="segmentation failed",
-    )
-    _write_publication_manifest(
-        output,
-        completed=1,
-        failed=1,
-        total=2,
-        is_complete=True,
-    )
+def test_an_empty_directory_can_be_claimed(tmp_path: Path) -> None:
+    """The existence gate's whole job.
 
-    with pytest.raises(RuntimeError, match="failed non-GUI processing state"):
+    ``resolve_run_state`` reports ``incomplete`` for a directory holding no
+    run, which is the same verdict it reports for an unfinished one -- so a
+    claimability rule reading the verdict alone would refuse every fresh
+    output directory the GUI ever creates.
+    """
+    output = tmp_path / "fresh"
+    output.mkdir()
+
+    record = RunRegistry().allocate(
+        mode="local",
+        output_dir=output,
+        rel_path="fresh",
+        command_digest="digest",
+    )
+    assert record.generation is not None
+
+
+def test_an_unfinished_run_refuses_the_claim(tmp_path: Path) -> None:
+    """One image published, one not: launching here would overwrite it."""
+    output = build_incomplete_run(tmp_path)
+
+    with pytest.raises(
+        RuntimeError, match="incompatible non-GUI processing state"
+    ):
         RunRegistry().allocate(
             mode="local",
             output_dir=output,
@@ -410,14 +361,28 @@ def test_allocate_rejects_failed_event_log_even_when_manifest_is_terminal(
         )
 
 
-def test_allocate_rejects_completed_events_without_publication_evidence(
-    tmp_path: Path,
-) -> None:
-    output = tmp_path / "run"
-    _write_processing_inventory(output, images=["a.tif"])
-    append_event(event_log_path(output), "plate", "a.tif", "completed")
+def test_a_failed_image_refuses_the_claim(tmp_path: Path) -> None:
+    """The terminal-failure journal is the failure authority (§4.1).
 
-    with pytest.raises(RuntimeError, match="terminal publication evidence"):
+    A failure leaves no artifact, so it cannot be derived from the tree --
+    which is why the retired predicate had to read a demoted
+    ``datasets.*.failed`` list to see one at all.
+    """
+    output = build_incomplete_run(tmp_path)
+    terminal_failures_jsonl_path(output).parent.mkdir(
+        parents=True, exist_ok=True
+    )
+    terminal_failures_jsonl_path(output).write_text(
+        json.dumps(
+            {"work_id": "work-b", "exception_type": "SegmentationError"}
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        RuntimeError, match="failed non-GUI processing state"
+    ):
         RunRegistry().allocate(
             mode="local",
             output_dir=output,
@@ -426,22 +391,28 @@ def test_allocate_rejects_completed_events_without_publication_evidence(
         )
 
 
-def test_allocate_rejects_completed_then_restarted_image_as_active(
-    tmp_path: Path,
-) -> None:
-    output = tmp_path / "run"
-    _write_processing_inventory(output, images=["a.tif"])
-    append_event(event_log_path(output), "plate", "a.tif", "completed")
-    append_event(event_log_path(output), "plate", "a.tif", "started")
-    _write_publication_manifest(
-        output,
-        completed=1,
-        failed=0,
-        total=1,
-        is_complete=True,
+def test_a_run_in_flight_refuses_the_claim(tmp_path: Path) -> None:
+    """Rule 2 of the verdict ladder, reached through claimability.
+
+    An active SLURM lifecycle fence at or above the run's restart epoch is a
+    liveness authority; launching a second run into the output it is writing
+    is the thing this gate exists to prevent.
+    """
+    output = build_incomplete_run(tmp_path)
+    slurm_lifecycle_path(output).parent.mkdir(parents=True, exist_ok=True)
+    slurm_lifecycle_path(output).write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "generation": "gen-1",
+                "active": True,
+                "restart_epoch": 0,
+            }
+        ),
+        encoding="utf-8",
     )
 
-    with pytest.raises(RuntimeError, match="unfinished image"):
+    with pytest.raises(RuntimeError, match="non-GUI run in flight"):
         RunRegistry().allocate(
             mode="local",
             output_dir=output,
@@ -450,42 +421,20 @@ def test_allocate_rejects_completed_then_restarted_image_as_active(
         )
 
 
-def test_allocate_rejects_stale_self_consistent_manifest_inventory(
+def test_a_staged_orchestration_record_alone_refuses_the_claim(
     tmp_path: Path,
 ) -> None:
-    output = tmp_path / "run"
-    _write_processing_inventory(
-        output,
-        images=["a.tif", "b.tif"],
-    )
-    append_event(event_log_path(output), "plate", "a.tif", "completed")
-    append_event(event_log_path(output), "plate", "b.tif", "completed")
-    _write_publication_manifest(
-        output,
-        completed=1,
-        failed=0,
-        total=1,
-        is_complete=True,
-    )
+    """The second half of the existence gate.
 
-    with pytest.raises(RuntimeError, match="inventory does not match"):
-        RunRegistry().allocate(
-            mode="local",
-            output_dir=output,
-            rel_path="run",
-            command_digest="digest",
-        )
-
-
-def test_allocate_rejects_nonterminal_non_gui_orchestration_state(
-    tmp_path: Path,
-) -> None:
+    A staged controller writes ``staged_orchestration.json`` before its first
+    stage writes any processing state, so a claim taken in that window would
+    land on top of a controller that is mid-launch. Deriving "is there a run
+    here" from ``RunState.identity`` would miss it: this tree yields no
+    identity at all.
+    """
     output = tmp_path / "run"
     state_path = (
-        output
-        / ".phenotypic"
-        / "progress"
-        / "staged_orchestration.json"
+        output / ".phenotypic" / "progress" / "staged_orchestration.json"
     )
     state_path.parent.mkdir(parents=True)
     state_path.write_text(
@@ -493,7 +442,9 @@ def test_allocate_rejects_nonterminal_non_gui_orchestration_state(
         encoding="utf-8",
     )
 
-    with pytest.raises(RuntimeError, match="staged orchestration"):
+    with pytest.raises(
+        RuntimeError, match="incompatible non-GUI processing state"
+    ):
         RunRegistry().allocate(
             mode="slurm",
             output_dir=output,
@@ -502,73 +453,28 @@ def test_allocate_rejects_nonterminal_non_gui_orchestration_state(
         )
 
 
-@pytest.mark.parametrize("phase", ["failed", "cancelled"])
-def test_allocate_rejects_unsuccessful_terminal_orchestration(
-    tmp_path: Path,
-    phase: str,
-) -> None:
-    output = tmp_path / "run"
-    state_path = (
-        output
-        / ".phenotypic"
-        / "progress"
-        / "staged_orchestration.json"
-    )
-    state_path.parent.mkdir(parents=True)
-    state_path.write_text(
-        json.dumps({"epoch": "old", "phase": phase}),
-        encoding="utf-8",
-    )
-
-    with pytest.raises(RuntimeError, match="unsuccessful"):
-        RunRegistry().allocate(
-            mode="slurm",
-            output_dir=output,
-            rel_path="run",
-            command_digest="digest",
-        )
-
-
-def test_allocate_rejects_complete_orchestration_with_mismatched_marker(
+def test_a_failed_event_in_the_log_does_not_gate_the_claim(
     tmp_path: Path,
 ) -> None:
-    output = tmp_path / "run"
-    progress = output / ".phenotypic" / "progress"
-    progress.mkdir(parents=True)
-    (progress / "staged_orchestration.json").write_text(
-        json.dumps({"epoch": "current", "phase": "complete"}),
-        encoding="utf-8",
-    )
-    (progress / "staged_finalization_complete.json").write_text(
-        json.dumps({"epoch": "other"}),
-        encoding="utf-8",
-    )
+    """Audit S5 / §4.2: one append-only log now has one parser.
 
-    with pytest.raises(RuntimeError, match="no matching successful"):
-        RunRegistry().allocate(
-            mode="slurm",
-            output_dir=output,
-            rel_path="run",
-            command_digest="digest",
-        )
+    ``_latest_event_states`` was a **second** parser of
+    ``processing_events.log``, and it differed from
+    ``aggregate_state_from_events`` -- no inventory fence -- so the GUI and
+    the CLI could read one file and disagree. The log is demoted here to a
+    debugging artifact: nothing on this path reads it, so neither a ``failed``
+    event nor a line no parser can read changes the answer.
 
+    Fires if any replay is reintroduced: a reader would see ``b.tif`` failed
+    and refuse the claim this test requires to succeed.
+    """
+    output = build_complete_run(tmp_path)
+    append_event(event_log_path(output), "plate", "b.tif", "failed")
+    with event_log_path(output).open("a", encoding="utf-8") as handle:
+        handle.write("this line is not an event\n")
 
-def test_allocate_accepts_successful_matching_orchestration(
-    tmp_path: Path,
-) -> None:
-    output = tmp_path / "run"
-    progress = output / ".phenotypic" / "progress"
-    progress.mkdir(parents=True)
-    (progress / "staged_orchestration.json").write_text(
-        json.dumps({"epoch": "old", "phase": "complete"}),
-        encoding="utf-8",
-    )
-    (progress / "staged_finalization_complete.json").write_text(
-        json.dumps({"epoch": "old"}),
-        encoding="utf-8",
-    )
     record = RunRegistry().allocate(
-        mode="slurm",
+        mode="local",
         output_dir=output,
         rel_path="run",
         command_digest="digest",
@@ -1284,101 +1190,178 @@ def test_concurrent_update_status_is_serialised(tmp_path: Path) -> None:
 # rehydrate_from_sandbox
 # ---------------------------------------------------------------------------
 
-def _make_cli_output(
-    root: Path,
-    name: str,
-    *,
-    is_complete: bool = True,
-    failed: int = 0,
-    total: int = 5,
-    completed: int | None = None,
-    execution_mode: str = "local",
-    chunk_job_ids: dict | None = None,
-) -> Path:
-    """Build a fake CLI-output directory with progress/manifest.json.
+def _seed_discoverable(root: Path, name: str) -> Path:
+    """Make ``<root>/<name>`` look like a CLI output to the sidebar classifier.
 
-    By default ``completed = total - failed`` (a finished run). Pass
-    ``completed`` explicitly to simulate a partially-finished run.
+    The classifier keys on ``deliverables/master_measurements.parquet`` plus a
+    root-level ``results/`` dir. Both are **created only if absent**: a tree
+    built by ``build_complete_run`` already carries a real master whose digest
+    the run proof binds, and stamping the empty marker over it would leave a
+    fixture that is discoverable but no longer ``complete`` -- passing the
+    discovery assertion while silently testing the wrong verdict.
     """
     out = root / name
     out.mkdir(parents=True, exist_ok=True)
-    _write_master_marker(out)
+    master = out / DELIVERABLES_DIRNAME / "master_measurements.parquet"
+    if not master.exists():
+        _write_master_marker(out)
     (out / "results").mkdir(exist_ok=True)
-    progress = out / "progress"
-    progress.mkdir(exist_ok=True)
-    if completed is None:
-        completed = total - failed
-    manifest: dict = {
-        "version": 1,
-        "execution_mode": execution_mode,
-        "is_complete": is_complete,
-        "completed": completed,
-        "failed": failed,
-        "total_images": total,
-    }
-    if chunk_job_ids is not None:
-        manifest["slurm_info"] = {
-            "chunk_job_ids": chunk_job_ids,
-        }
-    (progress / "manifest.json").write_text(json.dumps(manifest))
     return out
 
 
+def _write_job_metadata(
+    output: Path,
+    *,
+    execution_mode: str,
+    chunk_job_ids: dict | None = None,
+) -> None:
+    """Write the CLI's submission record -- the mode + job-id source.
+
+    ``job_metadata.json``, not ``manifest.json``: spec §4.2 demoted the
+    dashboard manifest from evidence, and these two fields were only ever
+    copied into it from here.
+    """
+    path = job_metadata_path(output)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload: dict = {"execution_mode": execution_mode}
+    if chunk_job_ids is not None:
+        payload["chunk_job_ids"] = chunk_job_ids
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+
 def test_rehydrate_picks_up_cli_outputs(tmp_path: Path) -> None:
-    _make_cli_output(tmp_path, "run_a")
-    _make_cli_output(
-        tmp_path, "run_b",
-        is_complete=False, failed=0, total=10, completed=3,
-    )
-    sandbox = SandboxRoot.from_path(tmp_path)
+    """A finished run and an unfinished one, told apart by their proofs."""
+    build_complete_run(tmp_path / "a")
+    _seed_discoverable(tmp_path, "a/run")
+    build_incomplete_run(tmp_path / "b")
+    _seed_discoverable(tmp_path, "b/run")
+
     reg = RunRegistry()
-    n = reg.rehydrate_from_sandbox(sandbox)
-    assert n == 2
+    reg.rehydrate_from_sandbox(SandboxRoot.from_path(tmp_path))
+
     statuses = {r.run_id: r.status for r in reg.list()}
-    assert statuses == {"run_a": "complete", "run_b": "unknown"}
+    assert statuses == {"a/run": "complete", "b/run": "unknown"}
 
 
-def test_rehydrate_marks_failed_when_failed_gt_zero(tmp_path: Path) -> None:
-    _make_cli_output(tmp_path, "fr", is_complete=True, failed=2, total=5)
-    sandbox = SandboxRoot.from_path(tmp_path)
+def test_rehydrate_marks_failed_from_the_terminal_journal(
+    tmp_path: Path,
+) -> None:
+    """§4.1's failure authority, not a manifest ``failed`` count.
+
+    The retired reader called a run failed when ``manifest.json`` said
+    ``failed > 0``. That number is a report of what a run *said* happened; the
+    journal is what it *recorded*, per work id, and survives a manifest that
+    was never rewritten.
+    """
+    output = build_incomplete_run(tmp_path / "fr")
+    terminal_failures_jsonl_path(output).parent.mkdir(
+        parents=True, exist_ok=True
+    )
+    terminal_failures_jsonl_path(output).write_text(
+        json.dumps({"work_id": "work-b", "exception_type": "OSError"}) + "\n",
+        encoding="utf-8",
+    )
+    _seed_discoverable(tmp_path, "fr/run")
+
     reg = RunRegistry()
-    reg.rehydrate_from_sandbox(sandbox)
-    assert reg.get("fr").status == "failed"  # type: ignore[union-attr]
+    reg.rehydrate_from_sandbox(SandboxRoot.from_path(tmp_path))
+
+    record = reg.get("fr/run")
+    assert record is not None
+    assert record.status == "failed"
+
+
+def test_rehydrate_reports_a_live_run_as_running(tmp_path: Path) -> None:
+    """The arm the manifest-count reader could not reach.
+
+    Its own comment said progress counts cannot support a ``running`` claim
+    after a GUI restart -- correct, and why it answered ``unknown`` for every
+    run actually in flight. An active lifecycle fence can support that claim,
+    so this row now says what is true.
+    """
+    output = build_incomplete_run(tmp_path / "live")
+    slurm_lifecycle_path(output).parent.mkdir(parents=True, exist_ok=True)
+    slurm_lifecycle_path(output).write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "generation": "gen-1",
+                "active": True,
+                "restart_epoch": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+    _seed_discoverable(tmp_path, "live/run")
+
+    reg = RunRegistry()
+    reg.rehydrate_from_sandbox(SandboxRoot.from_path(tmp_path))
+
+    record = reg.get("live/run")
+    assert record is not None
+    assert record.status == "running"
+    assert record.generation is None
+    assert "no GUI launch generation owns it" in (record.status_detail or "")
 
 
 def test_rehydrate_extracts_slurm_job_id(tmp_path: Path) -> None:
-    _make_cli_output(
-        tmp_path,
-        "sr",
+    """The array-task suffix is dropped, exactly as before: ``12345_0`` -> ``12345``."""
+    output = _seed_discoverable(tmp_path, "sr")
+    _write_job_metadata(
+        output,
         execution_mode="slurm",
         chunk_job_ids={"0": "12345_0", "1": "12345_1"},
     )
-    sandbox = SandboxRoot.from_path(tmp_path)
+
     reg = RunRegistry()
-    reg.rehydrate_from_sandbox(sandbox)
-    rec = reg.get("sr")
-    assert rec is not None
-    assert rec.mode == "slurm"
-    assert rec.slurm_job_id == "12345"
+    reg.rehydrate_from_sandbox(SandboxRoot.from_path(tmp_path))
+
+    record = reg.get("sr")
+    assert record is not None
+    assert record.mode == "slurm"
+    assert record.slurm_job_id == "12345"
 
 
-def test_rehydrate_unknown_when_no_manifest(tmp_path: Path) -> None:
-    out = tmp_path / "nm"
-    out.mkdir()
-    _write_master_marker(out)
-    (out / "results").mkdir()
-    sandbox = SandboxRoot.from_path(tmp_path)
+def test_rehydrate_reads_local_mode_from_the_submission_record(
+    tmp_path: Path,
+) -> None:
+    """A local run records its own mode; there is no job id to surface."""
+    output = _seed_discoverable(tmp_path, "lr")
+    _write_job_metadata(output, execution_mode="local")
+
     reg = RunRegistry()
-    reg.rehydrate_from_sandbox(sandbox)
-    rec = reg.get("nm")
-    assert rec is not None
-    assert rec.mode == "unknown"
-    assert rec.status == "unknown"
+    reg.rehydrate_from_sandbox(SandboxRoot.from_path(tmp_path))
+
+    record = reg.get("lr")
+    assert record is not None
+    assert record.mode == "local"
+    assert record.slurm_job_id is None
+
+
+def test_rehydrate_unknown_without_a_submission_record(
+    tmp_path: Path,
+) -> None:
+    """``unknown``, deliberately not ``local``.
+
+    ``resolve_execution_mode`` coerces a missing record to ``"local"``. Doing
+    that here would label every foreign folder in a user's sandbox a local run
+    of ours.
+    """
+    _seed_discoverable(tmp_path, "nm")
+
+    reg = RunRegistry()
+    reg.rehydrate_from_sandbox(SandboxRoot.from_path(tmp_path))
+
+    record = reg.get("nm")
+    assert record is not None
+    assert record.mode == "unknown"
+    assert record.status == "unknown"
+    assert "no observable nonterminal owner" in (record.status_detail or "")
 
 
 def test_rehydrate_preserves_existing_records(tmp_path: Path) -> None:
     """A live run registered before scan must NOT be clobbered."""
-    _make_cli_output(tmp_path, "live")
+    _seed_discoverable(tmp_path, "live")
     sandbox = SandboxRoot.from_path(tmp_path)
     reg = RunRegistry()
     pre = RunRecord(
@@ -1395,20 +1378,22 @@ def test_rehydrate_preserves_existing_records(tmp_path: Path) -> None:
     assert reg.get("live") is pre  # same object
 
 
-def test_rehydrate_ignores_corrupt_manifest(tmp_path: Path) -> None:
-    out = tmp_path / "broken"
-    out.mkdir()
-    _write_master_marker(out)
-    (out / "results").mkdir()
-    progress = out / "progress"
-    progress.mkdir()
-    (progress / "manifest.json").write_text("{not valid json")
-    sandbox = SandboxRoot.from_path(tmp_path)
+def test_rehydrate_ignores_a_corrupt_submission_record(
+    tmp_path: Path,
+) -> None:
+    """A truncated write degrades to ``unknown`` rather than raising on boot."""
+    output = _seed_discoverable(tmp_path, "broken")
+    path = job_metadata_path(output)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("{not valid json", encoding="utf-8")
+
     reg = RunRegistry()
-    reg.rehydrate_from_sandbox(sandbox)
-    rec = reg.get("broken")
-    assert rec is not None
-    assert rec.status == "unknown"
+    reg.rehydrate_from_sandbox(SandboxRoot.from_path(tmp_path))
+
+    record = reg.get("broken")
+    assert record is not None
+    assert record.mode == "unknown"
+    assert record.status == "unknown"
 
 
 def test_rehydrate_restores_persisted_generation_and_terminal_evidence(
@@ -1475,90 +1460,65 @@ def test_rehydrate_downgrades_unobserved_local_liveness(
     assert "restarted" in (record.status_detail or "")
 
 
-def test_rehydrate_legacy_manifest_does_not_invent_generation(
-    tmp_path: Path,
-) -> None:
-    _make_cli_output(tmp_path, "legacy")
+def test_rehydrate_does_not_invent_a_generation(tmp_path: Path) -> None:
+    """A finished run with no GUI owner record is still not GUI-owned."""
+    build_complete_run(tmp_path / "hist")
+    _seed_discoverable(tmp_path, "hist/run")
+
     restored = RunRegistry()
     restored.rehydrate_from_sandbox(SandboxRoot.from_path(tmp_path))
-    record = restored.get("legacy")
+
+    record = restored.get("hist/run")
     assert record is not None
     assert record.generation is None
     assert record.status == "complete"
 
 
-def test_rehydrate_incomplete_legacy_manifest_does_not_invent_liveness(
+def test_a_complete_manifest_no_longer_terminalizes_a_run(
     tmp_path: Path,
 ) -> None:
-    _make_cli_output(
-        tmp_path,
-        "legacy",
-        is_complete=False,
-        completed=3,
-        total=10,
+    """§4.2, at its bluntest.
+
+    ``manifest.json`` claiming ``is_complete`` over a full inventory used to be
+    enough to show ``complete`` in Recent Runs. It is a cache of what a run
+    reported, it is never rewritten when the tree beneath it changes, and
+    nothing now reads it here: an output whose only evidence is that file
+    reads ``unknown``.
+    """
+    output = _seed_discoverable(tmp_path, "manifest-only")
+    path = manifest_json_path(output)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "execution_mode": "local",
+                "is_complete": True,
+                "completed": 10,
+                "failed": 0,
+                "total_images": 10,
+            }
+        ),
+        encoding="utf-8",
     )
+
     restored = RunRegistry()
     restored.rehydrate_from_sandbox(SandboxRoot.from_path(tmp_path))
 
-    record = restored.get("legacy")
-    assert record is not None
-    assert record.generation is None
-    assert record.status == "unknown"
-    assert record.mode == "local"
-    assert "no observable nonterminal owner" in (
-        record.status_detail or ""
-    )
-
-
-def test_explicit_incomplete_manifest_counts_are_not_terminal(
-    tmp_path: Path,
-) -> None:
-    _make_cli_output(
-        tmp_path,
-        "legacy",
-        is_complete=False,
-        completed=10,
-        total=10,
-    )
-    restored = RunRegistry()
-    restored.rehydrate_from_sandbox(SandboxRoot.from_path(tmp_path))
-
-    record = restored.get("legacy")
+    record = restored.get("manifest-only")
     assert record is not None
     assert record.status == "unknown"
-
-
-def test_missing_completion_flag_preserves_legacy_count_fallback(
-    tmp_path: Path,
-) -> None:
-    output = _make_cli_output(
-        tmp_path,
-        "legacy",
-        is_complete=False,
-        completed=10,
-        total=10,
-    )
-    manifest_path = output / "progress" / "manifest.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    del manifest["is_complete"]
-    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
-
-    restored = RunRegistry()
-    restored.rehydrate_from_sandbox(SandboxRoot.from_path(tmp_path))
-
-    record = restored.get("legacy")
-    assert record is not None
-    assert record.status == "complete"
+    assert record.mode == "unknown"
+    assert "no observable nonterminal owner" in (record.status_detail or "")
 
 
 def test_rehydrate_invalid_owner_does_not_invent_generation(
     tmp_path: Path,
 ) -> None:
-    output = _make_cli_output(tmp_path, "invalid-owner")
+    output = _seed_discoverable(tmp_path, "invalid-owner")
     owner_path = (
         output / ".phenotypic" / "progress" / "gui_launch_owner.json"
     )
-    owner_path.parent.mkdir(parents=True)
+    owner_path.parent.mkdir(parents=True, exist_ok=True)
     owner_path.write_text(
         json.dumps(
             {

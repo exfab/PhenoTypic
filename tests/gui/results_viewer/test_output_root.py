@@ -385,10 +385,69 @@ def test_discover_retries_complete_read_after_snapshot_change(
     assert output.snapshot_is_current() is True
 
 
+def test_one_currency_check_replaces_two() -> None:
+    """§11: ``snapshot_is_current()`` + ``refresh_state_is_current()`` -> one.
+
+    Two overlapping fingerprints with different lifecycles is audit S2, and
+    the fix is one owner, not two better-synchronised ones. The surviving
+    polled owner is ``snapshot_is_current``. The descriptor's
+    ``consumed_state_fingerprint`` stays -- discovery's torn-read guard and
+    ``require_session_snapshot_current``'s second question both need it --
+    but it is deliberately not re-exposed as a property on ``OutputRoot``,
+    because a one-line accessor there is what invited the per-tick
+    comparison in the first place.
+    """
+    assert not hasattr(OutputRoot, "refresh_state_is_current")
+    assert not hasattr(OutputRoot, "consumed_state_fingerprint")
+    assert hasattr(OutputRoot, "snapshot_is_current")
+    descriptor = _output_root.OutputSnapshotDescriptor
+    assert "consumed_state_fingerprint" in descriptor.__dataclass_fields__
+
+
+def test_a_chmod_does_not_report_changed_on_disk(tmp_path: Path) -> None:
+    """Audit S3, at the consumer.
+
+    ``_inventory_is_current`` used to compare ``st_ctime_ns``, which moves on
+    chmod, chown, hardlink and ``rsync -a`` -- all routine on a shared HPC
+    filesystem, and each one made the whole binding report "Changed on disk".
+    """
+    _make_minimal_output(tmp_path)
+    output = _discover(tmp_path)
+    assert output.snapshot_is_current() is True
+
+    files = [
+        (output.root / entry.relative_path, entry.mtime_ns)
+        for entry in output.processing_inventory.entries
+        if entry.kind == "file"
+    ]
+    assert files, "no inventoried files: the chmod below would be a no-op"
+    before = {path: path.stat().st_ctime_ns for path, _ in files}
+    for path, _ in files:
+        path.chmod(0o600)
+        path.chmod(0o644)
+    # Without this the test could pass on a filesystem where chmod leaves
+    # ctime alone, i.e. while exercising nothing at all.
+    assert any(
+        path.stat().st_ctime_ns != before[path] for path, _ in files
+    ), "chmod did not move ctime here, so this test is not exercising S3"
+    # ... and it is only ctime that moved, so nothing else explains a pass.
+    assert all(path.stat().st_mtime_ns == mtime for path, mtime in files)
+
+    assert output.snapshot_is_current() is True
+
+
 def test_mutable_viewer_state_does_not_stale_processing_snapshot(
     tmp_path: Path,
 ) -> None:
-    """GUI-owned state is refresh-visible without invalidating image reads."""
+    """GUI-owned state is refresh-visible without invalidating image reads.
+
+    Audit S2, at the consumer. Every path this test rewrites is one the GUI
+    itself writes -- ``_curation_labels.py`` owns the mirror and the labels,
+    ``_qc_tab/_rebuild.py`` owns the resolved pipeline config -- so the
+    currency check must stay ``True`` through all of them. Comparing them
+    against the frozen binding is what made marking one colony report the
+    viewer's own write back to the user as external drift.
+    """
     frame = _make_minimal_output(tmp_path)
     mirror = measurements_parquet_path(tmp_path)
     frame.write_parquet(mirror)
@@ -396,7 +455,7 @@ def test_mutable_viewer_state_does_not_stale_processing_snapshot(
 
     output = _discover(tmp_path)
     first_source = output.source_fingerprint
-    first_consumed = output.consumed_state_fingerprint
+    first_consumed = output.snapshot.consumed_state_fingerprint
 
     frame.with_columns(pl.lit("changed").alias("Mutable_State")).write_parquet(
         mirror
@@ -415,13 +474,17 @@ def test_mutable_viewer_state_does_not_stale_processing_snapshot(
     write_pipeline_json(tmp_path, json.dumps({"name": "second"}))
 
     assert output.snapshot_is_current() is True
-    assert output.refresh_state_is_current() is False
+    # The construction gate is the one thing that still looks at consumed
+    # state, and it is not on any poll -- so a curation click leaves the
+    # badge, the tiles and the mutation guard alone while a *rebuild* of the
+    # session still refuses to straddle two revisions of the mirror.
+    with pytest.raises(OutputSnapshotChangedError):
+        output.require_session_snapshot_current(context="Test")
 
     refreshed = _discover(tmp_path)
     assert refreshed.source_fingerprint == first_source
-    assert refreshed.consumed_state_fingerprint != first_consumed
+    assert refreshed.snapshot.consumed_state_fingerprint != first_consumed
     assert refreshed.cache_dir == output.cache_dir
-    assert refreshed.refresh_state_is_current() is True
     assert "Mutable_State" in refreshed.master_df.columns
     assert refreshed.pipeline_summary == "second"
 
@@ -467,7 +530,12 @@ def test_discover_retries_when_consumed_state_changes_during_read(
 
     assert calls == 4
     assert output.snapshot_is_current() is True
-    assert output.refresh_state_is_current() is True
+    # The torn-read guard survives the currency collapse: the descriptor
+    # fingerprint is still captured pre- and post-read within one discovery,
+    # which is what forced the retry that made `calls` 4 rather than 2 -- and
+    # the binding it produced is one the construction gate accepts, because
+    # the retry bound revision 2 rather than straddling both.
+    output.require_session_snapshot_current(context="Test")
 
 
 def test_discover_refuses_continuously_changing_snapshot(

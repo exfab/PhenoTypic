@@ -40,7 +40,11 @@ ProcessingInventoryAssurance = Literal["exhaustive", "read_only_bounded"]
 
 @dataclass(frozen=True)
 class ProcessingInventoryEntry:
-    """Path/type/size/time identity of one immutable processing product."""
+    """Path/type/size/time identity of one immutable processing product.
+
+    ``ctime_ns`` is recorded for diagnostics only. Currency comparison uses
+    ``kind``, ``size`` and ``mtime_ns`` — see :func:`_inventory_is_current`.
+    """
 
     relative_path: str
     kind: InventoryEntryKind
@@ -170,7 +174,11 @@ def inventory_is_current(
     cancellation: OutputDiscoveryCancellation,
     progress: OutputDiscoveryProgressCallback | None,
 ) -> bool:
-    """Return whether every inventoried path retains its captured metadata."""
+    """Return whether every inventoried path retains its captured metadata.
+
+    See :func:`_inventory_is_current` for exactly what makes this ``False``,
+    and for why ``ctime_ns`` is recorded but not compared.
+    """
     return _inventory_is_current(
         inventory,
         source_root=source_root,
@@ -467,6 +475,21 @@ def _inventory_is_current(
     progress: OutputDiscoveryProgressCallback | None,
     phase: DiscoveryPhase,
 ) -> bool:
+    """Return whether every inventoried path retains its captured metadata.
+
+    Returns ``False`` for a path that changed kind, size or ``mtime_ns``, one
+    that now exists where the inventory recorded ``missing``, or one recorded
+    as present that can no longer be stat'd. Under ``read_only_bounded``
+    assurance a directory is checked for kind alone, because that mode records
+    structural anchors rather than an exhaustive walk.
+
+    ``ctime_ns`` is recorded but deliberately **not** compared (audit S3). It
+    moves on any inode metadata change — ``chmod``, ``chown``, a hardlink, an
+    ``rsync -a`` that preserves mtime — all routine on a shared HPC
+    filesystem, and each one otherwise made the whole binding report "Changed
+    on disk". ``size`` plus ``mtime_ns`` already covers every write the
+    processing contract makes.
+    """
     total = len(inventory.entries)
     for index, entry in enumerate(inventory.entries, start=1):
         cancellation.raise_if_cancelled()
@@ -495,7 +518,6 @@ def _inventory_is_current(
             kind != entry.kind
             or stat_result.st_size != entry.size
             or stat_result.st_mtime_ns != entry.mtime_ns
-            or stat_result.st_ctime_ns != entry.ctime_ns
         ):
             return False
         if index % _PROGRESS_INTERVAL == 0:

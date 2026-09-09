@@ -83,13 +83,19 @@ class OutputSnapshotDescriptor:
     ``consumed_state_fingerprint`` covers mutable state read while constructing
     the Results and Analysis sessions: the measurements mirror, pipeline
     recipe, curation labels, custom categories, QC database, and QC review
-    state. Changes there are incorporated by an explicit Refresh. They do not
-    invalidate image tiles in the current session, including when the current
-    GUI session itself wrote the state.
+    state. It is captured twice **during one discovery** and compared, so a
+    writer landing mid-read is retried rather than bound, and re-compared once
+    more by :meth:`OutputRoot.require_session_snapshot_current` while a
+    session is being assembled. It is **not** part of the polled currency
+    check — spec §11 collapsed that to :meth:`OutputRoot.snapshot_is_current`
+    alone, because re-comparing this fingerprint on every 5-10 s tick is what
+    made a curation click report itself as external drift (audit S2).
 
     Attributes:
         processing_fingerprint: Content identity of stable processing outputs.
-        consumed_state_fingerprint: Content identity of refresh-owned state.
+        consumed_state_fingerprint: Content identity of the refresh-owned
+            state as of discovery. Read at discovery and at session
+            construction; never on a poll, a tile request or a curation click.
         captured_at: UTC time at which both fingerprints were verified.
         active_run: Whether a nonterminal GUI launch owner existed when the
             descriptor was captured.
@@ -530,11 +536,6 @@ class OutputRoot:
         return self.snapshot.processing_fingerprint
 
     @property
-    def consumed_state_fingerprint(self) -> str:
-        """Fingerprint of state incorporated by an explicit Refresh."""
-        return self.snapshot.consumed_state_fingerprint
-
-    @property
     def has_exhaustive_processing_inventory(self) -> bool:
         """Return whether this binding can support mutation authorization."""
         return self.processing_inventory.assurance == "exhaustive"
@@ -542,9 +543,32 @@ class OutputRoot:
     def snapshot_is_current(self) -> bool:
         """Return whether stable image-processing sources match this binding.
 
-        Mutable GUI-owned state is intentionally excluded. Curation, QC review,
-        and Analysis actions must not turn valid tile requests into HTTP 409
-        responses within the same session.
+        **This is the viewer's one polled currency check** (spec §11) — the
+        badge tick, the tile routes and the mutation guard all ask it and
+        nothing else. It re-stats the processing inventory captured at
+        discovery: the master parquet, every overlay, and the per-image
+        ``results/`` tree, compared on ``(kind, size, mtime_ns)``.
+        :meth:`require_session_snapshot_current` asks one further question,
+        but it runs only while a session is being built.
+
+        What makes it return ``False``: a re-finalize (which rewrites
+        ``master_measurements.parquet`` before anything else —
+        ``finalize_post_master_outputs`` runs on a directory whose master has
+        just landed), a re-run that adds, removes or rewrites an overlay or a
+        per-image store, or a source that has become unreadable. What does
+        **not**: a ``chmod``, ``chown``, hardlink or ``rsync -a`` —
+        ``ctime_ns`` was dropped from the comparison because those are routine
+        on a shared filesystem (audit S3) — and any write the GUI itself makes.
+
+        Mutable GUI-owned state is excluded on purpose, and that exclusion is
+        now total: curation labels, custom categories, the QC database, the QC
+        review state and the measurements mirror are all written by this
+        process (``_curation_labels.py``, ``_qc_tab/_rebuild.py``), so
+        comparing them against the frozen binding made the viewer report its
+        own writes as external drift (audit S2). Each of those writers carries
+        its own mtime/fingerprint CAS guard. Curation, QC review, and Analysis
+        actions must not turn valid tile requests into HTTP 409 responses
+        within the same session.
         """
         try:
             return inventory_is_current(
@@ -555,18 +579,6 @@ class OutputRoot:
             )
         except OSError:
             return False
-
-    def refresh_state_is_current(self) -> bool:
-        """Return whether an explicit Refresh would consume the same state."""
-        try:
-            current = _consumed_state_fingerprint(
-                self.layout,
-                source_root=self.root,
-                cancellation=OutputDiscoveryCancellation(),
-            )
-        except OSError:
-            return False
-        return current == self.consumed_state_fingerprint
 
     def active_run_is_currently_running(self) -> bool:
         """Return whether the captured output still has a nonterminal owner."""
@@ -593,6 +605,26 @@ class OutputRoot:
     def require_session_snapshot_current(self, *, context: str) -> None:
         """Reject construction that would mix any source generations.
 
+        **This is a construction gate, not a poll**, and that is why it asks
+        one more question than :meth:`snapshot_is_current` does. Its six
+        callers all run while a Results/Analysis session or a candidate
+        binding is being assembled (``results_viewer/_app.py``,
+        ``analysis/_app.py``, ``shell/_app.py``'s publish step) — never on the
+        5-10 s badge tick, never on a tile request, never on a curation click.
+        So the consumed-state comparison below costs nothing per tick and
+        cannot report a GUI self-write as drift: nobody is curating while
+        their own page is mid-build. Spec §11 collapsed the *currency*
+        surface to one check; it did not ask a session to be assembled from
+        two revisions of the mirror.
+
+        Fires when :meth:`snapshot_is_current` does — a re-finalize or a
+        re-run landing mid-build — and additionally when any consumed
+        deliverable (mirror, resolved pipeline config, curation labels,
+        custom categories, QC database, QC review state) moved between this
+        binding's discovery and now. The publish-gap case is pinned by
+        ``test_final_publish_gap_change_returns_stale_and_rolls_back``, where
+        only the mirror moves, which the processing inventory does not cover.
+
         Args:
             context: Reader-facing construction phase included in the error.
 
@@ -600,9 +632,20 @@ class OutputRoot:
             OutputSnapshotChangedError: If processing products or consumed
                 Results and Analysis state differ from discovery.
         """
+        try:
+            consumed_now = _consumed_state_fingerprint(
+                self.layout,
+                source_root=self.root,
+                cancellation=OutputDiscoveryCancellation(),
+            )
+        except OSError:
+            # Unreadable consumed state is a changed generation, not a pass.
+            # Every real fingerprint is ``sha256:``-prefixed, so "" can never
+            # compare equal below.
+            consumed_now = ""
         if not (
             self.snapshot_is_current()
-            and self.refresh_state_is_current()
+            and consumed_now == self.snapshot.consumed_state_fingerprint
         ):
             raise OutputSnapshotChangedError(
                 f"{context} processing or consumed state changed after "
@@ -880,7 +923,13 @@ def _active_run_snapshot(layout: BundleLayout) -> bool:
 
 
 def _consumed_state_snapshot_paths(layout: BundleLayout) -> tuple[Path, ...]:
-    """Return mutable state atomically incorporated by explicit Refresh."""
+    """Return mutable state read while one discovery assembles a binding.
+
+    Every path here is GUI-writable, which is why none of them takes part in
+    :meth:`OutputRoot.snapshot_is_current` (audit S2). They are fingerprinted
+    before and after a single discovery so a concurrent writer produces a
+    retry instead of a torn binding.
+    """
     return (
         layout.mirror_parquet,
         layout.mirror_csv,
