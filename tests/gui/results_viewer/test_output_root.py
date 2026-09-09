@@ -26,6 +26,7 @@ from phenotypic.sdk_ import (
     measurements_parquet_path,
 )
 
+from tests._output_layout import build_complete_viewer_run
 from tests._output_layout import write_complete_manifest, write_pipeline_json
 from phenotypic.schema import CULTURE, EXPERIMENT, GENETIC, IMAGE
 
@@ -61,6 +62,33 @@ def _tree_bytes(root: Path) -> tuple[tuple[str, ...], dict[str, bytes]]:
         if path.is_file()
     }
     return directories, files
+
+
+def _published_output(root: Path) -> Path:
+    """A run whose processing inventory is EXHAUSTIVE, not read-only bounded.
+
+    `_make_minimal_output` publishes no proofs, so its run state is
+    `incomplete` and discovery binds it with bounded structural anchors --
+    five entries, none of them an overlay or a per-image parquet. The three
+    tests below are about artifacts being *tracked*, so they need the
+    exhaustive path, and the only thing that reaches it now is a real run
+    proof over the accepted inventory. A `manifest.json` used to be enough;
+    §4.2 demotes it.
+
+    `_make_minimal_output` is left alone deliberately: 25 other tests in this
+    file depend on its unpublished shape and pass.
+    """
+    return build_complete_viewer_run(
+        root,
+        frame=pl.DataFrame(
+            {
+                "Metadata_Dataset": ["plate", "plate"],
+                str(IMAGE.IMAGE_NAME): ["a", "b"],
+                "Size_Area": [10.0, 20.0],
+            }
+        ),
+        stems=("a", "b"),
+    )
 
 
 def _make_minimal_output(
@@ -306,15 +334,11 @@ def test_legacy_backfill_parquets_are_part_of_snapshot_revision(
     tmp_path: Path,
 ) -> None:
     """Every per-image parquet consulted for backfill invalidates the snapshot."""
-    measurements = tmp_path / "results" / "d1" / "measurements"
-    measurements.mkdir(parents=True)
+    _published_output(tmp_path)
+    measurements = tmp_path / "results" / "plate" / "measurements"
+    measurements.mkdir(parents=True, exist_ok=True)
     legacy_parquet = measurements / "a.parquet"
     legacy_parquet.write_bytes(b"first")
-    _write_master_parquet(
-        tmp_path,
-        pl.DataFrame({str(IMAGE.IMAGE_NAME): ["a"], "Size_Area": [100.0]}),
-    )
-    write_complete_manifest(tmp_path, total_images=1)
 
     output = _discover(tmp_path)
     legacy_parquet.write_bytes(b"second")
@@ -329,8 +353,8 @@ def test_discover_retries_complete_read_after_snapshot_change(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A pre/post mismatch retries from the first source read."""
-    _make_minimal_output(tmp_path)
-    overlay = tmp_path / "deliverables" / "overlays" / "d1" / "a.png"
+    _published_output(tmp_path)
+    overlay = tmp_path / "deliverables" / "overlays" / "plate" / "a.png"
     real_is_current = _output_root.inventory_is_current
     calls = 0
 
@@ -383,6 +407,74 @@ def test_discover_retries_complete_read_after_snapshot_change(
         ]
         assert ranks == sorted(ranks)
     assert output.snapshot_is_current() is True
+
+
+def test_the_mirrorless_fallback_distinguishes_a_v1_master_from_a_v2_one(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """§7.3, at the viewer's one master-fallback (P6 Task 7b).
+
+    Both runs bind, and both bind the *same* frame -- the clean master --
+    because the mirror is absent in both. What differs is what that frame is
+    worth, and therefore what the viewer says about it:
+
+    * **v1** (pre-inversion) joined user metadata per image, so the master
+      carries it. The fallback is complete apart from the post ops, and no
+      warning is owed.
+    * **v2** (post-inversion) moved the join to finalization, so the master
+      is intrinsic identity plus measurements. Every metadata-driven surface
+      is presence-guarded and therefore shows **nothing rather than raising**
+      -- indistinguishable to the user from a run given no ``--metadata``.
+
+    Asserting on the diagnostic rather than on the column sets is deliberate:
+    the column sets differ by construction here, which would be true even if
+    the branch did not exist.
+    """
+    v1_root = tmp_path / "v1"
+    v2_root = tmp_path / "v2"
+    _make_minimal_output(v1_root)  # its master carries Metadata_Strain
+    _make_minimal_output(v2_root, write_master=False)
+    _write_master_parquet(
+        v2_root,
+        pl.DataFrame(
+            {
+                str(EXPERIMENT.DATASET): ["d1", "d1"],
+                str(IMAGE.IMAGE_NAME): ["a", "b"],
+                "Size_Area": [100.0, 200.0],
+            }
+        ),
+    )
+    write_complete_manifest(v2_root, total_images=2)
+    assert not measurements_parquet_path(v1_root).exists()
+    assert not measurements_parquet_path(v2_root).exists()
+
+    caplog.clear()
+    with caplog.at_level("INFO", logger=_output_root.__name__):
+        v1 = _discover(v1_root)
+    v1_warnings = [
+        r.message for r in caplog.records if r.levelname == "WARNING"
+    ]
+
+    caplog.clear()
+    with caplog.at_level("INFO", logger=_output_root.__name__):
+        v2 = _discover(v2_root)
+    v2_warnings = [
+        r.message for r in caplog.records if r.levelname == "WARNING"
+    ]
+
+    # Both took the fallback -- the display frame IS the clean master --
+    # so the difference below is the verdict on that frame, not the path.
+    assert v1.master_df.equals(v1.clean_master_df)
+    assert v2.master_df.equals(v2.clean_master_df)
+
+    assert not any("user metadata" in m for m in v1_warnings), (
+        "a v1 master carries its own metadata; the fallback is complete and "
+        f"owes no warning, but got: {v1_warnings}"
+    )
+    assert any("carries no user metadata" in m for m in v2_warnings), (
+        "a v2 master without its mirror leaves every metadata surface empty "
+        f"with nothing raised; that must be said, but got: {v2_warnings}"
+    )
 
 
 def test_one_currency_check_replaces_two() -> None:
@@ -542,9 +634,22 @@ def test_discover_refuses_continuously_changing_snapshot(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Two unstable pre/post reads fail instead of binding mixed generations."""
-    _make_minimal_output(tmp_path)
-    overlay = tmp_path / "deliverables" / "overlays" / "d1" / "a.png"
+    """Two unstable pre/post reads fail instead of binding mixed generations.
+
+    **The churned file is deliberately not a declared artifact.** Mutating the
+    overlay -- which is one -- makes the run ``incomplete`` on the retry, so
+    the second attempt takes the bounded read-only path, does not track the
+    overlay, and binds successfully. That degradation is correct (a bounded
+    binding claims nothing about the artifacts it excludes, and the pixel
+    routes revalidate what they serve), but it is not what this test is
+    about. A stray file under ``results/`` keeps every declared artifact
+    verifying -- so the run stays ``complete``, the inventory stays
+    exhaustive, and both attempts genuinely observe a changing tree.
+    """
+    _published_output(tmp_path)
+    churn = tmp_path / "results" / "plate" / "measurements" / "churn.bin"
+    churn.parent.mkdir(parents=True, exist_ok=True)
+    churn.write_bytes(b"revision-0")
     real_is_current = _output_root.inventory_is_current
     revision = 0
 
@@ -557,7 +662,7 @@ def test_discover_refuses_continuously_changing_snapshot(
     ):
         nonlocal revision
         revision += 1
-        overlay.write_bytes(f"revision-{revision}".encode())
+        churn.write_bytes(f"revision-{revision}".encode())
         return real_is_current(
             inventory,
             source_root=source_root,

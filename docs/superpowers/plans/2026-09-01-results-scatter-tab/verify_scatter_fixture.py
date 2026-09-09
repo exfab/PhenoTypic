@@ -155,12 +155,10 @@ def _run_is_readable(root: Path) -> bool:
     if not root.is_dir():
         return False
     try:
-        from phenotypic.gui.results_viewer._output_consistency import (
-            inspect_output_consistency,
-        )
+        from phenotypic.gui.results_viewer._output_root import core_readable
         from phenotypic.sdk_ import BundleLayout
 
-        return inspect_output_consistency(BundleLayout.detect(root)).core_readable
+        return core_readable(BundleLayout.detect(root))
     except Exception:  # noqa: BLE001 - unreadable for any reason means skip
         return False
 

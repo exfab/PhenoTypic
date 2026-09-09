@@ -1,7 +1,7 @@
 """Central authorization for persistent Results and Analysis mutations.
 
-Read-only output discovery intentionally accepts incomplete and contradictory
-run evidence so users can still inspect whatever artifacts are present. That
+Read-only output discovery intentionally accepts incomplete, failed and
+active runs so users can still inspect whatever artifacts are present. That
 is separate from write authority. Every GUI mutation must obtain a fresh
 receipt from :class:`OutputMutationGuard` immediately before writing.
 """
@@ -18,14 +18,46 @@ from phenotypic.gui._binding_generation import (
     BINDING_GENERATION_PAYLOAD_KEY,
 )
 from phenotypic.gui._config import CFG_OUTPUT_MUTATION_GUARD
-from phenotypic.gui.results_viewer._output_consistency import (
-    inspect_output_consistency,
+from phenotypic.gui.results_viewer._output_root import (
+    resolve_output_run_state,
 )
+from phenotypic.sdk_ import RunState
 
 if TYPE_CHECKING:
     from phenotypic.gui.results_viewer._output_root import OutputRoot
 
 _PRESENTED_FROM_REQUEST: Final = object()
+
+
+# `resolve_output_run_state` returns None for a standalone deliverables
+# bundle. `OutputRoot` centralizes that for the state it holds; these three do
+# the same for a state resolved fresh inside `authorize`, so the bundle case
+# is decided once per question rather than at each of the six comparisons.
+
+
+def _run_is_complete(state: RunState | None) -> bool:
+    """Whether a freshly resolved state authorizes a write.
+
+    ``True`` for a bundle: it has no run directory, so there is no run to be
+    unfinished -- the same answer the retired classifier gave by returning
+    ``coherent`` for ``standalone_bundle=True``.
+    """
+    return state is None or state.completion == "complete"
+
+
+def _completion(state: RunState | None) -> str:
+    """The completion token for a diagnostic, or ``"complete"`` for a bundle."""
+    return "complete" if state is None else state.completion
+
+
+def _advisories(state: RunState | None) -> tuple[str, ...]:
+    """A freshly resolved state's advisories, or empty for a bundle."""
+    return () if state is None else state.advisories
+
+
+def _identity_digest(state: RunState | None) -> str:
+    """A run's fencing digest, or ``""`` for a bundle."""
+    return "" if state is None else state.identity.digest()
 
 
 class OutputMutationBlocked(RuntimeError):
@@ -39,7 +71,7 @@ class OutputMutationReceipt:
     action: str
     binding_generation: str | None
     processing_fingerprint: str
-    consistency_evidence_fingerprint: str
+    run_identity_digest: str
     authorized_at: datetime
 
 
@@ -69,7 +101,7 @@ class OutputMutationGuard:
             before the mutation.
 
         Raises:
-            OutputMutationBlocked: If generation, consistency, ownership, or
+            OutputMutationBlocked: If generation, run state, ownership, or
                 the processing snapshot is stale.
         """
         supplied = (
@@ -83,15 +115,14 @@ class OutputMutationGuard:
                 "binding. Reload before retrying."
             )
 
-        # A binding discovered from incomplete or contradictory evidence never
-        # gains write authority in place. It carries only bounded structural
-        # processing assurance and must be refreshed after completion evidence
-        # becomes coherent.
-        if self.output_root.consistency.is_read_only:
-            detail = "; ".join(self.output_root.consistency.reasons)
+        # A binding discovered from an unfinished run never gains write
+        # authority in place. It carries only bounded structural processing
+        # assurance and must be refreshed after the run completes.
+        if not self.output_root.run_is_complete:
+            detail = "; ".join(self.output_root.run_advisories)
             raise OutputMutationBlocked(
-                f"{action} blocked: output completion evidence is "
-                f"{self.output_root.consistency.state}. {detail}"
+                f"{action} blocked: run state is "
+                f"{self.output_root.run_completion}. {detail}"
             )
         if not self.output_root.has_exhaustive_processing_inventory:
             raise OutputMutationBlocked(
@@ -102,19 +133,19 @@ class OutputMutationGuard:
         # Check completion evidence on both sides of the exhaustive inventory
         # verification. This closes the mutation receipt over owner/manifest
         # changes without making read-only bindings walk unrelated artifacts.
-        fresh_consistency = inspect_output_consistency(self.output_root.layout)
-        if fresh_consistency.state != "coherent":
-            detail = "; ".join(fresh_consistency.reasons)
+        fresh_state = resolve_output_run_state(
+            self.output_root.layout, depth="deep"
+        )
+        fresh_digest = _identity_digest(fresh_state)
+        if not _run_is_complete(fresh_state):
+            detail = "; ".join(_advisories(fresh_state))
             raise OutputMutationBlocked(
-                f"{action} blocked: output completion evidence is "
-                f"{fresh_consistency.state}. {detail}"
+                f"{action} blocked: run state is "
+                f"{_completion(fresh_state)}. {detail}"
             )
-        if (
-            fresh_consistency.evidence_fingerprint
-            != self.output_root.consistency.evidence_fingerprint
-        ):
+        if fresh_digest != _identity_digest(self.output_root.run_state):
             raise OutputMutationBlocked(
-                f"{action} blocked: completion evidence changed after this "
+                f"{action} blocked: the run identity changed after this "
                 "snapshot was bound. Refresh Results and Analysis."
             )
         if self.output_root.active_run_is_currently_running():
@@ -126,19 +157,23 @@ class OutputMutationGuard:
                 f"{action} blocked: processing artifacts changed after this "
                 "snapshot was bound. Refresh Results and Analysis."
             )
-        verified_consistency = inspect_output_consistency(
-            self.output_root.layout
+        verified_state = resolve_output_run_state(
+            self.output_root.layout, depth="deep"
         )
+        # `has_active_owner` was `owner_status in {...}` with NO liveness
+        # probe. `active_run_is_currently_running()` is that same predicate
+        # and it survives Task 2, so it is used here rather than
+        # `completion == "active"`, which additionally requires a live pid or
+        # a SLURM lifecycle record and would therefore stop tripping on the
+        # pid-less owner records a SLURM launch writes.
         if (
-            verified_consistency.state != "coherent"
-            or verified_consistency.evidence_fingerprint
-            != fresh_consistency.evidence_fingerprint
-            or verified_consistency.has_active_owner
+            not _run_is_complete(verified_state)
+            or _identity_digest(verified_state) != fresh_digest
+            or self.output_root.active_run_is_currently_running()
         ):
             raise OutputMutationBlocked(
-                f"{action} blocked: completion evidence changed while "
-                "processing artifacts were verified. Refresh Results and "
-                "Analysis."
+                f"{action} blocked: the run changed while processing "
+                "artifacts were verified. Refresh Results and Analysis."
             )
         return OutputMutationReceipt(
             action=action,
@@ -146,9 +181,7 @@ class OutputMutationGuard:
             processing_fingerprint=(
                 self.output_root.snapshot.processing_fingerprint
             ),
-            consistency_evidence_fingerprint=(
-                fresh_consistency.evidence_fingerprint
-            ),
+            run_identity_digest=fresh_digest,
             authorized_at=datetime.now(timezone.utc),
         )
 
@@ -180,19 +213,17 @@ def require_output_mutation(
 
 def output_mutations_disabled(output_root: OutputRoot) -> bool:
     """Return whether persistent controls must render disabled."""
-    return output_root.consistency.is_read_only or (
-        output_root.snapshot.active_run
-    )
+    return not output_root.run_is_complete or output_root.snapshot.active_run
 
 
 def output_read_only_diagnostic(output_root: OutputRoot) -> str | None:
     """Return a visible diagnostic for a browsable but non-mutable output."""
     if not output_mutations_disabled(output_root):
         return None
-    reasons = "; ".join(output_root.consistency.reasons)
+    reasons = "; ".join(output_root.run_advisories)
     return (
-        f"Read-only output: completion evidence is "
-        f"{output_root.consistency.state}. {reasons} Persistent QC, "
+        f"Read-only output: run state is "
+        f"{output_root.run_completion}. {reasons} Persistent QC, "
         "curation, Error, and Analysis actions are disabled. Browsing remains "
         "available; this viewer will not repair or resume the run."
     )

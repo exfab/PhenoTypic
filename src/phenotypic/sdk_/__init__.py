@@ -284,6 +284,7 @@ from ._run_state import (
     RunDiagnostics,
     RunIdentity,
     RunState,
+    aggregate_proof_is_current,
     assert_identity_current,
     clear_verification_cache,
     finalization_input_object,
@@ -444,6 +445,11 @@ __all__ = [
     "RunDiagnostics",
     "RunIdentity",
     "RunState",
+    # P6 Task 2: the GUI's `core_readable` needs the aggregate-proof half of
+    # the question, which was private. Its other half is the CLI's
+    # `state_requires_success_markers`, so `core_readable` itself cannot live
+    # here -- INV-LAYER keeps `_cli` out of `sdk_`.
+    "aggregate_proof_is_current",
     "assert_identity_current",
     "clear_verification_cache",
     "finalization_input_object",

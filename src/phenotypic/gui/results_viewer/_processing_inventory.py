@@ -19,18 +19,16 @@ from phenotypic.gui.results_viewer._discovery_contracts import (
     OutputDiscoveryProgressCallback,
     report_discovery_progress,
 )
-from phenotypic.gui.results_viewer._output_consistency import (
-    OutputConsistencyReport,
-)
 from phenotypic.sdk_ import (
     DIR_OVERLAYS,
     DIR_RESULTS,
     BundleLayout,
+    RunState,
     source_cache_key,
 )
 from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON, STORE_SUFFIX
 
-_CACHE_SCHEMA_VERSION = 2
+_CACHE_SCHEMA_VERSION = 3
 _PROGRESS_INTERVAL = 256
 logger = logging.getLogger(__name__)
 
@@ -85,25 +83,27 @@ def load_or_scan_processing_inventory(
     *,
     source_root: Path,
     cache_root: Path,
-    consistency: OutputConsistencyReport,
+    run_state: RunState | None,
     cancellation: OutputDiscoveryCancellation,
     progress: OutputDiscoveryProgressCallback | None,
 ) -> ProcessingInventory:
     """Reuse a valid terminal inventory or scan a fresh read-only snapshot.
 
-    Persistent reuse is deliberately restricted to coherent terminal outputs.
-    Active, incomplete, and contradictory outputs are scanned on every
-    discovery and never update a persistent cache record.
+    Persistent reuse is deliberately restricted to complete runs. Active,
+    incomplete and failed outputs are scanned on every discovery and never
+    update a persistent cache record. ``run_state`` is ``None`` for a
+    standalone bundle, which is reusable: it has no run to be unfinished.
     """
+    reusable = run_state is None or run_state.completion == "complete"
     cache_path = processing_inventory_cache_path(
         source_root,
         cache_root=cache_root,
     )
-    if consistency.cache_reusable:
+    if reusable:
         cached = _load_cached_inventory(
             cache_path,
             source_root=source_root,
-            consistency=consistency,
+            run_state=run_state,
         )
         if cached is not None and _inventory_is_current(
             cached,
@@ -127,7 +127,7 @@ def load_or_scan_processing_inventory(
                 assurance="exhaustive",
             )
 
-    if consistency.is_read_only:
+    if not reusable:
         entries = _scan_read_only_inventory(
             layout,
             source_root=source_root,
@@ -150,12 +150,12 @@ def load_or_scan_processing_inventory(
         assurance=assurance,
     )
     cancellation.raise_if_cancelled()
-    if consistency.cache_reusable:
+    if reusable:
         try:
             _persist_inventory(
                 cache_path,
                 source_root=source_root,
-                consistency=consistency,
+                run_state=run_state,
                 inventory=inventory,
             )
         except OSError:
@@ -360,7 +360,7 @@ def _scan_read_only_inventory(
 ) -> tuple[ProcessingInventoryEntry, ...]:
     """Capture bounded structural anchors for a mutation-ineligible output.
 
-    Incomplete, active, and contradictory outputs cannot authorize writes.
+    Incomplete, active, and failed outputs cannot authorize writes.
     Recursively inventorying every unrelated HDF and per-image parquet would
     therefore add no mutation safety, while making large read-only outputs
     impractical to inspect. The files actually used by a pixel request are
@@ -548,11 +548,22 @@ def _inventory_fingerprint(
     return f"sha256:{digest.hexdigest()}"
 
 
+def _cached_identity_digest(state: RunState | None) -> str:
+    """Return the cache-keying digest for a run, or ``""`` for a bundle.
+
+    Replaces the retired ``evidence_fingerprint`` as the value that decides
+    whether a persisted inventory still describes the same run. A bundle
+    keys on ``""`` and is distinguished from a run by ``source_root``, which
+    is compared alongside it.
+    """
+    return "" if state is None else state.identity.digest()
+
+
 def _load_cached_inventory(
     cache_path: Path,
     *,
     source_root: Path,
-    consistency: OutputConsistencyReport,
+    run_state: RunState | None,
 ) -> ProcessingInventory | None:
     try:
         payload = json.loads(cache_path.read_text(encoding="utf-8"))
@@ -560,8 +571,8 @@ def _load_cached_inventory(
             not isinstance(payload, dict)
             or payload.get("schema_version") != _CACHE_SCHEMA_VERSION
             or payload.get("source_root") != str(source_root.resolve())
-            or payload.get("evidence_fingerprint")
-            != consistency.evidence_fingerprint
+            or payload.get("run_identity_digest")
+            != _cached_identity_digest(run_state)
         ):
             return None
         raw_entries = payload.get("entries")
@@ -613,7 +624,7 @@ def _persist_inventory(
     cache_path: Path,
     *,
     source_root: Path,
-    consistency: OutputConsistencyReport,
+    run_state: RunState | None,
     inventory: ProcessingInventory,
 ) -> None:
     """Atomically publish one external cache record."""
@@ -621,7 +632,7 @@ def _persist_inventory(
     payload = {
         "schema_version": _CACHE_SCHEMA_VERSION,
         "source_root": str(source_root.resolve()),
-        "evidence_fingerprint": consistency.evidence_fingerprint,
+        "run_identity_digest": _cached_identity_digest(run_state),
         "fingerprint": inventory.fingerprint,
         "entries": [asdict(entry) for entry in inventory.entries],
     }

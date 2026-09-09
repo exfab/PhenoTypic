@@ -112,6 +112,7 @@ __all__ = [
     "RunIdentity",
     "RunState",
     "accepted_finalization_digests",
+    "aggregate_proof_is_current",
     "assert_identity_current",
     "clear_verification_cache",
     "fenced_artifact_path",
@@ -1131,6 +1132,27 @@ def _valid_aggregate_proof(output_dir: Path) -> dict[str, object] | None:
         if fenced_artifact_path(output_root, descriptor) is None:
             return None
     return marker
+
+
+def aggregate_proof_is_current(output_dir: Path) -> bool:
+    """Return whether a valid aggregate proof still covers the deliverables.
+
+    The boolean half of :func:`_valid_aggregate_proof`, exported because the
+    GUI's ``core_readable`` asks exactly this question and spec §5.2 makes
+    this module the public reader surface. Named to match
+    :func:`run_proof_is_current`: the two ask the same shape of question about
+    the run proof and the aggregate proof respectively.
+
+    **Returns ``False`` on:** an absent
+    ``.phenotypic/aggregate_publication.json``, one whose ``version`` is not
+    :data:`AGGREGATE_PROOF_VERSION`, one with an empty or non-mapping
+    ``required_outputs``, or one naming a required output whose bytes on disk
+    no longer match the descriptor it was published with.
+
+    This is O(1) in images -- three or four run-level deliverables -- which is
+    why callers re-ask it rather than caching the answer.
+    """
+    return _valid_aggregate_proof(output_dir) is not None
 
 
 def accepted_finalization_digests(

@@ -376,15 +376,15 @@ def _build_output_header(
                     "Active run snapshot"
                     if output_root.snapshot.active_run
                     else (
-                        f"Read-only · {output_root.consistency.state}"
-                        if output_root.consistency.is_read_only
+                        f"Read-only · {output_root.run_completion}"
+                        if not output_root.run_is_complete
                         else "Current"
                     )
                 ),
                 id=ids.ANALYSIS_SNAPSHOT_STATUS,
                 color=(
                     "danger"
-                    if output_root.consistency.is_read_only
+                    if not output_root.run_is_complete
                     else "warning"
                     if output_root.snapshot.active_run
                     else "success"

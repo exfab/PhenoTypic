@@ -42,11 +42,29 @@ from phenotypic.sdk_ import (
     atomic_write_json,
     gui_launch_owner_path,
 )
-from tests._output_layout import seed_output_dir, write_complete_manifest
+from tests._output_layout import (
+    build_complete_viewer_run,
+    seed_output_dir,
+    write_complete_manifest,
+)
 
 
-def _seed_output(parent: Path, name: str = "output") -> Path:
-    """Create a minimal complete output accepted by both sub-apps."""
+def _seed_output(
+    parent: Path, name: str = "output", *, publish: bool = False
+) -> Path:
+    """Create a minimal output accepted by both sub-apps.
+
+    ``publish`` mints the real proofs, which is what a test needs when it
+    performs a **write** -- curation, analysis publication -- since those
+    require a ``complete`` run state. It is opt-in because most of this
+    file's tests are about binding, refreshing and byte-preservation, and
+    ``test_status_polls_never_report_current_for_an_unproven_run`` asserts
+    the opposite: that an unproven tree never reads "Current".
+
+    The ``manifest.json`` below is written for continuity of the fixture
+    shape, not as evidence -- §4.2 demotes it and it no longer makes a run
+    complete.
+    """
     output = parent / name
     frame = pl.DataFrame(
         {
@@ -70,6 +88,17 @@ def _seed_output(parent: Path, name: str = "output") -> Path:
     overlay.parent.mkdir(parents=True, exist_ok=True)
     overlay.write_bytes(b"overlay")
     write_complete_manifest(output, total_images=1)
+    if publish:
+        # `with_overlay=False`: the overlay above belongs to this fixture, and
+        # a DECLARED artifact is fenced by content -- overwriting one after
+        # publication would invalidate its record.
+        build_complete_viewer_run(
+            output,
+            stems=("plate",),
+            dataset="dataset",
+            with_overlay=False,
+            write_outputs=False,
+        )
     return output
 
 
@@ -1053,7 +1082,7 @@ def test_hub_allows_two_sequential_curation_writes(
     tmp_path: Path,
 ) -> None:
     """GUI-owned consumed-state changes do not make curation one-shot."""
-    output = _seed_output(tmp_path)
+    output = _seed_output(tmp_path, publish=True)
     shell_app, viewer_session = compose_hub(
         SandboxRoot.from_path(tmp_path),
         start_idle_thread=False,
@@ -1090,7 +1119,7 @@ def test_external_consumed_write_is_refused_by_curation_cas(
     tmp_path: Path,
 ) -> None:
     """External mirror replacement reaches, then loses, the writer's CAS."""
-    output = _seed_output(tmp_path)
+    output = _seed_output(tmp_path, publish=True)
     shell_app, viewer_session = compose_hub(
         SandboxRoot.from_path(tmp_path),
         start_idle_thread=False,
@@ -1124,7 +1153,7 @@ def test_publish_waits_for_admitted_analysis_writer(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Publication drains an old Analysis writer before swapping sessions."""
-    output_a = _seed_output(tmp_path, "output-a")
+    output_a = _seed_output(tmp_path, "output-a", publish=True)
     output_b = _seed_output(tmp_path, "output-b")
     shell_app, _viewer_session = compose_hub(
         SandboxRoot.from_path(tmp_path),

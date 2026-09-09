@@ -35,10 +35,6 @@ from phenotypic.gui.results_viewer._discovery_contracts import (
     OutputDiscoveryProgressCallback,
     report_discovery_progress,
 )
-from phenotypic.gui.results_viewer._output_consistency import (
-    OutputConsistencyReport,
-    inspect_output_consistency,
-)
 from phenotypic.gui.results_viewer._metadata import normalize_viewer_frame
 from phenotypic.gui.results_viewer._processing_inventory import (
     ProcessingInventory,
@@ -50,11 +46,19 @@ from phenotypic.gui.shell._runs_registry import run_status_is_nonterminal
 from phenotypic.sdk_ import (
     DIR_OVERLAYS,
     BundleLayout,
+    RunState,
+    aggregate_proof_is_current,
     gui_launch_owner_path,
     is_metadata_header,
+    master_carries_user_metadata,
+    resolve_run_state,
     source_cache_key,
     zarr_store_path,
 )
+
+# `Completion` and `Depth` are type aliases the package does not re-export;
+# `_run_state`'s own docstring names it as their import site.
+from phenotypic.sdk_._run_state import Completion, Depth
 from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON
 
 logger = logging.getLogger(__name__)
@@ -69,6 +73,89 @@ _SNAPSHOT_READ_ATTEMPTS = 2
 
 class OutputSnapshotChangedError(RuntimeError):
     """Raised when source files cannot be read as one stable revision."""
+
+
+def resolve_output_run_state(
+    layout: BundleLayout, *, depth: Depth = "deep"
+) -> RunState | None:
+    """Return the run state, or ``None`` for a standalone deliverables bundle.
+
+    ``None`` fires on exactly one input: a portable ``deliverables/`` bundle,
+    where :class:`~phenotypic.sdk_.BundleLayout` resolves ``output_root`` to
+    ``None`` because there is no run directory above the deliverables.
+    :func:`~phenotypic.sdk_.resolve_run_state` takes a ``Path`` and
+    ``Path(None)`` raises ``TypeError``, so without this branch every bundle
+    crashes the callers that used to get a ``coherent`` report out of the
+    retired classifier's ``standalone_bundle`` arm.
+
+    Args:
+        layout: The resolved bundle/run topology.
+        depth: Passed through to ``resolve_run_state``.
+
+    Returns:
+        The run's state, or ``None`` when there is no run directory to read.
+    """
+    if layout.output_root is None:
+        return None
+    return resolve_run_state(layout.output_root, depth=depth)
+
+
+def _run_identity_digest(state: RunState | None) -> str:
+    """Return a run's fencing digest, or ``""`` for a standalone bundle.
+
+    The replacement for the retired ``evidence_fingerprint``. It is a
+    *narrower* question than the one it replaces: the old fingerprint folded
+    in owner status and manifest counts, both of which spec §4.2 demotes out
+    of the evidence set, while this covers the five identity tokens. For the
+    only thing either was ever used for -- "did this run change between the
+    moment we bound it and the moment we are about to write?" -- the identity
+    digest is the question that was meant.
+
+    ``""`` for a bundle is safe because it is compared only against another
+    ``""`` from the same bundle: a directory does not become a full run
+    mid-session.
+    """
+    return "" if state is None else state.identity.digest()
+
+
+def core_readable(layout: BundleLayout) -> bool:
+    """Return whether the canonical aggregate bytes are authorized to read.
+
+    **Not** ``completion``, and not derivable from it (CAN-17). Two cases any
+    completion test gets wrong:
+
+    * a **legacy** tree is core-readable *with no aggregate proof at all* --
+      the first disjunct carries it;
+    * an **active** run whose earlier finalization published a valid proof
+      **is** core-readable, and a completion test that lists the acceptable
+      verdicts excludes it.
+
+    A standalone bundle is core-readable: it has no machine state, so nothing
+    requires success markers, exactly as the retired classifier's
+    ``standalone_bundle`` arm concluded.
+
+    **Returns ``False`` on:** a tree whose ``processing_state.json`` sets
+    ``config.success_markers_required: true`` and whose
+    ``.phenotypic/aggregate_publication.json`` is absent, carries the wrong
+    ``version``, has no ``required_outputs``, or names a required output whose
+    bytes no longer match the descriptor it was published with.
+
+    **This predicate gates a live-run ``skipif``.** A false ``False``
+    therefore *skips* the tests that ask it rather than failing them, and a
+    skip does not appear in a summary line -- so the error hides itself. That
+    asymmetry is why this is composed from the two questions it actually asks
+    instead of approximated from ``completion``.
+    """
+    output_dir = layout.output_root
+    if output_dir is None:
+        return True
+    # Lazy, matching the convention the retired classifier used: the GUI may
+    # reach into `_cli`, but not at import time.
+    from phenotypic._cli._cli_completion import state_requires_success_markers
+
+    return not state_requires_success_markers(output_dir) or (
+        aggregate_proof_is_current(output_dir)
+    )
 
 
 @dataclass(frozen=True)
@@ -150,8 +237,9 @@ class OutputRoot:
             an explicit request.
         snapshot: Stable-processing and refresh-consumed fingerprints captured
             around the complete discovery read.
-        consistency: Pure completion-evidence classification. Contradictory,
-            active, and incomplete outputs remain discoverable but read-only.
+        run_state: The run's completion state at bind time, or ``None``
+            for a standalone deliverables bundle. Active, incomplete and
+            failed runs remain discoverable but read-only.
         processing_inventory: Verified path/type/size/mtime snapshot backing
             ``processing_fingerprint``.
         pipeline_summary: One-line label parsed from
@@ -167,7 +255,12 @@ class OutputRoot:
     column_value_sets: Mapping[str, list[str]]
     cache_dir: Path
     snapshot: OutputSnapshotDescriptor
-    consistency: OutputConsistencyReport
+    #: The run's completion state as of discovery, or ``None`` for a
+    #: standalone deliverables bundle, which has no run directory to read one
+    #: from. Frozen at bind time on purpose -- the same lifetime the retired
+    #: ``consistency`` report had. Surfaces that must notice a *change* poll
+    #: ``resolve_run_state`` live instead (``gui/_snapshot_status.py``).
+    run_state: RunState | None
     processing_inventory: ProcessingInventory
     pipeline_summary: str | None
     #: Snapshot of ``(dataset, stem)`` pairs that have an overlay PNG on
@@ -244,8 +337,8 @@ class OutputRoot:
             source_fingerprint="validation",
             cache_root=cache_root,
         )
-        consistency = inspect_output_consistency(layout)
-        if not consistency.core_readable:
+        run_state = resolve_output_run_state(layout, depth="deep")
+        if not core_readable(layout):
             raise ValueError(
                 "Core aggregate files are not authorized by a valid "
                 "aggregate publication marker"
@@ -267,7 +360,7 @@ class OutputRoot:
                 return cls._discover_snapshot(
                     layout,
                     cache_root=cache_root,
-                    consistency=consistency,
+                    run_state=run_state,
                     cancellation=cancel,
                     progress_callback=attempt_callback,
                 )
@@ -283,7 +376,7 @@ class OutputRoot:
                 logger.info(
                     "Output changed during discovery; retrying one complete read."
                 )
-                consistency = inspect_output_consistency(layout)
+                run_state = resolve_output_run_state(layout, depth="deep")
         raise AssertionError("snapshot retry loop did not return or raise")
 
     @classmethod
@@ -292,7 +385,7 @@ class OutputRoot:
         layout: BundleLayout,
         *,
         cache_root: Path,
-        consistency: OutputConsistencyReport,
+        run_state: RunState | None,
         cancellation: OutputDiscoveryCancellation,
         progress_callback: OutputDiscoveryProgressCallback | None,
     ) -> OutputRoot:
@@ -317,7 +410,7 @@ class OutputRoot:
             layout,
             source_root=source_root,
             cache_root=cache_root,
-            consistency=consistency,
+            run_state=run_state,
             cancellation=cancellation,
             progress=progress_callback,
         )
@@ -337,7 +430,9 @@ class OutputRoot:
         # (pre-post) master is the FULL object set — including objects the
         # curated mirror removes — read so curation re-keying + the Error tab
         # keep labels resolvable across a viewer reload. Falls back to master
-        # mid-run / on legacy outputs without the mirror.
+        # mid-run / on legacy outputs without the mirror — and what that
+        # fallback is worth depends on which master shape it lands on; see
+        # the v1/v2 branch below.
         report_discovery_progress(
             progress_callback,
             phase="measurements",
@@ -352,9 +447,33 @@ class OutputRoot:
                 "Loading post-applied measurements mirror from %s", mirror_path
             )
             master_df = normalize_viewer_frame(pl.read_parquet(mirror_path))
-        else:
+        elif master_carries_user_metadata(clean_master_df):
+            # v1, pre-§7.3: the join happened per image, so the master
+            # carries its own user metadata. The fallback frame is complete
+            # apart from the post ops, and every metadata-driven surface
+            # works off it.
             logger.info(
                 "Mirror %s not found; loading clean master from %s",
+                mirror_path,
+                master_path,
+            )
+            master_df = clean_master_df
+        else:
+            # v2, post-§7.3: the join moved to finalization, so this master
+            # is intrinsic identity plus measurements and the user metadata
+            # exists only in the mirror that is missing. Nothing raises —
+            # every metadata-driven surface is presence-guarded and quietly
+            # offers nothing (filter sidebar, axis menus, the heatmap's time
+            # slider, scatter facets), which is indistinguishable to the user
+            # from a run that was given no `--metadata` at all. Say which it
+            # is here, because this is the only place that can still tell.
+            logger.warning(
+                "Mirror %s not found and %s carries no user metadata "
+                "(post-inversion master). Loading it anyway, so this session "
+                "has intrinsic identity and measurements but no "
+                "user-metadata columns: metadata filters, grouping axes and "
+                "time-series controls will offer nothing. Re-run "
+                "`--mode recompile` to write the mirror.",
                 mirror_path,
                 master_path,
             )
@@ -450,12 +569,12 @@ class OutputRoot:
             raise OutputSnapshotChangedError(
                 "Viewer state changed during discovery; refresh after the writer settles."
             )
-        verified_consistency = inspect_output_consistency(layout)
-        if verified_consistency.evidence_fingerprint != (
-            consistency.evidence_fingerprint
+        verified_state = resolve_output_run_state(layout, depth="deep")
+        if _run_identity_digest(verified_state) != _run_identity_digest(
+            run_state
         ):
             raise OutputSnapshotChangedError(
-                "Completion evidence changed during discovery; refresh after "
+                "Run identity changed during discovery; refresh after "
                 "the writer settles."
             )
         cache_dir = _external_cache_dir(
@@ -467,7 +586,7 @@ class OutputRoot:
             processing_fingerprint=source_fingerprint,
             consumed_state_fingerprint=verified_consumed_state,
             captured_at=datetime.now(timezone.utc),
-            active_run=consistency.has_active_owner,
+            active_run=_active_run_snapshot(layout),
             processing_inventory_cache_hit=inventory.cache_hit,
             processing_inventory_assurance=inventory.assurance,
         )
@@ -480,7 +599,7 @@ class OutputRoot:
             column_value_sets=column_value_sets,
             cache_dir=cache_dir,
             snapshot=snapshot,
-            consistency=consistency,
+            run_state=run_state,
             processing_inventory=inventory,
             pipeline_summary=pipeline_summary,
             overlay_index=overlay_index,
@@ -534,6 +653,57 @@ class OutputRoot:
     def source_fingerprint(self) -> str:
         """Backward-compatible stable processing fingerprint."""
         return self.snapshot.processing_fingerprint
+
+    # ------------------------------------------------------------------
+    # Run-state accessors.
+    #
+    # These three exist so the standalone-bundle case is decided ONCE. Every
+    # consumer of the retired `consistency` report would otherwise need its
+    # own `run_state is None` branch, and the answer a bundle needs is not
+    # the same in all three -- a bundle is *writable* (`run_is_complete`),
+    # has *no* advisories, and displays as `complete` but never actually
+    # displays, because the surfaces that show the token only show it when
+    # `run_is_complete` is False.
+    # ------------------------------------------------------------------
+
+    @property
+    def run_is_complete(self) -> bool:
+        """Return whether the run's state authorizes persistent writes.
+
+        ``True`` for a standalone deliverables bundle: it has no run
+        directory, so there is no run to be unfinished. The retired
+        classifier said the same thing by returning ``coherent`` for
+        ``standalone_bundle=True``. Reporting a bundle as ``incomplete``
+        instead would make every bundle read-only and silently delete the
+        bundle curation flow that
+        ``test_curation_writes_into_deliverables_qc_for_standalone`` pins.
+
+        **CAN-17:** this is ``completion == "complete"``, never
+        ``completion != "active"``. The latter would grant write access to
+        every incomplete output -- a widening with no spec authority, since
+        §4.3 says only that ``incomplete`` is "safe to read, safe to resume",
+        which is not "safe to write".
+        """
+        if self.run_state is None:
+            return True
+        return self.run_state.completion == "complete"
+
+    @property
+    def run_completion(self) -> Completion:
+        """Return the completion token for display.
+
+        ``"complete"`` for a standalone bundle. That value is never rendered:
+        every caller reaches this only after ``run_is_complete`` is ``False``,
+        which a bundle cannot be.
+        """
+        if self.run_state is None:
+            return "complete"
+        return self.run_state.completion
+
+    @property
+    def run_advisories(self) -> tuple[str, ...]:
+        """Return the run's advisories, or empty for a standalone bundle."""
+        return () if self.run_state is None else self.run_state.advisories
 
     @property
     def has_exhaustive_processing_inventory(self) -> bool:
@@ -591,13 +761,13 @@ class OutputRoot:
         writers retain their own mtime/fingerprint CAS guards.
 
         This is not a complete mutation authorization predicate. Wave O4 must
-        additionally require ``not output_root.consistency.is_read_only`` at
-        every mutation seam. Keeping the predicates separate lets O2 bind and
-        display contradictory outputs without authorizing writes.
+        additionally require ``output_root.run_is_complete`` at every
+        mutation seam. Keeping the predicates separate lets O2 bind and
+        display unfinished outputs without authorizing writes.
         """
         return (
             self.has_exhaustive_processing_inventory
-            and not self.consistency.is_read_only
+            and self.run_is_complete
             and not self.active_run_is_currently_running()
             and self.snapshot_is_current()
         )

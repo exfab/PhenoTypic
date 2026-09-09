@@ -284,8 +284,8 @@ def test_success_reports_atomic_pair_and_fingerprint() -> None:
                 "processing_fingerprint": "abcdef0123456789",
             },
             "consistency": {
-                "state": "coherent",
-                "reasons": ["terminal manifest evidence is internally coherent"],
+                "state": "complete",
+                "reasons": ["a run proof covers the current inventory"],
             },
         }
     )
@@ -295,4 +295,4 @@ def test_success_reports_atomic_pair_and_fingerprint() -> None:
         state.diagnostic
     )
     assert "Snapshot abcdef012345" in state.diagnostic
-    assert "Consistency: coherent." in state.diagnostic
+    assert "Consistency: complete." in state.diagnostic

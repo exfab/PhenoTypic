@@ -119,7 +119,31 @@ def write_dashboard(root: Path, *, execution_mode: str = "local") -> Path:
 
 
 def write_complete_manifest(root: Path, *, total_images: int) -> Path:
-    """Publish coherent terminal manifest evidence for a synthetic output.
+    """Write a terminal ``manifest.json`` for a synthetic output.
+
+    **This no longer makes a run complete, and it used to.** Spec §4.2 demotes
+    the manifest out of the evidence set, so a tree whose only completion
+    signal is this file resolves ``incomplete``: it binds read-only, gets a
+    bounded processing inventory rather than an exhaustive one, and every GUI
+    mutation on it is refused. The deleted classifier had a
+    ``manifest_success`` branch that called such a tree ``coherent``; nothing
+    replaces it.
+
+    **Seven** test modules still call this. Three of them could notice, and
+    all three were repointed at :func:`build_complete_viewer_run` --
+    ``test_output_root.py``, ``test_results_snapshot_refresh.py`` and
+    ``test_output_root_stores.py``, the only callers that mention completion,
+    assurance or mutability at all. The other four still pass **because they
+    assert nothing about completion**. If you add such an assertion to a
+    fixture built on this helper, it will fail, and the fix is to publish the
+    run rather than to weaken the assertion.
+
+    The three are named rather than counted on purpose. An earlier draft of
+    this docstring said "nine", which was true when it was measured and false
+    by the time it was committed -- two of the nine were converted away from
+    this helper by the same change that wrote the sentence. A count taken
+    mid-change is a claim about a tree that no longer exists; a list can be
+    re-checked against the one in front of you.
 
     Args:
         root: Synthetic CLI output root.
@@ -349,7 +373,12 @@ def bump_scientific_config_digest(
 
 
 def _publish_one_image(
-    output: Path, *, stem: str, mode: str, with_overlay: bool = True
+    output: Path,
+    *,
+    stem: str,
+    mode: str,
+    with_overlay: bool = True,
+    dataset: str = FIXTURE_DATASET,
 ) -> None:
     """Promote one image's artifacts and publish its success marker.
 
@@ -361,17 +390,17 @@ def _publish_one_image(
 
     work_id = f"work-{stem}"
     store = _promote_minimal_store(
-        output, dataset=FIXTURE_DATASET, stem=stem, work_id=work_id
+        output, dataset=dataset, stem=stem, work_id=work_id
     )
     artifacts = {"store": store}
     if with_overlay:
         artifacts["overlay"] = _write_overlay(
-            output, dataset=FIXTURE_DATASET, stem=stem
+            output, dataset=dataset, stem=stem
         )
     publish_image_success(
         output,
         work_id=work_id,
-        dataset=FIXTURE_DATASET,
+        dataset=dataset,
         relative_image_path=f"{stem}.tif",
         image_stem=stem,
         mode=mode,
@@ -466,6 +495,96 @@ def build_complete_run(
         )
     publish_run_completion_evidence(output, execution_epoch="local")
     return output
+
+
+def build_complete_viewer_run(
+    root: Path,
+    *,
+    frame: Any | None = None,
+    stems: Sequence[str] = FIXTURE_STEMS,
+    pipeline: Any | None = None,
+    complete: bool = True,
+    dataset: str = FIXTURE_DATASET,
+    with_overlay: bool = True,
+    write_outputs: bool = True,
+) -> Path:
+    """A published run whose master the **results viewer** can actually bind.
+
+    :func:`build_complete_run` writes a master keyed on
+    ``Metadata_ImageFile``. ``OutputRoot.discover`` requires
+    ``Metadata_ImageName`` (``_filtered_state.KEY_IMAGE_FILE``) and raises
+    otherwise, so a viewer test cannot use that fixture at all. Rather than
+    change the frame under ``build_complete_run``'s nine existing importers,
+    this takes the frame from the caller -- viewer tests also need columns the
+    CLI fixture has no reason to carry (``Object_Label``, ``Centroid``,
+    ``Metadata_Row``/``Column``).
+
+    Everything else is identical, including the order, which is the
+    publication contract's own: per-image records, then processing state, then
+    the aggregated outputs, then the aggregate proof, then the run proof.
+    Publishing the master *after* the proof would fence bytes that no longer
+    exist.
+
+    Args:
+        root: Directory to build the run in. Created if absent.
+        frame: The master/mirror frame. Must carry ``Metadata_Dataset`` and
+            ``Metadata_ImageName`` or discovery will refuse it. Required
+            unless ``write_outputs`` is ``False``.
+        stems: Image stems to publish, under :data:`FIXTURE_DATASET`.
+        pipeline: Optional pipeline for ``deliverables/pipeline.json``.
+        dataset: Dataset name to publish under. Defaults to
+            :data:`FIXTURE_DATASET`; pass it when a caller's frame and
+            fixtures are keyed on a different one.
+        write_outputs: When ``False``, the master and mirror already on disk
+            are left exactly as they are and only the proofs are published.
+            Use it when a caller has already written them -- or mutated them,
+            as curation does -- since the aggregate proof fences those bytes
+            by content and rewriting them afterwards would invalidate it.
+        with_overlay: Whether each image declares an overlay artifact. Pass
+            ``False`` when the caller writes its own overlay files -- a
+            declared artifact is fenced by content, so overwriting one after
+            publication invalidates that image's record.
+        complete: When ``False``, the last stem's image record is removed
+            after publication -- the state a run killed between promoting a
+            store and publishing its proof leaves, and the one the verdict
+            ladder must call ``incomplete``.
+
+    Returns:
+        ``root``.
+    """
+    from phenotypic._cli._cli_completion import (
+        publish_aggregate_snapshot,
+        publish_run_completion_evidence,
+    )
+    from phenotypic.sdk_ import image_record_path
+
+    root.mkdir(parents=True, exist_ok=True)
+    work_ids = {dataset: {f"{stem}.tif": f"work-{stem}" for stem in stems}}
+    for stem in stems:
+        _publish_one_image(
+            root,
+            stem=stem,
+            mode="full",
+            dataset=dataset,
+            with_overlay=with_overlay,
+        )
+    write_processing_state(root, work_ids=work_ids)
+
+    if write_outputs:
+        if frame is None:
+            raise ValueError("frame is required unless write_outputs=False")
+        write_master(root, frame)
+        write_measurements_mirror(root, frame)
+    if pipeline is not None:
+        write_pipeline_json(root, pipeline)
+
+    publish_aggregate_snapshot(
+        root, source_work_ids=[f"work-{stem}" for stem in stems]
+    )
+    publish_run_completion_evidence(root, execution_epoch="local")
+    if not complete:
+        image_record_path(root, dataset, stems[-1]).unlink()
+    return root
 
 
 def extend_complete_run(root: Path, *, stem: str) -> Path:

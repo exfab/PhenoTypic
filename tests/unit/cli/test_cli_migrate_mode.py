@@ -2173,34 +2173,20 @@ def test_the_viewer_surfaces_it(half_migrated_run) -> None:
     and the images that are missing are precisely the ones it would
     otherwise render empty.
     """
-    from phenotypic.gui.results_viewer._output_consistency import (
-        inspect_output_consistency,
-    )
-    from phenotypic.sdk_ import BundleLayout, deliverables_dir
+    from phenotypic.sdk_ import resolve_run_state
 
-    report = inspect_output_consistency(
-        BundleLayout(
-            deliverables_base=deliverables_dir(half_migrated_run),
-            output_root=half_migrated_run,
-        )
-    )
-    assert any("--mode migrate" in reason for reason in report.reasons), (
-        report.reasons
-    )
+    state = resolve_run_state(half_migrated_run, depth="deep")
+    assert any(
+        "--mode migrate" in advisory for advisory in state.advisories
+    ), state.advisories
 
 
 def test_the_viewer_says_nothing_about_a_fully_migrated_tree(
     migrated_run,
 ) -> None:
-    from phenotypic.gui.results_viewer._output_consistency import (
-        inspect_output_consistency,
-    )
-    from phenotypic.sdk_ import BundleLayout, deliverables_dir
+    from phenotypic.sdk_ import resolve_run_state
 
-    report = inspect_output_consistency(
-        BundleLayout(
-            deliverables_base=deliverables_dir(migrated_run),
-            output_root=migrated_run,
-        )
+    state = resolve_run_state(migrated_run, depth="deep")
+    assert not any(
+        "--mode migrate" in advisory for advisory in state.advisories
     )
-    assert not any("--mode migrate" in reason for reason in report.reasons)
