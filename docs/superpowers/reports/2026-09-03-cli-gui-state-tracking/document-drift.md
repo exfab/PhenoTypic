@@ -3065,3 +3065,105 @@ from its cause.
 
 Fixed by `--amend` rather than a follow-up: `3ae28b89` was never pushed, and a
 bisect-hostile commit left in history is worse than a rewritten one.
+
+---
+
+### Entry 62 — A PRECONDITION ASSERTED ON A VARIABLE THAT CANNOT VARY. 2026-09-09.
+
+**Kind: never true**, of the guard's implicit claim that it can fail. Recorded because of
+where it happened: **specified, implemented, and reviewed inside a conversation whose subject
+was guards that are green by construction**, in a script whose own header cites entry 56.
+
+The P5 gate asserts *"exactly one finalizer role"*, which is valid only for a single-chunk
+run — `AutonomousSLURMStrategy` records `job_ids[1]` as `role="finalizer"` **only** when
+`has_initial_dispatcher` is false (`_cli_execution_strategies.py:1142`). Above one chunk that
+row is recorded as `dispatcher` and no finalizer row exists at all. The precondition asked
+for, and written, was:
+
+```python
+chunks = [r for r in roles if "chunk" in r]
+if len(chunks) != 1:
+    failures.append("the fixture grew past one chunk …")
+```
+
+**It can never fire.** The strategy records **only** `chunk-0` (`:1131-1135`), because later
+chunk ids are assigned by the drip-feed dispatcher after each chunk completes — the comment
+at `:1146-1150` says so. So `len(chunks)` is 1 whether the run chunked or not.
+
+The correct discriminator is the **`dispatcher` role**, which appears exactly when
+`has_initial_dispatcher` is true — the same fact, read from the side that varies.
+
+## Why this one is worth an entry rather than a diff
+
+**The reasoning was right and the variable was wrong.** Both parties correctly derived that
+chunking invalidates the finalizer assertion, correctly located the branch, and then guarded
+it by counting a quantity the same source lines say is always 1. Knowing the mechanism did
+not prevent asserting on the wrong side of it.
+
+**And the specify/implement split hid it.** One person asked for `len(chunks) == 1`; the
+other implemented exactly that and reported it done; the flaw surfaced only on a third
+reading. Neither step was careless — the implementer had no reason to doubt a precondition
+handed down with its justification attached, and the specifier had no reason to re-derive an
+instruction already accepted. **A specified guard arrives with its own authority**, which is
+the same property entry 45's *wrong while correcting* has and the same reason it is expensive.
+
+**The general form**, and it is the counterpart to this register's standing questions: for a
+guard, ask not only *what would this look like if the code were wrong?* but **what input
+would make this fire at all?** If the answer cannot be stated concretely, the guard is
+decorative. Here the answer was *"a value the writer never writes"*.
+
+This is the second vacuous guard in this phase — the first was Task 1's clamp test, whose
+input never reached the clamp. Both were preconditions whose author reasoned correctly about
+the mechanism and then asserted on a quantity that could not move.
+
+---
+
+### Entry 63 — AN EDIT BUILT FROM A STALE READ, CAUGHT ONLY BY ITS ANCHOR ASSERTION. 2026-09-09.
+
+**Kind: never true** — of the edit's implicit claim that it is applying to the text it was
+composed against. A near-miss rather than a defect that shipped, recorded because the thing
+that stopped it was cheap, mechanical, and easily omitted.
+
+While reviewing the P5 gate script, a reviewer read the file, composed a one-line move of its
+`--array` observation block, and ran the edit. The anchor assertion aborted:
+
+```
+assert text.count(tail) == 1     ->     0
+```
+
+The file had been revised in the interval, in a **stronger** form than the edit being
+composed — `nullglob` so an unmatched pattern is an empty array, an asserted script *count*
+rather than mere existence, `ls -la` on failure, and a hard exit. The edit would have
+replaced newer, better work with an older, weaker version **and then submitted it**, in a
+session that had been enforcing "never edit a tree someone else is working in" all day.
+
+## Why the anchor assertion is the whole of the defence
+
+An edit built from a stale read is **indistinguishable from a correct edit** until it lands:
+same author, same intent, same shape, and it applies cleanly if the anchor still happens to
+match somewhere. Nothing about the act signals staleness. A `sed -i` with no count check
+would have succeeded silently and reported success.
+
+That is why the discipline is *assert the anchor count **before** writing*, not verify the
+result after:
+
+```python
+n = text.count(old)
+assert n == 1, f"anchor matched {n} times, refusing"
+```
+
+Both failure modes are covered by the same line. `0` means the text moved under you — this
+entry. `>1` means the anchor is not unique — the failure entry 44's neighbourhood records,
+where a 12-space anchor matched a 16-space copy in another target and silently disabled a
+harness for two phases. **One assertion, two distinct disasters**, which is unusual value for
+a single line.
+
+## The pattern across this change
+
+Every scripted edit in this phase asserted its anchor count, and the practice has now caught:
+a four-way ambiguous import anchor, a would-be revert of newer work, and several
+not-unique-enough anchors refused before writing. **None of those was found by review**; all
+were found by a line that costs nothing and runs every time.
+
+The generalisation is narrow and worth stating plainly: **a text edit is a claim about the
+current contents of a file, and the only cheap way to check that claim is to count.**
