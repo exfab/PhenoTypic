@@ -3167,3 +3167,69 @@ were found by a line that costs nothing and runs every time.
 
 The generalisation is narrow and worth stating plainly: **a text edit is a claim about the
 current contents of a file, and the only cheap way to check that claim is to count.**
+
+---
+
+### Entry 64 — A WALL-CLOCK QUOTED ACROSS A DECADE OF SILICON. 2026-09-09.
+
+**Kind: true but incomplete** — of what a timing measurement is a measurement *of*.
+
+A per-image cost was measured at **165 s** and used to size the P5 gate's wall. The gate ran
+at **5.5 min/image — 2.0x slower**. Two explanations were offered and both were wrong:
+
+| Offered | By | Wrong because |
+|---|---|---|
+| *"`GridImage` is heavier; `Image` will be faster, so the estimate is safe"* | the implementer | the pipeline config is not what dominates |
+| *"per-task CPU differs, 16 vs 4"* | the reviewer | also config; also not what dominates |
+
+Measured:
+
+```
+scontrol show node r31   ryzen,amd,milan          CPUTot=256   <- where 165 s was measured
+scontrol show node c07   amd,abu_dhabi            CPUTot=64    <- where the gate landed
+
+sinfo -p short -o %f  ->  abu_dhabi  broadwell  cascade  genoa  milan  rome  ryzen  amd  intel
+```
+
+**`short` spans nine feature classes**, from `abu_dhabi` (Opteron 6300, ~2012) to `genoa`
+(Zen 4, ~2022). The measurement was taken on Zen 3 and spent on Opteron-era silicon. It was
+not an over- or under-estimate of the same quantity; **it was a measurement of a different
+machine**, quoted as though the allocation were the variable.
+
+> A wall-clock figure is a property of a **(code, data, node)** triple. On a heterogeneous
+> partition the third term is not yours to choose, so a timing quoted for a `short` job needs
+> either the node class stated or a worst-case margin.
+
+## Both explanations were config-shaped, and that is the interesting part
+
+Neither party said anything false. `GridImage` *is* heavier than `Image`; 16 CPUs *are* more
+than 4. Two people reasoned carefully about the terms they had varied and neither noticed the
+term that had moved on its own — the scheduler chose it, silently, and nothing in either
+invocation mentions a node.
+
+This is entry 30's sample-ordering shape one level out: **the variable you did not set is
+still a variable.**
+
+## The answer was in the fixture's own state file, printed hours earlier
+
+```json
+"slurm_args": {"slurm_partition": "intel", "slurm_cpus_per_task": 6, "mem_gb": 16,
+               "slurm_time": "01:30:00",
+               "slurm_constraint": "broadwell|cascade|rome|milan|genoa"}
+```
+
+**The production run of this exact data pinned node generation and excluded `abu_dhabi`.**
+That block was read aloud during this same work — to extract `image_type`, `nrows`, `ncols`,
+`overlay_alpha` for continuation identity — and `slurm_constraint` was read past, because the
+question in hand was identity rather than performance.
+
+That is the third time in this phase that the answer was already in this fixture's own
+recorded state or README and was skipped because it was filed under a different question: the
+`.tiff` extension trap, the two mismatching pipeline digests, and now the node constraint.
+**A fixture's recorded configuration is a set of preconditions on everything that touches it,
+not a description of one past run** — and the failure mode is not carelessness but
+*relevance filtering*: each field was read by someone looking for something else.
+
+**Operationally:** a gate on `short` should carry `slurm_constraint` when its timing matters,
+or state that it does not. This one did not, and its budget survived only because the inner
+array is one image per task with ~3x headroom.
