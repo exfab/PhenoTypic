@@ -2428,13 +2428,12 @@ def phenotypic_cli(
                     config.process_only_layer is None
                 )
                 if config.process_only_layer is not None:
-                    from phenotypic.sdk_ import resolve_run_state
-
                     from phenotypic._cli._cli_completion import (
+                        _all_accepted_images_succeeded,
                         publish_run_completion_evidence,
                     )
 
-                    if resolve_run_state(output_dir).completion == "complete":
+                    if _all_accepted_images_succeeded(output_dir) is True:
                         publish_run_completion_evidence(
                             output_dir,
                             execution_epoch=(
@@ -2505,7 +2504,7 @@ def phenotypic_cli(
             # `> 0` and `== total` (counts). Only the last two are counts, and
             # `RunDiagnostics` supplies them as projections over `images`.
             if state_requires_success_markers(output_dir):
-                startup_state = resolve_run_state(output_dir)
+                startup_state = resolve_run_state(output_dir, depth="deep")
                 startup_successful = startup_state.diagnostics.verified
                 startup_total = startup_state.diagnostics.accepted
                 if config.process_only_layer:
@@ -2978,7 +2977,7 @@ def phenotypic_cli(
         should_finalize_measurements = (
             results.total_completed > 0
             if legacy_state
-            else resolve_run_state(output_dir).diagnostics.verified > 0
+            else resolve_run_state(output_dir, depth="deep").diagnostics.verified > 0
             and (
                 results.total_images > 0
                 or metadata_snapshot_changed
@@ -3824,11 +3823,11 @@ def _handle_recompile(
     if master_path:
         console.print(f"[green]Master measurements: {master_path}")
         from phenotypic._cli._cli_completion import (
+            _all_accepted_images_succeeded,
             publish_run_completion_evidence,
         )
-        from phenotypic.sdk_ import resolve_run_state
 
-        if resolve_run_state(output_dir).completion == "complete":
+        if _all_accepted_images_succeeded(output_dir) is True:
             publish_run_completion_evidence(
                 output_dir, execution_epoch="local"
             )

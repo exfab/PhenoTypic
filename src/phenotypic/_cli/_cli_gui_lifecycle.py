@@ -85,9 +85,10 @@ def publish_local_gui_completion(output_dir: Path) -> bool:
     """
     generation = gui_record_generation_from_environment()
 
-    from phenotypic.sdk_ import resolve_run_state
-
-    from ._cli_completion import state_requires_success_markers
+    from ._cli_completion import (
+        _all_accepted_images_succeeded,
+        state_requires_success_markers,
+    )
 
     # P6 Task 0. THREE branches below read the retired tri-state: `is False`
     # raises, and TWO `is None` arms differ from each other on `generation`.
@@ -97,7 +98,7 @@ def publish_local_gui_completion(output_dir: Path) -> bool:
     marker_complete = (
         None
         if legacy
-        else resolve_run_state(output_dir).completion == "complete"
+        else _all_accepted_images_succeeded(output_dir) is True
     )
     if marker_complete is False:
         raise RuntimeError(

@@ -46,6 +46,13 @@ UNIQUE_READERS = frozenset(
         "current_success_inventory",
         "run_proof",
         "run_proof_is_current",
+        # Task 0's own addition, and the one most likely to grow a second
+        # definition: a four-line config read is cheap to re-implement
+        # locally by someone who does not know it exists. It is the ONLY
+        # name this task adds to `_cli_completion`'s public surface -- Task 0
+        # nets minus three, plus one -- so it is watched for the same reason
+        # the `sdk_` destinations are: the failure runs both ways.
+        "state_requires_success_markers",
     }
 )
 

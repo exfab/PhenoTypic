@@ -603,6 +603,13 @@ class RunRegistry:
         marker_complete = (
             None
             if not state_requires_success_markers(record.output_dir)
+            # ⚠ P6 TASK 4 OWES A DEPTH DECISION HERE. §9's caller table gives
+            # GUI **pollers** `shallow`; this is a poller and this call uses
+            # the `deep` default. Choosing its depth is Task 4's, not
+            # Task 0's. `deep` preserves exactly what the retired
+            # `current_run_is_complete` cost here -- the same O(N) marker
+            # walk -- so this is not a regression; it is an unmade decision,
+            # marked rather than silently defaulted.
             else resolve_run_state(record.output_dir).completion == "complete"
         )
         if marker_complete is False:

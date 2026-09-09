@@ -1174,6 +1174,26 @@ Spec §11, audit S2 and S3. A chmod on GPFS no longer makes a binding report
 - Modify: `src/phenotypic/gui/shell/_runs_registry.py:1087,1172,1202,1264`
 - Test: `tests/unit/gui/shell/`
 
+> ### ⚠ Task 0 left you an unmade decision in this file — `_runs_registry.py:597-610`
+>
+> P6 Task 0 privatised `current_run_is_complete`, and **a deletion's blast radius is not
+> its task's file list**: this file imported it, so Task 0 converted the call to keep the
+> tree importing. It used `resolve_run_state(...)`'s **`deep` default**.
+>
+> **§9's caller table gives GUI pollers `shallow`, and this is a poller.** That is not a
+> regression — `deep` costs exactly what `current_run_is_complete` cost here, the same
+> O(N) marker walk — but it is *the cost §9 exists to remove*, now wearing a line that
+> looks correct. Task 0 marked it rather than resolving it, because choosing the depth
+> needs this task's context.
+>
+> **Decide it here.** The site also preserves the retired predicate's **tri-state**: it
+> branches on `is False` and must not treat a legacy tree as incomplete, so whatever depth
+> you choose, the `None` arm stays (see Task 0's tri-state callout).
+>
+> Recorded in the task text and not only at the call site, because a `Files:` block is an
+> index of write targets and cannot represent *"a decision is waiting for you here"* —
+> which is register entry 59's whole subject.
+
 - [ ] **Step 1: Write the failing tests**
 
 ```python

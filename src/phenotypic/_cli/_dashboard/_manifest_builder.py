@@ -735,7 +735,7 @@ def build_manifest(
     marker_completion = (
         None
         if legacy
-        else resolve_run_state(output_dir).completion == "complete"
+        else resolve_run_state(output_dir, depth="deep").completion == "complete"
     )
     is_complete = (
         global_completed == total_images

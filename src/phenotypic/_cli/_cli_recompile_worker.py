@@ -675,9 +675,10 @@ def _run_finalizer_task(
         if master_path is not None and state_requires_success_markers(
             output_dir
         ):
-            from phenotypic.sdk_ import resolve_run_state
-
-            from ._cli_completion import publish_run_completion_evidence
+            from ._cli_completion import (
+                _all_accepted_images_succeeded,
+                publish_run_completion_evidence,
+            )
 
             # No `publish_aggregate_snapshot` here any more: `finalize_run`
             # publishes the aggregate proof itself, on the authorized arm,
@@ -687,7 +688,7 @@ def _run_finalizer_task(
             with generation_publication_guard(output_dir, slurm_generation):
                 # Guarded by the schema-3 check above, so the legacy arm
                 # cannot reach here and `== "complete"` is the whole question.
-                if resolve_run_state(output_dir).completion == "complete":
+                if _all_accepted_images_succeeded(output_dir) is True:
                     publish_run_completion_evidence(
                         output_dir,
                         execution_epoch=slurm_generation,

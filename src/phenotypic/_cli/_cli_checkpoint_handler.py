@@ -307,7 +307,7 @@ def _run_finalize(
             # "anything verified yet", which `RunDiagnostics.verified` answers
             # -- a projection over `images`, which the caller already holds.
             legacy = not state_requires_success_markers(output_dir)
-            if legacy or resolve_run_state(output_dir).diagnostics.verified > 0:
+            if legacy or resolve_run_state(output_dir, depth="deep").diagnostics.verified > 0:
                 raise RuntimeError(message)
             logger.warning(
                 "%s; closing terminal-incomplete lifecycle", message
@@ -354,9 +354,8 @@ def _run_finalize(
 
     if epoch is not None:
         _publish_staged_report_and_readme(output_dir, job_metadata, epoch)
-        from phenotypic.sdk_ import resolve_run_state
-
         from ._cli_completion import (
+            _all_accepted_images_succeeded,
             publish_run_completion_evidence,
             state_requires_success_markers,
         )
@@ -373,7 +372,7 @@ def _run_finalize(
         marker_completion = (
             None
             if legacy
-            else resolve_run_state(output_dir).completion == "complete"
+            else _all_accepted_images_succeeded(output_dir) is True
         )
         if marker_completion is False:
             deactivate_orchestration(output_dir, "terminal_incomplete")
@@ -425,14 +424,15 @@ def _publish_run_completion_marker(
                 "Cannot publish completion after the SLURM generation "
                 "was cancelled or superseded"
             )
-        from phenotypic.sdk_ import resolve_run_state
-
-        from ._cli_completion import state_requires_success_markers
+        from ._cli_completion import (
+            _all_accepted_images_succeeded,
+            state_requires_success_markers,
+        )
 
         complete = (
             None
             if not state_requires_success_markers(output_dir)
-            else resolve_run_state(output_dir).completion == "complete"
+            else _all_accepted_images_succeeded(output_dir) is True
         )
         if complete is None:
             try:
