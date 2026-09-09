@@ -192,9 +192,23 @@ existing tree.
 > P2 Task 3 rewrites the comment, so if it has landed there is nothing here to avoid. This
 > note exists for the case where someone reads this task first.
 
-> **The file list was short by three files and the count was wrong (gen-r4 N-1/N-2, open
-> three rounds).** Measured on `c9d1fbfc`: the three predicate names have **13 invocations
-> across 6 files**, not ten across four. `_cli_checkpoint_handler.py` (3 — the in-array
+> **The file list was short and the count has now been wrong three times.**
+> Ten across four → **13 across 6** (measured `c9d1fbfc`) → **20 invocations across 9
+> files** (re-measured `ef436461`, 2026-09-09):
+>
+> ```
+> _cli_completion.py            5     phenotypicCLI.py                5
+> _cli_checkpoint_handler.py    3     _cli_recompile_worker.py        2
+> _cli_gui_lifecycle.py         1     _dashboard/_manifest_builder.py 1
+> sdk_/_hdf_to_zarr.py          1     gui/run_console/_slurm_observer.py 1
+> gui/shell/_runs_registry.py   1
+> ```
+>
+> **And "the thirteen CLI call sites" in Step 3's title is wrong twice over:** the count is
+> 20, and **two of the nine files are GUI**, not CLI — `_slurm_observer.py` and
+> `_runs_registry.py`, which Tasks 4 and 6 migrate. A title that says *CLI* invites Step 3
+> to convert six files and call it complete. The earlier figure was measured, and then
+> quoted across four subsequent commits without re-measurement. `_cli_checkpoint_handler.py` (3 — the in-array
 > `__PHENOTYPIC_CHECKPOINT__` dispatch), `_cli_recompile_worker.py` (2) and
 > `_cli_gui_lifecycle.py` (1) were named nowhere in this task. P4 and P5 touch two of those
 > files but for other reasons — P4 rewrites `_cli_recompile_worker.py:764` only, and P5's
@@ -517,7 +531,14 @@ def test_the_resume_worklist_uses_the_cache_assisted_path():
 > per-task reader already warns of — so most of these 14 want the *record* reader in
 > `sdk_/_image_record.py`, not `_run_state`. Name which, per site, in Step 3's table.
 >
-> ### `sdk_/_hdf_to_zarr.py` has four `_cli` import statements, not one
+> ### `sdk_/_hdf_to_zarr.py` has FIVE `_cli` import statements, not one
+
+> Re-derived at `1573a4e1`: **five statements** (`:605`, `:714`, `:719`, `:777`, `:778`)
+> drawing from **two** modules — `_cli_completion` three times, `_cli_state_management`
+> twice. The heading said four; an earlier report of this correction said "five across
+> three modules", which was also wrong on the module count. Both are recorded because the
+> figure has now been stated wrongly twice in a row, by two people, in an argument whose
+> entire point is that this file is under-counted.
 >
 > Step 3's table gives it *"1 — migration's own progress read"*. On disk:
 >
@@ -1030,7 +1051,15 @@ Spec §11, audit S2 and S3. A chmod on GPFS no longer makes a binding report
 
 ---
 
-## Task 4: `RunRegistry` claimability — 248 lines to one call
+## Task 4: `RunRegistry` claimability — ~200 lines to one call
+
+> ⚠ **The "248 lines" this heading used to carry could not be reproduced.** Measured at
+> `ef436461`, the four members Task 4 deletes are `_processing_state_conflict` (83),
+> `_publication_evidence_conflict` (60), `_orchestration_state_conflict` (32) and
+> `_latest_event_states` (28) — **203**; adding `_read_status_from_manifest` (63) gives
+> **266**. Neither is 248, and `_local_completion_evidence_conflict` (104) belongs to
+> Task 5. The heading now says ~200 for the four; **re-measure before quoting a deletion
+> total in the phase's final commit body**, which is where the ledger says these land.
 
 **Files:**
 - Modify: `src/phenotypic/gui/shell/_runs_registry.py:1087,1172,1202,1264`
