@@ -164,6 +164,16 @@ def build_master_frame(
     )
 
     if shard_paths is not None:
+        # Concatenation in the ORDER GIVEN -- no sort here, deliberately. The
+        # master's row order is therefore whatever `shard_paths` order is, and
+        # the byte-identity the aggregate proof rests on is inherited from two
+        # upstream properties rather than established here: `collect_shard_
+        # paths` sorts by zero-padded shard id, and `shard_sources` gives each
+        # shard a CONTIGUOUS block of the sorted sources. Sorting here instead
+        # would also produce a correct master, and was rejected: it would put
+        # the guarantee in the merge, so any other route that merges shards --
+        # recompile hands its own shards to this same function -- would have
+        # to re-establish it.
         frames = [pl.read_parquet(path) for path in shard_paths]
         if not frames:
             return None, authorized, path_to_dataset

@@ -2988,6 +2988,7 @@ def phenotypic_cli(
                 pipeline=finalizer_pipeline,
                 no_qc=no_qc,
                 study_config=study_config,
+                njobs=config.n_jobs,
             )
             if master_path:
                 click.echo(f"✓ Master measurements: {master_path}")

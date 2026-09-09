@@ -1433,6 +1433,7 @@ def _aggregate_measurements_unlocked(
     study_config: Optional[dict] = None,
     shard_paths: Optional[Sequence[Path]] = None,
     planned_work_ids: Optional[Sequence[str]] = None,
+    njobs: int = 1,
     commit_guard: "CommitGuard | None" = None,
 ) -> Optional[Path]:
     """Finalize this run through the one aggregation + join + publish path.
@@ -1473,6 +1474,25 @@ def _aggregate_measurements_unlocked(
     """
     from ._cli_finalize_run import finalize_run
 
+    # Task 3: local `--njobs` uses the same decomposition. The branch lives
+    # HERE and nowhere else -- one finalization call site, which is the whole
+    # point of routing every mode through `finalize_run`. `shard_paths` means
+    # "the shards already exist" (the SLURM finalizer built them); `njobs`
+    # means "build them now". Both together is a caller confusion, not a mode.
+    if shard_paths is not None and njobs > 1:
+        raise ValueError(
+            "shard_paths and njobs>1 are mutually exclusive: the first says "
+            "the shards already exist, the second says to build them"
+        )
+    if shard_paths is None and njobs != 1:
+        from ._cli_finalize_fanout import run_local_aggregation_fanout
+
+        fanned = run_local_aggregation_fanout(
+            output_dir, dataset_names=dataset_names, njobs=njobs
+        )
+        if fanned is not None:
+            shard_paths, planned_work_ids = fanned
+
     return finalize_run(
         output_dir,
         dataset_names=dataset_names,
@@ -1497,6 +1517,7 @@ def aggregate_measurements(
     study_config: Optional[dict] = None,
     shard_paths: Optional[Sequence[Path]] = None,
     planned_work_ids: Optional[Sequence[str]] = None,
+    njobs: int = 1,
     commit_guard: "CommitGuard | None" = None,
 ) -> Optional[Path]:
     """Serialize aggregate publication across forward and recompile finalizers."""
@@ -1517,6 +1538,7 @@ def aggregate_measurements(
             study_config=study_config,
             shard_paths=shard_paths,
             planned_work_ids=planned_work_ids,
+            njobs=njobs,
             commit_guard=commit_guard,
         )
 
@@ -1969,6 +1991,7 @@ class OutputManager:
         pipeline: Optional["ImagePipeline"] = None,
         no_qc: bool = False,
         study_config: Optional[dict] = None,
+        njobs: int = 1,
     ) -> Optional[Path]:
         """Finalize the run: aggregate, join, and publish every deliverable.
 
@@ -2002,5 +2025,6 @@ class OutputManager:
             metadata_csv=metadata_csv,
             pipeline=pipeline,
             no_qc=no_qc,
+            njobs=njobs,
             study_config=study_config,
         )

@@ -324,11 +324,45 @@ def shard_sources(
 ) -> "dict[Path, str]":
     """Return the slice of *sources* this shard owns.
 
-    Deterministic by sorted path, and strided rather than blocked so an
-    uneven tail does not land entirely on one worker. Determinism is what
-    makes the local master byte-identical across ``--njobs`` (Task 3): if the
-    assignment could vary, two runs of the same data would disagree and
-    ``source_set_digest`` would certify nothing.
+    Deterministic by sorted path, and **contiguous** -- shard *i* takes a
+    block, not every *K*-th entry. A balanced block split (the first
+    ``n % K`` shards take one extra) gives shard sizes differing by at most 1,
+    so concatenating the shards **in shard order reproduces sorted order
+    exactly**.
+
+    ⚠ **That equality is the whole point, and an earlier draft broke it.** The
+    finalizer merges by sorted shard filename, so if the assignment is not
+    contiguous the master's row order becomes a function of K:
+
+    ```
+    ten sources, merged in shard order
+      K=1  ->  abcdefghij      K=3  ->  adgjbehcfi   (strided)
+      K=2  ->  acegibdfhj      K=4  ->  aeibfjcgdh   (strided)
+    ```
+
+    So the same data aggregated at two different K produced two different
+    masters, and ``source_set_digest`` certified a byte sequence that depended
+    on the worker count. **This was not a local-only defect** -- the SLURM
+    path merges by the same sorted glob, and ``shard_count`` crosses from 1 to
+    2 at N ~= 34,600, so it was latent there rather than absent.
+
+    **The rationale the strided version gave for itself was false**, and it is
+    worth stating because it is why the stride was chosen: *"strided rather
+    than blocked so an uneven tail does not land entirely on one worker."*
+    That describes **naive** blocking (``chunk = ceil(n/K)``, remainder piled
+    on the last shard). It is not true of a balanced split, whose spread is
+    identical to the stride's -- measured at ``(n,K)`` of (3,2), (10,2),
+    (10,3), (10,4), (7,3) and (6529,8): spread <= 1 for both, and ordered for
+    the block split only. The stride bought nothing and cost the invariant.
+
+    **Contiguous also matches the precedent this phase generalises.**
+    Recompile's ``_chunk_paths`` (``_cli_recompile_slurm_scripts.py:662``)
+    slices contiguously; the strided version diverged from the very pattern it
+    claimed to reuse.
+
+    Determinism is what makes the master byte-identical across ``--njobs``: if
+    the assignment could vary, two runs of the same data would disagree and
+    the aggregate proof would certify nothing.
 
     **ASSUMPTION, not an enforcement: every shard worker sees the same
     ``sources``.** It holds because the aggregation array is dependent
@@ -344,20 +378,17 @@ def shard_sources(
         shards: K.
 
     Returns:
-        The subset this shard aggregates. May be empty when K exceeds the
-        number of sources -- see :func:`shard_count`'s note on planned-versus-
-        successful image counts.
+        The contiguous subset this shard aggregates. May be empty when K
+        exceeds the number of sources -- see :func:`shard_count`'s note on
+        planned-versus-successful image counts.
     """
     if not 0 <= shard_id < shards:
-        raise ValueError(
-            f"shard_id={shard_id} is outside [0, {shards})"
-        )
+        raise ValueError(f"shard_id={shard_id} is outside [0, {shards})")
     ordered = sorted(sources, key=lambda path: str(path))
-    return {
-        path: sources[path]
-        for index, path in enumerate(ordered)
-        if index % shards == shard_id
-    }
+    base, extra = divmod(len(ordered), shards)
+    start = shard_id * base + min(shard_id, extra)
+    stop = start + base + (1 if shard_id < extra else 0)
+    return {path: sources[path] for path in ordered[start:stop]}
 
 
 def write_measurement_shard(
@@ -584,9 +615,29 @@ def collect_shard_paths(
 ) -> list[Path]:
     """Return this invocation's shards in deterministic merge order.
 
-    Sorted by filename, which is zero-padded shard id, so the merge order is
-    the shard order and a re-run of identical inputs produces byte-identical
-    master bytes.
+    Sorted by filename, which is zero-padded shard id, so **merge order is
+    shard order**.
+
+    ⚠ **That alone does not give byte-identical master bytes, and an earlier
+    version of this docstring claimed it did.** It said *"a re-run of
+    identical inputs produces byte-identical master bytes"* -- true at a
+    **fixed K**, and silent on the axis where it failed: identical inputs at a
+    *different* K produced a different row order, because the assignment was
+    strided while the merge was shard-ordered. Neither statement was wrong;
+    their conjunction was.
+
+    The guarantee holds now because :func:`shard_sources` assigns a
+    **contiguous** block of the sorted sources to each shard, so shard order
+    equals sorted source order and the master is byte-identical **across
+    re-runs and across K**. That is a property of the *decomposition*, not of
+    this function -- this function only preserves it. **If the assignment ever
+    stops being contiguous, this ordering silently stops meaning anything**,
+    and nothing here would fail to say so.
+
+    The reverse pointer is in :func:`shard_sources`, deliberately: the defect
+    existed only in the composition of two individually-correct functions, and
+    neither docstring was the place a reader would look for the other's
+    assumption.
     """
     from phenotypic.sdk_ import aggregation_shard_dir
 
@@ -789,3 +840,192 @@ def run_aggregation_shard(
 
 if __name__ == "__main__":  # pragma: no cover - module entry point
     run_aggregation_shard()
+
+
+# ---------------------------------------------------------------------------
+# Task 3 -- the local driver, same decomposition, different K
+# ---------------------------------------------------------------------------
+
+
+def local_shard_count(*, n_sources: int, njobs: int) -> int:
+    """Return K for a local fan-out: one shard per worker, capped by the work.
+
+    **Deliberately NOT :func:`shard_count`, and the plan's instruction to reuse
+    it would have made local ``--njobs`` a no-op.** The two answer different
+    questions:
+
+    * :func:`shard_count` asks *"how many tasks fit a 900 s walltime budget?"*
+      At S-2's measured 0.026 s/image that is **1** for every N below ~34,600 --
+      including every N this project has ever run. On SLURM that is the right
+      answer, because the array's purpose is the reserved ``TASK_FINALIZE``
+      index and the partial-failure semantics, not parallelism.
+    * Locally the question is *"how many cores may I use?"*, which is
+      ``--njobs``. Sizing a local fan-out with :func:`shard_count` yields K = 1
+      at every realistic N, so ``--njobs 8`` would run one shard on one core
+      and the byte-identical test across ``njobs in {1, 2, 8}`` would compare
+      three runs of the *same* single-shard path -- green, and proving nothing
+      about the decomposition it claims to test.
+
+    Delegates to :func:`~phenotypic._cli._cli_utils.resolve_local_worker_count`
+    rather than restating the clamp: it already handles ``-1``, caps to the
+    SLURM CPU allocation when one is present, and never exceeds the work item
+    count. A second producer for "how many local workers" is exactly the defect
+    ``_cli/CLAUDE.md`` names.
+
+    Args:
+        n_sources: Authorized measurement tables to aggregate.
+        njobs: The ``--njobs`` value. ``-1`` means all allocated CPUs.
+
+    Returns:
+        K in ``[1, n_sources]``.
+    """
+    from ._cli_utils import resolve_local_worker_count
+
+    return resolve_local_worker_count(njobs, n_sources)
+
+
+def _run_one_local_shard(
+    task: "tuple[Path, int, int]",
+) -> "tuple[int, list[str]]":
+    """Pool entry point: one shard, by index.
+
+    Returns the shard id alongside its merged work ids so the driver can
+    reassemble results in shard order without depending on completion order.
+
+    (It took a single packed tuple because an earlier draft used a *process*
+    pool and had to pickle its arguments. That constraint is gone -- the pool
+    is threads -- and the shape is kept only because the id-with-result return
+    is still what the driver wants.)
+    """
+    output_dir, shard_id, shards = task
+    return shard_id, write_measurement_shard(
+        output_dir,
+        scheduler_epoch=None,
+        shard_id=shard_id,
+        shards=shards,
+    )
+
+
+def run_local_aggregation_fanout(
+    output_dir: Path,
+    *,
+    dataset_names: Sequence[str],
+    njobs: int,
+    shard_timeout_seconds: float = 2 * TARGET_TASK_SECONDS,
+) -> "tuple[list[Path], list[str]] | None":
+    """Fan out aggregation over a local process pool.
+
+    Spec §8: *"Local ``--njobs`` uses the same decomposition with a process
+    pool."* Same shard worker, same shard files, same completeness gate, same
+    merge order -- an array of SLURM tasks replaced by a pool of processes, and
+    nothing else.
+
+    **The clear happens FIRST, as this function's opening act**, which is the
+    local counterpart of clearing at submission time on SLURM. It is the same
+    logical point -- the moment the driver starts -- and it is what carries
+    §7.5 locally, where the namespace cannot: ``_scheduler_epoch`` is ``None``
+    for every local run, so consecutive invocations share one shard directory
+    and a prior run's shards would otherwise be merged into this run's master.
+
+    Args:
+        output_dir: Run output root.
+        dataset_names: Datasets this run finalizes.
+        njobs: The ``--njobs`` value.
+        shard_timeout_seconds: Backstop for a shard that never returns.
+            Defaults to twice :data:`TARGET_TASK_SECONDS`, since a shard is
+            *sized* to fit that budget and the doubling is headroom for a slow
+            filesystem.
+
+    Returns:
+        ``(shard_paths, planned_work_ids)`` for :func:`finalize_run`, or
+        ``None`` when there is nothing authorized to aggregate -- in which case
+        the caller finalizes directly, exactly as before this phase.
+    """
+    import time
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError
+
+    from ._cli_completion import authorized_measurement_sources
+
+    authorized = authorized_measurement_sources(output_dir)
+    if not authorized:
+        return None
+
+    shards = local_shard_count(n_sources=len(authorized), njobs=njobs)
+    # `workers` is equal to `shards` today **by construction, not by
+    # identity**, and they are named apart because they answer different
+    # questions: `shards` is a property of the OUTPUT -- how many Parquet
+    # files the finalizer must find and merge, carried as K in the manifest --
+    # while `workers` is a property of the MACHINE. `max_workers=shards` would
+    # read as an identity when it is a coincidence, and nothing would catch
+    # them diverging.
+    workers = shards
+    begin_aggregation_fanout(
+        output_dir,
+        scheduler_epoch=None,
+        shards=shards,
+        dataset_names=dataset_names,
+    )
+
+    tasks = [(Path(output_dir), shard_id, shards) for shard_id in range(shards)]
+    if workers == 1:
+        # One worker means no pool, matching `_cli_overlay_rendering.py:166`.
+        # The single-shard path still goes through the same worker rather than
+        # a special case that could drift from it.
+        results = [_run_one_local_shard(tasks[0])]
+    else:
+        # **Threads, matching the house pattern at
+        # `_cli_overlay_rendering.py:180`**, whose rationale
+        # (`phenotypicCLI.py:3156-3160`) carries here directly: the heavy work
+        # releases the GIL -- polars reads and writes Parquet and is
+        # internally multithreaded -- and per-item memory is large enough that
+        # fanning out to processes risks exhausting RAM. S-3 measured 2.5 GB
+        # peak for N=6,529 in one process; N processes each materialising a
+        # slice is exactly the multiplication that comment warns about.
+        #
+        # An earlier draft used `ProcessPoolExecutor` and **deadlocked**: it
+        # defaults to `fork` on Linux, the pytest parent had 82 threads, and
+        # `fork()` copies a lock held by any of the other 81 in its held state
+        # into a child that never releases it. `spawn` would have fixed that,
+        # by paying an interpreter start and a pickle round-trip per shard to
+        # avoid a hazard threads never create.
+        pool = ThreadPoolExecutor(max_workers=workers)
+        try:
+            futures = {
+                shard_id: pool.submit(_run_one_local_shard, task)
+                for shard_id, task in zip(range(shards), tasks)
+            }
+            # A gate that can hang has a green and a silence that are
+            # indistinguishable from outside: no summary line, so every check
+            # grepping for `failed` or parsing `N passed` reads it as success.
+            deadline = time.monotonic() + shard_timeout_seconds
+            results = []
+            for shard_id, future in sorted(futures.items()):
+                try:
+                    results.append(
+                        future.result(
+                            timeout=max(deadline - time.monotonic(), 0.0)
+                        )
+                    )
+                except TimeoutError as exc:
+                    raise RuntimeError(
+                        f"Local aggregation shard {shard_id} of {shards} did "
+                        f"not finish within {shard_timeout_seconds:.0f}s. "
+                        "Nothing was published. RECOVERY: re-run the same "
+                        "command; shards are per-invocation scratch and are "
+                        "cleared when the next fan-out begins."
+                    ) from exc
+        finally:
+            # `wait=False` is load-bearing. A stuck thread cannot be killed,
+            # and the default `shutdown(wait=True)` -- which a `with` block
+            # performs on exit -- would block on it forever, turning the
+            # timeout above back into the hang it exists to prevent.
+            pool.shutdown(wait=False, cancel_futures=True)
+
+    for shard_id, merged in results:
+        write_shard_status(
+            output_dir,
+            scheduler_epoch=None,
+            shard_id=shard_id,
+            source_work_ids=merged,
+        )
+    return resolve_finalizer_shard_inputs(output_dir, None)

@@ -425,3 +425,142 @@ def test_fanout_start_empties_a_prior_invocations_shards(
         "a prior local invocation's shard survived fan-out start and would be "
         "merged into this run's master"
     )
+
+
+# ---------------------------------------------------------------------------
+# Task 3 -- the local driver
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("njobs", [1, 2, 8])
+def test_local_fanout_produces_a_byte_identical_master(
+    tmp_path: Path, njobs: int
+) -> None:
+    """§8: 'Local --njobs uses the same decomposition with a process pool.'
+
+    Same decomposition means same answer. If the merge order could change the
+    master's bytes, two runs of the same data would disagree and the aggregate
+    proof's ``source_set_digest`` would certify nothing.
+
+    **The parametrization is only meaningful because local K is NOT
+    ``shard_count``.** That function answers a walltime question and returns 1
+    for every N below ~34,600, so reusing it here -- which is what the plan
+    said to do -- would run all three cases down the identical single-shard
+    path and compare a run against itself three times.
+    """
+    from phenotypic._cli._cli_output_manager import aggregate_measurements
+    from phenotypic.sdk_ import master_measurements_parquet_path
+
+    from .conftest import _publish_successful_images
+
+    def _run(root: Path, jobs: int) -> bytes:
+        root.mkdir(parents=True, exist_ok=True)
+        _publish_successful_images(root, stems=["a", "b", "c"])
+        aggregate_measurements(
+            output_dir=root,
+            dataset_names=["plate"],
+            include_dataset_column=True,
+            njobs=jobs,
+        )
+        return master_measurements_parquet_path(root).read_bytes()
+
+    reference = _run(tmp_path / "ref", 1)
+    assert reference, "the reference run wrote an empty master"
+    assert _run(tmp_path / str(njobs), njobs) == reference
+
+
+def test_local_k_tracks_njobs_and_not_the_walltime_budget(
+    tmp_path: Path,
+) -> None:
+    """The distinction the plan's 'same shard_count' instruction erases.
+
+    ``shard_count`` is a walltime question and returns 1 at every N this
+    project runs; ``--njobs`` is a core-count question. If local K came from
+    the former, ``--njobs 4`` would fan out over one shard and the test above
+    would be green by construction.
+    """
+    from phenotypic._cli._cli_finalize_fanout import (
+        SECONDS_PER_IMAGE_S2,
+        local_shard_count,
+        shard_count,
+    )
+
+    assert (
+        shard_count(
+            n_images=6000,
+            seconds_per_image=SECONDS_PER_IMAGE_S2,
+            max_array_size=2500,
+        )
+        == 1
+    ), "the premise moved; local K may no longer need its own producer"
+
+    assert local_shard_count(n_sources=6000, njobs=4) == 4
+    assert local_shard_count(n_sources=3, njobs=8) == 3, (
+        "K must never exceed the work, or empty shards are manufactured for "
+        "no reason"
+    )
+    assert local_shard_count(n_sources=6000, njobs=1) == 1
+
+
+def test_shard_paths_and_njobs_together_are_refused(tmp_path: Path) -> None:
+    """They mean contradictory things: 'the shards exist' vs 'build them'.
+
+    Silently preferring one would make the SLURM finalizer's carried shard set
+    quietly replaceable by a fresh local fan-out, which is a second producer
+    for the master's inputs.
+    """
+    from phenotypic._cli._cli_output_manager import aggregate_measurements
+
+    from .conftest import _publish_successful_images
+
+    _publish_successful_images(tmp_path, stems=["a"])
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        aggregate_measurements(
+            output_dir=tmp_path,
+            dataset_names=["plate"],
+            shard_paths=[tmp_path / "shard_0000.parquet"],
+            njobs=4,
+        )
+
+
+@pytest.mark.parametrize("shards", [1, 2, 3, 4, 5, 7])
+@pytest.mark.parametrize("n_sources", [1, 2, 3, 7, 10])
+def test_merging_shards_in_shard_order_reproduces_sorted_order(
+    shards: int, n_sources: int
+) -> None:
+    """The invariant the merge depends on, checked over the whole grid.
+
+    The finalizer merges by sorted shard filename. So unless shard *i* owns a
+    **contiguous** block of the sorted sources, concatenating shards in shard
+    order is not sorted order, and the master's row order becomes a function
+    of K -- two runs of identical data disagreeing on bytes.
+
+    **This is a pure-function test on purpose.** The end-to-end
+    byte-identical test caught the strided version only at ``njobs=2``: with
+    three sources, ``njobs=8`` clamps to K=3, where the stride degenerates to
+    one source per shard and *is* sorted. It passed at both ends of its
+    parametrization and failed in the middle, so the fixture size decided
+    whether the bug was visible. A grid over (n_sources, shards) does not
+    depend on that luck.
+    """
+    from phenotypic._cli._cli_finalize_fanout import shard_sources
+
+    sources = {Path(f"/out/{i:03d}.parquet"): "plate" for i in range(n_sources)}
+    ordered = sorted(sources, key=str)
+
+    slices = [
+        list(shard_sources(sources, shard_id=i, shards=shards))
+        for i in range(shards)
+    ]
+    merged = [path for shard in slices for path in shard]
+
+    assert merged == ordered, (
+        f"K={shards}, n={n_sources}: merging in shard order gave "
+        f"{[p.name for p in merged]}, not sorted order"
+    )
+    assert sorted(merged) == ordered, "an image was dropped or duplicated"
+    sizes = [len(shard) for shard in slices]
+    assert max(sizes) - min(sizes) <= 1, (
+        f"K={shards}, n={n_sources}: shard sizes {sizes} differ by more than "
+        "one, so the split is not balanced"
+    )
