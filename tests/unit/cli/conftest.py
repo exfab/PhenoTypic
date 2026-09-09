@@ -9,11 +9,14 @@ factories with sensible defaults overridable by keyword.
 from __future__ import annotations
 
 import tempfile
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
 import h5py
 import numpy as np
+import pandas as pd
+import polars as pl
 import pytest
 from PIL import Image as PILImage
 
@@ -25,14 +28,22 @@ from phenotypic._cli._cli_stage2_token import (
     write_stage2_token,
 )
 from phenotypic._cli._cli_staged_resume import write_stage3_completion_marker
-from phenotypic._cli._cli_types import ExecutionConfig
+from phenotypic._cli._cli_state_management import save_processing_state
+from phenotypic._cli._cli_types import (
+    DatasetState,
+    ExecutionConfig,
+    ProcessingState,
+)
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.prefab import RoundPeaksPipeline
 from phenotypic.sdk_ import (
     ARTIFACT_KIND_FILE,
+    MEASUREMENT_TABLE_RELATIVE_PATH,
     atomic_write_json,
     dataset_measurements_dir,
     image_record_path,
+    master_measurements_parquet_path,
+    metadata_csv_deliverable_path,
     zarr_store_path,
 )
 from phenotypic.sdk_._image_record import (
@@ -552,3 +563,258 @@ def stub_run_identity():
         scientific_config_digest="stub-pipeline",
         finalization_input_digest="stub-finalization",
     )
+
+
+# ---------------------------------------------------------------------------
+# Finalization fixture machinery -- real stores, real records, real state
+# ---------------------------------------------------------------------------
+#
+# Promoted verbatim from ``test_finalize_run.py``, which is where they were
+# written and where their standing rule comes from:
+#
+#     Every fixture here builds REAL stores through the forward writer
+#     (``OutputManager.save_image_store`` -> ``prepare_image_tables`` ->
+#     ``promote_store``), publishes a real per-image record, and aggregates
+#     them. Nothing hands ``finalize_run`` a literal DataFrame.
+#
+# **That rule is why these live here rather than being copied.** P5 splits
+# finalization across two suites -- ``test_finalize_run.py`` and
+# ``test_finalize_fanout.py`` -- and a duplicated-then-simplified copy is
+# exactly how "real store" quietly degrades into "hand-built frame" in one of
+# them. The pre-P4 tests that *appeared* to cover post-master finalization
+# failed that way: they fed hand-built frames and would have passed on day one
+# against code that never aggregated an inverted store.
+#
+# Imported by name (``from .conftest import _publish_successful_images``),
+# following the convention already used across ``tests/unit/gui/builder/``,
+# ``tests/integration/gui/builder/`` and ``tests/e2e/gui/``. They are helpers,
+# not fixtures: several take arguments and are called mid-test.
+
+DATASET = "plate"
+
+_WELLS = {"a": ["A01", "A02"], "b": ["B01", "B02"], "c": ["C01", "C02"]}
+
+_WELL_INTS = {"A01": 1, "A02": 2, "B01": 3, "B02": 4, "C01": 5, "C02": 6}
+
+def _image(stem: str):
+    """One 8x8 RGB image carrying two labelled objects."""
+    from phenotypic import Image
+
+    image = Image(np.zeros((8, 8, 3), dtype=np.uint8), name=stem)
+    objmap = np.zeros((8, 8), dtype=np.uint16)
+    objmap[1:3, 1:3] = 1
+    objmap[1:3, 5:7] = 2
+    image.objmap[:] = objmap
+    return image
+
+def _manager(output_dir: Path):
+    from phenotypic._cli._cli_output_manager import OutputManager
+
+    return OutputManager.from_config(
+        output_dir,
+        ext=".tiff",
+        include_dataset_column=True,
+        save_overlays=False,
+    )
+
+def _measurements(
+    stem: str,
+    *,
+    extra_objects: list[tuple[int, str]] | None = None,
+    well_dtype: object = pl.String,
+    extra_columns: list[str] | None = None,
+    include_well: bool = True,
+) -> pd.DataFrame:
+    """One image's baseline measurements.
+
+    ``include_well=False`` drops ``Metadata_Well``, leaving a baseline whose
+    only metadata is ``IMAGE``-owned -- the shape a forward pipeline actually
+    emits. The tests that ask what the master's metadata NAMESPACE contains
+    need that shape; the ones that need a per-object join key keep the well.
+    """
+    labels = [1, 2]
+    wells: list[object] = list(_WELLS[stem])
+    areas = [4.0, 4.0]
+    for label, well in extra_objects or []:
+        labels.append(label)
+        wells.append(well)
+        areas.append(4.0)
+    if well_dtype is not pl.String:
+        # DISTINCT ints across images. Naively stripping the row letter would
+        # map A01/B01 to the same key, making the snapshot's keys duplicates
+        # and fanning every measured row out -- a different behaviour from the
+        # dtype cast this option exists to exercise.
+        wells = [_WELL_INTS[str(well)] for well in wells]
+    columns: dict[str, object] = {}
+    if include_well:
+        columns["Metadata_Well"] = wells
+    columns["Shape_Area"] = areas
+    columns["Metadata_ImageName"] = [f"{stem}.tiff"] * len(labels)
+    columns["Object_Label"] = labels
+    frame = pd.DataFrame(columns)
+    for column in extra_columns or []:
+        frame[column] = list(range(len(labels)))
+    return frame
+
+def _install_snapshot(output_dir: Path, text: str | None) -> Path:
+    """Write (or remove) ``deliverables/metadata.csv`` -- the run's snapshot."""
+    path = metadata_csv_deliverable_path(output_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if text is None:
+        path.unlink(missing_ok=True)
+    else:
+        path.write_text(text, encoding="utf-8")
+    return path
+
+def _publish_store(
+    output_dir: Path, stem: str, measurements: pd.DataFrame
+) -> Path:
+    """Promote one real store and publish its per-image record."""
+    store = _manager(output_dir).save_image_store(
+        _image(stem),
+        DATASET,
+        stem,
+        work_id=f"work-{stem}",
+        measurements=measurements,
+    )
+    assert store is not None, f"the forward writer failed to promote {stem}"
+    publish_image_success(
+        output_dir,
+        work_id=f"work-{stem}",
+        dataset=DATASET,
+        relative_image_path=f"{stem}.tiff",
+        image_stem=stem,
+        mode="full",
+        attempt_id="attempt-1",
+        lifecycle_epoch="epoch-1",
+        artifacts={
+            "measurements": store / MEASUREMENT_TABLE_RELATIVE_PATH,
+            "store": store,
+        },
+    )
+    return store
+
+def _install_state(output_dir: Path, stems: list[str]) -> None:
+    """Install the processing state that makes the records authoritative."""
+    now = datetime.now()
+    save_processing_state(
+        ProcessingState(
+            version="3.0.0",
+            pipeline_path=output_dir / "pipeline.json",
+            input_path=output_dir / "input",
+            output_dir=output_dir,
+            timestamp=now,
+            execution_mode="local",
+            last_updated=now,
+            datasets={
+                DATASET: DatasetState(
+                    initial_images={f"{stem}.tiff" for stem in stems}
+                )
+            },
+            config={
+                "success_markers_required": True,
+                "work_ids": {
+                    DATASET: {
+                        f"{stem}.tiff": f"work-{stem}" for stem in stems
+                    }
+                },
+                "processing_generation": "generation",
+                "pipeline_sha256": "pipeline",
+            },
+        ),
+        output_dir,
+    )
+
+def _publish_successful_images(
+    tmp_path: Path,
+    *,
+    stems: list[str] | None = None,
+    snapshot: str | None = None,
+    **measurement_kwargs: object,
+) -> list[Path]:
+    """The workhorse: N real stores, N real records, one processing state."""
+    stems = stems or ["a", "b"]
+    _install_snapshot(tmp_path, snapshot)
+    stores = [
+        _publish_store(
+            tmp_path,
+            stem,
+            _measurements(stem, **measurement_kwargs),  # type: ignore[arg-type]
+        )
+        for stem in stems
+    ]
+    _install_state(tmp_path, stems)
+    return stores
+
+def _remeasure_every_store(output_dir: Path, stems: list[str]) -> None:
+    """Drive the ``--mode measure`` shape: rewrite each store, republish.
+
+    ``replace_image_store_measurements`` is the real measure-path writer
+    (``_cli_process_single.py`` calls it), and it re-promotes the store, so
+    every artifact digest the record certifies changes and the record has to
+    be republished exactly as ``_republish_table_marker`` does.
+    """
+    manager = _manager(output_dir)
+    for stem in stems:
+        store = zarr_store_path(output_dir, DATASET, stem)
+        manager.replace_image_store_measurements(
+            store, _measurements(stem), DATASET
+        )
+        publish_image_success(
+            output_dir,
+            work_id=f"work-{stem}",
+            dataset=DATASET,
+            relative_image_path=f"{stem}.tiff",
+            image_stem=stem,
+            mode="measure",
+            attempt_id="attempt-1",
+            lifecycle_epoch="epoch-1",
+            artifacts={
+                "measurements": store / MEASUREMENT_TABLE_RELATIVE_PATH,
+                "store": store,
+            },
+        )
+
+def _run_mode(output_dir: Path, mode: str) -> Path:
+    """Build a two-image tree and finalize it the way *mode* does.
+
+    Every mode reaches finalization through ``aggregate_measurements``, which
+    is ``finalize_run`` under the publication lock -- that is the property
+    under test. What differs is what happened to the stores first: ``full``
+    promotes them, ``measure`` rewrites their tables in place, ``recompile``
+    re-derives each table from the store's own baseline.
+
+    **No metadata snapshot**, deliberately. Post-D8 the master carries no user
+    metadata at all, so a snapshot could only change the mirror; running
+    without one keeps the comparison about the thing being compared.
+    """
+    from phenotypic._cli._cli_output_manager import aggregate_measurements
+
+    stems = ["a", "b"]
+    output_dir.mkdir(parents=True, exist_ok=True)
+    _publish_successful_images(output_dir, stems=stems)
+
+    if mode == "measure":
+        _remeasure_every_store(output_dir, stems)
+    elif mode == "recompile":
+        from phenotypic._cli._cli_recompile_tables import (
+            recompile_embedded_measurement_tables,
+        )
+
+        rewritten = recompile_embedded_measurement_tables(output_dir, None)
+        assert rewritten == len(stems), (
+            f"recompile rewrote {rewritten} of {len(stems)} tables; the "
+            "comparison below would not be about recompile"
+        )
+    elif mode != "full":  # pragma: no cover - guards a typo in a param id
+        raise AssertionError(f"unknown mode {mode!r}")
+
+    aggregate_measurements(
+        output_dir=output_dir,
+        dataset_names=[DATASET],
+        include_dataset_column=True,
+    )
+    return output_dir
+
+def _master_bytes(output_dir: Path) -> bytes:
+    return master_measurements_parquet_path(output_dir).read_bytes()

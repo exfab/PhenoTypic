@@ -794,6 +794,39 @@ DIR_RECOMPILE_STATUS: Final[str] = "status"
 #: ``<progress>/recompile/measurement_shards/``.
 DIR_RECOMPILE_SHARDS: Final[str] = "measurement_shards"
 
+#: Per-invocation aggregation shard subdirectory:
+#: ``<progress>/aggregation_shards/<scheduler_epoch>/``.
+#:
+#: **Deliberately not ``measurement_shards``**, which is
+#: :data:`DIR_RECOMPILE_SHARDS` and already names two live and *different*
+#: paths: ``recompile_dir(progress) / DIR_RECOMPILE_SHARDS``, which
+#: ``_cli_finalize_run._invalidate_finalization_intermediates`` removes, and
+#: ``attempt_dir / DIR_RECOMPILE_SHARDS``, which the recompile worker writes
+#: and reads. A third use of that string would make an existing ambiguity
+#: harder to see rather than adding a new one, so the fan-out's shards get a
+#: leaf name whose ``grep`` means one thing.
+DIR_AGGREGATION_SHARDS: Final[str] = "aggregation_shards"
+
+#: Path segment standing in for a null ``scheduler_epoch``.
+#:
+#: :func:`phenotypic.sdk_._run_state._scheduler_epoch` returns ``None``
+#: whenever there is no ``slurm_lifecycle.json`` -- which is every local run --
+#: so the local fan-out driver has no epoch to namespace by. The segment keeps
+#: one path shape across both drivers instead of letting a ``None`` reach the
+#: filesystem as the literal string ``"None"``.
+#:
+#: **Namespacing is not what makes the local path correct.** Consecutive local
+#: runs share this segment, so the fan-out empties the shard directory when it
+#: starts (user ruling, P2 close) rather than relying on a distinct key.
+#:
+#: **A different field in this subsystem legitimately takes this same string,
+#: and they are not the same namespace.** ``execution_epoch`` is written as
+#: ``"local"`` by ``_cli_gui_lifecycle`` and compared against it in
+#: ``_cli_completion``. ``scheduler_epoch`` is a minted lifecycle generation
+#: and is never this literal, so the two cannot collide -- but they sit close
+#: enough that a reader could conclude otherwise.
+LOCAL_SCHEDULER_EPOCH: Final[str] = "local"
+
 #: Generated SLURM script subdirectory inside the hidden machine-state cache.
 DIR_SLURM_SCRIPTS: Final[str] = "slurm_scripts"
 
@@ -2058,6 +2091,43 @@ def recompile_dir(progress_dir_: Path) -> Path:
 def recompile_status_dir(progress_dir_: Path) -> Path:
     """Return ``<progress>/recompile/status/``."""
     return recompile_dir(progress_dir_) / DIR_RECOMPILE_STATUS
+
+
+def aggregation_shard_dir(
+    output_dir: Path, scheduler_epoch: str | None
+) -> Path:
+    """Return ``<progress>/aggregation_shards/<scheduler_epoch>/``.
+
+    Spec §7.5: the fan-out's measurement shards are per-invocation scratch, so
+    a prior run's shards can never be merged into this run's master. Recompile
+    already namespaces its shards this way under
+    ``recompile/attempts/<attempt_id>/``; this generalises the pattern to the
+    forward path.
+
+    **The namespace is not the correctness argument, and must not be read as
+    one.** ``_scheduler_epoch`` returns ``None`` for every local run, so
+    consecutive local invocations share :data:`LOCAL_SCHEDULER_EPOCH` and would
+    collide. The fan-out therefore *empties* this directory when it starts, on
+    both drivers, at the same logical point -- which is strictly stronger than
+    namespacing, since namespacing also leaves every prior run's shards on disk
+    accumulating forever. The epoch stays in the path because it costs nothing
+    and keeps one path shape across the two drivers.
+
+    Pure path expression; callers ``mkdir`` when they intend to write.
+
+    Args:
+        output_dir: Run output root.
+        scheduler_epoch: The active SLURM lifecycle generation, or ``None``
+            for a local run.
+
+    Returns:
+        The shard directory for this invocation.
+    """
+    return (
+        progress_dir(output_dir)
+        / DIR_AGGREGATION_SHARDS
+        / (scheduler_epoch or LOCAL_SCHEDULER_EPOCH)
+    )
 
 
 def task_status_path(output_dir: Path, task_index: int) -> Path:
