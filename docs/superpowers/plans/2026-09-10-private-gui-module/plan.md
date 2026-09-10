@@ -829,13 +829,14 @@ PY
 
 ### Task 7: E2E fixtures publish the completed run the Results viewer requires (Keystone)
 
-Spec Addendum A — finding A2, decision DA2, criteria 9–10. Runs after Task 6.
+Spec Addendum A — finding A2, decision DA2, criteria 9–10. Runs after Task 6. Revised after the Addendum A plan review: the publisher is overlay-first (a promoted store would replace a fixture's overlay as the crop source), heatmap's seed derives its image count, the `ci_flaky` callers are run explicitly, and the surface count includes the staged new test.
 
 **Files:**
 - Create: `tests/gui/results_viewer/test_complete_run_fixture.py`
 - Modify: `tests/_output_layout.py` (add `publish_complete_run_over_outputs` directly after `build_complete_viewer_run`)
 - Modify: `tests/e2e/gui/conftest.py` (`publish_coherent_terminal_evidence` delegates; new `_write_terminal_manifest`; `_build_sandbox` calls the manifest-only helper)
 - Modify: `tests/e2e/gui/test_filter_offcanvas.py` (`_seed_viewer_output` writes its mirror through `write_measurements_mirror`)
+- Modify: `tests/e2e/gui/test_heatmap_tab.py` (`_seed_master_df_in_output` derives `total_images` from its frame)
 
 **Interfaces:**
 - Produces: `tests._output_layout.publish_complete_run_over_outputs(root: Path, *, total_images: int) -> Path`; `tests/e2e/gui/conftest._write_terminal_manifest(output_dir: Path, *, total_images: int) -> Path`. `publish_coherent_terminal_evidence(output_dir, *, total_images) -> Path` keeps its signature and still returns the manifest path.
@@ -853,11 +854,17 @@ from pathlib import Path
 import numpy as np
 import polars as pl
 import pytest
+from PIL import Image as PILImage
 
 from phenotypic import Image
 from phenotypic._gui.results_viewer._mutation_guard import output_mutations_disabled
 from phenotypic._gui.results_viewer._output_root import OutputRoot
-from phenotypic.sdk_ import deliverables_dir, measurements_csv_path, zarr_store_path
+from phenotypic.sdk_ import (
+    dataset_overlays_dir,
+    deliverables_dir,
+    measurements_csv_path,
+    zarr_store_path,
+)
 from tests._output_layout import (
     publish_complete_run_over_outputs,
     write_master,
@@ -919,6 +926,24 @@ def test_a_store_the_fixture_wrote_is_reused_not_replaced(tmp_path: Path) -> Non
     assert output.run_completion == "complete", output.run_advisories
 
 
+def test_an_overlay_backed_fixture_keeps_its_overlay_as_the_pixel_source(tmp_path: Path) -> None:
+    """No store is promoted over an overlay, so the viewer still crops from it."""
+    root = tmp_path / "run"
+    _seed(root, ["plate_001.tif"])
+    overlay = dataset_overlays_dir(root, "ds1") / "plate_001.png"
+    overlay.parent.mkdir(parents=True, exist_ok=True)
+    PILImage.new("RGB", (32, 32), (200, 0, 0)).save(overlay)
+    before = _digests(deliverables_dir(root))
+
+    publish_complete_run_over_outputs(root, total_images=1)
+
+    output = OutputRoot.discover(root, cache_root=tmp_path / "cache")
+    assert output.run_completion == "complete", output.run_advisories
+    assert output.store_path("ds1", "plate_001") is None
+    assert output.has_overlay("ds1", "plate_001")
+    assert _digests(deliverables_dir(root)) == before
+
+
 def test_a_missing_core_file_fails_loudly(tmp_path: Path) -> None:
     """A fixture without the CSV mirror is told what to write."""
     root = tmp_path / "run"
@@ -953,9 +978,15 @@ def publish_complete_run_over_outputs(root: Path, *, total_images: int) -> Path:
     :func:`build_complete_viewer_run` builds a run from nothing. Fixtures that
     hand-craft their own master frame, overlays or stores need the opposite:
     completion evidence for exactly what is on disk, without rewriting any of
-    it. The ``(dataset, image)`` inventory is read from the master. A store the
-    fixture already wrote is reused as that image's artifact, and a minimal one
-    is promoted only where none exists, so a real multiscale store survives.
+    it. The ``(dataset, image)`` inventory is read from the master, and each
+    image's success marker certifies the pixel source the fixture provided:
+
+    * a store the fixture wrote is certified as-is, so a real multiscale store
+      survives;
+    * otherwise an overlay the fixture wrote is certified and **no store is
+      created** -- the Results viewer crops from a store in preference to an
+      overlay, so promoting one would silently change what the fixture renders;
+    * only an image with neither gets a minimal promoted store.
 
     Publication follows the contract's own order: per-image success markers,
     then processing state, then the aggregate proof, then the run proof.
@@ -980,7 +1011,7 @@ def publish_complete_run_over_outputs(root: Path, *, total_images: int) -> Path:
         publish_image_success,
         publish_run_completion_evidence,
     )
-    from phenotypic.sdk_ import zarr_store_path
+    from phenotypic.sdk_ import dataset_overlays_dir, zarr_store_path
 
     core = {
         "master parquet": master_measurements_parquet_path(root),
@@ -1007,10 +1038,17 @@ def publish_complete_run_over_outputs(root: Path, *, total_images: int) -> Path:
         stem = Path(str(image)).stem
         work_id = f"work-{dataset}-{stem}"
         store = zarr_store_path(root, dataset, stem)
-        if not (store / "zarr.json").is_file():
-            store = _promote_minimal_store(
-                root, dataset=dataset, stem=stem, work_id=work_id
-            )
+        overlay = dataset_overlays_dir(root, dataset) / f"{stem}.png"
+        if (store / "zarr.json").is_file():
+            artifacts = {"store": store}
+        elif overlay.is_file():
+            artifacts = {"overlay": overlay}
+        else:
+            artifacts = {
+                "store": _promote_minimal_store(
+                    root, dataset=dataset, stem=stem, work_id=work_id
+                )
+            }
         publish_image_success(
             root,
             work_id=work_id,
@@ -1020,7 +1058,7 @@ def publish_complete_run_over_outputs(root: Path, *, total_images: int) -> Path:
             mode="full",
             attempt_id=f"attempt-{stem}",
             lifecycle_epoch="local",
-            artifacts={"store": store},
+            artifacts=artifacts,
         )
         work_ids.setdefault(dataset, {})[f"{stem}.tif"] = work_id
     write_processing_state(root, work_ids=work_ids)
@@ -1034,13 +1072,14 @@ def publish_complete_run_over_outputs(root: Path, *, total_images: int) -> Path:
     return root
 ```
 
-- [ ] **Step 4: Run it — expect `4 passed`** (same command as Step 2).
+- [ ] **Step 4: Run it — expect `5 passed`** (same command as Step 2).
 
-- [ ] **Step 5: Prove each test can fail** — make each temporary edit below in `tests/_output_layout.py`, run the Step 2 command, confirm the named test fails, and revert before the next one. Afterwards, `git diff tests/_output_layout.py` must show only the new function.
-  - Comment out the `publish_run_completion_evidence(...)` call → `test_published_outputs_are_a_complete_mutable_run` and `test_a_store_the_fixture_wrote_is_reused_not_replaced` fail.
-  - Change `if not (store / "zarr.json").is_file():` to `if True:` → `test_a_store_the_fixture_wrote_is_reused_not_replaced` fails.
+- [ ] **Step 5: Prove each test can fail** — make each temporary edit below in `tests/_output_layout.py`, run the Step 2 command, confirm exactly the named tests fail, and revert before the next one. Afterwards, `git diff tests/_output_layout.py` must show only the new function. (A dry run of these five mutants against this code failed exactly these tests.)
+  - Comment out the `publish_run_completion_evidence(...)` call → `test_published_outputs_are_a_complete_mutable_run`, `test_a_store_the_fixture_wrote_is_reused_not_replaced` and `test_an_overlay_backed_fixture_keeps_its_overlay_as_the_pixel_source` fail.
+  - Change both branch conditions to `False` (`if False:` and `elif False:`), so every image gets a promoted store → `test_a_store_the_fixture_wrote_is_reused_not_replaced` and `test_an_overlay_backed_fixture_keeps_its_overlay_as_the_pixel_source` fail.
+  - Change only `elif overlay.is_file():` to `elif False:` → `test_an_overlay_backed_fixture_keeps_its_overlay_as_the_pixel_source` fails.
   - Delete the `assert images.height == total_images` statement → `test_a_miscounted_fixture_fails_loudly` fails.
-  - Delete the `raise FileNotFoundError(...)` (keep the `if`, body `pass`) → `test_a_missing_core_file_fails_loudly` fails.
+  - Replace the body of `if missing:` with `pass` → `test_a_missing_core_file_fails_loudly` fails.
 
 - [ ] **Step 6: Wire the e2e helper** in `tests/e2e/gui/conftest.py`:
   - Add `from tests._output_layout import publish_complete_run_over_outputs` after `from phenotypic.sdk_ import manifest_json_path`.
@@ -1134,51 +1173,100 @@ def _write_terminal_manifest(output_dir: Path, *, total_images: int) -> Path:
     write_measurements_mirror(out, master)
 ```
 
-- [ ] **Step 8: Check every real fixture seeds a complete run** — no browser needed. Expected: 7 fixture lines with `complete` and `mutations_enabled=True`, plus the viv real-store line:
+- [ ] **Step 7b: Heatmap's seed derives its image count from its frame** — in `tests/e2e/gui/test_heatmap_tab.py::_seed_master_df_in_output`, replace
+
+```python
+    publish_coherent_terminal_evidence(cli_out, total_images=len(_IMAGES))
+```
+
+with
+
+```python
+    publish_coherent_terminal_evidence(
+        cli_out,
+        total_images=df.select(_DATASET_COLUMN, str(IMAGE.IMAGE_NAME)).unique().height,
+    )
+```
+
+The parametrised `multi-tp-visible` (`test_time_slider_visibility`) and `no-grid-cols` frames list only `_IMAGES[0]`, so a fixed `len(_IMAGES)` trips the helper's count check. The module is skipped today (the Heatmap surface is unmounted), which is exactly why nothing else would notice. `_DATASET_COLUMN` and `IMAGE` are already in scope.
+
+- [ ] **Step 8: Check every real fixture seeds a complete run with the pixel source it provided** — no browser needed. The expected sources below are what a dry run of this code produced on every fixture. Expected: one line per fixture (four heatmap frames, the `scatter_server` seeding, and viv) with `completion=complete mutations_enabled=True` and the listed `pixel_sources`, then the viv real-store line:
 
 ```bash
 PLAYWRIGHT=1 QT_QPA_PLATFORM=offscreen uv run python - <<'PY'
-import importlib, os, sys, tempfile
+import importlib, sys, tempfile
 from pathlib import Path
+
+import polars as pl
 
 sys.path.insert(0, ".")
 import tests.e2e.gui.conftest as conftest
 from phenotypic._gui.results_viewer._mutation_guard import output_mutations_disabled
 from phenotypic._gui.results_viewer._output_root import OutputRoot
+from tests._output_layout import write_master, write_measurements_mirror
 
-def seeded_outputs(sandbox: Path):
-    for master in sorted(sandbox.rglob("master_measurements.parquet")):
-        if master.stat().st_size:          # skip _build_sandbox's zero-byte placeholder
-            yield master.parent.parent
-
-def check(label: str, sandbox: Path, tmp: Path) -> None:
-    for out in seeded_outputs(sandbox):
+def check(label: str, sandbox: Path, tmp: Path, expected_sources: set[str]) -> None:
+    for master in sorted(Path(sandbox).rglob("master_measurements.parquet")):
+        if not master.stat().st_size:          # skip _build_sandbox's zero-byte placeholder
+            continue
+        out = master.parent.parent
         root = OutputRoot.discover(out, cache_root=tmp / "cache")
+        pairs = pl.read_parquet(master).select("Metadata_Dataset", "Metadata_ImageName").unique().iter_rows()
+        sources = {
+            "store" if root.store_path(d, Path(str(i)).stem)
+            else "overlay" if root.has_overlay(d, Path(str(i)).stem)
+            else "none"
+            for d, i in pairs
+        }
         enabled = not output_mutations_disabled(root)
-        print(f"{label} {out.name}: completion={root.run_completion} mutations_enabled={enabled}")
-        if root.run_completion != "complete" or not enabled:
-            raise SystemExit(f"{label}: not a complete mutable run: {root.run_advisories}")
+        print(f"{label}: completion={root.run_completion} mutations_enabled={enabled} pixel_sources={sorted(sources)}")
+        if root.run_completion != "complete" or not enabled or sources != expected_sources:
+            raise SystemExit(f"{label}: unexpected; advisories={root.run_advisories}; expected sources {sorted(expected_sources)}")
 
-cases = {
-    "test_analysis_app": lambda m, s: m._seed_analysis_output(s),
-    "test_deliverables_standalone_e2e": lambda m, s: m._seed_full_run(s),
-    "test_filter_offcanvas": lambda m, s: m._seed_viewer_output(s),
-    "test_heatmap_tab": lambda m, s: m._seed_master_df_in_output(s, m._default_master_df()),
-    "test_qc_review_splitter": lambda m, s: m._seed_review_output(s),
-    "test_qc_tab": lambda m, s: m._seed_real_output(s),
-    "test_radial_triage": lambda m, s: m._seed_real_output(s),
-}
-for name, seed in cases.items():
-    module = importlib.import_module(f"tests.e2e.gui.{name}")
-    tmp = Path(tempfile.mkdtemp(prefix=f"fixture-{name}-"))
+def seed_with(module_name, call, expected, label=None):
+    module = importlib.import_module(f"tests.e2e.gui.{module_name}")
+    tmp = Path(tempfile.mkdtemp(prefix=f"fixture-{module_name}-"))
     sandbox = conftest._build_sandbox(tmp)
-    seed(module, sandbox)
-    check(name, sandbox, tmp)
+    call(module, sandbox)
+    check(label or module_name, sandbox, tmp, expected)
+
+seed_with("test_analysis_app", lambda m, s: m._seed_analysis_output(s), {"store"})
+seed_with("test_deliverables_standalone_e2e", lambda m, s: m._seed_full_run(s), {"overlay"})
+seed_with("test_filter_offcanvas", lambda m, s: m._seed_viewer_output(s), {"overlay", "store"})
+seed_with("test_qc_review_splitter", lambda m, s: m._seed_review_output(s), {"overlay"})
+seed_with("test_qc_tab", lambda m, s: m._seed_real_output(s), {"store"})
+seed_with("test_radial_triage", lambda m, s: m._seed_real_output(s), {"overlay"})
+
+heatmap = importlib.import_module("tests.e2e.gui.test_heatmap_tab")
+factories = [("default", heatmap._default_master_df)]
+for name in dir(heatmap):
+    for mark in getattr(getattr(heatmap, name), "pytestmark", []):
+        if mark.name == "parametrize" and "df_factory" in str(mark.args[0]):
+            for index, value in enumerate(mark.args[1]):
+                values = value.values if hasattr(value, "values") else (value if isinstance(value, tuple) else (value,))
+                factories.append((getattr(value, "id", None) or f"{name}[{index}]", values[0]))
+for ident, factory in factories:
+    seed_with("test_heatmap_tab", lambda m, s, f=factory: m._seed_master_df_in_output(s, f()), {"overlay"}, f"test_heatmap_tab[{ident}]")
+
+scatter = importlib.import_module("tests.e2e.gui.test_scatter_tab")  # scatter_server's seeding body, without the live server
+tmp = Path(tempfile.mkdtemp(prefix="fixture-scatter-"))
+sandbox = conftest._build_sandbox(tmp)
+cli_out = sandbox / "results" / scatter._OUTPUT_NAME
+frame = scatter._master_df()
+write_master(cli_out, frame)
+write_measurements_mirror(cli_out, frame)
+overlays = cli_out / "deliverables" / "overlays" / "ds1"
+overlays.mkdir(parents=True, exist_ok=True)
+for image in scatter._IMAGES:
+    (overlays / f"{image}.png").write_bytes(scatter._TINY_PNG)
+    (overlays / f"{Path(image).stem}.png").write_bytes(scatter._TINY_PNG)
+conftest.publish_coherent_terminal_evidence(cli_out, total_images=len(scatter._IMAGES))
+check("test_scatter_tab (scatter_server seeding)", sandbox, tmp, {"overlay"})
 
 viv = importlib.import_module("tests.e2e.gui.test_viv_codec_reads_a_real_store")
 tmp = Path(tempfile.mkdtemp(prefix="fixture-viv-"))
 sandbox = Path(viv._build_viv_sandbox(tmp))
-check("test_viv_codec_reads_a_real_store", sandbox, tmp)
+check("test_viv_codec_reads_a_real_store", sandbox, tmp, {"store"})
 store = next(sandbox.rglob("*.ome.zarr"))
 size = sum(p.stat().st_size for p in store.rglob("*") if p.is_file())
 print(f"viv real store kept: {size} bytes")
@@ -1196,9 +1284,22 @@ Task 2's run on this machine (`/tmp/task2-e2e.log`) was `7 failed, 96 passed, 60
 
 Expected now: both `test_analysis_app.py` tests pass, and no failure outside that list. Rerun any other failure alone before attributing it. Report the exact failure list.
 
-- [ ] **Step 10: Test surface** with `<label>=task7` (the command is in the shared context) — expect no failures, 16 skipped, and `3010 passed` (Task 1's 3006 plus the 4 new tests).
+- [ ] **Step 9b: The `ci_flaky` callers** — Step 9's `-m "not ci_flaky"` deselects six of the helper's callers. Run them explicitly; `M` is a zsh array so the paths split (see the shared context):
 
-- [ ] **Step 11: Commit** — `git add tests/gui/results_viewer/test_complete_run_fixture.py tests/_output_layout.py tests/e2e/gui/conftest.py tests/e2e/gui/test_filter_offcanvas.py`, check `git diff --cached --stat`, subject `test(e2e): fixtures publish the completed run the Results viewer requires`, trailer from Global Constraints.
+```bash
+M=(tests/e2e/gui/test_deliverables_standalone_e2e.py tests/e2e/gui/test_filter_offcanvas.py tests/e2e/gui/test_heatmap_tab.py tests/e2e/gui/test_qc_review_splitter.py tests/e2e/gui/test_qc_tab.py tests/e2e/gui/test_radial_triage.py)
+PLAYWRIGHT=1 QT_QPA_PLATFORM=offscreen uv run pytest "${M[@]}" -q -o addopts= -p no:cacheprovider -n 4
+```
+
+The controller ran this exact command before Task 7 (HEAD `f312375e4`, log `/tmp/task7-baseline-ciflaky.log`): `2 failed, 5 passed, 26 skipped`. The 26 skips are the unmounted QC/Heatmap/Error surfaces (module-level skips on `test_heatmap_tab`, `test_qc_review_splitter` and `test_qc_tab`, plus `test_deliverables_standalone_e2e.py:277`). The two failures are this task's root cause, hidden from CI by `ci_flaky`:
+- `test_filter_offcanvas.py::test_range_method_filters_picker` — `/_dash-update-component` answered HTTP 423 during the range-filter interaction;
+- `test_radial_triage.py::test_colony_radial_debris_mark_writes_category_parquet` — the radial badge resolved to `<button disabled …>`, "element is not enabled", 30 s timeout.
+
+Expected now: `7 passed, 26 skipped`, no failures. For any other outcome, rerun the test alone and report it before committing.
+
+- [ ] **Step 10: Test surface** — first `git add tests/gui/results_viewer/test_complete_run_fixture.py`: the surface list is built from tracked files, so an untracked new test is silently left out. Then run the Test surface with `<label>=task7` (command in the shared context). Expect `3011 passed, 16 skipped, 3 xfailed` — Task 3's `3006 passed` plus the 5 new tests — and no failures.
+
+- [ ] **Step 11: Commit** — `git add tests/gui/results_viewer/test_complete_run_fixture.py tests/_output_layout.py tests/e2e/gui/conftest.py tests/e2e/gui/test_filter_offcanvas.py tests/e2e/gui/test_heatmap_tab.py`, check `git diff --cached --stat`, subject `test(e2e): fixtures publish the completed run the Results viewer requires`, trailer from Global Constraints.
 
 ---
 
@@ -1292,20 +1393,30 @@ with
     source_work_ids = _current_success_work_ids(
         OUTPUT_DIR, state.config.get("work_ids", {})
     )
-    if not source_work_ids:
-        raise RuntimeError(
-            f"no marker-authorized images under {OUTPUT_DIR} to certify"
-        )
     publish_aggregate_snapshot(OUTPUT_DIR, source_work_ids=source_work_ids)
 ```
 
-The file is CRLF in the working tree; a multi-line exact-match edit needs `\r\n` (see the shared context). Confirm with `git diff --stat` that only this hunk changed.
+There is deliberately no empty-set check: `publish_aggregate_snapshot` already refuses one ("No marker-authorized measurements to publish"). The file is CRLF in the working tree; a multi-line exact-match edit needs `\r\n` (see the shared context). Confirm with `git diff --stat` that only this hunk changed.
 
 - [ ] **Step 3: Run the harness again (GREEN)** — expect `[seed] labeled 12 smallest-Size_Area objects as 'background_noise' and reviewed all QC image groups`, then `authorized images: 3; marker source_image_count: 3` and `source_set_digest matches authorized set: True`.
 
 - [ ] **Step 4: WORKFLOWS gate** — `uv run python scripts/check_workflows_md.py -v` exits 0 (it AST-walks the capture script).
 
 - [ ] **Step 5: Commit** — `git add scripts/capture_gui_tutorial_screenshots.py`, check `git diff --cached --stat`, subject `fix(gui-capture): certify the seeded run's authorized source set`, trailer from Global Constraints.
+
+- [ ] **Step 6: Run the whole capture script once, end to end** (no commit). The steps after seeding — the hub bind and the standalone viewer and analysis captures — have not run on CI since `f4ba81004` and `eadf0fdf5`. Run the committed script in a throwaway worktree so this checkout's screenshots stay untouched. It can take many minutes: run it in the background and wait.
+
+```bash
+git worktree add --detach /tmp/pht-capture HEAD
+cd /tmp/pht-capture
+uv sync --group dev --group test-qt --group docs --all-extras
+uv run playwright install chromium
+uv run python scripts/capture_gui_tutorial_screenshots.py > /tmp/pht-capture.log 2>&1; echo "exit=$?"
+cd /Users/alex/Projects/PhenoTypic
+git worktree remove --force /tmp/pht-capture
+```
+
+Expected: `exit=0`, and the log's last line is `[done] all screenshots written to docs/source/_static/gui_images/`. This Mac has no Xvfb, so the script prints its own `WARNING: no Xvfb on PATH … deck.gl surfaces will screenshot BLANK` and carries on — expected here, not a failure. Report the exit code, the last 20 lines of `/tmp/pht-capture.log`, and every `WARNING` and `Traceback` line.
 
 ---
 
