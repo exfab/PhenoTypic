@@ -280,10 +280,18 @@ confined to fixtures that write or assert the CSV.
 
 ---
 
-## Still open, not blocking — raised for a later pass
+## Raised for a later pass — each entry carries its own status
 
-None of these changes what P0–P7 build. All are recorded so they are visibly
-*deferred* rather than unnoticed.
+> **The heading states no status of its own.** It used to say "still open", which
+> became false for O-3 the moment that entry was fixed, and would have gone on
+> asserting it for every entry beneath it. A section header that summarises its
+> members is a derived value with no writer — the same defect this register
+> removed from its own header when it dropped its literal counts (Entry 53).
+> **Read each entry's `Status:` line.**
+
+Each was raised here rather than fixed on sight, so it is visibly *deferred*
+rather than unnoticed. Some were later ruled into this change and built — being
+recorded here is how they became visible enough to rule on, which is the point.
 
 ### O-1. `scheduler_epoch` may be five names collapsing to one owner, not five tokens to one
 
