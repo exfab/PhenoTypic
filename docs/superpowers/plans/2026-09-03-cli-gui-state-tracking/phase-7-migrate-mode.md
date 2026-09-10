@@ -1148,15 +1148,28 @@ def test_the_uuid_generation_becomes_content_derived(tmp_path):
 
 
 def test_the_derived_dataset_counts_are_removed(tmp_path):
-    """§4.2: processing_state.datasets.{completed,failed,started} is DELETED from
-    the file -- it was already re-aggregated from the event log on every load
-    (_cli_state_management.py:121), a cache of a cache."""
+    """§4.2, per key -- the three are NOT alike (ruled 2026-09-09).
+
+    `started` is a dead key: P5 stopped writing it and
+    `grep -rn "ProcessingStateKey.STARTED" src/` finds no reader, so it goes
+    unconditionally. `completed` goes only when every image it names has a
+    record -- on a tree with no event log the fallback at
+    `_cli_state_management.py:183-187` reads it and has nowhere else to get it.
+    `failed` is RETAINED until Task 2b gives it a destination.
+
+    An earlier version of this test asserted all three were deleted, and its
+    docstring cited `:121` (which is `return state_file`, a different
+    function) for a re-aggregation claim that is true of `completed` and false
+    of `started`.
+    """
     from phenotypic._cli._cli_migrate_state import convert_processing_state
 
-    _plant_legacy_state(tmp_path)
+    _plant_legacy_state(tmp_path)          # completed: [a], failed: [f], no records
     convert_processing_state(tmp_path)
-    for dataset in _state(tmp_path)["datasets"].values():
-        assert not {"completed", "failed", "started"} & set(dataset)
+    plate = _state(tmp_path)["datasets"]["plate"]
+    assert "started" not in plate
+    assert plate["completed"] == ["a.tif"]  # unconsumed: kept
+    assert plate["failed"] == ["f.tif"]     # no destination until Task 2b
 
 
 def test_work_ids_are_untouched(tmp_path):
@@ -1189,6 +1202,37 @@ def test_the_metadata_snapshot_is_byte_unchanged_by_a_full_migrate(tmp_path):
     assert not (tmp_path / "deliverables" / "metadata.original.csv").exists()
 ```
 
+> ### ⚠ Two rulings applied here (2026-09-09) — read before implementing Step 1
+>
+> **1. Step 1's `test_the_derived_dataset_counts_are_removed` is wrong about
+> `failed`, and shipped otherwise.** It asserts all three of
+> `{completed, failed, started}` are deleted. `failed` is **retained**, and the
+> deletion of the other two is **per dataset, conditional on that dataset now
+> having records**.
+>
+> The reason is narrower than "failed cannot be re-aggregated", which is false —
+> `load_processing_state` takes the event-derived `DatasetState` wholesale
+> (`_cli_state_management.py:176-179`), `failed` included. It is the **fallback**
+> at `:181-187`: with no event log, `failed` and `completed` come from
+> `processing_state.json` and there is nowhere else to get them. That is the
+> pre-markers shape — exactly what **Task 2b** exists for, and 2b has not run.
+> Deleting in the pass that failed to consume costs the tree its own account of
+> its work, and the next `--mode full` reprocesses every image from source.
+>
+> This makes **Task 2b Step 3** *"give `failed` a home, then delete it"* rather
+> than *"retrofit conditionality onto an unconditional deletion"*. The retained
+> set is surfaced as `PlannedState.retained_failures` so 2b consumes the set this
+> pass decided to keep, rather than re-deriving one that could disagree.
+>
+> **2. Step 2's `metadata.canonical.csv` work is already done — write nothing.**
+> `CANONICAL_METADATA_CSV_NAME` is at `sdk_/_hdf_to_zarr.py:458` with its path
+> helper at `:473`, migrate emits it, and
+> `test_the_metadata_snapshot_is_byte_unchanged_by_a_full_migrate` **already
+> exists** at `tests/integration/cli/test_migrate_end_to_end.py:496`. Step 1's
+> fourth test duplicates that one under the same name in a different suite, and
+> the existing one drives the real CLI where a unit copy cannot. **Do not write
+> it a third time.**
+
 - [ ] **Step 2: Run to verify failure, implement, re-run.**
 
 - [ ] **Step 3: Commit**
@@ -1204,6 +1248,26 @@ the canonical view emitted alongside it."
 ---
 
 ## Task 4: The embedded-table question, and the master's v1 shape
+
+> ### ⚠ Composition input — this is the last cheap moment (recorded 2026-09-09)
+>
+> `_cli_migrate_state.py` now has **two** `convert_*` entry points
+> (`convert_per_image_markers`, `convert_processing_state`), each separately
+> unconditional and a cheap no-op, each split into a `plan_*` that writes
+> nothing and an `apply_*` that takes the plan as data. **This task adds a
+> third.**
+>
+> **The argument for folding them is correctness, not tidiness.** Task 5's
+> `--dry-run` renders a plan, and three planners called independently can
+> render a `processing_state.json` conversion that a per-image failure would
+> in fact have prevented — a dry run that describes a migration which cannot
+> happen. One `plan_migration(output_dir)` returning all three plans is what
+> makes the rendered plan and the executed one the same object.
+>
+> **Not built here, deliberately.** The shape belongs to Task 5, which owns the
+> dry run, and guessing it from Task 3 would cost more than waiting. But Task 4
+> is the last point at which folding is a refactor of two callers rather than
+> three, so decide it here even if the answer is "leave it to 5".
 
 **Files:**
 - Modify: `src/phenotypic/_cli/_cli_migrate_state.py`
