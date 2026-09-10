@@ -7,6 +7,69 @@
 **Goal:** every existing tree can be converted, and every mode that is not `migrate`
 refuses an unconverted one with a pointer to the command that fixes it.
 
+> ### ⚠ A `file:line` in this document is a **hint, not an address**
+>
+> The pre-flight is at
+> [`docs/superpowers/reports/2026-09-03-cli-gui-state-tracking/p7-preflight.md`](../../reports/2026-09-03-cli-gui-state-tracking/p7-preflight.md)
+> (committed `721ca7b3`). It resolved all 43 distinct citations in this file and found that
+> **34 do not land on the identifier the claim attaches to them** — 6 land, 3 are
+> multi-value citations where one component lands.
+>
+> Only the citations attached to the seven corrections applied after that pre-flight have
+> been updated. **The rest are deliberately left as they were.** A document whose numbers
+> were all corrected once reads as authoritative and drifts again within a phase; one that
+> says its numbers are hints puts the reader in the posture that actually catches things.
+> **Grep for the symbol; do not `sed -n` the line and trust what comes back.**
+>
+> Two habits from the pre-flight, because they are what caught the destructive finding:
+>
+> - **Where a claim is a count** — "three trees", "three tests", "every child except X" —
+>   the tree usually states the right number in prose within a few lines of the citation.
+>   Enumerate the defining property (`for segment in (...)`, an `awk` over `def test_` in a
+>   range, the `frozenset` literal); never count the list in your hand.
+> - **A citation this file writes as a bare `` (`:235`) ``, with the filename in a preceding
+>   sentence, is invisible to a grep sweep.** All five of those are in Task 6 and none of
+>   them resolves. If you add a citation, spell the filename in it.
+>
+> ### The pre-flight's third bucket, now closed
+>
+> The pre-flight filed four citation groups as *"inside P6's blast radius — trust neither
+> way"*, because P6 was still editing those files. **P6 Task 2 has since landed
+> (`f4ba8100`) and all four were re-checked against it.** None moved:
+>
+> | Citation | Post-P6 | Verdict |
+> |---|---|---|
+> | `_cli_completion.py:132-135` (`image_data_artifact`'s CAN-3 claim) | def `:123`, claim at `:141` | **correct claim, wrong line** — unchanged by P6 |
+> | `_cli_completion.py:340-350` (metadata-migration receipts) | `refresh_success_markers_after_metadata_migration` at `:356` | **correct claim, wrong line** — unchanged by P6 |
+> | `sdk_/_run_state.py:587`, `:1374` (the `PROVENANCE_MIGRATED` readers) | `:587`, `:1374` | **both exact** — P6 Task 2 touched this file and did not move them |
+> | `_cli_state_management.py` `:133` / `:148-167` / `:192` | `:133`, `:137`, `:140`, `:192` | **correct claims, wrong lines** — unchanged |
+>
+> The closing checklist's `grep -c '' …/_output_consistency.py` now takes its `|| echo
+> "deleted"` branch: P6 Task 2 deleted that file. The command is correct as written.
+>
+> **The two entries held open for P6 Task 7 are now closed** — Task 7 landed as
+> `d37136c1` and both were re-checked against the committed tree:
+>
+> - **`sdk_/_io_constants.py`** (Task 7's deletion set — ledger row 9, *refuted*).
+>   `_PRESERVED_ON_RESTART` is **unmoved** at `:1259-1261`, `clear_machine_state` at
+>   `:1264`. `BundleLayout.detect` **did** move, `:2661` → **`:2642`**, because the
+>   `resolve_qc_dir` / `resolve_best_pipeline_path` deletions sit above it —
+>   `_legacy_qc_dir` survives at `:2251`, since `migrate_legacy_qc` calls it. So the
+>   conversion table's `_io_constants.py:2468-2482` is wrong by a *third* amount now, which
+>   is the argument for the posture above rather than for another round of corrections.
+> - **`src/phenotypic/_cli/CLAUDE.md`** — Task 7 repointed it and it is clean again. Its
+>   headings did **not** move: `## Legacy-tree migration` `:178`, `## Per-image completion
+>   markers` `:287`, `## Output layout & deliverables` `:397`. **All five of Task 6's
+>   citations therefore still resolve to the wrong content**, exactly as before Task 7 —
+>   `:251-254` and `:257-261` are the verification-cache paragraphs, not the store-fingerprint
+>   sentence Step 1 is sent to fix.
+>
+> **Re-derive all five by heading name at the moment you start Task 6 anyway.** That
+> instruction stands whatever a re-check says today: the file has been edited by three
+> phases and the two that matter are Step 1's, whose whole job is to correct one specific
+> false sentence at a citation that does not contain it. The sentence does exist — in
+> source, at `_cli_completion.py:141`. **That is the citation to trust.**
+
 > **§15.1: "The migrate step is the riskiest part of this design."** It rewrites machine
 > state across the whole tree and, unlike the rest of the change, **cannot be rolled back by
 > reverting code.** It needs the receipt/rollback discipline the existing metadata migration
@@ -26,19 +89,43 @@ stores are the stores it already had.
 |---|---|---|
 | `image_complete/<ds>/<stem>.json` (v2 marker) | `images/<ds>/<stem>.json` record, `stages={"measured": …}` | 2 |
 | `stage3_complete/<ds>/<stem>.json` | `stages.stage3` in the same record | 2 |
-| **pre-markers tree** (`success_markers_required` absent, `version="2.0.0"`) — **the v0.17.3 floor** | `_migrate_legacy_success_evidence` **ported into migrate**, sequenced after the HDF→Zarr conversion and before the migrator's own publisher. It is the only producer of the *content-derived* `work_id` a later resume re-derives. See Task 2b. | 2b |
+| **pre-markers tree** (`success_markers_required` absent, `version="2.0.0"`) — **the v0.17.3 shape**, not a floor (U-6; see the last row) | `_migrate_legacy_success_evidence` **ported into migrate**, sequenced after the HDF→Zarr conversion and before the migrator's own publisher. It is the only producer of the *content-derived* `work_id` a later resume re-derives. See Task 2b. | 2b |
 | `processing_generation: <uuid4>` **and** the migrator's inventory-derived one | content-derived generation; `restart_epoch: 0` | 3 |
 | `processing_state.datasets.{completed,failed,started}` | **deleted from the file** (§4.2) | 3 |
 | ~~`slurm_generation` / `lifecycle_epoch`~~ → ~~`scheduler_epoch`~~ | **ROW WITHDRAWN.** Migrate neither. §5.1's collapse was withdrawn (`design.md:323-345`, user-ruled) — both are on-disk keys with live readers, and rewriting them here would be the collapse as a *tree migration*, which is strictly worse than the rename that was already rejected. | — |
 | joined embedded tables | **left alone**, projected at read — see Task 4 | 4 |
-| `master_measurements.csv` | deleted; master is parquet-only (D8) | **4, Step 0** |
-| `deliverables/metadata.canonical.csv` | **emitted** alongside the untouched snapshot | **3, Step 4** |
+| `master_measurements.csv` | deleted; master is parquet-only (D8) | **4, Step 0** — ✅ **already true in the tree** |
+| `deliverables/metadata.canonical.csv` | **emitted** alongside the untouched snapshot | **3, Step 2** — ✅ **already true in the tree** |
 | legacy `.h5` per-image files | unchanged — the existing OME-Zarr migration already owns this | — |
 | ~~anything below v0.17.3~~ | **No version floor (U-6).** `state.version` cannot express one; detection is by shape, and a pre-markers tree is supported however old. | 1 |
 
 > **Two rows in the first draft's table had no implementing step (CAN-32):** the CSV
 > deletion was assigned to Task 4, which had no step for it, and Task 3 asserted
-> `metadata.canonical.csv` exists while no task built it. Both now name a step.
+> `metadata.canonical.csv` exists while no task built it.
+>
+> ### ⚠ The CAN-32 fix was half-applied, and both rows turned out to be moot
+>
+> **Half-applied:** Task 4 gained a `Step 0`. Task 3 was pointed at a `Step 4` **that does
+> not exist** — Task 3 has Steps 1, 2 and 3 — so the row still named nothing, and the
+> file's only appearance in Task 3 was still an `assert ... .is_file()`. That is exactly
+> the shape CAN-32 described, restated one layer up. The row now names Step 2, which is
+> where the implementation would go if any were needed.
+>
+> **Moot:** none is needed. Both rows describe work the tree has already done.
+>
+> - `CANONICAL_METADATA_CSV_NAME = "metadata.canonical.csv"`
+>   (`sdk_/_hdf_to_zarr.py:458`, path helper `:473`), emitted by migrate and covered by
+>   `tests/unit/sdk_/test_metadata_canonical_view.py` and
+>   `tests/integration/cli/test_migrate_end_to_end.py:515`.
+> - `master_measurements.csv` was deleted by **D8**, not by this phase —
+>   `sdk_/_io_constants.py:317`: *"**Parquet-only since D8.** `master_measurements.csv` is
+>   gone, along with …"*.
+>
+> **And `test_the_metadata_snapshot_is_byte_unchanged_by_a_full_migrate` already exists**,
+> at `tests/integration/cli/test_migrate_end_to_end.py:496`. Task 3 Step 1 still writes it
+> into `tests/unit/cli/test_migrate_state.py`; doing that produces **two tests under one
+> name**, in two suites, and the integration one is the one root `CLAUDE.md` cites. Assert
+> against the existing test or extend it — do not re-create it.
 
 **What migrate does NOT do:** re-mint `work_id` (D-C keeps the digest unchanged, so every
 existing `work_id` stays valid), rewrite `deliverables/metadata.csv` (project `CLAUDE.md`,
@@ -54,12 +141,43 @@ spec D9/FLOW-4 — there is **no exception, including migrate**), or write into 
 > `"2"`, so a `match=` on the refusal message cannot fail for its own reason. **The three
 > tests in Step 1 below are written in the broken idiom and must be converted.**
 
-**Files:**
-- Create: `src/phenotypic/_cli/_cli_schema_gate.py`
-- Modify: `src/phenotypic/phenotypicCLI.py`
-- Test: `tests/unit/cli/test_schema_gate.py` *(new)*
+> ### ⛔ THIS TASK IS ALREADY BUILT. It is a VERIFICATION step, not an implementation one.
+>
+> **This callout is here, at the `Files:` block, on purpose.** The plan already said so —
+> in the NOTE at the bottom of Step 4's commit message, **240 lines below this block**,
+> where nobody reads it before starting. A caveat that sits further from the wrong
+> instruction than the wrong instruction sits from the reader is not a caveat. That
+> placement is the structural reason this survived four review passes.
+>
+> Task 1 shipped in **P1** (CAN-11): the gate must precede P3's clean break, or a legacy
+> tree silently produces an empty master. Measured in the tree:
+>
+> | This block says | The tree has |
+> |---|---|
+> | Create `_cli/_cli_schema_gate.py` | exists; `refuse_unconverted_schema` at `:54` |
+> | Build `requires_conversion` here | `sdk_/_schema_shape.py:338` — **a different module** |
+> | `ConversionVerdict`, no `BELOW_FLOOR` | `_schema_shape.py:189-196`, two members |
+> | `STATE_SCHEMA_VERSION = 3` | `_schema_shape.py:65` |
+> | New `tests/unit/cli/test_schema_gate.py` | exists, 45 KB |
+> | The 7 tests in Step 1 / 3b / INV-DISCHARGEABLE | **6 of 7 present** |
+>
+> **`requires_conversion` is re-exported by `_cli_schema_gate` (`:30-35`), so importing it
+> from either module works.** `SCHEMA_GATE_ARMED` is **not**, deliberately, and
+> `test_the_arming_flag_has_one_source` fails if you add one — see `_schema_shape.py:104-117`.
+>
+> **What to do instead of implementing:** read Steps 1–3c as the specification they are,
+> confirm each against the tree, and record any drift. The one genuine gap is
+> `test_a_converted_tree_is_accepted`, which is subsumed by
+> `test_every_convert_verdict_is_dischargeable_by_one_migrate` —
+> **currently `@pytest.mark.skip`**, and Task 5 Step 1f is what removes the mark.
 
-- [ ] **Step 1: Write the failing tests**
+**Files:**
+- ~~Create: `src/phenotypic/_cli/_cli_schema_gate.py`~~ — exists (P1)
+- ~~Modify: `src/phenotypic/phenotypicCLI.py`~~ — done (`_refuse_unmigrated_output:402`, call site `:1676`)
+- ~~Test: `tests/unit/cli/test_schema_gate.py`~~ *(new)* — exists
+- Verify only. Nothing in this task is a write.
+
+- [ ] **Step 1: Write the failing tests** — *already written; verify instead*
 
 ```python
 @pytest.mark.parametrize("mode", ["full", "measure", "recompile", "process"])
@@ -310,7 +428,15 @@ gate must precede it, or a legacy tree silently produces an empty master."
 - [ ] **Step 1: Write the failing tests**
 
 ```python
-def test_three_markers_become_one_record(tmp_path):
+def test_two_markers_become_one_record(tmp_path):
+    """The conversion table's rows 1 and 2, and nothing else.
+
+    `image_complete/` -> `stages.measured`; `stage3_complete/` -> `stages.stage3`.
+    There is no third marker tree and no row producing `stages.stage2`: the
+    stage-2 tree holds a consumable token this conversion READS and never
+    renames (see Step 3). An earlier draft named this test "three markers",
+    planted two, and asserted three stages -- the same conflation.
+    """
     from phenotypic._cli._cli_migrate_state import convert_per_image_markers
     from phenotypic.sdk_ import image_record_path
 
@@ -319,7 +445,7 @@ def test_three_markers_become_one_record(tmp_path):
     convert_per_image_markers(tmp_path)
 
     record = json.loads(image_record_path(tmp_path, "plate", "a").read_text())
-    assert set(record["stages"]) == {"stage2", "stage3", "measured"}
+    assert set(record["stages"]) == {"stage3", "measured"}
     assert record["work_id"] == "w"
 
 
@@ -350,8 +476,15 @@ def test_conversion_is_idempotent(tmp_path):
 
 
 def test_a_stage3_marker_with_no_image_complete_still_converts(tmp_path):
-    """Stage 2 finished and Stage 3 never ran -- a real interrupted-run state, and
-    the one a naive 'iterate image_complete/' conversion drops on the floor."""
+    """Stage 3 finished and the run died before publishing completion -- a real
+    interrupted-run state, and the one a naive 'iterate image_complete/'
+    conversion drops on the floor.
+
+    The fixture and the assertion have to agree about WHICH marker is planted.
+    An earlier draft planted `stage3_complete=True`, said "Stage 2 finished" in
+    the docstring, and asserted `{"stage2"}` -- three different answers, of which
+    only `stages.stage3` is reachable from a `stage3_complete/` marker.
+    """
     from phenotypic._cli._cli_migrate_state import convert_per_image_markers
     from phenotypic.sdk_ import image_record_path
 
@@ -359,7 +492,7 @@ def test_a_stage3_marker_with_no_image_complete_still_converts(tmp_path):
                           image_complete=False, stage3_complete=True)
     convert_per_image_markers(tmp_path)
     record = json.loads(image_record_path(tmp_path, "plate", "a").read_text())
-    assert set(record["stages"]) == {"stage2"}
+    assert set(record["stages"]) == {"stage3"}
 
 
 def test_the_legacy_trees_are_removed_only_after_every_record_is_written(tmp_path):
@@ -381,11 +514,43 @@ def test_the_legacy_trees_are_removed_only_after_every_record_is_written(tmp_pat
 
 - [ ] **Step 3: Implement**
 
-Enumerate the union of all three legacy trees, not just `image_complete/` — an image with
-a stage-2 token and no completion marker is a real interrupted state. Write every record
-first, then **rename** the legacy trees aside — the rename primitive, its collision rule and
-the `--revert` path are **Task 5 Step 1b**, not this task's to invent. **Copy `artifacts`
-verbatim**; never re-derive.
+Enumerate the union of the **two** legacy trees — `image_complete/` and `stage3_complete/`
+— not just `image_complete/`. Write every record first, then **rename those two aside** —
+the rename primitive, its collision rule and the `--revert` path are **Task 5 Step 1b**, not
+this task's to invent. **Copy `artifacts` verbatim**; never re-derive.
+
+> ### ⛔ `stage2_done/` is NOT one of them. Renaming it aside destroys a live run.
+>
+> **The reason this row was here was not stupid, and deleting it without the reason invites
+> it straight back.** The instinct is right: *an image with a stage-2 token and no
+> completion marker is a real interrupted state*, and it is worth recording. What is wrong
+> is the verb. `stage2_done/` holds a **consumable token**, not a marker:
+>
+> - Root `CLAUDE.md`: Stage 3 "replays the raw array, measures, re-promotes the store, and
+>   **consumes the token** and then the raw array."
+> - `sdk_/_io_constants.py:672-687`, on the constant itself: `images/` replaces
+>   "``image_complete/`` and ``stage3_complete/``" — **two** — while `DIR_STAGE2_DONE` is
+>   "**Retained, not collapsed** (U-9) … this tree survives the collapse with its file and
+>   its atomic ``unlink`` intact, so its segment is a durable layout fact with two readers —
+>   the token's path helper and the schema gate, **which must keep *not* firing on it**."
+> - The shipped gate agrees, and iterating it is how to check rather than trust —
+>   `sdk_/_schema_shape.py:288`: `for segment in (DIR_IMAGE_COMPLETE, _DIR_STAGE3_COMPLETE):`
+> - Task 1's own signal 2 says firing on `stage2_done/` "would classify every modern GPU run
+>   CONVERT and strand it — an INV-DISCHARGEABLE violation."
+>
+> Rename it into `.phenotypic/legacy-v2/` — where Task 5 Step 1b guarantees "nothing reads
+> it" — and every un-consumed Stage-2 result becomes invisible to the Stage 3 that was
+> about to replay it. A staged GPU run live across a migrate loses that work silently, and
+> `--mode migrate` reports success. This is **data loss, not a wrong test**.
+>
+> **So: migrate may READ `stage2_done/` to enrich a record it is already writing — a
+> `stages.stage2` entry for an image whose Stage 2 finished — and must NEVER rename,
+> consume, unlink or move it.** Read-and-leave is the whole distinction. The interrupted
+> state the original row cared about is preserved by the read; the token stays where its
+> owner expects it.
+>
+> Task 5 Step 1c's coexistence rule (drain in-flight arrays before migrating) reduces the
+> exposure but does not close it: an operator who forgets is exactly who this is for.
 
 **Merge, do not overwrite (CAN-13).** When `images/<ds>/<stem>.json` already exists, union
 the `stages` maps and keep the later `completed_at` rather than replacing. The
@@ -431,11 +596,16 @@ unless it has been seen red:
 
 ```bash
 git add -A src/phenotypic/_cli tests/unit/cli/test_migrate_state.py
-git commit -m "feat(cli): convert the three per-image legacy trees into one record
+git commit -m "feat(cli): convert the two per-image legacy trees into one record
 
-Spec §11.1. Enumerates the union of image_complete/, stage2_done/ and
-stage3_complete/ -- an image with a stage-2 token and no completion marker is a
-real interrupted state that an image_complete/-only walk drops.
+Spec §11.1. Enumerates the union of image_complete/ and stage3_complete/ -- a
+stage-3 marker with no completion marker is a real interrupted state that an
+image_complete/-only walk drops.
+
+stage2_done/ is READ, never renamed (U-9). It holds a consumable token that Stage 3
+unlinks, not a marker; moving it aside orphans the work of any staged run live
+across the migrate. sdk_/_io_constants.py:672-687 and the two segments at
+sdk_/_schema_shape.py:288 are the contract.
 
 Descriptors are copied verbatim, never re-derived: re-deriving would certify
 whatever is on disk now, including a corrupted artifact, which turns migrate from
@@ -502,9 +672,10 @@ would lose the newer record's stages. The rename-aside and revert path are Task 
 
 **What the task actually is: move the promoter, do not delete it.**
 
-A v0.17.3 tree — the supported floor — has **no `image_complete/`, no `stage2_done/`, no
-`stage3_complete/`, and no OME-Zarr stores**. Task 2 enumerates three empty trees and
-converts nothing, while Task 3 deletes `datasets.{completed,failed,started}` — which for
+A v0.17.3 tree — the oldest shape, though **not a floor**: U-6 withdrew the version
+floor and every pre-markers tree is the same shape however old — has **no
+`image_complete/`, no `stage2_done/`, no `stage3_complete/`, and no OME-Zarr stores**.
+Task 2 enumerates two empty trees and converts nothing, while Task 3 deletes `datasets.{completed,failed,started}` — which for
 that shape is the *only* record of what finished. Migrate would report success over a tree
 with zero records, and the next `--mode full` would reprocess every image from source.
 
@@ -699,9 +870,28 @@ certify `.h5` artifacts about to be replaced — **harmless**, because
 > by `image.name` while both readers compare via `source_image_stem`: that mismatch is *why*
 > the seam holds, and a future edit that "tidies" it breaks the seam.
 
-Three tests exercise the helper (`tests/unit/cli/test_cli_state_management.py:316`,
-`test_cli_completion_store.py:606`, `test_embedded_measurement_migration.py:312`). **Keep
-all three**; retarget them at the new call path rather than deleting them.
+> ### "Three tests exercise the helper" — **one does.** Enumerate, do not count.
+>
+> The instrument is a grep for the helper's own name across `tests/`, not the list this
+> paragraph used to carry:
+>
+> ```bash
+> grep -rn "_migrate_legacy_success_evidence\|_requires_legacy_success_migration" tests/
+> ```
+>
+> | Old citation | What is actually there |
+> |---|---|
+> | `tests/unit/cli/test_cli_state_management.py:316` | exercises **`_requires_legacy_success_migration`** — the sibling predicate, not the helper — at `:322`, `:325`, `:329` (import at `:27`) |
+> | `test_cli_completion_store.py:606` | the helper **is** called in this file, at **`:724`**. `:606` is inside an unrelated `"hdf"`-key allowlist test |
+> | `test_embedded_measurement_migration.py:312` | **no reference to either name anywhere in the file.** `:312` is an import block inside a migrate test |
+>
+> So: **one test calls the helper** (`test_cli_completion_store.py:724`) and **one calls the
+> predicate** (`test_cli_state_management.py:322,325,329`). Both move with their subject.
+> The third citation has nothing to retarget, and an implementer who trusts it will spend
+> the time looking.
+
+**Keep both surviving tests**; retarget them at the new call path rather than deleting them.
+Re-run the grep above before you start — this list is derived, and derived lists go stale.
 
 > **A NEW fixture is required — the existing one is not the floor shape (MIG-15).**
 > `make_markerless` (`tests/unit/sdk_/_migration_fixtures.py:437-449`) calls
@@ -866,7 +1056,7 @@ existing.
 ```bash
 QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/cli/test_migrate_state.py -v
 git add -A src/phenotypic/_cli tests/unit/cli
-git commit -m "feat(cli): migrate converts the three marker trees into one record
+git commit -m "feat(cli): migrate converts the two marker trees into one record
 
 Spec §6.1, §11.1. Artifact descriptors are copied verbatim -- re-deriving them would
 certify whatever is on disk now, turning migrate into a laundering step."
@@ -1210,7 +1400,7 @@ def test_the_pre_existing_metadata_receipt_path_still_raises_on_uncertified_drif
 §15.1 requires *"the receipt/rollback discipline the existing metadata migration has, plus
 its own dry-run mode."* The first draft delivered the dry run and **resumability** — a
 different property. Resumability guarantees a re-run finishes; it says nothing about
-recovering the previous state. Task 2 removed the three legacy trees outright, with no copy
+recovering the previous state. Task 2 removed the legacy marker trees outright, with no copy
 and no receipt, where the existing metadata migration leaves receipts
 (`_cli_completion.py:340-350`).
 
@@ -1231,9 +1421,23 @@ says when it can be deleted.
 
 **Three things the rename needs that the first draft left undefined:**
 
-1. **`clear_machine_state` must preserve it (MIG-12).** That function rmtree's **every**
-   child of `.phenotypic/` except `TERMINAL_FAILURES_JSONL` (`sdk_/_io_constants.py:1105-1116`),
-   and `legacy-v2/` is such a child — so `--restart` would silently destroy the revert path.
+1. **`clear_machine_state` must preserve it (MIG-12).** That function rmtree's every child
+   of `.phenotypic/` **except the members of `_PRESERVED_ON_RESTART`**, and `legacy-v2/`
+   is such a child — so `--restart` would silently destroy the revert path.
+
+   > **Read the set; do not take the exception list from this sentence.** An earlier draft
+   > wrote "except `TERMINAL_FAILURES_JSONL`", singular — true when P2 began and false when
+   > P2 Task 1 landed, and this plan's **own Task 6 table states the second member
+   > correctly** three hundred lines later, so the document already disagreed with itself.
+   >
+   > ```bash
+   > grep -n "_PRESERVED_ON_RESTART" src/phenotypic/sdk_/_io_constants.py
+   > ```
+   >
+   > At the time of writing that is `frozenset({TERMINAL_FAILURES_JSONL,
+   > RESTART_EPOCH_JSON})` — **two** members — defined at `:1259-1261`, with
+   > `clear_machine_state` at `:1264` reading it at `:1296`. You are adding a third; the
+   > count is the thing most likely to have moved again by the time you do.
    **P2 Task 1 already solves this exact coupling for `restart_epoch.json`, with a test.**
    Add `legacy-v2/` to the same `_PRESERVED_ON_RESTART` set and extend that test rather than
    writing a second mechanism.
@@ -1286,7 +1490,8 @@ def test_the_retained_legacy_tree_is_invisible_to_detection(tmp_path):
 Nothing in the spec or plan mentions it. A SLURM array launched from the **old build** holds
 the old schema for its entire lifetime — up to 30 d on `batch`/`intel`/`epyc` — and P2's
 `restart_epoch` fence cannot reach it, because an old-build worker never calls the new
-publisher at all: it writes the three legacy trees directly. So a tree migrated while such
+publisher at all: it writes the legacy trees directly — **including `stage2_done/`,
+which migrate must never have renamed aside in the first place (Task 2 Step 3).** So a tree migrated while such
 an array is live **re-acquires the old shape** and is then refused by every writing mode,
 including the array's own dependent finalizer.
 
@@ -1370,17 +1575,42 @@ it. Step 1d and this step are siblings in this task, not one step.
 
 **Do the repoint:**
 
-1. Swap the producer at `_cli_recompile_tables.py:297` to `prepare_image_tables`. Both
-   take the identical signature `(measurements: pd.DataFrame, metadata_csv: Path | None)`,
-   so the call site is a one-line change. **The work is not there.**
+1. Swap the producer to `prepare_image_tables`. The call is inside
+   `recompile_embedded_measurement_table` (`_cli_recompile_tables.py:357`) at **`:394`**.
+   Both really do take the identical signature
+   `(measurements: pd.DataFrame, metadata_csv: Path | None)` —
+   `_embedded_measurement_tables.py:108-111` against `:178-181`, verified — so the call
+   site is a one-line change. **The work is not there.**
 2. **The work is the transaction.** `_replace_and_republish_table` writes through
    `begin_recompile_table_transition`, an exclusive lock, a transition receipt binding
    `marker_sha256` to the authority payload, fsync ordering, and a retry/recovery path.
    `prepare_image_tables` returns **two** tables, so there are two things to bind and two
    writes to make atomic together. A split write that is individually atomic and jointly
    torn leaves exactly the mixed state the receipt exists to detect.
-3. Delete `_refuse_inverted_store` and its three tests
-   (`tests/unit/cli/test_embedded_table_inversion.py:536,559,584`).
+3. Delete `_refuse_inverted_store` (`_cli_recompile_tables.py:176`, call site `:250`) and
+   its tests — **two here, one in a file this plan used to leave unnamed.**
+
+   > **The tree tells you this itself, and the old citation pointed at the sentence that
+   > does.** `test_embedded_table_inversion.py:584-592` is not a third test; it is a
+   > comment:
+   >
+   > > ``_refuse_inverted_store``'s CALL SITE is proved in
+   > > ``test_embedded_measurement_recompile.py`` by
+   > > ``test_the_inverted_store_guard_runs_before_the_rewrite_transaction``, which drives
+   > > the real single-store rewrite and asserts the store's bytes are unchanged after the
+   > > raise. … **Delete the two tests above and that one together with the recompile
+   > > repoint (P7 Task 5 Step 1e).**
+   >
+   > Enumerate rather than count — `awk 'NR>=530 && NR<=600 && /^def /' ` over that file
+   > returns exactly `:536` and `:559`.
+
+   So the set is:
+   - `tests/unit/cli/test_embedded_table_inversion.py::test_the_recompile_guard_refuses_an_inverted_store` (`:536`)
+   - `tests/unit/cli/test_embedded_table_inversion.py::test_the_recompile_guard_still_accepts_a_pre_inversion_store` (`:559`)
+   - `tests/unit/cli/test_embedded_measurement_recompile.py::test_the_inverted_store_guard_runs_before_the_rewrite_transaction` (`:306`)
+
+   Miss the third and the suite goes red on a deleted import, in a file the plan never
+   sent you to. Delete the `:584-592` comment with them.
 4. Delete the P4 pre-flight scan added alongside the guard, and its test — it exists only
    to make the guard non-destructive on a mixed tree.
 5. Remove the "unsupported on `--metadata` trees" note from `--mode recompile`'s `--help`
@@ -1393,11 +1623,57 @@ it. Step 1d and this step are siblings in this task, not one step.
 
 **The test that must exist when this is done**, because its absence is why the defect
 shipped: `test_every_mode_produces_a_byte_identical_master`
-(`tests/unit/cli/test_finalize_run.py:474`) runs its `recompile` arm with **no metadata
+(`tests/unit/cli/test_finalize_run.py:292` — `:474` is
+`test_curation_re_keying_still_works_against_the_intrinsic_master`, a different test)
+runs its `recompile` arm with **no metadata
 snapshot**, deliberately and for a correct reason about the master's shape. The side
 effect is that the phase's headline §7.4 claim is established on the one tree shape where
 recompile still worked. Add a `--metadata` arm, or a separate test that recompiles a
 `--metadata` tree end to end. Without it this repoint has no gate either.
+
+- [ ] **Step 1f: Un-skip INV-DISCHARGEABLE, and prove it RAN**
+
+**The invariant's own test has been skipped since P1 and nothing in this plan removed the
+mark.** `tests/unit/cli/test_schema_gate.py:1099`:
+
+```python
+@pytest.mark.skip(reason=(
+    "INV-DISCHARGEABLE's migrate half: `--mode migrate` does not yet convert "
+    "`.phenotypic/` -- that is P7 Tasks 2, 2b and 3. The gate ships four phases "
+    "early (CAN-11), so this assertion cannot hold until then. "
+    "P7 Task 5 removes this mark; it is that phase's gate."
+))
+@pytest.mark.parametrize("shape", sorted(_EVERY_CONVERTIBLE_SHAPE))
+def test_every_convert_verdict_is_dischargeable_by_one_migrate(...)
+```
+
+The reason string names this task. Delete the `@pytest.mark.skip` decorator here, in the
+commit that makes Tasks 2/2b/3 real.
+
+**`skip` is not `strict`, so removing the mark and the test running are two claims and only
+the second is the gate.** An `xfail(strict=True)` that stops failing turns the suite red on
+its own; a `skip` that is never removed is silent, and a skipped parametrized test still
+prints as collected. So assert the second claim directly:
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run pytest \
+  tests/unit/cli/test_schema_gate.py::test_every_convert_verdict_is_dischargeable_by_one_migrate \
+  -q -rs -o addopts= -m "not slow"
+```
+
+Expected: **one passing case per member of `_EVERY_CONVERTIBLE_SHAPE`, and `-rs` reporting
+no skips.** `N passed` where N is that list's length; if the summary says `no tests ran`,
+`N skipped`, or a number smaller than the list, the invariant is still not enforced whatever
+the decorator says.
+
+> **Why this step exists as a step, rather than as a line inside 1d.** Step 1d, twenty lines
+> above, diagnoses exactly this failure mode for its own two `xfail`s — *"the two strict
+> tripwires guarding this only fire **when arming happens**, so nothing would have failed. A
+> tripwire that fires on the fix cannot report that the fix was never scheduled."* — and
+> then removes only those two, while the weaker mark on the invariant's own test goes
+> unmentioned. A plan that catches a failure mode once and misses it twenty lines later is
+> better evidence about the mode than about the instance. Both were found by the P7
+> pre-flight, not by anything in the suite.
 
 - [ ] **Step 2: Implement, run.**
 
@@ -1468,7 +1744,11 @@ content proof changes only where the proof changes with it, and here are the pat
 that holds and the one where it did not until P4 repaired it.
 
 Also correct `## Per-image completion markers` (`:235`): `SUCCESS_MARKER_VERSION` is now
-`RECORD_VERSION`, the three marker trees are one record, and the `_migrate_legacy_success_evidence`
+`RECORD_VERSION` **is an addition, not a rename** — `SUCCESS_MARKER_VERSION` still
+exists (`sdk_/_io_constants.py:729`) and is still written by the HDF→Zarr migrator
+(`sdk_/_hdf_to_zarr.py:607,645`), so do not document it as gone; the **two** marker trees
+`image_complete/` and `stage3_complete/` are one record while `stage2_done/` is untouched
+(U-9); and the `_migrate_legacy_success_evidence`
 paragraph (`:257-261`) describes a function P7 deletes.
 
 **And document `provenance` where the fence is described (U-10).** The register's job is to
@@ -1552,10 +1832,25 @@ Two rules a future contributor will otherwise breach:
 
 - **Readers live in `sdk_/_run_state.py`; writers stay in `phenotypic._cli`.** INV-LAYER's
   AST test enforces it. Name the test so a reader can find out why their import failed.
-- **Migration floor is v0.17.3** (U-1). Below it, migrate refuses with a version string and
-  a pointer. Say that v0.17.3 predates both the marker schema and OME-Zarr, so the floor is
-  the pre-markers shape, and that the HDF→Zarr migrator is *itself* a producer of the record
-  schema (CAN-7) — not a stage that runs before one.
+- **There is no migration floor, and no version-based refusal.** ~~Migration floor is
+  v0.17.3 (U-1). Below it, migrate refuses with a version string and a pointer.~~ **U-1's
+  floor was withdrawn by U-6** — see the conversion table's last row and Task 1 Step 3b,
+  which rule this twice — and the code says the same: `sdk_/_schema_shape.py:192`, on
+  `ConversionVerdict` itself, *"Two members, and there is deliberately **no
+  ``BELOW_FLOOR``** (U-6): there is no version floor to be below. A pre-markers tree is
+  supported however old."*
+
+  Documenting the refusal would have shipped a register describing behaviour the code
+  deliberately does not implement — and it is unimplementable on its own terms, because
+  `state.version` is a *state-schema* version, not a package version: `"2.0.0"` is the
+  value at v0.17.3 **and** immediately before `"3.0.0"` arrived, so there is no version
+  string to refuse on.
+
+  What to write instead: detection is by **shape**, the pre-markers signal is an absent
+  `work_ids` key, v0.17.3 is a useful *reference point* (it predates both the marker schema
+  and OME-Zarr) rather than a boundary, every pre-markers tree is the same shape however
+  old, and the HDF→Zarr migrator is *itself* a producer of the record schema (CAN-7) — not
+  a stage that runs before one.
 
 - [ ] **Step 4: Update the two contract statements this change invalidates**
 
@@ -1564,8 +1859,10 @@ identity only; the mirror carries the join and the phantoms; `finalize_run` is t
 path for `full`/`measure`/`recompile`. Keep the existing "feed analysis and dashboards from
 the mirror, not the master" rule — it is now doing more work than before, and say why.
 
-`## Legacy-tree migration` (`:175`): the state-schema conversion, the v0.17.3 floor, the
-legacy-tree rename, and the revert path.
+`## Legacy-tree migration` (heading is at `:178`, not `:175`): the state-schema conversion,
+**shape-based detection with no version floor** (U-6 — not "the v0.17.3 floor"; see Step 3),
+the legacy-tree rename of `image_complete/` + `stage3_complete/` **only**, and the revert
+path.
 
 - [ ] **Step 5: Verify every claim, then commit**
 
