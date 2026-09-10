@@ -1,0 +1,6 @@
+phenotypic.sdk\_.assert\_identity\_current
+==========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: assert_identity_current

@@ -681,6 +681,18 @@
 <span class="p">)</span>
 <span class="n">MEASUREMENT_TABLE_SCHEMA_VERSION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
 
+<span class="c1">#: The user-metadata sibling of the measurement table (spec §7.1-7.2). The</span>
+<span class="c1">#: measurement table carries measurements; whatever ``--metadata`` contributed</span>
+<span class="c1">#: for this image&#39;s join keys lands here instead, self-describing through its</span>
+<span class="c1">#: own Parquet key/value metadata. Versioned independently of the measurement</span>
+<span class="c1">#: sub-schema, because the two tables change for different reasons.</span>
+<span class="n">METADATA_TABLE_GROUP</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;metadata&quot;</span>
+<span class="n">METADATA_TABLE_FILENAME</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pht-metadata.parquet&quot;</span>
+<span class="n">METADATA_TABLE_RELATIVE_PATH</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span>
+    <span class="n">TABLES_GROUP</span><span class="p">,</span> <span class="n">METADATA_TABLE_GROUP</span><span class="p">,</span> <span class="n">METADATA_TABLE_FILENAME</span>
+<span class="p">)</span>
+<span class="n">METADATA_TABLE_SCHEMA_VERSION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
 
 <span class="k">class</span><span class="w"> </span><span class="nc">EmbeddedMeasurementParquetMetadataKeys</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Stable Parquet key/value metadata names for join provenance.&quot;&quot;&quot;</span>
@@ -1076,6 +1088,15 @@
     <span class="n">GAMMA</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;gamma&quot;</span>
     <span class="n">GRID</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;grid&quot;</span>
     <span class="n">METADATA</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;metadata&quot;</span>
+    <span class="c1">#: Which metadata snapshot the store&#39;s embedded tables were built against</span>
+    <span class="c1">#: (D-A), as ``{&quot;snapshot_sha256&quot;: ..., &quot;join_keys&quot;: [...],</span>
+    <span class="c1">#: &quot;join_kind&quot;: ...}``. The key is ``metadata_table`` and **not**</span>
+    <span class="c1">#: ``metadata``, because :attr:`METADATA` directly above is already taken</span>
+    <span class="c1">#: by the ``{protected, public, imported}`` image-metadata sections. This</span>
+    <span class="c1">#: is the spelling&#39;s single home: ``_run_state.py`` binds its private</span>
+    <span class="c1">#: reader names to these two members rather than repeating the strings.</span>
+    <span class="n">METADATA_TABLE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;metadata_table&quot;</span>
+    <span class="n">SNAPSHOT_SHA256</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;snapshot_sha256&quot;</span>
     <span class="n">PROTECTED</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;protected&quot;</span>
     <span class="n">PUBLIC</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;public&quot;</span>
     <span class="n">IMPORTED</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;imported&quot;</span></div>

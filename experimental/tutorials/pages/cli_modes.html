@@ -579,6 +579,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../gui/04_run_local.html">Run Locally</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../gui/05_run_slurm.html">Run on SLURM</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../gui/06_view_results.html">View Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../gui/19_scatter.html">Scatter plots</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../gui/07_pick_points.html">Pick Points</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../gui/08_analysis.html">Analysis sub-app</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../gui/09_aux_ports.html">Fill aux op params</a></li>
@@ -755,7 +756,7 @@ processing anything:</p>
 <p>A finished <code class="docutils literal notranslate"><span class="pre">full</span></code> run leaves three things under <code class="docutils literal notranslate"><span class="pre">--output</span></code>:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>out/
 ├── deliverables/            # what you read and share
-│   ├── master_measurements.{csv,parquet}   # clean, pre-post archive
+│   ├── master_measurements.parquet         # clean, un-joined, pre-post archive
 │   ├── measurements.{csv,parquet}          # post-applied mirror (the GUI reads this)
 │   ├── measurements_by_feature/            # one file per measurer
 │   ├── overlays/&lt;dataset&gt;/                 # detection overlay PNGs
@@ -841,27 +842,62 @@ to <code class="docutils literal notranslate"><span class="pre">LiDetector</span
 <h2><code class="docutils literal notranslate"><span class="pre">recompile</span></code> — rebuild the deliverables<a class="headerlink" href="#recompile-rebuild-the-deliverables" title="Link to this heading">#</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">recompile</span></code> takes neither <code class="docutils literal notranslate"><span class="pre">--input</span></code> nor <code class="docutils literal notranslate"><span class="pre">--pipeline</span></code>; both are reloaded from the
 output root. It re-aggregates marker-authorized embedded tables into
-<code class="docutils literal notranslate"><span class="pre">master_measurements.csv</span></code>, regenerates any missing overlay PNGs from their stores,
+<code class="docutils literal notranslate"><span class="pre">master_measurements.parquet</span></code>, regenerates any missing overlay PNGs from their stores,
 rebuilds the progress manifest, and regenerates the progress dashboard.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--mode<span class="w"> </span>recompile<span class="w"> </span>--output<span class="w"> </span>./out
 </pre></div>
 </div>
-<p>Recompile performs neither metadata migration preflight nor metadata
-migration. Convert legacy storage or external measurement authority first with
-<code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">migrate</span></code>; recompile then rebuilds the current artifacts. Exact legacy
-header spellings that remain in readable provenance inputs are normalized in
-memory. An external file passed via <code class="docutils literal notranslate"><span class="pre">--metadata</span></code> is copied byte-for-byte to
-<code class="docutils literal notranslate"><span class="pre">deliverables/metadata.csv</span></code> before work, then normalized in memory. Neither the
-external file nor that provenance snapshot is rewritten.</p>
-<p>Reach for it when the <em>numbers</em> are right but the <em>presentation</em> is not:</p>
-<ul class="simple">
-<li><p>You deleted or corrupted <code class="docutils literal notranslate"><span class="pre">dashboard.html</span></code>.</p></li>
-<li><p>A SLURM array finished its images but died before the aggregation step.</p></li>
-<li><p>You want to attach a plate-layout metadata CSV to a finished run:</p></li>
-</ul>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--mode<span class="w"> </span>recompile<span class="w"> </span>--output<span class="w"> </span>./out<span class="w"> </span>--metadata<span class="w"> </span>plate_layout.csv
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong><code class="docutils literal notranslate"><span class="pre">recompile</span></code> is unsupported on runs built with <code class="docutils literal notranslate"><span class="pre">--metadata</span></code>.</strong> A run given a
+<code class="docutils literal notranslate"><span class="pre">--metadata</span></code> CSV writes each image’s metadata rows into its own store, beside
+the measurements. <code class="docutils literal notranslate"><span class="pre">recompile</span></code> still builds the older shape — metadata joined
+<em>into</em> the measurement table — so rewriting such a store would drop its
+metadata table and un-invert its measurements.</p>
+<p>It <strong>refuses rather than doing that</strong>, before rewriting anything: you get a
+non-zero exit and a message naming the stores, and every store is left exactly
+as it was. Nothing is damaged, and re-running changes nothing.</p>
+<p><strong>What to use instead.</strong> The metadata join now happens once, at finalization,
+from <code class="docutils literal notranslate"><span class="pre">deliverables/metadata.csv</span></code> — not per image. So to attach or update a
+metadata CSV on such a run, re-run the <strong>original forward command</strong> with the
+new <code class="docutils literal notranslate"><span class="pre">--metadata</span></code> and <code class="docutils literal notranslate"><span class="pre">--force-local</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--input<span class="w"> </span>./plates<span class="w"> </span>--output<span class="w"> </span>./out<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--pipeline<span class="w"> </span>pipeline.json<span class="w"> </span>--metadata<span class="w"> </span>plate_layout.csv<span class="w"> </span>--force-local
 </pre></div>
 </div>
+</div>
+<p>Every image is already complete, so nothing is reprocessed; the changed
+snapshot re-runs finalization alone, which is where the join happens.
+<code class="docutils literal notranslate"><span class="pre">--force-local</span></code> matters: on a run submitted with <code class="docutils literal notranslate"><span class="pre">--slurm</span></code>, the same command
+routes into <code class="docutils literal notranslate"><span class="pre">recompile</span></code> internally and hits this same refusal.</p>
+<p><strong><code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">measure</span></code> is not a substitute.</strong> It never copies <code class="docutils literal notranslate"><span class="pre">--metadata</span></code> to
+<code class="docutils literal notranslate"><span class="pre">deliverables/metadata.csv</span></code>, so it would re-measure every image and silently
+re-join the <em>old</em> snapshot.</p>
+<p>This is a temporary limitation of the current release, tracked as P7 Task 5
+Step 1e; <code class="docutils literal notranslate"><span class="pre">recompile</span></code> will support these runs once its table producer is
+repointed.</p>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span>
+<span class="n">Recompile</span> <span class="n">performs</span> <span class="n">neither</span> <span class="n">metadata</span> <span class="n">migration</span> <span class="n">preflight</span> <span class="n">nor</span> <span class="n">metadata</span>
+<span class="n">migration</span><span class="o">.</span> <span class="n">Convert</span> <span class="n">legacy</span> <span class="n">storage</span> <span class="ow">or</span> <span class="n">external</span> <span class="n">measurement</span> <span class="n">authority</span> <span class="n">first</span> <span class="k">with</span>
+<span class="err">`</span><span class="o">--</span><span class="n">mode</span> <span class="n">migrate</span><span class="err">`</span><span class="p">;</span> <span class="n">recompile</span> <span class="n">then</span> <span class="n">rebuilds</span> <span class="n">the</span> <span class="n">current</span> <span class="n">artifacts</span><span class="o">.</span> <span class="n">Exact</span> <span class="n">legacy</span>
+<span class="n">header</span> <span class="n">spellings</span> <span class="n">that</span> <span class="n">remain</span> <span class="ow">in</span> <span class="n">readable</span> <span class="n">provenance</span> <span class="n">inputs</span> <span class="n">are</span> <span class="n">normalized</span> <span class="ow">in</span>
+<span class="n">memory</span><span class="o">.</span> <span class="n">An</span> <span class="n">external</span> <span class="n">file</span> <span class="n">passed</span> <span class="n">via</span> <span class="err">`</span><span class="o">--</span><span class="n">metadata</span><span class="err">`</span> <span class="ow">is</span> <span class="n">copied</span> <span class="n">byte</span><span class="o">-</span><span class="k">for</span><span class="o">-</span><span class="n">byte</span> <span class="n">to</span>
+<span class="err">`</span><span class="n">deliverables</span><span class="o">/</span><span class="n">metadata</span><span class="o">.</span><span class="n">csv</span><span class="err">`</span> <span class="n">before</span> <span class="n">work</span><span class="p">,</span> <span class="n">then</span> <span class="n">normalized</span> <span class="ow">in</span> <span class="n">memory</span><span class="o">.</span> <span class="n">Neither</span> <span class="n">the</span>
+<span class="n">external</span> <span class="n">file</span> <span class="n">nor</span> <span class="n">that</span> <span class="n">provenance</span> <span class="n">snapshot</span> <span class="ow">is</span> <span class="n">rewritten</span><span class="o">.</span>
+
+<span class="n">Reach</span> <span class="k">for</span> <span class="n">it</span> <span class="n">when</span> <span class="n">the</span> <span class="o">*</span><span class="n">numbers</span><span class="o">*</span> <span class="n">are</span> <span class="n">right</span> <span class="n">but</span> <span class="n">the</span> <span class="o">*</span><span class="n">presentation</span><span class="o">*</span> <span class="ow">is</span> <span class="ow">not</span><span class="p">:</span>
+
+<span class="o">-</span> <span class="n">You</span> <span class="n">deleted</span> <span class="ow">or</span> <span class="n">corrupted</span> <span class="err">`</span><span class="n">dashboard</span><span class="o">.</span><span class="n">html</span><span class="err">`</span><span class="o">.</span>
+<span class="o">-</span> <span class="n">A</span> <span class="n">SLURM</span> <span class="n">array</span> <span class="n">finished</span> <span class="n">its</span> <span class="n">images</span> <span class="n">but</span> <span class="n">died</span> <span class="n">before</span> <span class="n">the</span> <span class="n">aggregation</span> <span class="n">step</span><span class="o">.</span>
+<span class="o">-</span> <span class="n">You</span> <span class="n">want</span> <span class="n">to</span> <span class="n">attach</span> <span class="n">a</span> <span class="n">plate</span><span class="o">-</span><span class="n">layout</span> <span class="n">metadata</span> <span class="n">CSV</span> <span class="n">to</span> <span class="n">a</span> <span class="n">run</span> <span class="n">that</span> <span class="n">was</span> <span class="n">finished</span>
+  <span class="o">**</span><span class="n">without</span><span class="o">**</span> <span class="n">one</span><span class="p">:</span>
+
+<span class="err">```</span><span class="n">bash</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">phenotypic</span> <span class="o">--</span><span class="n">mode</span> <span class="n">recompile</span> <span class="o">--</span><span class="n">output</span> <span class="o">./</span><span class="n">out</span> <span class="o">--</span><span class="n">metadata</span> <span class="n">plate_layout</span><span class="o">.</span><span class="n">csv</span>
+</pre></div>
+</div>
+<p>A run that already had <code class="docutils literal notranslate"><span class="pre">--metadata</span></code> is the unsupported case above; use the
+forward re-run shown there instead.</p>
 <p><code class="docutils literal notranslate"><span class="pre">--metadata</span></code> left-joins the CSV onto the measurements mirror on shared columns.
 Every CSV row survives — one that matches no measured object is kept with null
 measurements and <code class="docutils literal notranslate"><span class="pre">QC_MetadataOnly</span></code> set to <code class="docutils literal notranslate"><span class="pre">true</span></code>, so a strain that was never

@@ -34,6 +34,7 @@ phenotypic.sdk\_.PhenotypicAttr
       ~PhenotypicAttr.IMPORTED
       ~PhenotypicAttr.LABELS
       ~PhenotypicAttr.METADATA
+      ~PhenotypicAttr.METADATA_TABLE
       ~PhenotypicAttr.PHENOTYPIC_VERSION
       ~PhenotypicAttr.PROTECTED
       ~PhenotypicAttr.PROVENANCE
@@ -42,6 +43,7 @@ phenotypic.sdk\_.PhenotypicAttr
       ~PhenotypicAttr.PYRAMID
       ~PhenotypicAttr.ROOT
       ~PhenotypicAttr.SERIES
+      ~PhenotypicAttr.SNAPSHOT_SHA256
       ~PhenotypicAttr.STORE_SCHEMA_VERSION
       ~PhenotypicAttr.TABLES
       ~PhenotypicAttr.WORK_ID

@@ -1,0 +1,990 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Scatter plots &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=8a079089"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'tutorials/gui/19_scatter';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/tutorials/gui/19_scatter.html" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Pick Points" href="07_pick_points.html" />
+    <link rel="prev" title="View Results" href="06_view_results.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.19.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown current active">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown current active">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started.html">Getting Started</a></li>
+
+<li class="toctree-l1 has-children"><a class="reference internal" href="../python_api.html">Python API Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../notebooks/01_your_first_plate_image.html">Tutorial 1: Your First Plate Image</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../notebooks/02_detecting_colonies.html">Tutorial 2: Detecting Colonies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../notebooks/03_enhancing_before_detection.html">Tutorial 3: Enhancing Before Detection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../notebooks/04_building_a_pipeline.html">Tutorial 4: Building a Pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../notebooks/05_working_with_grid_plates.html">Tutorial 5: Working with Detected Grid Plates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../notebooks/06_batch_processing.html">Tutorial 6: Batch Processing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../notebooks/07_measuring_and_exporting.html">Tutorial 7: Measuring and Exporting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../notebooks/08_using_prefab_pipelines.html">Tutorial 8: Using Prefab Pipelines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../notebooks/09_diagnosing_image_quality.html">Tutorial 9: Diagnosing Image Quality</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../notebooks/10_detecting_filamentous_fungi.html">Tutorial 10: Detecting Filamentous Fungi</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../cli.html">Command-Line Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../pages/cli_modes.html">CLI Execution Modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../pages/cli_batch_processing.html">CLI Batch Processing</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">GUI Walkthrough</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="01_setup.html">Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="18_browse.html">Browse source images</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_file_explorer.html">File Explorer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_build_pipeline.html">Build a Pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_run_local.html">Run Locally</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_run_slurm.html">Run on SLURM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_view_results.html">View Results</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Scatter plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_pick_points.html">Pick Points</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_analysis.html">Analysis sub-app</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_aux_ports.html">Fill aux op params</a></li>
+<li class="toctree-l2"><a class="reference internal" href="12_aux_wire_in_dag.html">Fill a scalar aux target</a></li>
+<li class="toctree-l2"><a class="reference internal" href="13_wire_pipeline_as_aux.html">Open an embedded Pipeline aux</a></li>
+<li class="toctree-l2"><a class="reference internal" href="14_fix_validation_issues.html">Fix validation issues</a></li>
+</ul>
+</details></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">Tutorials</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">GUI Walkthrough</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Scatter plots</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="scatter-plots">
+<h1>Scatter plots<a class="headerlink" href="#scatter-plots" title="Link to this heading">#</a></h1>
+<p>The results viewer’s third tab turns the measurements a run produced into a
+faceted, clickable scatter plot, and exports the same figure as a multi-page
+PDF. It reads the same frame the Plate and Colony tabs do — the post-applied
+<code class="docutils literal notranslate"><span class="pre">deliverables/measurements.parquet</span></code> mirror — and shares the viewer’s filter
+sidebar, its curation state, and its one <strong>Refresh</strong>.</p>
+<p>Nothing about the plot is hard-coded. Every role a plotting script would fix
+in source — what makes a page, what makes a facet row, what goes on each axis,
+what colours and what shapes a point — is a dropdown here.</p>
+<section id="open-the-tab">
+<h2>Open the tab<a class="headerlink" href="#open-the-tab" title="Link to this heading">#</a></h2>
+<p>Bind a CLI output in the viewer (see <a class="reference internal" href="06_view_results.html"><span class="std std-doc">View Results</span></a>), then
+pick <strong>Scatter</strong> from the tab row.</p>
+<p><img alt="The Scatter tab: a faceted section with its pager chip." src="../../_images/01_scatter_tab.png" /></p>
+<p>The toolbar holds three things: <strong>⚙ Plot settings</strong>, the section pager, and
+<strong>⇩ Export PDF</strong>.</p>
+</section>
+<section id="bind-the-plotting-roles">
+<h2>Bind the plotting roles<a class="headerlink" href="#bind-the-plotting-roles" title="Link to this heading">#</a></h2>
+<p><strong>⚙ Plot settings</strong> opens a popover with one dropdown per role:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Role</p></th>
+<th class="head"><p>What it does</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Section group</strong></p></td>
+<td><p>One value per page. The pager steps between them, and the PDF writes one page each.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Facet rows</strong> / <strong>Facet columns</strong></p></td>
+<td><p>Values become the rows and columns of a grid within the page.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>X axis</strong></p></td>
+<td><p>Any numeric column, plus a derived <em>frame index (capture order)</em> — see below.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Y axis</strong></p></td>
+<td><p>Any numeric column.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Colour</strong></p></td>
+<td><p>A column mapped onto marker colour.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Marker shape</strong></p></td>
+<td><p>A column mapped onto marker symbol.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Legend corner</strong> / <strong>Collapse the legend</strong></p></td>
+<td><p>Where the floating legend sits, and whether it is shown at all.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Show removed colonies as grey ×</strong></p></td>
+<td><p>Whether curation-removed colonies stay visible.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><img alt="The Plot settings popover with its role bindings." src="../../_images/02_plot_settings.png" /></p>
+<p>Two things about these lists are worth knowing:</p>
+<ul class="simple">
+<li><p><strong>They describe the run, not the current filter.</strong> A column narrowed to one
+value by the filter sidebar is still offered, because a single-valued
+section, facet, colour or shape is an ordinary, correct figure. The Colony
+tab’s axis dropdowns behave differently on purpose — there, a single-valued
+column makes a degenerate <em>grid</em>.</p></li>
+<li><p><strong>Each role has its own ceiling.</strong> Sections are offered up to 60 distinct
+values, facet axes up to 12, colour up to 8 and shape up to 6 — the last two
+because the palette carries six colours and the symbol set five shapes.</p></li>
+</ul>
+<section id="the-derived-frame-index">
+<h3>The derived frame index<a class="headerlink" href="#the-derived-frame-index" title="Link to this heading">#</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">Metadata_FrameIndex</span></code> is often unpopulated, and <code class="docutils literal notranslate"><span class="pre">Metadata_Timepoint</span></code> is often a
+constant, so X also offers <strong>frame index (capture order)</strong>. It ranks the
+distinct <code class="docutils literal notranslate"><span class="pre">Metadata_ImageDatetime</span></code> values <em>within each plate</em>, zero-based, so
+every colony in one image shares a frame number. An image with no timestamp is
+excluded from the plot rather than ranked zero, and the ranking happens after
+filtering, so a filtered-out image leaves no gap in the order.</p>
+</section>
+</section>
+<section id="size-the-figures-type-and-markers">
+<h2>Size the figure’s type and markers<a class="headerlink" href="#size-the-figures-type-and-markers" title="Link to this heading">#</a></h2>
+<p>The popover groups its controls into <strong>Data</strong>, <strong>Style</strong>, <strong>Legend</strong> and
+<strong>Export</strong>. Only Data is open when the popover mounts, so the role dropdowns
+stay the first thing you see; expand <strong>Style</strong> for the sizing steppers.</p>
+<p><img alt="The Style section's type and marker steppers." src="../../_images/05_style_sizing.png" /></p>
+<p>Each stepper moves one thing:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Control</p></th>
+<th class="head"><p>What it sizes</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Section title</p></td>
+<td><p>The heading on each exported PDF page</p></td>
+</tr>
+<tr class="row-odd"><td><p>Facet labels</p></td>
+<td><p>The <code class="docutils literal notranslate"><span class="pre">column=value</span></code> captions above each facet</p></td>
+</tr>
+<tr class="row-even"><td><p>Axis titles</p></td>
+<td><p>The X and Y axis names</p></td>
+</tr>
+<tr class="row-odd"><td><p>Tick labels</p></td>
+<td><p>The numbers along both axes</p></td>
+</tr>
+<tr class="row-even"><td><p>Legend text</p></td>
+<td><p>The series names in the legend</p></td>
+</tr>
+<tr class="row-odd"><td><p>Marker size</p></td>
+<td><p>Point diameter</p></td>
+</tr>
+<tr class="row-even"><td><p>Marker opacity</p></td>
+<td><p>Point alpha — lower it when points overlap heavily</p></td>
+</tr>
+<tr class="row-odd"><td><p>Facet height</p></td>
+<td><p>The height of <strong>one facet row</strong>, in pixels</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Facet height is the one worth understanding. The figure is that many pixels
+per facet <em>row</em>, not in total, so a ten-row grid is ten facets tall and the
+page scrolls. Raising it makes every row taller rather than dividing a fixed
+height among more of them.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>These sizes apply to the export as well as the screen — the same <code class="docutils literal notranslate"><span class="pre">FigureSpec</span></code>
+feeds both — so set them before you export rather than after.</p>
+</div>
+</section>
+<section id="page-through-the-sections">
+<h2>Page through the sections<a class="headerlink" href="#page-through-the-sections" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">‹</span></code> and <code class="docutils literal notranslate"><span class="pre">›</span></code> step one section group at a time. The chip between them names the
+section on screen and its position, and it also carries two notices when they
+apply:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">—</span> <span class="pre">showing</span> <span class="pre">first</span> <span class="pre">N</span> <span class="pre">of</span> <span class="pre">M</span> <span class="pre">facets</span></code>, when the row × column selection exceeds the
+24-panel cap. The cap bounds the <em>product</em>: a 12-value row axis crossed with
+a 12-value column axis is 144 panels, not 24.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">—</span> <span class="pre">N</span> <span class="pre">rows</span> <span class="pre">excluded,</span> <span class="pre">no</span> <span class="pre">value</span> <span class="pre">to</span> <span class="pre">plot</span></code>, when rows were dropped for having no X
+or Y value.</p></li>
+</ul>
+<p>Both are recomputed on every render. A live run adds images and facet values
+over time, so a notice held from an earlier render would describe a figure
+nobody is looking at.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>A <strong>null</strong> grouping value is dropped rather than becoming a <code class="docutils literal notranslate"><span class="pre">(none)</span></code> page. A
+column with 23 distinct values, one of which is null, pages 22 sections.</p>
+</div>
+</section>
+<section id="click-a-point-to-open-its-colony">
+<h2>Click a point to open its colony<a class="headerlink" href="#click-a-point-to-open-its-colony" title="Link to this heading">#</a></h2>
+<p>Clicking any point opens a right-docked inspector for the colony behind it.</p>
+<p><img alt="The click inspector: identity, contoured crop, and measurements grouped by measurer." src="../../_images/03_click_inspector.png" /></p>
+<p>It carries three things:</p>
+<ol class="arabic simple">
+<li><p><strong>The colony’s identity</strong> — <code class="docutils literal notranslate"><span class="pre">dataset</span> <span class="pre">/</span> <span class="pre">image</span> <span class="pre">/</span> <span class="pre">label</span></code>.</p></li>
+<li><p><strong>A crop</strong>, served centred on that colony. The <strong>Contours / Raw</strong> control
+switches between the crop composited with the objmap’s object boundaries
+(the focal colony outlined differently from its neighbours) and the raw
+pixels. Contours is the default here: the inspector’s job is to show what
+the detector found on this colony, not only its pixels.</p></li>
+<li><p><strong>Its measurements</strong>, grouped under the <code class="docutils literal notranslate"><span class="pre">MeasureFeatures</span></code> operation that
+emitted each column. The grouping is read from the run’s own recorded
+pipeline parameters, so a measurer configured with non-default parameters is
+credited with the columns it actually claimed. Anything unattributable lands
+under <code class="docutils literal notranslate"><span class="pre">Unattributed</span></code>.</p></li>
+</ol>
+<p>Drag the inspector’s left edge to widen it.</p>
+<p><img alt="The same colony with Contours switched to Raw." src="../../_images/04_inspector_raw.png" /></p>
+<p>Switching Contours to Raw re-requests the crop; it does not re-resolve the
+click. That matters because a click can go stale:</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>If the run changes underneath you — a curation mark on the Colony tab, a
+<strong>Refresh</strong> picking up a live run’s new images — a point drawn before that
+change is <strong>refused</strong> rather than resolved. The inspector says <em>“this point was
+drawn before the run changed. Refresh the snapshot and click again.”</em> This is
+deliberate: resolving it anyway would open a real but wrong colony, with a real
+crop, and nothing would look amiss.</p>
+</div>
+<p>Points the plot cannot resolve are refused the same way. Metadata-only phantom
+rows — the placeholder rows a run writes for a strain it detected nothing for —
+are never plotted at all, so the plotted count is a colony count rather than a
+row count.</p>
+</section>
+<section id="curation-and-filters">
+<h2>Curation and filters<a class="headerlink" href="#curation-and-filters" title="Link to this heading">#</a></h2>
+<p>Scatter <strong>reads</strong> curation and never writes it; mark and restore stay on the
+Colony tab. With <strong>Show removed colonies as grey ×</strong> on (the default),
+curation-removed colonies stay on the figure as a grey × series so a plot says
+what has been taken out of it. Turn it off and they disappear, and the shared
+axis ranges narrow to what is left.</p>
+<p>The filter sidebar is the viewer’s, not the tab’s: editing a clause rebuilds
+this figure at the same time as it narrows Plate and Colony. So does the
+viewer’s single <strong>Refresh</strong> — there is deliberately no Scatter-local refresh
+button, because one would let this tab disagree with the others about which
+snapshot it is showing.</p>
+</section>
+<section id="export-a-pdf">
+<h2>Export a PDF<a class="headerlink" href="#export-a-pdf" title="Link to this heading">#</a></h2>
+<p>Page size lives in the popover’s <strong>Export</strong> section: 16×12 in (the default,
+matching the reference script), Letter landscape, A4 landscape, or <strong>Custom</strong>,
+which reveals width and height inputs seeded from whichever preset was showing.</p>
+<p><strong>⇩ Export PDF</strong> renders <em>every</em> section — one page each — and merges them into
+a single <code class="docutils literal notranslate"><span class="pre">scatter.pdf</span></code>. It consumes exactly the frame on screen, so the document
+cannot describe a different selection from the one you are looking at, and it
+does not downsample.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Export needs a Chrome or Chromium binary for kaleido to render through, and
+that is not part of <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">sync</span></code>. When it is missing, the export says so beside
+the button rather than silently doing nothing. Fetch one with kaleido’s
+<code class="docutils literal notranslate"><span class="pre">plotly_get_chrome</span></code>, or point the <code class="docutils literal notranslate"><span class="pre">BROWSER_PATH</span></code> environment variable at a
+browser you already have — the Chromium Playwright vendors for the e2e suite
+works.</p>
+</div>
+<p>The on-screen figure draws WebGL traces so it can carry hundreds of thousands
+of points; the export substitutes ordinary SVG traces, because kaleido renders
+a WebGL trace as a valid, well-formed, entirely blank page.</p>
+</section>
+<section id="where-to-next">
+<h2>Where to next<a class="headerlink" href="#where-to-next" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="06_view_results.html"><span class="std std-doc">View Results</span></a> — the Plate and Colony surfaces this tab
+sits beside.</p></li>
+<li><p><a class="reference internal" href="08_analysis.html"><span class="std std-doc">Analysis</span></a> — fit models and emit analysis tables from the
+same measurements.</p></li>
+<li><p><a class="reference internal" href="../../how_to/pages/gui_hub.html"><span class="std std-doc">GUI hub guide</span></a> — the full reference for every
+panel and store in the hub.</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#open-the-tab">Open the tab</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#bind-the-plotting-roles">Bind the plotting roles</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#the-derived-frame-index">The derived frame index</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#size-the-figures-type-and-markers">Size the figure’s type and markers</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#page-through-the-sections">Page through the sections</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#click-a-point-to-open-its-colony">Click a point to open its colony</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#curation-and-filters">Curation and filters</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#export-a-pdf">Export a PDF</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#where-to-next">Where to next</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/tutorials/gui/19_scatter.md.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

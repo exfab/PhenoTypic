@@ -1,0 +1,6 @@
+phenotypic.sdk\_.slurm\_lifecycle\_path
+=======================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: slurm_lifecycle_path

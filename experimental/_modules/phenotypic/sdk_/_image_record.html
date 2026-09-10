@@ -1,0 +1,888 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.sdk_._image_record &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=8a079089"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/sdk_/_image_record';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/sdk_/_image_record.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.19.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.sdk_._image_record</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.sdk_._image_record</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;The per-image record&#39;s readers and shared vocabulary (spec §6.1).</span>
+
+<span class="sd">**Readers here, writers in :mod:`phenotypic._cli._cli_image_record`**, and the</span>
+<span class="sd">split is forced rather than stylistic. P6 Task 0 moves ``valid_image_success``</span>
+<span class="sd">into ``sdk_/_run_state.py``, and after P3 that function reads this record --</span>
+<span class="sd">but INV-LAYER forbids ``sdk_`` importing :mod:`phenotypic._cli` at module</span>
+<span class="sd">scope *or* inside a function. Readers in ``_cli`` would leave ``sdk_`` unable</span>
+<span class="sd">to read a record at all without either duplicating this vocabulary or</span>
+<span class="sd">re-implementing the parse, and both are the duplication CAN-27 and CAN-8 exist</span>
+<span class="sd">to close. It is the same read/write asymmetry spec §5.2 already declares for</span>
+<span class="sd">run state.</span>
+
+<span class="sd">**``ARTIFACT_KIND_FILE`` / ``ARTIFACT_KIND_STORE`` are deliberately NOT here.**</span>
+<span class="sd">The plan&#39;s Interfaces block placed them in this module, on the reasoning that</span>
+<span class="sd">the kinds would otherwise be &quot;spelled at each comparison&quot;. They are not: they</span>
+<span class="sd">have lived in :mod:`._io_constants` since the marker schema was written, and</span>
+<span class="sd">eight modules import them from there. Adding them here would create exactly</span>
+<span class="sd">the second home that argument exists to prevent -- a correct rule applied to a</span>
+<span class="sd">tree that had already satisfied it. Import them from ``_io_constants``.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mapping</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Final</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._io_constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">image_record_path</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;PROVENANCE_FORWARD&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PROVENANCE_MIGRATED&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;WORK_ID_UNRECOVERABLE&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RECORD_VERSION&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;STAGE_MEASURED&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;STAGE_STAGE1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;STAGE_STAGE2&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;STAGE_STAGE3&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;read_image_record&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;record_provenance&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;record_rejection&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="c1">#: The stage names, as shared constants imported by every writer and reader</span>
+<span class="c1">#: (CAN-27). ``stages`` stays an **open** map (§6.1) -- a future stage is</span>
+<span class="c1">#: additive -- but the names *this build* writes cannot be misspelled, because</span>
+<span class="c1">#: there is exactly one place they are spelled. This replaces O-2&#39;s</span>
+<span class="c1">#: ``KNOWN_STAGES`` + advisory, which could not be built without either</span>
+<span class="c1">#: breaking INV-LAYER (the advisory is emitted from ``sdk_``, which may not</span>
+<span class="c1">#: import ``_cli``) or duplicating the set.</span>
+<span class="n">STAGE_STAGE1</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;stage1&quot;</span>
+<span class="n">STAGE_STAGE2</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;stage2&quot;</span>
+<span class="n">STAGE_STAGE3</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;stage3&quot;</span>
+<span class="n">STAGE_MEASURED</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;measured&quot;</span>
+
+<span class="c1">#: The record&#39;s ``provenance`` values (U-10). Compared in ``sdk_`` by</span>
+<span class="c1">#: ``valid_image_success`` and written in ``_cli`` by ``--mode migrate``, so</span>
+<span class="c1">#: the spelling lives here rather than in either one.</span>
+<span class="n">PROVENANCE_FORWARD</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;forward&quot;</span>
+<span class="n">PROVENANCE_MIGRATED</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;migrated&quot;</span>
+
+<span class="c1">#: The ``work_id`` of a record migrate minted from an output alone (MIG-11).</span>
+<span class="c1">#:</span>
+<span class="c1">#: **Not a digest, and deliberately not empty.** A pre-markers ``--mode</span>
+<span class="c1">#: process`` tree records completion nowhere but in the outputs themselves, so</span>
+<span class="c1">#: migrate can say *&quot;this output exists&quot;* and cannot say which pipeline made</span>
+<span class="c1">#: it -- ``work_id_for_image`` folds in the pipeline&#39;s own hash, and U-10</span>
+<span class="c1">#: forbids fabricating an identity a resume would then compare against.</span>
+<span class="c1">#:</span>
+<span class="c1">#: It is **never compared**: :func:`record_rejection` skips the ``work_id``</span>
+<span class="c1">#: check entirely for :data:`PROVENANCE_MIGRATED` records, which is precisely</span>
+<span class="c1">#: what that provenance value means. So the field&#39;s only job is to say *why*</span>
+<span class="c1">#: it is not an identity.</span>
+<span class="c1">#:</span>
+<span class="c1">#: ``&quot;&quot;`` was considered and rejected. It is indistinguishable from &quot;we forgot</span>
+<span class="c1">#: to set this&quot; in a file a support request will quote, and it is falsey where</span>
+<span class="c1">#: this repo&#39;s readers are not uniform about that -- ``_run_state`` goes</span>
+<span class="c1">#: through ``_optional_str``, ``_cli_recompile_recovery`` does a hard</span>
+<span class="c1">#: ``str(...)``, and :func:`record_rejection` compares by equality. &quot;Absent&quot;</span>
+<span class="c1">#: and &quot;present but unrecoverable&quot; are different facts and the empty string</span>
+<span class="c1">#: collapses them.</span>
+<span class="n">WORK_ID_UNRECOVERABLE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;unrecoverable&quot;</span>
+
+<span class="c1">#: A version mismatch **invalidates rather than migrates**, matching the</span>
+<span class="c1">#: policy `_cli/CLAUDE.md` states for the marker this record replaces.</span>
+<span class="n">RECORD_VERSION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+
+<div class="viewcode-block" id="read_image_record">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.read_image_record.html#phenotypic.sdk_.read_image_record">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">read_image_record</span><span class="p">(</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">image_stem</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return one image&#39;s record, or ``None`` when it cannot be read.</span>
+
+<span class="sd">    Every failure returns ``None`` rather than raising -- INV-VERDICT&#39;s</span>
+<span class="sd">    degrade half: an unreadable record must make an image look *less*</span>
+<span class="sd">    finished, never make a caller explode. A truncated file, a JSON array</span>
+<span class="sd">    where an object belongs, and an absent file are all the same answer,</span>
+<span class="sd">    because a caller that must distinguish them is asking the wrong question</span>
+<span class="sd">    of this function.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: Run output root.</span>
+<span class="sd">        dataset: Dataset name.</span>
+<span class="sd">        image_stem: Source image stem.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The record as a mapping, or ``None``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">raw</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span>
+            <span class="n">image_record_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">image_stem</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span>
+                <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">raw</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="record_provenance">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.record_provenance.html#phenotypic.sdk_.record_provenance">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">record_provenance</span><span class="p">(</span><span class="n">record</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a record&#39;s provenance, defaulting to ``&quot;forward&quot;`` (U-10).</span>
+
+<span class="sd">    **Absent means forward, and that is the strict reading.** A record written</span>
+<span class="sd">    before this field existed -- or by any writer that forgets it -- must be</span>
+<span class="sd">    fenced on ``work_id`` like any other, so the default is the value that</span>
+<span class="sd">    *keeps* the fence. Defaulting to ``&quot;migrated&quot;``, or reading a bare</span>
+<span class="sd">    ``record[&quot;provenance&quot;]`` and treating the ``KeyError`` as &quot;unmarked&quot;,</span>
+<span class="sd">    would strip the fence from every tree written before P3.</span>
+
+<span class="sd">    A function rather than the ``record.get(&quot;provenance&quot;, &quot;forward&quot;)`` the</span>
+<span class="sd">    plan prescribes: the rule is a *default*, and a default restated at each</span>
+<span class="sd">    call site is one edit away from being two defaults. This is the same</span>
+<span class="sd">    reason `stage3_markers_required` is a live gate finding.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        record: A record mapping, or anything at all -- a non-mapping is</span>
+<span class="sd">            treated as unmarked rather than raising, so a caller that already</span>
+<span class="sd">            has :func:`read_image_record`&#39;s ``None`` need not branch twice.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``PROVENANCE_MIGRATED`` only when the record says so explicitly;</span>
+<span class="sd">        ``PROVENANCE_FORWARD`` in every other case.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">PROVENANCE_FORWARD</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;provenance&quot;</span><span class="p">,</span> <span class="n">PROVENANCE_FORWARD</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">value</span> <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="n">PROVENANCE_MIGRATED</span> <span class="k">else</span> <span class="n">PROVENANCE_FORWARD</span></div>
+
+
+
+<div class="viewcode-block" id="record_rejection">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.record_rejection.html#phenotypic.sdk_.record_rejection">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">record_rejection</span><span class="p">(</span>
+    <span class="n">record</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">work_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">image_stem</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return why ``record`` cannot certify this image, or ``None``.</span>
+
+<span class="sd">    **The single implementation of per-image record validity**, and the one</span>
+<span class="sd">    reason this function exists rather than the check being written twice.</span>
+<span class="sd">    ``_cli_completion.valid_image_success`` and</span>
+<span class="sd">    ``_run_state``&#39;s deep path both ask it, exactly as they both asked</span>
+<span class="sd">    :func:`~phenotypic.sdk_._run_state.marker_rejection` of the marker this</span>
+<span class="sd">    record replaces. Splitting them again -- after gate finding IMPL-F3 spent</span>
+<span class="sd">    a whole increment merging them -- would look like progress in a diff and</span>
+<span class="sd">    be the same defect returning.</span>
+
+<span class="sd">    A sentence rather than a bool, because the sentence lands in</span>
+<span class="sd">    ``ImageState.reason`` and is what makes &quot;which images are missing, and</span>
+<span class="sd">    why?&quot; answerable without re-running anything.</span>
+
+<span class="sd">    Two clauses are worth reading twice:</span>
+
+<span class="sd">    * **The ``work_id`` comparison is skipped for a migrated record** (U-10).</span>
+<span class="sd">      A pre-markers tree never had a ``work_id`` to match, so comparing it</span>
+<span class="sd">      unconditionally would reject every migrated image. The relaxation is</span>
+<span class="sd">      per-record and read through :func:`record_provenance`, so an absent or</span>
+<span class="sd">      unrecognized value keeps the fence.</span>
+<span class="sd">    * **A record with no artifacts certifies nothing** (CAN-23), and after</span>
+<span class="sd">      the collapse that is one missing check away from being wrong. A Stage-2</span>
+<span class="sd">      worker writes ``stages.stage2`` and no artifacts into this same file;</span>
+<span class="sd">      before the collapse the two facts lived in two trees and mistaking one</span>
+<span class="sd">      for the other was impossible.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        record: The record mapping, as returned by :func:`read_image_record`.</span>
+<span class="sd">        work_id: The identity this image is expected to carry.</span>
+<span class="sd">        dataset: The dataset the caller is asking about.</span>
+<span class="sd">        image_stem: The image stem the caller is asking about.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A sentence naming the first failed clause, or ``None`` when the</span>
+<span class="sd">        record may certify this image. Artifact *contents* are not checked</span>
+<span class="sd">        here -- that is ``fenced_artifact_path``&#39;s half, kept separate so a</span>
+<span class="sd">        caller asking &quot;is this record even about my image?&quot; pays no I/O.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;version&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="n">RECORD_VERSION</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;record schema version </span><span class="si">{</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;version&#39;</span><span class="p">)</span><span class="si">!r}</span><span class="s2"> is not &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">RECORD_VERSION</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dataset&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="n">dataset</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;record was written for a different dataset&quot;</span>
+    <span class="k">if</span> <span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_stem&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="n">image_stem</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;record was written for a different image&quot;</span>
+    <span class="k">if</span> <span class="n">record_provenance</span><span class="p">(</span><span class="n">record</span><span class="p">)</span> <span class="o">!=</span> <span class="n">PROVENANCE_MIGRATED</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;work_id&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="n">work_id</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;record was written for a different work_id&quot;</span>
+    <span class="n">artifacts</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;artifacts&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">artifacts</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">artifacts</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;record declares no artifacts&quot;</span>
+    <span class="k">return</span> <span class="kc">None</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

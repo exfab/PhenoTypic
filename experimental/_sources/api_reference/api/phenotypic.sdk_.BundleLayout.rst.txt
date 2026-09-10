@@ -38,7 +38,6 @@ phenotypic.sdk\_.BundleLayout
       ~BundleLayout.error_analysis_parquet
       ~BundleLayout.errors_dir
       ~BundleLayout.has_results
-      ~BundleLayout.master_csv
       ~BundleLayout.master_parquet
       ~BundleLayout.mirror_csv
       ~BundleLayout.mirror_parquet

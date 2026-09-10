@@ -1,0 +1,1291 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Run state: what is tracked, and how to read it &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=8a079089"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'contrib_guide/tracked_state';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/contrib_guide/tracked_state.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Documentation Writing Guide" href="documentation.html" />
+    <link rel="prev" title="Testing Framework" href="testing.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.19.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Developer Guide Topics</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing Guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="extending.html">Extending Phenotypic</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing Framework</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Run state: what is tracked, and how to read it</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documentation.html">Documentation Writing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docstring_style.html">ImageOperation Docstring Style Guide</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">Developer Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Run state: what is tracked, and how to read it</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="run-state-what-is-tracked-and-how-to-read-it">
+<h1>Run state: what is tracked, and how to read it<a class="headerlink" href="#run-state-what-is-tracked-and-how-to-read-it" title="Link to this heading">#</a></h1>
+<p>This page is the reference for <strong>a run’s machine state</strong> — what PhenoTypic
+writes down about the progress of a run, what it computes instead, and which
+call answers each question.</p>
+<p>Read it before adding any counter, flag, marker or cached count under
+<code class="docutils literal notranslate"><span class="pre">.phenotypic/</span></code>. The organising principle of this subsystem is <strong>move state that
+is tracked to state that is checked</strong>: a value that can be recomputed from
+artifacts on disk must be recomputed, because a stored copy can disagree with
+the thing it describes and nothing will fail to say so.</p>
+<div class="important admonition">
+<p class="admonition-title">Keep this page current</p>
+<p>This page is the reference other documents point at, including
+<code class="docutils literal notranslate"><span class="pre">src/phenotypic/_cli/CLAUDE.md</span></code>. <strong>If you add, remove or change a tracked
+state, a proof, or a consumer, update this page in the same change</strong> — see
+the <strong>Changing the state model</strong> section below for the checklist. A
+reference that is updated later is a reference nobody can trust in between.</p>
+</div>
+<hr class="docutils" />
+<section id="reading-state-one-call">
+<h2>Reading state: one call<a class="headerlink" href="#reading-state-one-call" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_run_state</span>
+
+<span class="n">state</span> <span class="o">=</span> <span class="n">resolve_run_state</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">depth</span><span class="o">=</span><span class="s2">&quot;deep&quot;</span><span class="p">)</span>
+<span class="n">state</span><span class="o">.</span><span class="n">completion</span>            <span class="c1"># &quot;complete&quot; | &quot;incomplete&quot; | &quot;failed&quot; | &quot;active&quot;</span>
+<span class="n">state</span><span class="o">.</span><span class="n">diagnostics</span><span class="o">.</span><span class="n">verified</span>  <span class="c1"># int</span>
+<span class="n">state</span><span class="o">.</span><span class="n">images</span><span class="p">[</span><span class="s2">&quot;&lt;work_id&gt;&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">verdict</span>   <span class="c1"># &quot;verified&quot; | &quot;unverified&quot; | &quot;failed&quot;</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">resolve_run_state(output_dir,</span> <span class="pre">*,</span> <span class="pre">depth=&quot;deep&quot;)</span></code> is the single answer to <em>“is
+this run done?”</em>. Everything below exists to serve it.</p>
+<p><strong>It never raises.</strong> Any unreadable, absent or foreign directory degrades toward
+<code class="docutils literal notranslate"><span class="pre">incomplete</span></code> rather than erroring, so callers do not need a <code class="docutils literal notranslate"><span class="pre">try</span></code> block. It
+accepts a directory this package has never written to.</p>
+<section id="runstate">
+<h3><code class="docutils literal notranslate"><span class="pre">RunState</span></code><a class="headerlink" href="#runstate" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Field</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">completion</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Literal[&quot;complete&quot;,</span> <span class="pre">&quot;incomplete&quot;,</span> <span class="pre">&quot;failed&quot;,</span> <span class="pre">&quot;active&quot;]</span></code></p></td>
+<td><p>The verdict</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">identity</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">RunIdentity</span></code></p></td>
+<td><p>Run-level identity tokens and digests</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">images</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Mapping[str,</span> <span class="pre">ImageState]</span></code></p></td>
+<td><p>Per-image state, keyed by <code class="docutils literal notranslate"><span class="pre">work_id</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">advisories</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">tuple[str,</span> <span class="pre">...]</span></code></p></td>
+<td><p>Human-readable notes; <strong>never branch on these</strong></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">diagnostics</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">RunDiagnostics</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">accepted</span></code> / <code class="docutils literal notranslate"><span class="pre">verified</span></code> / <code class="docutils literal notranslate"><span class="pre">failed</span></code> counts</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">depth</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Literal[&quot;shallow&quot;,</span> <span class="pre">&quot;deep&quot;]</span></code></p></td>
+<td><p>The depth <strong>actually performed</strong></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">verified_at</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">datetime</span> <span class="pre">|</span> <span class="pre">None</span></code></p></td>
+<td><p>When verification ran</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">RunIdentity</span></code> carries <code class="docutils literal notranslate"><span class="pre">processing_generation</span></code>, <code class="docutils literal notranslate"><span class="pre">restart_epoch</span></code>,
+<code class="docutils literal notranslate"><span class="pre">scheduler_epoch</span></code>, <code class="docutils literal notranslate"><span class="pre">owner_generation</span></code>, <code class="docutils literal notranslate"><span class="pre">inventory_digest</span></code>,
+<code class="docutils literal notranslate"><span class="pre">scientific_config_digest</span></code>, <code class="docutils literal notranslate"><span class="pre">finalization_input_digest</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">ImageState</span></code> carries <code class="docutils literal notranslate"><span class="pre">work_id</span></code>, <code class="docutils literal notranslate"><span class="pre">dataset</span></code>, <code class="docutils literal notranslate"><span class="pre">image_stem</span></code>, <code class="docutils literal notranslate"><span class="pre">stages</span></code>, <code class="docutils literal notranslate"><span class="pre">verdict</span></code>,
+<code class="docutils literal notranslate"><span class="pre">reason</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">stages</span></code> is an <strong>open map</strong> — <code class="docutils literal notranslate"><span class="pre">stage1</span></code> / <code class="docutils literal notranslate"><span class="pre">stage2</span></code> / <code class="docutils literal notranslate"><span class="pre">stage3</span></code> / <code class="docutils literal notranslate"><span class="pre">measured</span></code>
+today, more later. Nothing enumerates its keys. Ask <code class="docutils literal notranslate"><span class="pre">&quot;stage3&quot;</span> <span class="pre">in</span> <span class="pre">state.stages</span></code>, which is what makes a future stage additive rather than a schema
+break.</p>
+</section>
+<section id="verdict-precedence">
+<h3>Verdict precedence<a class="headerlink" href="#verdict-precedence" title="Link to this heading">#</a></h3>
+<p>Total and ordered, first match wins:</p>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="n">complete</span>  <span class="o">&gt;</span>  <span class="n">active</span>  <span class="o">&gt;</span>  <span class="n">failed</span>  <span class="o">&gt;</span>  <span class="n">incomplete</span>
+</pre></div>
+</div>
+<p>There is no <code class="docutils literal notranslate"><span class="pre">contradictory</span></code>. <code class="docutils literal notranslate"><span class="pre">complete</span></code> outranks <code class="docutils literal notranslate"><span class="pre">active</span></code> because a run proof
+covers the <em>current</em> inventory. <code class="docutils literal notranslate"><span class="pre">active</span></code> outranks <code class="docutils literal notranslate"><span class="pre">failed</span></code> so a failure from a
+previous attempt cannot mask an attempt currently retrying it.</p>
+</section>
+<section id="choosing-a-depth">
+<h3>Choosing a depth<a class="headerlink" href="#choosing-a-depth" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p></p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">deep</span></code></p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">shallow</span></code></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>What it does</p></td>
+<td><p>Re-verifies every declared artifact’s content</p></td>
+<td><p>Re-stats recorded <code class="docutils literal notranslate"><span class="pre">(size,</span> <span class="pre">mtime_ns)</span></code> tuples</p></td>
+</tr>
+<tr class="row-odd"><td><p>Cost</p></td>
+<td><p>O(N) hashing</p></td>
+<td><p>O(N) <code class="docutils literal notranslate"><span class="pre">stat()</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Use for</p></td>
+<td><p>Publishing, finalizing, anything that writes</p></td>
+<td><p>Listing runs, polling, GUI status</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">shallow</span></code> falls through to a deep pass for any image absent from the cache,
+moved, minted under a different identity, or unreadable — so <code class="docutils literal notranslate"><span class="pre">RunState.depth</span></code>
+reports what actually happened, and a cold <code class="docutils literal notranslate"><span class="pre">shallow</span></code> call returns <code class="docutils literal notranslate"><span class="pre">&quot;deep&quot;</span></code>.</p>
+<div class="warning admonition">
+<p class="admonition-title">INV-VERDICT</p>
+<p>A cached entry can only ever license <strong>skipping</strong> a re-verification the caller
+already performed. It can never produce a positive verdict on its own, and the
+run-level proofs are re-verified on every call regardless of depth.</p>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="a-tracked-state-written-down-and-irreducibly-so">
+<h2>(a) Tracked state — written down, and irreducibly so<a class="headerlink" href="#a-tracked-state-written-down-and-irreducibly-so" title="Link to this heading">#</a></h2>
+<p><strong>Four things are written down.</strong> The last column is load-bearing: if a
+proposed fifth entry cannot fill it, the value is derived and belongs in
+section <strong>© Derived, and by what</strong>.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>#</p></th>
+<th class="head"><p>State</p></th>
+<th class="head"><p>Path helper</p></th>
+<th class="head"><p>Writer</p></th>
+<th class="head"><p>Why it cannot be derived</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1</p></td>
+<td><p>Accepted inventory</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">processing_state_path</span></code> → <code class="docutils literal notranslate"><span class="pre">config.work_ids</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">create_initial_state</span></code> (<code class="docutils literal notranslate"><span class="pre">_cli_state_management.py:206</span></code>), resume</p></td>
+<td><p>A directory listing answers <em>what is here</em>; this answers <em>what this run accepted</em>. They differ the moment an input arrives mid-run.</p></td>
+</tr>
+<tr class="row-odd"><td><p>2</p></td>
+<td><p>Terminal failures</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">terminal_failures_jsonl_path</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">append_terminal_failure</span></code> (<code class="docutils literal notranslate"><span class="pre">_cli_failure_tracker.py:344</span></code>)</p></td>
+<td><p><strong>A failure leaves no artifact.</strong> Absence of output is indistinguishable from not-yet-started.</p></td>
+</tr>
+<tr class="row-even"><td><p>3</p></td>
+<td><p>Liveness &amp; ownership</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">slurm_lifecycle_path</span></code>, <code class="docutils literal notranslate"><span class="pre">gui_launch_owner_path</span></code>, the lifecycle ledger</p></td>
+<td><p>CLI submitter / the GUI</p></td>
+<td><p>Facts about external systems and live processes. A worker killed by the scheduler leaves no trace of having run.</p></td>
+</tr>
+<tr class="row-odd"><td><p>4</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">restart_epoch</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">restart_epoch_path</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">bump_restart_epoch</span></code> (<code class="docutils literal notranslate"><span class="pre">_cli_identity.py:386</span></code>)</p></td>
+<td><p>A content-derived generation cannot distinguish <em>deliberately fresh attempt</em> from <em>same configuration again</em>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Entry 2 is the one to read twice.</strong> <code class="docutils literal notranslate"><span class="pre">completion</span> <span class="pre">==</span> <span class="pre">&quot;failed&quot;</span></code> has exactly one
+source: an image verdict of <code class="docutils literal notranslate"><span class="pre">failed</span></code>, which comes only from this journal. Every
+other fact about a run can be re-derived by looking at the tree; this cannot.</p>
+<section id="what-survives-restart">
+<h3>What survives <code class="docutils literal notranslate"><span class="pre">--restart</span></code><a class="headerlink" href="#what-survives-restart" title="Link to this heading">#</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">clear_machine_state</span></code> deletes everything under <code class="docutils literal notranslate"><span class="pre">.phenotypic/</span></code> except
+<code class="docutils literal notranslate"><span class="pre">_PRESERVED_ON_RESTART</span></code>, which has exactly three members:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nb">frozenset</span><span class="p">({</span><span class="n">TERMINAL_FAILURES_JSONL</span><span class="p">,</span> <span class="n">RESTART_EPOCH_JSON</span><span class="p">,</span> <span class="n">DIR_LEGACY_V2</span><span class="p">})</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">restart_epoch.json</span></code> is preserved because <strong>a counter that resets on the
+operation it fences is not a fence</strong>. <code class="docutils literal notranslate"><span class="pre">legacy-v2/</span></code> is preserved because a
+restart is not a revert.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="b-content-proofs-evidence-not-tracked-state">
+<h2>(b) Content proofs — evidence, not tracked state<a class="headerlink" href="#b-content-proofs-evidence-not-tracked-state" title="Link to this heading">#</a></h2>
+<p>Three digest manifests over artifacts that already exist. They record nothing
+that is not recoverable by re-reading what they describe; what they add is
+<em>that it was checked, and under which identity</em>.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Proof</p></th>
+<th class="head"><p>Path helper</p></th>
+<th class="head"><p>Covers</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Per-image record</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">image_record_path(output_dir,</span> <span class="pre">dataset,</span> <span class="pre">stem)</span></code></p></td>
+<td><p>One image’s artifacts and stages</p></td>
+</tr>
+<tr class="row-odd"><td><p>Aggregate proof</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">aggregate_publication_marker_path</span></code></p></td>
+<td><p>The aggregated outputs</p></td>
+</tr>
+<tr class="row-even"><td><p>Run proof</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">run_completion_marker_path</span></code></p></td>
+<td><p>The run against its accepted inventory</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Publication order, and it is never reordered:</strong></p>
+<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span><span class="n">store</span> <span class="n">root</span> <span class="n">zarr</span><span class="o">.</span><span class="n">json</span>  <span class="err">→</span>  <span class="n">per</span><span class="o">-</span><span class="n">image</span> <span class="n">record</span>  <span class="err">→</span>  <span class="n">aggregate</span> <span class="n">proof</span>  <span class="err">→</span>  <span class="n">run</span> <span class="n">proof</span>
+</pre></div>
+</div>
+<p>Each step certifies only what the previous one has already made durable, so an
+interruption always leaves a tree that is <strong>behind</strong> rather than one that is
+<strong>wrong</strong>.</p>
+<section id="why-the-aggregate-proof-refuses">
+<h3>Why the aggregate proof refuses<a class="headerlink" href="#why-the-aggregate-proof-refuses" title="Link to this heading">#</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">aggregate_proof_refusal(output_dir)</span></code> returns why the aggregate proof is not
+current, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if it is. It is deliberately separate from the predicate:
+folding the reason into the return value would tempt a caller into branching on
+<em>which</em> cause and treating some as recoverable. They are not.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">aggregate_proof_refusal</span></code> is <strong>not yet exported</strong> from <code class="docutils literal notranslate"><span class="pre">phenotypic.sdk_</span></code>, and
+its user-facing consumer is not wired — the message a user sees still comes
+from <code class="docutils literal notranslate"><span class="pre">OutputRoot.discover</span></code>. This is the capability, not its wiring.</p>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="derived-and-by-what">
+<h2>© Derived, and by what<a class="headerlink" href="#derived-and-by-what" title="Link to this heading">#</a></h2>
+<p>One row per fact, naming the function. This is the table that stops the next
+contributor writing a counter.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Fact</p></th>
+<th class="head"><p>Derived from</p></th>
+<th class="head"><p>By</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><em>Is this run done?</em></p></td>
+<td><p>(a) 1–4 plus the proofs in (b)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">resolve_run_state(output_dir,</span> <span class="pre">depth=...)</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">processing_generation</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sha256(pipeline_sha256</span> <span class="pre">‖</span> <span class="pre">per_image_config_digest</span> <span class="pre">‖</span> <span class="pre">restart_epoch)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">derive_processing_generation</span></code> (<code class="docutils literal notranslate"><span class="pre">_cli_identity.py:148</span></code>)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">work_id</span></code></p></td>
+<td><p>schema version, dataset, input-relative path, input sha256, pipeline fingerprint, per-image config digest, mode</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">work_id_for_image</span></code> (<code class="docutils literal notranslate"><span class="pre">_cli_failure_tracker.py:310</span></code>)</p></td>
+</tr>
+<tr class="row-odd"><td><p>per-dataset completed / failed counts</p></td>
+<td><p>the per-image records</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">RunState.diagnostics</span></code> — <strong>and nothing branches on these</strong></p></td>
+</tr>
+<tr class="row-even"><td><p>the master</p></td>
+<td><p>the record-authorized embedded tables, and nothing else</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">finalize_run</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">processing_generation</span></code> folds <strong>only configuration values</strong> — a pipeline hash, a
+per-image config digest, and a restart epoch. No paths, no timestamps, no
+measurements. Two runs of the same configuration on different nodes mint
+identical digests, which is why tests compare it <strong>exactly</strong>. Tolerance belongs
+to measurement outputs, never to configuration identity.</p>
+<p><strong>Deleted, and must not come back:</strong>
+<code class="docutils literal notranslate"><span class="pre">processing_state.datasets.{completed,failed,started}</span></code> as live state;
+<code class="docutils literal notranslate"><span class="pre">manifest.json</span></code> as evidence; the event log as a completion source.</p>
+</section>
+<hr class="docutils" />
+<section id="d-retained-and-read-by-nothing">
+<h2>(d) Retained, and read by nothing<a class="headerlink" href="#d-retained-and-read-by-nothing" title="Link to this heading">#</a></h2>
+<p>Two directories survive on disk without belonging to any table above, and both
+need saying <strong>because</strong> they look like counter-examples to (a)’s “four”.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Artifact</p></th>
+<th class="head"><p>Written by</p></th>
+<th class="head"><p>Consulted by</p></th>
+<th class="head"><p>When it may be deleted</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.phenotypic/legacy-v2/</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">migrate</span></code>, moving <code class="docutils literal notranslate"><span class="pre">image_complete/</span></code> and <code class="docutils literal notranslate"><span class="pre">stage3_complete/</span></code> aside</p></td>
+<td><p><strong>Nothing.</strong> It exists only so <code class="docutils literal notranslate"><span class="pre">migrate</span> <span class="pre">--revert</span></code> is a rename back.</p></td>
+<td><p>Once the tree has been reprocessed, or the operator accepts migration is final.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.phenotypic/verification_cache.json</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">persist_states</span></code> after a deep pass</p></td>
+<td><p>Only <code class="docutils literal notranslate"><span class="pre">resolve_run_state(depth=&quot;shallow&quot;)</span></code>, and only to <strong>skip re-hashing</strong> an unchanged artifact</p></td>
+<td><p>Any time. A missing cache costs one deep pass.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>The test for whether a future artifact belongs here or is a fifth tracked
+state: nothing branches on it, and no verdict is derived from it.</strong> Delete
+either of these and every answer the system gives is identical — only slower
+(the cache) or one option poorer (the revert).</p>
+</section>
+<hr class="docutils" />
+<section id="the-one-that-fits-none-of-the-above-migration-manifest-json">
+<h2>The one that fits none of the above: <code class="docutils literal notranslate"><span class="pre">migration_manifest.json</span></code><a class="headerlink" href="#the-one-that-fits-none-of-the-above-migration-manifest-json" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">.phenotypic/migration_manifest.json</span></code> is written by <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">migrate</span></code>, is
+<strong>never unlinked</strong> by anything in <code class="docutils literal notranslate"><span class="pre">src/</span></code>, and <strong>is branched on</strong> — so it fails
+(d)’s test — yet it is not one of the four in (a).</p>
+<p>It is worth understanding rather than tidying away. It arrived as migrate’s
+<em>work manifest</em> (tasks, offsets, merkle proofs), and its <strong>existence</strong> was then
+re-purposed as the answer to <em>“was this tree migrated?”</em>, which gates the
+continuation refusal in <code class="docutils literal notranslate"><span class="pre">_output_was_migrated</span></code> (<code class="docutils literal notranslate"><span class="pre">phenotypicCLI.py:714</span></code>).</p>
+<p>That call is keyed on the manifest deliberately, and the docstring records why
+the two more obvious signals are both wrong:</p>
+<ul class="simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">PROVENANCE_MIGRATED</span></code> on the per-image records says <code class="docutils literal notranslate"><span class="pre">forward</span></code> on exactly
+these trees.</strong> See <strong>Provenance has two writers</strong> below.
+Anyone reaching for provenance here will find it, and find it wrong.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">work_ids</span></code> keyed by bare stem is the <em>symptom</em></strong> of the admitted-set
+pollution the refusal exists to explain, so keying on it would be circular
+and would break the moment that defect is repaired.</p></li>
+</ul>
+<p>It is self-limiting in the right direction: <code class="docutils literal notranslate"><span class="pre">clear_machine_state</span></code> deletes it
+along with the rest of <code class="docutils literal notranslate"><span class="pre">.phenotypic/</span></code>, so the <code class="docutils literal notranslate"><span class="pre">--restart</span></code> the refusal
+recommends ends the tree’s migrated status rather than leaving a permanent
+special case.</p>
+<div class="caution admonition">
+<p class="admonition-title">Known defect</p>
+<p>This path is <strong>hand-joined</strong> in two places (<code class="docutils literal notranslate"><span class="pre">phenotypicCLI.py:747</span></code>,
+<code class="docutils literal notranslate"><span class="pre">_cli_migrate.py:1767</span></code>) rather than resolved through an <code class="docutils literal notranslate"><span class="pre">sdk_</span></code> helper, against
+this repository’s own rule. If you touch either site, add a path helper in
+<code class="docutils literal notranslate"><span class="pre">sdk_/_io_constants.py</span></code> and route both through it.</p>
+</div>
+</section>
+<hr class="docutils" />
+<section id="provenance-has-two-writers">
+<h2>Provenance has two writers<a class="headerlink" href="#provenance-has-two-writers" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">record_rejection</span></code> (<code class="docutils literal notranslate"><span class="pre">sdk_/_image_record.py:207</span></code>) skips the <code class="docutils literal notranslate"><span class="pre">work_id</span></code> comparison
+for <code class="docutils literal notranslate"><span class="pre">PROVENANCE_MIGRATED</span></code> records, because a migrated tree’s identity cannot be
+re-derived and is marked unavailable rather than fabricated. <strong>Absent means
+<code class="docutils literal notranslate"><span class="pre">&quot;forward&quot;</span></code></strong>, so a writer that forgets the field produces a fenced record
+rather than an accepted one.</p>
+<p><strong>But not every record written during a migration carries <code class="docutils literal notranslate"><span class="pre">&quot;migrated&quot;</span></code></strong>, and
+the difference is the code path, not the mode:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Path</p></th>
+<th class="head"><p>Publisher</p></th>
+<th class="head"><p>Provenance written</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Converting an existing marker into a record</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">_cli_migrate_state.py:350</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">migrated</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Minting a record from outputs (MIG-11)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">_cli_migrate_state.py:1080</span></code> via <code class="docutils literal notranslate"><span class="pre">publish_image_record</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">migrated</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Migrating the image artifact itself</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">_cli_migrate_image.py:589</span></code> via <code class="docutils literal notranslate"><span class="pre">publish_image_success</span></code></p></td>
+<td><p><strong><code class="docutils literal notranslate"><span class="pre">forward</span></code></strong></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">publish_image_success</span></code> has <strong>no <code class="docutils literal notranslate"><span class="pre">provenance</span></code> parameter</strong>, so records it writes
+take <code class="docutils literal notranslate"><span class="pre">publish_image_record</span></code>’s <code class="docutils literal notranslate"><span class="pre">PROVENANCE_FORWARD</span></code> default. This is why
+<code class="docutils literal notranslate"><span class="pre">_cli_migrate_state.py</span></code>’s mint path calls <code class="docutils literal notranslate"><span class="pre">publish_image_record</span></code> directly and
+its docstring says <code class="docutils literal notranslate"><span class="pre">publish_image_success</span></code> is <em>“the wrong entry despite being
+the forward one”</em>.</p>
+<p><strong>Do not use record provenance to ask whether a tree was migrated.</strong> Use the
+migration manifest.</p>
+</section>
+<hr class="docutils" />
+<section id="known-consumers">
+<h2>Known consumers<a class="headerlink" href="#known-consumers" title="Link to this heading">#</a></h2>
+<p>Every site that reads run state, what it reads, and what it decides. Add a row
+here when you add a consumer.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Consumer</p></th>
+<th class="head"><p>Reads</p></th>
+<th class="head"><p>Depth</p></th>
+<th class="head"><p>Decides</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">phenotypicCLI.py:2590</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">diagnostics.verified</span></code>, <code class="docutils literal notranslate"><span class="pre">diagnostics.accepted</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">deep</span></code></p></td>
+<td><p>Whether startup must refresh publication</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">phenotypicCLI.py:3063</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">diagnostics.verified</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">deep</span></code></p></td>
+<td><p>Whether to finalize measurements</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">phenotypicCLI.py:714</span></code> (<code class="docutils literal notranslate"><span class="pre">_output_was_migrated</span></code>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">migration_manifest.json</span></code></p></td>
+<td><p>—</p></td>
+<td><p>Whether to refuse continuation and name <code class="docutils literal notranslate"><span class="pre">--restart</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">_cli/_cli_checkpoint_handler.py:310</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">diagnostics.verified</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">deep</span></code></p></td>
+<td><p>Raise vs. close a terminal-incomplete lifecycle</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">_cli/_cli_completion.py</span></code></p></td>
+<td><p>the three proofs</p></td>
+<td><p>—</p></td>
+<td><p>Publishes them; the writer side</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">gui/shell/_runs_registry.py:1082</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">.completion</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">shallow</span></code></p></td>
+<td><p>Status of a historical output with no GUI launch generation</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gui/shell/_runs_registry.py:1460</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">.completion</span></code>, <code class="docutils literal notranslate"><span class="pre">.diagnostics</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">shallow</span></code></p></td>
+<td><p>The run’s row in the runs list</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">gui/results_viewer/_output_root.py:364</span></code></p></td>
+<td><p>full <code class="docutils literal notranslate"><span class="pre">RunState</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">deep</span></code></p></td>
+<td><p>Binds run state at discovery; gates opening via <code class="docutils literal notranslate"><span class="pre">core_readable</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gui/_snapshot_status.py:121</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">.completion</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">shallow</span></code></p></td>
+<td><p>Live status for a bound snapshot</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">gui/run_console/_slurm_observer.py:1334</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">.completion</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">shallow</span></code></p></td>
+<td><p>Whether a SLURM run is reconciling or done</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<section id="consumers-that-deliberately-ask-something-else">
+<h3>Consumers that deliberately ask something else<a class="headerlink" href="#consumers-that-deliberately-ask-something-else" title="Link to this heading">#</a></h3>
+<p>Two sites look like they should call <code class="docutils literal notranslate"><span class="pre">resolve_run_state(...).completion</span></code> and
+must not. Both carry a comment saying so; <strong>do not “simplify” them</strong>.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Site</p></th>
+<th class="head"><p>Asks instead</p></th>
+<th class="head"><p>Why</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gui/shell/_runs_registry.py:699</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">_all_accepted_images_succeeded</span></code></p></td>
+<td><p>Asks <em>“have the accepted images succeeded?”</em>. <code class="docutils literal notranslate"><span class="pre">.completion</span></code> already requires the run proof, which would make the branch below it dead code.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">_cli/_dashboard/_manifest_builder.py:729</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">valid_aggregate_snapshot</span></code></p></td>
+<td><p>Runs during recompile, <strong>before any run proof exists</strong>. <code class="docutils literal notranslate"><span class="pre">.completion</span></code> asks whether a valid run proof covers the inventory, which is a different question.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="core-readable-is-not-completion">
+<h3><code class="docutils literal notranslate"><span class="pre">core_readable</span></code> is not <code class="docutils literal notranslate"><span class="pre">completion</span></code><a class="headerlink" href="#core-readable-is-not-completion" title="Link to this heading">#</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">core_readable(layout)</span></code> (<code class="docutils literal notranslate"><span class="pre">gui/results_viewer/_output_root.py:140</span></code>) decides
+whether the results viewer can open a bundle. It is <strong>not</strong> derivable from
+<code class="docutils literal notranslate"><span class="pre">completion</span></code>: a curated-but-incomplete run is core-readable, and a completion
+test that lists the acceptable verdicts gets it wrong. Ask <code class="docutils literal notranslate"><span class="pre">core_readable</span></code>
+directly rather than approximating it.</p>
+</section>
+<section id="status-vocabulary-is-hand-copied">
+<h3>Status vocabulary is hand-copied<a class="headerlink" href="#status-vocabulary-is-hand-copied" title="Link to this heading">#</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">_runs_registry._RUN_STATUSES</span></code> is the vocabulary; other GUI sites hand-copy it.
+One copy (<code class="docutils literal notranslate"><span class="pre">gui/results_viewer/_qc_tab/_rebuild.py:157</span></code>) silently fell a member
+behind when <code class="docutils literal notranslate"><span class="pre">incomplete</span></code> was added, and an unrecognised status there does not
+degrade — it <strong>blocks a QC rebuild on a perfectly valid status</strong>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">test_every_status_vocabulary_in_the_gui_agrees_with_the_registry</span></code> walks the
+package AST and is what catches this. <strong>Do not add a member to the registry
+without running it.</strong></p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="where-readers-and-writers-live">
+<h2>Where readers and writers live<a class="headerlink" href="#where-readers-and-writers-live" title="Link to this heading">#</a></h2>
+<div class="warning admonition">
+<p class="admonition-title">INV-LAYER</p>
+<p><code class="docutils literal notranslate"><span class="pre">phenotypic.sdk_</span></code> may <strong>never</strong> import <code class="docutils literal notranslate"><span class="pre">phenotypic._cli</span></code>.</p>
+</div>
+<ul class="simple">
+<li><p><strong>Readers live in <code class="docutils literal notranslate"><span class="pre">sdk_</span></code>.</strong> <code class="docutils literal notranslate"><span class="pre">resolve_run_state</span></code>, the state types, the path
+helpers, <code class="docutils literal notranslate"><span class="pre">record_rejection</span></code>.</p></li>
+<li><p><strong>Writers stay in <code class="docutils literal notranslate"><span class="pre">_cli</span></code>.</strong> <code class="docutils literal notranslate"><span class="pre">publish_image_record</span></code>, <code class="docutils literal notranslate"><span class="pre">publish_image_success</span></code>,
+<code class="docutils literal notranslate"><span class="pre">append_terminal_failure</span></code>, <code class="docutils literal notranslate"><span class="pre">bump_restart_epoch</span></code>, the migrate planners.</p></li>
+</ul>
+<p>A GUI or notebook consumer imports from <code class="docutils literal notranslate"><span class="pre">phenotypic.sdk_</span></code> only. If you find
+yourself wanting <code class="docutils literal notranslate"><span class="pre">_cli</span></code> from <code class="docutils literal notranslate"><span class="pre">sdk_</span></code>, the reader half belongs in <code class="docutils literal notranslate"><span class="pre">sdk_</span></code> and the
+writer half does not move.</p>
+<p><strong>Always resolve paths through the <code class="docutils literal notranslate"><span class="pre">sdk_</span></code> helpers.</strong> Never hand-join names —
+the one place that does is the known defect noted above.</p>
+</section>
+<hr class="docutils" />
+<section id="changing-the-state-model">
+<h2>Changing the state model<a class="headerlink" href="#changing-the-state-model" title="Link to this heading">#</a></h2>
+<p>A fifth tracked value appearing is a design regression, and the burden of proof
+is on the addition. Before adding one:</p>
+<ol class="arabic simple">
+<li><p><strong>Try to derive it.</strong> Can it be recomputed from artifacts plus (a) 1–4? If
+yes, it belongs in section <strong>©</strong> as a function, not on disk.</p></li>
+<li><p><strong>Fill in the last column of (a).</strong> State why it cannot be derived. If you
+cannot, it is derived.</p></li>
+<li><p><strong>Apply (d)’s test.</strong> If nothing branches on it and no verdict comes from
+it, it is a retained artifact, not tracked state — document it in (d).</p></li>
+<li><p><strong>Decide its <code class="docutils literal notranslate"><span class="pre">--restart</span></code> fate.</strong> Add it to <code class="docutils literal notranslate"><span class="pre">_PRESERVED_ON_RESTART</span></code> only if a
+restart must not clear it, and say why in that set’s docstring.</p></li>
+<li><p><strong>Name its reader.</strong> Tracked state with no reader is a leak; tracked state
+read from more than one place needs an <code class="docutils literal notranslate"><span class="pre">sdk_</span></code> accessor, not a second
+hand-join.</p></li>
+</ol>
+<p>Then, <strong>in the same change</strong>:</p>
+<ul class="simple">
+<li><p>Add a row to the relevant table on this page — (a), (b), © or (d).</p></li>
+<li><p>Add a row to the <strong>Known consumers</strong> table for every site that reads it.</p></li>
+<li><p>If it changes the status vocabulary, run
+<code class="docutils literal notranslate"><span class="pre">test_every_status_vocabulary_in_the_gui_agrees_with_the_registry</span></code>.</p></li>
+<li><p>If it adds a path, add an <code class="docutils literal notranslate"><span class="pre">sdk_/_io_constants.py</span></code> helper and use it
+everywhere.</p></li>
+</ul>
+<p>Removing or renaming a state is the same checklist run backwards, plus deleting
+its consumer rows. <strong>A row that describes something no longer true is worse
+than a missing row</strong>, because it carries the authority of documentation while
+being wrong.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reading-state-one-call">Reading state: one call</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#runstate"><code class="docutils literal notranslate"><span class="pre">RunState</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#verdict-precedence">Verdict precedence</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#choosing-a-depth">Choosing a depth</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#a-tracked-state-written-down-and-irreducibly-so">(a) Tracked state — written down, and irreducibly so</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#what-survives-restart">What survives <code class="docutils literal notranslate"><span class="pre">--restart</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#b-content-proofs-evidence-not-tracked-state">(b) Content proofs — evidence, not tracked state</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#why-the-aggregate-proof-refuses">Why the aggregate proof refuses</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#derived-and-by-what">© Derived, and by what</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#d-retained-and-read-by-nothing">(d) Retained, and read by nothing</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-one-that-fits-none-of-the-above-migration-manifest-json">The one that fits none of the above: <code class="docutils literal notranslate"><span class="pre">migration_manifest.json</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#provenance-has-two-writers">Provenance has two writers</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#known-consumers">Known consumers</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#consumers-that-deliberately-ask-something-else">Consumers that deliberately ask something else</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#core-readable-is-not-completion"><code class="docutils literal notranslate"><span class="pre">core_readable</span></code> is not <code class="docutils literal notranslate"><span class="pre">completion</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#status-vocabulary-is-hand-copied">Status vocabulary is hand-copied</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#where-readers-and-writers-live">Where readers and writers live</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#changing-the-state-model">Changing the state model</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/contrib_guide/tracked_state.md.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

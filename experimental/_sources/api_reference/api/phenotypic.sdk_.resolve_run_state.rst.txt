@@ -1,0 +1,6 @@
+phenotypic.sdk\_.resolve\_run\_state
+====================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: resolve_run_state

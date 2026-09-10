@@ -182,7 +182,7 @@ Output Options
 
 ``--no-dataset-column``
    Exclude the ``Metadata_Dataset`` column from
-   ``master_measurements.csv``. The column is included by default.
+   ``master_measurements.parquet``. The column is included by default.
 
 ``--metadata PATH``
    CSV file to left-join onto the measurements mirror on shared columns. Every
@@ -191,7 +191,9 @@ Output Options
    never detected stay visible instead of being silently dropped. Measurement
    rows with no matching CSV row *are* dropped. The join lands on
    ``deliverables/measurements.csv`` and its derivatives —
-   ``master_measurements.csv`` stays a clean, metadata-free archive.
+   ``master_measurements.parquet`` stays a clean, metadata-free archive.
+   (The master is Parquet only: ``master_measurements.csv`` was removed, since
+   the un-joined archive is not the file a human opens.)
    Metadata headers are normalized in memory to ``Metadata_<Label>``. Recompile
    never mutates this external file; its regenerated bundle-owned metadata copy
    is canonical.

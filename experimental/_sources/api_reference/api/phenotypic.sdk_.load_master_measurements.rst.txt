@@ -1,6 +1,0 @@
-phenotypic.sdk\_.load\_master\_measurements
-===========================================
-
-.. currentmodule:: phenotypic.sdk_
-
-.. autofunction:: load_master_measurements

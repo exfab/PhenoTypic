@@ -1,6 +1,0 @@
-phenotypic.sdk\_.resolve\_best\_pipeline\_path
-==============================================
-
-.. currentmodule:: phenotypic.sdk_
-
-.. autofunction:: resolve_best_pipeline_path

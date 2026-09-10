@@ -1,0 +1,6 @@
+phenotypic.sdk\_.verification\_cache\_path
+==========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: verification_cache_path

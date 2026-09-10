@@ -1,0 +1,6 @@
+phenotypic.sdk\_.finalization\_input\_object
+============================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: finalization_input_object

@@ -1,0 +1,6 @@
+phenotypic.sdk\_.master\_carries\_user\_metadata
+================================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: master_carries_user_metadata

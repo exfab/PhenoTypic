@@ -622,7 +622,7 @@
 
 <span class="sd">    - **`output_dir: Path`** — the run output root (e.g. ``./out``).</span>
 <span class="sd">      Use these from any caller that has the run root in scope:</span>
-<span class="sd">      ``master_measurements_csv_path``, ``manifest_json_path``,</span>
+<span class="sd">      ``master_measurements_parquet_path``, ``manifest_json_path``,</span>
 <span class="sd">      ``job_metadata_path``, ``pipeline_json_path``, ``task_status_path``,</span>
 <span class="sd">      ``logs_dir``, ``slurm_scripts_dir``, ``processing_report_html_path``,</span>
 <span class="sd">      ``measurements_by_feature_dir``,</span>
@@ -642,8 +642,8 @@
 <span class="sd">  cleanly with ``progress_dir(output_dir)`` if you need the progress</span>
 <span class="sd">  directory separately. Helpers that take ``progress_dir_`` are noted</span>
 <span class="sd">  in their individual docstrings.</span>
-<span class="sd">* **Reader helpers** — `read_run_manifest`, `load_master_measurements`,</span>
-<span class="sd">  `resolve_execution_mode` consolidate three high-frequency duplicates.</span>
+<span class="sd">* **Reader helpers** — `read_run_manifest` and `resolve_execution_mode`</span>
+<span class="sd">  consolidate two high-frequency duplicates.</span>
 <span class="sd">* **JSON contract keys** (`JobMetadataKey`, `DashboardManifestKey`,</span>
 <span class="sd">  `ChunkStateKey`, `ChunkManifestKey`) — namespace classes</span>
 <span class="sd">  whose class-level ``Final[str]`` attributes are the keys writers and</span>
@@ -685,7 +685,6 @@
 <span class="p">)</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>  <span class="c1"># type: ignore[import-not-found]</span>
 
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span> <span class="k">as</span> <span class="n">_GridImage</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span> <span class="k">as</span> <span class="n">_Image</span>
@@ -947,18 +946,21 @@
 
 
 <span class="c1">#: Master archive of all aggregated measurements (clean, pre-post). Written by</span>
-<span class="c1">#: :func:`phenotypic._cli._cli_output_manager.aggregate_measurements` after</span>
-<span class="c1">#: every per-image Parquet has been concatenated and joined with optional</span>
-<span class="c1">#: external metadata. Treated as the authoritative source by downstream</span>
-<span class="c1">#: tooling; never edited in place.</span>
-<span class="n">MASTER_MEASUREMENTS_CSV</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;master_measurements.csv&quot;</span>
-
-<span class="c1">#: Parquet companion of :data:`MASTER_MEASUREMENTS_CSV`. Preserves dtypes the</span>
-<span class="c1">#: CSV cannot and is the format the GUI viewer prefers when present.</span>
+<span class="c1">#: :func:`phenotypic._cli._cli_finalize_run.finalize_run` as the exact</span>
+<span class="c1">#: concatenation of the authorized embedded measurement tables: **un-joined**,</span>
+<span class="c1">#: carrying intrinsic identity only. Treated as the authoritative source by</span>
+<span class="c1">#: downstream tooling; never edited in place.</span>
+<span class="c1">#:</span>
+<span class="c1">#: **Parquet-only since D8.** ``master_measurements.csv`` is gone, along with</span>
+<span class="c1">#: its path helper, its reader and its entry in the aggregate proof&#39;s</span>
+<span class="c1">#: ``required_outputs``. The un-joined master is no longer the file a human</span>
+<span class="c1">#: opens -- :data:`MEASUREMENTS_CSV`, which carries the metadata join and the</span>
+<span class="c1">#: post-applied frame, is -- and the master&#39;s dtypes are exactly what a CSV</span>
+<span class="c1">#: could not preserve.</span>
 <span class="n">MASTER_MEASUREMENTS_PARQUET</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;master_measurements.parquet&quot;</span>
 
-<span class="c1">#: Editable curated CSV mirror seeded by the CLI as a copy of</span>
-<span class="c1">#: :data:`MASTER_MEASUREMENTS_CSV` after :func:`_apply_post_to_master`. The</span>
+<span class="c1">#: Editable curated CSV mirror seeded by the CLI from the post-applied master</span>
+<span class="c1">#: frame after :func:`_apply_post_to_master`. The</span>
 <span class="c1">#: results viewer rewrites this file in place when the user removes/restores</span>
 <span class="c1">#: colonies. Re-running the CLI overwrites it with a fresh full copy.</span>
 <span class="n">MEASUREMENTS_CSV</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;measurements.csv&quot;</span>
@@ -987,7 +989,6 @@
     <span class="k">return</span> <span class="nb">frozenset</span><span class="p">(</span>
         <span class="n">Path</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span><span class="o">.</span><span class="n">stem</span><span class="o">.</span><span class="n">casefold</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="p">(</span>
-            <span class="n">MASTER_MEASUREMENTS_CSV</span><span class="p">,</span>
             <span class="n">MASTER_MEASUREMENTS_PARQUET</span><span class="p">,</span>
             <span class="n">MEASUREMENTS_CSV</span><span class="p">,</span>
             <span class="n">MEASUREMENTS_PARQUET</span><span class="p">,</span>
@@ -1235,6 +1236,12 @@
     <span class="s2">&quot;PHENOTYPIC_GUI_RECORD_GENERATION&quot;</span>
 <span class="p">)</span>
 
+<span class="c1">#: Mutable active-generation fence for a SLURM launch. One of spec §4.1&#39;s</span>
+<span class="c1">#: three written authorities (liveness and ownership), so the run-state</span>
+<span class="c1">#: reader needs the name and INV-LAYER forbids it importing the CLI module</span>
+<span class="c1">#: that used to be the name&#39;s only home.</span>
+<span class="n">SLURM_LIFECYCLE_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;slurm_lifecycle.json&quot;</span>
+
 <span class="c1">#: Generation- and mode-bearing terminal publication marker.</span>
 <span class="n">RUN_COMPLETION_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;run_completion.json&quot;</span>
 
@@ -1317,6 +1324,103 @@
 <span class="n">DIR_PROGRESS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;progress&quot;</span>
 <span class="n">DIR_IMAGE_COMPLETE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;image_complete&quot;</span>
 
+<span class="c1">#: One record per image, replacing ``image_complete/`` and</span>
+<span class="c1">#: ``stage3_complete/`` (spec §6.1). ``stage2_raw/`` stays a separate tree: it is</span>
+<span class="c1">#: bulk replay data, not a record.</span>
+<span class="n">DIR_IMAGE_RECORDS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;images&quot;</span>
+
+<span class="c1">#: ``&lt;output&gt;/.phenotypic/legacy-v2/`` -- the pre-collapse marker trees, kept</span>
+<span class="c1">#: after ``--mode migrate`` so ``--mode migrate --revert`` costs a rename back</span>
+<span class="c1">#: rather than a full reprocess (CAN-12, §15.1).</span>
+<span class="c1">#:</span>
+<span class="c1">#: **Retained for revert; read by nothing.** It is not tracked state: no</span>
+<span class="c1">#: verdict consults it, nothing derives from it, and nothing must be kept in</span>
+<span class="c1">#: sync with it. It sits directly below ``.phenotypic/`` rather than below</span>
+<span class="c1">#: ``progress/`` **on purpose** -- the schema gate&#39;s directory signals look</span>
+<span class="c1">#: only below ``progress/``, so a retained tree here cannot make an</span>
+<span class="c1">#: already-converted output classify ``CONVERT`` again.</span>
+<span class="n">DIR_LEGACY_V2</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;legacy-v2&quot;</span>
+
+<span class="c1">#: ``&lt;progress&gt;/stage2_done/`` -- the consumable Stage-2 token&#39;s tree.</span>
+<span class="c1">#:</span>
+<span class="c1">#: **Retained, not collapsed** (U-9), which is why it is here and</span>
+<span class="c1">#: ``stage3_complete/`` is not. The stage-3 marker&#39;s segment stayed a</span>
+<span class="c1">#: module-private literal in :mod:`._schema_shape` on the reasoning that P3</span>
+<span class="c1">#: deletes the tree, so promoting it would add a constant the change was about</span>
+<span class="c1">#: to remove. That reasoning does not transfer: this tree survives the collapse</span>
+<span class="c1">#: with its file and its atomic ``unlink`` intact, so its segment is a durable</span>
+<span class="c1">#: layout fact with two readers -- the token&#39;s path helper and the schema gate,</span>
+<span class="c1">#: which must keep *not* firing on it -- and belongs beside its siblings.</span>
+<span class="n">DIR_STAGE2_DONE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;stage2_done&quot;</span>
+
+<span class="c1">#: ``&lt;output&gt;/.phenotypic/verification_cache.json`` -- the on-disk second tier</span>
+<span class="c1">#: of the verification cache (spec §9.1, as reversed back on by U-11).</span>
+<span class="c1">#:</span>
+<span class="c1">#: **A cache, and named like one.** Nothing branches on it and no verdict is</span>
+<span class="c1">#: derived from it; it only ever licenses *skipping* a deep pass whose stat</span>
+<span class="c1">#: tuples still match. It is **deleted** by :func:`clear_machine_state`; the</span>
+<span class="c1">#: rule that decides why, and the test that enforces it, are stated once at</span>
+<span class="c1">#: :data:`_PRESERVED_ON_RESTART`.</span>
+<span class="n">VERIFICATION_CACHE_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;verification_cache.json&quot;</span>
+
+<span class="c1">#: ``&lt;output&gt;/.phenotypic/restart_epoch.json`` -- the run&#39;s restart counter</span>
+<span class="c1">#: (spec §5.1 D4), and the **one tracked value this design adds**.</span>
+<span class="c1">#:</span>
+<span class="c1">#: Preserved across ``--restart``, unlike everything else under</span>
+<span class="c1">#: ``.phenotypic/`` bar the terminal-failure journal. The rule that puts it</span>
+<span class="c1">#: there -- and keeps the verification cache out -- is at</span>
+<span class="c1">#: :data:`_PRESERVED_ON_RESTART`.</span>
+<span class="n">RESTART_EPOCH_JSON</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;restart_epoch.json&quot;</span>
+
+<span class="c1">#: Schema version of the persisted verification cache.</span>
+<span class="c1">#:</span>
+<span class="c1">#: **Bump this when the deep-verification RULES change, not only when the JSON</span>
+<span class="c1">#: shape does.** The reader has no other way to tell that a file was written</span>
+<span class="c1">#: by a build whose notion of &quot;verified&quot; differed from its own: the payload</span>
+<span class="c1">#: records what was checked, never how. A rules change shipped without a bump</span>
+<span class="c1">#: is a build silently honouring another build&#39;s verdicts, which is the one</span>
+<span class="c1">#: failure the in-process tier could not have.</span>
+<span class="n">VERIFICATION_CACHE_VERSION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="c1">#: Per-image success-marker schema version. Bumped to 2 when artifact</span>
+<span class="c1">#: descriptors gained ``kind``: a v1 marker describes the per-image ``.h5``,</span>
+<span class="c1">#: which ``--mode migrate`` keeps by default, so a v1 marker would *validate*</span>
+<span class="c1">#: against that file while the store it should describe went entirely</span>
+<span class="c1">#: unverified (ledger FLOW-23).</span>
+<span class="c1">#:</span>
+<span class="c1">#: It lives here rather than in ``_cli_completion`` -- which re-exports it,</span>
+<span class="c1">#: so every existing importer is unchanged -- because the run-state reader</span>
+<span class="c1">#: must check the same number and INV-LAYER forbids that module importing the</span>
+<span class="c1">#: writer. Two copies of a version number that gate a *completion* verdict is</span>
+<span class="c1">#: the one duplication that can silently manufacture a false ``complete``.</span>
+<span class="n">SUCCESS_MARKER_VERSION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>
+
+<span class="c1">#: Artifact descriptor kinds. ``&quot;file&quot;`` is the default for a descriptor</span>
+<span class="c1">#: written before the ``kind`` tag existed; a ``&quot;store&quot;`` descriptor carries</span>
+<span class="c1">#: no ``size`` and digests the store&#39;s root ``zarr.json`` instead.</span>
+<span class="n">ARTIFACT_KIND_FILE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;file&quot;</span>
+<span class="n">ARTIFACT_KIND_STORE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;store&quot;</span>
+
+<span class="c1">#: Marker-last proof schema versions, read by the run-state resolver and</span>
+<span class="c1">#: written by ``_cli_completion``&#39;s two publishers.</span>
+<span class="c1">#:</span>
+<span class="c1">#: ``AGGREGATE_PROOF_VERSION`` moved 1 -&gt; 2 in P4. Two independent reasons, and</span>
+<span class="c1">#: the second is the decisive one: the proof lost its ``master_csv`` required</span>
+<span class="c1">#: output and its ``publication_id`` (D8, U-4); and **the master&#39;s own shape</span>
+<span class="c1">#: changed** -- it is now un-joined and carries intrinsic identity only. Every</span>
+<span class="c1">#: pre-P4 aggregate proof is therefore stale in substance whether or not the</span>
+<span class="c1">#: version moves, and a stale proof that still validates is indistinguishable</span>
+<span class="c1">#: from a current one. Invalidating costs **re-aggregation, not</span>
+<span class="c1">#: reprocessing**: the master is rebuilt from embedded tables already on disk,</span>
+<span class="c1">#: with no image re-measured and no store rewritten.</span>
+<span class="c1">#:</span>
+<span class="c1">#: ``RUN_PROOF_VERSION`` is deliberately NOT bumped alongside it. The run</span>
+<span class="c1">#: proof&#39;s new ``source_set_digest`` is read through</span>
+<span class="c1">#: ``_run_state._source_set_binding``, which handles both shapes on purpose so</span>
+<span class="c1">#: P1&#39;s comparison keeps being made across P4&#39;s writer bump.</span>
+<span class="n">AGGREGATE_PROOF_VERSION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">RUN_PROOF_VERSION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>
+
 <span class="c1">#: Per-dataset measurements subdirectory: ``&lt;output&gt;/results/&lt;ds&gt;/measurements/``.</span>
 <span class="n">DIR_MEASUREMENTS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;measurements&quot;</span>
 
@@ -1357,6 +1461,39 @@
 <span class="c1">#: ``&lt;progress&gt;/recompile/measurement_shards/``.</span>
 <span class="n">DIR_RECOMPILE_SHARDS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;measurement_shards&quot;</span>
 
+<span class="c1">#: Per-invocation aggregation shard subdirectory:</span>
+<span class="c1">#: ``&lt;progress&gt;/aggregation_shards/&lt;scheduler_epoch&gt;/``.</span>
+<span class="c1">#:</span>
+<span class="c1">#: **Deliberately not ``measurement_shards``**, which is</span>
+<span class="c1">#: :data:`DIR_RECOMPILE_SHARDS` and already names two live and *different*</span>
+<span class="c1">#: paths: ``recompile_dir(progress) / DIR_RECOMPILE_SHARDS``, which</span>
+<span class="c1">#: ``_cli_finalize_run._invalidate_finalization_intermediates`` removes, and</span>
+<span class="c1">#: ``attempt_dir / DIR_RECOMPILE_SHARDS``, which the recompile worker writes</span>
+<span class="c1">#: and reads. A third use of that string would make an existing ambiguity</span>
+<span class="c1">#: harder to see rather than adding a new one, so the fan-out&#39;s shards get a</span>
+<span class="c1">#: leaf name whose ``grep`` means one thing.</span>
+<span class="n">DIR_AGGREGATION_SHARDS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;aggregation_shards&quot;</span>
+
+<span class="c1">#: Path segment standing in for a null ``scheduler_epoch``.</span>
+<span class="c1">#:</span>
+<span class="c1">#: :func:`phenotypic.sdk_._run_state._scheduler_epoch` returns ``None``</span>
+<span class="c1">#: whenever there is no ``slurm_lifecycle.json`` -- which is every local run --</span>
+<span class="c1">#: so the local fan-out driver has no epoch to namespace by. The segment keeps</span>
+<span class="c1">#: one path shape across both drivers instead of letting a ``None`` reach the</span>
+<span class="c1">#: filesystem as the literal string ``&quot;None&quot;``.</span>
+<span class="c1">#:</span>
+<span class="c1">#: **Namespacing is not what makes the local path correct.** Consecutive local</span>
+<span class="c1">#: runs share this segment, so the fan-out empties the shard directory when it</span>
+<span class="c1">#: starts (user ruling, P2 close) rather than relying on a distinct key.</span>
+<span class="c1">#:</span>
+<span class="c1">#: **A different field in this subsystem legitimately takes this same string,</span>
+<span class="c1">#: and they are not the same namespace.** ``execution_epoch`` is written as</span>
+<span class="c1">#: ``&quot;local&quot;`` by ``_cli_gui_lifecycle`` and compared against it in</span>
+<span class="c1">#: ``_cli_completion``. ``scheduler_epoch`` is a minted lifecycle generation</span>
+<span class="c1">#: and is never this literal, so the two cannot collide -- but they sit close</span>
+<span class="c1">#: enough that a reader could conclude otherwise.</span>
+<span class="n">LOCAL_SCHEDULER_EPOCH</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;local&quot;</span>
+
 <span class="c1">#: Generated SLURM script subdirectory inside the hidden machine-state cache.</span>
 <span class="n">DIR_SLURM_SCRIPTS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;slurm_scripts&quot;</span>
 
@@ -1364,7 +1501,7 @@
 <span class="c1">#: :data:`QC_DUCKDB` (written by ``run_qc``) and</span>
 <span class="c1">#: :data:`QC_REVIEW_STATE_JSON` (written by the GUI Review tab). Relocated</span>
 <span class="c1">#: under ``deliverables/`` so a bundle is self-contained;</span>
-<span class="c1">#: :func:`resolve_qc_dir` / :func:`migrate_legacy_qc` handle the legacy</span>
+<span class="c1">#: :attr:`BundleLayout.qc_dir` / :func:`migrate_legacy_qc` handle the legacy</span>
 <span class="c1">#: pre-relocation root ``&lt;output&gt;/qc/``.</span>
 <span class="n">DIR_QC</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;qc&quot;</span>
 
@@ -1585,6 +1722,34 @@
 
 
 
+<div class="viewcode-block" id="restart_epoch_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.restart_epoch_path.html#phenotypic.sdk_.restart_epoch_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">restart_epoch_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/restart_epoch.json``.</span>
+
+<span class="sd">    Pure path expression. The readers and the writer are</span>
+<span class="sd">    :func:`phenotypic._cli._cli_identity.read_restart_epoch` and</span>
+<span class="sd">    :func:`~phenotypic._cli._cli_identity.bump_restart_epoch` -- the writer</span>
+<span class="sd">    lives in ``_cli`` because spec §5.2 keeps every publisher out of ``sdk_``,</span>
+<span class="sd">    and only the path belongs here.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">phenotypic_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">RESTART_EPOCH_JSON</span></div>
+
+
+
+<div class="viewcode-block" id="verification_cache_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.verification_cache_path.html#phenotypic.sdk_.verification_cache_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">verification_cache_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/verification_cache.json``.</span>
+
+<span class="sd">    Pure path expression; the caller decides whether to write. Note that the</span>
+<span class="sd">    cache&#39;s writer deliberately does **not** ``mkdir`` this path&#39;s parent --</span>
+<span class="sd">    see :func:`phenotypic.sdk_._verification_cache.persist_states`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">phenotypic_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">VERIFICATION_CACHE_JSON</span></div>
+
+
+
 <div class="viewcode-block" id="results_dir">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.results_dir.html#phenotypic.sdk_.results_dir">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">results_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
@@ -1790,6 +1955,42 @@
 
 
 
+<span class="c1">#: Children of ``.phenotypic/`` that :func:`clear_machine_state` keeps.</span>
+<span class="c1">#:</span>
+<span class="c1">#: **THE MEMBERSHIP RULE — read this before adding a name.** A name belongs</span>
+<span class="c1">#: here only when carrying it across a restart is **safer than losing it**.</span>
+<span class="c1">#:</span>
+<span class="c1">#: * ``terminal_failures.jsonl`` qualifies: append-only history, and losing it</span>
+<span class="c1">#:   loses the record of *why* images failed.</span>
+<span class="c1">#: * ``restart_epoch.json`` qualifies: a counter that resets on the operation</span>
+<span class="c1">#:   it fences is not a fence.</span>
+<span class="c1">#:</span>
+<span class="c1">#: Anything recording a **verdict reached before the fence** does **not**</span>
+<span class="c1">#: qualify, however expensive it was to compute -- a restart exists to</span>
+<span class="c1">#: invalidate exactly those.</span>
+<span class="c1">#:</span>
+<span class="c1">#: **The worked exclusion, which is why this rule is written down at all:**</span>
+<span class="c1">#: ``verification_cache.json`` is a completion verdict, and an expensive one</span>
+<span class="c1">#: (spec U-11 measures the deep pass it replaces at 1403 s against ~37 s).</span>
+<span class="c1">#: That expense is precisely the argument that will be made for preserving it,</span>
+<span class="c1">#: and it is precisely the wrong argument -- a preserved cache would carry a</span>
+<span class="c1">#: pre-restart ``complete`` across the fence the restart exists to raise. It</span>
+<span class="c1">#: is deleted by falling into the sweep&#39;s everything-else branch, and that</span>
+<span class="c1">#: exclusion is enforced by</span>
+<span class="c1">#: ``test_clear_machine_state_deletes_the_persisted_cache`` in</span>
+<span class="c1">#: ``tests/unit/sdk_/test_verification_cache_disk.py`` -- a suite an editor of</span>
+<span class="c1">#: this set will not have open, which is why the rule lives here rather than</span>
+<span class="c1">#: only there.</span>
+<span class="c1">#:</span>
+<span class="c1">#: This set is a **module-level constant on purpose**: later phases are told</span>
+<span class="c1">#: to grow it (P7 adds ``legacy-v2/``, the retained revert path), and a set</span>
+<span class="c1">#: those phases must find and extend does not belong in a function body where</span>
+<span class="c1">#: it can carry no documentation.</span>
+<span class="n">_PRESERVED_ON_RESTART</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span>
+    <span class="p">{</span><span class="n">TERMINAL_FAILURES_JSONL</span><span class="p">,</span> <span class="n">RESTART_EPOCH_JSON</span><span class="p">,</span> <span class="n">DIR_LEGACY_V2</span><span class="p">}</span>
+<span class="p">)</span>
+
+
 <div class="viewcode-block" id="clear_machine_state">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.clear_machine_state.html#phenotypic.sdk_.clear_machine_state">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">clear_machine_state</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
@@ -1798,8 +1999,13 @@
 <span class="sd">    Deletes current state inside ``.phenotypic/`` (``progress/``,</span>
 <span class="sd">    ``processing_state.json``, ``processing_events.log``, logs, and generated</span>
 <span class="sd">    SLURM scripts) and any pre-migration root-level machine-state, while</span>
-<span class="sd">    preserving the append-only ``terminal_failures.jsonl`` journal and</span>
-<span class="sd">    user-facing output artifacts (``deliverables/``, ``results/``, ``qc/``, …).</span>
+<span class="sd">    preserving :data:`_PRESERVED_ON_RESTART` -- the append-only</span>
+<span class="sd">    ``terminal_failures.jsonl`` journal **and** ``restart_epoch.json``, because</span>
+<span class="sd">    a counter that resets on the operation it fences is not a fence -- along</span>
+<span class="sd">    with user-facing output artifacts (``deliverables/``, ``results/``,</span>
+<span class="sd">    ``qc/``, …). **Read that set&#39;s membership rule before adding to it**; it is</span>
+<span class="sd">    now the only thing standing between ``--restart`` and every artifact under</span>
+<span class="sd">    ``.phenotypic/``.</span>
 <span class="sd">    This is</span>
 <span class="sd">    the difference between ``--restart``</span>
 <span class="sd">    (re-run the orchestration against clean state, keep outputs) and</span>
@@ -1819,7 +2025,7 @@
     <span class="n">cache</span> <span class="o">=</span> <span class="n">phenotypic_cache_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">cache</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
         <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">cache</span><span class="o">.</span><span class="n">iterdir</span><span class="p">():</span>
-            <span class="k">if</span> <span class="n">child</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">TERMINAL_FAILURES_JSONL</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">child</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">_PRESERVED_ON_RESTART</span><span class="p">:</span>
                 <span class="k">continue</span>
             <span class="k">if</span> <span class="n">child</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">child</span><span class="o">.</span><span class="n">is_symlink</span><span class="p">():</span>
                 <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">child</span><span class="p">)</span>
@@ -1841,14 +2047,6 @@
             <span class="n">legacy_file</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
             <span class="n">removed</span> <span class="o">=</span> <span class="kc">True</span>
     <span class="k">return</span> <span class="n">removed</span></div>
-
-
-
-<div class="viewcode-block" id="master_measurements_csv_path">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.master_measurements_csv_path.html#phenotypic.sdk_.master_measurements_csv_path">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">master_measurements_csv_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/master_measurements.csv``.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">MASTER_MEASUREMENTS_CSV</span></div>
 
 
 
@@ -1956,25 +2154,6 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">best_pipeline_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the canonical typed tuned-winner pipeline path.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">BEST_PIPELINE_JSON</span></div>
-
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">_legacy_best_pipeline_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the legacy plain-JSON tuned-winner pipeline path.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">_LEGACY_BEST_PIPELINE_JSON</span>
-
-
-<div class="viewcode-block" id="resolve_best_pipeline_path">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.resolve_best_pipeline_path.html#phenotypic.sdk_.resolve_best_pipeline_path">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">resolve_best_pipeline_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the best existing tuned-winner pipeline path for ``output_dir``.&quot;&quot;&quot;</span>
-    <span class="n">canonical</span> <span class="o">=</span> <span class="n">best_pipeline_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">canonical</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-        <span class="k">return</span> <span class="n">canonical</span>
-    <span class="n">legacy</span> <span class="o">=</span> <span class="n">_legacy_best_pipeline_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">legacy</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-        <span class="k">return</span> <span class="n">legacy</span>
-    <span class="k">return</span> <span class="n">canonical</span></div>
 
 
 
@@ -2769,6 +2948,46 @@
 
 
 
+<div class="viewcode-block" id="aggregation_shard_dir">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.aggregation_shard_dir.html#phenotypic.sdk_.aggregation_shard_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">aggregation_shard_dir</span><span class="p">(</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">scheduler_epoch</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;progress&gt;/aggregation_shards/&lt;scheduler_epoch&gt;/``.</span>
+
+<span class="sd">    Spec §7.5: the fan-out&#39;s measurement shards are per-invocation scratch, so</span>
+<span class="sd">    a prior run&#39;s shards can never be merged into this run&#39;s master. Recompile</span>
+<span class="sd">    already namespaces its shards this way under</span>
+<span class="sd">    ``recompile/attempts/&lt;attempt_id&gt;/``; this generalises the pattern to the</span>
+<span class="sd">    forward path.</span>
+
+<span class="sd">    **The namespace is not the correctness argument, and must not be read as</span>
+<span class="sd">    one.** ``_scheduler_epoch`` returns ``None`` for every local run, so</span>
+<span class="sd">    consecutive local invocations share :data:`LOCAL_SCHEDULER_EPOCH` and would</span>
+<span class="sd">    collide. The fan-out therefore *empties* this directory when it starts, on</span>
+<span class="sd">    both drivers, at the same logical point -- which is strictly stronger than</span>
+<span class="sd">    namespacing, since namespacing also leaves every prior run&#39;s shards on disk</span>
+<span class="sd">    accumulating forever. The epoch stays in the path because it costs nothing</span>
+<span class="sd">    and keeps one path shape across the two drivers.</span>
+
+<span class="sd">    Pure path expression; callers ``mkdir`` when they intend to write.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: Run output root.</span>
+<span class="sd">        scheduler_epoch: The active SLURM lifecycle generation, or ``None``</span>
+<span class="sd">            for a local run.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The shard directory for this invocation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+        <span class="o">/</span> <span class="n">DIR_AGGREGATION_SHARDS</span>
+        <span class="o">/</span> <span class="p">(</span><span class="n">scheduler_epoch</span> <span class="ow">or</span> <span class="n">LOCAL_SCHEDULER_EPOCH</span><span class="p">)</span>
+    <span class="p">)</span></div>
+
+
+
 <div class="viewcode-block" id="task_status_path">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.task_status_path.html#phenotypic.sdk_.task_status_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">task_status_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">task_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
@@ -2813,6 +3032,19 @@
 
 
 
+<div class="viewcode-block" id="slurm_lifecycle_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.slurm_lifecycle_path.html#phenotypic.sdk_.slurm_lifecycle_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">slurm_lifecycle_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/progress/slurm_lifecycle.json``.</span>
+
+<span class="sd">    The mutable active-generation fence. ``_cli_slurm_lifecycle`` owns every</span>
+<span class="sd">    *write*; this helper exists because the run-state reader must be able to</span>
+<span class="sd">    ask who is in flight without importing a writer (INV-LAYER).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">SLURM_LIFECYCLE_JSON</span></div>
+
+
+
 <div class="viewcode-block" id="run_completion_marker_path">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.run_completion_marker_path.html#phenotypic.sdk_.run_completion_marker_path">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">run_completion_marker_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
@@ -2836,6 +3068,16 @@
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the general marker path for one dataset image stem.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_IMAGE_COMPLETE</span> <span class="o">/</span> <span class="n">dataset</span> <span class="o">/</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">image_stem</span><span class="si">}</span><span class="s2">.json&quot;</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="image_record_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.image_record_path.html#phenotypic.sdk_.image_record_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">image_record_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">image_stem</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/.phenotypic/progress/images/&lt;ds&gt;/&lt;stem&gt;.json``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">progress_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_IMAGE_RECORDS</span> <span class="o">/</span> <span class="n">dataset</span> <span class="o">/</span> <span class="p">(</span>
         <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">image_stem</span><span class="si">}</span><span class="s2">.json&quot;</span>
     <span class="p">)</span></div>
 
@@ -2931,9 +3173,13 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/qc/`` — durable QC + curation state.</span>
 
-<span class="sd">    Relocated under ``deliverables/`` so a deliverables bundle is self-contained</span>
-<span class="sd">    and portable. Use :func:`resolve_qc_dir` for reads that must honour the legacy</span>
-<span class="sd">    root ``&lt;output&gt;/qc/`` layout of pre-relocation runs.</span>
+<span class="sd">    Relocated under ``deliverables/`` so a deliverables bundle is</span>
+<span class="sd">    self-contained and portable. For reads that must honour the legacy root</span>
+<span class="sd">    ``&lt;output&gt;/qc/`` of pre-relocation runs, use</span>
+<span class="sd">    :attr:`BundleLayout.qc_dir`, which resolves the same three branches and</span>
+<span class="sd">    is the one with callers. A second module-level resolver existed here and</span>
+<span class="sd">    was deleted in P6 Task 7 -- two implementations of one fallback, only one</span>
+<span class="sd">    of them reachable.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_QC</span></div>
 
@@ -2942,24 +3188,6 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">_legacy_qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Pre-relocation location: ``&lt;output&gt;/qc/``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">DIR_QC</span>
-
-
-<div class="viewcode-block" id="resolve_qc_dir">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.resolve_qc_dir.html#phenotypic.sdk_.resolve_qc_dir">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">resolve_qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the qc dir that exists, preferring ``deliverables/qc/``.</span>
-
-<span class="sd">    Read-only resolver: deliverables/qc if present, else legacy root qc if</span>
-<span class="sd">    present, else the canonical deliverables/qc (for fresh writes).</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">new</span> <span class="o">=</span> <span class="n">qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">new</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-        <span class="k">return</span> <span class="n">new</span>
-    <span class="n">legacy</span> <span class="o">=</span> <span class="n">_legacy_qc_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">legacy</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-        <span class="k">return</span> <span class="n">legacy</span>
-    <span class="k">return</span> <span class="n">new</span></div>
-
 
 
 <div class="viewcode-block" id="qc_duckdb_path">
@@ -3083,26 +3311,6 @@
 
 
 
-<div class="viewcode-block" id="load_master_measurements">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.load_master_measurements.html#phenotypic.sdk_.load_master_measurements">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">load_master_measurements</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="s2">&quot;pl.DataFrame&quot;</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Read ``&lt;output&gt;/master_measurements.csv`` into a polars DataFrame.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        output_dir: Run output directory.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        DataFrame, or :data:`None` when the file is missing.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>  <span class="c1"># type: ignore[import-not-found]  # lazy</span>
-
-    <span class="n">path</span> <span class="o">=</span> <span class="n">master_measurements_csv_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-        <span class="k">return</span> <span class="kc">None</span>
-    <span class="k">return</span> <span class="n">pl</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">path</span><span class="p">)</span></div>
-
-
-
 <div class="viewcode-block" id="resolve_execution_mode">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.resolve_execution_mode.html#phenotypic.sdk_.resolve_execution_mode">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">resolve_execution_mode</span><span class="p">(</span><span class="n">job_meta</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">ExecutionMode</span><span class="p">:</span>
@@ -3189,6 +3397,14 @@
 <span class="sd">    these constants rather than spelling the bare string.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
+    <span class="c1">#: **Written, never read -- and that is the correct state for it.** A</span>
+    <span class="c1">#: format version exists to be readable by something that does not exist</span>
+    <span class="c1">#: yet, so &quot;zero readers&quot; is the expected condition of a healthy one, not</span>
+    <span class="c1">#: evidence of death. P6 Task 7&#39;s deletion ledger listed it as dead on a</span>
+    <span class="c1">#: zero-reader count; it was removed and restored, because dropping it</span>
+    <span class="c1">#: leaves the manifest with no schema discriminator and that cannot be</span>
+    <span class="c1">#: added retroactively to trees written meanwhile. The criterion is right</span>
+    <span class="c1">#: for a function and wrong for a format version.</span>
     <span class="n">VERSION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;version&quot;</span>
     <span class="n">LAST_UPDATED</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;last_updated&quot;</span>
     <span class="n">EXECUTION_MODE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;execution_mode&quot;</span>
@@ -3518,11 +3734,6 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">master_parquet</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``master_measurements.parquet`` in the deliverables base.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">MASTER_MEASUREMENTS_PARQUET</span>
-
-    <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">master_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return path to ``master_measurements.csv`` in the deliverables base.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deliverables_base</span> <span class="o">/</span> <span class="n">MASTER_MEASUREMENTS_CSV</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">mirror_parquet</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>

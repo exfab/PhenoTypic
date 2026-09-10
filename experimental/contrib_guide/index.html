@@ -556,6 +556,7 @@
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing Guidelines</a></li>
 <li class="toctree-l1"><a class="reference internal" href="extending.html">Extending Phenotypic</a></li>
 <li class="toctree-l1"><a class="reference internal" href="testing.html">Testing Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tracked_state.html">Run state: what is tracked, and how to read it</a></li>
 <li class="toctree-l1"><a class="reference internal" href="documentation.html">Documentation Writing Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="docstring_style.html">ImageOperation Docstring Style Guide</a></li>
 </ul>
@@ -648,6 +649,19 @@
 <li class="toctree-l2"><a class="reference internal" href="testing.html#continuous-integration">Continuous Integration</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="tracked_state.html">Run state: what is tracked, and how to read it</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tracked_state.html#reading-state-one-call">Reading state: one call</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tracked_state.html#a-tracked-state-written-down-and-irreducibly-so">(a) Tracked state — written down, and irreducibly so</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tracked_state.html#b-content-proofs-evidence-not-tracked-state">(b) Content proofs — evidence, not tracked state</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tracked_state.html#derived-and-by-what">© Derived, and by what</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tracked_state.html#d-retained-and-read-by-nothing">(d) Retained, and read by nothing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tracked_state.html#the-one-that-fits-none-of-the-above-migration-manifest-json">The one that fits none of the above: <code class="docutils literal notranslate"><span class="pre">migration_manifest.json</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="tracked_state.html#provenance-has-two-writers">Provenance has two writers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tracked_state.html#known-consumers">Known consumers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tracked_state.html#where-readers-and-writers-live">Where readers and writers live</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tracked_state.html#changing-the-state-model">Changing the state model</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="documentation.html">Documentation Writing Guide</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="documentation.html#documentation-structure">Documentation Structure</a></li>
 <li class="toctree-l2"><a class="reference internal" href="documentation.html#audience">Audience</a></li>
@@ -685,6 +699,15 @@
 </dd>
 </dl>
 </section>
+<section id="reference-pages">
+<h2>Reference Pages<a class="headerlink" href="#reference-pages" title="Link to this heading">#</a></h2>
+<dl class="simple">
+<dt><strong>Run state: what is tracked, and how to read it</strong></dt><dd><p>The four tracked states, the three content proofs, what is derived and by
+what function, and the table of known consumers. Read it before adding any
+counter, flag or marker under <code class="docutils literal notranslate"><span class="pre">.phenotypic/</span></code>.</p>
+</dd>
+</dl>
+</section>
 </section>
 
 
@@ -711,6 +734,7 @@
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#placeholder-pages">Placeholder Pages</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reference-pages">Reference Pages</a></li>
 </ul>
   </nav></div>
 

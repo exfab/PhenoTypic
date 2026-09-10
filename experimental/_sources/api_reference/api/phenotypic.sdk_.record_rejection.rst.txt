@@ -1,0 +1,6 @@
+phenotypic.sdk\_.record\_rejection
+==================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: record_rejection

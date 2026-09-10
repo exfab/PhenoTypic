@@ -1,0 +1,37 @@
+phenotypic.sdk\_.RunState
+=========================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoclass:: RunState
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~RunState.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RunState.verified_at
+      ~RunState.completion
+      ~RunState.identity
+      ~RunState.images
+      ~RunState.advisories
+      ~RunState.diagnostics
+      ~RunState.depth
+   
+   

@@ -24,11 +24,15 @@
       atomic_write_with_writer
       publication_commit
       build_measurement_table_descriptor
+      build_metadata_table_descriptor
       embedded_measurement_columns
       read_embedded_measurement_column
       read_embedded_measurement_descriptor
       replace_embedded_measurement_table
+      replace_image_tables
       write_embedded_measurement_table
+      write_image_tables
+      write_metadata_table
       canonical_metadata_order
       ensure_metadata_prefix
       is_binary_mask
@@ -57,6 +61,13 @@
       read_phenotypic_attributes
       sweep_orphan_parts
       valid_staged_store
+      aggregate_proof_is_current
+      assert_identity_current
+      clear_verification_cache
+      finalization_input_object
+      resolve_run_state
+      run_identity
+      aggregation_shard_dir
       analysis_full_parquet_path
       analysis_manifest_path
       best_pipeline_path
@@ -94,14 +105,19 @@
       generalization_path
       generation_staging_path
       gui_launch_owner_path
+      slurm_lifecycle_path
       image_completion_marker_path
+      image_record_path
+      read_image_record
+      record_provenance
+      record_rejection
       has_config_suffix
       job_metadata_path
       load_image_from_store
-      load_master_measurements
       logs_dir
       manifest_json_path
-      master_measurements_csv_path
+      master_carries_user_metadata
+      user_metadata_headers
       master_measurements_parquet_path
       measurements_by_feature_dir
       measurements_csv_path
@@ -141,17 +157,16 @@
       recompile_dir
       recompile_status_dir
       rembi_manifest_path
-      resolve_best_pipeline_path
       resolve_event_log_path
       resolve_execution_mode
       resolve_manifest_json_path
       resolve_pipeline_config_path
       resolve_processing_state_path
       resolve_progress_dir
-      resolve_qc_dir
       resolve_split_assignment_path
       resolve_study_db_path
       resolve_tuning_spec_path
+      restart_epoch_path
       results_dir
       run_completion_marker_path
       sentinel_resubmitted_path
@@ -174,6 +189,7 @@
       tune_cache_splits_dir
       tune_cache_study_db_path
       tuning_spec_path
+      verification_cache_path
       verified_parquet_path
       validate_analysis_id
       zarr_store_path
@@ -197,11 +213,16 @@
       NormControlMixin
       NormalizedOutputMixin
       PreparedEmbeddedMeasurementTable
+      PreparedImageTables
       MetadataMigrationAuthority
       MetadataMigrationReport
       MetadataMigrationResult
       MetadataMigrationTarget
       PhenotypicAttr
+      ImageState
+      RunDiagnostics
+      RunIdentity
+      RunState
       ChunkManifestKey
       ChunkStateKey
       DashboardManifestKey

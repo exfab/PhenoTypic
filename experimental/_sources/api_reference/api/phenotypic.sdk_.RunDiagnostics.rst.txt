@@ -1,0 +1,33 @@
+phenotypic.sdk\_.RunDiagnostics
+===============================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoclass:: RunDiagnostics
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~RunDiagnostics.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RunDiagnostics.accepted
+      ~RunDiagnostics.verified
+      ~RunDiagnostics.failed
+   
+   

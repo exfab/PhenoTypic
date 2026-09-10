@@ -603,6 +603,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span>
@@ -656,25 +657,123 @@
 
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_write_validated_parquet</span><span class="p">(</span>
+<div class="viewcode-block" id="PreparedImageTables">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.PreparedImageTables.html#phenotypic.sdk_.PreparedImageTables">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PreparedImageTables</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;One image&#39;s measurement rows and, separately, its user metadata rows.</span>
+
+<span class="sd">    Spec §7.1-7.2&#39;s inversion. ``measurements`` is the **pre-join baseline** --</span>
+<span class="sd">    intrinsic identity (``Metadata_ImageFile``, ``Metadata_Dataset``, the</span>
+<span class="sd">    object label) plus the measured columns, and nothing that came from</span>
+<span class="sd">    ``--metadata``. ``metadata`` is the projection of the run&#39;s metadata</span>
+<span class="sd">    snapshot onto the join keys this image actually carries, or ``None`` when</span>
+<span class="sd">    there is no such projection to make.</span>
+
+<span class="sd">    The join provenance below describes the **metadata** table, not the</span>
+<span class="sd">    measurements table. After the inversion the measurements table carries no</span>
+<span class="sd">    join at all, so its own recorded triple is</span>
+<span class="sd">    ``not_requested`` / ``[]`` / ``&quot;&quot;`` -- which is what</span>
+<span class="sd">    :meth:`measurements_payload` builds, and the one place that rule lives.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        measurements: The unjoined baseline, exactly the projection</span>
+<span class="sd">            ``measurement_columns`` already named.</span>
+<span class="sd">        metadata: User metadata rows for this image&#39;s keys, or ``None`` when</span>
+<span class="sd">            ``join_status`` is ``not_requested`` or ``no_common_keys``.</span>
+<span class="sd">        measurement_columns: Baseline column names, in writer order.</span>
+<span class="sd">        join_status: Whether a metadata join was requested, possible, or done.</span>
+<span class="sd">        join_keys: The common columns the metadata table is keyed on.</span>
+<span class="sd">        metadata_snapshot_sha256: Digest of the ``metadata.csv`` snapshot this</span>
+<span class="sd">            image was prepared against; ``&quot;&quot;`` when none was supplied.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">measurements</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">measurement_columns</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="n">join_status</span><span class="p">:</span> <span class="n">JoinStatus</span>
+    <span class="n">join_keys</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="n">metadata_snapshot_sha256</span><span class="p">:</span> <span class="nb">str</span>
+
+<div class="viewcode-block" id="PreparedImageTables.measurements_payload">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.PreparedImageTables.html#phenotypic.sdk_.PreparedImageTables.measurements_payload">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">measurements_payload</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PreparedEmbeddedMeasurementTable</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the measurements table&#39;s own payload, carrying no join.</span>
+
+<span class="sd">        The triple is ``not_requested`` / ``()`` / ``&quot;&quot;`` unconditionally,</span>
+<span class="sd">        because after the inversion the statement &quot;this file is the result of</span>
+<span class="sd">        a join&quot; is false of ``tables/measurements/table.parquet`` on every</span>
+<span class="sd">        store. That is also exactly the shape</span>
+<span class="sd">        :func:`_valid_embedded_measurement_contract` already accepts, so the</span>
+<span class="sd">        contract needs no change for this file.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">PreparedEmbeddedMeasurementTable</span><span class="p">(</span>
+            <span class="n">frame</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">measurements</span><span class="p">,</span>
+            <span class="n">measurement_columns</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">measurement_columns</span><span class="p">,</span>
+            <span class="n">join_status</span><span class="o">=</span><span class="s2">&quot;not_requested&quot;</span><span class="p">,</span>
+            <span class="n">join_keys</span><span class="o">=</span><span class="p">(),</span>
+            <span class="n">metadata_snapshot_sha256</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PreparedImageTables.metadata_parquet_metadata">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.PreparedImageTables.html#phenotypic.sdk_.PreparedImageTables.metadata_parquet_metadata">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">metadata_parquet_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">bytes</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the metadata table&#39;s own join provenance as Arrow metadata.</span>
+
+<span class="sd">        The same key spellings the measurement table uses -- one home for the</span>
+<span class="sd">        names -- minus ``measurement_columns``, which says nothing about this</span>
+<span class="sd">        file. This is what makes ``pht-metadata.parquet`` self-describing to a</span>
+<span class="sd">        reader who has only the Parquet: it names the keys it is joined on,</span>
+<span class="sd">        the direction of the join, and the snapshot it came from.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">ngff_</span>
+
+        <span class="n">keys</span> <span class="o">=</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">keys</span><span class="o">.</span><span class="n">JOIN_STATUS</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">join_status</span><span class="p">,</span>
+            <span class="n">keys</span><span class="o">.</span><span class="n">JOIN_KIND</span><span class="p">:</span> <span class="s2">&quot;right&quot;</span><span class="p">,</span>
+            <span class="n">keys</span><span class="o">.</span><span class="n">JOIN_LEFT</span><span class="p">:</span> <span class="s2">&quot;metadata&quot;</span><span class="p">,</span>
+            <span class="n">keys</span><span class="o">.</span><span class="n">JOIN_RIGHT</span><span class="p">:</span> <span class="s2">&quot;measurements&quot;</span><span class="p">,</span>
+            <span class="n">keys</span><span class="o">.</span><span class="n">JOIN_KEYS</span><span class="p">:</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
+                <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">join_keys</span><span class="p">),</span> <span class="n">separators</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="s2">&quot;:&quot;</span><span class="p">)</span>
+            <span class="p">),</span>
+            <span class="n">keys</span><span class="o">.</span><span class="n">METADATA_SNAPSHOT_SHA256</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata_snapshot_sha256</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">key</span><span class="o">.</span><span class="n">encode</span><span class="p">():</span> <span class="n">value</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span></div>
+</div>
+
+
+
+<span class="c1">#: Zarr v3 group document for every intermediate ``tables/*`` group. Written</span>
+<span class="c1">#: for each group a table lives under, and compared **by exact equality** by</span>
+<span class="c1">#: :func:`_valid_embedded_measurement_contract`, so a missing one is a</span>
+<span class="c1">#: contract failure rather than a cosmetic omission.</span>
+<span class="n">_TABLES_GROUP_DOCUMENT</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;zarr_format&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="s2">&quot;node_type&quot;</span><span class="p">:</span> <span class="s2">&quot;group&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;attributes&quot;</span><span class="p">:</span> <span class="p">{},</span>
+<span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_write_validated_frame</span><span class="p">(</span>
     <span class="n">payload</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
-    <span class="n">table</span><span class="p">:</span> <span class="n">PreparedEmbeddedMeasurementTable</span><span class="p">,</span>
+    <span class="n">frame</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">schema_metadata</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">bytes</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">],</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">commit_guard</span><span class="p">:</span> <span class="n">CommitGuard</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Atomically write and validate a prepared Arrow table.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Atomically write and validate one prepared Arrow table.&quot;&quot;&quot;</span>
 
     <span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pa</span>  <span class="c1"># type: ignore[import-untyped]</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow.parquet</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pq</span>  <span class="c1"># type: ignore[import-untyped]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_write</span><span class="p">(</span><span class="n">temp_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">arrow_table</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">Table</span><span class="o">.</span><span class="n">from_pandas</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">frame</span><span class="p">,</span> <span class="n">preserve_index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-        <span class="n">arrow_table</span> <span class="o">=</span> <span class="n">arrow_table</span><span class="o">.</span><span class="n">replace_schema_metadata</span><span class="p">(</span>
-            <span class="n">table</span><span class="o">.</span><span class="n">parquet_metadata</span><span class="p">()</span>
-        <span class="p">)</span>
+        <span class="n">arrow_table</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">Table</span><span class="o">.</span><span class="n">from_pandas</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">preserve_index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">arrow_table</span> <span class="o">=</span> <span class="n">arrow_table</span><span class="o">.</span><span class="n">replace_schema_metadata</span><span class="p">(</span><span class="n">schema_metadata</span><span class="p">)</span>
         <span class="n">pq</span><span class="o">.</span><span class="n">write_table</span><span class="p">(</span><span class="n">arrow_table</span><span class="p">,</span> <span class="n">temp_path</span><span class="p">,</span> <span class="o">**</span><span class="n">PARQUET_WRITE_OPTIONS</span><span class="p">)</span>
         <span class="n">reread</span> <span class="o">=</span> <span class="n">pq</span><span class="o">.</span><span class="n">read_table</span><span class="p">(</span><span class="n">temp_path</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">reread</span><span class="o">.</span><span class="n">column_names</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">columns</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">reread</span><span class="o">.</span><span class="n">column_names</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">columns</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
                 <span class="s2">&quot;Embedded measurement table failed schema validation&quot;</span>
             <span class="p">)</span>
@@ -684,6 +783,21 @@
         <span class="n">_write</span><span class="p">,</span>
         <span class="n">commit_guard</span><span class="o">=</span><span class="n">commit_guard</span><span class="p">,</span>
         <span class="n">temp_suffix</span><span class="o">=</span><span class="s2">&quot;.parquet.tmp&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_write_validated_parquet</span><span class="p">(</span>
+    <span class="n">payload</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">table</span><span class="p">:</span> <span class="n">PreparedEmbeddedMeasurementTable</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">commit_guard</span><span class="p">:</span> <span class="n">CommitGuard</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Atomically write and validate a prepared Arrow table.&quot;&quot;&quot;</span>
+    <span class="n">_write_validated_frame</span><span class="p">(</span>
+        <span class="n">payload</span><span class="p">,</span>
+        <span class="n">table</span><span class="o">.</span><span class="n">frame</span><span class="p">,</span>
+        <span class="n">table</span><span class="o">.</span><span class="n">parquet_metadata</span><span class="p">(),</span>
+        <span class="n">commit_guard</span><span class="o">=</span><span class="n">commit_guard</span><span class="p">,</span>
     <span class="p">)</span>
 
 
@@ -698,17 +812,62 @@
 
     <span class="n">payload</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">store_part</span><span class="p">)</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">MEASUREMENT_TABLE_RELATIVE_PATH</span>
     <span class="n">payload</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">group_document</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;zarr_format&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
-        <span class="s2">&quot;node_type&quot;</span><span class="p">:</span> <span class="s2">&quot;group&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;attributes&quot;</span><span class="p">:</span> <span class="p">{},</span>
-    <span class="p">}</span>
     <span class="n">atomic_write_json</span><span class="p">(</span>
         <span class="n">Path</span><span class="p">(</span><span class="n">store_part</span><span class="p">)</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">TABLES_GROUP</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">STORE_ROOT_JSON</span><span class="p">,</span>
-        <span class="n">group_document</span><span class="p">,</span>
+        <span class="n">_TABLES_GROUP_DOCUMENT</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">atomic_write_json</span><span class="p">(</span><span class="n">payload</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">STORE_ROOT_JSON</span><span class="p">,</span> <span class="n">group_document</span><span class="p">)</span>
+    <span class="n">atomic_write_json</span><span class="p">(</span>
+        <span class="n">payload</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">STORE_ROOT_JSON</span><span class="p">,</span> <span class="n">_TABLES_GROUP_DOCUMENT</span>
+    <span class="p">)</span>
     <span class="n">_write_validated_parquet</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">table</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">payload</span></div>
+
+
+
+<div class="viewcode-block" id="write_metadata_table">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.write_metadata_table.html#phenotypic.sdk_.write_metadata_table">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">write_metadata_table</span><span class="p">(</span>
+    <span class="n">store_part</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">tables</span><span class="p">:</span> <span class="n">PreparedImageTables</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write ``tables/metadata/pht-metadata.parquet`` and its Zarr v3 group.</span>
+
+<span class="sd">    The metadata analogue of :func:`write_embedded_measurement_table`, and</span>
+<span class="sd">    called from the same place: the store&#39;s **own** ``.part``, before the root</span>
+<span class="sd">    ``zarr.json``. That is what makes D-A&#39;s backfill step unnecessary -- no</span>
+<span class="sd">    path writes into a store that already carries a content proof.</span>
+
+<span class="sd">    The payload is self-describing from the file alone (spec §7.2): its</span>
+<span class="sd">    Parquet key/value metadata names the join keys, the join kind, and the</span>
+<span class="sd">    metadata snapshot it was projected from, so a third party who opens only</span>
+<span class="sd">    this Parquet can still say what it is and how it attaches.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        store_part: An **unpromoted** ``*.ome.zarr.part`` directory.</span>
+<span class="sd">        tables: The split payload. ``tables.metadata`` must not be ``None``.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The written Parquet path.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If *tables* carries no metadata frame.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">ngff_</span>
+
+    <span class="k">if</span> <span class="n">tables</span><span class="o">.</span><span class="n">metadata</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;PreparedImageTables carries no metadata table&quot;</span><span class="p">)</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">store_part</span><span class="p">)</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">METADATA_TABLE_RELATIVE_PATH</span>
+    <span class="n">payload</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">atomic_write_json</span><span class="p">(</span>
+        <span class="n">Path</span><span class="p">(</span><span class="n">store_part</span><span class="p">)</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">TABLES_GROUP</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">STORE_ROOT_JSON</span><span class="p">,</span>
+        <span class="n">_TABLES_GROUP_DOCUMENT</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">atomic_write_json</span><span class="p">(</span>
+        <span class="n">payload</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">STORE_ROOT_JSON</span><span class="p">,</span> <span class="n">_TABLES_GROUP_DOCUMENT</span>
+    <span class="p">)</span>
+    <span class="n">_write_validated_frame</span><span class="p">(</span>
+        <span class="n">payload</span><span class="p">,</span> <span class="n">tables</span><span class="o">.</span><span class="n">metadata</span><span class="p">,</span> <span class="n">tables</span><span class="o">.</span><span class="n">metadata_parquet_metadata</span><span class="p">()</span>
+    <span class="p">)</span>
     <span class="k">return</span> <span class="n">payload</span></div>
 
 
@@ -737,6 +896,230 @@
         <span class="p">},</span>
     <span class="p">}</span></div>
 
+
+
+<div class="viewcode-block" id="build_metadata_table_descriptor">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.build_metadata_table_descriptor.html#phenotypic.sdk_.build_metadata_table_descriptor">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">build_metadata_table_descriptor</span><span class="p">(</span>
+    <span class="n">tables</span><span class="p">:</span> <span class="n">PreparedImageTables</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the stable root descriptor for one embedded metadata table.</span>
+
+<span class="sd">    It records **what the file is**, not how it joins: the join keys are on</span>
+<span class="sd">    the Parquet&#39;s own key/value metadata and in the root&#39;s ``metadata_table``</span>
+<span class="sd">    block, and repeating them a third time here would be a third home for one</span>
+<span class="sd">    fact.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">ngff_</span>
+
+    <span class="k">if</span> <span class="n">tables</span><span class="o">.</span><span class="n">metadata</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;PreparedImageTables carries no metadata table&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;schema_version&quot;</span><span class="p">:</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">METADATA_TABLE_SCHEMA_VERSION</span><span class="p">,</span>
+        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;image_metadata&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;parquet&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">METADATA_TABLE_RELATIVE_PATH</span><span class="o">.</span><span class="n">as_posix</span><span class="p">(),</span>
+        <span class="s2">&quot;metadata_columns&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">column</span><span class="p">)</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">tables</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">columns</span>
+        <span class="p">],</span>
+    <span class="p">}</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">build_metadata_table_block</span><span class="p">(</span>
+    <span class="n">tables</span><span class="p">:</span> <span class="n">PreparedImageTables</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the root&#39;s ``metadata_table`` block, or ``None`` to omit it.</span>
+
+<span class="sd">    D-A: a store keeps the metadata snapshot it was built against and says</span>
+<span class="sd">    which one, so ``resolve_run_state`` can **derive** the divergence advisory</span>
+<span class="sd">    instead of tracking a backfill stage.</span>
+
+<span class="sd">    ``None`` for ``not_requested`` and only for it (H2). The advisory fires</span>
+<span class="sd">    when a store&#39;s recorded snapshot is neither ``None`` nor the run&#39;s current</span>
+<span class="sd">    ``metadata_sha256``; a metadata-free run has ``metadata_sha256 = None``</span>
+<span class="sd">    and a producer digest of ``&quot;&quot;``, so writing the block unconditionally</span>
+<span class="sd">    would report **every** store of **every** metadata-free run as diverged --</span>
+<span class="sd">    and an advisory that is always on teaches people to ignore the one that</span>
+<span class="sd">    will matter. ``no_common_keys`` *does* get the block: a snapshot was</span>
+<span class="sd">    supplied and matched nothing, there is no table to write, but a later edit</span>
+<span class="sd">    to that snapshot is exactly the divergence worth surfacing.</span>
+
+<span class="sd">    **The block carries the digest and nothing else (user ruling,</span>
+<span class="sd">    2026-09-06).** An earlier draft of the plan also put ``join_keys`` and</span>
+<span class="sd">    ``join_kind`` here. Those belong to the metadata table&#39;s own Parquet</span>
+<span class="sd">    key/value metadata, where every reader that needs them is already opening</span>
+<span class="sd">    the file. Recording them here as well would be two homes for one fact</span>
+<span class="sd">    **with nothing comparing them** -- which is what separates this from the</span>
+<span class="sd">    aggregate/run proof duplication, where two independently derived values</span>
+<span class="sd">    are each checked against live state and the comparison *is* the point.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">ngff_</span>
+
+    <span class="k">if</span> <span class="n">tables</span><span class="o">.</span><span class="n">join_status</span> <span class="o">==</span> <span class="s2">&quot;not_requested&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="n">ngff_</span><span class="o">.</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">SNAPSHOT_SHA256</span><span class="p">:</span> <span class="n">tables</span><span class="o">.</span><span class="n">metadata_snapshot_sha256</span>
+    <span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">build_image_tables_attributes</span><span class="p">(</span>
+    <span class="n">tables</span><span class="p">:</span> <span class="n">PreparedImageTables</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">objmap_target</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the ``attributes.phenotypic`` fragment two tables imply.</span>
+
+<span class="sd">    A **total** description, not an increment: the caller applies it with</span>
+<span class="sd">    :func:`apply_image_tables_attributes`, which removes whatever the fragment</span>
+<span class="sd">    omits. See that function for why the difference is load-bearing.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">ngff_</span>
+
+    <span class="n">descriptors</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">ngff_</span><span class="o">.</span><span class="n">MEASUREMENT_TABLE_GROUP</span><span class="p">:</span> <span class="n">build_measurement_table_descriptor</span><span class="p">(</span>
+            <span class="n">tables</span><span class="o">.</span><span class="n">measurements_payload</span><span class="p">(),</span> <span class="n">objmap_target</span><span class="o">=</span><span class="n">objmap_target</span>
+        <span class="p">)</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="n">tables</span><span class="o">.</span><span class="n">metadata</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">descriptors</span><span class="p">[</span><span class="n">ngff_</span><span class="o">.</span><span class="n">METADATA_TABLE_GROUP</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">build_metadata_table_descriptor</span><span class="p">(</span><span class="n">tables</span><span class="p">)</span>
+        <span class="p">)</span>
+    <span class="n">fragment</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">ngff_</span><span class="o">.</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">TABLES</span><span class="p">:</span> <span class="n">descriptors</span><span class="p">}</span>
+    <span class="n">block</span> <span class="o">=</span> <span class="n">build_metadata_table_block</span><span class="p">(</span><span class="n">tables</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">block</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fragment</span><span class="p">[</span><span class="n">ngff_</span><span class="o">.</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">METADATA_TABLE</span><span class="p">]</span> <span class="o">=</span> <span class="n">block</span>
+    <span class="k">return</span> <span class="n">fragment</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">apply_image_tables_attributes</span><span class="p">(</span>
+    <span class="n">phenotypic</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">],</span>
+    <span class="n">fragment</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Make *phenotypic*&#39;s table attributes equal *fragment*, removals included.</span>
+
+<span class="sd">    **Stated as a total function of the payload, never as an append.** A store</span>
+<span class="sd">    built with ``--metadata`` and then re-measured **without** it must LOSE</span>
+<span class="sd">    its ``metadata_table`` block and its ``tables.metadata`` descriptor. An</span>
+<span class="sd">    append-only refresh leaves the stale digest in place,</span>
+<span class="sd">    ``_store_metadata_snapshot`` keeps returning it, the run&#39;s</span>
+<span class="sd">    ``metadata_sha256`` is now ``None``, and the divergence advisory fires on</span>
+<span class="sd">    every such store forever -- H2&#39;s failure arriving through the measure path</span>
+<span class="sd">    instead of the promote path. That is invisible until someone re-measures</span>
+<span class="sd">    without ``--metadata``, which is why the removal is the rule and not a</span>
+<span class="sd">    special case.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">ngff_</span>
+
+    <span class="n">phenotypic</span><span class="p">[</span><span class="n">ngff_</span><span class="o">.</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">TABLES</span><span class="p">]</span> <span class="o">=</span> <span class="n">fragment</span><span class="p">[</span>
+        <span class="n">ngff_</span><span class="o">.</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">TABLES</span>
+    <span class="p">]</span>
+    <span class="k">if</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">METADATA_TABLE</span> <span class="ow">in</span> <span class="n">fragment</span><span class="p">:</span>
+        <span class="n">phenotypic</span><span class="p">[</span><span class="n">ngff_</span><span class="o">.</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">METADATA_TABLE</span><span class="p">]</span> <span class="o">=</span> <span class="n">fragment</span><span class="p">[</span>
+            <span class="n">ngff_</span><span class="o">.</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">METADATA_TABLE</span>
+        <span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">phenotypic</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">ngff_</span><span class="o">.</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">METADATA_TABLE</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="write_image_tables">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.write_image_tables.html#phenotypic.sdk_.write_image_tables">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">write_image_tables</span><span class="p">(</span>
+    <span class="n">store_part</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">tables</span><span class="p">:</span> <span class="n">PreparedImageTables</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">objmap_target</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write both of one image&#39;s tables into a part and return the fragment.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        store_part: An **unpromoted** ``*.ome.zarr.part`` directory. Both</span>
+<span class="sd">            tables land here, before the root ``zarr.json`` (D-A).</span>
+<span class="sd">        tables: The split payload.</span>
+<span class="sd">        objmap_target: Store-relative path of the label image the measurement</span>
+<span class="sd">            table&#39;s ``Object_Label`` column indexes.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The ``attributes.phenotypic`` fragment to apply to the root document</span>
+<span class="sd">        with :func:`apply_image_tables_attributes`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">write_embedded_measurement_table</span><span class="p">(</span>
+        <span class="n">store_part</span><span class="p">,</span> <span class="n">tables</span><span class="o">.</span><span class="n">measurements_payload</span><span class="p">()</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">tables</span><span class="o">.</span><span class="n">metadata</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">write_metadata_table</span><span class="p">(</span><span class="n">store_part</span><span class="p">,</span> <span class="n">tables</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">build_image_tables_attributes</span><span class="p">(</span><span class="n">tables</span><span class="p">,</span> <span class="n">objmap_target</span><span class="o">=</span><span class="n">objmap_target</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_valid_metadata_table_contract</span><span class="p">(</span>
+    <span class="n">store</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">phenotypic</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return whether a store&#39;s metadata table, group, and descriptor agree.</span>
+
+<span class="sd">    **Conditioned on the descriptor being declared**, and deliberately so: a</span>
+<span class="sd">    store written before the inversion has no ``tables.metadata`` entry and no</span>
+<span class="sd">    ``tables/metadata/`` group, and is not thereby invalid -- it is a store</span>
+<span class="sd">    from before the table existed. Only a store that *claims* the table is</span>
+<span class="sd">    held to it (M2).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">ngff_</span>
+
+    <span class="n">tables</span> <span class="o">=</span> <span class="n">phenotypic</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ngff_</span><span class="o">.</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">TABLES</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tables</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">descriptor</span> <span class="o">=</span> <span class="n">tables</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ngff_</span><span class="o">.</span><span class="n">METADATA_TABLE_GROUP</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">descriptor</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">columns</span> <span class="o">=</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata_columns&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span>
+        <span class="nb">isinstance</span><span class="p">(</span><span class="n">column</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">columns</span>
+    <span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">descriptor</span> <span class="o">!=</span> <span class="p">{</span>
+        <span class="s2">&quot;schema_version&quot;</span><span class="p">:</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">METADATA_TABLE_SCHEMA_VERSION</span><span class="p">,</span>
+        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;image_metadata&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;format&quot;</span><span class="p">:</span> <span class="s2">&quot;parquet&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">METADATA_TABLE_RELATIVE_PATH</span><span class="o">.</span><span class="n">as_posix</span><span class="p">(),</span>
+        <span class="s2">&quot;metadata_columns&quot;</span><span class="p">:</span> <span class="n">columns</span><span class="p">,</span>
+    <span class="p">}:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="n">group</span> <span class="o">=</span> <span class="n">store</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">TABLES_GROUP</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">METADATA_TABLE_GROUP</span>
+    <span class="n">document</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span>
+        <span class="p">(</span><span class="n">group</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">STORE_ROOT_JSON</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">document</span> <span class="o">!=</span> <span class="n">_TABLES_GROUP_DOCUMENT</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow.parquet</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pq</span>  <span class="c1"># type: ignore[import-untyped]</span>
+
+    <span class="n">payload</span> <span class="o">=</span> <span class="n">store</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">METADATA_TABLE_RELATIVE_PATH</span>
+    <span class="n">table</span> <span class="o">=</span> <span class="n">pq</span><span class="o">.</span><span class="n">read_table</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">table</span><span class="o">.</span><span class="n">column_names</span> <span class="o">!=</span> <span class="n">columns</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">metadata</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">metadata</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">keys</span> <span class="o">=</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS</span>
+    <span class="c1"># Every shared key EXCEPT `measurement_columns`, which describes the other</span>
+    <span class="c1"># table. `metadata_parquet_metadata` writes exactly this set.</span>
+    <span class="n">required</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+        <span class="n">key</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span> <span class="k">if</span> <span class="n">key</span> <span class="o">!=</span> <span class="n">keys</span><span class="o">.</span><span class="n">MEASUREMENT_COLUMNS</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">metadata</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">required</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">metadata</span><span class="p">[</span><span class="n">keys</span><span class="o">.</span><span class="n">JOIN_STATUS</span><span class="o">.</span><span class="n">encode</span><span class="p">()]</span> <span class="o">!=</span> <span class="sa">b</span><span class="s2">&quot;joined&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">join_keys</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">metadata</span><span class="p">[</span><span class="n">keys</span><span class="o">.</span><span class="n">JOIN_KEYS</span><span class="o">.</span><span class="n">encode</span><span class="p">()]</span><span class="o">.</span><span class="n">decode</span><span class="p">())</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">join_keys</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">join_keys</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">columns</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">join_keys</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">digest</span> <span class="o">=</span> <span class="n">metadata</span><span class="p">[</span><span class="n">keys</span><span class="o">.</span><span class="n">METADATA_SNAPSHOT_SHA256</span><span class="o">.</span><span class="n">encode</span><span class="p">()]</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">digest</span><span class="p">)</span> <span class="o">==</span> <span class="mi">64</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span>
+        <span class="n">character</span> <span class="ow">in</span> <span class="s2">&quot;0123456789abcdef&quot;</span> <span class="k">for</span> <span class="n">character</span> <span class="ow">in</span> <span class="n">digest</span>
+    <span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_valid_embedded_measurement_contract</span><span class="p">(</span><span class="n">store_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
@@ -775,11 +1158,7 @@
         <span class="p">}:</span>
             <span class="k">return</span> <span class="kc">False</span>
 
-        <span class="n">expected_group</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;zarr_format&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
-            <span class="s2">&quot;node_type&quot;</span><span class="p">:</span> <span class="s2">&quot;group&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;attributes&quot;</span><span class="p">:</span> <span class="p">{},</span>
-        <span class="p">}</span>
+        <span class="n">expected_group</span> <span class="o">=</span> <span class="n">_TABLES_GROUP_DOCUMENT</span>
         <span class="k">for</span> <span class="n">group</span> <span class="ow">in</span> <span class="p">(</span>
             <span class="n">store</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">TABLES_GROUP</span><span class="p">,</span>
             <span class="n">store</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">TABLES_GROUP</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">MEASUREMENT_TABLE_GROUP</span><span class="p">,</span>
@@ -789,6 +1168,9 @@
             <span class="p">)</span>
             <span class="k">if</span> <span class="n">document</span> <span class="o">!=</span> <span class="n">expected_group</span><span class="p">:</span>
                 <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">_valid_metadata_table_contract</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="n">phenotypic</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
 
         <span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow.parquet</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pq</span>  <span class="c1"># type: ignore[import-untyped]</span>
 
@@ -849,6 +1231,154 @@
         <span class="k">return</span> <span class="n">shutil</span><span class="o">.</span><span class="n">copy2</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_objmap_target</span><span class="p">(</span>
+    <span class="n">phenotypic</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">],</span> <span class="n">objmap_target</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the label image the measurement table&#39;s join column indexes.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">ngff_</span>
+
+    <span class="k">if</span> <span class="n">objmap_target</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">objmap_target</span>
+    <span class="n">tables</span> <span class="o">=</span> <span class="n">phenotypic</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ngff_</span><span class="o">.</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">TABLES</span><span class="p">)</span>
+    <span class="n">current</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">tables</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ngff_</span><span class="o">.</span><span class="n">MEASUREMENT_TABLE_GROUP</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tables</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="k">else</span> <span class="kc">None</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="n">current</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;target&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;path&quot;</span><span class="p">),</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">target</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">])</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">phenotypic</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ngff_</span><span class="o">.</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">LABELS</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">candidate</span> <span class="o">=</span> <span class="n">labels</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ngff_</span><span class="o">.</span><span class="n">OBJMAP_LABEL</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">candidate</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">candidate</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;OME-Zarr store does not declare an objmap target&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_rewrite_store_tables</span><span class="p">(</span>
+    <span class="n">store_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">plan</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]],</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Path</span><span class="p">],</span> <span class="kc">None</span><span class="p">]],</span>
+    <span class="n">durable</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">commit_guard</span><span class="p">:</span> <span class="n">CommitGuard</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Re-promote one store with refreshed embedded tables, root written last.</span>
+
+<span class="sd">    *plan* is handed the store&#39;s ``attributes.phenotypic`` block. It validates</span>
+<span class="sd">    and **mutates** it -- before any part exists, so a refusal costs nothing --</span>
+<span class="sd">    and returns the writer that populates the part.</span>
+
+<span class="sd">    **There is no in-place fast path, and its removal is the point (CAN-3 /</span>
+<span class="sd">    C5).** The branch this replaces fired whenever the measurement</span>
+<span class="sd">    descriptor was unchanged and rewrote ``table.parquet`` *inside the</span>
+<span class="sd">    promoted store*, with no part and no root rewrite. Two things broke</span>
+<span class="sd">    silently: the per-image record&#39;s store digest still matched, so the proof</span>
+<span class="sd">    certified content that had changed underneath it; and the root&#39;s recorded</span>
+<span class="sd">    metadata snapshot was never refreshed, so the divergence advisory read a</span>
+<span class="sd">    stale value. After the inversion the descriptor is a pure function of the</span>
+<span class="sd">    measurement schema and the objmap target, so *every* metadata-driven</span>
+<span class="sd">    re-measure would take that branch.</span>
+
+<span class="sd">    The cost is real and stated rather than hidden: the copytree/hardlink</span>
+<span class="sd">    re-promote now runs on **every** ``--mode measure``, not only on a</span>
+<span class="sd">    descriptor change. If ``--mode measure`` on a large tree becomes slow,</span>
+<span class="sd">    this is the reason.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">ngff_</span>
+
+    <span class="n">store_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">store_path</span><span class="p">)</span>
+    <span class="n">root_path</span> <span class="o">=</span> <span class="n">store_path</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">STORE_ROOT_JSON</span>
+    <span class="n">root_document</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">root_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span>
+    <span class="n">phenotypic</span> <span class="o">=</span> <span class="n">root_document</span><span class="p">[</span><span class="s2">&quot;attributes&quot;</span><span class="p">][</span><span class="n">ngff_</span><span class="o">.</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">ROOT</span><span class="p">]</span>
+    <span class="n">populate</span> <span class="o">=</span> <span class="n">plan</span><span class="p">(</span><span class="n">phenotypic</span><span class="p">)</span>
+
+    <span class="n">part</span> <span class="o">=</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">new_part_path</span><span class="p">(</span><span class="n">store_path</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copytree</span><span class="p">(</span>
+            <span class="n">store_path</span><span class="p">,</span>
+            <span class="n">part</span><span class="p">,</span>
+            <span class="n">copy_function</span><span class="o">=</span><span class="n">_clone_file_without_pixel_rewrite</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># A transaction is readable only after its refreshed root is written last.</span>
+        <span class="p">(</span><span class="n">part</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">STORE_ROOT_JSON</span><span class="p">)</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
+        <span class="c1"># The copied `tables/` tree goes with it: a store that LOSES its</span>
+        <span class="c1"># metadata table must lose the file too, not only the descriptor.</span>
+        <span class="c1"># These are hard links into the promoted store, so unlinking them in</span>
+        <span class="c1"># the part leaves the live store untouched.</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">part</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">TABLES_GROUP</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">populate</span><span class="p">(</span><span class="n">part</span><span class="p">)</span>
+        <span class="n">atomic_write_json</span><span class="p">(</span><span class="n">part</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">STORE_ROOT_JSON</span><span class="p">,</span> <span class="n">root_document</span><span class="p">)</span>
+        <span class="n">ngff_</span><span class="o">.</span><span class="n">promote_store</span><span class="p">(</span>
+            <span class="n">part</span><span class="p">,</span>
+            <span class="n">store_path</span><span class="p">,</span>
+            <span class="n">fsync</span><span class="o">=</span><span class="n">ngff_</span><span class="o">.</span><span class="n">durable_writes_enabled</span><span class="p">(</span><span class="n">durable</span><span class="p">),</span>
+            <span class="n">commit_guard</span><span class="o">=</span><span class="n">commit_guard</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">part</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">part</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">raise</span>
+    <span class="k">return</span> <span class="n">store_path</span>
+
+
+<div class="viewcode-block" id="replace_image_tables">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.replace_image_tables.html#phenotypic.sdk_.replace_image_tables">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">replace_image_tables</span><span class="p">(</span>
+    <span class="n">store_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">tables</span><span class="p">:</span> <span class="n">PreparedImageTables</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">objmap_target</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">durable</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">commit_guard</span><span class="p">:</span> <span class="n">CommitGuard</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Refresh one store&#39;s measurement AND metadata tables together.</span>
+
+<span class="sd">    The ``--mode measure`` analogue of the promote-time writer: both tables</span>
+<span class="sd">    and the root&#39;s ``metadata_table`` block move as one root-last</span>
+<span class="sd">    transaction, so the store never certifies a table it does not have or a</span>
+<span class="sd">    snapshot it was not built against.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        store_path: A promoted ``*.ome.zarr`` store.</span>
+<span class="sd">        tables: The split payload to write.</span>
+<span class="sd">        objmap_target: Store-relative path of the label image the measurement</span>
+<span class="sd">            table indexes. ``None`` reads it from the store.</span>
+<span class="sd">        durable: ``fsync`` before promoting. ``None`` auto-detects SLURM.</span>
+<span class="sd">        commit_guard: Publication guard, checked at the commit point.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The store path.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If the store declares no objmap target.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_plan</span><span class="p">(</span><span class="n">phenotypic</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Path</span><span class="p">],</span> <span class="kc">None</span><span class="p">]:</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="n">_resolve_objmap_target</span><span class="p">(</span><span class="n">phenotypic</span><span class="p">,</span> <span class="n">objmap_target</span><span class="p">)</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_populate</span><span class="p">(</span><span class="n">part</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># `write_image_tables` returns the fragment describing exactly the</span>
+            <span class="c1"># files it just wrote, so the root cannot certify a table the part</span>
+            <span class="c1"># does not have -- and `apply_` REMOVES what the fragment omits,</span>
+            <span class="c1"># which is how a store that loses its metadata loses the block.</span>
+            <span class="n">apply_image_tables_attributes</span><span class="p">(</span>
+                <span class="n">phenotypic</span><span class="p">,</span>
+                <span class="n">write_image_tables</span><span class="p">(</span><span class="n">part</span><span class="p">,</span> <span class="n">tables</span><span class="p">,</span> <span class="n">objmap_target</span><span class="o">=</span><span class="n">target</span><span class="p">),</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">_populate</span>
+
+    <span class="k">return</span> <span class="n">_rewrite_store_tables</span><span class="p">(</span>
+        <span class="n">store_path</span><span class="p">,</span>
+        <span class="n">plan</span><span class="o">=</span><span class="n">_plan</span><span class="p">,</span>
+        <span class="n">durable</span><span class="o">=</span><span class="n">durable</span><span class="p">,</span>
+        <span class="n">commit_guard</span><span class="o">=</span><span class="n">commit_guard</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
 <div class="viewcode-block" id="replace_embedded_measurement_table">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.replace_embedded_measurement_table.html#phenotypic.sdk_.replace_embedded_measurement_table">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">replace_embedded_measurement_table</span><span class="p">(</span>
@@ -861,72 +1391,56 @@
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Replace one store&#39;s authoritative table without recomputing pixel arrays.</span>
 
-<span class="sd">    A descriptor-compatible replacement validates a same-directory temporary</span>
-<span class="sd">    Parquet before one atomic file replacement. A descriptor change uses a</span>
-<span class="sd">    complete root-last store transaction whose unchanged files are hard-linked</span>
-<span class="sd">    where the platform permits.</span>
+<span class="sd">    A complete root-last store transaction whose unchanged files are</span>
+<span class="sd">    hard-linked where the platform permits.</span>
+
+<span class="sd">    **Superseded by** :func:`replace_image_tables` on every forward path. It</span>
+<span class="sd">    survives only for the consumers that still read and rewrite</span>
+<span class="sd">    *pre-inversion* stores byte-exactly -- ``--mode migrate`` and ``--mode</span>
+<span class="sd">    recompile``, whose reclaim authority compares a store&#39;s bytes against a</span>
+<span class="sd">    joined payload. **Retire it** with the last of those call sites. It</span>
+<span class="sd">    deliberately leaves ``metadata_table`` and ``tables.metadata`` exactly as</span>
+<span class="sd">    it found them: it has no metadata payload to describe, and clearing a</span>
+<span class="sd">    block it knows nothing about would be a guess.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">ngff_</span>
 
-    <span class="n">store_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">store_path</span><span class="p">)</span>
-    <span class="n">root_path</span> <span class="o">=</span> <span class="n">store_path</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">STORE_ROOT_JSON</span>
-    <span class="n">root_document</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">root_path</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span>
-    <span class="n">phenotypic</span> <span class="o">=</span> <span class="n">root_document</span><span class="p">[</span><span class="s2">&quot;attributes&quot;</span><span class="p">][</span><span class="n">ngff_</span><span class="o">.</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">ROOT</span><span class="p">]</span>
-    <span class="n">current</span> <span class="o">=</span> <span class="n">phenotypic</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ngff_</span><span class="o">.</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">TABLES</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-        <span class="n">ngff_</span><span class="o">.</span><span class="n">MEASUREMENT_TABLE_GROUP</span>
-    <span class="p">)</span>
-    <span class="k">if</span> <span class="n">objmap_target</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-            <span class="n">target</span> <span class="o">=</span> <span class="n">current</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;target&quot;</span><span class="p">,</span> <span class="p">{})</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-                <span class="n">candidate</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;path&quot;</span><span class="p">)</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">candidate</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-                    <span class="n">objmap_target</span> <span class="o">=</span> <span class="n">candidate</span>
-        <span class="k">if</span> <span class="n">objmap_target</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">labels</span> <span class="o">=</span> <span class="n">phenotypic</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ngff_</span><span class="o">.</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">LABELS</span><span class="p">,</span> <span class="p">{})</span>
-            <span class="n">candidate</span> <span class="o">=</span> <span class="n">labels</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ngff_</span><span class="o">.</span><span class="n">OBJMAP_LABEL</span><span class="p">)</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">candidate</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-                <span class="n">objmap_target</span> <span class="o">=</span> <span class="n">candidate</span>
-    <span class="k">if</span> <span class="n">objmap_target</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;OME-Zarr store does not declare an objmap target&quot;</span><span class="p">)</span>
-
-    <span class="n">descriptor</span> <span class="o">=</span> <span class="n">build_measurement_table_descriptor</span><span class="p">(</span>
-        <span class="n">table</span><span class="p">,</span> <span class="n">objmap_target</span><span class="o">=</span><span class="n">objmap_target</span>
-    <span class="p">)</span>
-    <span class="n">payload</span> <span class="o">=</span> <span class="n">store_path</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">MEASUREMENT_TABLE_RELATIVE_PATH</span>
-    <span class="k">if</span> <span class="p">(</span>
-        <span class="n">current</span> <span class="o">==</span> <span class="n">descriptor</span>
-        <span class="ow">and</span> <span class="n">payload</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span>
-        <span class="ow">and</span> <span class="n">_valid_embedded_measurement_contract</span><span class="p">(</span><span class="n">store_path</span><span class="p">)</span>
-    <span class="p">):</span>
-        <span class="n">_write_validated_parquet</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">table</span><span class="p">,</span> <span class="n">commit_guard</span><span class="o">=</span><span class="n">commit_guard</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">payload</span>
-
-    <span class="n">part</span> <span class="o">=</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">new_part_path</span><span class="p">(</span><span class="n">store_path</span><span class="p">)</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="n">shutil</span><span class="o">.</span><span class="n">copytree</span><span class="p">(</span>
-            <span class="n">store_path</span><span class="p">,</span>
-            <span class="n">part</span><span class="p">,</span>
-            <span class="n">copy_function</span><span class="o">=</span><span class="n">_clone_file_without_pixel_rewrite</span><span class="p">,</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_plan</span><span class="p">(</span><span class="n">phenotypic</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Path</span><span class="p">],</span> <span class="kc">None</span><span class="p">]:</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="n">_resolve_objmap_target</span><span class="p">(</span><span class="n">phenotypic</span><span class="p">,</span> <span class="n">objmap_target</span><span class="p">)</span>
+        <span class="n">descriptor</span> <span class="o">=</span> <span class="n">build_measurement_table_descriptor</span><span class="p">(</span>
+            <span class="n">table</span><span class="p">,</span> <span class="n">objmap_target</span><span class="o">=</span><span class="n">target</span>
         <span class="p">)</span>
-        <span class="c1"># A transaction is readable only after its refreshed root is written last.</span>
-        <span class="p">(</span><span class="n">part</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">STORE_ROOT_JSON</span><span class="p">)</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
-        <span class="n">write_embedded_measurement_table</span><span class="p">(</span><span class="n">part</span><span class="p">,</span> <span class="n">table</span><span class="p">)</span>
-        <span class="n">phenotypic</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">ngff_</span><span class="o">.</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">TABLES</span><span class="p">,</span> <span class="p">{})[</span>
-            <span class="n">ngff_</span><span class="o">.</span><span class="n">MEASUREMENT_TABLE_GROUP</span>
-        <span class="p">]</span> <span class="o">=</span> <span class="n">descriptor</span>
-        <span class="n">atomic_write_json</span><span class="p">(</span><span class="n">part</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">STORE_ROOT_JSON</span><span class="p">,</span> <span class="n">root_document</span><span class="p">)</span>
-        <span class="n">ngff_</span><span class="o">.</span><span class="n">promote_store</span><span class="p">(</span>
-            <span class="n">part</span><span class="p">,</span>
-            <span class="n">store_path</span><span class="p">,</span>
-            <span class="n">fsync</span><span class="o">=</span><span class="n">ngff_</span><span class="o">.</span><span class="n">durable_writes_enabled</span><span class="p">(</span><span class="n">durable</span><span class="p">),</span>
-            <span class="n">commit_guard</span><span class="o">=</span><span class="n">commit_guard</span><span class="p">,</span>
-        <span class="p">)</span>
-    <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">part</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-            <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">part</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="k">raise</span>
-    <span class="k">return</span> <span class="n">store_path</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">MEASUREMENT_TABLE_RELATIVE_PATH</span></div>
+        <span class="n">existing</span> <span class="o">=</span> <span class="n">phenotypic</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ngff_</span><span class="o">.</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">TABLES</span><span class="p">)</span>
+        <span class="n">declared</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">existing</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">existing</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="p">{}</span>
+        <span class="n">declared</span><span class="p">[</span><span class="n">ngff_</span><span class="o">.</span><span class="n">MEASUREMENT_TABLE_GROUP</span><span class="p">]</span> <span class="o">=</span> <span class="n">descriptor</span>
+        <span class="n">phenotypic</span><span class="p">[</span><span class="n">ngff_</span><span class="o">.</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">TABLES</span><span class="p">]</span> <span class="o">=</span> <span class="n">declared</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_populate</span><span class="p">(</span><span class="n">part</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">write_embedded_measurement_table</span><span class="p">(</span><span class="n">part</span><span class="p">,</span> <span class="n">table</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">METADATA_TABLE_GROUP</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">declared</span><span class="p">:</span>
+                <span class="k">return</span>
+            <span class="c1"># The `tables/` tree was cleared along with the measurement</span>
+            <span class="c1"># table, so a metadata table this store still DECLARES has to be</span>
+            <span class="c1"># carried across, or the promoted store would certify a file it</span>
+            <span class="c1"># no longer has.</span>
+            <span class="n">source</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">store_path</span><span class="p">)</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">METADATA_TABLE_RELATIVE_PATH</span>
+            <span class="n">destination</span> <span class="o">=</span> <span class="n">part</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">METADATA_TABLE_RELATIVE_PATH</span>
+            <span class="n">destination</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">atomic_write_json</span><span class="p">(</span>
+                <span class="n">destination</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">STORE_ROOT_JSON</span><span class="p">,</span>
+                <span class="n">_TABLES_GROUP_DOCUMENT</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">_clone_file_without_pixel_rewrite</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">source</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">destination</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">_populate</span>
+
+    <span class="n">_rewrite_store_tables</span><span class="p">(</span>
+        <span class="n">store_path</span><span class="p">,</span>
+        <span class="n">plan</span><span class="o">=</span><span class="n">_plan</span><span class="p">,</span>
+        <span class="n">durable</span><span class="o">=</span><span class="n">durable</span><span class="p">,</span>
+        <span class="n">commit_guard</span><span class="o">=</span><span class="n">commit_guard</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">store_path</span><span class="p">)</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">MEASUREMENT_TABLE_RELATIVE_PATH</span></div>
 
 
 

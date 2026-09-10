@@ -1,0 +1,6 @@
+phenotypic.sdk\_.image\_record\_path
+====================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: image_record_path

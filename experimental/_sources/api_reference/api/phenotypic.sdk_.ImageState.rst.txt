@@ -1,0 +1,36 @@
+phenotypic.sdk\_.ImageState
+===========================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoclass:: ImageState
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ImageState.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ImageState.reason
+      ~ImageState.work_id
+      ~ImageState.dataset
+      ~ImageState.image_stem
+      ~ImageState.stages
+      ~ImageState.verdict
+   
+   

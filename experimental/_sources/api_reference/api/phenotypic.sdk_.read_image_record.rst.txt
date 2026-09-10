@@ -1,0 +1,6 @@
+phenotypic.sdk\_.read\_image\_record
+====================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: read_image_record

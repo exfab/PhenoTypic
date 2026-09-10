@@ -1,6 +1,0 @@
-phenotypic.sdk\_.resolve\_qc\_dir
-=================================
-
-.. currentmodule:: phenotypic.sdk_
-
-.. autofunction:: resolve_qc_dir

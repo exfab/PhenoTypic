@@ -1,0 +1,6 @@
+phenotypic.sdk\_.user\_metadata\_headers
+========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: user_metadata_headers

@@ -1,0 +1,1282 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.sdk_._verification_cache &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=8a079089"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/sdk_/_verification_cache';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/sdk_/_verification_cache.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.19.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.sdk_._verification_cache</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.sdk_._verification_cache</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;The verification cache -- one tier in memory, one tier on disk.</span>
+
+<span class="sd">Audit **S1** -- the finding spec §9.1 responds to -- proposed a *process-level*</span>
+<span class="sd">cache keyed on the marker file&#39;s stat tuple. §9.1 escalated that to a file on</span>
+<span class="sd">disk. Decision **D-B** (OPEN-QUESTIONS) took it back, and **U-11 reversed D-B**</span>
+<span class="sd">on measured evidence: at N=6,657 on a cold node a deep pass is 1403 s and the</span>
+<span class="sd">stat sweep the cache enables is ~37 s, because the cost is per-file *latency*</span>
+<span class="sd">(a cold ``open+read`` is ~10x a cold ``stat``) rather than bytes.</span>
+
+<span class="sd">So there are two tiers, and they answer different questions:</span>
+
+<span class="sd">* **Tier 1, in process** (:data:`_CACHE`). Every cadence the audit measured is</span>
+<span class="sd">  a repeated call inside ONE long-lived process -- the observer&#39;s 2 s tick, the</span>
+<span class="sd">  viewer&#39;s 5-10 s poll, ``OutputRoot.discover``&#39;s double read,</span>
+<span class="sd">  ``OutputMutationGuard``&#39;s double read. This tier makes the *second* call</span>
+<span class="sd">  cheap.</span>
+<span class="sd">* **Tier 2, on disk** (``.phenotypic/verification_cache.json``). Read when tier</span>
+<span class="sd">  1 is cold, written after a pass that deep-verified something. This tier makes</span>
+<span class="sd">  the *first call in a new process* cheap.</span>
+
+<span class="sd">INVARIANT (INV-VERDICT) -- **nothing may improve a verdict except a successful</span>
+<span class="sd">deep verification.** No function here returns a verdict to a caller that has</span>
+<span class="sd">not deep-verified. :func:`entry_is_still_current` answers exactly one question:</span>
+<span class="sd">*may a previously deep-verified result stand?* The caller supplied the verdict</span>
+<span class="sd">from its own deep pass, and a ``True`` here merely licenses skipping that pass</span>
+<span class="sd">next time. A stale, replaced or forged entry therefore degrades to today&#39;s</span>
+<span class="sd">behaviour and never past it.</span>
+
+<span class="sd">**The on-disk tier is a tenth tracked file in a change that removes nine, and</span>
+<span class="sd">it is a cache -- not a tenth evidence source.** P7 Task 6&#39;s register lists it</span>
+<span class="sd">under *cache*, never under tracked state. **Nothing branches on it and no</span>
+<span class="sd">verdict is derived from it.** That is the whole of what keeps it a cache: it</span>
+<span class="sd">can cause a re-verification, and it can cause a re-verification to be skipped,</span>
+<span class="sd">and it can cause nothing else. Delete the file and every answer this package</span>
+<span class="sd">gives is unchanged; only the time taken to give it moves.</span>
+
+<span class="sd">**The on-disk tier weakens the sentence INV-VERDICT&#39;s safety argument rests</span>
+<span class="sd">on, and inheriting the in-process wording would misrepresent it.** *&quot;An entry</span>
+<span class="sd">only lets a previously deep-verified result stand&quot;* means, in tier 1, *by this</span>
+<span class="sd">process, minutes ago* -- the process that wrote the entry is the process</span>
+<span class="sd">reading it, running the code you are reading now. On disk it means **by some</span>
+<span class="sd">process**:</span>
+
+<span class="sd">* possibly an **older build** whose deep-verification rules differed. The</span>
+<span class="sd">  payload records what was checked, never how, so</span>
+<span class="sd">  ``VERIFICATION_CACHE_VERSION`` is the only signal available and it is only as</span>
+<span class="sd">  good as the discipline of bumping it -- which is why</span>
+<span class="sd">  :data:`~phenotypic.sdk_._io_constants.VERIFICATION_CACHE_VERSION` says to</span>
+<span class="sd">  bump on a *rules* change and not only on a shape change.</span>
+<span class="sd">* possibly one **still mid-write**. The write is a temp file plus</span>
+<span class="sd">  ``os.replace`` (:func:`~phenotypic.sdk_._atomic_io.atomic_write_json`), so a</span>
+<span class="sd">  reader sees the whole old file or the whole new one and never a torn one --</span>
+<span class="sd">  but &quot;the whole new one&quot; can still be a file whose writer then died before</span>
+<span class="sd">  finishing the run it describes.</span>
+<span class="sd">* possibly **another user**, or the same user under a different build, sharing</span>
+<span class="sd">  the output tree.</span>
+
+<span class="sd">Writing to ``.phenotypic/verification_cache.json`` needs the same permission as</span>
+<span class="sd">writing ``processing_state.json`` beside it, so the tier opens no new *access*.</span>
+<span class="sd">What it changes is the *consequence* of that access: forging</span>
+<span class="sd">``processing_state.json`` changes what a run claims to have accepted, and can</span>
+<span class="sd">be detected by verifying it; forging this file changes whether anything was</span>
+<span class="sd">checked at all, and a forgery whose stat tuples happen to be current is</span>
+<span class="sd">indistinguishable from a real entry. The degradation story survives in full --</span>
+<span class="sd">every doubt still falls through to ``deep`` -- but the guarantee is materially</span>
+<span class="sd">weaker than tier 1&#39;s, and a reader is entitled to know which one they have.</span>
+
+<span class="sd">``ctime_ns`` is deliberately absent from the stat tuple (audit **S3**): it</span>
+<span class="sd">moves on ``chmod``, ownership change, hardlink and ``rsync -a``, all routine on</span>
+<span class="sd">a shared filesystem, and ``size`` + ``mtime_ns`` already covers every write the</span>
+<span class="sd">publication contract makes.</span>
+
+<span class="sd">**And ``(size, mtime_ns)`` is sufficient, not merely convenient.** The</span>
+<span class="sd">theoretical hole is a same-size rewrite landing inside one ``mtime_ns``</span>
+<span class="sd">tick. Its precondition does not occur here: no path rewrites a tracked</span>
+<span class="sd">artifact *within* a pass, and the run output&#39;s filesystem resolves finely</span>
+<span class="sd">enough to separate consecutive writes anyway -- GPFS measured at ~81 us,</span>
+<span class="sd">with 0 of 200 back-to-back same-size writes sharing an ``mtime_ns``.</span>
+
+<span class="sd">The condition under which that stops being true is worth naming, because</span>
+<span class="sd">it is an environment change rather than a code change: **an output tree on</span>
+<span class="sd">a coarser filesystem.** Node-local scratch measured ~1 ms and 181 of 200</span>
+<span class="sd">collisions. Run output may never live there -- it is per-job and invisible</span>
+<span class="sd">to other nodes (see the scratch rule) -- so the measured case is the one</span>
+<span class="sd">that ships. If that ever changes, this pair needs a content check, not a</span>
+<span class="sd">third stat field.</span>
+
+<span class="sd">**CONTRACT FOR CALLERS: fence a store by its root ``zarr.json``, never by the</span>
+<span class="sd">store directory.** ``stat_tuples`` names **regular files only**;</span>
+<span class="sd">:func:`entry_is_still_current` fails closed on anything else, so a caller that</span>
+<span class="sd">records a store *directory* gets a permanent cache miss rather than a wrong</span>
+<span class="sd">answer. This is not fussiness about types. A store is marker-bound as a</span>
+<span class="sd">directory (``_cli_completion._artifact_descriptor``), but a directory&#39;s</span>
+<span class="sd">``st_size`` is a filesystem detail and its ``mtime_ns`` tracks only its own</span>
+<span class="sd">entries -- rewriting ``tables/measurements/table.parquet`` inside a promoted</span>
+<span class="sd">store leaves the store root&#39;s ``mtime_ns`` untouched. Fencing on the directory</span>
+<span class="sd">would therefore license re-use of a verdict for contents that changed, which is</span>
+<span class="sd">spec §0&#39;s *&quot;a valid root does not imply unchanged contents&quot;* arriving through</span>
+<span class="sd">the cache instead of through the root. The root ``zarr.json`` is the file the</span>
+<span class="sd">marker descriptor already digests, and it is the right thing to stat.</span>
+
+<span class="sd">**Bounded by the fence, not by a policy** (CAN-28). ``LocalRunner._instances``,</span>
+<span class="sd">``_terminal_job_cache`` (``_cli/_dashboard/_manifest_builder.py:73``) and</span>
+<span class="sd">``_LAST_DUMPED`` (``gui/builder/_point_picker.py:549``) are three unbounded</span>
+<span class="sd">module globals this codebase already carries as audit findings (§5, S22, S23),</span>
+<span class="sd">so a fourth is not acceptable. But an LRU would be a *second* mechanism on top</span>
+<span class="sd">of one that already bounds this: entries are identity-fenced, so only those</span>
+<span class="sd">under the current identity for the current output can ever be used. Replacing</span>
+<span class="sd">each output&#39;s map wholesale on an identity change is therefore both tighter and</span>
+<span class="sd">simpler than evicting -- the bound is &quot;images in the runs currently being asked</span>
+<span class="sd">about&quot;, and it follows from the fence instead of being layered on top of it.</span>
+
+<span class="sd">**No lock.** Entries are published by a single ``dict`` assignment of an</span>
+<span class="sd">immutable ``(identity_digest, states)`` pair whose inner map is a private copy</span>
+<span class="sd">that is never mutated afterwards, so a concurrent reader either sees the whole</span>
+<span class="sd">old pair or the whole new one. That is what makes this safe under Dash&#39;s</span>
+<span class="sd">threaded server without serialising the GUI&#39;s poll.</span>
+
+<span class="sd">**No lock on disk either, and for a stronger reason.** Concurrent writers are</span>
+<span class="sd">last-wins via ``atomic_write_json``, which is safe *precisely because the file</span>
+<span class="sd">is never authoritative*: the worst a lost write can do is cost a later process</span>
+<span class="sd">a deep pass it would otherwise have skipped. Taking ``flock`` here -- per</span>
+<span class="sd">output, on every resolve, on the filesystem whose cross-node semantics</span>
+<span class="sd">``sdk_/_file_locking.py:101`` already flags as the weaker POSIX option -- would</span>
+<span class="sd">buy nothing a wrong answer could come from.</span>
+
+<span class="sd">**Two rules the on-disk tier follows so that it stays a cache:**</span>
+
+<span class="sd">1. **It never creates the directory it lives in.** ``persist_states`` writes</span>
+<span class="sd">   only when ``.phenotypic/`` already exists, so resolving the state of a tree</span>
+<span class="sd">   this package has never written to leaves that tree byte-for-byte alone. A</span>
+<span class="sd">   reader that creates directories is not a reader.</span>
+<span class="sd">2. **Every failure is silent and degrades to ``deep``.** A read-only output, a</span>
+<span class="sd">   full disk, a truncated or forged or unparseable file, a file from another</span>
+<span class="sd">   identity -- each is a cache miss, never an exception and never a log line</span>
+<span class="sd">   the user has to act on. Spec §9.1: *a tree the user cannot write must not</span>
+<span class="sd">   become a tree the user cannot read.*</span>
+
+<span class="sd">``clear_machine_state`` deletes the file, and that is deliberate rather than</span>
+<span class="sd">incidental. The rule deciding it -- and why an expensive cache is exactly the</span>
+<span class="sd">thing a restart must **not** carry across its own fence -- is stated once, at</span>
+<span class="sd">``_io_constants._PRESERVED_ON_RESTART``. Do not restate it here; a membership</span>
+<span class="sd">rule with two homes is a membership rule that will disagree with itself.</span>
+
+<span class="sd">:func:`clear_verification_cache` clears **tier 1 only**. That is the same</span>
+<span class="sd">asymmetry, from the other side: it is a reader-side memory reset, it touches no</span>
+<span class="sd">file, and a caller that wants both tiers gone wants ``clear_machine_state``.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">stat</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mapping</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">types</span><span class="w"> </span><span class="kn">import</span> <span class="n">MappingProxyType</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_args</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">._atomic_io</span><span class="w"> </span><span class="kn">import</span> <span class="n">atomic_write_json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._io_constants</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">VERIFICATION_CACHE_VERSION</span><span class="p">,</span>
+    <span class="n">phenotypic_cache_dir</span><span class="p">,</span>
+    <span class="n">verification_cache_path</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># NOT from ._run_state -- that direction is the cycle the split prevents.</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._state_types</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageState</span><span class="p">,</span> <span class="n">Verdict</span>
+
+<span class="c1">#: output_dir (resolved, as str) -&gt; (identity_digest, {work_id: entry}).</span>
+<span class="c1">#:</span>
+<span class="c1">#: One slot per output, replaced wholesale. See the module docstring on why</span>
+<span class="c1">#: there is no eviction policy and no lock.</span>
+<span class="n">_CACHE</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="s2">&quot;CachedVerification&quot;</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">{}</span>
+
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CachedVerification</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;One image&#39;s deep-verified state plus the stat tuples that fence it.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        state: The WHOLE :class:`~phenotypic.sdk_._state_types.ImageState`</span>
+<span class="sd">            (CAN-14), not just a verdict. ``RunState.images`` needs ``stages``</span>
+<span class="sd">            per image, so an entry carrying only ``(work_id, verdict)`` would</span>
+<span class="sd">            force the shallow path to re-read every record JSON -- the ~10^4</span>
+<span class="sd">            marker-reads half of audit §4&#39;s cost, left in place. Caching the</span>
+<span class="sd">            state is what makes spec §9.2&#39;s claim true rather than half-true.</span>
+<span class="sd">        stat_tuples: Run-root-relative POSIX path -&gt; ``(size, mtime_ns)`` for</span>
+<span class="sd">            every **regular file** the verdict was derived from. Relative, so</span>
+<span class="sd">            an entry survives the tree being reached through a second mount,</span>
+<span class="sd">            exactly as marker artifact descriptors do (ledger FLOW-3).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">state</span><span class="p">:</span> <span class="n">ImageState</span>
+    <span class="n">stat_tuples</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_cache_key</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the canonical per-output cache key.</span>
+
+<span class="sd">    Resolving collapses ``a``, ``a/``, ``a/../a`` and any symlinked route to</span>
+<span class="sd">    the same slot, so two callers naming one output cannot end up with two</span>
+<span class="sd">    entries that each think they are the only one. A path that cannot be</span>
+<span class="sd">    resolved (a symlink loop) falls back to an absolute path rather than</span>
+<span class="sd">    raising: a cache may never turn a readable output into an error.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">())</span>
+    <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">output_dir</span><span class="p">))</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">cached_states</span><span class="p">(</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">identity_digest</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">CachedVerification</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return this output&#39;s entries under ``identity_digest``, or ``None``.</span>
+
+<span class="sd">    There is no partial trust: an identity that does not match **exactly**</span>
+<span class="sd">    yields ``None`` for the whole output, never a filtered subset. Rule 1 of</span>
+<span class="sd">    Task 3.</span>
+
+<span class="sd">    The returned mapping is read-only. A caller adding freshly verified images</span>
+<span class="sd">    builds its own ``dict`` and hands it to :func:`remember_states`; handing</span>
+<span class="sd">    out the live map would let a consumer forge an entry in place, which is</span>
+<span class="sd">    precisely the failure INV-VERDICT exists to prevent.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: Run output root.</span>
+<span class="sd">        identity_digest: :meth:`RunIdentity.digest` for the run being resolved.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A read-only ``work_id -&gt; CachedVerification`` mapping, or ``None`` when</span>
+<span class="sd">        this output has no entry or its entry was minted under a different</span>
+<span class="sd">        identity.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">entry</span> <span class="o">=</span> <span class="n">_CACHE</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_cache_key</span><span class="p">(</span><span class="n">output_dir</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">entry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">stored_digest</span><span class="p">,</span> <span class="n">states</span> <span class="o">=</span> <span class="n">entry</span>
+    <span class="k">if</span> <span class="n">stored_digest</span> <span class="o">!=</span> <span class="n">identity_digest</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">MappingProxyType</span><span class="p">(</span><span class="n">states</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">remember_states</span><span class="p">(</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">identity_digest</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">entries</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">CachedVerification</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Replace this output&#39;s entries wholesale under ``identity_digest``.</span>
+
+<span class="sd">    Replacement, not merge (rule 3). An identity change discards the previous</span>
+<span class="sd">    map rather than accumulating beside it, which is what bounds the cache</span>
+<span class="sd">    without an eviction path to get wrong (CAN-28).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: Run output root.</span>
+<span class="sd">        identity_digest: :meth:`RunIdentity.digest` the entries were verified</span>
+<span class="sd">            under.</span>
+<span class="sd">        entries: The complete ``work_id -&gt; CachedVerification`` map for this</span>
+<span class="sd">            output. Copied, so a caller mutating its own dict afterwards</span>
+<span class="sd">            cannot reach into the cache.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_CACHE</span><span class="p">[</span><span class="n">_cache_key</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)]</span> <span class="o">=</span> <span class="p">(</span><span class="n">identity_digest</span><span class="p">,</span> <span class="nb">dict</span><span class="p">(</span><span class="n">entries</span><span class="p">))</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">entry_is_still_current</span><span class="p">(</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">entry</span><span class="p">:</span> <span class="n">CachedVerification</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return whether every file ``entry`` was verified from is unchanged.</span>
+
+<span class="sd">    **This is not a verdict.** A ``True`` says only that a deep pass the caller</span>
+<span class="sd">    already performed may stand; the caller supplies the verdict itself. Rule 2</span>
+<span class="sd">    of Task 3: an empty ``stat_tuples`` map, a missing file, an ``OSError`` or</span>
+<span class="sd">    any changed ``(size, mtime_ns)`` all return ``False``, and this function</span>
+<span class="sd">    never raises.</span>
+
+<span class="sd">    An empty map is ``False`` on purpose -- ``all()`` over nothing is ``True``,</span>
+<span class="sd">    which would make a stat-tuple-less entry the strongest entry in the cache</span>
+<span class="sd">    rather than the weakest.</span>
+
+<span class="sd">    A **directory** is also ``False``. A store is marker-bound as a directory</span>
+<span class="sd">    (``_cli_completion._artifact_descriptor``), but a directory&#39;s ``st_size``</span>
+<span class="sd">    is a filesystem detail and its ``mtime_ns`` tracks only its own entries --</span>
+<span class="sd">    rewriting ``tables/measurements/table.parquet`` inside a store leaves the</span>
+<span class="sd">    store root&#39;s mtime untouched. A caller fencing a store must therefore name</span>
+<span class="sd">    its root ``zarr.json``, the same file the marker descriptor digests, not</span>
+<span class="sd">    the store directory.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: Run output root the entry&#39;s paths are relative to.</span>
+<span class="sd">        entry: A previously remembered verification.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``True`` only when every named path is a regular file whose size and</span>
+<span class="sd">        ``mtime_ns`` are unchanged.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">entry</span><span class="o">.</span><span class="n">stat_tuples</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">relative</span><span class="p">,</span> <span class="n">expected</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">stat_tuples</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">info</span> <span class="o">=</span> <span class="p">(</span><span class="n">root</span> <span class="o">/</span> <span class="n">relative</span><span class="p">)</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">stat</span><span class="o">.</span><span class="n">S_ISREG</span><span class="p">(</span><span class="n">info</span><span class="o">.</span><span class="n">st_mode</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="c1"># ctime_ns is absent by design -- see the module docstring (audit S3).</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">info</span><span class="o">.</span><span class="n">st_size</span><span class="p">,</span> <span class="n">info</span><span class="o">.</span><span class="n">st_mtime_ns</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">expected</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="kc">True</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Tier 2: the on-disk cache (spec §9.1, U-11)</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="c1">#: Document keys. Spelled once, because a reader and a writer disagreeing</span>
+<span class="c1">#: about a key name is a permanent, silent cache miss -- the failure mode this</span>
+<span class="c1">#: tier is least able to notice, since a miss is also its correct behaviour.</span>
+<span class="n">_SCHEMA_VERSION_KEY</span> <span class="o">=</span> <span class="s2">&quot;schema_version&quot;</span>
+<span class="n">_IDENTITY_KEY</span> <span class="o">=</span> <span class="s2">&quot;identity_digest&quot;</span>
+<span class="n">_ENTRIES_KEY</span> <span class="o">=</span> <span class="s2">&quot;entries&quot;</span>
+
+<span class="c1">#: The three legal ``ImageState.verdict`` values, taken from the type rather</span>
+<span class="c1">#: than respelled. A forged file naming a fourth is refused.</span>
+<span class="n">_VERDICTS</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">get_args</span><span class="p">(</span><span class="n">Verdict</span><span class="p">))</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_entry_to_json</span><span class="p">(</span><span class="n">entry</span><span class="p">:</span> <span class="s2">&quot;CachedVerification&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Render one entry as JSON, minus its ``work_id``.</span>
+
+<span class="sd">    ``work_id`` is the map key and is not repeated inside the value, so the</span>
+<span class="sd">    document cannot disagree with itself about which image an entry describes</span>
+<span class="sd">    -- the reader reconstructs it from the key.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">state</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;dataset&quot;</span><span class="p">:</span> <span class="n">state</span><span class="o">.</span><span class="n">dataset</span><span class="p">,</span>
+        <span class="s2">&quot;image_stem&quot;</span><span class="p">:</span> <span class="n">state</span><span class="o">.</span><span class="n">image_stem</span><span class="p">,</span>
+        <span class="s2">&quot;stages&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="n">name</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">body</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">body</span> <span class="ow">in</span> <span class="n">state</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;verdict&quot;</span><span class="p">:</span> <span class="n">state</span><span class="o">.</span><span class="n">verdict</span><span class="p">,</span>
+        <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="n">state</span><span class="o">.</span><span class="n">reason</span><span class="p">,</span>
+        <span class="s2">&quot;stat_tuples&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="n">relative</span><span class="p">:</span> <span class="p">[</span><span class="n">size</span><span class="p">,</span> <span class="n">mtime_ns</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">relative</span><span class="p">,</span> <span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">mtime_ns</span><span class="p">)</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">stat_tuples</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">},</span>
+    <span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_entry_from_json</span><span class="p">(</span>
+    <span class="n">work_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">payload</span><span class="p">:</span> <span class="nb">object</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;CachedVerification | None&quot;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Rebuild one entry, or ``None`` if anything about it is off.</span>
+
+<span class="sd">    Every field is type-checked rather than trusted. This is not defensive</span>
+<span class="sd">    style for its own sake: the file may have been written by an older build,</span>
+<span class="sd">    a half-finished run or another user (see the module docstring), so the</span>
+<span class="sd">    reader&#39;s job is to decide whether it is looking at a document this build</span>
+<span class="sd">    wrote, and a wrong type is the cheapest evidence that it is not.</span>
+
+<span class="sd">    Deliberately **fails closed on ``bool``**. ``True`` is an ``int`` in</span>
+<span class="sd">    Python, so ``[true, true]`` would otherwise deserialize to the perfectly</span>
+<span class="sd">    plausible stat tuple ``(1, 1)``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">dataset</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dataset&quot;</span><span class="p">)</span>
+    <span class="n">image_stem</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_stem&quot;</span><span class="p">)</span>
+    <span class="n">verdict</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;verdict&quot;</span><span class="p">)</span>
+    <span class="n">raw_reason</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reason&quot;</span><span class="p">)</span>
+    <span class="n">stages</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;stages&quot;</span><span class="p">)</span>
+    <span class="n">raw_tuples</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;stat_tuples&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">image_stem</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">verdict</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_VERDICTS</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="c1"># Spelled as a widening rather than a guard so the narrowed type is</span>
+    <span class="c1"># `str | None` here and not `object`; the guard form types fine to a</span>
+    <span class="c1"># reader and not to mypy.</span>
+    <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">raw_reason</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_reason</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">raw_reason</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">reason</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">stages</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span>
+        <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">body</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">body</span> <span class="ow">in</span> <span class="n">stages</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+    <span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_tuples</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">tuples</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">relative</span><span class="p">,</span> <span class="n">pair</span> <span class="ow">in</span> <span class="n">raw_tuples</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">relative</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pair</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">pair</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">size</span><span class="p">,</span> <span class="n">mtime_ns</span> <span class="o">=</span> <span class="n">pair</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">_is_plain_int</span><span class="p">(</span><span class="n">size</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">_is_plain_int</span><span class="p">(</span><span class="n">mtime_ns</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">tuples</span><span class="p">[</span><span class="n">relative</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">mtime_ns</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">CachedVerification</span><span class="p">(</span>
+        <span class="n">state</span><span class="o">=</span><span class="n">ImageState</span><span class="p">(</span>
+            <span class="n">work_id</span><span class="o">=</span><span class="n">work_id</span><span class="p">,</span>
+            <span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span>
+            <span class="n">image_stem</span><span class="o">=</span><span class="n">image_stem</span><span class="p">,</span>
+            <span class="n">stages</span><span class="o">=</span><span class="n">stages</span><span class="p">,</span>
+            <span class="n">verdict</span><span class="o">=</span><span class="n">verdict</span><span class="p">,</span>  <span class="c1"># type: ignore[arg-type]</span>
+            <span class="n">reason</span><span class="o">=</span><span class="n">reason</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="n">stat_tuples</span><span class="o">=</span><span class="n">tuples</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_plain_int</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return whether ``value`` is an ``int`` that is not a ``bool``.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">load_persisted_states</span><span class="p">(</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">identity_digest</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">CachedVerification</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return tier 2&#39;s entries under ``identity_digest``, or ``None``.</span>
+
+<span class="sd">    Spec §9.1 names six ways this must yield nothing, and every one of them is</span>
+<span class="sd">    a path along which a wrong ``complete`` could otherwise be manufactured</span>
+<span class="sd">    from a file this build did not write. Five are here -- **file missing**,</span>
+<span class="sd">    **unreadable**, **unparseable**, **recorded identity != current**, and (via</span>
+<span class="sd">    the whole-document refusal below) a structurally wrong **entry**; the</span>
+<span class="sd">    sixth, **entry absent**, is the caller finding no key for a ``work_id``,</span>
+<span class="sd">    and the seventh thing that must fall through -- a **moved stat tuple** --</span>
+<span class="sd">    is :func:`entry_is_still_current`&#39;s, on the entries this returns.</span>
+
+<span class="sd">    **No partial trust, exactly as in tier 1.** One malformed entry discards</span>
+<span class="sd">    the whole document rather than the entry: a file this build cannot fully</span>
+<span class="sd">    account for was written by something else, and reading the half of it that</span>
+<span class="sd">    happens to parse is a decision to trust that something else.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: Run output root.</span>
+<span class="sd">        identity_digest: :meth:`RunIdentity.digest` for the run being resolved.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A read-only ``work_id -&gt; CachedVerification`` mapping, or ``None``.</span>
+<span class="sd">        **Never raises.**</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">raw</span> <span class="o">=</span> <span class="n">verification_cache_path</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">))</span><span class="o">.</span><span class="n">read_bytes</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># UnicodeDecodeError is a ValueError, so undecodable bytes and</span>
+        <span class="c1"># malformed JSON are one case here, as they are one case to a caller.</span>
+        <span class="n">document</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">document</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="c1"># `_is_plain_int` and not a bare `!=`: `True == 1` in Python, so a</span>
+    <span class="c1"># document whose schema_version is `true` would satisfy a plain</span>
+    <span class="c1"># comparison against version 1. This module already fails closed on</span>
+    <span class="c1"># bool in three other places; the omission here was inconsistent</span>
+    <span class="c1"># rather than reasoned.</span>
+    <span class="n">version</span> <span class="o">=</span> <span class="n">document</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_SCHEMA_VERSION_KEY</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_is_plain_int</span><span class="p">(</span><span class="n">version</span><span class="p">)</span> <span class="ow">or</span> <span class="n">version</span> <span class="o">!=</span> <span class="n">VERIFICATION_CACHE_VERSION</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">document</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_IDENTITY_KEY</span><span class="p">)</span> <span class="o">!=</span> <span class="n">identity_digest</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">entries</span> <span class="o">=</span> <span class="n">document</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_ENTRIES_KEY</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">loaded</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">CachedVerification</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">work_id</span><span class="p">,</span> <span class="n">payload</span> <span class="ow">in</span> <span class="n">entries</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">work_id</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">rebuilt</span> <span class="o">=</span> <span class="n">_entry_from_json</span><span class="p">(</span><span class="n">work_id</span><span class="p">,</span> <span class="n">payload</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">rebuilt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">loaded</span><span class="p">[</span><span class="n">work_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">rebuilt</span>
+    <span class="k">return</span> <span class="n">MappingProxyType</span><span class="p">(</span><span class="n">loaded</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">persist_states</span><span class="p">(</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">identity_digest</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">entries</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">CachedVerification</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write tier 2 for this output, best-effort. **Never raises.**</span>
+
+<span class="sd">    Two rules from the module docstring are implemented here rather than</span>
+<span class="sd">    merely described:</span>
+
+<span class="sd">    1. **It never creates ``.phenotypic/``.** Resolving the state of a tree</span>
+<span class="sd">       this package has never written to must leave that tree byte-for-byte</span>
+<span class="sd">       alone, and ``atomic_write_json`` would otherwise ``mkdir`` the parent.</span>
+<span class="sd">    2. **A failed write is a return value, not an exception.** A read-only</span>
+<span class="sd">       output degrades to a deep pass on the next cold start, which is the</span>
+<span class="sd">       behaviour that shipped before this tier existed.</span>
+
+<span class="sd">    The catch covers serialization as well as I/O, and the payload is built</span>
+<span class="sd">    inside it for that reason. ``stages`` is an **open** map (spec §6.1) whose</span>
+<span class="sd">    values this module never constrains, so a stage body that is not</span>
+<span class="sd">    JSON-serializable is a ``TypeError`` from ``json.dumps`` and one that is</span>
+<span class="sd">    not a mapping is a ``ValueError`` from ``dict()``. Every value reaching</span>
+<span class="sd">    here today came from marker JSON and is safe; &quot;never raises&quot; is a promise</span>
+<span class="sd">    about the contract, not about today&#39;s callers.</span>
+
+<span class="sd">    Entries with no ``stat_tuples`` are **omitted**. They are permanently</span>
+<span class="sd">    non-current by :func:`entry_is_still_current`&#39;s first rule, so persisting</span>
+<span class="sd">    them would grow the file by every unverified image while licensing</span>
+<span class="sd">    nothing.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: Run output root.</span>
+<span class="sd">        identity_digest: :meth:`RunIdentity.digest` the entries were verified</span>
+<span class="sd">            under.</span>
+<span class="sd">        entries: The complete ``work_id -&gt; CachedVerification`` map.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``True`` when the file was written. ``False`` for every reason it was</span>
+<span class="sd">        not -- no machine-state directory, a read-only tree, a full disk. No</span>
+<span class="sd">        caller should branch on a verdict because of it; the value exists so a</span>
+<span class="sd">        test can tell &quot;declined&quot; from &quot;raised&quot;.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">phenotypic_cache_dir</span><span class="p">(</span><span class="n">root</span><span class="p">)</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">payload</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">_SCHEMA_VERSION_KEY</span><span class="p">:</span> <span class="n">VERIFICATION_CACHE_VERSION</span><span class="p">,</span>
+            <span class="n">_IDENTITY_KEY</span><span class="p">:</span> <span class="n">identity_digest</span><span class="p">,</span>
+            <span class="n">_ENTRIES_KEY</span><span class="p">:</span> <span class="p">{</span>
+                <span class="n">work_id</span><span class="p">:</span> <span class="n">_entry_to_json</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">work_id</span><span class="p">,</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">stat_tuples</span>
+            <span class="p">},</span>
+        <span class="p">}</span>
+        <span class="n">atomic_write_json</span><span class="p">(</span><span class="n">verification_cache_path</span><span class="p">(</span><span class="n">root</span><span class="p">),</span> <span class="n">payload</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="kc">True</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">warm_states</span><span class="p">(</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">identity_digest</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">CachedVerification</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the warmest entries: tier 1, else tier 2, else ``None``.</span>
+
+<span class="sd">    The tiers are ordered by *cost*, not by trust -- a tier-2 entry licenses</span>
+<span class="sd">    exactly what a tier-1 entry licenses and no more, because the caller runs</span>
+<span class="sd">    :func:`entry_is_still_current` over whichever it gets. What the order buys</span>
+<span class="sd">    is that a long-lived process pays the JSON read once, on its first cold</span>
+<span class="sd">    call, and never again.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: Run output root.</span>
+<span class="sd">        identity_digest: :meth:`RunIdentity.digest` for the run being resolved.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A read-only ``work_id -&gt; CachedVerification`` mapping, or ``None`` when</span>
+<span class="sd">        neither tier holds entries for this output under this identity.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">in_process</span> <span class="o">=</span> <span class="n">cached_states</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">identity_digest</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">in_process</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">in_process</span>
+    <span class="k">return</span> <span class="n">load_persisted_states</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">identity_digest</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="clear_verification_cache">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.clear_verification_cache.html#phenotypic.sdk_.clear_verification_cache">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">clear_verification_cache</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Drop one output&#39;s **tier-1** entries, or every output&#39;s.</span>
+
+<span class="sd">    Rule 4 of Task 3. **Nothing in ``src/`` calls the scoped form.** An</span>
+<span class="sd">    earlier draft of this docstring said P2 wired it to</span>
+<span class="sd">    ``clear_machine_state``; it does not, and the paragraph below --</span>
+<span class="sd">    which says the two are separate and why -- is the accurate one. The</span>
+<span class="sd">    two sentences contradicted each other three lines apart.</span>
+
+<span class="sd">    Left unwired deliberately. Adding the call is a behaviour change</span>
+<span class="sd">    nobody has ruled on, and it is not needed: ``clear_machine_state``</span>
+<span class="sd">    deletes the on-disk tier by deleting the directory, and tier 1 is</span>
+<span class="sd">    per-process memory that a restarting process does not have.</span>
+
+<span class="sd">    **Tier 1 only, and deliberately.** This function touches no file: it is a</span>
+<span class="sd">    reader-side memory reset, and that is what lets ``_run_state`` re-export it</span>
+<span class="sd">    without exporting a writer (INV-LAYER). ``clear_machine_state`` is what</span>
+<span class="sd">    removes the on-disk tier, by removing every child of ``.phenotypic/``. A</span>
+<span class="sd">    caller that clears only this one and then resolves shallowly will still be</span>
+<span class="sd">    served from disk -- which is correct, since nothing about the run changed,</span>
+<span class="sd">    but it is not what &quot;clear the cache&quot; sounds like.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        output_dir: The output to forget. ``None`` forgets all of them, which</span>
+<span class="sd">            is what a test fixture wants and what a process teardown wants;</span>
+<span class="sd">            it is never what a run&#39;s own state reset wants.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">output_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">_CACHE</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="k">return</span>
+    <span class="n">_CACHE</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">_cache_key</span><span class="p">(</span><span class="n">output_dir</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">tracked_output_count</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return how many outputs currently hold entries.</span>
+
+<span class="sd">    Test-only introspection. It exists so that</span>
+<span class="sd">    ``test_an_identity_change_replaces_the_output_entry_wholesale`` can assert</span>
+<span class="sd">    the *absence* of accumulation, which is the property CAN-28 turns into the</span>
+<span class="sd">    bound -- and which is invisible from :func:`cached_states` alone, since a</span>
+<span class="sd">    stale identity and an evicted output both read as ``None``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">_CACHE</span><span class="p">)</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
