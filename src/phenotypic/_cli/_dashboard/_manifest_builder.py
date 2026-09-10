@@ -721,17 +721,45 @@ def build_manifest(
 
     failure_categories = categorize_failures(matched_terminal_records)
     from phenotypic._cli._cli_completion import (
-        current_run_is_complete,
+        _all_accepted_images_succeeded,
         valid_aggregate_snapshot,
     )
 
     aggregate_marker = valid_aggregate_snapshot(output_dir)
-    marker_completion = current_run_is_complete(output_dir)
+    # P6 Task 0: NOT `resolve_run_state(...).completion`. This site asks
+    # *"have the accepted images succeeded?"* -- see the comment below, which
+    # compares **marker evidence** against a counting path -- and it runs
+    # during recompile, before any run proof exists. `.completion` asks
+    # whether a valid run proof COVERS the inventory, which is a different
+    # question and is `False` here for a reason that has nothing to do with
+    # the images.
+    marker_completion = _all_accepted_images_succeeded(output_dir)
     is_complete = (
         global_completed == total_images
         if marker_completion is None
         else marker_completion
     )
+    if marker_completion and global_completed != total_images:
+        # Two sources of truth, and when markers exist they win outright,
+        # so a counting path that saw less than they did is overridden
+        # rather than reconciled. That is how a shipped manifest came to
+        # read `is_complete: true` beside `completed: 0` -- true on its
+        # marker evidence, zero on an event log a recompile never wrote.
+        #
+        # Reported, not raised. The manifest is progress reporting, not
+        # scientific output, and aborting the finalisation of a run whose
+        # per-image evidence says it completed would trade a wrong
+        # progress number for a failed run. The results viewer's
+        # completion guard is the backstop that refuses to act on the
+        # inconsistency; this is what names it while the numbers are
+        # still in hand.
+        logger.warning(
+            "Manifest completion is inconsistent: per-image markers report "
+            "the run complete, but only %d of %d images were counted as "
+            "completed. The counting path saw less than the markers did.",
+            global_completed,
+            total_images,
+        )
 
     published_count = (
         aggregate_marker.get("source_image_count", 0)

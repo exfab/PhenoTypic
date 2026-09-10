@@ -52,6 +52,14 @@ from phenotypic.sdk_ import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _clear_inherited_slurm_array_job(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Keep standalone controller simulations independent of runner arrays."""
+    monkeypatch.delenv("SLURM_ARRAY_JOB_ID", raising=False)
+
+
 def _controller_fixture(tmp_path: Path, epoch: str = "epoch-1") -> Path:
     manifest_path = tmp_path / "manifest.json"
     entries = [

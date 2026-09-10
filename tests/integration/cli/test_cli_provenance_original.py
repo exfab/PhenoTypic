@@ -12,7 +12,8 @@ import pytest
 from click.testing import CliRunner
 from PIL import Image as PILImage
 
-from phenotypic import GridImage, ImagePipeline
+from phenotypic import GridImage, Image, ImagePipeline
+from phenotypic.enhance import BlurGauss
 from phenotypic._cli._cli_state_management import load_processing_state
 from phenotypic.phenotypicCLI import phenotypic_cli
 from phenotypic.sdk_ import zarr_store_path
@@ -54,22 +55,27 @@ def test_full_local_cli_publishes_complete_provenance_and_original_policy(
     root = json.loads((store / "zarr.json").read_text(encoding="utf-8"))
     journal = root["attributes"]["phenotypic"]["provenance"]
     expected_ops = ImagePipeline.from_json(simple_pipeline_json).get_ops()
-    assert journal["schema_version"] == 1
+    application = journal["applications"][-1]
+    assert journal["schema_version"] == 2
     assert journal["status"] == "complete"
-    assert journal["pipeline"] == {
-        "source_path": str(simple_pipeline_json.resolve()),
+    assert journal["original_filename"] == "plate_001.png"
+    assert application["status"] == "complete"
+    assert application["kind"] == "full"
+    assert application["input_filename"] == "plate_001.png"
+    assert application["pipeline"] == {
+        "source_path": simple_pipeline_json.name,
         "sha256": hashlib.sha256(simple_pipeline_json.read_bytes()).hexdigest(),
     }
-    assert journal["retry_base_length"] == 0
-    assert [entry["sequence"] for entry in journal["operations"]] == [1, 2]
-    assert [entry["operation_name"] for entry in journal["operations"]] == [
+    assert application["retry_base_length"] == 0
+    assert [entry["sequence"] for entry in application["operations"]] == [1, 2]
+    assert [entry["operation_name"] for entry in application["operations"]] == [
         type(operation).__name__ for operation in expected_ops.values()
     ]
     assert [
-        entry["pipeline_step_path"] for entry in journal["operations"]
+        entry["pipeline_step_path"] for entry in application["operations"]
     ] == [[key] for key in expected_ops]
     assert all(
-        entry["duration_seconds"] >= 0 for entry in journal["operations"]
+        entry["duration_seconds"] >= 0 for entry in application["operations"]
     )
     assert "provenance" not in root["attributes"].get("ome", {})
 
@@ -124,6 +130,102 @@ def test_full_local_cli_publishes_complete_provenance_and_original_policy(
         assert not (second_store / "original").exists()
 
 
+def test_process_store_into_full_cli_preserves_both_applications(
+    tmp_path: Path,
+    simple_pipeline_json: Path,
+    synth_one_level_input: Path,
+) -> None:
+    source_image = next(synth_one_level_input.rglob("*.tif"))
+    process_pipeline = tmp_path / "process.json.pht-pipe"
+    ImagePipeline(ops={"process-blur": BlurGauss(sigma=0.75)}).to_json(
+        process_pipeline
+    )
+    process_output = tmp_path / "process-output"
+
+    processed = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--pipeline",
+            str(process_pipeline),
+            "--input",
+            str(source_image),
+            "--output",
+            str(process_output),
+            "--mode",
+            "process",
+            "--layer",
+            "rgb",
+            "--process-format",
+            "zarr",
+            "--njobs",
+            "1",
+            "--skip-validation",
+            "--force-local",
+        ],
+    )
+    assert processed.exit_code == 0, processed.output
+    process_stores = list(process_output.rglob("*.ome.zarr"))
+    assert len(process_stores) == 1
+    process_store = process_stores[0]
+    assert Image.imread(process_store)._metadata.provenance_journal[
+        "applications"
+    ][0]["kind"] == "process"
+    from phenotypic.gui.results_viewer._store_source import build_source_spec
+
+    source_spec = build_source_spec(process_store, "/browse/process.ome.zarr")
+    assert source_spec["seriesPath"] == "rgb"
+    assert source_spec["labelPath"] is None
+
+    full_output = tmp_path / "full-output"
+    completed = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--pipeline",
+            str(simple_pipeline_json),
+            "--input",
+            str(process_store),
+            "--output",
+            str(full_output),
+            "--njobs",
+            "1",
+            "--skip-validation",
+            "--force-local",
+        ],
+    )
+    assert completed.exit_code == 0, completed.output
+    full_stores = list(full_output.rglob("*.ome.zarr"))
+    assert len(full_stores) == 1
+    full_store = full_stores[0]
+
+    root = json.loads((full_store / "zarr.json").read_text(encoding="utf-8"))
+    journal = root["attributes"]["phenotypic"]["provenance"]
+    applications = journal["applications"]
+    assert journal["original_filename"] == source_image.name
+    assert [application["kind"] for application in applications] == [
+        "process",
+        "full",
+    ]
+    assert [application["input_filename"] for application in applications] == [
+        source_image.name,
+        process_store.name,
+    ]
+    assert [application["pipeline"]["source_path"] for application in applications] == [
+        process_pipeline.name,
+        simple_pipeline_json.name,
+    ]
+    assert [application["pipeline"]["sha256"] for application in applications] == [
+        hashlib.sha256(process_pipeline.read_bytes()).hexdigest(),
+        hashlib.sha256(simple_pipeline_json.read_bytes()).hexdigest(),
+    ]
+    operation_sequences = [
+        operation["sequence"]
+        for application in applications
+        for operation in application["operations"]
+    ]
+    assert operation_sequences == list(range(1, len(operation_sequences) + 1))
+    assert GridImage.load_zarr(full_store)._metadata.provenance_journal == journal
+
+
 def test_ordinary_worker_preserves_explicit_user_pipeline_identity(
     tmp_path: Path,
     simple_pipeline_json: Path,
@@ -166,6 +268,10 @@ def test_ordinary_worker_preserves_explicit_user_pipeline_identity(
     store = zarr_store_path(output_dir, "ds", image.stem)
     root = json.loads((store / "zarr.json").read_text(encoding="utf-8"))
     journal = root["attributes"]["phenotypic"]["provenance"]
+    application = journal["applications"][-1]
     assert journal["status"] == "complete"
-    assert journal["pipeline"] == explicit_identity
-    assert journal["pipeline"]["source_path"] != str(snapshot.resolve())
+    assert application["pipeline"] == {
+        **explicit_identity,
+        "source_path": simple_pipeline_json.name,
+    }
+    assert application["pipeline"]["source_path"] != snapshot.name

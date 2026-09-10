@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING, Any, Callable
 import numpy as np
 
 from phenotypic.gui._config import THREAD_NAME_PREFIX
-from phenotypic.gui._design import OI_GREY, OI_ORANGE, OI_SKY
+from phenotypic.gui._design import OI_GREY, OI_ORANGE, OI_SKY, hex_to_rgb
 from phenotypic.gui.builder._image_renderer import _downscale, to_overlay_rgb_array
 from phenotypic.tune._evaluation._builder import build_pipeline
 from phenotypic.tune.score._matching import match_iou_greedy
@@ -48,21 +48,6 @@ OverlayKey = tuple[int, str, str]
 #: (candidate + difference). Bounds the array serialized to the browser per
 #: ``go.Image`` and cached in the LRU — a full-res plate is ~tens of MB each.
 OVERLAY_MAX_DIM: int = 640
-
-
-def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
-    """Convert a ``#RRGGBB`` design token to an ``(R, G, B)`` uint8 triple.
-
-    Args:
-        hex_color: A 6-digit hex color string (with or without a leading ``#``),
-            e.g. an Okabe-Ito ``OI_*`` token from
-            :mod:`phenotypic.gui._design`.
-
-    Returns:
-        The ``(R, G, B)`` channel values as plain ints in ``[0, 255]``.
-    """
-    h = hex_color.lstrip("#")
-    return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
 
 
 def render_candidate_overlay(
@@ -333,9 +318,9 @@ def render_difference(
 
     # Order matters only where outlines overlap; both/only-A/only-B are disjoint
     # object sets so the draw order is cosmetic, but keep agreement on top.
-    _paint_outlines(canvas, a, diff.only_a, _hex_to_rgb(OI_SKY))
-    _paint_outlines(canvas, b, diff.only_b, _hex_to_rgb(OI_ORANGE))
-    _paint_outlines(canvas, a, diff.both, _hex_to_rgb(OI_GREY))
+    _paint_outlines(canvas, a, diff.only_a, hex_to_rgb(OI_SKY))
+    _paint_outlines(canvas, b, diff.only_b, hex_to_rgb(OI_ORANGE))
+    _paint_outlines(canvas, a, diff.both, hex_to_rgb(OI_GREY))
     return canvas
 
 

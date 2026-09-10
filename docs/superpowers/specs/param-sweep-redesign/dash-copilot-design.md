@@ -15,8 +15,8 @@ builder/results/run.
   Pareto axes), [`screening-importance.md`](screening-importance.md) §7
   (`param_importance.json`), [`qc-objective-mapping.md`](qc-objective-mapping.md) §5/§7
   (anti-gaming-suspicious trials, the proxy limitation),
-  [`optuna-integration.md`](optuna-integration.md) §7 (the shared `study.db`, `user_attrs`,
-  WAL), and [`reference-free-segmentation-metrics.md`](reference-free-segmentation-metrics.md)
+  [`optuna-integration.md`](optuna-integration.md) §7 (the shared study backend and
+  `user_attrs`), and [`reference-free-segmentation-metrics.md`](reference-free-segmentation-metrics.md)
   §E (the meta-validation gate). Follows the GUI conventions in
   `src/phenotypic/gui/CLAUDE.md`.
 
@@ -60,8 +60,8 @@ Follows the established hub pattern (gui/CLAUDE.md): a new Dash sub-app under
 - Sub-app factory uses `requests_pathname_prefix=url_prefix,
   routes_pathname_prefix=MOUNT_HOME` (prefix-stripping under the dispatcher); calls
   `inject_design_tokens(app)`.
-- Shared handles via `app.server.config`: **`CFG_TUNE_STUDY`** (the resolved `study.db`
-  path / Optuna study handle) and reuse of **`CFG_RUNNER`** (the process-wide
+- Shared handles via `app.server.config`: **`CFG_TUNE_STUDY`** (the resolved storage
+  locator / Optuna study handle) and reuse of **`CFG_RUNNER`** (the process-wide
   `LocalRunner`, for delegated launch). New `CFG_*` go in `_config.py`.
 - **Design tokens:** UI chrome uses `COLOR_*`; **Plotly data series use `OI_*`** in the
   fixed order (navy, orange, sky, green, blue, purple; vermilion = error/flag) and
@@ -73,15 +73,16 @@ Follows the established hub pattern (gui/CLAUDE.md): a new Dash sub-app under
 
 ## 4. Driver relationship — attach + delegate-launch
 
-The view **attaches** (read-mostly) to a `study.db` and provides the interactive surface;
+The view **attaches** (read-mostly) to the run's configured study backend and provides the interactive surface;
 it does **not** run the ask-and-tell loop itself.
 
 - **Launch** delegates to the existing `run_console` `LocalRunner`: the "Launch tuning
   run" action spawns `python -m phenotypic.tune <tuning_spec.json> <input_dir> [opts]` (a
   CLI process the run console already manages + tails). No second optimizer driver lives
   in the Dash process.
-- **Attach** opens an existing `study.db` (one being driven by a local run, a SLURM array,
-  or an MCP/agent session) for read + write-back — **this is the D6 shared study**, so the
+- **Attach** opens an existing local SQLite study or the shared journal/external RDB
+  recorded by a Slurm or MCP/agent run for read + write-back. Distributed SQLite is
+  rejected. **This is the D6 shared study**, so the
   human can co-curate an agent's overnight run.
 
 ---
@@ -90,7 +91,7 @@ it does **not** run the ask-and-tell loop itself.
 
 ### 6a — Monitor + visualizations (read-only; lowest risk, ships first)
 
-Live, read-only views over `study.db` + `param_importance.json`:
+Live, read-only views over the configured study + `param_importance.json`:
 
 - **Objective-vs-trial** curve (best-so-far + per-trial), with pruned trials marked.
 - **Pareto front** (multi-objective) — the level-vs-dispersion / quality-vs-runtime axes
@@ -157,9 +158,10 @@ per-trial objective (the automated `Scorer` keeps driving — this refines maste
 - **Polling**, not push (idiomatic Dash; matches `run_console`'s log-tail): a `dcc.Interval`
   re-reads the study on a cadence + a manual refresh button. Reads are **incremental** (new
   trials since the last poll) so a large study doesn't re-load each tick.
-- **Concurrency:** the study is SQLite in **WAL** mode (optuna §7), so the GUI's reads run
-  concurrently with the engine/CLI/SLURM/MCP writers; the GUI's only writes are the
-  `user_attrs` curation signal.
+- **Concurrency:** local SQLite may use WAL. Shared distributed runs use the journal
+  backend or a supported external RDB such as PostgreSQL, so the GUI reads the same
+  backend as the engine/CLI/Slurm/MCP writers; the GUI's only writes are the `user_attrs`
+  curation signal. Distributed SQLite is rejected.
 - **State-aware:** the view handles **no study yet** (prompt to configure/launch), a
   **running** study (live), and a **completed** study (final review).
 
@@ -192,7 +194,7 @@ per-trial objective (the automated `Scorer` keeps driving — this refines maste
   bodies into module-level helpers** and unit-test those: shortlist selection
   (top-N/Pareto + flagged), the `user_attrs` write-back payload (verdict/rank/author/ts),
   the `tuning_spec.json` emission from an edited space, the incremental study-read diff.
-- **Integration.** Attach to a `study.db` fixture (a tiny finished study): visualizations
+- **Integration.** Attach to local-SQLite and journal fixtures (tiny finished studies): visualizations
   render; the importance panel reads `param_importance.json`; the overlay cache renders a
   candidate via `render_node_preview`.
 - **e2e (Playwright, live browser — required).** Drive the flow: launch (delegated runner
@@ -220,8 +222,8 @@ per-trial objective (the automated `Scorer` keeps driving — this refines maste
    `N`.
 5. **Space-edit** — in-scope as optional 6c, emits `tuning_spec.json`; CLI `--auto-space`
    stays headless default.
-6. **Refresh/concurrency** — `dcc.Interval` polling + incremental reads; SQLite WAL
-   concurrent reads + `user_attr` writes; state-aware.
+6. **Refresh/concurrency** — `dcc.Interval` polling + incremental reads over the
+   configured backend; concurrent reads + `user_attr` writes; state-aware.
 7. **Phasing** — 6a (visualizations) → 6b (review/write-back) → 6c (space-edit); FEATURES
    rows + one WORKFLOWS flow + screenshot round-trip.
 

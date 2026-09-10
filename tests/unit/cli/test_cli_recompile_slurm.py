@@ -17,7 +17,6 @@ import pytest
 from click.testing import CliRunner
 
 from phenotypic.sdk_ import (
-    master_measurements_csv_path,
     master_measurements_parquet_path,
     measurements_csv_path,
     measurements_parquet_path,
@@ -31,6 +30,17 @@ pytestmark = pytest.mark.skipif(
     sys.platform == "win32",
     reason="Recompile SLURM worker tests require non-Windows paths",
 )
+
+
+#: The legacy-marker deferral is CLOSED. P4 repointed all five
+#: production call sites onto the per-image record, keeping the legacy
+#: `image_complete/` shape as a second arm under its own predicate and
+#: its own version constant -- `_image_authority_shapes` in
+#: `_cli_recompile_recovery.py` is the one home for that pairing, and
+#: carries the retirement condition (P7 arms the schema gate). The
+#: `_RECOMPILE_READS_THE_LEGACY_MARKER_UNTIL_P4` xfail marker that stood
+#: here went with the repoint, in the same commit: it was `strict=True`,
+#: so leaving it would have turned every test it decorated red.
 
 
 def _write_parquet(
@@ -607,9 +617,8 @@ def test_finalizer_publishes_when_only_overlay_task_failed(
             return_value=[{"task_type": TASK_OVERLAY, "status": "failed"}],
         ),
         patch.object(
-            worker, "_write_master_outputs_from_shards", return_value=None
-        ) as master,
-        patch.object(worker, "_run_post_master_steps") as post,
+            worker, "_run_post_master_steps", return_value=None
+        ) as post,
         patch.object(worker, "_regenerate_recompile_dashboard") as dashboard,
     ):
         worker._run_finalizer_task(
@@ -619,7 +628,9 @@ def test_finalizer_publishes_when_only_overlay_task_failed(
             slurm_generation=generation,
         )
 
-    master.assert_called_once()
+    # `_run_post_master_steps` IS the master step since P4 collapsed
+    # `_write_master_outputs_from_shards` into it, so it is the probe for
+    # "the finalizer reached publication" that the deleted function was.
     post.assert_called_once()
     dashboard.assert_called_once()
 
@@ -654,9 +665,8 @@ def test_finalizer_blocks_when_measurement_task_failed(
             ],
         ),
         patch.object(
-            worker, "_write_master_outputs_from_shards", return_value=None
-        ) as master,
-        patch.object(worker, "_run_post_master_steps"),
+            worker, "_run_post_master_steps", return_value=None
+        ) as post,
         patch.object(worker, "_regenerate_recompile_dashboard"),
         pytest.raises(RuntimeError, match="blocking non-finalizer recompile"),
     ):
@@ -667,7 +677,7 @@ def test_finalizer_blocks_when_measurement_task_failed(
             slurm_generation=generation,
         )
 
-    master.assert_not_called()
+    post.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -812,12 +822,15 @@ def test_finalizer_writes_master_outputs_and_rebuilds_dashboard(
         )
 
     assert result.exit_code == 0, result.output
-    assert master_measurements_csv_path(output_dir).exists()
     assert master_measurements_parquet_path(output_dir).exists()
+    # D8: the master is parquet-only, on this path as on the forward one.
+    assert not (
+        output_dir / "deliverables" / "master_measurements.csv"
+    ).exists()
     # Recompile finalizer also seeds the GUI's editable measurements copy.
     assert measurements_csv_path(output_dir).exists()
     assert measurements_parquet_path(output_dir).exists()
-    assert pl.read_csv(master_measurements_csv_path(output_dir))[
+    assert pl.read_parquet(master_measurements_parquet_path(output_dir))[
         "Size_Area"
     ].to_list() == [
         1,
@@ -863,8 +876,9 @@ def test_finalizer_blocks_publication_on_unknown_failed_task(
             "_wait_for_non_finalizer_statuses",
             return_value=[{"task_type": "unknown", "status": "failed"}],
         ),
-        patch.object(worker, "_write_master_outputs_from_shards") as master,
-        patch.object(worker, "_run_post_master_steps") as post,
+        patch.object(
+            worker, "_run_post_master_steps", return_value=None
+        ) as post,
         pytest.raises(RuntimeError, match="non-finalizer recompile task"),
     ):
         worker._run_finalizer_task(
@@ -874,7 +888,6 @@ def test_finalizer_blocks_publication_on_unknown_failed_task(
             slurm_generation=generation,
         )
 
-    master.assert_not_called()
     post.assert_not_called()
 
 
@@ -882,14 +895,27 @@ def test_finalizer_does_not_publish_after_master_parquet_failure(
     _completed_run_two: Path,
     tmp_path: Path,
 ) -> None:
-    """A mixed master CSV/Parquet generation cannot receive fresh authority."""
+    """A finalizer that could not write the master publishes no new authority.
+
+    **D8 inverted which write is the gate.** The CSV used to be required and
+    the Parquet best-effort ("CSV was saved"); now the Parquet *is* the master,
+    so its failure has to stop finalization outright. The failure mode this
+    guards is a run that reports success having written no master at all.
+
+    The failure is swallowed rather than raised -- ``finalize_run`` writes the
+    master through ``_guarded_terminal_best_effort`` and returns ``None`` --
+    so the assertions are on what is *not* on disk afterwards rather than on
+    an exception, plus one positive control that the blocked write was
+    reached at all. See the comment above them for why that control replaced
+    a sentinel column.
+    """
     import shutil
 
+    import phenotypic.sdk_ as sdk_
     import phenotypic._cli._cli_recompile_worker as worker
     from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
     from phenotypic.sdk_ import (
         aggregate_publication_marker_path,
-        master_measurements_csv_path,
         master_measurements_parquet_path,
     )
 
@@ -913,28 +939,35 @@ def test_finalizer_does_not_publish_after_master_parquet_failure(
         encoding="utf-8",
     )
     marker_path = aggregate_publication_marker_path(output_dir)
+    # STANDING RULE: both assertions below are equalities against a "before"
+    # snapshot, and `b"" == b""` would satisfy them on a fixture that never
+    # published a master or a proof. Establish that this run did.
+    assert marker_path.is_file(), "fixture published no aggregate proof"
     marker_before = marker_path.read_bytes()
-    parquet_before = master_measurements_parquet_path(output_dir).read_bytes()
-    real_atomic_write = worker.atomic_write_with_writer
+    master_path = master_measurements_parquet_path(output_dir)
+    assert master_path.is_file(), "fixture published no master"
+    parquet_before = master_path.read_bytes()
+    assert parquet_before, "fixture's master is empty"
+    real_atomic_write = sdk_.atomic_write_with_writer
+    blocked: list[Path] = []
 
     def _fail_master_parquet(
         path: Path,
         writer: object,
         **kwargs: object,
     ) -> None:
-        if Path(path) == master_measurements_parquet_path(output_dir):
+        if Path(path) == master_path:
+            blocked.append(Path(path))
             raise OSError("simulated master Parquet failure")
         real_atomic_write(path, writer, **kwargs)  # type: ignore[arg-type]
 
     with (
         patch.object(
-            worker,
+            sdk_,
             "atomic_write_with_writer",
             _fail_master_parquet,
         ),
-        patch.object(worker, "_run_post_master_steps"),
         patch.object(worker, "_regenerate_recompile_dashboard"),
-        pytest.raises(OSError, match="simulated master Parquet failure"),
     ):
         worker._run_finalizer_task(
             output_dir,
@@ -943,13 +976,28 @@ def test_finalizer_does_not_publish_after_master_parquet_failure(
             slurm_generation=generation,
         )
 
-    assert pl.read_csv(master_measurements_csv_path(output_dir))[
-        "Size_Area"
-    ].to_list() == [999999]
-    assert (
-        master_measurements_parquet_path(output_dir).read_bytes()
-        == parquet_before
+    # STANDING RULE, and the reason this is not the assertion it replaces.
+    # Both equalities below say "nothing changed", which is equally true of a
+    # run that never reached the master write: an empty shard glob, a merge
+    # that produced no frame, a finalizer that raised earlier.
+    #
+    # The pre-D8 test established the write had happened by reading the
+    # shard's 999999 back out of the master CSV -- which worked because that
+    # CSV *was* the shard concat. **D8 removes the object that assertion read
+    # from.** The CSV is deleted and the Parquet write is blocked, so the only
+    # master on disk afterwards is the fixture's own, whose measurers are
+    # Shape/Intensity/Texture/Color and which therefore carries no `Size_*`
+    # column at all. Carrying the sentinel across that retarget kept the
+    # column's spelling and lost its subject.
+    #
+    # What survives the inversion is the attempt. Asserting on it is stronger
+    # than the sentinel ever was here, because it fails for the empty-shard
+    # case too, which no reading of the master can detect.
+    assert blocked == [master_path], (
+        "the master write was never attempted, so the equalities below hold "
+        "for a run that did nothing rather than for one that was stopped"
     )
+    assert master_path.read_bytes() == parquet_before
     assert marker_path.read_bytes() == marker_before
 
 
@@ -1329,11 +1377,8 @@ def test_finalizer_overlay_refresh_locks_store_before_lifecycle(
             return_value=[],
         ),
         patch.object(
-            worker,
-            "_write_master_outputs_from_shards",
-            return_value=None,
+            worker, "_run_post_master_steps", return_value=None
         ),
-        patch.object(worker, "_run_post_master_steps"),
         patch.object(worker, "_regenerate_recompile_dashboard"),
     ):
         worker._run_finalizer_task(
@@ -1363,7 +1408,7 @@ def test_superseded_finalizer_cannot_refresh_overlay_marker(
     )
     from phenotypic.sdk_ import (
         dataset_overlays_dir,
-        image_completion_marker_path,
+        image_record_path,
     )
     from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
 
@@ -1373,8 +1418,8 @@ def test_superseded_finalizer_cannot_refresh_overlay_marker(
     store = zarr_store_path(output_dir, DATASET, stem)
     overlay = dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png"
     overlay.write_bytes(b"replacement overlay bytes")
-    marker_path = image_completion_marker_path(output_dir, DATASET, stem)
-    marker_before = marker_path.read_bytes()
+    record_path = image_record_path(output_dir, DATASET, stem)
+    record_before = record_path.read_bytes()
     generation = "superseded-overlay-finalizer"
     initialize_slurm_lifecycle(
         output_dir, generation=generation, mode="recompile"
@@ -1408,7 +1453,7 @@ def test_superseded_finalizer_cannot_refresh_overlay_marker(
     with (
         patch.object(
             worker,
-            "_write_master_outputs_from_shards",
+            "_run_post_master_steps",
             side_effect=SlurmGenerationInactiveError("superseded"),
         ),
         pytest.raises(SlurmGenerationInactiveError, match="superseded"),
@@ -1420,7 +1465,7 @@ def test_superseded_finalizer_cannot_refresh_overlay_marker(
             slurm_generation=generation,
         )
 
-    assert marker_path.read_bytes() == marker_before
+    assert record_path.read_bytes() == record_before
 
 
 @pytest.mark.parametrize("corrupt_artifact", ["measurements", "store"])
@@ -1512,7 +1557,7 @@ def test_measurement_worker_refreshes_marker_with_active_slurm_generation(
     from phenotypic.sdk_ import (
         MEASUREMENT_TABLE_RELATIVE_PATH,
         dataset_overlays_dir,
-        image_completion_marker_path,
+        image_record_path,
     )
     from tests.unit.sdk_._migration_fixtures import (
         DATASET,
@@ -1578,13 +1623,13 @@ def test_measurement_worker_refreshes_marker_with_active_slurm_generation(
     )
 
     assert result.exit_code == 0, result.output
-    marker = json.loads(
-        image_completion_marker_path(output_dir, DATASET, stem).read_text(
+    record = json.loads(
+        image_record_path(output_dir, DATASET, stem).read_text(
             encoding="utf-8"
         )
     )
     assert overlay.is_file()
-    assert marker["lifecycle_epoch"] == generation
+    assert record["lifecycle_epoch"] == generation
     assert valid_image_success(
         output_dir,
         dataset=DATASET,
@@ -1666,7 +1711,7 @@ def test_retry_schedules_table_replaced_before_marker_publish_crash(
     from phenotypic.schema import IMAGE
     from phenotypic.sdk_ import (
         MEASUREMENT_TABLE_RELATIVE_PATH,
-        image_completion_marker_path,
+        image_record_path,
     )
     from tests.unit.sdk_._migration_fixtures import (
         DATASET,
@@ -1711,8 +1756,8 @@ def test_retry_schedules_table_replaced_before_marker_publish_crash(
         image_stem=stem,
         work_id=run_work_id(output_dir, stem),
     )
-    old_marker = image_completion_marker_path(output_dir, DATASET, stem)
-    assert old_marker.is_file()
+    old_record = image_record_path(output_dir, DATASET, stem)
+    assert old_record.is_file()
 
     tasks = build_recompile_tasks(
         output_dir,
@@ -1896,10 +1941,14 @@ def test_retry_rejects_noncanonical_transition_staging_path(
             output_dir
         ).as_posix()
     elif prepared_path_case == "outside-root":
-        outside = tmp_path / "outside.parquet"
+        # Canonical basename on purpose: `<stem>.<32 hex>.parquet` satisfies the
+        # name check, so containment is the only guard left that can reject
+        # this receipt. Named "outside.parquet" the case merely re-tested the
+        # name check and stayed green when containment was deleted.
+        outside = tmp_path / staged.name
         shutil.copy2(staged, outside)
-        transition["prepared_path"] = outside.relative_to(
-            output_dir, walk_up=True
+        transition["prepared_path"] = Path(
+            os.path.relpath(outside, output_dir)
         ).as_posix()
     elif prepared_path_case == "symlink":
         outside = tmp_path / "outside.parquet"
@@ -2055,12 +2104,17 @@ def test_retry_rejects_stale_or_unbound_prior_table_evidence(
         transition.pop("prior_table_sha256", None)
         transition_path.write_text(json.dumps(transition), encoding="utf-8")
     else:
-        from phenotypic.sdk_ import image_completion_marker_path
+        from phenotypic.sdk_ import image_record_path
 
-        marker_path = image_completion_marker_path(output_dir, DATASET, stem)
-        marker = json.loads(marker_path.read_text(encoding="utf-8"))
-        marker["stale_marker_probe"] = True
-        marker_path.write_text(json.dumps(marker), encoding="utf-8")
+        # The transition receipt binds `marker_sha256` to whatever
+        # `image_authority_payload` resolved -- the RECORD on a forward tree.
+        # Perturbing the legacy `image_complete/` file instead would change
+        # nothing the receipt is bound to, and this arm would stop probing
+        # anything while still being green on the other one.
+        record_path = image_record_path(output_dir, DATASET, stem)
+        record = json.loads(record_path.read_text(encoding="utf-8"))
+        record["stale_marker_probe"] = True
+        record_path.write_text(json.dumps(record), encoding="utf-8")
 
     with pytest.raises(RuntimeError, match="measurement authority"):
         build_recompile_tasks(
@@ -2898,7 +2952,7 @@ def test_transition_fifo_evidence_is_rejected_without_blocking(
         time.sleep(0.01)
     assert ready.is_file(), "FIFO recovery probe did not finish importing"
     try:
-        return_code = process.wait(timeout=1.0)
+        return_code = process.wait(timeout=5.0)
     except subprocess.TimeoutExpired:
         process.kill()
         process.wait(timeout=2.0)
@@ -2916,7 +2970,13 @@ def test_recompile_fsyncs_transaction_directories_in_publication_order(
     _completed_run_two: Path,
     tmp_path: Path,
 ) -> None:
-    """Durable directory commits follow receipt, table, marker, cleanup order."""
+    """Durable directory commits follow receipt, table, record, cleanup order.
+
+    The third directory is ``progress/images/<ds>/`` because
+    ``_recompile_one_table`` fsyncs ``record_path.parent``; on a forward tree
+    ``image_complete/`` is never written and never synced, so asking for its
+    index would raise rather than assert an ordering.
+    """
     import shutil
 
     from phenotypic._cli._cli_recompile_recovery import (
@@ -2928,7 +2988,7 @@ def test_recompile_fsyncs_transaction_directories_in_publication_order(
     from phenotypic.schema import IMAGE
     from phenotypic.sdk_ import (
         MEASUREMENT_TABLE_RELATIVE_PATH,
-        image_completion_marker_path,
+        image_record_path,
     )
     from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
 
@@ -2939,7 +2999,7 @@ def test_recompile_fsyncs_transaction_directories_in_publication_order(
         zarr_store_path(output_dir, DATASET, stem)
         / MEASUREMENT_TABLE_RELATIVE_PATH
     )
-    marker = image_completion_marker_path(output_dir, DATASET, stem)
+    record = image_record_path(output_dir, DATASET, stem)
     transition_dir = recompile_table_transition_path(
         output_dir,
         DATASET,
@@ -2979,7 +3039,7 @@ def test_recompile_fsyncs_transaction_directories_in_publication_order(
         )
 
     table_parent_index = directory_syncs.index(table.parent)
-    marker_parent_index = directory_syncs.index(marker.parent)
+    record_parent_index = directory_syncs.index(record.parent)
     transition_indices = [
         index
         for index, directory in enumerate(directory_syncs)
@@ -2992,8 +3052,8 @@ def test_recompile_fsyncs_transaction_directories_in_publication_order(
     assert len(
         [index for index in transition_indices if index < table_parent_index]
     ) >= 2
-    assert table_parent_index < marker_parent_index
-    assert any(index > marker_parent_index for index in transition_indices)
+    assert table_parent_index < record_parent_index
+    assert any(index > record_parent_index for index in transition_indices)
 
 
 @pytest.mark.skipif(
@@ -3004,7 +3064,14 @@ def test_marker_directory_fsync_failure_preserves_transition_evidence(
     _completed_run_two: Path,
     tmp_path: Path,
 ) -> None:
-    """A marker durability failure aborts before receipt and stage cleanup."""
+    """A record durability failure aborts before receipt and stage cleanup.
+
+    The fault is injected on ``progress/images/<ds>/``, the directory
+    ``_recompile_one_table`` actually fsyncs. Aimed at the legacy
+    ``image_complete/`` parent it would never fire on a forward tree, and this
+    test would pass its ``receipt.is_file()`` assertions on a run that simply
+    succeeded -- the failure it exists to describe never having happened.
+    """
     import shutil
 
     from phenotypic._cli._cli_recompile_recovery import (
@@ -3016,7 +3083,7 @@ def test_marker_directory_fsync_failure_preserves_transition_evidence(
     from phenotypic.schema import IMAGE
     from phenotypic.sdk_ import (
         MEASUREMENT_TABLE_RELATIVE_PATH,
-        image_completion_marker_path,
+        image_record_path,
     )
     from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
 
@@ -3027,7 +3094,7 @@ def test_marker_directory_fsync_failure_preserves_transition_evidence(
         zarr_store_path(output_dir, DATASET, stem)
         / MEASUREMENT_TABLE_RELATIVE_PATH
     )
-    marker_parent = image_completion_marker_path(
+    record_parent = image_record_path(
         output_dir,
         DATASET,
         stem,
@@ -3042,16 +3109,16 @@ def test_marker_directory_fsync_failure_preserves_transition_evidence(
     ).write_csv(metadata)
     real_fsync = os.fsync
 
-    def _fail_marker_directory(file_descriptor: int) -> None:
+    def _fail_record_directory(file_descriptor: int) -> None:
         identity = os.fstat(file_descriptor)
         target = Path(os.readlink(f"/proc/self/fd/{file_descriptor}"))
-        if stat.S_ISDIR(identity.st_mode) and target == marker_parent:
-            raise OSError("simulated marker directory fsync failure")
+        if stat.S_ISDIR(identity.st_mode) and target == record_parent:
+            raise OSError("simulated record directory fsync failure")
         real_fsync(file_descriptor)
 
     with (
-        patch.object(os, "fsync", _fail_marker_directory),
-        pytest.raises(OSError, match="marker directory fsync failure"),
+        patch.object(os, "fsync", _fail_record_directory),
+        pytest.raises(OSError, match="record directory fsync failure"),
     ):
         recompile_embedded_measurement_table(
             output_dir,

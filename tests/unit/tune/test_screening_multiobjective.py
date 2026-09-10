@@ -7,6 +7,8 @@ trials that lack the objective. The single-objective path must stay byte-identic
 """
 from __future__ import annotations
 
+import pytest
+
 from phenotypic.tune._screening import (
     ImportanceReport,
     compute_param_importance,
@@ -95,3 +97,86 @@ def test_objective_absent_everywhere_yields_empty():
     # No trial carries the objective → nothing to fit → empty importances.
     store = _single_objective_store()  # objectives all None
     assert compute_param_importance(store, objective="Dice") == {}
+
+
+@pytest.mark.parametrize(
+    "excluded_kind",
+    ["failed", "pruned", "missing_coordinate", "cross_axis_nonfinite"],
+)
+def test_per_axis_importance_uses_only_finite_complete_objective_vectors(
+    excluded_kind: str,
+):
+    """Ineligible multi-objective rows must not change an axis importance model."""
+    baseline_store = _multi_objective_store()
+    baseline = compute_param_importance(baseline_store, objective="Dice")
+    contaminated = StudyStore(baseline_store.trials)
+
+    for i in range(48):
+        poison = i % 2 == 0
+        objectives = {"Dice": float(poison), "IoU": 0.5}
+        failed = False
+        pruned = False
+        if excluded_kind == "failed":
+            failed = True
+        elif excluded_kind == "pruned":
+            pruned = True
+        elif excluded_kind == "missing_coordinate":
+            objectives = {"Dice": float(poison)}
+        elif excluded_kind == "cross_axis_nonfinite":
+            objectives = {"Dice": float(poison), "IoU": float("inf")}
+
+        contaminated.append(
+            Trial(
+                number=100 + i,
+                params={
+                    "a": i % 3 == 0,
+                    "b": i % 4,
+                    "poison": poison,
+                },
+                score=float(poison),
+                terms={"Dice": float(poison)},
+                n_images=1,
+                objectives=objectives,
+                failed=failed,
+                pruned=pruned,
+            )
+        )
+
+    assert compute_param_importance(contaminated, objective="Dice") == baseline
+
+
+def test_authoritative_axes_exclude_all_partial_importance_rows():
+    """Per-axis publication cannot train on universally partial vectors."""
+    partial_store = StudyStore()
+    for i in range(24):
+        a = i % 2 == 0
+        partial_store.append(
+            Trial(
+                number=i,
+                params={"a": a, "b": (i // 2) % 3},
+                score=float(a),
+                terms={"s0": float(a)},
+                n_images=2,
+                objectives={"s0": float(a)},
+            )
+        )
+
+    legacy = compute_param_importance(partial_store, objective="s0")
+    assert legacy["a"] > legacy["b"]
+    assert (
+        compute_param_importance(
+            partial_store,
+            objective="s0",
+            objective_axes=("s0", "s1"),
+        )
+        == {}
+    )
+
+    valid_store = _multi_objective_store()
+    assert compute_param_importance(
+        valid_store,
+        objective="Dice",
+        objective_axes=("Dice", "IoU"),
+    ) == compute_param_importance(valid_store, objective="Dice")
+    scalar = compute_param_importance(_single_objective_store())
+    assert scalar["a"] > scalar["b"]

@@ -49,8 +49,8 @@ Two faces of reusability drive every choice here:
 class Scorer(BaseModel, ABC):
     model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
-    # All emitted terms are [0,1] higher-is-better (robust-eval §5: Scorer owns
-    # normalization, fixed/threshold-anchored, never min-max-over-trials).
+    # All emitted terms are [0,1] costs, lower-is-better (robust-eval §5: the
+    # Scorer owns orientation/normalization; never min-max-over-trials).
     @abstractmethod
     def score_image(self, image, result) -> dict[str, float]: ...
 
@@ -58,8 +58,8 @@ class Scorer(BaseModel, ABC):
         self, aggregated_terms: Mapping[str, float],
         per_image_results: Sequence[dict], full_measurements,
     ) -> float | dict[str, float]:
-        """Default = weighted mean of aggregated terms (per-image-only scorers)."""
-        return _weighted_mean(aggregated_terms, self._term_weights())
+        """Default = arithmetic mean of aggregated costs (per-image-only scorers)."""
+        return _mean(aggregated_terms)
 
     def availability(self, ctx: "DataContext") -> "ScorerAvailability":
         """Which terms are active / whether to abstain (qc §6 graceful degradation)."""
@@ -69,8 +69,8 @@ class Scorer(BaseModel, ABC):
 - **Two-phase** (qc §3): `score_image` → per-image terms; the Evaluator robust-aggregates;
   `finalize` adds batch-only terms (e.g. the ICC/MAD panel) and fuses. The **default
   `finalize`** covers per-image-only scorers (`SupervisedScorer`); `QCScorer` overrides it.
-- **Normalization contract** (robust-eval §5): terms are `[0,1]` higher-is-better; the
-  Evaluator *validates* the range, never transforms. A `dict`-returning `finalize` is the
+- **Normalization contract** (robust-eval §5): terms are `[0,1]` lower-is-better costs;
+  the Evaluator *validates* the range, never transforms. A `dict`-returning `finalize` is the
   multi-objective path (master §7).
 - **`availability`** expresses the qc §6 matrix (Count-only / full panel / abstain) so the
   Evaluator/engine degrade predictably.
@@ -100,7 +100,7 @@ class Evaluator(BaseModel):
 The robustness algorithm is **fixed** (one implementation) → a model, not an ABC. `evaluate`
 runs the uniform 3-step loop (robust-eval §3): build pipeline from `params` → `score_image`
 per calibration image (via the `Executor`, §7) → robust-aggregate each term
-(`median − λ·IQR`) → `scorer.finalize`. Returns `EvaluationResult` (objective,
+(`median + λ·IQR`, clamped to `[0,1]`) → `scorer.finalize`. Returns `EvaluationResult` (objective,
 per-image/per-fold breakdown, held-out, diagnostics; a pydantic value-model).
 
 ---
@@ -295,7 +295,7 @@ src/phenotypic/tune/
                          #   _random.py, _optuna.py (lazy)
   _evaluator.py          # Evaluator + EvaluationResult
   _engine.py             # TuningEngine
-  _study_store.py        # StudyStore (Optuna SQLite | homegrown journal fallback)
+  _study_store.py        # StudyStore (local SQLite | Optuna Journal | external RDB)
   _spec.py               # TuningSpec, Budget
   _screening.py          # importance (fANOVA | RF-permutation fallback) + freezing
   _tune_cli/             # the `python -m phenotypic.tune` CLI; uses _execution
@@ -327,7 +327,7 @@ domain types.
   `sweep` is deleted** (hard cutover, master §9) and the migration doc + `manifest→spec`
   script land. These are the Prerequisites (§14a).
 - **Phase 2:** `OptunaStrategy`/`OptunaConfig` (tune extra); Optuna-backed `PruningChannel`;
-  ASHA; `_study_store` SQLite; fANOVA in `_screening`; the **`SlurmExecutor`**.
+  ASHA; `_study_store` local SQLite/Journal/external RDB; fANOVA in `_screening`; the **`SlurmExecutor`**.
 - **Later:** `SupervisedScorer`/`ReferenceFreeScorer`/`CompositeScorer`; MCP (deferred);
   Dash co-pilot.
 
@@ -401,7 +401,7 @@ Surfaced by the plan-review; **Phase 1 is not module-isolated**:
 
 **Still open:**
 
-- `StudyStore`'s homegrown (no-Optuna) journal fallback shape — on the Phase-1 critical path
+- `StudyStore`'s journal-backed persistence shape — on the Phase-1 critical path
   (the incremental cache + `create_study` depend on it), more than the phasing implies.
 - Whether `Evaluator` ever needs to be an ABC (only if a non-robustness variant appears —
   none planned).

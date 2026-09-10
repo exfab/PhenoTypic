@@ -1,7 +1,7 @@
 """Unit tests for the Launch command renderer (Task C1).
 
 :func:`~phenotypic.gui.tune._command.render_launch_command` is the
-**source-of-truth** for the ``python -m phenotypic.tune run …`` invocation the
+**source-of-truth** for the ``uv run phenotypic-tune run …`` invocation the
 Launch view shows (the clientside callback mirrors it, but this pure function is
 the unit-tested truth). The flag spellings are confirmed against the real CLI in
 ``src/phenotypic/tune/__main__.py``: positional ``spec``, ``-i``/``-o``,
@@ -41,7 +41,7 @@ def test_render_postgres_tpe_run_includes_strategy_trials_and_storage() -> None:
         screen=False,
         slurm=False,
     )
-    assert "python -m phenotypic.tune run" in command
+    assert "uv run phenotypic-tune run" in command
     assert "--strategy tpe" in command
     assert "--n-trials 50" in command
     assert "--storage-url postgresql+psycopg://tuner@db:5432/tune" in command
@@ -176,7 +176,7 @@ def test_render_parses_through_the_real_cli_parser() -> None:
 
     Drift defence: instead of asserting flag spellings against a hand-copied
     list (which a CLI rename would silently outpace), feed the rendered tokens
-    (minus the ``python -m phenotypic.tune`` prefix) through the actual
+    (minus the ``uv run phenotypic-tune`` prefix) through the actual
     ``phenotypic.tune.__main__._build_parser()`` and assert the parsed namespace
     carries every value. A future flag rename breaks this test.
     """
@@ -194,9 +194,9 @@ def test_render_parses_through_the_real_cli_parser() -> None:
         slurm=True,
     )
     tokens = shlex.split(command)
-    # The base invocation is exactly ``python -m phenotypic.tune`` — drop it and
-    # hand the remainder (starting at the ``run`` subcommand) to the real parser.
-    assert tokens[:4] == ["python", "-m", "phenotypic.tune", "run"]
+    # The portable command starts with ``uv run phenotypic-tune`` — hand the
+    # remainder (starting at ``run``) to the real parser.
+    assert tokens[:4] == ["uv", "run", "phenotypic-tune", "run"]
     namespace = _build_parser().parse_args(_normalize_argv(tokens[3:]))
 
     assert namespace.command == "run"
@@ -207,7 +207,9 @@ def test_render_parses_through_the_real_cli_parser() -> None:
     assert namespace.n_trials == 50
     assert namespace.storage_url == "sqlite:///out/study.db"
     assert namespace.screen is True
-    assert namespace.slurm is True
+    # ``argparse`` retains bare repeatable ``--slurm`` as a ``None`` occurrence;
+    # the CLI normalizes it to the boolean request at dispatch time.
+    assert namespace.slurm == [None]
 
 
 def test_render_grid_command_parses_without_n_trials() -> None:
@@ -263,14 +265,8 @@ def test_validated_command_owns_actual_display_and_portable_tokens(
     assert command.copy_eligible is True
     assert command.argv[0] == sys.executable
     assert command.argv[3:] == command.semantic_tail
-    assert command.portable_tokens[:5] == (
-        "uv",
-        "run",
-        "python",
-        "-m",
-        "phenotypic.tune",
-    )
-    assert command.portable_tokens[5:] == command.display_tokens[3:]
+    assert command.portable_tokens[:3] == ("uv", "run", "phenotypic-tune")
+    assert command.portable_tokens[3:] == command.display_tokens[3:]
     assert storage in command.argv
     assert storage not in command.display_command()
     assert storage not in command.portable_command()

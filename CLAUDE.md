@@ -8,6 +8,15 @@
   with the topic name
 - **html artifacts** go in @docs/superpowers/artifacts/ under their own dated folder
   with the topic name
+- **Review and audit reports** go in @docs/superpowers/reports/ under their own dated
+  folder with the topic name (same name as the matching spec/plan). One file per
+  reviewer, named for what it reviewed — `spec-adherence.md`, `test-review.md`.
+  **A reviewer writes its report to a file rather than returning it in a message**: a
+  long report truncates in transit, and the truncated half is silently lost — during
+  the `cli-gui-state-tracking` P1 gate, three consecutive reports were cut mid-finding
+  and only recovered by asking. The file is also what a later phase reads; a finding
+  that lived only in a message is gone the moment the session ends. This is the sole
+  write an analysis-only reviewer may make.
 - **Executable logic-validation scripts** go in @docs/superpowers/logic_validation_scripts/
   under the change's own dated topic folder (same name as the matching spec/plan). One
   runnable script per subject, named `<subject>.py`; it re-derives the load-bearing numeric
@@ -18,6 +27,12 @@
   **`porting-a-reference-algorithm`** skill for the surrounding procedure. Precedent:
   `docs/superpowers/specs/2026-07-08-alt-phase-detection/verify_claims.py` — an existing
   script still co-located with its spec; `logic_validation_scripts/` is the going-forward home.
+  **That contract is load-bearing across the whole directory, not per file.** A
+  script there that imports the code under test costs a reader the assumption
+  that *anything* in the directory is an independent witness, and a docstring
+  exception does not give it back — so a check that must drive the shipped code
+  (an end-to-end run against real data, say) belongs beside its plan instead,
+  with the other executable artifacts of that change.
 
 ## Quick Start
 
@@ -44,6 +59,35 @@ file on shared storage; and `-x` silently truncates a run that then gets recorde
 as a baseline. The suite is ~65 minutes, not two — so it is a Slurm job
 (**`slurm-job`** skill), with a committed batch script at
 `docs/superpowers/plans/2026-08-18-ome-zarr-image-store/run_unit_suite.sbatch`.
+
+#### Focused between phases; full regression only at the end
+
+**Match the instrument to the stage.** The full suite is the *last* check of an
+implementation, never a step-level one:
+
+| Stage | What to run |
+|---|---|
+| Per step | the step's own guards — seconds |
+| Per task | the directly-touched test files — ~1 minute |
+| Per phase | the affected surface, **once** |
+| End of implementation | the full sharded regression, **once** |
+
+The affected surface is wider than the directory you edited. A change to a
+shared test helper reaches every file that imports it — one such helper in
+`tests/` has 49 importers across `gui/`, `integration/` and `sdk_`. Derive the
+surface from importers, mechanically, rather than from the directory name.
+
+**Why this is a rule and not a preference.** A full run is ~30 minutes on 24
+nodes; a step-level question is usually answered by a 15-test file in under a
+minute, and running the wide instrument *first* buys nothing except a longer
+feedback loop and a result that goes stale before you act on it. Worse, a
+mid-implementation full run is thrown away: every later task invalidates it, so
+the same 30 minutes is spent again for the same answer.
+
+**A red full suite mid-implementation is also hard to read.** Its failures mix
+your change with contamination from unrelated files sharing a shard, and
+separating them costs more than the run saved. Run each failing test in
+isolation before attributing it — most of them pass.
 
 ### Linting & Type Checking
 
@@ -74,27 +118,40 @@ as a baseline. The suite is ~65 minutes, not two — so it is a Slurm job
   OME-Zarr — PhenoTypic's or a third party's — as plain pixels. A published
   store is bit-reproducible: `applied_at_utc` and `duration_seconds` are
   omitted from its journal, so two identical runs write byte-identical stores.
-  Provenance travels one hop — processing a store into another store resets the
-  second store's journal to that second pipeline only, it does not chain. A
-  tree of stores is valid `--input`. Skips measurement/deliverables/QC/
+  Provenance is cumulative: reading a PhenoTypic store retains its complete
+  journal, and each process/full/programmatic invocation appends a separately
+  typed application with its own pipeline identity. Process output is therefore
+  valid input to the normal CLI and browse GUI without losing the process
+  pipeline. A tree of stores is valid `--input`. Skips
+  measurement/deliverables/QC/
   dashboard; machine state lives under `.phenotypic/`. Full local + SLURM
   continuation reuse; switching `--process-format` invalidates continuation
   rather than reusing outputs of the other kind. Run the same command again
   after an interruption or when new compatible inputs appear; there is no
   `--resume` flag.
-- `uv run python -m phenotypic --mode migrate --output <run>` — convert a legacy
-  `.h5` output tree to OME-Zarr stores **in place**, in two passes: pass 1 migrates
-  the non-image metadata targets (`csv`/`parquet`/`json`/`frame`, never `.h5`), pass 2
-  converts each per-image `results/<ds>/hdf/<stem>.h5` to
-  `results/<ds>/zarr/<stem>.ome.zarr` and re-publishes its marker. Sources are
-  **kept** by default; `--delete-sources` is opt-in and gated on a value-level
-  re-read. Re-running after an interruption *is* the recovery procedure.
-  **Every other mode that writes or reprocesses (`full`, `measure`, `recompile`,
-  `process`) refuses an unconverted tree** with a pointer to this command —
-  conversion rewrites the whole results tree, so it is typed deliberately rather
-  than triggered as a side effect. Per-image storage is OME-Zarr only: `save2zarr`
-  / `load_zarr` / `load_layer_zarr` / `save_intermediate_zarr` replaced the HDF
-  quartet outright, and there is no `Image.save2hdf5`. See
+- `uv run python -m phenotypic --mode migrate --output <target>` — explicitly
+  migrate a full legacy run, one direct OME-Zarr store, or a process-output tree.
+  Full runs keep the metadata → image → seal → optional reclaim → finalizer
+  chain; direct stores and process trees run provenance-only store array → seal
+  → finalizer work. Use `--njobs N` for local GPFS-latency parallelism, or the
+  mode's native repeated `--slurm key=value` options for scheduler dispatch
+  (never a custom wrapper; explicit `--njobs` and `--slurm` are incompatible).
+  Inventory never descends into Zarr chunks. Each provenance worker reads one
+  root `zarr.json` and writes only a schema-v1 journal. Direct-store lifecycle
+  state is a hashed sibling below `.phenotypic`, never inside the store.
+  Sources are **kept** by default; full-run `--delete-sources` is opt-in and
+  value-level gated, while provenance-only targets reject it. Re-running after
+  interruption is the recovery procedure. New schema-v2 applications always
+  carry a non-empty installed `phenotypic_version`. Only explicit migrate mode
+  may emit `phenotypic_version: null`, only for a converted `legacy`
+  application whose historical version cannot be recovered. Never substitute
+  the migrator's installed version, and never fabricate unknown original/input
+  filenames from a store directory. **Every other mode that writes or
+  reprocesses (`full`, `measure`, `recompile`, `process`) refuses an unconverted
+  tree** with a pointer to this command. Per-image storage is OME-Zarr only:
+  `save2zarr` / `load_zarr` / `load_layer_zarr` /
+  `save_intermediate_zarr` replaced the HDF quartet outright, and there is no
+  `Image.save2hdf5`. See `docs/source/how_to/pages/migrate_ome_zarr.md` and
   `docs/source/how_to/pages/zarr_storage.md`.
 - **GPU detectors stage automatically:** when a pipeline contains a `GpuDetector`,
   `python -m phenotypic` runs detection as three internal stages — CPU preprocess →
@@ -117,7 +174,30 @@ as a baseline. The suite is ~65 minutes, not two — so it is a Slurm job
   an append-only ledger. After a Stage-2 timeout, the controller derives remaining work
   from complete Stage-2 signals and submits another round. No worker signal handler or self-requeue
   is used. Without `--wait`, the CLI reports submission only; the dependent finalizer is
-  the sole publisher of aggregated outputs and the completion marker.
+  the sole publisher of aggregated outputs and the completion marker. **P5 does not
+  change that.** The forward run's dependent finalizer becomes a `0-K` array whose
+  indices `0..K-1` aggregate measurement shards and whose index K is the reserved
+  `TASK_FINALIZE` entry — running the same command it always ran. The finalizer is
+  still the sole publisher; it now has K helpers that publish nothing.
+  **With `--wait`, the aggregated outputs are written twice** and the sentence
+  above does not cover it: `AutonomousSLURMStrategy` never sets
+  `remote_managed` (only the staged path does, `_cli_staged_slurm.py:680,760`),
+  so the CLI falls through to `aggregate_master_csv`
+  (`phenotypicCLI.py:2977`) and aggregates **in the submitting process**, while
+  the dependent finalizer later aggregates again. The two are serialized by
+  `.aggregate_publication.lock` and read the same authorized sources, so they
+  write the same bytes — redundant, not divergent. **That last clause is a
+  property of one recent decision, not of the design**, and it was false
+  before `87f933cb`: the in-process path fans out at K = worker count while
+  the finalizer merges the scheduler's shards at its own K, and until
+  `shard_sources` became a *contiguous* split, merge order depended on K — so
+  two writers with the same lock and the same sources produced **different
+  bytes**. Reverting the decomposition to a strided assignment would silently
+  break this consumer, which is not named anywhere near it. **The completion-marker half
+  of the claim holds either way:** the main flow never publishes the run proof,
+  which only `_run_finalize` does. Note also that `--njobs` defaults to `-1`,
+  so that in-process aggregation runs the *local* fan-out at K = worker count,
+  not the scheduler's K.
   Staged GPU flags (Spec 1 §10):
     - `--gpu-slurm key=value` — Stage-2 GPU SBATCH profile; **inherits/deltas over
       `--slurm`** (put a separate GPU partition/account here); auto-adds
@@ -125,7 +205,7 @@ as a baseline. The suite is ~65 minutes, not two — so it is a Slurm job
     - `--gpu-shards N` (default 1) — parallel whole-GPU Stage-2 tasks (SLURM-only).
     - `--gpu-workers-per-gpu W` (default 1) — reserved for future replica packing;
       the current staged worker runs one resident model per GPU shard.
-- `uv run python -m phenotypic.tune run spec.json -i <images> -o <out>` —
+- `uv run phenotypic-tune run spec.json -i <images> -o <out>` —
   hyperparameter tuning (grid/random + Optuna), distributed via `--slurm`/
   `--storage-url`
 
@@ -351,6 +431,13 @@ enforces this for ruff, but the rule binds regardless of the tool.
   the old `phenotypic.sdk_.measurement_info` path was removed.
   `MeasurementInfo.get_labels()` returns unprefixed names; `get_headers()` returns the
   prefixed column names used in DataFrames.
+- **Ask the schema for the spelling, then assert the column is in the frame.** A
+  header the schema defines may belong to a measurer a given run never
+  configured — `SIZE.AREA` is a real member and `Size_Area` is this file's own
+  example, yet a run whose measurers are `MeasureShape`/`MeasureIntensity`/
+  `MeasureColor`/`MeasureTexture` carries no `Size_*` column at all and raises
+  `ColumnNotFoundError`. Spellability and presence are different questions, and
+  only presence is a property of the run.
 - **Metadata queries use schema ownership, never string prefixes:** determine whether a
   header or label is metadata, and which metadata type owns it, with
   `metadata_member_for_header()`, `metadata_owner_for_header()`,
@@ -377,11 +464,15 @@ enforces this for ruff, but the rule binds regardless of the tool.
   state lives in `results/<ds>/zarr/<stem>.ome.zarr/`, with authoritative
   object measurements at `tables/measurements/table.parquet` inside each
   store. Forward runs do not create external per-image measurement Parquets.
-  `master_measurements.*` is the exact pre-post concatenation of authorized
-  embedded tables (already metadata-joined measured rows);
-  `measurements.*` appends metadata-only phantoms once and is the post-applied
-  mirror the GUI reads/curates — feed analysis and dashboards from the
-  **mirror**, not the master. Always resolve paths via the
+  `master_measurements.parquet` is the exact pre-post concatenation of
+  authorized embedded tables: **un-joined**, carrying intrinsic identity only
+  and no user metadata at all. **Parquet only** — D8 deleted
+  `master_measurements.csv` along with its constant, its path helper and its
+  reader, because the un-joined master is not the file a human opens.
+  `measurements.{csv,parquet}` carries the metadata join, appends
+  metadata-only phantoms once, and is the post-applied mirror the GUI
+  reads/curates — feed analysis and dashboards from the **mirror**, not the
+  master. Always resolve paths via the
   `phenotypic.sdk_` helpers (never hand-join names), and route any FINAL master
   write through `finalize_post_master_outputs`. Full file inventory,
   master-vs-mirror rules, and the finalize/chunk-writer carve-out are in

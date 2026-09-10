@@ -38,12 +38,6 @@ def __getattr__(name: str) -> Any:
         from phenotypic.gui.results_viewer import _discovery_contracts
 
         return getattr(_discovery_contracts, name)
-    if name == "OutputConsistencyReport":
-        from phenotypic.gui.results_viewer._output_consistency import (
-            OutputConsistencyReport,
-        )
-
-        return OutputConsistencyReport
     if name == "OutputRoot":
         from phenotypic.gui.results_viewer._output_root import OutputRoot
 
@@ -51,7 +45,6 @@ def __getattr__(name: str) -> Any:
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
-    "OutputConsistencyReport",
     "OutputDiscoveryCancellation",
     "OutputDiscoveryCancelledError",
     "OutputDiscoveryProgress",

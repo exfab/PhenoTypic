@@ -7,7 +7,7 @@
  * card in sync without a server round-trip on every keystroke.
  *
  * Keep this EQUIVALENT to ``render_launch_command``: same subcommand
- * (``python -m phenotypic.tune run``), same positional spec + ``-i``/``-o``
+ * (``uv run phenotypic-tune run``), same positional spec + ``-i``/``-o``
  * flags, same optional-flag rules (``--n-trials`` only when a budget is given;
  * ``--storage-url`` only when non-empty; ``--screen``/``--slurm`` only when
  * toggled on). The CLI flag spellings are confirmed against
@@ -41,7 +41,7 @@ window.dash_clientside = window.dash_clientside || {};
     }
 
     window.dash_clientside.tune_launch = {
-        /* Render the ``python -m phenotypic.tune run …`` command from the form.
+        /* Render the ``uv run phenotypic-tune run …`` command from the form.
          *
          * Equivalent to ``render_launch_command``: see the module header for
          * the optional-flag rules. ``paths`` is the hidden paths store carrying
@@ -54,7 +54,7 @@ window.dash_clientside = window.dash_clientside || {};
             var output = p.output || "<output>";
             var resolvedStrategy = String(strategy || "tpe");
             var tokens = [
-                "python", "-m", "phenotypic.tune", "run",
+                "uv", "run", "phenotypic-tune", "run",
                 spec,
                 "-i", input,
                 "-o", output,

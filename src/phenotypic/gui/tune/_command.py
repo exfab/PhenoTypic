@@ -11,7 +11,6 @@ from urllib.parse import urlsplit
 
 from phenotypic.gui.shell._sandbox import SandboxRoot
 from phenotypic.gui.tune._run_argv import (
-    tune_run_argv,
     tune_run_argv_from_tail,
     tune_run_tail,
 )
@@ -22,7 +21,7 @@ StorageMode = Literal["spec", "local", "environment"]
 
 DEFAULT_STORAGE_ENV = "PHENOTYPIC_STORAGE_URL"
 _ENV_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
-_PORTABLE_PREFIX = ("uv", "run", "python", "-m", "phenotypic.tune")
+_PORTABLE_PREFIX = ("uv", "run", "phenotypic-tune")
 _INLINE_PASSWORD_ISSUE = (
     "The configured storage URL embeds an inline password. "
     "Use ~/.pgpass or PGPASSWORD instead."
@@ -349,24 +348,26 @@ def render_launch_command(
     screen: bool = False,
     slurm: bool = False,
 ) -> str:
-    """Render the legacy command string through the shared argv builder."""
-    tokens = tune_run_argv(
-        spec_path=spec_path,
-        images_dir=input_dir,
-        output_dir=output_dir,
-        strategy=strategy,
-        n_trials=n_trials,
-        storage_url=storage_url,
-        n_workers=n_workers,
-        slurm_partition=slurm_partition,
-        slurm_mem=slurm_mem,
-        slurm_time=slurm_time,
-        held_out_fraction=held_out_fraction,
-        cv_group=cv_group,
-        slurm=slurm,
-        screen=screen,
-        python="python",
-    )
+    """Render the portable ``uv run phenotypic-tune`` command for the GUI."""
+    tokens = [
+        *_PORTABLE_PREFIX,
+        *tune_run_tail(
+            spec_path=spec_path,
+            images_dir=input_dir,
+            output_dir=output_dir,
+            strategy=strategy,
+            n_trials=n_trials,
+            storage_url=storage_url,
+            n_workers=n_workers,
+            slurm_partition=slurm_partition,
+            slurm_mem=slurm_mem,
+            slurm_time=slurm_time,
+            held_out_fraction=held_out_fraction,
+            cv_group=cv_group,
+            slurm=slurm,
+            screen=screen,
+        ),
+    ]
     return render_tokens(tokens)
 
 

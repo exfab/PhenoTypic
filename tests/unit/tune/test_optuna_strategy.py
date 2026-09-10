@@ -214,6 +214,95 @@ def test_register_result_failed_tells_fail():
     assert trials[0].state == optuna.trial.TrialState.FAIL
 
 
+def test_multi_objective_result_uses_authoritative_axis_order():
+    """Mapping insertion order must not swap native Optuna coordinates."""
+    space = SearchSpace(knobs=(Knob(key="0.c", domain=Categorical(choices=(1,))),))
+    strat = _strategy(
+        space,
+        directions=["minimize", "minimize"],
+        objective_axes=("s0", "s1"),
+    )
+    params, _ = strat.suggest()
+    result = EvaluationResult(
+        score=0.5, terms={}, n_images=1, objectives={"s1": 0.8, "s0": 0.2}
+    )
+
+    strat.register_result(params, result)
+
+    assert strat._study.trials[0].values == [0.2, 0.8]
+
+def test_direct_strategy_rejects_duplicate_objective_axes() -> None:
+    """Direct construction cannot bypass scorer-authoritative uniqueness."""
+    space = SearchSpace(knobs=(Knob(key="0.c", domain=Categorical(choices=(1,))),))
+
+    with pytest.raises(ValueError, match="unique"):
+        _strategy(
+            space,
+            directions=["minimize", "minimize"],
+            objective_axes=("s0", "s0"),
+        )
+
+
+def _native_trial_snapshot(trial) -> dict[str, object]:
+    """Return every persisted/native field relevant to ask/tell mutation."""
+    return {
+        "state": trial.state,
+        "values": trial.values,
+        "params": dict(trial.params),
+        "distributions": dict(trial.distributions),
+        "user_attrs": dict(trial.user_attrs),
+        "system_attrs": dict(trial.system_attrs),
+        "intermediate_values": dict(trial.intermediate_values),
+    }
+
+
+def test_complete_multi_objective_without_objectives_fails_before_native_mutation():
+    """A missing COMPLETE vector cannot stamp attrs or tell the native trial."""
+    space = SearchSpace(knobs=(Knob(key="0.c", domain=Categorical(choices=(1,))),))
+    strat = _strategy(
+        space,
+        directions=["minimize", "minimize"],
+        objective_axes=("s0", "s1"),
+    )
+    params, _ = strat.suggest()
+    before = _native_trial_snapshot(strat._study.trials[0])
+    result = EvaluationResult(score=0.5, terms={"cost": 0.5}, n_images=1)
+
+    with pytest.raises(ValueError, match="exactly"):
+        strat.register_result(params, result)
+
+    assert _native_trial_snapshot(strat._study.trials[0]) == before
+
+
+
+@pytest.mark.parametrize(
+    "objectives",
+    [{"s0": 0.2}, {"s0": 0.2, "s1": 0.8, "unexpected": 0.4}],
+)
+def test_multi_objective_result_requires_exact_authoritative_keys(objectives):
+    """Missing or extra result axes must fail before Optuna tells the trial."""
+    import optuna
+
+    space = SearchSpace(knobs=(Knob(key="0.c", domain=Categorical(choices=(1,))),))
+    strat = _strategy(
+        space,
+        directions=["minimize", "minimize"],
+        objective_axes=("s0", "s1"),
+    )
+    params, _ = strat.suggest()
+    result = EvaluationResult(
+        score=0.5, terms={}, n_images=1, objectives=objectives
+    )
+
+    before = _native_trial_snapshot(strat._study.trials[0])
+
+    with pytest.raises(ValueError, match="exactly"):
+        strat.register_result(params, result)
+
+    assert strat._study.trials[0].state == optuna.trial.TrialState.RUNNING
+    assert _native_trial_snapshot(strat._study.trials[0]) == before
+
+
 # ---------------------------------------------------------------------------
 # suggest() returns (params, OptunaPruningChannel)
 # ---------------------------------------------------------------------------

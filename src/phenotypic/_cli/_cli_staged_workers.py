@@ -20,6 +20,7 @@ Three content-defined stages, each a pure per-image function:
 from __future__ import annotations
 
 from contextlib import contextmanager
+import json
 import logging
 from pathlib import Path
 from time import perf_counter
@@ -28,8 +29,10 @@ from typing import Any, Callable, Dict, Iterator, Mapping, Optional
 from phenotypic import GridImage, Image
 from phenotypic._core._provenance import (
     append_operation_provenance,
+    continuing_provenance_application,
+    current_application_operations,
     initialize_cli_provenance,
-    new_provenance_journal,
+    start_provenance_application,
     provenance_success_sink,
     set_provenance_status,
     set_retry_base_length,
@@ -83,17 +86,23 @@ def _initialize_stage1_provenance(
     image: Image,
     pipeline_path: Path | None,
     pipeline_identity: Mapping[str, str] | None,
+    input_filename: str,
 ) -> None:
     if pipeline_path is not None:
         initialize_cli_provenance(
             image,
             pipeline_path,
+            kind="full",
+            input_filename=input_filename,
             pipeline_identity=pipeline_identity,
         )
         return
-    journal = new_provenance_journal()
-    journal["status"] = "in_progress"
-    image._metadata.provenance_journal = journal
+    start_provenance_application(
+        image,
+        kind="full",
+        input_filename=input_filename,
+        status="in_progress",
+    )
 
 
 def _write_provenance_checkpoint_fenced(
@@ -139,7 +148,7 @@ def _checkpoint_successful_operation(
     commit_guard: CommitGuard | None = None,
 ) -> None:
     """Publish an appended staged operation or roll it back on sink failure."""
-    operations = image._metadata.provenance_journal["operations"]
+    operations = current_application_operations(image)
     prior_length = len(operations) - 1
     try:
         _check_active(active_check)
@@ -253,13 +262,47 @@ def stage1_preprocess_core(
         image_cls = _image_class(image_type)
         detect_mode = read_kwargs.pop("detect_mode", "gray")
         image = image_cls.imread(image_path, **read_kwargs)
-        _initialize_stage1_provenance(image, pipeline_path, pipeline_identity)
+        resumed = False
+        checkpoint_root = store / "zarr.json"
+        if checkpoint_root.is_file():
+            checkpoint_payload = json.loads(
+                checkpoint_root.read_text(encoding="utf-8")
+            )
+            checkpoint_block = checkpoint_payload.get("attributes", {}).get(
+                "phenotypic", {}
+            )
+            checkpoint_journal = checkpoint_block.get("provenance")
+            if isinstance(checkpoint_journal, dict):
+                from phenotypic._core._provenance import (
+                    pipeline_source_identity,
+                    resume_provenance_application,
+                )
+
+                resolved_identity = (
+                    pipeline_source_identity(pipeline_path)
+                    if pipeline_path is not None and pipeline_identity is None
+                    else pipeline_identity
+                )
+                resumed = resume_provenance_application(
+                    image,
+                    checkpoint_journal,
+                    kind="full",
+                    input_filename=image_path.name,
+                    pipeline_identity=resolved_identity,
+                    expected_work_id=work_id,
+                    checkpoint_work_id=checkpoint_block.get("work_id"),
+                )
+        if not resumed:
+            _initialize_stage1_provenance(
+                image, pipeline_path, pipeline_identity, image_path.name
+            )
         _check_active(active_check)
         if drop_originals:
             write_provenance_checkpoint(
                 store,
                 image,
                 journal_only=True,
+                work_id=work_id,
                 commit_guard=commit_guard,
             )
         else:
@@ -279,7 +322,7 @@ def stage1_preprocess_core(
         checkpoint_ready = True
         if detect_mode != "gray":
             image.set_detect_mode(detect_mode)
-        with provenance_success_sink(
+        with continuing_provenance_application(image), provenance_success_sink(
             lambda updated: _write_provenance_checkpoint_fenced(
                 store,
                 updated,
@@ -288,7 +331,7 @@ def stage1_preprocess_core(
             )
         ):
             plan.pre_pipeline.apply(image, inplace=True)
-        operation_count = len(image._metadata.provenance_journal["operations"])
+        operation_count = len(current_application_operations(image))
         _check_active(active_check)
         set_retry_base_length(image, operation_count)
         set_provenance_status(image, "staged")
@@ -458,7 +501,7 @@ def stage3_merge_measure_core(
         )
 
         # post-detector ops (refiners incl. watershed) then measurement.
-        with provenance_success_sink(
+        with continuing_provenance_application(image), provenance_success_sink(
             lambda updated: _write_provenance_checkpoint_fenced(
                 store,
                 updated,

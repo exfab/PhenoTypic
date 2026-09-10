@@ -8,6 +8,7 @@ designed to be called by SLURM batch scripts for autonomous execution.
 from __future__ import annotations
 
 from contextlib import AbstractContextManager
+import json
 import os
 import sys
 import logging
@@ -23,8 +24,11 @@ matplotlib.use("Agg")  # Non-interactive backend
 
 from phenotypic import Image, GridImage, ImagePipeline
 from phenotypic._core._provenance import (
+    continuing_provenance_application,
     initialize_cli_provenance,
+    pipeline_source_identity,
     provenance_success_sink,
+    resume_provenance_application,
     set_provenance_status,
     write_provenance_checkpoint,
 )
@@ -182,6 +186,7 @@ def process_single_image_core(
     cli_ncols: Optional[int] = None,
     drop_originals: bool = False,
     pipeline_identity: Mapping[str, str] | None = None,
+    work_id: str | None = None,
     active_check: ActiveCheck | None = None,
     commit_guard: CommitGuard | None = None,
 ) -> bool:
@@ -229,6 +234,7 @@ def process_single_image_core(
             store,
             updated,
             journal_only=journal_only,
+            work_id=work_id,
             commit_guard=commit_guard,
         )
 
@@ -269,9 +275,39 @@ def process_single_image_core(
 
         detect_mode = read_kwargs.pop("detect_mode", "gray")
         image = image_cls.imread(image_path, **read_kwargs)
-        initialize_cli_provenance(
-            image, pipeline_path, pipeline_identity=pipeline_identity
+        resolved_pipeline_identity = (
+            pipeline_source_identity(pipeline_path)
+            if pipeline_identity is None
+            else pipeline_identity
         )
+        resumed = False
+        checkpoint_root = store / "zarr.json"
+        if checkpoint_root.is_file():
+            checkpoint_payload = json.loads(
+                checkpoint_root.read_text(encoding="utf-8")
+            )
+            checkpoint_block = checkpoint_payload.get("attributes", {}).get(
+                "phenotypic", {}
+            )
+            checkpoint_journal = checkpoint_block.get("provenance")
+            if isinstance(checkpoint_journal, dict):
+                resumed = resume_provenance_application(
+                    image,
+                    checkpoint_journal,
+                    kind="full",
+                    input_filename=image_path.name,
+                    pipeline_identity=resolved_pipeline_identity,
+                    expected_work_id=work_id,
+                    checkpoint_work_id=checkpoint_block.get("work_id"),
+                )
+        if not resumed:
+            initialize_cli_provenance(
+                image,
+                pipeline_path,
+                kind="full",
+                input_filename=image_path.name,
+                pipeline_identity=resolved_pipeline_identity,
+            )
         if drop_originals:
             _write_checkpoint(image, journal_only=True)
         else:
@@ -281,6 +317,7 @@ def process_single_image_core(
                 image,
                 dataset_name,
                 image_stem,
+                work_id=work_id,
                 commit_guard=commit_guard,
             )
             if saved_store is None:
@@ -290,7 +327,9 @@ def process_single_image_core(
         checkpoint_ready = True
         if detect_mode != "gray":
             image.set_detect_mode(detect_mode)
-        with provenance_success_sink(_write_checkpoint):
+        with continuing_provenance_application(image), provenance_success_sink(
+            _write_checkpoint
+        ):
             measurements = pipeline.apply_and_measure(
                 image, inplace=True, apply_post=False
             )
@@ -318,6 +357,7 @@ def process_single_image_core(
             image,
             dataset_name,
             image_stem,
+            work_id=work_id,
             commit_guard=commit_guard,
             measurements=measurements,
         )
@@ -393,9 +433,11 @@ def process_single_store_measure_core(
     # nothing raises on.
     stem = store_stem(store_path)
 
-    # Publish the authoritative table inside the existing store. Descriptor
-    # changes use a root-last store transaction; compatible tables use one
-    # validated same-directory atomic file replacement.
+    # Publish the authoritative tables inside the existing store, through a
+    # root-last store transaction. There is no same-directory fast path: it
+    # rewrote a promoted store's Parquet without refreshing the root, so the
+    # per-image proof went on certifying content that had changed underneath
+    # it (CAN-3).
     output_manager.replace_image_store_measurements(
         store_path,
         measurements,
@@ -415,14 +457,50 @@ def process_single_store_measure_core(
     # Marker refresh is the final successful per-image publication. If any
     # earlier table or plot work raises, the old marker remains stale against
     # the new table/root and therefore cannot authorize a partial update.
-    from phenotypic.sdk_ import image_completion_marker_path
+    # THE RECORD, not `image_complete/` (P3 Task 2). This probe used to name
+    # the legacy marker, and after D1's clean break that file does not exist
+    # on a forward tree -- so `is_file()` was False, the re-publish was
+    # SKIPPED with no exception and no log, and this function still returned
+    # True. A `--mode measure` that changed the table's descriptor rewrote
+    # the store root, leaving the record's store descriptor stale, and the
+    # image read as unprocessed after successfully re-measuring.
+    #
+    # It falsifies `_cli/CLAUDE.md`'s "no store write outlives the
+    # publication that certifies it", which is load-bearing for the
+    # root-only fingerprint argument. Found by regenerating the plan's own
+    # marker-consumer table, which names every module that reads this
+    # surface and did not name this one.
+    # **Ask whether this image was PUBLISHED, not whether the file exists.**
+    # The path repoint was right; the predicate that came with it was not.
+    # `image_completion_marker_path(...).is_file()` was true only after a full
+    # `publish_image_success`, so the payload was guaranteed complete. The
+    # record file is different: `record_stage` creates it too, so a
+    # **partial** record -- `stages` and identity, no `artifacts` -- also
+    # satisfies `.is_file()`, and `_republish_table_marker` then does
+    # `marker["work_id"]` unconditionally and raises `KeyError` where this
+    # path used to skip cleanly.
+    #
+    # Partial records are a normal product of the staged engine, not a
+    # corruption case: `_cli_staged_slurm_worker` guards its publish with
+    # `if item.work_id:` while its `write_stage3_completion_marker` is
+    # unconditional, `_cli_staged_workers` writes stage 3 in its
+    # `work_id is None` branch, and `migrate_legacy_stage3_markers` writes
+    # stage-3 entries with no publish at all on the ordinary resume path.
+    #
+    # Non-empty `artifacts` is the property that makes the payload
+    # republishable, and it is the same clause `record_rejection` calls
+    # CAN-23 -- a record with no artifacts certifies nothing.
+    from phenotypic.sdk_ import image_record_path
+    from phenotypic.sdk_._image_record import read_image_record
 
-    marker_path = image_completion_marker_path(output_dir, dataset_name, stem)
-    if marker_path.is_file():
+    record_path = image_record_path(output_dir, dataset_name, stem)
+    record = read_image_record(output_dir, dataset_name, stem)
+    artifacts = record.get("artifacts") if record is not None else None
+    if isinstance(artifacts, dict) and artifacts:
         from ._cli_recompile_tables import _republish_table_marker
 
         _republish_table_marker(
-            output_dir, marker_path, commit_guard=commit_guard
+            output_dir, record_path, commit_guard=commit_guard
         )
 
     return True
@@ -846,21 +924,6 @@ def main(
             )
 
             click.echo(f"Processing {image.name}...")
-            process_single_image_core(
-                pipeline_path=pipeline,
-                image_path=image,
-                output_dir=output_dir,
-                dataset_name=dataset_name,
-                image_type=image_type,  # type: ignore[arg-type]
-                read_kwargs=read_kwargs,
-                output_manager=output_manager,
-                cli_nrows=nrows,
-                cli_ncols=ncols,
-                drop_originals=drop_originals,
-                pipeline_identity=pipeline_identity,
-                active_check=active_check,
-                commit_guard=commit_guard,
-            )
             work_id, relative_path = _worker_work_identity(
                 pipeline=pipeline,
                 image=image,
@@ -879,6 +942,22 @@ def main(
                 save_overlays=save_overlays,
                 drop_originals=drop_originals,
                 mode=mode,
+            )
+            process_single_image_core(
+                pipeline_path=pipeline,
+                image_path=image,
+                output_dir=output_dir,
+                dataset_name=dataset_name,
+                image_type=image_type,  # type: ignore[arg-type]
+                read_kwargs=read_kwargs,
+                output_manager=output_manager,
+                cli_nrows=nrows,
+                cli_ncols=ncols,
+                drop_originals=drop_originals,
+                pipeline_identity=pipeline_identity,
+                work_id=work_id,
+                active_check=active_check,
+                commit_guard=commit_guard,
             )
             # The same resolver the local strategy and the staged SLURM
             # worker use. It is what keeps this site from certifying a `.h5`

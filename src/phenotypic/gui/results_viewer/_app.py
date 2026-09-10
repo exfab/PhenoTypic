@@ -52,6 +52,7 @@ from phenotypic.gui._config import (
     MOUNT_HOME,
     QC_CROPS_URL_SEGMENT,
     SANDBOX_API_VIEWER_OUTPUT_ROOT,
+    SCATTER_CROPS_URL_SEGMENT,
     TITLE_VIEWER,
     join_url_prefix,
 )
@@ -292,6 +293,14 @@ def create_app(
     # QC Review tab serves the same centered crops under its own segment
     # so the colony-view ``/crops`` and the Review gallery never collide.
     register_crop_route(app, output_root, QC_CROPS_URL_SEGMENT)
+    # The Scatter click inspector's crop. Its own segment for the same
+    # reason, and ``default_contours=1`` because the inspector's job is to
+    # show what the detector found on this colony, not just its pixels --
+    # a per-segment default is what lets the three surfaces disagree
+    # without any of them changing.
+    register_crop_route(
+        app, output_root, SCATTER_CROPS_URL_SEGMENT, default_contours=1
+    )
 
     # MeasurementSchema cache shared by the Heatmap tab (and a future
     # QC tab) - lazily built once per app instance. Idempotent: do not

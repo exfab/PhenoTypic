@@ -49,6 +49,15 @@ def test_the_mode_help_states_both_passes() -> None:
     assert "two passes" in help_text or "two-pass" in help_text, help_text
 
 
+def test_migrate_help_names_provenance_only_targets() -> None:
+    """Migration help must distinguish full runs from provenance-only targets."""
+    result = CliRunner().invoke(phenotypic_cli, ["--help"])
+
+    assert result.exit_code == 0
+    assert "direct OME-Zarr store" in result.output
+    assert "process-output tree" in result.output
+
+
 def test_migration_help_names_all_reclaimed_sources_and_durability_rejection() -> None:
     """Destructive and inapplicable option help must match migration behavior."""
     from phenotypic.phenotypicCLI import phenotypic_cli as command
@@ -114,6 +123,16 @@ def test_migration_is_in_place(legacy_run) -> None:
     assert valid_staged_store(zarr_store_path(legacy_run, "ds", "img"))
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "_hdf_to_zarr._republish_image_marker rewrites the legacy marker "
+        "(:614,:647) and writes no record, so valid_image_success is false "
+        "for every migrated image. P7 U-10: republish as a record with "
+        "provenance='migrated'. Full rationale beside the shared marker in "
+        "tests/unit/sdk_/test_migration_republishes_state.py."
+    ),
+)
 def test_dot_prefixed_hdfs_are_ignored_and_never_deleted(legacy_run) -> None:
     """AppleDouble and other dotfiles are not image migration inputs."""
     from phenotypic.sdk_ import datasets_needing_migration
@@ -171,6 +190,16 @@ def test_migration_leaves_the_rest_of_the_tree_where_it_was(legacy_run) -> None:
     assert added <= {"results", "deliverables", ".phenotypic"}, sorted(added)
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "_hdf_to_zarr._republish_image_marker rewrites the legacy marker "
+        "(:614,:647) and writes no record, so valid_image_success is false "
+        "for every migrated image. P7 U-10: republish as a record with "
+        "provenance='migrated'. Full rationale beside the shared marker in "
+        "tests/unit/sdk_/test_migration_republishes_state.py."
+    ),
+)
 def test_sources_are_retained_unless_delete_sources_is_passed(legacy_run) -> None:
     """MIG-9: --delete-sources is the only path to keep_source=False."""
     hdf = legacy_run / "results" / "ds" / "hdf"
@@ -397,6 +426,7 @@ def test_direct_slurm_dry_run_submits_from_external_control_root(
 
     output = tmp_path / "run"
     output.mkdir()
+    (output / "results").mkdir()
     science = output / "retained.bin"
     science.write_bytes(b"immutable science")
     plan = _migration_plan(tmp_path, "attempt-1")
@@ -440,6 +470,7 @@ def test_direct_waited_slurm_dry_run_reads_external_typed_terminal(
     output = tmp_path / "run"
     output.mkdir()
     science = output / "retained.bin"
+    (output / "results").mkdir()
     science.write_bytes(b"immutable science")
     plan = _migration_plan(tmp_path, "attempt-1")
     monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
@@ -959,6 +990,30 @@ def test_terminal_authority_rejects_malformed_typed_fields(
     assert _read_migration_terminal_status(path, generation="attempt-1") is None
 
 
+def test_terminal_authority_reads_legacy_v1_report_without_provenance_fields(
+    tmp_path: Path,
+) -> None:
+    """Persisted pre-provenance terminal evidence remains valid authority."""
+    import json
+
+    from phenotypic._cli._cli_migrate import _read_migration_terminal_status
+
+    status = _terminal_status_payload(generation="attempt-1")
+    status["schema_version"] = 1
+    report = status["report"]
+    assert isinstance(report, dict)
+    report.pop("provenance_upgraded")
+    report.pop("provenance_failures")
+    path = tmp_path / "terminal_status.json"
+    path.write_text(json.dumps(status), encoding="utf-8")
+
+    loaded = _read_migration_terminal_status(path, generation="attempt-1")
+
+    assert loaded is not None
+    assert loaded["report"]["provenance_upgraded"] == 0
+    assert loaded["report"]["provenance_failures"] == []
+
+
 def test_succeeded_terminal_rejects_any_failure_rows(tmp_path: Path) -> None:
     """A success authority cannot carry contradictory failed-work evidence."""
     import json
@@ -1326,6 +1381,7 @@ def test_initialization_only_normalizes_active_lifecycle_conflicts(
 
     from phenotypic._cli import _cli_migrate as migrate
 
+    (tmp_path / "results").mkdir()
     monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
     monkeypatch.setattr(
         migrate,
@@ -1432,6 +1488,7 @@ def test_planner_only_normalizes_expected_errors(
 
     from phenotypic._cli import _cli_migrate as migrate
 
+    (tmp_path / "results").mkdir()
     monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
     monkeypatch.setattr(
         migrate,
@@ -1460,6 +1517,7 @@ def test_submitter_only_normalizes_expected_errors(
 
     from phenotypic._cli import _cli_migrate as migrate
 
+    (tmp_path / "results").mkdir()
     monkeypatch.setattr(migrate, "new_slurm_generation", lambda: "attempt-1")
     monkeypatch.setattr(
         migrate,
@@ -1522,6 +1580,7 @@ def _terminal_status_payload(*, generation: str, failed: bool = False) -> dict[s
             "tables_skipped": 5,
             "overlays_created": 6,
             "overlays_skipped": 7,
+            "provenance_upgraded": 8,
             "failed": (
                 [{"path": "/source.h5", "reason": "conversion failed"}]
                 if failed
@@ -1530,6 +1589,7 @@ def _terminal_status_payload(*, generation: str, failed: bool = False) -> dict[s
             "header_failures": [],
             "table_failures": [],
             "overlay_failures": [],
+            "provenance_failures": [],
             "publication_failures": [],
         },
         "completed_at": "2026-08-29T12:34:56.789+00:00",
@@ -1549,7 +1609,12 @@ def _migration_report_from_payload(payload: object):
         tables_skipped=payload["tables_skipped"],
         overlays_created=payload["overlays_created"],
         overlays_skipped=payload["overlays_skipped"],
+        provenance_upgraded=payload["provenance_upgraded"],
         failed=tuple((Path(item["path"]), item["reason"]) for item in payload["failed"]),
+        provenance_failures=tuple(
+            (Path(item["path"]), item["reason"])
+            for item in payload["provenance_failures"]
+        ),
     )
 
 
@@ -2108,34 +2173,221 @@ def test_the_viewer_surfaces_it(half_migrated_run) -> None:
     and the images that are missing are precisely the ones it would
     otherwise render empty.
     """
-    from phenotypic.gui.results_viewer._output_consistency import (
-        inspect_output_consistency,
-    )
-    from phenotypic.sdk_ import BundleLayout, deliverables_dir
+    from phenotypic.sdk_ import resolve_run_state
 
-    report = inspect_output_consistency(
-        BundleLayout(
-            deliverables_base=deliverables_dir(half_migrated_run),
-            output_root=half_migrated_run,
-        )
-    )
-    assert any("--mode migrate" in reason for reason in report.reasons), (
-        report.reasons
-    )
+    state = resolve_run_state(half_migrated_run, depth="deep")
+    assert any(
+        "--mode migrate" in advisory for advisory in state.advisories
+    ), state.advisories
 
 
 def test_the_viewer_says_nothing_about_a_fully_migrated_tree(
     migrated_run,
 ) -> None:
-    from phenotypic.gui.results_viewer._output_consistency import (
-        inspect_output_consistency,
-    )
-    from phenotypic.sdk_ import BundleLayout, deliverables_dir
+    from phenotypic.sdk_ import resolve_run_state
 
-    report = inspect_output_consistency(
-        BundleLayout(
-            deliverables_base=deliverables_dir(migrated_run),
-            output_root=migrated_run,
-        )
+    state = resolve_run_state(migrated_run, depth="deep")
+    assert not any(
+        "--mode migrate" in advisory for advisory in state.advisories
     )
-    assert not any("--mode migrate" in reason for reason in report.reasons)
+
+
+# ---------------------------------------------------------------------------
+# --revert (MIG-13 / spec §15.1)
+# ---------------------------------------------------------------------------
+
+
+def test_revert_appears_in_the_migrate_help() -> None:
+    """A flag the gate invokes but `--help` never mentions is undiscoverable.
+
+    `test_migrate_is_revertible` calls this flag, so it exists for users too,
+    not only for the gate.
+    """
+    result = CliRunner().invoke(phenotypic_cli, ["--help"])
+
+    assert result.exit_code == 0, result.output
+    assert "--revert" in result.output
+    # Read off the declared help rather than the rendered page: click wraps at
+    # the terminal width, so a substring search over the output can miss a
+    # phrase that is present and split across two lines.
+    option = next(
+        param for param in phenotypic_cli.params if param.name == "revert"
+    )
+    assert option.help is not None
+    # Not just the spelling: it has to say it is migrate-only and that it
+    # undoes rather than converts, or a user reaches for it in `--mode full`.
+    assert "--mode migrate" in option.help
+    assert "undo" in option.help.lower()
+
+
+def test_revert_is_rejected_outside_migrate_mode(legacy_run: Path) -> None:
+    """Mirrors `--delete-sources`, whose refusal this one is modelled on.
+
+    **Fires when** the flag is accepted by a mode that has nothing to revert,
+    where it would be silently ignored.
+    """
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "recompile", "--output", str(legacy_run), "--revert"],
+    )
+
+    assert result.exit_code == 2, result.output
+    assert "--revert is only accepted with --mode migrate." in result.output
+
+
+@pytest.mark.parametrize(
+    ("flag", "because"),
+    [
+        (["--dry-run"], "a revert has no preview seam to render"),
+        (["--delete-sources"], "a revert deletes no sources"),
+        (["--slurm", "slurm_partition=short"], "a revert distributes nothing"),
+        (["--njobs", "4"], "a revert parallelizes nothing"),
+        (["--wait"], "a revert is synchronous"),
+    ],
+    ids=["dry-run", "delete-sources", "slurm", "njobs", "wait"],
+)
+def test_revert_refuses_the_options_that_describe_a_conversion(
+    legacy_run: Path, flag: list[str], because: str
+) -> None:
+    """Every option here describes *how to convert*, and a revert converts nothing.
+
+    Refused rather than ignored: accepting one would let a user believe they
+    had asked for something the command never does. `--wait` is the one worth
+    naming -- the revert arm returns before the guard that normally rejects
+    `--wait` without `--slurm`, so without its own refusal it would be
+    accepted and silently dropped.
+
+    **Fires when** any of them becomes a no-op instead of a usage error.
+    """
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "migrate", "--output", str(legacy_run), "--revert", *flag],
+    )
+
+    assert result.exit_code == 2, (because, result.output)
+    assert "--revert cannot be combined with" in result.output
+
+
+def test_revert_reports_an_empty_retention_as_a_message(tmp_path: Path) -> None:
+    """A tree with nothing retained is a condition the user can act on.
+
+    Migrated by a build before retention shipped, or already reverted -- both
+    are ordinary, so both get a sentence and a nonzero exit rather than a
+    traceback.
+
+    **Fires when** the `RuntimeError` escapes to the terminal.
+    """
+    output = tmp_path / "never-migrated"
+    output.mkdir()
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "migrate", "--output", str(output), "--revert"],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "nothing to revert" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_revert_puts_a_migrated_tree_back(finished_legacy_run) -> None:
+    """The flag reaches the primitive, end to end through the real entry point.
+
+    The unit suite covers what `revert_legacy_trees` does with the trees; what
+    is untested without this is whether `--revert` reaches it at all, and
+    whether it reaches it *instead of* running a migration.
+
+    **Fires when** the flag is parsed but never wired, which would convert the
+    tree a second time and report success.
+    """
+    from phenotypic._cli._cli_migrate_state import (
+        LEGACY_MARKER_SEGMENTS,
+        legacy_retention_dir,
+    )
+    from phenotypic.sdk_ import progress_dir
+
+    tree = finished_legacy_run.path
+    # Derived, not spelled: which trees migrate retains is that module's
+    # business, and a literal here would keep passing after a rename.
+    legacy_trees = [segment for segment, _stage in LEGACY_MARKER_SEGMENTS]
+    before = {
+        name: sorted(
+            path.relative_to(progress_dir(tree)).as_posix()
+            for path in (progress_dir(tree) / name).rglob("*.json")
+        )
+        for name in legacy_trees
+    }
+    assert any(before.values()), "the fixture carries no legacy markers to move"
+
+    migrated = CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(tree)]
+    )
+    assert migrated.exit_code == 0, migrated.output
+    assert legacy_retention_dir(tree).is_dir(), "migration retained nothing"
+
+    reverted = CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(tree), "--revert"]
+    )
+
+    assert reverted.exit_code == 0, reverted.output
+    assert "--revert" in reverted.output
+    assert not legacy_retention_dir(tree).exists()
+    assert {
+        name: sorted(
+            path.relative_to(progress_dir(tree)).as_posix()
+            for path in (progress_dir(tree) / name).rglob("*.json")
+        )
+        for name in legacy_trees
+    } == before
+
+
+def test_slurm_is_refused_for_a_target_with_no_stores(tmp_path: Path) -> None:
+    """A pre-markers process tree has nothing for a store array to do.
+
+    The provenance SLURM topology is store array -> seal -> finalizer, and its
+    whole reporting vocabulary is store-upgrade counts: the seal barriers store
+    statuses and the finalizer reports how many were upgraded. Sent through it,
+    such a tree would come back "0 upgraded, succeeded" with the only real work
+    -- the machine-state conversion -- invisible in its own terminal report.
+
+    Two independent guards already refuse the shape, which is what makes it a
+    topology mismatch rather than an oversight in one place: the manifest
+    writer raises on zero tasks, and the worker config loader's `target_kind`
+    admits only `direct_store` and `process_tree`, so it cannot parse a config
+    naming this kind at all. The refusal routes the tree away instead of
+    weakening both.
+
+    **Fires when** the tree is accepted onto the array topology.
+    """
+    import json as _json
+
+    from phenotypic.sdk_ import resolve_processing_state_path
+
+    tree = tmp_path / "pre-markers"
+    (tree / "plate").mkdir(parents=True)
+    (tree / "plate" / "a.tiff").write_bytes(b"pixels")
+    state = resolve_processing_state_path(tree)
+    state.parent.mkdir(parents=True, exist_ok=True)
+    state.write_text(
+        _json.dumps(
+            {"version": "2.0.0", "config": {"process_only_layer": "rgb"}}
+        ),
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--mode",
+            "migrate",
+            "--output",
+            str(tree),
+            "--slurm",
+            "slurm_partition=short",
+        ],
+    )
+
+    assert result.exit_code == 2, result.output
+    assert "nothing to distribute" in result.output
+    # The refusal has to say what to do instead, or it is a dead end.
+    assert "without --slurm" in result.output

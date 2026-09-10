@@ -217,9 +217,10 @@ def test_core_records_the_pipeline_basename_not_its_path(
     )
     store = out / f"IMG_4471{ngff_.STORE_SUFFIX}"
     journal = _block(store)[PhenotypicAttr.PROVENANCE]
-    assert journal["pipeline"]["source_path"] == "preprocess.json.pht-pipe"
-    assert "/" not in journal["pipeline"]["source_path"]
-    assert len(journal["pipeline"]["sha256"]) == 64
+    application = journal["applications"][-1]
+    assert application["pipeline"]["source_path"] == "preprocess.json.pht-pipe"
+    assert "/" not in application["pipeline"]["source_path"]
+    assert len(application["pipeline"]["sha256"]) == 64
 
 
 def test_provenance_init_runs_before_apply_not_after(
@@ -252,9 +253,10 @@ def test_provenance_init_runs_before_apply_not_after(
     journal = _block(out / f"IMG_4471{ngff_.STORE_SUFFIX}")[
         PhenotypicAttr.PROVENANCE
     ]
-    assert journal["pipeline"] is not None
-    assert [o["operation_name"] for o in journal["operations"]] == ["BlurGauss"]
-    only = journal["operations"][0]
+    application = journal["applications"][-1]
+    assert application["pipeline"] is not None
+    assert [o["operation_name"] for o in application["operations"]] == ["BlurGauss"]
+    only = application["operations"][0]
     assert only["operation_class"].endswith(".BlurGauss")
     assert only["parameters"] == BlurGauss().model_dump(mode="json")
     assert only["parameters"]["sigma"] == 2.0
@@ -302,13 +304,10 @@ def test_a_store_round_trips_store_in_to_store_out(
 ) -> None:
     """Spec 7. The loop closes on itself: store in, store out, same pixels.
 
-    The consequence this exposes, and which spec 2.3 now states: the second
-    hop's journal carries ONLY the second pipeline. `initialize_cli_provenance`
-    opens with `new_provenance_journal()`, and `imread` reads a store as plain
-    pixels rather than restoring run state, so provenance travels with the
-    pixels for exactly one hop. Correct per 3.2 -- a store is read as pixels,
-    not as state -- but it means a chain of process-mode runs does not
-    accumulate a lineage, and nothing else in the suite says so.
+    The second hop must retain the first process application and append a
+    distinct second one. A process store is both a pixel artifact and a lineage
+    carrier; treating it as plain pixels would silently overwrite the first
+    pipeline application and break process-to-CLI provenance continuity.
     """
     first = tmp_path / "first"
     src_root = tmp_path / "in"
@@ -348,7 +347,26 @@ def test_a_store_round_trips_store_in_to_store_out(
     assert np.array_equal(Image.imread(store_out).rgb[:], expected.rgb[:])
 
     journal = _block(store_out)[PhenotypicAttr.PROVENANCE]
-    assert [o["operation_name"] for o in journal["operations"]] == ["BlurGauss"]
+    applications = journal["applications"]
+    assert journal["original_filename"] == "p01.tiff"
+    assert [application["kind"] for application in applications] == [
+        "process",
+        "process",
+    ]
+    assert [application["input_filename"] for application in applications] == [
+        "p01.tiff",
+        "p01.ome.zarr",
+    ]
+    assert [
+        operation["sequence"]
+        for application in applications
+        for operation in application["operations"]
+    ] == [1, 2]
+    assert [
+        operation["operation_name"]
+        for application in applications
+        for operation in application["operations"]
+    ] == ["BlurGauss", "BlurGauss"]
 
 
 # ---------------------------------------------------------------------------
@@ -436,7 +454,12 @@ def test_a_published_store_omits_the_wall_clock_fields(
 ) -> None:
     """Absent from every entry, not merely from the first."""
     store = _run_to_store(pipeline_file, source_image, tmp_path / "out")
-    operations = _block(store)[PhenotypicAttr.PROVENANCE]["operations"]
+    journal = _block(store)[PhenotypicAttr.PROVENANCE]
+    operations = [
+        operation
+        for application in journal["applications"]
+        for operation in application["operations"]
+    ]
     assert operations, "fixture pipeline must record at least one operation"
     for entry in operations:
         for field in _NON_REPRODUCIBLE_FIELDS:
@@ -455,14 +478,19 @@ def test_save2zarr_keeps_the_wall_clock_fields(
     process store would be reproducible and nothing would say the bundle had
     silently lost its timestamps.
     """
-    from phenotypic._core._provenance import initialize_cli_provenance
+    from phenotypic._core._provenance import (
+        continuing_provenance_application,
+        initialize_cli_provenance,
+    )
 
     image = Image(load_synth_yeast_plate())
     initialize_cli_provenance(image, pipeline_file)
-    ImagePipeline.from_json(pipeline_file).apply(image, inplace=True)
+    with continuing_provenance_application(image):
+        ImagePipeline.from_json(pipeline_file).apply(image, inplace=True)
 
     store = image.save2zarr(tmp_path / "bundle.ome.zarr")
-    operations = _block(Path(store))[PhenotypicAttr.PROVENANCE]["operations"]
+    journal = _block(Path(store))[PhenotypicAttr.PROVENANCE]
+    operations = journal["applications"][-1]["operations"]
     assert [o["operation_name"] for o in operations] == ["BlurGauss"]
     for field in _NON_REPRODUCIBLE_FIELDS:
         assert field in operations[0]
@@ -479,10 +507,13 @@ def test_stripping_leaves_the_rest_of_the_journal_intact(
     """
     store = _run_to_store(pipeline_file, source_image, tmp_path / "out")
     journal = _block(store)[PhenotypicAttr.PROVENANCE]
-    for key in ("schema_version", "status", "pipeline", "retry_base_length"):
+    for key in ("schema_version", "status", "original_filename", "applications"):
         assert key in journal
+    application = journal["applications"][-1]
+    for key in ("pipeline", "retry_base_length", "operations"):
+        assert key in application
 
-    only = journal["operations"][0]
+    only = application["operations"][0]
     assert only["operation_name"] == "BlurGauss"
     assert only["parameters"] == BlurGauss().model_dump(mode="json")
     for key in (
@@ -554,3 +585,81 @@ def test_a_failed_apply_leaves_the_journal_marked_failed(
 
     assert decoded, "the core must have decoded an image before applying"
     assert decoded[-1]._metadata.provenance_journal["status"] == "failed"
+
+
+def test_provenance_initialization_failure_is_not_masked_by_cleanup(
+    tmp_path: Path,
+    source_image: Path,
+    pipeline_file: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A decoded image does not imply that a CLI application was opened."""
+    from phenotypic._cli import _cli_process_only
+    from phenotypic._cli._cli_failure_tracker import PerImageScientificError
+
+    original = RuntimeError("provenance initialization failed")
+
+    def _fail_initialization(*args, **kwargs):
+        del args, kwargs
+        raise original
+
+    monkeypatch.setattr(
+        _cli_process_only, "initialize_cli_provenance", _fail_initialization
+    )
+
+    with pytest.raises(PerImageScientificError) as caught:
+        process_single_apply_only_core(
+            pipeline_path=pipeline_file,
+            image_path=source_image,
+            input_root=source_image.parent,
+            output_dir=tmp_path / "out",
+            image_type="Image",
+            layer="rgb",
+            read_kwargs={},
+            process_format="zarr",
+        )
+
+    assert caught.value.stage == "process"
+    assert caught.value.cause is original
+    assert caught.value.__cause__ is original
+
+
+def test_failed_status_cleanup_does_not_mask_apply_failure(
+    tmp_path: Path,
+    source_image: Path,
+    pipeline_file: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Failure-status publication is secondary to the scientific exception."""
+    from phenotypic._cli import _cli_process_only
+    from phenotypic._cli._cli_failure_tracker import PerImageScientificError
+
+    original = RuntimeError("detector exploded")
+
+    def _fail_apply(self, image, inplace=False):
+        del self, image, inplace
+        raise original
+
+    def _fail_cleanup(image, status):
+        del image
+        assert status == "failed"
+        raise ValueError("failure-status cleanup failed")
+
+    monkeypatch.setattr(ImagePipeline, "apply", _fail_apply)
+    monkeypatch.setattr(_cli_process_only, "set_provenance_status", _fail_cleanup)
+
+    with pytest.raises(PerImageScientificError) as caught:
+        process_single_apply_only_core(
+            pipeline_path=pipeline_file,
+            image_path=source_image,
+            input_root=source_image.parent,
+            output_dir=tmp_path / "out",
+            image_type="Image",
+            layer="rgb",
+            read_kwargs={},
+            process_format="zarr",
+        )
+
+    assert caught.value.stage == "process"
+    assert caught.value.cause is original
+    assert caught.value.__cause__ is original

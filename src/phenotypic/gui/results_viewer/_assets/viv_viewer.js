@@ -539,6 +539,10 @@
   function installGridViews(bundle, record) {
     const grid = record.grid;
     clampGridCamera(grid);
+    // The bundle creates Deck with a top-level controller for ordinary
+    // single views. deck.gl otherwise assigns it to the first grid view,
+    // overriding that view's passive controller setting.
+    record.viewer.deck.setProps({ controller: false });
     grid.views = grid.cells.map(
       (cell, index) =>
         new bundle.deck.OrthographicView({
@@ -701,6 +705,7 @@
     const options = opts || {};
     if (!list.length) {
       record.grid = null;
+      record.viewer.deck.setProps({ controller: true });
       record.viewer.setViews([
         new bundle.deck.OrthographicView({ id: "ortho", controller: true }),
       ]);

@@ -48,4 +48,6 @@ def test_initialize_cli_provenance_threads_the_flag(tmp_path: Path) -> None:
     img = Image(load_synth_yeast_plate())
     initialize_cli_provenance(img, path, basename_only=True)
     journal = img._metadata.provenance_journal
-    assert journal["pipeline"]["source_path"] == "preprocess_pipeline.json.pht-pipe"
+    assert journal["applications"][-1]["pipeline"]["source_path"] == (
+        "preprocess_pipeline.json.pht-pipe"
+    )

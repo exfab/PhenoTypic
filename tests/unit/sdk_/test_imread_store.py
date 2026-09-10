@@ -101,16 +101,18 @@ def test_imread_carries_provenance_across(tmp_path: Path) -> None:
     """
     store, img = _provenanced_store(tmp_path)
     source = img._metadata.provenance_journal
-    assert source["pipeline"]["sha256"]  # the fixture really populated it
-    assert source["operations"], "fixture must record at least one operation"
+    source_application = source["applications"][-1]
+    assert source_application["pipeline"]["sha256"]
+    assert source_application["operations"], "fixture must record an operation"
 
     recovered = Image.imread(store)._metadata.provenance_journal
-    assert recovered["pipeline"]["sha256"] == source["pipeline"]["sha256"]
+    recovered_application = recovered["applications"][-1]
+    assert recovered_application["pipeline"]["sha256"] == source_application["pipeline"]["sha256"]
     assert (
-        recovered["operations"][0]["operation_name"]
-        == source["operations"][0]["operation_name"]
+        recovered_application["operations"][0]["operation_name"]
+        == source_application["operations"][0]["operation_name"]
     )
-    assert recovered["operations"][0]["operation_name"] == "BlurGauss"
+    assert recovered_application["operations"][0]["operation_name"] == "BlurGauss"
 
 
 def test_imread_carries_a_basename_only_pipeline_path(tmp_path: Path) -> None:
@@ -118,7 +120,7 @@ def test_imread_carries_a_basename_only_pipeline_path(tmp_path: Path) -> None:
     store; this is its only end-to-end coverage through a store."""
     store, img = _provenanced_store(tmp_path, basename_only=True)
     recovered = Image.imread(store)._metadata.provenance_journal
-    source_path = recovered["pipeline"]["source_path"]
+    source_path = recovered["applications"][-1]["pipeline"]["source_path"]
     assert source_path == "preprocess_pipeline.json.pht-pipe"
     assert "/" not in source_path
 

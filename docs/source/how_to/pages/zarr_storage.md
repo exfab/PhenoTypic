@@ -147,10 +147,21 @@ Two flags govern storage behaviour:
   survives it.
 
 `--mode migrate`
-: Converts a legacy `.h5` output tree **in place**. There is no copy mode.
-  Add `--dry-run` to report what would be converted without writing, and
-  `--delete-sources` to remove each `.h5` once its store has been verified to
-  read back faithfully. Running it twice converts nothing the second time.
+: Accepts a full legacy run, a direct OME-Zarr store, or a process-output tree.
+  Full runs convert legacy `.h5` images **in place** and recertify markers;
+  direct stores and process trees perform only an explicit root-provenance
+  upgrade. Add `--dry-run` to validate without scientific writes, `--njobs N`
+  for local parallel root checks, or repeated `--slurm key=value` options for
+  the native migration dispatcher. `--delete-sources` applies only to full-run
+  HDF conversion and is refused for provenance-only targets. Running migration
+  twice changes nothing the second time. See
+  [Migrate legacy results and provenance](migrate_ome_zarr.md).
+
+Schema-v2 provenance is an ordered application history. A process store used
+as normal CLI input retains its process application and appends a distinct full
+application, including both pipeline identities. Only a migrated `legacy`
+application may have a null `phenotypic_version`, and only when the historical
+version is unavailable; readers must preserve that null.
 
 ## Invariants, if you are writing code against a store
 
@@ -160,14 +171,17 @@ violation on its own** — so breaking one is silent:
 1. **A store is promoted by directory rename, with the root `zarr.json`
    written last.** An interrupted write therefore has no valid root and reads
    as absent, never as partial.
-2. **Nothing writes into a promoted store.** A re-publish builds a new `.part`
-   and replaces the directory wholesale.
+2. **A store is replaced wholesale, never merged into.** A re-publish — a
+   re-measure included — builds a new `.part` and replaces the directory. The
+   refreshed root is written last there too, so a store is never left
+   describing content it does not have.
 
 Because of (1) and (2), both the per-image completion marker and the results
 viewer's staleness scan identify a store by its root `zarr.json` alone. Add a
-code path that writes into a promoted store and both start reporting stale
-data as fresh, with nothing failing to say so. The guard is
-`tests/unit/sdk_/test_ngff_promote.py::test_nothing_writes_into_a_promoted_store`,
+code path that writes into a promoted store *without* rewriting that root and
+both start reporting stale data as fresh, with nothing failing to say so. The
+guard on the promote itself is
+`tests/unit/sdk_/test_ngff_promote.py::test_promote_store_replaces_rather_than_merges`,
 which asserts inode identity rather than content — a merge-in-place
 implementation leaves the old directory in position with new bytes inside it,
 which passes any content comparison.

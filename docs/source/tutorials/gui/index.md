@@ -23,6 +23,7 @@ the images aligned with the implementation.
 | [Run Locally](04_run_local.md) | Submit a local subprocess run and tail the dashboard. |
 | [Run on SLURM](05_run_slurm.md) | Fill in SLURM resources and ship a submission to a cluster. |
 | [View Results](06_view_results.md) | Open the results viewer against a finished CLI output. |
+| [Scatter plots](19_scatter.md) | Bind plotting roles, page through section groups, click a point to open its colony, and export every section as a PDF. |
 | [Pick points](07_pick_points.md) | Curate detected colonies manually with the in-builder point picker. |
 | [Analysis](08_analysis.md) | Compose `phenotypic.analysis` filters + endpoint model and emit `analysis.{csv,parquet}`. |
 | [Aux ports](09_aux_ports.md) | Fill operation-typed parameters (e.g. `FilamentousFungiDetector.inoculum_detector`) through side-loader port targets. |
@@ -51,6 +52,7 @@ hub, see the [GUI hub guide](../../how_to/pages/gui_hub.md). This walkthrough is
 04_run_local
 05_run_slurm
 06_view_results
+19_scatter
 07_pick_points
 08_analysis
 09_aux_ports

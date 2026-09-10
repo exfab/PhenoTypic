@@ -5,11 +5,13 @@ package import (optuna-integration.md §10). The umbrella ``import phenotypic``
 and every Grid/Random tuning path must stay Optuna-free; only an
 explicitly-requested Optuna strategy (a later chunk) calls
 :func:`_require_optuna`. Requesting it without the extra raises a clear,
-actionable :class:`ImportError` pointing at ``uv sync --extras tune``.
+actionable :class:`ImportError` pointing at ``uv sync --extra tune``.
 """
 from __future__ import annotations
 
 import logging
+import json
+import errno
 import time
 from types import ModuleType
 from typing import TYPE_CHECKING, Any, Callable, Final, Optional, Sequence, TypeVar
@@ -31,7 +33,7 @@ _RETRY_BASE_DELAY_S: Final[float] = 0.1
 #: The actionable message shown when the ``tune`` extra is not installed.
 _MISSING_OPTUNA_MSG = (
     "Optuna is required for this strategy. Install the 'tune' extra: "
-    "uv sync --extras tune"
+    "uv sync --extra tune"
 )
 
 #: ``user_attrs`` keys carrying the non-native :class:`Trial` fields on each
@@ -54,6 +56,7 @@ PHENO_OBJECTIVES: Final[str] = "pheno_objectives"
 #: when ``True``); an absent attr restores the neutral default.
 PHENO_GAP: Final[str] = "pheno_gap"
 PHENO_SUSPICIOUS: Final[str] = "pheno_suspicious"
+PHENO_SCORE: Final[str] = "pheno_score"
 
 
 def set_trial_user_attrs(
@@ -80,6 +83,9 @@ def set_trial_user_attrs(
     """
     trial.set_user_attr(PHENO_PARAMS, dict(params))
     trial.set_user_attr(PHENO_TERMS, dict(getattr(result, "terms", {}) or {}))
+    score = getattr(result, "score", None)
+    if score is not None:
+        trial.set_user_attr(PHENO_SCORE, float(score))
     trial.set_user_attr(PHENO_N_IMAGES, int(getattr(result, "n_images", 0) or 0))
     objectives = getattr(result, "objectives", None)
     if objectives is not None:
@@ -198,7 +204,7 @@ def _require_optuna() -> ModuleType:
 
     Raises:
         ImportError: If Optuna is not installed, with a message pointing at
-            ``uv sync --extras tune``.
+            ``uv sync --extra tune``.
     """
     try:
         import optuna  # type: ignore[import-not-found]
@@ -257,6 +263,19 @@ def fail_stale_running_trials(study: "optuna.Study") -> int:
     return failed
 
 
+def is_transient_storage_error(exc: BaseException) -> bool:
+    """Whether a storage failure is safe to retry."""
+    try:
+        from sqlalchemy.exc import OperationalError
+    except ImportError:
+        pass
+    else:
+        if isinstance(exc, OperationalError):
+            return True
+    transient = {getattr(errno, name, None) for name in ("EIO", "ESTALE", "EAGAIN", "EWOULDBLOCK", "EBUSY", "EINTR", "ENOLCK", "ETIMEDOUT", "ECONNRESET", "EREMOTEIO")}
+    return (isinstance(exc, OSError) and exc.errno in transient) or isinstance(exc, json.JSONDecodeError) or (type(exc) is ValueError and str(exc) == "Invalid log format.")
+
+
 def retry_on_transient_db_error(
     func: Callable[[], _T],
     *,
@@ -291,16 +310,13 @@ def retry_on_transient_db_error(
         Exception: The last transient error after ``attempts`` exhausted, or any
             non-transient error on the first occurrence.
     """
-    try:
-        from sqlalchemy.exc import OperationalError
-    except ImportError:  # pragma: no cover - sqlalchemy ships with the tune extra
-        return func()
-
     last_exc: Optional[BaseException] = None
     for attempt in range(attempts):
         try:
             return func()
-        except OperationalError as exc:
+        except Exception as exc:
+            if not is_transient_storage_error(exc):
+                raise
             last_exc = exc
             if attempt + 1 >= attempts:
                 break

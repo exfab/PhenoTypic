@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
     from phenotypic.sdk_ import CommitGuard
     from phenotypic.sdk_._measurement_tables import (
-        PreparedEmbeddedMeasurementTable,
+        PreparedImageTables,
     )
 
 # Check for optional dependencies and import if available
@@ -782,6 +782,7 @@ class ImageIOHandler(ImageColorSpace):
         image = cls(arr=arr, name=filepath.stem, bit_depth=bit_depth, **kwargs)
         image.name = filepath.stem
         image.metadata[IMAGE.SUFFIX] = suffix
+        image._metadata.provenance_journal["original_filename"] = filepath.name
 
         # Extract and store metadata based on file type
         if (
@@ -880,6 +881,8 @@ class ImageIOHandler(ImageColorSpace):
         journal = spec.phenotypic.get(ngff_.PhenotypicAttr.PROVENANCE)
         if journal:
             image._metadata.provenance_journal = deepcopy(journal)
+        else:
+            image._metadata.provenance_journal["original_filename"] = store_path.name
 
         # Through `_metadata.imported`, NEVER `image.metadata[key] = value`.
         # `MetadataAccessor.__setitem__` routes an unrecognised key into
@@ -1070,7 +1073,7 @@ class ImageIOHandler(ImageColorSpace):
         work_id: str | None = None,
         durable: bool | None = None,
         commit_guard: CommitGuard | None = None,
-        measurement_table: PreparedEmbeddedMeasurementTable | None = None,
+        measurement_table: PreparedImageTables | None = None,
     ) -> Path:
         """Save the image as an OME-Zarr (NGFF 0.5 / Zarr v3) store.
 
@@ -1133,7 +1136,7 @@ class ImageIOHandler(ImageColorSpace):
         work_id: str | None,
         durable: bool | None,
         commit_guard: CommitGuard | None = None,
-        measurement_table: PreparedEmbeddedMeasurementTable | None = None,
+        measurement_table: PreparedImageTables | None = None,
         write_image_class: bool = True,
         consolidate: bool = False,
         reproducible_provenance: bool = False,
@@ -1218,7 +1221,7 @@ class ImageIOHandler(ImageColorSpace):
         work_id: str | None,
         durable: bool | None,
         commit_guard: CommitGuard | None = None,
-        measurement_table: PreparedEmbeddedMeasurementTable | None = None,
+        measurement_table: PreparedImageTables | None = None,
         write_image_class: bool = True,
         consolidate: bool = False,
         reproducible_provenance: bool = False,
@@ -1371,15 +1374,17 @@ class ImageIOHandler(ImageColorSpace):
             {"ome": {"version": ngff_.NGFF_VERSION, "series": series_names}},
         )
 
-        tables_descriptor = None
+        # Both tables land in THIS part, before the root below (D-A). The
+        # root `zarr.json` is the record's content anchor, so anything written
+        # after it mutates an artifact that already carries a content proof --
+        # which is why the metadata table is written here rather than
+        # backfilled into the promoted store.
+        tables_attributes = None
         if measurement_table is not None:
-            from phenotypic.sdk_._measurement_tables import (
-                build_measurement_table_descriptor,
-                write_embedded_measurement_table,
-            )
+            from phenotypic.sdk_._measurement_tables import write_image_tables
 
-            write_embedded_measurement_table(part, measurement_table)
-            tables_descriptor = build_measurement_table_descriptor(
+            tables_attributes = write_image_tables(
+                part,
                 measurement_table,
                 objmap_target=ngff_.objmap_path(primary),
             )
@@ -1394,10 +1399,14 @@ class ImageIOHandler(ImageColorSpace):
             write_image_class=write_image_class,
             reproducible_provenance=reproducible_provenance,
         )
-        if tables_descriptor is not None:
-            phenotypic_attributes[ngff_.PhenotypicAttr.TABLES] = {
-                ngff_.MEASUREMENT_TABLE_GROUP: tables_descriptor
-            }
+        if tables_attributes is not None:
+            from phenotypic.sdk_._measurement_tables import (
+                apply_image_tables_attributes,
+            )
+
+            apply_image_tables_attributes(
+                phenotypic_attributes, tables_attributes
+            )
         self._write_group_json(
             part,
             {

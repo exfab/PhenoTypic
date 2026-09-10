@@ -41,6 +41,7 @@ from phenotypic.gui._config import (
     TILE_DIM_DEFAULT,
 )
 from phenotypic.gui._shared import SHARED_LOGO_PATH
+from phenotypic.gui._snapshot_status import snapshot_refresh_status
 from phenotypic.gui._design import (
     COLOR_BG,
     COLOR_BLUE,
@@ -59,6 +60,9 @@ from phenotypic.gui.results_viewer import (
     colony_view,
 )
 from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic.gui.results_viewer._scatter_tab._layout import (
+    build_scatter_tab_body,
+)
 from phenotypic.gui.results_viewer._mutation_guard import (
     output_mutations_disabled,
     output_read_only_diagnostic,
@@ -176,6 +180,15 @@ def _build_header(
     Returns:
         A header :class:`dash.html.Div` styled as a navy-on-white bar.
     """
+    # The initial render and the 5-10 s poll must not be two implementations
+    # of one predicate. They were: this header open-coded the badge while
+    # `snapshot_refresh_status` computed it for the interval callback, so P6
+    # Task 1's change to the helper left this site spelling the same states
+    # differently -- "Read-only . incomplete" here, "Run incomplete . refresh
+    # snapshot" five seconds later. One call, one vocabulary.
+    snapshot_label, snapshot_color, _ = snapshot_refresh_status(
+        output_root, refresh_supported=refresh_supported
+    )
     pipeline_label = output_root.pipeline_summary or "unknown"
 
     pipeline_chip = html.Span(
@@ -234,23 +247,9 @@ def _build_header(
                 title=output_root.snapshot.processing_fingerprint,
             ),
             dbc.Badge(
-                (
-                    "Active run snapshot"
-                    if output_root.snapshot.active_run
-                    else (
-                        f"Read-only · {output_root.consistency.state}"
-                        if output_root.consistency.is_read_only
-                        else "Current"
-                    )
-                ),
+                snapshot_label,
                 id=ids.HEADER_SNAPSHOT_STATUS_ID,
-                color=(
-                    "danger"
-                    if output_root.consistency.is_read_only
-                    else "warning"
-                    if output_root.snapshot.active_run
-                    else "success"
-                ),
+                color=snapshot_color,
                 className="ms-2",
             ),
             dbc.Button(
@@ -522,8 +521,9 @@ def build_app_layout(
 
     Mounts every shared ``dcc.Store``, the header bar, the dismissable
     startup banner, a full-width :class:`dbc.Tabs` body (``Plate`` cards,
-    per-colony ``Colony`` grid, ``QC``, ``Heatmap`` — all kept mounted so
-    switching is a CSS-only operation with no subtree re-render), and a
+    per-colony ``Colony`` grid, faceted ``Scatter`` plots — all three kept
+    mounted so switching is a CSS-only operation with no subtree
+    re-render; ``QC``, ``Heatmap`` and ``Error`` are unmounted), and a
     right-docked :class:`dbc.Offcanvas` that hosts the filter sidebar and
     boots closed (opened from the header ``Filters`` toggle). Sub-trees
     defer to their owning modules (``_filter_panel`` for the sidebar;
@@ -556,6 +556,7 @@ def build_app_layout(
         output_root,
         mutations_disabled=mutations_disabled,
     )
+    scatter_tab_body = build_scatter_tab_body(output_root)
     stores = _build_stores(filtered_state)
 
     tabs = dbc.Tabs(
@@ -569,6 +570,11 @@ def build_app_layout(
                 colony_tab_body,
                 label="Colony",
                 tab_id=ids.TAB_COLONY_ID,
+            ),
+            dbc.Tab(
+                scatter_tab_body,
+                label="Scatter",
+                tab_id=ids.TAB_SCATTER_ID,
             ),
         ],
         id=ids.TABS_ID,

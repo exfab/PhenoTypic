@@ -37,7 +37,7 @@ from phenotypic.sdk_ import (
 )
 
 from tests._output_layout import (
-    write_complete_manifest,
+    build_complete_viewer_run,
     write_master,
     write_measurements_mirror,
 )
@@ -76,7 +76,18 @@ def output_root(tmp_path: Path) -> OutputRoot:
     overlays.mkdir(parents=True)
     for stem in ("img-A", "img-B"):
         PILImage.new("RGB", (64, 64), (128, 128, 128)).save(overlays / f"{stem}.png")
-    write_complete_manifest(tmp_path, total_images=2)
+    # Publish the run for real. This fixture declared completion with a
+    # `manifest.json`; §4.2 demotes it, so the tree resolved `incomplete` and
+    # every curation write was refused. `with_overlay=False` because the
+    # overlays above belong to this fixture -- a DECLARED artifact is fenced
+    # by content, so overwriting one after publication invalidates its record.
+    build_complete_viewer_run(
+        tmp_path,
+        stems=("img-A", "img-B"),
+        dataset="d1",
+        with_overlay=False,
+        write_outputs=False,
+    )
 
     return OutputRoot.discover(
         tmp_path,

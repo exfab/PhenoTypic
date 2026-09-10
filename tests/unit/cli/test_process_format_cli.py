@@ -12,6 +12,7 @@ from phenotypic._cli._cli_failure_tracker import (
 )
 from phenotypic._cli._cli_types import ExecutionConfig
 from phenotypic.phenotypicCLI import phenotypic_cli
+from phenotypic.sdk_ import image_record_path
 
 
 def _digest(**overrides) -> str:
@@ -268,16 +269,15 @@ def test_a_local_run_writes_a_store_and_continues_off_it(
     assert store.is_dir()
     assert not (tmp_path / "out" / "day1" / "plateA.tiff").exists()
 
+    # Resolved through the helper, not hand-joined. The hand-joined form is
+    # what made this site invisible to P3's repointing sweep, which grepped
+    # for `image_completion_marker_path` and could not see a path spelled out
+    # segment by segment -- the reason CLAUDE.md says to resolve through the
+    # `sdk_` helpers and never hand-join names.
     marker = json.loads(
-        (
-            tmp_path
-            / "out"
-            / ".phenotypic"
-            / "progress"
-            / "image_complete"
-            / "day1"
-            / "plateA.json"
-        ).read_text(encoding="utf-8")
+        image_record_path(tmp_path / "out", "day1", "plateA").read_text(
+            encoding="utf-8"
+        )
     )
     artifact = marker["artifacts"]["process_output"]
     assert artifact["path"] == "day1/plateA.ome.zarr"
@@ -407,15 +407,12 @@ def test_the_worker_and_the_top_level_cli_agree_on_the_work_id(
     assert (tmp_path / "worker" / "day1" / "plateA.ome.zarr").is_dir()
 
     def _marker(root: Path) -> dict:
+        # Helper-resolved, not hand-joined -- see the note at the sibling
+        # read-back above.
         return json.loads(
-            (
-                root
-                / ".phenotypic"
-                / "progress"
-                / "image_complete"
-                / "day1"
-                / "plateA.json"
-            ).read_text(encoding="utf-8")
+            image_record_path(root, "day1", "plateA").read_text(
+                encoding="utf-8"
+            )
         )
 
     worker_marker = _marker(tmp_path / "worker")

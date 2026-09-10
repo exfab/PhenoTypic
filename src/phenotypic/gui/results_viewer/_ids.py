@@ -621,6 +621,10 @@ TAB_PLATE_ID = "tab-plate"
 #: ``dbc.Tab`` value for the colony (per-object grid) view.
 TAB_COLONY_ID = "tab-colony"
 
+#: ``dbc.Tab`` value for the Scatter view: faceted, clickable scatter
+#: plots over the run's measurements, exportable as a multi-page PDF.
+TAB_SCATTER_ID = "tab-scatter"
+
 #: ``dbc.Tab`` value for the QC checks view. The tab body itself is
 #: built by Wave E; this constant is mounted now so the Heatmap tab's
 #: callbacks (which reference the recipe-revision store) can land
@@ -1042,6 +1046,7 @@ __all__ = [
     "TABS_ID",
     "TAB_PLATE_ID",
     "TAB_COLONY_ID",
+    "TAB_SCATTER_ID",
     "TAB_QC_ID",
     "TAB_HEATMAP_ID",
     "TAB_ERROR_ID",

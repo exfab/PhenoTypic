@@ -32,8 +32,9 @@ exposes a uniform contract that is *most of the way* to a `Scorer`:
 
 - **A continuous, directional metric** `QC_<name>_Metric` in the check's own
   units.
-- **A class-level `_HIGHER_IS_BAD` flag** — which is *exactly the inverse of the
-  master spec's `Scorer.higher_is_better` contract*. Direction is declared, per
+- **A class-level `_HIGHER_IS_BAD` flag** — the source for the scorer's natural
+  term `Sense` (`True` maps to `LOWER_BETTER`; `False` maps to
+  `HIGHER_BETTER`). Direction is declared, per
   check, already.
 - **Calibrated `warn_threshold` / `fail_threshold`** in metric units (the QC
   authors' "this is getting bad" / "this is bad" levels).
@@ -42,10 +43,11 @@ exposes a uniform contract that is *most of the way* to a `Scorer`:
 - Per-row `Flag` / `Status` (`pass`/`warn`/`fail`) — these drive **GUI
   curation**, *not* the objective. The objective uses the continuous metric.
 
-So the `QCScorer` is **not new metrics**. It is three layers over the existing
-checks: a fixed **normalizer** (metric → bounded higher-is-better term), a
-**reduction** (per-group terms → one term per check), and a **fusion** (terms →
-one score), reusing `_HIGHER_IS_BAD` for direction and the thresholds for scale.
+So the `QCScorer` is **not new metrics**. It layers a fixed **normalizer**
+(metric → bounded natural value), **reduction** (per-group terms → one term
+per check), and **fusion** over the existing checks. The shared `Scorer`
+boundary then orients the natural value to a `[0,1]` lower-is-better cost,
+reusing `_HIGHER_IS_BAD` for sense and the thresholds for scale.
 
 ### The six v1 checks
 
@@ -91,19 +93,20 @@ pure per-image `score(image)`. The `Scorer`/`Evaluator` protocol gains a
 **batch-finalize hook** (general — any batch objective, e.g. ICC, needs it):
 
 ```
-score_image(image, result)  -> { "Count": t_count, ... }   # per-plate terms
-        carried by the Evaluator, robust-aggregated across plates ⇒ Count_agg
-finalize(aggregated_terms, per_image_results, full_measurements) -> float   # the QCScore
+score_image(image, result)  -> { "Count": c_count, ... }   # per-plate costs
+        carried by the Evaluator, robust-aggregated across plates ⇒ C_count
+finalize(aggregated_terms, per_image_results, full_measurements) -> float   # QC_cost
         runs the batch panel once over all plates, reduces + fuses
 ```
 
 - `score_image` runs `ExpectedVsDetectedCount` against *that plate's* layout and
-  returns the normalized **Count** term. The Evaluator aggregates Count across
-  the calibration plates with its robustness operator (`median − λ·dispersion`,
-  master §4 D4).
+  returns normalized **Count cost** `c_count ∈ [0,1]` (lower is better). The
+  Evaluator aggregates Count across the calibration plates as `C_count =
+  clamp01(median(c_count) + λ·IQR(c_count))` (master §4 D4).
 - `finalize` runs the **batch panel** once across all calibration plates, reduces
   each check across strains (§4.3), builds the reliability composite, and fuses
-  it with `Count_agg` — supplied by the Evaluator as `aggregated_terms["Count"]`
+  it with Count goodness `G_count = 1 − C_count`, where `C_count` is supplied
+  by the Evaluator as `aggregated_terms["Count"]`
   (§4.4; robust-evaluation.md §3). Pruning early-stops on the per-image Count terms;
   the batch panel is computed only for survivors, at full fidelity.
 
@@ -118,43 +121,43 @@ Construct each `QualityCheck` from the run config (layout path, `groupby`,
 `QC_<name>_Metric` and the per-group `summary()`. Direction comes from
 `_HIGHER_IS_BAD`; scale anchors come from `warn_threshold` / `fail_threshold`.
 
-### 4.2 Normalize — threshold-anchored smooth map → `t ∈ [0,1]` (higher-is-better)
+### 4.2 Normalize — natural goodness `g ∈ [0,1]`, then cost `c = 1 − g`
 
 A **fixed, smooth, bounded** map per check, anchored by the calibrated fail
-threshold so `t = 0.5` exactly at the "fail" level. Fixed/external (not min–max
+threshold so `g = 0.5` exactly at the "fail" level. Fixed/external (not min–max
 over swept candidates) ⇒ Böck-safe. The **continuous metric** is used, never the
 `pass/warn/fail` tiers (the optimizer needs a gradient, not a 3-step cliff).
 
 - **Higher-is-bad, unbounded** (Count, SE, MAD, ZMax), metric `m ≥ 0`, fail `f`:
 
   ```
-  t = exp(−ln2 · m / f)        # t=1 at m=0, t=0.5 at m=f, →0 as m→∞
+  g = exp(−ln2 · m / f)        # g=1 at m=0, g=0.5 at m=f, →0 as m→∞
   ```
 
-  (A linear-clip `t = clip(1 − m/2f, 0, 1)` is the simpler alternative; the
+  (A linear-clip `g = clip(1 − m/2f, 0, 1)` is the simpler alternative; the
   exp-decay is the default for its smooth tail.)
 
-- **Tukey** (already `[0,1]`): same exp form with its own `f` (0.25), so the
+- **Tukey** (already `[0,1]`): same goodness form with its own `f` (0.25), so the
   scale stays threshold-anchored and consistent with the others.
 
 - **ICC** (lower-is-bad, `≤1`, can be negative): flip + clip onto `[0,1]`:
 
   ```
-  t = clip( (ICC − ICC_floor) / (ICC_good − ICC_floor), 0, 1 )
+  g = clip( (ICC − ICC_floor) / (ICC_good − ICC_floor), 0, 1 )
   ```
 
-  with `ICC_good ≈ warn` (→ `t≈1`) and `ICC_floor ≈ fail` (→ `t≈0`). A negative
-  ICC (agreement worse than chance) falls below the floor → `t = 0`.
+  with `ICC_good ≈ warn` (→ `g≈1`) and `ICC_floor ≈ fail` (→ `g≈0`). A negative
+  ICC (agreement worse than chance) falls below the floor → `g = 0`.
 
 The exact functional form (exp vs linear vs the ICC anchors) is **gate-tunable**;
-exp-decay anchored at `t(f)=0.5` is the default.
+exp-decay anchored at `g(f)=0.5` is the default. The optimizer-facing term is `c = 1 − g`.
 
 ### 4.3 Special-value policy (per term)
 
 | Value | Meaning | Objective treatment |
 |---|---|---|
-| `inf` (Count, no layout match) | plate has no metadata counterpart | `t = 0` (worst) |
-| negative ICC | agreement worse than chance | clip to `t = 0` |
+| `inf` (Count, no layout match) | plate has no metadata counterpart | `g = 0`, hence `c = 1` (worst cost) |
+| negative ICC | agreement worse than chance | clip to `g = 0`, hence `c = 1` |
 | `NaN` (under-powered / degenerate / missing axis) | **could not evaluate** | **excluded** from the reducer — *never* scored as a passing term; it instead drags the **coverage factor** (§4.4) |
 
 The `NaN → exclude + coverage-penalty` rule is the heart of the anti-gaming
@@ -168,14 +171,14 @@ guard (§5): un-evaluable bins must not be free "passes."
   reliability across its replicate plates). Collapse across strains with a
   **coverage-weighted, one-sided trimmed mean**:
 
-  Let evaluable strains have normalized terms `t_s` and weights `w_s`
+  Let evaluable strains have normalized goodness terms `g_s` and weights `w_s`
   (≈ replicate count); `E` = expected strains, `V` = evaluable (non-`NaN`,
   `≥ min_replicates`) strains.
 
   ```
   coverage = V / E
-  μ_trim   = weighted_mean( t_s  for the upper (1−α) of strains by t_s )   # drop worst α
-  T_check  = coverage · μ_trim
+  μ_trim   = weighted_mean( g_s  for the upper (1−α) of strains by g_s )   # drop worst α
+  G_check  = coverage · μ_trim
   ```
 
   Default **α = 0.10, one-sided (lower tail only)** — robust to a few
@@ -184,7 +187,7 @@ guard (§5): un-evaluable bins must not be free "passes."
   to 0 ⇒ it degrades gracefully to a plain coverage-weighted mean. **α and the
   reducer are gate-tunable** (the gate can switch to mean / quantile / CVaR).
 
-### 4.5 Fuse — terms → one `QCScore`
+### 4.5 Fuse — goodness terms → `QC_goodness` → minimized `QC_cost`
 
 Two stages, chosen to put **soft-AND on the gaming boundary** but **averaging
 inside the noisy panel**:
@@ -193,19 +196,23 @@ inside the noisy panel**:
    mean, with **ZMax down-weighted** (spiky / gameable):
 
    ```
-   R = Σ_c ω_c · T_c  /  Σ_c ω_c          over available panel checks c
+   R = Σ_c ω_c · G_c  /  Σ_c ω_c          over available panel checks c
    ```
 
-2. **Final score** — a weighted **geometric mean** of Count and reliability, with
-   per-term ε-floors and an explicit Count floor:
+2. **Final goodness and cost** — convert the robust Count cost exactly once,
+   take a weighted **geometric mean** of Count goodness and reliability, then
+   complement that goodness for the optimizer:
 
    ```
-   QCScore = ( clip(Count_agg, ε, 1)^{w_C} · clip(R, ε, 1)^{w_R} )^{1/(w_C + w_R)}
+   G_count     = 1 − C_count
+   QC_goodness = ( clip(G_count, ε, 1)^{w_C} · clip(R, ε, 1)^{w_R} )^{1/(w_C + w_R)}
+   QC_cost     = 1 − QC_goodness
    ```
 
 The geometric mean means **no compensation across the count↔reliability
 boundary**: great reliability cannot paper over a bad Count (each is a *necessary*
-condition). The arithmetic mean *within* the panel means one spiky check (ZMax)
+condition). As `C_count` rises, `G_count` falls, which lowers `QC_goodness` and
+raises the minimized `QC_cost`. The arithmetic mean *within* the panel means one spiky check (ZMax)
 cannot veto the whole score. `w_C ≥ w_R` by default (Count is the anchor); all
 weights, ε, and the Count floor are **gate-tunable**.
 
@@ -223,12 +230,14 @@ together:
    penalizes under- *and* over-detection; it is the anti-gaming anchor.
 2. **`NaN`-excluded + coverage factor** — un-evaluable strains lower
    `coverage = V/E`, so under-detection directly lowers every batch term.
-3. **Soft-AND fusion** — the geometric mean drives `QCScore → 0` when `Count_agg`
-   is low, regardless of reliability.
-4. **Count floor** — an explicit cap below a minimum `Count_agg`.
+3. **Soft-AND fusion** — the geometric mean drives `QC_goodness` toward its ε-floor and
+   `QC_cost` toward its worst end when `C_count` is high (`G_count` is low), regardless of
+   reliability.
+4. **Count floor** — explicitly cap `QC_goodness` when `G_count` falls below its
+   configured minimum.
 
 A **gaming regression test** is mandatory: a synthetic "under-detect" candidate
-must score *strictly lower* than a faithful one (§7).
+must have *strictly higher cost* than a faithful one (§7).
 
 ---
 
@@ -265,15 +274,15 @@ supervised/reference-free shape terms when annotations exist, and let the
 **meta-validation gate** (reference-free §E) certify it and tune its knobs.
 
 **Testing.**
-- *Unit:* normalizer maps (`t(f)=0.5`; `inf→0`; negative `ICC→0`; `NaN→excluded`);
+- *Unit:* normalizer maps (`g(f)=0.5`; `inf→g=0/c=1`; negative `ICC→g=0/c=1`; `NaN→excluded`);
   coverage-weighted trimmed-mean reducer (small-`V` fallback to mean;
-  under-detection ⇒ coverage drop); hybrid fusion (low `Count_agg` vetoes; a ZMax
+  under-detection ⇒ coverage drop); hybrid fusion (high `C_count` / low `G_count` vetoes; a ZMax
   spike does **not** veto); graceful degradation (Count-only path; abstain path).
-- *Gaming regression:* an under-detecting candidate scores **strictly lower**.
+- *Gaming regression:* an under-detecting candidate has **strictly higher cost**.
 - *Reuse:* assert `QCScorer` reads `QC_<name>_Metric` from the real
   `QualityCheck` instances (no metric re-implementation).
 - *Integration:* on `load_synth_yeast_plate()` (+ a small replicate set),
-  `QCScorer` ranks a known-good parameter set above a known-bad one and plugs
+  `QCScorer` assigns a known-good parameter set lower cost than a known-bad one and plugs
   into the Evaluator's two-phase loop.
 
 **Phasing.**

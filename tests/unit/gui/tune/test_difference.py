@@ -82,6 +82,10 @@ def test_render_difference_uses_okabe_ito_tokens() -> None:
     plate = np.zeros((6, 12, 3), dtype=np.uint8)
     out = render_difference(plate, a, b, tau=0.5)
 
+    # Decoded HERE rather than with `_design.hex_to_rgb`, on purpose: the
+    # code under test uses that function, so sharing it would let a bug in
+    # it make both sides agree and this test pass. An independent witness
+    # is the point -- do not dedupe these two lines.
     def _rgb(hex_color: str) -> tuple[int, int, int]:
         h = hex_color.lstrip("#")
         return tuple(int(h[i : i + 2], 16) for i in (0, 2, 4))  # type: ignore[return-value]

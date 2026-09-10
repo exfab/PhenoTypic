@@ -54,7 +54,10 @@ there is no `--resume` flag. Exact terminal failures remain skipped unless
 A missing or invalid store selects Stage 1; a valid store without a complete
 Stage-2 signal selects Stage 2; and a valid store with one selects Stage 3.
 **Every prereq probe tests BOTH halves of the signal** —
-`stage2_result_replayable()` is the one function all five sites call. The token
+`stage2_result_replayable()` is the one function all **six call sites in three
+modules** call (`_cli_staged_strategy.py` ×3, `_cli_staged_slurm_worker.py` ×2,
+`_cli_staged_controller.py` ×1) — a count a `grep` can confirm or refute, which
+"five sites" could not, because it never said sites of what. The token
 is only a flag; Stage 3's actual input is the raw `.npy`, so a
 token-present/raw-missing image is routed back to Stage 2, not into a Stage 3
 that would raise `FileNotFoundError` and be recorded as a terminal *scientific*
@@ -232,12 +235,66 @@ run from zero.
 Rejected with `--mode recompile` and `migrate`: those
 modes write no image store from a pipeline, so the flag could only mislead.
 
+## One writer per artifact, one producer per derived value
+
+**The rule the state-tracking design rests on, and it is load-bearing in two
+different places.** Both were learned the expensive way in the
+`cli-gui-state-tracking` change; the reasoning is in
+`docs/superpowers/reports/2026-09-03-cli-gui-state-tracking/`.
+
+### One writer per artifact, per pass
+
+**Each worker owns exactly one image and writes its artifacts once.** No path
+rewrites a tracked artifact within a pass. Retries, `--restart` and `--mode
+measure` are separate invocations, seconds to hours apart.
+
+That is not a convention — **it is what makes the verification cache correct.**
+The cache fences on `(size, mtime_ns)`, which cannot detect a same-size rewrite
+landing inside one filesystem `mtime` tick. It does not have to, because no such
+rewrite occurs. Measured on GPFS `/bigdata`: 0 of 200 back-to-back same-size
+writes shared an `mtime_ns` (~81 µs resolution); node-local scratch is 181/200 at
+~1 ms, which is one more reason run output may never live there.
+
+**So a change that makes any component rewrite a tracked artifact twice within a
+pass silently invalidates the cache's soundness argument** — and nothing will
+fail, because the cache will simply keep answering from a stale verdict. If you
+need a second write, say so where the cache is defined, not only where you write.
+
+### One producer per derived value
+
+**A value derived from state has exactly one producer: the reader of that
+state.** Do not compute it a second time somewhere earlier and carry it.
+
+`inventory_digest` is the worked example. It is `canonical_digest(work_ids)` —
+a pure function of `processing_state.json` — and four sites compute it that way
+and agree: `sdk_/_run_state.py` and the three proof writers in
+`_cli_completion.py`. A fifth producer in `_cli_identity.py` derived it from the
+`--image-manifest` digest instead, which is `None` by default. So the field whose
+job is answering *"did the accepted scope change?"* answered **"no"**
+unconditionally, and could never equal the reader's value for any input.
+
+**The tell was the ordering.** `mint_run_identity` runs before
+`state.config["work_ids"]` exists. A value that cannot be computed at the point
+you are standing is a value you do not own — the fix was to leave it empty and
+document the reader as its owner, not to invent a stand-in.
+
+> **Before adding a producer, ask what already computes this and whether you can
+> reach it.** If you cannot reach it because of ordering, you are not its
+> producer. If you cannot reach it because of layering, the shared definition
+> needs a home in `sdk_` — the layer the CLI, the GUI and the readers may all
+> import. It is never a reason to restate it.
+
 ## Per-image completion markers
 
 `publish_image_success` certifies the artifacts an image produced;
-`valid_image_success` is the first conjunct of resume classification. Markers
-are **versioned** (`SUCCESS_MARKER_VERSION`, currently **2**) and a
-version mismatch invalidates rather than migrates.
+`valid_image_success` is the first conjunct of resume classification. Per-image publications are **versioned**, and there are **two constants, not
+one renamed**: `RECORD_VERSION` (`sdk_/_image_record.py:87`, currently **1**)
+stamps the per-image record `images/<ds>/<stem>.json`, and
+`SUCCESS_MARKER_VERSION` (`sdk_/_io_constants.py:741`, currently **2**) is the
+legacy `image_complete/` marker's, still written by the HDF→Zarr migrator
+(`sdk_/_hdf_to_zarr.py:607,645`). A version mismatch invalidates rather than
+migrates. Do not document either as having replaced the other; both have live
+writers.
 
 Never hand-declare the per-image data artifact. Call
 **`image_data_artifact(output_dir, output_manager, dataset, image_stem)`**,
@@ -249,15 +306,231 @@ all of its work.
 
 Descriptors dispatch on `kind`. A **store** is fingerprinted by its root
 `zarr.json` alone, not recursively: the root is written **last** by the promote
-protocol and nothing writes into the store after publication, so a valid root
-implies a complete store. An absent `kind` reads as `"file"` (v1 shape); an
-unknown `kind` **fails closed**.
+protocol, so a valid root implies a complete store. An absent `kind` reads as
+`"file"` (v1 shape); an unknown `kind` **fails closed**.
+
+> **"Nothing writes into the store after publication" is FALSE, and root-only
+> fingerprinting is sound anyway.** The stronger claim was written here and is
+> withdrawn — the table replacers have **three** call sites, not the one
+> (`_cli_migrate_image.py:281`) an earlier note named. The third,
+> `OutputManager.replace_image_store_measurements` ←
+> `_cli_process_single.py`, runs on the ordinary **`--mode measure`** path and
+> writes into a store that is already published. *(P4 split the replacer in
+> two: that path now calls `replace_image_tables`, which moves the measurement
+> table, the metadata table and the root's `metadata_table` block together;
+> `replace_embedded_measurement_table` survives for `--mode migrate` and
+> `--mode recompile` until their producers are repointed. Both go through the
+> same root-last transaction.)*
+>
+> What actually holds is narrower and is what the fingerprint needs: **every
+> table replacement is a root-last store transaction**, so the root is rewritten
+> last exactly as at promote time.
+>
+> **There used to be a second write shape, and P4 deleted it.** When the
+> descriptor was unchanged, `replace_embedded_measurement_table` took a
+> same-directory atomic file replacement and returned **without touching the
+> root** at all. That preserved *"a valid root implies a complete store"* —
+> which is all the fingerprint needs — but it also meant the per-image proof's
+> store digest still matched after the table's bytes had changed underneath it,
+> and it left the root's recorded metadata snapshot stale. Both failures were
+> silent. After P4's inversion the descriptor became a pure function of the
+> measurement schema and the objmap target, so *every* metadata-driven
+> re-measure would have taken that branch. The fast path is gone; the cost is
+> that a `--mode measure` re-promote now runs on every image it touches.
+>
+> So the root never observes a partial store. The root fingerprint is
+> a **completeness** check, not a content-version one, and it was never asked to
+> distinguish two tables carrying the same columns — the descriptor holds
+> `schema_version`, `type`, `format`, `path`, `measurement_columns` and `target`,
+> and deliberately no row count or content digest.
+>
+> The measure path then re-publishes the marker through
+> `_republish_table_marker` (`_cli_process_single.py:462`), which rehashes every
+> artifact and writes the marker last, so no store write outlives the
+> publication that certifies it.
+>
+> **Why the wording mattered even though the conclusion did not.** A reader
+> checking the guarantee would have found a counterexample on the first grep and
+> had no way to tell whether the fingerprint was unsound or merely
+> mis-described. Overstating a true invariant costs the next reader the ability
+> to verify it — and the overstatement came from a citation that named one call
+> site when there were three, which is the third time in this change a dismissal
+> rested on an under-counted citation.
 
 The `"hdf"` branch is **not** dead code, though no forward path writes an
 `.h5` any more. `_migrate_legacy_success_evidence` promotes trees from older
 releases, which have `results/<ds>/hdf/<stem>.h5` and no store; dropping the
 branch would make it name a nonexistent store and silently refuse to promote
 the very trees it exists to rescue — reprocessing all of them.
+
+---
+
+## Tracked state, and how everything else is derived
+
+**The full reference now lives in the contributor guide:
+[`docs/source/contrib_guide/tracked_state.md`](../../../docs/source/contrib_guide/tracked_state.md)**
+— *Run state: what is tracked, and how to read it*.
+
+It is the single source for the four tracked states and their writers, the
+three content proofs and their publication order, the derived-value table
+naming the function behind each fact, the two retained-but-unread artifacts,
+the table of **known consumers** and what each decides, and the two consumers
+that deliberately ask a different question.
+
+Read it before adding any counter, flag, marker or cached count to
+`.phenotypic/`.
+
+The three things worth carrying in your head without opening it:
+
+- **Four things are written down**, and every other answer is computed from
+  them plus the artifacts on disk. The organising principle is *move state that
+  is tracked to state that is checked*. **A fifth tracked value appearing is a
+  design regression** — the page's last section is the checklist that decides
+  whether a proposed one is really derived.
+- **`resolve_run_state(output_dir, depth=...)` is the one call.** It never
+  raises; an unreadable or foreign tree degrades toward `incomplete`. Use
+  `depth="deep"` for anything that writes, `depth="shallow"` for listing and
+  polling.
+- **Readers live in `sdk_`; writers stay in `_cli`** (INV-LAYER: `sdk_` may
+  never import `phenotypic._cli`).
+
+> **If you add, remove or change a tracked state, a proof, or a consumer,
+> update that page in the same change.** It carries a checklist for exactly
+> this, including adding a row to the consumer table and adding an
+> `sdk_/_io_constants.py` path helper rather than hand-joining a name. A
+> reference updated one change later is a reference nobody can trust in
+> between, and a row that describes something no longer true is worse than a
+> missing row — it carries the authority of documentation while being wrong.
+
+---
+
+## What `--mode migrate` asserts, and what it does not
+
+**It converts schema. It does not finish a run.** Everything below follows from
+that one sentence, and most of the surprises in this area come from expecting
+otherwise.
+
+- **A migrated-but-incomplete tree reports `incomplete`, and that is correct.**
+  `publish_run_completion_evidence` refuses to write a run proof when some
+  accepted image has no success record, and migrate does not override it.
+  Writing one there would certify a run that never finished.
+- **`stage2_done/` is read, never moved.** It holds a *consumable token* that
+  Stage 3 replays and then `unlink`s. Migrate reads it to enrich a record and
+  leaves it exactly where it is; renaming it into `legacy-v2/`, where nothing
+  reads it, would orphan the work of any staged run live across the migrate.
+  Only `image_complete/` and `stage3_complete/` move.
+- **`deliverables/metadata.csv` is byte-exact provenance**, with no exception for
+  migrate. The canonical view is emitted *alongside* it as
+  `metadata.canonical.csv`; `metadata.original.csv` does not exist and must not
+  be created.
+- **The master is parquet-only** (D8). `master_measurements.csv` is deleted on
+  sight, not rewritten.
+- **`work_id`s are not re-minted** (D-C), so every existing one stays valid.
+  `record_rejection` (`sdk_/_image_record.py:207`) skips the `work_id`
+  comparison for `PROVENANCE_MIGRATED` records — a migrated tree's identity
+  cannot be re-derived, so it is marked unavailable rather than fabricated.
+  **Absent means `"forward"`**, so a writer that forgets the field produces a
+  fenced record rather than an accepted one, and `resolve_run_state` advises
+  when the relaxation is in effect.
+- **Not every record written during a migration carries `"migrated"`**, and the
+  difference is the code path rather than the mode: the state migrator stamps
+  it (`_cli_migrate_state.py:350`, `:1080`), while migrating the image artifact
+  itself goes through `publish_image_success` (`_cli_migrate_image.py:589`),
+  which has **no `provenance` parameter** and so takes `publish_image_record`'s
+  `PROVENANCE_FORWARD` default. **Do not use record provenance to ask whether a
+  tree was migrated** — `_output_was_migrated` keys on the migration manifest
+  for exactly this reason. Full table in
+  [`tracked_state.md`](../../../docs/source/contrib_guide/tracked_state.md)
+  under *Provenance has two writers*.
+
+### A migrated tree is not continuable, and `--restart` is the remedy
+
+User ruling (2026-09-09). Migration rebuilds the admitted image set from the tree
+rather than from the original run's record of it, so continuation compares
+against a set the inputs no longer match. **That is accepted rather than
+repaired**: such a tree *"should be considered as if not ran then, and do a full
+restart"*.
+
+The refusal names the command — keyed on `.phenotypic/migration_manifest.json`,
+which is a declared fact rather than an inference. **Told, never done**: clearing
+machine state and reprocessing every image is hours of compute and a destructive
+step, and firing it automatically from a condition the user did not ask about is
+the hidden state transition this change exists to remove.
+
+Not every migrated tree is affected — a legacy tree **with markers** carries real
+filenames in `work_ids`, so nothing is rebuilt and it continues normally.
+
+---
+
+## Known limits — read these before trusting the above
+
+A register that records only what works is the shape this change exists to
+remove.
+
+- **`work_id` does not fold in `restart_epoch`** (`_cli_failure_tracker.py:331-339`).
+  So a pre-migration run's journalled failures still key-match after a
+  `--restart`, and a later plain re-run reports *"N recorded failure(s)
+  skipped"* for images the restart just reprocessed successfully. Inherited, not
+  created by migration; `--retry-failures` is the escape.
+- **Migration pollutes `initial_images` on a pre-markers tree**, adding bare
+  stems beside the real filenames, because `_ensure_migration_processing_state`
+  falls back to the stem when `work_ids` carries no filename for it. **Tolerated,
+  not fixed**, and pinned by an `xfail(strict=True)` in
+  `tests/integration/cli/test_migrate_end_to_end.py` so a future repair is loud.
+  It is inert only because a migrated tree refuses continuation *by rule* — if
+  that refusal is ever relaxed, this becomes live again.
+- **O-3 and O-4** are recorded in
+  `docs/superpowers/plans/2026-09-03-cli-gui-state-tracking/OPEN-QUESTIONS.md`.
+
+### Process trees, and the one target kind that is not a tree
+
+**Machine-state conversion follows a shared predicate, not the dispatch.**
+`target_kind_owns_machine_state` (`_cli_migrate_provenance.py:56`) is true for
+`full_run`, `process_tree` and `pre_markers_process`, and **false for
+`direct_store`**. The older `kind != "full_run"` test asks *is this not a full
+run?* and was read as *is this per-store provenance work?* — which is false for
+two of the three provenance-only kinds.
+
+`direct_store` is excluded **by kind, not by luck**: a single store keeps its
+lifecycle state in a hashed sibling, never inside itself, so converting there
+would write `.phenotypic/` where that kind's own contract forbids it.
+
+**A pre-markers process tree used to migrate to nothing, successfully.**
+`execute_provenance_migration` iterates `target.stores`, and such a tree has
+`stores=()` by construction — its outputs are process layers, not stores — so
+the local arm did no work, reported `provenance_upgraded=0`, and **exited 0**.
+The user saw success and got none. It now converts at
+`_cli_migrate.py:1647`, after a clean store upgrade and only when there are no
+failures.
+
+**`--slurm` on a storeless provenance-only target is refused, by design.** It is
+a `click.UsageError` naming the remedy, not a missing feature: the SLURM chain
+has no vocabulary for such a tree. `seal_provenance_migration` barriers store
+statuses and the finalizer reports upgrade counts, so the tree would come back
+*"0 upgraded, succeeded"* with the only real work — the machine-state conversion
+— invisible in its own terminal report. **Run it without `--slurm`.** Two
+independent guards already refuse the shape, which is what makes it a topology
+mismatch rather than an oversight in one place: the manifest writer raises on
+zero tasks, and the worker config loader's `target_kind` cannot even parse a
+config naming this kind.
+
+---
+
+## Readers live in `sdk_`; writers stay in `_cli`
+
+`resolve_run_state` and the run-state readers are in
+`phenotypic.sdk_._run_state`. Writers — anything that publishes a proof, bumps an
+epoch or appends to a journal — stay in `phenotypic._cli`, because `sdk_` may not
+import `_cli`. `tests/unit/sdk_/test_run_state_layering.py` enforces the
+direction with an AST walk, so a violation fails there rather than at import.
+
+**There is no migration version floor.** An earlier draft named v0.17.3 and it
+was withdrawn (U-6): `state.version` is a *state-schema* version, not a package
+one — `"2.0.0"` is its value both at v0.17.3 and immediately before `"3.0.0"`
+arrived — so there is no version string to refuse on. Detection is by **shape**,
+the pre-markers signal is an absent `work_ids` key, and a pre-markers tree is
+supported however old. `ConversionVerdict` has deliberately no `BELOW_FLOOR`
+member (`sdk_/_schema_shape.py:192`).
 
 ## Environment variables (important for future work)
 
@@ -298,7 +571,7 @@ the very trees it exists to rescue — reprocessing all of them.
 ## Output layout & deliverables
 
 User-facing run outputs live under `<output>/deliverables/` (hard cutover):
-`master_measurements.{csv,parquet}`, `measurements.{csv,parquet}`,
+`master_measurements.parquet` (**parquet only** since D8), `measurements.{csv,parquet}`,
 `measurements_by_feature/<feature>.{csv,parquet}`,
 `<AnalysisClass>.{csv,parquet}`, `analysis_manifest.json`,
 `plots/<plot-id>/...`,
@@ -323,28 +596,67 @@ fallback described above. Machine state lives under
 helpers retain legacy root-level reads. The durable
 **QC + curation state** lives under `deliverables/qc/` (`qc.duckdb`,
 `review_state.json`, `curation_labels.parquet`, `custom_categories.json`) so a
-`deliverables/` bundle is self-contained and GUI-openable standalone; `resolve_qc_dir`
-/ `migrate_legacy_qc` still read/move a pre-relocation root `qc/`. `run_qc` writes the
+`deliverables/` bundle is self-contained and GUI-openable standalone;
+`BundleLayout.qc_dir` / `migrate_legacy_qc` still read/move a pre-relocation
+root `qc/`. `run_qc` writes the
 single `deliverables/qc/qc.duckdb` (one self-describing table per QC module plus a
 `qc_modules` catalog, atomic full rebuild). Resolve these paths via the
 `phenotypic.sdk_` helpers (`deliverables_dir`, `master_measurements_parquet_path`,
 `qc_dir`, `qc_duckdb_path`, …), never by hand-joining names.
 
-**Master vs. mirror.** Each embedded table is built by right-joining the stable
-metadata snapshot (metadata left, baseline measurements right), so it contains
-every measured row, excludes metadata-only rows, and records ordered join keys
-and snapshot SHA-256 in Parquet schema metadata.
-`master_measurements.{csv,parquet}` is the exact pre-post concatenation of
-marker-authorized embedded tables; it is already metadata-joined measured data.
-Finalization rejects mixed metadata digests or join keys.
+**Master vs. mirror.** *(Rewritten by P4 — spec §7.3. The paragraph this
+replaced described the pre-inversion contract in every particular, and each
+particular is now false.)*
 
-`measurements.{csv,parquet}` is the post-applied mirror the GUI reads and
-curates. Before post, finalization appends the external metadata anti-join once
-using the recorded keys. Measured rows receive `QC_MetadataOnly=false`;
-appended phantoms receive `QC_MetadataOnly=true`, keep their metadata values,
-and have null measurement/info values. Per-feature splits and named analysis
-artifacts derive from the mirror. Analysis consumers resolve tables through
-`analysis_manifest.json`, never by constructing filenames.
+Each embedded table carries **measurements alone**; the image's own rows of the
+run's metadata snapshot sit beside it at `tables/metadata/pht-metadata.parquet`,
+and the store root records which snapshot it was built against in
+`attributes.phenotypic.metadata_table.snapshot_sha256`.
+`master_measurements.parquet` is the exact pre-post concatenation of
+marker-authorized embedded tables, so it is **un-joined**: intrinsic identity
+(`Metadata_Dataset`, `Metadata_ImageName`, the `IMAGE`-owned provenance block)
+plus measurements, and no user metadata at all.
+
+**The join happens once, at finalization**, in `finalize_run`
+(`_cli_finalize_run.py`) → `finalize_post_master_outputs` →
+`join_metadata(master_df, metadata_csv, how="left")`. That one call identifies
+its own common columns, so **nothing reads the stores' recorded join keys** —
+which is why D-A is free to leave them inconsistent across snapshot
+generations. Finalization no longer rejects mixed metadata digests; divergence
+is an advisory, and an advisory is never a gate. It *does* still refuse mixed
+**authority** — a tree holding both embedded tables and legacy external
+Parquets (`refuse_mixed_measurement_authority`).
+
+`measurements.{csv,parquet}` is the post-applied, metadata-joined mirror the GUI
+reads and curates. Metadata is the **left** frame, deliberately: a metadata
+identity that matched no measured object survives as a phantom row with
+`QC_MetadataOnly=true`, its metadata values kept and its measurement/info
+columns null, while a measured object whose key appears in **no** metadata row
+is dropped — an object outside the described experiment. The master keeps that
+object; the mirror does not. That asymmetry is the master/mirror distinction the
+"feed analysis and dashboards from the mirror" rule rests on. Per-feature splits
+and named analysis artifacts derive from the mirror. Analysis consumers resolve
+tables through `analysis_manifest.json`, never by constructing filenames.
+
+**Reading a master written before the inversion.** Nothing stamps the file — a
+v1 master carries **user** metadata because the join happened per image, a v2
+carries only **intrinsic identity** metadata, and that *is* the discrimination.
+Ask `phenotypic.sdk_.master_carries_user_metadata(frame)`, which is its one home
+and carries its retirement condition; never re-derive the check at a reader.
+
+**Ownership decides, never the `Metadata_` prefix** — both shapes carry it. A v2
+master carries `Metadata_Dataset` and `Metadata_ImageName`, and `Metadata_Strain`
+is itself a schema member (`GENETIC.STRAIN`), so neither the prefix nor
+"is it in the schema" separates the two. A header is user metadata when
+`is_metadata_header` accepts it and `metadata_owner_for_header` returns neither
+`IMAGE` nor `EXPERIMENT.DATASET`. This is the general rule in root `CLAUDE.md`
+("Metadata queries use schema ownership, never string prefixes"), and the master
+is the case where getting it wrong classifies *every* v2 master as v1.
+
+The limit that leaves: column provenance is not recoverable from a column name,
+so a master carrying a non-`IMAGE` metadata column that a **custom operation**
+produced reads as v1 though no CSV was joined into it. The forward pipeline emits
+no such column, which is what keeps this a limit rather than a defect.
 
 Ordinary SLURM checkpoints read only marker-authorized embedded tables and write
 rolling cache state below `.phenotypic/progress/`. They do not recreate
@@ -369,12 +681,18 @@ no flag column to exist, and is automatically a no-op on frames that have none.
 Feed configured analysis and GUI result exploration from `measurements.parquet`, not
 `master_measurements.*`.
 
-**Finalize for FINAL master writes.** Any code path that writes
-`deliverables/master_measurements.{csv,parquet}` *as the run's final output* must
-immediately call `phenotypic._cli._cli_output_manager.finalize_post_master_outputs(
-output_dir, master_df, pipeline)` (it writes into `<output>/deliverables/` and emits the
-per-feature splits + analysis chain). The `aggregate_measurements` (forward CLI) and
-`--recompile` worker (`_run_post_master_steps`) callers already do this. Mid-run checkpoint writers (`_aggregate_chunks_locked` in
+**There is one FINAL master writer, and it is `finalize_run`.** Every mode
+reaches it: the forward CLI and `--mode measure` through `aggregate_measurements`
+(which is `finalize_run` under the publication lock), and the recompile SLURM
+finalizer through `_run_post_master_steps`, which hands its per-shard Parquets
+in as `shard_paths` rather than merging and writing a master of its own. That
+collapse is the point of §7.4 — recompile is *"call `finalize_run` again"*, not
+a second implementation to keep in sync — and it is also what keeps **one
+writer per artifact, per pass** true of `master_measurements.parquet`. A new
+code path that needs a final master calls `finalize_run`; it does not write the
+file and then call `finalize_post_master_outputs` itself.
+
+Mid-run checkpoint writers (`_aggregate_chunks_locked` in
 `_cli_chunk_writer.py`) intentionally bypass it and keep their rolling state
 under `.phenotypic/progress/`; post, per-feature splits, analysis, and
 `pipeline.json` persistence are deferred to final aggregation. Do not add

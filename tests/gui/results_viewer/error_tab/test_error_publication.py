@@ -42,7 +42,7 @@ from phenotypic.sdk_._file_locking import (
     exclusive_path_lock,
 )
 from tests._output_layout import (
-    write_complete_manifest,
+    build_complete_viewer_run,
     write_master,
     write_measurements_mirror,
 )
@@ -84,13 +84,28 @@ def publication_state(
     master = _master()
     write_master(tmp_path, master)
     write_measurements_mirror(tmp_path, master)
-    write_complete_manifest(tmp_path, total_images=1)
     from phenotypic.sdk_ import BundleLayout
 
     layout = BundleLayout.detect(tmp_path)
     labels = CurationLabels.load(layout, master)
     labels.mark_many([("img-1", label) for label in range(1, 9)], "debris")
     labels.mark_many([("img-1", label) for label in range(9, 17)], "merged")
+    # Publish AFTER curation, and without rewriting the outputs. This fixture
+    # declared completion with a `manifest.json`; §4.2 demotes it, so the tree
+    # resolved `incomplete` and every publication here was refused before it
+    # began. The aggregate proof fences the mirror by content and curation has
+    # just rewritten it, so the proof has to be minted over the curated bytes
+    # -- publishing first would fence a mirror that no longer exists.
+    build_complete_viewer_run(
+        tmp_path,
+        stems=("img-1",),
+        # `_master()` declares `plate-1`; publishing under any other name
+        # would build a run whose accepted inventory and whose master
+        # disagree about the dataset -- a tree no writer produces.
+        dataset="plate-1",
+        with_overlay=False,
+        write_outputs=False,
+    )
     root = OutputRoot.discover(
         tmp_path,
         cache_root=tmp_path.parent / ".viewer-cache",

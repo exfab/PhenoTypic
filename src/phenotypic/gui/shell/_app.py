@@ -460,11 +460,17 @@ def compose_hub(
                 "captured_at": snapshot.captured_at.isoformat(),
                 "active_run": snapshot.active_run,
             },
+            # Wire key names are unchanged so the shell binding UI keeps
+            # parsing this block; only the vocabulary moves, from
+            # {coherent, contradictory, incomplete, active} to
+            # `Completion`'s {complete, incomplete, failed, active}.
             "consistency": {
-                "state": candidate_root.consistency.state,
-                "reasons": list(candidate_root.consistency.reasons),
+                "state": candidate_root.run_completion,
+                "reasons": list(candidate_root.run_advisories),
                 "evidence_fingerprint": (
-                    candidate_root.consistency.evidence_fingerprint
+                    ""
+                    if candidate_root.run_state is None
+                    else candidate_root.run_state.identity.digest()
                 ),
             },
         }

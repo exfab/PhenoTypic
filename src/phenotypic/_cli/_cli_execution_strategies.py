@@ -112,17 +112,21 @@ def _record_local_terminal_failure(
     exception: Exception,
     traceback_text: str,
     attempt_id: str,
+    *,
+    work_identity: tuple[str, str] | None = None,
 ) -> bool:
     """Commit a caught scientific failure for an exact local computation."""
     if not isinstance(exception, PerImageScientificError):
         return False
-    try:
-        work_id, relative_path = work_id_for_image(config, dataset, image_path)
-    except OSError:
-        logger.error(
-            "Could not calculate terminal work identity", exc_info=True
-        )
-        return False
+    if work_identity is None:
+        try:
+            work_identity = work_id_for_image(config, dataset, image_path)
+        except OSError:
+            logger.error(
+                "Could not calculate terminal work identity", exc_info=True
+            )
+            return False
+    work_id, relative_path = work_identity
     try:
         lifecycle_epoch = config.processing_generation
         lifecycle_epoch = lifecycle_epoch or "local-unfenced"
@@ -150,9 +154,13 @@ def _publish_local_image_success(
     dataset: str,
     image_path: Path,
     attempt_id: str,
+    *,
+    work_identity: tuple[str, str] | None = None,
 ) -> None:
     """Write the general marker after all required local artifacts exist."""
-    work_id, relative_path = work_id_for_image(config, dataset, image_path)
+    if work_identity is None:
+        work_identity = work_id_for_image(config, dataset, image_path)
+    work_id, relative_path = work_identity
     if config.process_only_layer is not None:
         from ._cli_process_only import process_only_output_path
 
@@ -456,6 +464,8 @@ class LocalParallelStrategy(ExecutionStrategy):
         # Log "started" event
         append_event(event_log, dataset.name, image_path.name, "started")
 
+        work_identity: tuple[str, str] | None = None
+
         try:
             # Prepare read kwargs.
             read_kwargs: Dict[str, Any] = {}
@@ -465,6 +475,9 @@ class LocalParallelStrategy(ExecutionStrategy):
                 read_kwargs["detect_mode"] = self.config.detect_mode
 
             # Process
+            work_identity = work_id_for_image(
+                self.config, dataset.name, image_path
+            )
             process_single_image_core(
                 pipeline_path=self.config.pipeline_json,
                 image_path=image_path,
@@ -477,6 +490,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 drop_originals=self.config.drop_originals,
                 pipeline_identity=self.config.pipeline_identity,
                 cli_ncols=self.config.ncols,
+                work_id=work_identity[0],
             )
 
             _publish_local_image_success(
@@ -486,6 +500,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 dataset.name,
                 image_path,
                 attempt_id,
+                work_identity=work_identity,
             )
 
             # Log success
@@ -509,6 +524,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 e,
                 tb,
                 attempt_id,
+                work_identity=work_identity,
             )
 
             logger.error(
@@ -1044,9 +1060,60 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         }
         atomic_write_json(metadata_path, job_metadata)
 
+        # Fan-out begins HERE -- one writer, in the submitting process,
+        # before the array exists. Clearing at merge time instead would delete
+        # the shards the finalizer is about to merge, converting a correctness
+        # fix into data loss.
+        #
+        # K is sized from the run's PLANNED image count, which is an upper
+        # bound on what will succeed: the finalizer script has to exist before
+        # any image runs. A failure-heavy run therefore over-shards slightly
+        # and leaves some shards empty, which is harmless and handled -- an
+        # empty shard is written rather than skipped, because index K counts
+        # shard FILES against the carried K and a missing file reads there as
+        # a dead worker. At the measured K = 1 none of this is observable,
+        # which is exactly why it is written down.
+        from ._cli_finalize_fanout import (
+            SECONDS_PER_IMAGE_S2,
+            begin_aggregation_fanout,
+            finalizer_memory_advisory,
+            shard_count,
+        )
+
+        # S-3's verdict is IN-MEMORY, so the finalizer holds the whole master
+        # at once and its `--mem` has to cover that. PhenoTypic does not set
+        # it -- the finalizer inherits the user's `--slurm` profile verbatim,
+        # and rewriting an explicit flag silently is worse than an
+        # OOM-killed job that says why. So: warn, and proceed.
+        memory_advisory = finalizer_memory_advisory(
+            n_images=total_images,
+            configured_mem_gb=float(
+                self.config.slurm_args.get("mem_gb", 4.0)
+            ),
+        )
+        if memory_advisory:
+            console.print(f"[yellow]{memory_advisory}[/yellow]")
+
+        # `total_images` and `array_limit` are the values this method already
+        # computed above. Recomputing either here would give one derived value
+        # two producers, which `_cli/CLAUDE.md` names as the defect this whole
+        # change exists to remove -- and `get_slurm_array_limit()` is a
+        # subprocess call, so a second one could also disagree with the first.
+        shards = shard_count(
+            n_images=total_images,
+            seconds_per_image=SECONDS_PER_IMAGE_S2,
+            max_array_size=array_limit,
+        )
+        begin_aggregation_fanout(
+            output_dir,
+            scheduler_epoch=generation,
+            shards=shards,
+            dataset_names=[dataset.name for dataset in datasets],
+        )
         finalizer_script = generate_terminal_finalizer_script(
             self.config,
             output_dir,
+            shard_count=shards,
         )
         submission = submit_slurm_script_chain(
             flat_chunk_scripts=flat_scripts,

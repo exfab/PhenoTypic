@@ -85,9 +85,21 @@ def publish_local_gui_completion(output_dir: Path) -> bool:
     """
     generation = gui_record_generation_from_environment()
 
-    from ._cli_completion import current_run_is_complete
+    from ._cli_completion import (
+        _all_accepted_images_succeeded,
+        state_requires_success_markers,
+    )
 
-    marker_complete = current_run_is_complete(output_dir)
+    # P6 Task 0. THREE branches below read the retired tri-state: `is False`
+    # raises, and TWO `is None` arms differ from each other on `generation`.
+    # A bool replacement collapses all three into the raise, which is why the
+    # legacy arm is preserved explicitly rather than converted away.
+    legacy = not state_requires_success_markers(output_dir)
+    marker_complete = (
+        None
+        if legacy
+        else _all_accepted_images_succeeded(output_dir) is True
+    )
     if marker_complete is False:
         raise RuntimeError(
             "Cannot publish GUI local completion while current image outcomes "

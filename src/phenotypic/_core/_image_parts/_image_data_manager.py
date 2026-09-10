@@ -157,6 +157,8 @@ class ImageDataManager:
         self._data.clear()
 
         # Initialize metadata structure
+        from phenotypic._core._provenance import new_provenance_journal
+
         self._metadata = ImageMetadata(
                 private={IMAGE.UUID: uuid.uuid4()},
                 protected={
@@ -166,6 +168,7 @@ class ImageDataManager:
                 },
                 public={},
                 imported={},
+                provenance_journal=new_provenance_journal(name),
         )
         self._original: np.ndarray | None = None
 

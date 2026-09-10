@@ -169,11 +169,11 @@ def sentinel_main(
                     metadata_csv=Path(_metadata_csv_str) if _metadata_csv_str else None,
                 )
                 if master_path:
-                    logger.info("Master CSV written: %s", master_path)
+                    logger.info("Master written: %s", master_path)
                 else:
                     logger.warning("No measurements found for aggregation.")
             except Exception:
-                logger.error("Failed to aggregate master CSV", exc_info=True)
+                logger.error("Failed to aggregate master", exc_info=True)
 
             logger.info("Sentinel exiting.")
             return

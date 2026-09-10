@@ -11,12 +11,16 @@ store (no trial carries ``objectives``) returns an empty front while scalar
 ``OptunaStudyStore``).
 """
 from __future__ import annotations
+import pytest
+
 
 from phenotypic.tune._study._protocol import StudyStore as StudyStoreProtocol
 from phenotypic.tune._study_store import JournalStudyStore, Trial
 
 
-def _trial(n: int, *, objectives=None, score=None, failed=False) -> Trial:
+def _trial(
+    n: int, *, objectives=None, score=None, failed=False, pruned=False
+) -> Trial:
     """A trial whose scalar ``score`` defaults to the mean of its objectives."""
     if score is None:
         score = (
@@ -30,6 +34,7 @@ def _trial(n: int, *, objectives=None, score=None, failed=False) -> Trial:
         n_images=2,
         objectives=objectives,
         failed=failed,
+        pruned=pruned,
     )
 
 
@@ -90,6 +95,79 @@ def test_vector_missing_axis_fills_worst_cost():
     assert _vector(partial, ["seg", "qc"]) == [0.2, 1.0]
 
 
+def test_authoritative_axes_reject_partial_vectors_without_changing_legacy_inference():
+    """Required scorer axes, not observed sidecars, define publishable vectors."""
+    from phenotypic.tune._study._pareto import pareto_front_of
+
+    required_axes = ("s0", "s1")
+    partial_trials = [
+        _trial(0, objectives={"s0": 0.1}),
+        _trial(1, objectives={"s0": 0.2}),
+    ]
+
+    assert [trial.number for trial in pareto_front_of(partial_trials)] == [0]
+    assert pareto_front_of(partial_trials, objective_axes=required_axes) == []
+    assert (
+        JournalStudyStore(partial_trials).pareto_front(
+            objective_axes=required_axes
+        )
+        == []
+    )
+
+    valid_trials = [
+        *partial_trials,
+        _trial(2, objectives={"s0": 0.3, "s1": 0.4}),
+        _trial(3, objectives={"s0": 0.0, "s1": 0.0, "s2": 0.0}),
+    ]
+    assert [
+        trial.number
+        for trial in pareto_front_of(
+            valid_trials, objective_axes=required_axes
+        )
+    ] == [2]
+    assert pareto_front_of([_trial(4, score=0.1)]) == []
+
+    one_axis = _trial(5, objectives={"legacy": 0.2})
+    assert pareto_front_of([one_axis]) == [one_axis]
+
+@pytest.mark.parametrize(
+    "objective_axes, message",
+    [
+        (("s0", "s0"), "unique"),
+        (("only",), "at least two"),
+        (("s0", "../escape"), "safe filename"),
+    ],
+)
+def test_all_pareto_axis_consumers_validate_raw_authoritative_axes(
+    objective_axes, message
+):
+    """No direct Pareto helper may collapse or construct an invalid vector."""
+    from phenotypic.tune._study._pareto import (
+        _objective_keys,
+        _vector,
+        knee_point_of,
+        pareto_front_of,
+    )
+
+    trial = _trial(0, objectives={"s0": 0.1, "s1": 0.2})
+    store = JournalStudyStore([trial])
+    consumers = (
+        lambda: _objective_keys([trial], objective_axes),
+        lambda: _vector(trial, list(objective_axes)),
+        lambda: _vector(trial, list(objective_axes), require_all=True),
+        lambda: pareto_front_of([trial], objective_axes=objective_axes),
+        lambda: knee_point_of([], objective_axes=objective_axes),
+        lambda: store.pareto_front(objective_axes=objective_axes),
+        lambda: store.knee_point([], objective_axes=objective_axes),
+    )
+
+    for consume in consumers:
+        with pytest.raises(ValueError, match=message):
+            consume()
+
+
+
+
 def test_pareto_front_ignores_failed_trials():
     """A failed trial is never on the front even if its costs look strong (low)."""
     store = JournalStudyStore()
@@ -97,6 +175,21 @@ def test_pareto_front_ignores_failed_trials():
     store.append(_trial(1, objectives={"Dice": 0.5, "IoU": 0.5}))
     front = store.pareto_front()
     assert {t.number for t in front} == {1}
+
+
+def test_pareto_front_ignores_pruned_trial_that_would_dominate_complete_trial():
+    """Including PRUNED candidates would discard the comparable full-fidelity point."""
+    store = JournalStudyStore()
+    store.append(
+        _trial(
+            0,
+            objectives={"Dice": 0.01, "IoU": 0.01},
+            pruned=True,
+        )
+    )
+    store.append(_trial(1, objectives={"Dice": 0.40, "IoU": 0.40}))
+
+    assert [trial.number for trial in store.pareto_front()] == [1]
 
 
 def test_pareto_front_ignores_objectiveless_trials():

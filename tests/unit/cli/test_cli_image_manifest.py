@@ -204,12 +204,14 @@ def test_manifest_alias_refuses_two_scanned_dataset_identities(
 
 
 def test_manifest_digest_is_saved_and_resume_refuses_an_edited_manifest(
-    image_tree: Path, pipeline_stub: Path, tmp_path: Path
+    image_tree: Path, pipeline_stub: Path, tmp_path: Path, stub_run_identity
 ) -> None:
     """A reused output cannot silently exchange one approved list for another."""
     manifest = _manifest(tmp_path / "approved.images", ["plate1/img001.tiff"])
     config = _config(pipeline_stub, image_tree, tmp_path / "out", manifest)
-    state = create_initial_state(config, [], tmp_path / "out")
+    state = create_initial_state(
+        config, [], tmp_path / "out", identity=stub_run_identity
+    )
 
     assert state.config["image_manifest_digest"] == (
         f"sha256:{hashlib.sha256(manifest.read_bytes()).hexdigest()}"
@@ -221,12 +223,14 @@ def test_manifest_digest_is_saved_and_resume_refuses_an_edited_manifest(
 
 
 def test_measure_resume_ignores_manifest_drift_seam(
-    image_tree: Path, pipeline_stub: Path, tmp_path: Path
+    image_tree: Path, pipeline_stub: Path, tmp_path: Path, stub_run_identity
 ) -> None:
     """Measure mode reuses stores, rather than revalidating an input subset."""
     manifest = _manifest(tmp_path / "approved.images", ["plate1/img001.tiff"])
     saved = _config(pipeline_stub, image_tree, tmp_path / "out", manifest)
-    state = create_initial_state(saved, [], tmp_path / "out")
+    state = create_initial_state(
+        saved, [], tmp_path / "out", identity=stub_run_identity
+    )
     current = _config(pipeline_stub, tmp_path / "out", tmp_path / "out", None)
     current.measure_only = True
 
@@ -234,7 +238,7 @@ def test_measure_resume_ignores_manifest_drift_seam(
 
 
 def test_manifest_snapshot_remains_bound_after_validation_until_selection(
-    image_tree: Path, pipeline_stub: Path, tmp_path: Path
+    image_tree: Path, pipeline_stub: Path, tmp_path: Path, stub_run_identity
 ) -> None:
     """Changing the file after resume validation cannot alter selected images."""
     snapshot_loader = getattr(directory_scanner, "load_image_manifest", None)
@@ -245,7 +249,9 @@ def test_manifest_snapshot_remains_bound_after_validation_until_selection(
     saved = _config(pipeline_stub, image_tree, tmp_path / "out", manifest)
     saved_snapshot = snapshot_loader(manifest)
     saved.image_manifest_digest = saved_snapshot.digest
-    state = create_initial_state(saved, [], tmp_path / "out")
+    state = create_initial_state(
+        saved, [], tmp_path / "out", identity=stub_run_identity
+    )
     current = _config(pipeline_stub, image_tree, tmp_path / "out", manifest)
     snapshot = snapshot_loader(manifest)
     current.image_manifest_entries = snapshot.entries
@@ -491,6 +497,10 @@ def test_manifest_restart_refuses_a_root_with_prior_scientific_artifacts(
     assert restarted.exit_code != 0
     assert "fresh output directory" in restarted.output
     assert "Choose a new --output" in restarted.output
+    # The refusal names what is blocking and offers removing it, rather than
+    # asserting the directory is dirty and leaving the user to guess why.
+    assert "prior scientific artifacts: results" in restarted.output
+    assert "Remove those entries" in restarted.output
     assert payload.read_bytes() == b"scientific-A"
     assert state_path.read_bytes() == state_before
 
@@ -602,3 +612,147 @@ def test_process_manifest_restart_refuses_direct_mirrored_outputs(
     assert "fresh output directory" in restarted.output
     assert artifact.read_bytes() == b"scientific-A"
     assert state_path.read_bytes() == state_before
+
+
+def test_manifest_restart_reruns_an_unchanged_subset_over_its_own_outputs(
+    monkeypatch: pytest.MonkeyPatch,
+    image_tree: Path,
+    pipeline_stub: Path,
+    tmp_path: Path,
+) -> None:
+    """Re-running the *same* approved subset is ordinary restart usage.
+
+    The guard exists to stop a restart from exchanging the approved subset
+    while preserving an earlier subset's outputs. Keyed on the manifest being
+    present at all it also refused an identical re-run -- and because
+    ``--mode process`` mirrors its exports to the output root, that made
+    ``--restart`` permanently unusable there once the first image landed.
+    """
+    from click.testing import CliRunner
+
+    import phenotypic.phenotypicCLI as cli
+
+    class StopAfterStateSave:
+        def execute(self, datasets, output_dir):
+            raise SystemExit(0)
+
+    monkeypatch.setattr(
+        cli,
+        "create_execution_strategy",
+        lambda config, output_manager: StopAfterStateSave(),
+    )
+    manifest = _manifest(tmp_path / "approved.images", ["plate1/img001.tiff"])
+    output_dir = tmp_path / "out"
+    command = [
+        "--pipeline",
+        str(pipeline_stub),
+        "--input",
+        str(image_tree),
+        "--output",
+        str(output_dir),
+        "--image-manifest",
+        str(manifest),
+        "--skip-validation",
+    ]
+    runner = CliRunner()
+    first = runner.invoke(cli.phenotypic_cli, command)
+    assert first.exit_code == 0, first.output
+    artifact = output_dir / "results" / "plate1" / "zarr" / "a.ome.zarr"
+    artifact.mkdir(parents=True)
+    payload = artifact / "zarr.json"
+    payload.write_bytes(b"scientific-A")
+
+    restarted = runner.invoke(cli.phenotypic_cli, [*command, "--restart"])
+
+    assert restarted.exit_code == 0, restarted.output
+    assert "fresh output directory" not in restarted.output
+    # --restart clears machine-state and keeps outputs; it is not --overwrite.
+    assert payload.read_bytes() == b"scientific-A"
+
+
+def test_manifest_restart_does_not_apply_an_earlier_subsets_failures(
+    monkeypatch: pytest.MonkeyPatch,
+    image_tree: Path,
+    pipeline_stub: Path,
+    tmp_path: Path,
+) -> None:
+    """A prior subset's terminal failures cannot silently shrink a new one.
+
+    ``clear_machine_state`` preserves ``terminal_failures.jsonl`` by design and
+    ``work_id_for_image`` never hashes the manifest digest, so without the
+    guard the old run's failures match -- and drop -- images the new manifest
+    just approved.
+    """
+    from click.testing import CliRunner
+
+    import phenotypic.phenotypicCLI as cli
+    from phenotypic._cli._cli_failure_tracker import append_terminal_failure
+
+    captured: dict[str, object] = {}
+    seen: list[list[str]] = []
+
+    class RecordSelectedImages:
+        def __init__(self, config: ExecutionConfig) -> None:
+            captured["config"] = config
+
+        def execute(self, datasets, output_dir):
+            seen.append(
+                sorted(
+                    f"{dataset.name}/{image.name}"
+                    for dataset in datasets
+                    for image in dataset.images
+                )
+            )
+            raise SystemExit(0)
+
+    monkeypatch.setattr(
+        cli,
+        "create_execution_strategy",
+        lambda config, output_manager: RecordSelectedImages(config),
+    )
+    manifest = _manifest(
+        tmp_path / "approved.images",
+        ["plate1/img001.tiff", "plate2/img001.tiff"],
+    )
+    output_dir = tmp_path / "out"
+    command = [
+        "--pipeline",
+        str(pipeline_stub),
+        "--input",
+        str(image_tree),
+        "--output",
+        str(output_dir),
+        "--image-manifest",
+        str(manifest),
+        "--skip-validation",
+    ]
+    runner = CliRunner()
+    first = runner.invoke(cli.phenotypic_cli, command)
+    assert first.exit_code == 0, first.output
+    assert seen == [["plate1/img001.tiff", "plate2/img001.tiff"]]
+
+    # Journal a terminal failure for an image the NEXT manifest also approves,
+    # using the run's own config so the work_id matches exactly.
+    config = captured["config"]
+    assert isinstance(config, ExecutionConfig)
+    work_id, relative_path = work_id_for_image(
+        config, "plate1", image_tree / "plate1" / "img001.tiff"
+    )
+    assert append_terminal_failure(
+        output_dir,
+        work_id=work_id,
+        dataset="plate1",
+        relative_image_path=relative_path,
+        failed_stage="full",
+        exception=RuntimeError("terminal under the earlier subset"),
+        attempt_id="attempt-1",
+        lifecycle_epoch="epoch-1",
+    )
+
+    seen.clear()
+    _manifest(manifest, ["plate1/img001.tiff"])
+    restarted = runner.invoke(cli.phenotypic_cli, [*command, "--restart"])
+
+    assert restarted.exit_code == 0, restarted.output
+    assert "exact terminal failure" not in restarted.output
+    assert seen == [["plate1/img001.tiff"]]

@@ -144,6 +144,11 @@ def main() -> int:
     errors: list[str] = []
     in_progress: list[dict[str, str]] = []
     n_shipping = 0
+    # Counted separately because a shipping row is verified at one of three
+    # strengths and the success line used to report them as one number.
+    n_named = 0       # file exists AND the named test is defined in it
+    n_file_only = 0   # ref names a file with no ``::test`` -- existence only
+    n_manual = 0      # MANUAL_REF -- verified by nothing here
 
     for row in feature_rows:
         status = row["Status"]
@@ -159,6 +164,7 @@ def main() -> int:
         n_shipping += 1
         resolved = resolve_test_ref(ref)
         if resolved is None:
+            n_manual += 1
             continue
         path, test_name = resolved
         if not path.exists():
@@ -174,6 +180,10 @@ def main() -> int:
                     f"test '{test_name}' not found in "
                     f"{path.relative_to(REPO_ROOT)} (row: {feature})"
                 )
+            else:
+                n_named += 1
+        else:
+            n_file_only += 1
 
     if args.strict:
         for row in in_progress:
@@ -188,9 +198,19 @@ def main() -> int:
             print(f"  - {e}", file=sys.stderr)
         return 1
 
+    # Report in the vocabulary of what was verified, never of what this gate
+    # was written for. It resolves refs; it does not run them, so a green line
+    # here is compatible with a shipping row citing a FAILING test. The old
+    # wording was `OK (... N shipping ...)`, which reads as "N features work"
+    # and was taken that way. The docstring above always said this correctly;
+    # only the output line did not.
     print(
-        f"[features-check] OK ({len(feature_rows)} feature rows, "
-        f"{n_shipping} shipping, {len(in_progress)} in progress)"
+        "[features-check] refs RESOLVE (not run): "
+        f"{n_named} named-test, {n_file_only} file-only, {n_manual} manual"
+    )
+    print(
+        f"[features-check] {n_shipping} shipping of {len(feature_rows)} rows, "
+        f"{len(in_progress)} in progress"
     )
     return 0
 

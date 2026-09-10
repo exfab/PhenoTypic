@@ -21,7 +21,7 @@ between them.
 ## 1. The shared model (read this first)
 
 The frontend and backend are **not two systems** — they are two **drivers** over **one
-`TuningEngine`** and **one shared `study.db`** (master D6). The backend (CLI) drives
+`TuningEngine`** and **one configured study backend** (master D6). The backend (CLI) drives
 *headlessly*; the frontend (Dash) drives *interactively* and **delegates launching to the
 backend** while **attaching to the same study**. A future MCP server is the deferred third
 driver on the same study.
@@ -31,7 +31,7 @@ driver on the same study.
 | Artifact | What it is | Produced by | Consumed by |
 |----------|------------|-------------|-------------|
 | **`tuning_spec.json`** | the run recipe: `SearchSpace` + `Scorer` + `StrategyConfig` + `Evaluator` + `Budget` (one `TuningSpec`, engine-arch §6) | CLI `--auto-space` edit, the Dash space-edit form, or Python-first | `python -m phenotypic.tune` |
-| **`study.db`** | the live shared state (Optuna SQLite, WAL) — trials, scores, pruning, `user_attrs` | the engine's ask-and-tell loop | CLI resume · Dash monitor/curate · MCP |
+| **Study storage** | the live state: local SQLite, or a shared journal/external RDB for distributed runs — trials, costs, pruning, `user_attrs` | the engine's ask-and-tell loop | CLI resume · Dash monitor/curate · MCP |
 | **`deliverables/best_pipeline.json`** | the winning `ImagePipeline`, ready to run | the winner pick (CLI auto / human curation) | `python -m phenotypic` (production run) |
 
 ---
@@ -64,16 +64,16 @@ The headless / batch / SLURM / reproducible / agent-facing path.
 4. **What the engine does** (you mostly watch): builds a **metadata-stratified calibration
    set** (robust-eval §6); runs the ask-and-tell loop — an **unpruned explore round** →
    **fANOVA importance** → (optional) **freeze low-importance knobs** → a **focused round**
-   (ASHA-pruned) (screening §3) — distributed over joblib/SLURM against the shared
-   `study.db` (optuna §7). Bad candidates are early-stopped; the winner is validated on a
+   (ASHA-pruned) (screening §3) — distributed over joblib/Slurm against a shared
+   journal or supported external RDB (optuna §7). Bad candidates are early-stopped; the winner is validated on a
    **held-out group** (robust-eval §8).
-5. **Outputs land in `deliverables/`** (master §8): `study.db` (resumable), `trials.parquet`,
+5. **Outputs land in `deliverables/`** (master §8): the resumable study plus `trials.parquet`,
    **`best_pipeline.json`**, `pareto/` (multi-objective), `param_importance.json` ("which
    knobs matter"), `tuning_report.html` (objective curve, importance bars,
    calibration-vs-held-out, the generalization-gap flag).
 6. **Adopt the winner:** `best_pipeline.json` drops straight into
    `python -m phenotypic INPUT_DIR` for the production run.
-7. **Resume / migrate:** re-invoking continues from `study.db` (reproducible bit-for-bit
+7. **Resume / migrate:** re-invoking continues from the configured backend (reproducible bit-for-bit
    under `--deterministic`; reproducible-in-distribution when parallel — optuna §8).
    **`--strategy grid` with no budget reproduces the (now-removed) sweep's exhaustive grid
    output byte-for-byte** — validated against a frozen golden fixture (`sweep` is deleted in
@@ -91,8 +91,8 @@ python -m phenotypic ./plates --pipeline ./plates_tune/deliverables/best_pipelin
 
 User-facing artifacts (the winner `best_pipeline.json`, `tuning_report.html`,
 `param_importance.json`, the resolved `tuning_spec.json`) go in **`deliverables/`**; the
-machinery (`study.db`, `trials.parquet`, selective per-trial outputs, `splits/`,
-`screening/`, `progress/`, resume state) sits at the `OUTPUT_DIR` root. **See
+machinery (run marker, local SQLite or journal state, `trials.parquet`, selective
+per-trial outputs, `splits/`, `screening/`, `progress/`, resume state) stays under `OUTPUT_DIR`. **See
 [master §8](2026-06-01-parameter-tuning-engine-design.md) for the canonical folder tree, the
 disk-retention policy, and the resume/handoff semantics** (resolve paths via the
 `phenotypic.sdk_` helpers, never hand-joined).
@@ -112,7 +112,7 @@ The interactive / human-in-the-loop / curation path, in the GUI hub
 2. **Launch.** "Launch tuning run" **delegates to the run console's `LocalRunner`**, which
    spawns the *same* `python -m phenotypic.tune tuning_spec.json` CLI process and tails it.
    (The GUI never reimplements the optimizer — it drives the backend.)
-3. **(6a) Monitor live.** Over the shared `study.db` (WAL, polled via `dcc.Interval`): the
+3. **(6a) Monitor live.** Over the configured backend (polled via `dcc.Interval`): the
    **objective-vs-trial curve**, the **Pareto front** (knee-point highlighted), the
    **importance bars** (with the fANOVA / RF-fallback method badge), and run status —
    counts, budget progress, the **generalization-gap flag** surfaced loudly.
@@ -125,7 +125,7 @@ The interactive / human-in-the-loop / curation path, in the GUI hub
    as Optuna `user_attrs`, last-write-wins + attribution) and **pick the winner** →
    `best_pipeline.json`. Your accept/reject optionally feeds the **meta-validation gate**
    (reference-free §E).
-5. **Co-drive a shared run (D6).** Because the view *attaches* to a `study.db`, you can
+5. **Co-drive a shared run (D6).** Because the view *attaches* to the configured study, you can
    curate a run an **agent (MCP) or a SLURM job is writing right now** — an agent tunes
    overnight, you review the surfaced candidates the next morning, same study.
 
@@ -143,7 +143,7 @@ The interactive / human-in-the-loop / curation path, in the GUI hub
    builder/prefab ─► pipeline.json
                         │  infer_search_space   (CLI --auto-space  OR  Dash 6c form)
                         ▼
-                   tuning_spec.json ──► python -m phenotypic.tune ──► study.db (shared, WAL)
+                   tuning_spec.json ──► python -m phenotypic.tune ──► configured study backend
                                               ▲ delegates launch          │
                           Dash /tune/ ────────┘                           │ attaches (read + user_attrs)
                           (monitor 6a · curate 6b)  ◄──────────────────────┘
@@ -153,7 +153,7 @@ The interactive / human-in-the-loop / curation path, in the GUI hub
 ```
 
 - **Backend = drive headlessly; Frontend = drive interactively + curate** — the *same*
-  `TuningEngine`, the *same* `study.db`, the *same* `best_pipeline.json`.
+  `TuningEngine`, the *same* study backend, the *same* `best_pipeline.json`.
 - **The Dash view does not optimize** — it delegates launching to the CLI runner and
   attaches to the resulting study. There is exactly one optimizer.
 
@@ -182,7 +182,7 @@ Four places a human (CLI or Dash) makes a call; everything else is automated:
 | Run a tuning job on a cluster / overnight / in a script | **CLI** (`--slurm`) |
 | Reproduce today's exhaustive sweep | **CLI** `--strategy grid` (no budget) |
 | Visually judge candidate overlays + curate the winner | **Dash co-pilot** |
-| Review an agent's overnight run the next morning | **Dash** attaching to the shared `study.db` |
+| Review an agent's overnight run the next morning | **Dash** attaching to the shared study backend |
 | Programmatic / autonomous tuning | **MCP** (deferred — same engine + study) |
 
 The CLI and Dash are interchangeable entry points to one engine; pick by *how you want to
@@ -195,6 +195,6 @@ interact*, not by *what gets tuned*.
 Out of scope for now (per the param-sweep focus), but the architecture leaves the seam open:
 the MCP `tune_*` tools (`tune_infer_space` / `tune_suggest` / `tune_report` /
 `tune_run_trial` / `tune_best` / `tune_param_importance`, master §6) drive the *same*
-ask-and-tell engine against the *same* `study.db` — so an agent and a human co-curate one
+ask-and-tell engine against the *same* configured backend — so an agent and a human co-curate one
 run. When prioritised, it slots in behind the existing `TuningEngine` with no change to the
 CLI or Dash paths.

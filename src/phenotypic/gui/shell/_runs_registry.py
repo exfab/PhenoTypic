@@ -23,8 +23,14 @@ Boot rehydration
     :meth:`rehydrate_from_sandbox` walks the sandbox to a configurable
     depth, picks up any directory looking like a CLI output (master
     parquet + ``results/`` dir), and registers a :class:`RunRecord` for
-    each. Status is read from ``progress/manifest.json`` if present;
-    otherwise a sentinel "unknown" status is set.
+    each. Status comes from :func:`~phenotypic.sdk_.resolve_run_state`
+    (spec §4.2 demoted ``manifest.json`` from evidence); mode and the
+    scheduler-id hint come from the CLI's own ``job_metadata.json``.
+
+    ``"unknown"`` means *this directory holds no run of ours*, and nothing
+    else. A run the verdict knows is unfinished reads ``"incomplete"`` — the
+    two were one badge until O-4, which is what made a run killed by OOM
+    indistinguishable from a foreign folder.
 """
 
 from __future__ import annotations
@@ -36,7 +42,15 @@ import time
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Iterable, Iterator, Literal, Sequence, cast
+from typing import (
+    Callable,
+    Iterable,
+    Iterator,
+    Literal,
+    Mapping,
+    Sequence,
+    cast,
+)
 from uuid import UUID, uuid4
 
 from phenotypic._cli._cli_gui_lifecycle import (
@@ -44,14 +58,13 @@ from phenotypic._cli._cli_gui_lifecycle import (
 )
 from phenotypic.sdk_ import (
     BundleLayout,
-    DashboardManifestKey,
-    DashboardManifestSlurmInfoKey,
+    JobMetadataKey,
     atomic_write_json,
     gui_launch_owner_path,
+    job_metadata_path,
     manifest_json_path,
-    resolve_event_log_path,
-    resolve_manifest_json_path,
     resolve_processing_state_path,
+    resolve_run_state,
     run_completion_marker_path,
 )
 from phenotypic.sdk_._file_locking import exclusive_path_lock
@@ -73,6 +86,20 @@ __all__ = [
 # supersets (via Literal) so the records survive ``json.dumps`` for any
 # future persistence step while gaining static narrowability.
 RunMode = Literal["local", "slurm", "validate", "unknown"]
+#: ``incomplete`` is the O-4 addition, and it is deliberately the same word
+#: :data:`~phenotypic.sdk_.Completion` uses. A synonym here would be a second
+#: vocabulary for one state, and a translation layer between two vocabularies
+#: is the drift this whole change exists to remove.
+#:
+#: **It is NOT terminal**, and that is the trap. A run that did not finish can
+#: be resumed by re-running the same command, so it is not an outcome —
+#: :data:`_TERMINAL_STATUSES` below excludes it, and
+#: :func:`run_status_is_nonterminal` therefore returns ``True`` for it. Two
+#: consumers read that off a persisted owner record
+#: (``results_viewer/_output_root.py``, ``_qc_tab/review/_rebuild.py``), and
+#: :meth:`RunRegistry._release_dead_owner_locked` coerces any nonterminal
+#: verdict to ``failed`` before persisting precisely so a repaired record can
+#: never carry it.
 RunStatus = Literal[
     "queued",
     "submitting",
@@ -80,6 +107,7 @@ RunStatus = Literal[
     "reconciling",
     "cancelling",
     "complete",
+    "incomplete",
     "failed",
     "cancelled",
     "unknown",
@@ -96,6 +124,7 @@ _RUN_STATUSES: frozenset[str] = frozenset(
         "reconciling",
         "cancelling",
         "complete",
+        "incomplete",
         "failed",
         "cancelled",
         "unknown",
@@ -123,6 +152,22 @@ def _owner_record_path(output_dir: Path) -> Path:
     return gui_launch_owner_path(output_dir)
 
 
+def _system_boot_time() -> float | None:
+    """Return this host's boot time in epoch seconds, or ``None``.
+
+    ``None`` on any failure, which makes every caller fall through to the
+    pid probe rather than declaring an owner dead on missing evidence.
+    """
+    try:
+        import psutil
+    except ImportError:  # pragma: no cover - psutil is a hard dependency
+        return None
+    try:
+        return float(psutil.boot_time())
+    except (OSError, RuntimeError):  # pragma: no cover - defensive
+        return None
+
+
 def _owner_lock_path(output_dir: Path) -> Path:
     """Return the interprocess acquisition lock beside the owner record."""
     return _owner_record_path(output_dir).with_suffix(".lock")
@@ -137,6 +182,60 @@ def _is_recognized_backup_artifact_name(name: str) -> bool:
     words in the middle of an ordinary run name special.
     """
     return name.endswith(_BACKUP_NAME_SUFFIXES)
+
+
+def _output_holds_a_run(output_dir: Path) -> bool:
+    """Return whether any run has ever written durable state here.
+
+    **The one question :class:`~phenotypic.sdk_.RunState` cannot answer**, and
+    the reason both readers below need it. ``resolve_run_state`` reports
+    ``completion == "incomplete"`` for a directory holding no run *and* for a
+    run that is genuinely unfinished — the same verdict for "this is not ours"
+    and "this one died". Separating them is what lets the claim gate allow a
+    launch into a fresh directory (:meth:`RunRegistry._foreign_run_conflict`)
+    and what lets Recent Runs say *unfinished* instead of *unknown*
+    (:meth:`RunRegistry._rehydrated_status`).
+
+    **Fires** when the output carries a `processing_state.json` (in either the
+    `.phenotypic/` or the legacy root spelling — the resolver handles both) or
+    a staged controller's `staged_orchestration.json`. Both are checked
+    because a controller writes its record *before* its first stage writes any
+    processing state, so a tree in that window holds a run and has no state
+    file.
+
+    **Why not `RunState`'s own fields.** Two look like they would work and
+    neither may be used:
+
+    * ``identity.processing_generation == ""`` is the `_UNIDENTIFIED`
+      sentinel, private to ``_run_state`` — and a *real* pre-P2 tree whose
+      ``config`` block predates the field reads empty too, so this would
+      classify an actual run as "not a run", in the direction that lets a
+      second launch write over it.
+    * ``diagnostics.accepted == 0`` is forbidden outright: spec §9 says a
+      predicate reaching into ``diagnostics`` is visibly wrong in review, and
+      :class:`~phenotypic.sdk_.RunDiagnostics` says nothing branches on those
+      counts.
+
+    Args:
+        output_dir: Any directory, including one this package never wrote.
+
+    Returns:
+        Whether durable run state exists here. Never raises.
+    """
+    from phenotypic._cli._cli_staged_orchestration import (
+        orchestration_state_path,
+    )
+
+    try:
+        return bool(
+            resolve_processing_state_path(output_dir).exists()
+            or orchestration_state_path(output_dir).exists()
+        )
+    except OSError:
+        # An unreadable parent must not raise out of a boot-time scan. "No
+        # run here" is the degrade that lets discovery continue; the claim
+        # gate's own owner-record check still stands in front of it.
+        return False
 
 
 @dataclass
@@ -156,11 +255,12 @@ class RunRecord:
             ``progress/manifest.json`` lives). Stored as :class:`Path`.
         rel_path: ``output_dir.relative_to(sandbox.root)`` as a string —
             cached so the UI does not re-compute it on every render.
-        status: Current status — one of :data:`RunStatus` — ``"running"``,
-            ``"submitting"``, ``"complete"``, ``"failed"``, ``"cancelled"``,
-            or ``"unknown"``. ``"submitting"`` is the transient state for
-            SLURM runs between sbatch dispatch and the first chunk's
-            sentinel update.
+        status: Current status — one of :data:`RunStatus`. ``"submitting"``
+            is the transient state for SLURM runs between sbatch dispatch and
+            the first chunk's sentinel update; ``"incomplete"`` is a run the
+            verdict knows did not finish (O-4), and is **not** terminal —
+            see :data:`RunStatus` for why that matters; ``"unknown"`` means
+            this directory holds no run of ours.
         pid: Subprocess PID for local runs (``None`` for SLURM and
             rehydrated historical runs).
         scheduler_ids: Every known scheduler id for this launch generation.
@@ -592,9 +692,22 @@ class RunRegistry:
         record: RunRecord,
     ) -> str | None:
         """Return why a zero-exit local generation cannot publish complete."""
-        from phenotypic._cli._cli_completion import current_run_is_complete
+        from phenotypic._cli._cli_completion import (
+            _all_accepted_images_succeeded,
+        )
 
-        marker_complete = current_run_is_complete(record.output_dir)
+        # P6 Task 0: NOT `resolve_run_state(...).completion`. This site asks
+        # *"have the accepted images succeeded?"* -- its `is False` message
+        # says "marker evidence is incomplete", and its `is True` branch then
+        # reads the run proof **itself**, separately, below. `.completion`
+        # already requires that proof, which would make the branch below dead
+        # and make `is False` report the wrong cause whenever the images had
+        # succeeded but nothing had published yet.
+        #
+        # Task 4 owns this file; converted here because P6 Task 0's deletion
+        # is not local to its own task. No depth decision is owed after all:
+        # this call is not `resolve_run_state`.
+        marker_complete = _all_accepted_images_succeeded(record.output_dir)
         if marker_complete is False:
             return (
                 "local process exited successfully but current marker evidence "
@@ -745,9 +858,8 @@ class RunRegistry:
             if self.get(run_id) is not None:
                 continue
             if owner_record is None:
-                mode, status, slurm_job_id = self._read_status_from_manifest(
-                    output_dir
-                )
+                mode, slurm_job_id = self._submission_identity(output_dir)
+                status, detail = self._rehydrated_status(output_dir)
                 record = RunRecord(
                     run_id=run_id,
                     generation=None,
@@ -756,14 +868,7 @@ class RunRegistry:
                     rel_path=rel,
                     status=status,
                     slurm_job_id=slurm_job_id,
-                    status_detail=(
-                        "historical output has no GUI launch generation"
-                        if status in _TERMINAL_STATUSES
-                        else (
-                            "historical output has no observable "
-                            "nonterminal owner"
-                        )
-                    ),
+                    status_detail=detail,
                 )
             else:
                 record = owner_record
@@ -774,9 +879,28 @@ class RunRegistry:
                     record.mode in {"local", "validate"}
                     and record.status not in _TERMINAL_STATUSES
                 ):
-                    record.status = "unknown"
+                    # O-4's SECOND collapse site. This arm used to hard-code
+                    # `"unknown"`, so a GUI-launched run -- the common case on
+                    # this cluster -- lost the verdict entirely and fixing
+                    # `_rehydrated_status` alone would have left most of the
+                    # symptom standing.
+                    status, detail = self._rehydrated_status(
+                        record.output_dir
+                    )
+                    if status == "running":
+                        # The ONLY liveness authority reachable here is the
+                        # pid in the record being downgraded, so believing
+                        # this arm would be reading back our own write --
+                        # the same non-fence `RunIdentity.owner_generation`
+                        # is (gui/CLAUDE.md, "What RunState cannot answer").
+                        # Liveness is precisely what a restarted GUI cannot
+                        # vouch for; completion it can still ask about.
+                        status = "unknown"
+                        detail = "its liveness cannot be re-established"
+                    record.status = status
                     record.status_detail = (
-                        "GUI restarted before local process exit was observed"
+                        "GUI restarted before local process exit was "
+                        f"observed; {detail}"
                     )
                     record.pid = None
             self.register(record, persist=False)
@@ -899,69 +1023,162 @@ class RunRegistry:
         return layout.output_root if layout.output_root is not None else path
 
     @staticmethod
-    def _read_status_from_manifest(
-        output_dir: Path,
-    ) -> tuple[RunMode, RunStatus, str | None]:
-        """Best-effort read of mode + status + SLURM job id from manifest.
+    def _rehydrated_status(output_dir: Path) -> tuple[RunStatus, str]:
+        """Return the boot status + detail for an output with no GUI owner.
 
-        Returns ``("unknown", "unknown", None)`` on any failure.
+        Replaces the manifest-count reader retired here (spec §11, §4.2).
+        ``manifest.json`` records what a run *reported having done*; the
+        verdict records what its artifacts still prove, and only the second
+        survives a GUI restart intact.
+
+        **The ``running`` arm fires** for an output one of spec §4.1's
+        liveness authorities still claims -- an active SLURM lifecycle fence
+        at or above the run's restart epoch, or a GUI owner record naming a
+        live pid. The retired reader could not reach that arm at all: its own
+        comment said progress counts cannot support a ``running`` claim after
+        a restart, which was correct, and is why it answered ``"unknown"``
+        for every run actually in flight.
+
+        **``incomplete`` and ``unknown`` are different answers (O-4).** They
+        used to be the same one: this method collapsed the verdict onto
+        ``"unknown"`` and the row lost what ``resolve_run_state`` had just
+        established. Three states reached one badge — a directory holding no
+        run of ours, a run the system knows is unfinished, and a run killed by
+        infrastructure — and on this cluster, where ``DefMemPerCPU`` is 1 GB
+        and ``short`` caps at two hours, the middle and last ones are the
+        common case rather than the exotic one.
+
+        ``_output_holds_a_run`` is what separates the first from the other
+        two; see it for why ``RunState``'s own fields cannot.
+
+        **The infrastructure kill shares ``incomplete``, deliberately.**
+        Nothing on disk distinguishes an OOM kill from a ``kill -9`` or a
+        reboot — a dead pid and no proof, in every case — and the SLURM
+        evidence that would (``sacct``'s ``OUT_OF_MEMORY`` / ``TIMEOUT``)
+        lives in the observer, which DEFERRED D-1 keeps out of this path. A
+        fourth status nothing could ever set is worse than three that are
+        honest. What it would take to earn one: a writer that records a
+        terminal-kill fact to disk.
+
+        **Cost.** One shallow resolution per discovered output, on the boot
+        walk :meth:`_discover_output_dirs` already flags as synchronous. A
+        tree with a warm ``verification_cache.json`` re-stats rather than
+        re-hashes; a tree holding no run returns from the gate above without
+        resolving at all. The tree that pays a full pass is a current-build
+        run whose cache has not been written yet, once.
+
+        Args:
+            output_dir: A discovered CLI output root.
+
+        Returns:
+            ``(status, status_detail)`` for the rehydrated record.
         """
-        manifest_path = resolve_manifest_json_path(output_dir)
-        if not manifest_path.is_file():
-            return ("unknown", "unknown", None)
+        if not _output_holds_a_run(output_dir):
+            return (
+                "unknown",
+                "no run state under this directory, so it has no status to "
+                "report",
+            )
+        completion = resolve_run_state(output_dir, depth="shallow").completion
+        if completion == "complete":
+            return (
+                "complete",
+                "historical output has no GUI launch generation",
+            )
+        if completion == "failed":
+            return (
+                "failed",
+                "historical output has no GUI launch generation",
+            )
+        if completion == "active":
+            return (
+                "running",
+                "a liveness record claims work for this output, but no GUI "
+                "launch generation owns it",
+            )
+        return (
+            "incomplete",
+            "this run did not finish, and no liveness record claims it; "
+            "re-running the same command resumes it",
+        )
+
+    @staticmethod
+    def _submission_identity(output_dir: Path) -> tuple[RunMode, str | None]:
+        """Return the recorded execution mode and a scheduler-id hint.
+
+        Reads ``job_metadata.json`` -- the record the CLI writes at
+        submission, and the one the run console's own SLURM reader already
+        uses (``run_console/_slurm.py:306``) -- rather than ``manifest.json``,
+        which spec §4.2 demotes from evidence. Both carry these two fields;
+        only one of them is the record that owns them.
+
+        **Returns ``("unknown", None)``** for a directory with no readable
+        submission record: a tree this package never wrote, one written
+        before the record existed, a truncated write, or a JSON document that
+        is not an object. Deliberately not ``"local"`` --
+        :func:`~phenotypic.sdk_.resolve_execution_mode` coerces a missing
+        record to ``"local"``, which here would label every foreign folder in
+        the sandbox a local run of ours.
+
+        Args:
+            output_dir: A discovered CLI output root.
+
+        Returns:
+            ``(mode, primary scheduler id or None)``.
+        """
         try:
-            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            return ("unknown", "unknown", None)
-
-        execution_mode = manifest.get(
-            DashboardManifestKey.EXECUTION_MODE, "unknown"
+            payload = json.loads(
+                job_metadata_path(output_dir).read_text(encoding="utf-8")
+            )
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            return ("unknown", None)
+        if not isinstance(payload, dict):
+            return ("unknown", None)
+        recorded = payload.get(JobMetadataKey.EXECUTION_MODE)
+        mode: RunMode = (
+            "slurm"
+            if recorded == "slurm"
+            else "local"
+            if recorded == "local"
+            else "unknown"
         )
-        has_completion_flag = DashboardManifestKey.IS_COMPLETE in manifest
-        is_complete = (
-            manifest.get(DashboardManifestKey.IS_COMPLETE) is True
-        )
-        failed = int(manifest.get(DashboardManifestKey.FAILED, 0) or 0)
-        completed = int(manifest.get(DashboardManifestKey.COMPLETED, 0) or 0)
-        total = int(manifest.get(DashboardManifestKey.TOTAL_IMAGES, 0) or 0)
+        return (mode, RunRegistry._first_scheduler_id(payload))
 
-        if is_complete:
-            status: RunStatus = "complete" if failed == 0 else "failed"
-        elif (
-            not has_completion_flag
-            and total > 0
-            and (completed + failed) >= total
+    @staticmethod
+    def _first_scheduler_id(
+        job_metadata: Mapping[str, object],
+    ) -> str | None:
+        """Return one scheduler job id from a submission record, or ``None``.
+
+        A **hint**, exactly as the retired manifest reader's was: the first
+        recorded id with its array-task suffix dropped (``45678901_0`` →
+        ``45678901``). The generation-fenced enumeration lives in
+        ``run_console/_slurm.py`` and is not duplicated here.
+
+        Returns ``None`` for every shape that is not a recorded id: a local
+        run (neither map present), an id map that is absent, empty or not a
+        mapping, and a first entry that is neither a string nor a mapping
+        carrying a string ``job_id``.
+
+        Args:
+            job_metadata: A parsed ``job_metadata.json`` object.
+
+        Returns:
+            A bare job id, or ``None``.
+        """
+        for key in (
+            JobMetadataKey.CHUNK_JOB_IDS,
+            JobMetadataKey.SLURM_JOB_IDS,
         ):
-            status = "complete" if failed == 0 else "failed"
-        else:
-            # A legacy manifest records progress, not current liveness.
-            # Without a durable GUI owner, local process handle, or scheduler
-            # observation it cannot support a ``running`` claim after restart.
-            status = "unknown"
-
-        mode: RunMode
-        if execution_mode == "slurm":
-            mode = "slurm"
-        elif execution_mode == "local":
-            mode = "local"
-        else:
-            mode = "unknown"
-
-        slurm_info = manifest.get(DashboardManifestKey.SLURM_INFO) or {}
-        chunk_job_ids = (
-            slurm_info.get(DashboardManifestSlurmInfoKey.CHUNK_JOB_IDS) or {}
-        )
-        # ``chunk_job_ids`` is a dict[str, str] of chunk index -> job id.
-        # The "primary" array id is the common prefix of all values when
-        # SLURM submits as an array; we just surface the first as a hint.
-        slurm_job_id: str | None = None
-        if isinstance(chunk_job_ids, dict) and chunk_job_ids:
-            first_value = next(iter(chunk_job_ids.values()))
-            if isinstance(first_value, str):
-                # ``45678901_0`` → ``45678901`` (drop array suffix).
-                slurm_job_id = first_value.split("_")[0]
-
-        return (mode, status, slurm_job_id)
+            raw = job_metadata.get(key)
+            if not isinstance(raw, dict) or not raw:
+                continue
+            value: object = next(iter(raw.values()))
+            if isinstance(value, dict):
+                value = value.get("job_id")
+            if isinstance(value, str) and value:
+                return value.split("_")[0]
+        return None
 
     @staticmethod
     def _read_owner_record(
@@ -1070,238 +1287,196 @@ class RunRegistry:
                     f"output has an invalid generation owner: {owner_path}"
                 )
             if persisted.status not in _TERMINAL_STATUSES:
-                raise RuntimeError(
-                    "output already has a durable nonterminal launch "
-                    f"generation: {persisted.generation}"
-                )
+                dead = self._dead_owner_reason(persisted)
+                if dead is None:
+                    raise RuntimeError(
+                        "output already has a durable nonterminal launch "
+                        f"generation: {persisted.generation}"
+                    )
+                self._release_dead_owner_locked(persisted, reason=dead)
 
-        processing_conflict = self._processing_state_conflict(output_dir)
-        if processing_conflict is not None:
-            raise RuntimeError(processing_conflict)
-
-        orchestration_conflict = self._orchestration_state_conflict(output_dir)
-        if orchestration_conflict is not None:
-            raise RuntimeError(orchestration_conflict)
+        foreign_conflict = self._foreign_run_conflict(output_dir)
+        if foreign_conflict is not None:
+            raise RuntimeError(foreign_conflict)
 
     @staticmethod
-    def _processing_state_conflict(output_dir: Path) -> str | None:
-        """Return a blocker unless reconciled CLI state published successfully."""
-        path = resolve_processing_state_path(output_dir)
-        if not path.exists():
+    def _dead_owner_reason(record: RunRecord) -> str | None:
+        """Return why a nonterminal owner is provably gone, or ``None``.
+
+        DEFERRED D-2 / audit S7 **[verified against the tree]**: nothing in
+        this codebase ever deletes or repairs ``gui_launch_owner.json``.
+        :meth:`remove` and :meth:`clear` drop the in-memory record and leave
+        the file; :meth:`rehydrate_from_sandbox`'s downgrade is
+        ``persist=False``; and no ``unlink`` of that path exists anywhere in
+        ``src/``. So a SIGKILLed GUI leaves ``status: "running"`` on disk
+        permanently and :meth:`_assert_output_claimable_locked` refuses the
+        output forever, with no UI affordance to clear it.
+
+        **The liveness probe is imported, not rewritten.** Spec §4.1 makes
+        this record one of three liveness authorities, and P1 Task 5 already
+        taught the Q2 ladder to believe it only while the pid it names is
+        alive (``_run_state._process_is_alive``). A second probe here could
+        disagree with the ladder about the same pid -- two authorities for
+        one fact, which is the defect class this whole change exists to
+        remove. The import is function-local so that patching the ladder's
+        probe visibly moves this verdict too.
+
+        ``None`` -- refuse the claim -- for everything that is not *proof* of
+        death:
+
+        * a SLURM launch, whose liveness belongs to the scheduler and whose
+          ``pid`` is legitimately ``None``. These are the same modes
+          :meth:`rehydrate_from_sandbox` already excludes from its downgrade.
+        * a record carrying no ``pid`` and no pre-boot ``started_at``. A GUI
+          killed between :meth:`allocate` and :meth:`update_pid` is a real
+          state and is indistinguishable from a live owner within one boot.
+        * a live pid.
+
+        A pid recycled **within one boot** is a real but bounded risk, left
+        undefended on purpose: ``started_at`` records when the *registry
+        record* was created, which precedes the subprocess, so comparing it
+        against the process's own creation time does not discriminate a
+        recycled pid from the legitimate one. It would only look like it did.
+        """
+        from phenotypic.sdk_._run_state import _process_is_alive
+
+        if record.mode not in {"local", "validate"}:
             return None
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-            if not isinstance(payload, dict):
-                raise TypeError("processing state is not an object")
-            datasets = payload.get("datasets")
-            if not isinstance(datasets, dict):
-                raise TypeError("processing state has no dataset mapping")
-            event_log = resolve_event_log_path(output_dir)
-            event_states = (
-                RunRegistry._latest_event_states(event_log)
-                if event_log.exists()
-                else {}
-            )
-            unexpected_datasets = set(event_states) - set(datasets)
-            if unexpected_datasets:
-                raise ValueError(
-                    "event log contains datasets absent from processing "
-                    f"inventory: {sorted(unexpected_datasets)!r}"
-                )
-            inventory_total = 0
-            reconciled_completed = 0
-            for dataset_name, raw_state in datasets.items():
-                if not isinstance(raw_state, dict):
-                    raise TypeError(
-                        f"dataset {dataset_name!r} state is not an object"
-                    )
-                initial = RunRegistry._string_set(
-                    raw_state.get("initial_images")
-                )
-                inventory_total += len(initial)
-                event_state = event_states.get(str(dataset_name))
-                if event_state is None:
-                    completed = RunRegistry._string_set(
-                        raw_state.get("completed")
-                    )
-                    failed = RunRegistry._string_set(
-                        raw_state.get("failed")
-                    )
-                else:
-                    unexpected_images = set(event_state) - initial
-                    if unexpected_images:
-                        raise ValueError(
-                            f"event log dataset {dataset_name!r} contains "
-                            "images absent from processing inventory: "
-                            f"{sorted(unexpected_images)!r}"
-                        )
-                    completed = {
-                        image
-                        for image, status in event_state.items()
-                        if status == "completed"
-                    }
-                    failed = {
-                        image
-                        for image, status in event_state.items()
-                        if status == "failed"
-                    }
-                failed_images = initial & failed
-                if failed_images:
-                    return (
-                        "output has failed non-GUI processing state with "
-                        f"{len(failed_images)} failed image(s) in dataset "
-                        f"{dataset_name!r}"
-                    )
-                remaining = initial - completed - failed
-                if remaining:
-                    return (
-                        "output has incompatible non-GUI processing state "
-                        f"with {len(remaining)} unfinished image(s) in "
-                        f"dataset {dataset_name!r}"
-                    )
-                reconciled_completed += len(initial & completed)
-        except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
-            return f"output has unreadable processing state at {path}: {exc}"
-        return RunRegistry._publication_evidence_conflict(
-            output_dir,
-            expected_total=inventory_total,
-            expected_completed=reconciled_completed,
-        )
+        boot_time = _system_boot_time()
+        if boot_time is not None and record.started_at < boot_time:
+            # Nothing survives a reboot. This is the only arm that can
+            # retire a record carrying no pid at all.
+            return "it predates the current system boot"
+        pid = record.pid
+        if pid is None:
+            return None
+        if _process_is_alive(pid):
+            return None
+        return f"its owning process {pid} is no longer running"
 
-    @staticmethod
-    def _latest_event_states(
-        event_log: Path,
-    ) -> dict[str, dict[str, str]]:
-        """Replay the log so each image's last event is authoritative."""
-        from phenotypic._cli._cli_file_locking import atomic_read
-        from phenotypic._cli._cli_update_state import parse_event_line
-        from phenotypic._cli._stages import STAGED_TERMINAL_STAGE
-
-        def _replay(content: str) -> dict[str, dict[str, str]]:
-            states: dict[str, dict[str, str]] = {}
-            for line in content.splitlines():
-                if not line.strip():
-                    continue
-                try:
-                    event = parse_event_line(line)
-                except ValueError:
-                    continue
-                status = event.status
-                if (
-                    status == "completed"
-                    and event.stage is not None
-                    and event.stage != STAGED_TERMINAL_STAGE
-                ):
-                    status = "started"
-                states.setdefault(event.dataset, {})[event.image] = status
-            return states
-
-        return atomic_read(event_log, _replay, timeout=60.0)
-
-    @staticmethod
-    def _publication_evidence_conflict(
-        output_dir: Path,
+    def _release_dead_owner_locked(
+        self,
+        record: RunRecord,
         *,
-        expected_total: int,
-        expected_completed: int,
-    ) -> str | None:
-        """Require a successful atomic manifest before reclaiming CLI state."""
-        path = resolve_manifest_json_path(output_dir)
-        if not path.is_file():
-            return (
-                "output processing state has no terminal publication "
-                f"evidence at {path}"
-            )
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-            if not isinstance(payload, dict):
-                raise TypeError("manifest is not an object")
-            is_complete = payload.get(DashboardManifestKey.IS_COMPLETE)
-            failed = payload.get(DashboardManifestKey.FAILED)
-            completed = payload.get(DashboardManifestKey.COMPLETED)
-            total = payload.get(DashboardManifestKey.TOTAL_IMAGES)
-            if (
-                is_complete is not True
-                or not isinstance(failed, int)
-                or isinstance(failed, bool)
-                or not isinstance(completed, int)
-                or isinstance(completed, bool)
-                or not isinstance(total, int)
-                or isinstance(total, bool)
-            ):
-                return (
-                    "output processing state lacks successful terminal "
-                    "publication evidence"
-                )
-            if failed != 0:
-                return (
-                    "output terminal publication reports "
-                    f"{failed} failed image(s)"
-                )
-            if total != expected_total:
-                return (
-                    "output terminal publication inventory does not match "
-                    f"processing state: manifest={total}, "
-                    f"reconciled={expected_total}"
-                )
-            if completed != expected_completed:
-                return (
-                    "output terminal publication completion count does not "
-                    "match processing state: "
-                    f"manifest={completed}, "
-                    f"reconciled={expected_completed}"
-                )
-            if completed != total:
-                return (
-                    "output terminal publication inventory is incomplete: "
-                    f"{completed}/{total} completed"
-                )
-        except (OSError, json.JSONDecodeError, TypeError) as exc:
-            return f"output has unreadable publication manifest at {path}: {exc}"
-        return None
+        reason: str,
+    ) -> None:
+        """Persist a terminal downgrade for an owner whose process is gone.
 
-    @staticmethod
-    def _orchestration_state_conflict(output_dir: Path) -> str | None:
-        """Require matching successful staged completion before reclaim."""
-        from phenotypic._cli._cli_staged_orchestration import (
-            load_orchestration_state,
-            orchestration_state_path,
-            staged_completion_matches,
+        **The replacement status is read off the tree, not asserted.** A GUI
+        killed after its CLI child finished owns a run that is *complete*,
+        and writing ``failed`` over it would put a second wrong answer where
+        the first one was. :meth:`_rehydrated_status` is this file's one
+        producer of "what does this output's own evidence say", and the
+        ladder underneath it already disbelieves the dead pid in the record
+        being replaced, so asking it here is not circular.
+
+        A verdict that is still nonterminal is written as ``failed``: an
+        unfinished run nothing is working on resolves to ``"incomplete"``
+        (``"unknown"`` before O-4), and both are nonterminal by
+        :func:`run_status_is_nonterminal`. The record has to land terminal or
+        the dead end survives its own repair — which is why this coerces
+        rather than passing the verdict through.
+
+        The caller holds ``exclusive_path_lock`` on the owner record, so this
+        write cannot race another GUI's claim.
+        """
+        status, detail = self._rehydrated_status(record.output_dir)
+        if status not in _TERMINAL_STATUSES:
+            status = "failed"
+            detail = "no terminal publication evidence survives it"
+        repaired = replace(
+            record,
+            status=status,
+            pid=None,
+            terminal_at=datetime.now(timezone.utc),
+            status_detail=(
+                f"released a dead GUI launch generation ({reason}); {detail}"
+            ),
+            record_revision=record.record_revision + 1,
+        )
+        self._persist_record_locked(repaired)
+        logger.warning(
+            "Released a dead GUI launch generation for %s (%s); "
+            "its evidence reads %s.",
+            record.output_dir,
+            reason,
+            status,
         )
 
-        path = orchestration_state_path(output_dir)
-        if not path.exists():
-            return None
-        payload = load_orchestration_state(output_dir)
-        if payload is None:
-            return f"output has unreadable orchestration state at {path}"
-        phase = payload.get("phase")
-        if not isinstance(phase, str) or not phase:
-            return f"output has unreadable orchestration state at {path}"
-        if phase != "complete":
-            return (
-                "output has unsuccessful or active non-GUI staged "
-                "orchestration "
-                f"in phase {phase!r}"
-            )
-        epoch = payload.get("epoch")
-        if not isinstance(epoch, str) or not epoch:
-            return f"output has unreadable orchestration state at {path}"
-        if not staged_completion_matches(output_dir, epoch):
-            return (
-                "output staged orchestration has no matching successful "
-                f"completion evidence for epoch {epoch!r}"
-            )
-        return None
-
     @staticmethod
-    def _string_set(value: object) -> set[str]:
-        """Validate one processing-state image-name collection."""
-        if not isinstance(value, list):
-            raise TypeError("image state must be a list")
-        if not all(isinstance(item, str) for item in value):
-            raise TypeError("image state entries must be strings")
-        return set(value)
+    def _foreign_run_conflict(output_dir: Path) -> str | None:
+        """Return why a non-GUI run already here forbids claiming this output.
+
+        One :func:`~phenotypic.sdk_.resolve_run_state` call replaces the three
+        conflict predicates retired here (spec §11): the processing-state
+        walk, its manifest-count publication check, and the
+        staged-orchestration check. Their shared question -- *"did the run
+        already in this directory finish successfully?"* -- is exactly
+        ``completion``, and asking it once is what stops the GUI and the CLI
+        answering it differently.
+
+        **Fires when** the output holds a non-GUI run that has not finished:
+        one a liveness authority still claims (``active``), one with a failed
+        image (``failed``), or one whose accepted work never verified
+        (``incomplete``) -- which includes the case
+        ``_publication_evidence_conflict`` covered, where every image is done
+        but no run proof was ever published over them. Returns ``None`` for a
+        finished run, and for a directory holding no run at all.
+
+        **The existence gate is not redundant with the verdict, and has to
+        stay ahead of it.** ``resolve_run_state`` reports ``incomplete`` both
+        for an empty directory and for a tree it cannot parse, and those are
+        the two cases a launch must be *allowed* into; only the presence of
+        durable non-GUI state separates them from an unfinished run. Deriving
+        that from ``RunState.identity`` instead would fail in the dangerous
+        direction: a pre-P2 ``processing_state.json`` carries no ``config``
+        block, so it yields no identity, and the claim would then be granted
+        over a run still using the directory. The staged-orchestration record
+        is checked alongside it because a controller writes that record
+        before its first stage writes any processing state.
+
+        **Depth is ``shallow``, and that is a decision made here.** Spec §9's
+        caller table has no row for this site: it is a launch-time gate taken
+        once, not one of the two pollers. Shallow, because INV-VERDICT
+        already forbids a cache entry from yielding a positive verdict on its
+        own -- so the only tree on which shallow and deep disagree is one
+        whose content changed without its ``size`` or ``mtime_ns`` moving --
+        and because this runs with the exclusive ownership lock held and the
+        Run button blocked, which is where an O(N) re-hash is least
+        affordable.
+
+        ``diagnostics`` is read for the message only. Nothing branches on it
+        (spec §9).
+
+        Args:
+            output_dir: The output root the GUI is about to claim.
+
+        Returns:
+            A refusal message, or ``None`` when the output is claimable.
+        """
+        if not _output_holds_a_run(output_dir):
+            return None
+
+        state = resolve_run_state(output_dir, depth="shallow")
+        counts = state.diagnostics
+        if state.completion == "complete":
+            return None
+        if state.completion == "active":
+            return (
+                "output has a non-GUI run in flight; a liveness record still "
+                "claims work for this output"
+            )
+        if state.completion == "failed":
+            return (
+                "output has failed non-GUI processing state with "
+                f"{counts.failed} failed image(s) of {counts.accepted} "
+                "accepted"
+            )
+        return (
+            "output has incompatible non-GUI processing state: "
+            f"{counts.verified} of {counts.accepted} accepted image(s) "
+            "verified, and no successful run proof covers them"
+        )
 
     def _persist_record_locked(self, record: RunRecord) -> None:
         """Atomically persist one generation owner while holding the lock."""

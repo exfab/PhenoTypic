@@ -1,4 +1,4 @@
-"""Launch view layout — the live ``python -m phenotypic.tune run`` card (C1).
+"""Launch view layout — the live ``uv run phenotypic-tune run`` card (C1).
 
 The Launch view lets a user assemble the exact CLI invocation that runs (or
 resumes) the bound run's ``tuning_spec.json`` over its calibration images. It is

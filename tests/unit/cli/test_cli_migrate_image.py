@@ -55,6 +55,29 @@ _HDF_FIXTURE = (
 )
 
 
+def _record_path(task: MigrationImageTask) -> Path:
+    """Return the RECORD the migrator publishes for one task.
+
+    Every use below is about the **published** artifact -- reading its
+    contents, damaging it to force a repair, or listing it among the files a
+    publication writes. After P3's clean break that is
+    ``images/<ds>/<stem>.json``.
+
+    ``_record_path(task)`` is left alone at its one construction site: it means
+    the legacy ``image_complete/`` marker the task reads as *input*, which is
+    what a legacy tree carries and what migrate consumes.
+
+    Derived from ``store_path`` rather than taking ``output_dir``, so a caller
+    that has only the task can still reach it -- the same derivation
+    ``_image_result`` uses in ``test_cli_migrate_authority.py``.
+    """
+    from phenotypic.sdk_ import image_record_path
+
+    return image_record_path(
+        task.store_path.parents[3], task.dataset, task.stem
+    )
+
+
 def _migration_task(
     tmp_path: Path,
     *,
@@ -388,7 +411,7 @@ def test_hdf_only_zero_object_image_completes_without_inventing_a_table(
     assert result.skipped is False
     assert len(result.marker_digest) == 64
     assert not (task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH).exists()
-    marker = json.loads(task.marker_path.read_text(encoding="utf-8"))
+    marker = json.loads(_record_path(task).read_text(encoding="utf-8"))
     assert set(marker["artifacts"]) == {"overlay", "store"}
     assert valid_image_success(
         output_dir,
@@ -433,7 +456,7 @@ def test_legacy_only_marker_is_republished_with_complete_migrated_artifacts(
         dry_run=False,
     )
 
-    marker = json.loads(task.marker_path.read_text(encoding="utf-8"))
+    marker = json.loads(_record_path(task).read_text(encoding="utf-8"))
     assert result.skipped is False
     assert set(marker["artifacts"]) == {"store", "overlay", "measurements"}
     assert marker["artifacts"]["store"]["path"] == (
@@ -525,11 +548,11 @@ def test_complete_artifacts_republish_only_missing_or_invalid_marker(
     table_before = (task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH).read_bytes()
     overlay_before = task.overlay_path.read_bytes()
     if marker_state == "missing":
-        task.marker_path.unlink()
+        _record_path(task).unlink()
     else:
-        marker = json.loads(task.marker_path.read_text(encoding="utf-8"))
+        marker = json.loads(_record_path(task).read_text(encoding="utf-8"))
         marker["version"] = -1
-        task.marker_path.write_text(json.dumps(marker), encoding="utf-8")
+        _record_path(task).write_text(json.dumps(marker), encoding="utf-8")
 
     repaired = _complete_image(output_dir, task)
 
@@ -570,7 +593,7 @@ def test_retained_external_parquet_bytes_are_provenance_not_migration_targets(
     assert task.measurement_path.read_bytes() == source_before
     assert "Metadata_Strain" in embedded.columns
     assert "MetadataGenetic_Strain" not in embedded.columns
-    marker = json.loads(task.marker_path.read_text(encoding="utf-8"))
+    marker = json.loads(_record_path(task).read_text(encoding="utf-8"))
     assert marker["source_provenance"]["sha256"] == hashlib.sha256(
         source_before
     ).hexdigest()
@@ -585,7 +608,7 @@ def test_valid_marker_ignores_later_retained_parquet_scientific_drift(
     assert task.measurement_path is not None
     embedded_path = task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH
     embedded_before = embedded_path.read_bytes()
-    marker_before = task.marker_path.read_bytes()
+    marker_before = _record_path(task).read_bytes()
     changed = pd.read_parquet(task.measurement_path)
     changed["Size_Area"] = [999.0]
     changed.to_parquet(task.measurement_path, index=False)
@@ -595,7 +618,7 @@ def test_valid_marker_ignores_later_retained_parquet_scientific_drift(
     assert rerun.skipped is True
     assert rerun.marker_digest == first.marker_digest
     assert embedded_path.read_bytes() == embedded_before
-    assert task.marker_path.read_bytes() == marker_before
+    assert _record_path(task).read_bytes() == marker_before
 
 
 def test_valid_marker_rerun_never_accesses_retained_external_parquet(
@@ -643,7 +666,7 @@ def test_marker_repair_replaces_structural_but_scientifically_wrong_table(
     wrong_source["Size_Area"] = [999.0]
     wrong = prepare_embedded_measurement_table(wrong_source, None)
     replace_embedded_measurement_table(task.store_path, wrong)
-    task.marker_path.unlink()
+    _record_path(task).unlink()
 
     repaired = _complete_image(output_dir, task)
 
@@ -715,7 +738,7 @@ def test_conflicting_marker_work_id_is_repaired_with_processing_state_authority(
         dry_run=False,
     )
 
-    marker = json.loads(task.marker_path.read_text(encoding="utf-8"))
+    marker = json.loads(_record_path(task).read_text(encoding="utf-8"))
     assert result.work_id == "canonical-work-id"
     assert result.skipped is False
     assert marker["work_id"] == "canonical-work-id"
@@ -737,7 +760,7 @@ def test_complete_image_is_a_byte_preserving_no_op(tmp_path: Path) -> None:
             task.store_path / "zarr.json",
             task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH,
             task.overlay_path,
-            task.marker_path,
+            _record_path(task),
         )
     }
 
@@ -845,8 +868,8 @@ def test_revoked_generation_cannot_publish_or_report_stage_success(
         "store": task.store_path / "zarr.json",
         "table": task.store_path / MEASUREMENT_TABLE_RELATIVE_PATH,
         "overlay": task.overlay_path,
-        "marker": task.marker_path,
-        "result": task.marker_path,
+        "marker": _record_path(task),
+        "result": _record_path(task),
     }[stage]
     before = guarded_before.read_bytes() if guarded_before.is_file() else None
 
@@ -876,7 +899,7 @@ def test_guard_spans_each_final_replace_and_final_success_validation(
     guarded_destinations = {
         task.store_path,
         task.overlay_path,
-        task.marker_path,
+        _record_path(task),
     }
     observed_replaces: list[Path] = []
 
@@ -955,6 +978,65 @@ def test_reclaim_records_exact_prestate_poststate_and_deleted_paths(
     assert result.retained_paths == ()
     assert result.reason is None
     assert faithful_calls == [(task.hdf_path, task.store_path)]
+
+
+def test_reclaim_refuses_when_the_record_changed_after_publication(
+    tmp_path: Path,
+) -> None:
+    """The deletion guard, asserted on the FILE rather than on a digest.
+
+    ``reclaim_image_sources`` is the only place in this module where being
+    wrong costs data instead of raising: it unlinks the user's ``.h5``. So the
+    assertion is that the **source file still exists** -- the property whose
+    failure cannot be undone.
+
+    **The mutation is a broken CONTENT PROOF, and the first version of this
+    test got that wrong.** It changed ``attempt_id`` and claimed
+    ``_marker_still_current`` would bite because "the record must still hash
+    to what it hashed at publication". The code has never done that:
+    ``_current_marker_digest`` is computed at ``_cli_migrate_image.py:776``,
+    on entry to reclaim, so the digest pair is a TOCTOU fence for the window
+    *inside* reclaim and cannot see a change that happened before it. Nothing
+    compares ``attempt_id`` at all -- ``record_rejection`` checks version,
+    dataset, stem, work_id and non-empty artifacts, and none of those moved.
+
+    **And the deletion it permitted was safe**, which is the part worth
+    keeping: ``_conversion_is_faithful`` re-reads the ``.h5`` and the store
+    and compares metadata, per-layer digests and work id (ledger MIG-20/28).
+    A forged record cannot cost data unless the store genuinely carries what
+    the source held. The old test therefore asserted a guarantee the design
+    does not make, against a scenario in which nothing was at risk.
+
+    What a deletion guard actually rests on is that the record still certifies
+    what is on disk, so that is what this corrupts: one declared ``sha256``,
+    which makes ``fenced_artifact_path`` return ``None``
+    (``_run_state.py:495,501``) and ``valid_image_success`` false, so
+    ``marker_authoritative`` is false and no unlink is attempted.
+    """
+    from phenotypic._cli._cli_migrate_image import reclaim_image_sources
+    from phenotypic.sdk_ import image_record_path
+
+    output_dir, task = _migration_task(tmp_path)
+    _complete_image(output_dir, task)
+    assert task.hdf_path is not None and task.hdf_path.is_file()
+
+    record_path = image_record_path(output_dir, task.dataset, task.stem)
+    record = json.loads(record_path.read_text(encoding="utf-8"))
+    artifacts = record["artifacts"]
+    assert artifacts, "the fixture published no artifacts to corrupt"
+    corrupted = sorted(artifacts)[0]
+    artifacts[corrupted]["sha256"] = "sha256:" + "0" * 64
+    record_path.write_text(json.dumps(record), encoding="utf-8")
+
+    result = reclaim_image_sources(output_dir, task, metadata_csv=None)
+
+    assert task.hdf_path.is_file(), (
+        f"reclaim deleted the legacy source while the record's {corrupted!r} "
+        "descriptor no longer matched disk -- the deletion guard did not bite"
+    )
+    assert result.deleted_paths == ()
+    assert task.hdf_path in result.retained_paths
+    assert result.reason is not None
 
 
 def test_reclaim_rejects_a_generically_valid_legacy_only_marker(
@@ -1152,13 +1234,13 @@ def test_missing_marker_repairs_wrong_duplicate_fanout_before_safe_reclaim(
     )
     replace_embedded_measurement_table(task.store_path, wrong)
     assert not embedded_measurement_table_matches(task.store_path, expected)
-    task.marker_path.unlink()
+    _record_path(task).unlink()
     repaired = _complete_image(output_dir, task, metadata_csv=metadata_csv)
 
     assert repaired.table_installed is True
     assert embedded_measurement_table_matches(task.store_path, expected)
     assert task.measurement_path.read_bytes() == source_before
-    assert task.marker_path.is_file()
+    assert _record_path(task).is_file()
     assert _valid_migration_marker(
         output_dir, task, repaired.work_id, table_authoritative=True
     )

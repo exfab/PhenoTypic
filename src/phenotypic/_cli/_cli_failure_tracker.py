@@ -16,7 +16,7 @@ from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, TYPE_CHECKING
+from typing import Any, Dict, List, TYPE_CHECKING
 
 from ._cli_file_locking import atomic_append, atomic_read, FileLockTimeout
 from phenotypic.sdk_ import (
@@ -27,6 +27,7 @@ from phenotypic.sdk_ import (
     source_image_stem,
     terminal_failures_jsonl_path,
 )
+from phenotypic.sdk_._digests import canonical_digest
 from phenotypic.sdk_.typing_ import FailureSource
 
 if TYPE_CHECKING:
@@ -79,16 +80,6 @@ def is_terminal_scientific_exception(exception: Exception) -> bool:
     return not (
         isinstance(oom_type, type) and isinstance(exception, oom_type)
     )
-
-
-def _canonical_digest(payload: Mapping[str, Any]) -> str:
-    encoded = json.dumps(
-        payload,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-    ).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
 
 
 def file_sha256(path: Path) -> str:
@@ -241,7 +232,7 @@ def processing_configuration_digest_from_values(
                 "save_overlays": save_overlays,
             }
         )
-    return _canonical_digest(payload)
+    return canonical_digest(payload)
 
 
 def processing_configuration_digest(config: "ExecutionConfig") -> str:
@@ -272,7 +263,7 @@ def compute_work_id(
     mode: str,
 ) -> str:
     """Return the stable identity of one exact per-image computation."""
-    return _canonical_digest(
+    return canonical_digest(
         {
             "schema_version": WORK_ID_SCHEMA_VERSION,
             "dataset": dataset,

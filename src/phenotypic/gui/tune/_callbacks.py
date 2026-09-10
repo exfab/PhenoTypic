@@ -28,9 +28,11 @@ import importlib.util
 import hashlib
 import json
 import logging
+import threading
+from dataclasses import dataclass
 from pathlib import Path
 from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError as FutureTimeout
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from dash import ctx, no_update
 
@@ -97,20 +99,18 @@ if TYPE_CHECKING:
     from phenotypic.gui.shell._sandbox import SandboxRoot
     from phenotypic.gui.tune._study_read import _ReadableStore
     from phenotypic.gui.tune._run_root import TuneRunRoot
+    from phenotypic.tune._study_store import Trial
 
 logger = logging.getLogger(__name__)
 
 #: The default view shown when no (or an unknown) sub-tab is active.
 _DEFAULT_VIEW: ids.SubTabName = "monitor"
 
-#: Hard cap on how long a live-study open may block the 3-second poll. An
-#: unreachable Postgres would otherwise stall the constructor for ~30 s
-#: (libpq's default connect timeout), starving every other poll. The bound is
-#: enforced at TWO levels (see :func:`read_study_for_monitor` and
-#: :func:`_ensure_connect_timeout`): a libpq ``connect_timeout`` merged into the
-#: storage URL so the constructor itself returns fast, AND a non-re-blocking
-#: worker-thread wait so even a slow connect can't freeze the poll.
-_LIVE_CONNECT_TIMEOUT_S: float = 3.0
+#: Hard cap on the open and every storage read used by a Monitor poll.
+_LIVE_READ_TIMEOUT_S: float = 3.0
+
+#: Driver-level Postgres connect bound nested inside the whole-read deadline.
+_LIVE_CONNECT_TIMEOUT_S: float = 2.0
 
 #: Schemes (SQLAlchemy backend names) whose driver honors a libpq-style
 #: ``connect_timeout`` query param. SQLite is local (no network hang), so it is
@@ -121,12 +121,60 @@ _CONNECT_TIMEOUT_BACKENDS: frozenset[str] = frozenset({"postgresql"})
 #: per-call ``with`` block) so a still-connecting worker is NEVER re-joined:
 #: when :func:`read_study_for_monitor` times out it returns the parquet
 #: fallback immediately and leaves the orphaned worker to finish (and be
-#: discarded) on its own. The single worker naturally coalesces — a poll tick
-#: that arrives while a previous open is still in flight simply queues behind
-#: it and will itself time out, falling back to parquet, rather than spawning
-#: an unbounded fan of connect attempts against a dead host.
+#: discarded) on its own. :data:`_LIVE_READS` coalesces repeated polls onto the
+#: same pending future and refuses a different run until that one finishes, so
+#: no queued fan of connect attempts can accumulate against a dead host.
 _LIVE_OPEN_POOL: ThreadPoolExecutor = ThreadPoolExecutor(
     max_workers=1, thread_name_prefix=f"{THREAD_NAME_PREFIX}-tune-live-open"
+)
+
+
+class _LiveReadCoalescer:
+    """Keep at most one live-study read submitted process-wide."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._key: Optional[tuple[str, str]] = None
+        self._pending: "Optional[Future[_ReadableStore]]" = None
+
+    def acquire(
+        self,
+        key: tuple[str, str],
+        submit: "Callable[[], Future[_ReadableStore]]",
+    ) -> "Optional[Future[_ReadableStore]]":
+        """Return the matching pending read or submit one when the slot is free."""
+        with self._lock:
+            if self._pending is not None:
+                if not self._pending.done():
+                    return self._pending if self._key == key else None
+                if self._key == key:
+                    return self._pending
+                self._pending = None
+                self._key = None
+            self._key = key
+            self._pending = submit()
+            return self._pending
+
+    def consume(self, future: "Future[_ReadableStore]") -> None:
+        """Release a completed read after its result has been observed."""
+        with self._lock:
+            if self._pending is future:
+                self._pending = None
+                self._key = None
+
+    def clear(self) -> None:
+        """Forget a completed read, for deterministic test isolation."""
+        with self._lock:
+            if self._pending is None or self._pending.done():
+                self._pending = None
+                self._key = None
+
+
+_LIVE_READS: _LiveReadCoalescer = _LiveReadCoalescer()
+
+#: fANOVA is slower than the poll deadline and must never backlog storage reads.
+_LIVE_IMPORTANCE_POOL: ThreadPoolExecutor = ThreadPoolExecutor(
+    max_workers=1, thread_name_prefix=f"{THREAD_NAME_PREFIX}-tune-importances"
 )
 
 #: The degrade note shown when a live read was attempted but the storage could
@@ -876,6 +924,139 @@ def _open_live_study(root: "TuneRunRoot") -> "_ReadableStore":
     )
 
 
+@dataclass(frozen=True)
+class _StudySnapshot:
+    """Detached live-study data used by one Monitor render."""
+
+    trials: list["Trial"]
+    _best: "Optional[Trial]"
+    _pareto_front: list["Trial"]
+    _importances: Optional[dict[str, float]]
+
+    def best(self) -> "Optional[Trial]":
+        """Return the captured winning trial."""
+        return self._best
+
+    def pareto_front(self) -> list["Trial"]:
+        """Return the captured Pareto front."""
+        return list(self._pareto_front)
+
+    def param_importances(self) -> Optional[dict[str, float]]:
+        """Return the last completed fANOVA model, when available."""
+        return None if self._importances is None else dict(self._importances)
+
+
+class _ImportanceCache:
+    """Cache fANOVA by run and terminal count with one global refresh pending."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._key: Optional[tuple[str, str]] = None
+        self._value: Optional[dict[str, float]] = None
+        self._fresh_for: Optional[int] = None
+        self._pending: "Optional[Future[Optional[dict[str, float]]]]" = None
+        self._pending_key: Optional[tuple[str, str]] = None
+        self._pending_for: Optional[int] = None
+
+    def read(
+        self,
+        key: tuple[str, str],
+        n_trials: int,
+        refresh: "Callable[[], Optional[dict[str, float]]]",
+    ) -> Optional[dict[str, float]]:
+        """Return cached importances and schedule one refresh when stale."""
+        with self._lock:
+            if key != self._key:
+                self._key = key
+                self._value = None
+                self._fresh_for = None
+            pending = self._pending
+            if pending is not None and pending.done():
+                refreshed = _collect_importance_refresh(pending)
+                if self._pending_key == key:
+                    self._value = refreshed
+                    self._fresh_for = self._pending_for
+                self._pending = None
+                self._pending_key = None
+                self._pending_for = None
+            if self._pending is None and self._fresh_for != n_trials:
+                self._pending = _LIVE_IMPORTANCE_POOL.submit(refresh)
+                self._pending_key = key
+                self._pending_for = n_trials
+            return None if self._value is None else dict(self._value)
+
+    def wait_for_refresh(self, timeout: float) -> bool:
+        """Wait for a pending refresh, for deterministic tests."""
+        with self._lock:
+            pending = self._pending
+        if pending is None:
+            return False
+        try:
+            pending.result(timeout=timeout)
+        except FutureTimeout:
+            return False
+        except Exception:  # noqa: BLE001 - a failed refresh still finished
+            return True
+        return True
+
+    def clear(self) -> None:
+        """Forget cached and pending state, for test isolation."""
+        with self._lock:
+            self._key = None
+            self._value = None
+            self._fresh_for = None
+            if self._pending is None or self._pending.done():
+                self._pending = None
+                self._pending_key = None
+                self._pending_for = None
+
+
+def _collect_importance_refresh(
+    pending: "Future[Optional[dict[str, float]]]",
+) -> Optional[dict[str, float]]:
+    """Collect a completed fANOVA refresh without failing the Monitor."""
+    try:
+        return pending.result()
+    except Exception:  # noqa: BLE001 - the figure degrades; the read does not
+        logger.warning("param_importances refresh failed", exc_info=True)
+        return None
+
+
+_IMPORTANCES: _ImportanceCache = _ImportanceCache()
+
+
+def _read_importances(store: "_ReadableStore") -> Optional[dict[str, float]]:
+    """Read optional native importances without failing the Monitor."""
+    getter = getattr(store, "param_importances", None)
+    if getter is None:
+        return None
+    try:
+        return dict(getter() or {})
+    except Exception:  # noqa: BLE001 - the figure degrades; the read does not
+        logger.warning("param_importances read failed", exc_info=True)
+        return None
+
+
+def _snapshot_live_study(root: "TuneRunRoot") -> _StudySnapshot:
+    """Materialize every storage-backed field inside the poll deadline."""
+    store = _open_live_study(root)
+    trials = list(store.trials)
+    terminal_trials = getattr(store, "terminal_trials", None)
+    terminal_count = (
+        len(terminal_trials()) if callable(terminal_trials) else len(trials)
+    )
+    return _StudySnapshot(
+        trials=trials,
+        _best=store.best(),
+        _pareto_front=list(store.pareto_front()),
+        _importances=_IMPORTANCES.read(
+            (root.storage_url or "", root.study_name),
+            terminal_count,
+            lambda: _read_importances(store),
+        ),
+    )
+
+
 def read_study_for_monitor(
     root: "TuneRunRoot",
 ) -> "tuple[Optional[_ReadableStore], str]":
@@ -887,11 +1068,9 @@ def read_study_for_monitor(
        ``trials.parquet`` directly — no live attempt, no note.
     2. **Live run, ``tune`` extra missing**: skip the live read, fall back to
        the journal, and return the "install the tune extra" note.
-    3. **Live run, extra present**: open the live ``OptunaStudyStore`` on a
-       worker thread with a short connect timeout
-       (:data:`_LIVE_CONNECT_TIMEOUT_S`). On success → the live store, no note.
-       On timeout / connection error → the journal + the "couldn't reach the
-       live study" note.
+    3. **Live run, extra present**: open and snapshot the live study on a
+       worker thread inside :data:`_LIVE_READ_TIMEOUT_S`. On success → detached
+       data, no note. On timeout / read error → the journal plus a status note.
 
     The store is read-only and the poll must never raise, so every failure path
     degrades to the journal (or ``None`` when no journal exists yet).
@@ -912,30 +1091,36 @@ def read_study_for_monitor(
     if importlib.util.find_spec("optuna") is None:
         return _load_journal(root), _NOTE_MISSING_EXTRA
 
-    # 3. Live run, extra present — open with a bounded, non-re-blocking wait so
-    #    an unreachable storage can't stall the poll. The connect is bounded at
-    #    the source (``_ensure_connect_timeout`` merges a libpq
-    #    ``connect_timeout`` into the URL), and the wait here NEVER re-joins a
-    #    still-connecting worker: we submit to the shared single-worker pool and,
+    # 3. Live run, extra present — open and read with a bounded, non-re-blocking
+    #    wait so unavailable storage cannot stall the poll. The wait here NEVER
+    #    re-joins a still-working worker: we submit to the shared pool and,
     #    on timeout, return the parquet fallback immediately, leaving the
     #    orphaned future to finish (and be discarded) on its own. Using a
     #    ``with``-managed pool here would re-introduce the bug — its ``__exit__``
     #    calls ``shutdown(wait=True)``, re-joining the stuck worker and blocking
     #    the full connect duration regardless of the ``result`` timeout.
-    future: "Future[_ReadableStore]" = _LIVE_OPEN_POOL.submit(_open_live_study, root)
+    future = _LIVE_READS.acquire(
+        (root.storage_url, root.study_name),
+        lambda: _LIVE_OPEN_POOL.submit(_snapshot_live_study, root),
+    )
+    if future is None:
+        return _load_journal(root), _monitor_degrade_note(root, FutureTimeout())
     try:
-        return future.result(timeout=_LIVE_CONNECT_TIMEOUT_S), ""
+        snapshot = future.result(timeout=_LIVE_READ_TIMEOUT_S)
+        _LIVE_READS.consume(future)
+        return snapshot, ""
     except FutureTimeout as exc:
         logger.warning(
-            "Live tune study open timed out after %.1fs (url=%s); "
+            "Live tune study read timed out after %.1fs (url=%s); "
             "degrading to journal.",
-            _LIVE_CONNECT_TIMEOUT_S,
+            _LIVE_READ_TIMEOUT_S,
             root.storage_url,
         )
         return _load_journal(root), _monitor_degrade_note(root, exc)
-    except Exception as exc:  # noqa: BLE001 - any open/connect error degrades
+    except Exception as exc:  # noqa: BLE001 - any open/read error degrades
+        _LIVE_READS.consume(future)
         logger.warning(
-            "Live tune study open failed (url=%s); degrading to journal.",
+            "Live tune study read failed (url=%s); degrading to journal.",
             root.storage_url,
             exc_info=True,
         )

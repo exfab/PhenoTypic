@@ -21,6 +21,7 @@ from phenotypic.sdk_ import (
     source_image_stem,
 )
 from phenotypic._core._provenance import (
+    continuing_provenance_application,
     initialize_cli_provenance,
     set_provenance_status,
 )
@@ -268,6 +269,18 @@ def process_single_apply_only_core(
     :func:`process_single_image_core`.
     """
     image: Image | None = None
+    provenance_application_opened = False
+
+    def _mark_provenance_failed() -> None:
+        if image is None or not provenance_application_opened:
+            return
+        try:
+            set_provenance_status(image, "failed")
+        except Exception:
+            logger.exception(
+                "Failed to mark process-only provenance application failed"
+            )
+
     try:
         pipeline = ImagePipeline.from_json(pipeline_path)
         image_cls = GridImage if image_type == "GridImage" else Image
@@ -305,8 +318,16 @@ def process_single_apply_only_core(
         # filesystem layout: a process-mode store goes to a NAS and then to
         # object storage, where an absolute path would carry the username and
         # project directory names. sha256 still pins the pipeline exactly.
-        initialize_cli_provenance(image, pipeline_path, basename_only=True)
-        pipeline.apply(image, inplace=True)
+        initialize_cli_provenance(
+            image,
+            pipeline_path,
+            kind="process",
+            input_filename=image_path.name,
+            basename_only=True,
+        )
+        provenance_application_opened = True
+        with continuing_provenance_application(image):
+            pipeline.apply(image, inplace=True)
         # BEFORE the write below, or the store records the stale default.
         # `initialize_cli_provenance` opens at `"in_progress"`
         # (_provenance.py:305), and every sibling path closes it --
@@ -320,8 +341,7 @@ def process_single_apply_only_core(
     except MemoryError:
         raise
     except Exception as exc:
-        if image is not None:
-            set_provenance_status(image, "failed")
+        _mark_provenance_failed()
         raise PerImageScientificError("process", exc) from exc
 
     out_path = process_only_output_path(

@@ -25,8 +25,7 @@ from phenotypic.gui.analysis._app import create_app
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.post import AppendString
 from phenotypic.schema import IMAGE
-from phenotypic.sdk_ import resolve_manifest_json_path
-from tests._output_layout import seed_output_dir
+from tests._output_layout import build_complete_viewer_run, seed_output_dir
 
 
 def _seed_output(
@@ -50,18 +49,17 @@ def _seed_output(
         mirror=frame,
         pipeline=pipeline or ImagePipeline(name="before"),
     )
-    manifest = resolve_manifest_json_path(output)
-    manifest.parent.mkdir(parents=True, exist_ok=True)
-    manifest.write_text(
-        json.dumps(
-            {
-                "is_complete": True,
-                "completed": 1,
-                "failed": 0,
-                "total_images": 1,
-            }
-        ),
-        encoding="utf-8",
+    # Publish for real. This fixture declared completion with a
+    # `manifest.json`; §4.2 demotes it, so the tree resolved `incomplete` and
+    # every Analysis recipe write came back 423 LOCKED. `write_outputs=False`
+    # keeps `seed_output_dir`'s master and mirror exactly as written -- the
+    # aggregate proof fences them by content, so re-writing them here would
+    # invalidate the proof it is about to mint.
+    build_complete_viewer_run(
+        output,
+        stems=("plate",),
+        dataset="dataset",
+        write_outputs=False,
     )
     return OutputRoot.discover(
         output,

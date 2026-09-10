@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -60,13 +59,10 @@ from phenotypic.schema import IMAGE
 from phenotypic.sdk_._qc_recipe import QcRecipe
 from phenotypic.sdk_ import (
     gui_launch_owner_path,
-    master_measurements_parquet_path,
-    measurements_parquet_path,
-    pipeline_json_path,
-    resolve_manifest_json_path,
-    run_completion_marker_path,
-    zarr_store_path,
+    resolve_processing_state_path,
+    verification_cache_path,
 )
+from tests._output_layout import bump_scientific_config_digest
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 from phenotypic.sdk_._qc_recipe._runner import (
     QcPublicationBlocked,
@@ -77,66 +73,58 @@ from phenotypic.sdk_._qc_recipe._runner import (
 def _seed_output(
     root: Path,
     *,
-    contradictory: bool,
+    complete: bool,
     overlay_count: int = 2,
     pipeline: ImagePipeline | None = None,
 ) -> None:
-    """Write a small scientific payload with configurable completion evidence."""
+    """Write a small scientific payload whose run state is chosen by *complete*.
+
+    **The flag inverted and was renamed** (P6 Task 2). It used to be
+    ``contradictory``, and it produced its two states by writing a
+    ``manifest.json`` whose counts disagreed with the inventory, beside a
+    completion marker claiming success. Spec §4.2 demotes both out of the
+    evidence set, so that fixture now produces *one* state -- ``incomplete``
+    -- for both values, and every test built on it would have gone green
+    while asserting nothing.
+
+    The states are now built by the **real publishers**, in the publication
+    contract's own order: per-image records, then processing state, then the
+    aggregated outputs, then the aggregate proof, then the run proof. An
+    incomplete run is a complete one with the second image's record removed,
+    which is the state a run killed between promoting a store and publishing
+    its proof actually leaves.
+    """
+    from tests._output_layout import build_complete_viewer_run
+
     frame = pl.DataFrame(
         {
             "Metadata_Dataset": ["plate", "plate"],
             str(IMAGE.IMAGE_NAME): ["a", "b"],
             "Object_Label": [1, 2],
-            "Centroid": [[5.0, 5.0], [6.0, 6.0]],
+            # No nested `Centroid` column. The mirror is published as CSV as
+            # well as parquet, and CSV cannot hold nested data -- so a frame
+            # carrying one describes a tree the CLI cannot produce. It was
+            # decoration: no assertion in this file ever read it.
             "Metadata_Row": ["A", "A"],
             "Metadata_Column": [1, 2],
             "Size_Area": [10.0, 20.0],
         }
     )
-    master = master_measurements_parquet_path(root)
-    master.parent.mkdir(parents=True)
-    frame.write_parquet(master)
-    frame.write_parquet(measurements_parquet_path(root))
-    pipeline_json_path(root).write_text(
-        (
+    build_complete_viewer_run(
+        root,
+        frame=frame,
+        stems=("a", "b"),
+        pipeline=(
             pipeline
             if pipeline is not None
             else ImagePipeline(name="mutation-guard")
-        ).to_json()
-        or "{}",
-        encoding="utf-8",
+        ),
+        complete=complete,
     )
     overlays = root / "deliverables" / "overlays" / "plate"
-    overlays.mkdir(parents=True)
+    overlays.mkdir(parents=True, exist_ok=True)
     for index in range(overlay_count):
         (overlays / f"image-{index}.png").write_bytes(b"overlay")
-    store = zarr_store_path(root, "plate", "a")
-    store.mkdir(parents=True)
-    (store / "zarr.json").write_text("{}", encoding="utf-8")
-
-    manifest = resolve_manifest_json_path(root)
-    manifest.parent.mkdir(parents=True, exist_ok=True)
-    manifest.write_text(
-        json.dumps(
-            {
-                "is_complete": not contradictory,
-                "completed": 4 if contradictory else 2,
-                "failed": 1 if contradictory else 0,
-                "total_images": 2,
-            }
-        ),
-        encoding="utf-8",
-    )
-    if contradictory:
-        run_completion_marker_path(root).write_text(
-            json.dumps(
-                {
-                    "status": "complete",
-                    "finalizer_succeeded": True,
-                }
-            ),
-            encoding="utf-8",
-        )
 
 
 def _discover(root: Path) -> OutputRoot:
@@ -151,10 +139,25 @@ def _tree_snapshot(
     *,
     ignored_files: tuple[Path, ...] = (),
 ) -> tuple[tuple[str, ...], dict[str, tuple[bytes, int]]]:
-    """Capture exact file bytes and mtimes for before/after mutation diffs."""
+    """Capture exact file bytes and mtimes for before/after mutation diffs.
+
+    **The tier-2 verification cache is excluded, and only it.** Resolving a
+    run state deep-verifies, and a deep pass rewrites
+    ``.phenotypic/verification_cache.json`` -- so every guard call that
+    refuses a write still touches that one file. Excluding the whole of
+    ``.phenotypic/`` would be easier and wrong: these tests assert on
+    ``processing_state.json``, which lives there, and is exactly what the
+    publication-boundary races perturb.
+
+    `persist_states` never creates ``.phenotypic/`` and never raises, so a
+    tree this package has not written to is still left byte-for-byte alone.
+    """
     ignored_keys = {
         path.relative_to(root).as_posix() for path in ignored_files
     }
+    ignored_keys.add(
+        verification_cache_path(root).relative_to(root).as_posix()
+    )
     directories = tuple(
         sorted(
             path.relative_to(root).as_posix()
@@ -199,7 +202,7 @@ def test_coherent_guard_issues_fresh_receipt_and_rejects_stale_generation(
     tmp_path: Path,
 ) -> None:
     source = tmp_path / "coherent"
-    _seed_output(source, contradictory=False)
+    _seed_output(source, complete=True)
     output = _discover(source)
     guard = OutputMutationGuard(output, "generation-1")
 
@@ -214,21 +217,22 @@ def test_coherent_guard_issues_fresh_receipt_and_rejects_stale_generation(
             presented_generation="generation-0",
         )
 
-    assert output.consistency.state == "coherent"
+    assert output.run_completion == "complete"
     assert receipt.binding_generation == "generation-1"
     assert receipt.processing_fingerprint == output.source_fingerprint
-    assert receipt.consistency_evidence_fingerprint == (
-        output.consistency.evidence_fingerprint
+    assert output.run_state is not None
+    assert receipt.run_identity_digest == (
+        output.run_state.identity.digest()
     )
     assert _tree_snapshot(source) == before
 
 
-def test_contradictory_large_fixture_is_read_only_without_any_repair(
+def test_an_incomplete_large_fixture_is_read_only_without_any_repair(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    source = tmp_path / "contradictory-large"
-    _seed_output(source, contradictory=True, overlay_count=512)
+    source = tmp_path / "incomplete-large"
+    _seed_output(source, complete=False, overlay_count=512)
     output = _discover(source)
     before = _tree_snapshot(source)
     guard = OutputMutationGuard(output, "generation-2")
@@ -240,7 +244,7 @@ def test_contradictory_large_fixture_is_read_only_without_any_repair(
 
     with pytest.raises(
         OutputMutationBlocked,
-        match="completion evidence is contradictory",
+        match="run state is incomplete",
     ):
         guard.authorize(
             "QC rebuild",
@@ -248,8 +252,11 @@ def test_contradictory_large_fixture_is_read_only_without_any_repair(
         )
 
     assert output.master_df.height == 2
-    assert len(output.overlay_index) == 512
-    assert output.consistency.is_read_only
+    # 512 extras plus the two `_publish_one_image` writes for stems a/b:
+    # the fixture publishes real per-image artifacts now, and an overlay
+    # is one of them.
+    assert len(output.overlay_index) == 514
+    assert output.run_is_complete is False
     assert _tree_snapshot(source) == before
 
 
@@ -257,14 +264,21 @@ def test_guard_detects_processing_change_before_caller_can_write(
     tmp_path: Path,
 ) -> None:
     source = tmp_path / "changed"
-    _seed_output(source, contradictory=False)
+    _seed_output(source, complete=True)
     output = _discover(source)
     guard = OutputMutationGuard(output, "generation-3")
-    # A republish, not an in-place write: the promote rewrites the root
-    # ``zarr.json``, and that is the only signal a store change emits.
-    (zarr_store_path(source, "plate", "a") / "zarr.json").write_text(
-        '{"republished": 1}', encoding="utf-8"
-    )
+    # A file under ``results/`` that is NOT a declared artifact of any image.
+    #
+    # This used to rewrite image "a"'s store root, and that reached this
+    # branch while completion evidence was manifest-shaped. It no longer
+    # does: the store is one of that image's declared artifacts, so rewriting
+    # it fails the image's verification and the guard refuses one branch
+    # *earlier*, with "run state is incomplete". Catching the same corruption
+    # sooner is an improvement -- but it would have left THIS branch, the
+    # processing-inventory currency check, with no test at all. A stray file
+    # under ``results/`` moves the inventory while every declared artifact
+    # still verifies, which is what keeps the branch covered.
+    (source / "results" / "plate" / "stray-artifact.bin").write_bytes(b"x")
     before_attempt = _tree_snapshot(source)
 
     with pytest.raises(OutputMutationBlocked, match="artifacts changed"):
@@ -276,25 +290,22 @@ def test_guard_detects_processing_change_before_caller_can_write(
     assert _tree_snapshot(source) == before_attempt
 
 
-def test_guard_detects_completion_evidence_change_before_write(
+def test_guard_detects_a_run_state_change_before_write(
     tmp_path: Path,
 ) -> None:
+    """Formerly ``test_guard_detects_completion_evidence_change_before_write``.
+
+    It drove the guard by writing an incomplete ``manifest.json``. Spec §4.2
+    demotes the manifest out of the evidence set, so that write now moves
+    nothing and the test asserted a refusal that can no longer happen. What
+    replaces it is the run identity: rewriting ``config.pipeline_sha256``
+    re-mints it, and the published run proof no longer matches.
+    """
     source = tmp_path / "changed-evidence"
-    _seed_output(source, contradictory=False)
+    _seed_output(source, complete=True)
     output = _discover(source)
     guard = OutputMutationGuard(output, "generation-4")
-    manifest = resolve_manifest_json_path(source)
-    manifest.write_text(
-        json.dumps(
-            {
-                "is_complete": False,
-                "completed": 1,
-                "failed": 0,
-                "total_images": 2,
-            }
-        ),
-        encoding="utf-8",
-    )
+    bump_scientific_config_digest(source)
     before_attempt = _tree_snapshot(source)
 
     with pytest.raises(OutputMutationBlocked, match="is incomplete"):
@@ -325,7 +336,7 @@ def test_real_qc_writer_rechecks_after_build_and_preserves_all_artifacts(
             )
         ]
     )
-    _seed_output(source, contradictory=False, pipeline=pipeline)
+    _seed_output(source, complete=True, pipeline=pipeline)
     owner = gui_launch_owner_path(source)
     owner.parent.mkdir(parents=True, exist_ok=True)
     owner.write_text('{"status":"complete"}', encoding="utf-8")
@@ -346,7 +357,7 @@ def test_real_qc_writer_rechecks_after_build_and_preserves_all_artifacts(
         nonlocal checks
         checks += 1
         if checks == 3:
-            owner.write_text("{malformed", encoding="utf-8")
+            bump_scientific_config_digest(source)
         try:
             guard.authorize(
                 "QC recompute",
@@ -366,11 +377,14 @@ def test_real_qc_writer_rechecks_after_build_and_preserves_all_artifacts(
         )
 
     after_dirs, after_files = _tree_snapshot(source)
-    owner_key = owner.relative_to(source).as_posix()
+    perturbed = (
+        resolve_processing_state_path(source).relative_to(source).as_posix()
+    )
     assert checks == 3
     assert after_dirs == before_dirs
-    assert after_files.pop(owner_key)[0] == b"{malformed"
-    before_files.pop(owner_key)
+    # A REWRITE of one existing file: the tree gains and loses nothing, which
+    # is what the surrounding assertions are for.
+    assert after_files.pop(perturbed) != before_files.pop(perturbed)
     assert after_files == before_files
 
 
@@ -393,7 +407,7 @@ def test_real_qc_rebuild_rechecks_with_synced_temp_before_replace(
             )
         ]
     )
-    _seed_output(source, contradictory=False, pipeline=pipeline)
+    _seed_output(source, complete=True, pipeline=pipeline)
     owner = gui_launch_owner_path(source)
     owner.parent.mkdir(parents=True, exist_ok=True)
     owner.write_text('{"status":"complete"}', encoding="utf-8")
@@ -425,7 +439,7 @@ def test_real_qc_rebuild_rechecks_with_synced_temp_before_replace(
             assert len(temps) == 1
             assert temps[0].stat().st_size > 0
             mutation_saw_synced_temp = True
-            owner.write_text("{malformed", encoding="utf-8")
+            bump_scientific_config_digest(source)
         try:
             guard.authorize(
                 "QC rebuild",
@@ -446,11 +460,12 @@ def test_real_qc_rebuild_rechecks_with_synced_temp_before_replace(
         source,
         ignored_files=lock_files,
     )
-    owner_key = owner.relative_to(source).as_posix()
+    perturbed = (
+        resolve_processing_state_path(source).relative_to(source).as_posix()
+    )
     assert mutation_saw_synced_temp
     assert after_dirs == before_dirs
-    assert after_files.pop(owner_key)[0] == b"{malformed"
-    before_files.pop(owner_key)
+    assert after_files.pop(perturbed) != before_files.pop(perturbed)
     assert after_files == before_files
     assert all(path.is_file() for path in lock_files)
     assert not list(source.rglob("*.tmp"))
@@ -475,7 +490,7 @@ def test_real_qc_rebuild_rechecks_synced_receipt_before_replace(
             )
         ]
     )
-    _seed_output(source, contradictory=False, pipeline=pipeline)
+    _seed_output(source, complete=True, pipeline=pipeline)
     owner = gui_launch_owner_path(source)
     owner.parent.mkdir(parents=True, exist_ok=True)
     owner.write_text('{"status":"complete"}', encoding="utf-8")
@@ -503,7 +518,7 @@ def test_real_qc_rebuild_rechecks_synced_receipt_before_replace(
             assert len(temps) == 1
             assert temps[0].stat().st_size > 0
             mutation_saw_synced_receipt = True
-            owner.write_text("{malformed", encoding="utf-8")
+            bump_scientific_config_digest(source)
         try:
             guard.authorize(
                 "QC rebuild",
@@ -524,11 +539,12 @@ def test_real_qc_rebuild_rechecks_synced_receipt_before_replace(
         source,
         ignored_files=lock_files,
     )
-    owner_key = owner.relative_to(source).as_posix()
+    perturbed = (
+        resolve_processing_state_path(source).relative_to(source).as_posix()
+    )
     assert mutation_saw_synced_receipt
     assert after_dirs == before_dirs
-    assert after_files.pop(owner_key)[0] == b"{malformed"
-    before_files.pop(owner_key)
+    assert after_files.pop(perturbed) != before_files.pop(perturbed)
     assert after_files == before_files
     assert all(path.is_file() for path in lock_files)
     assert not list(source.rglob("*.tmp"))
@@ -538,7 +554,7 @@ def test_real_plot_writer_rechecks_after_render_and_preserves_generation(
     tmp_path: Path,
 ) -> None:
     source = tmp_path / "plot-race"
-    _seed_output(source, contradictory=False)
+    _seed_output(source, complete=True)
     owner = gui_launch_owner_path(source)
     owner.parent.mkdir(parents=True, exist_ok=True)
     owner.write_text('{"status":"complete"}', encoding="utf-8")
@@ -558,7 +574,7 @@ def test_real_plot_writer_rechecks_after_render_and_preserves_generation(
         nonlocal checks
         checks += 1
         if checks == 3:
-            owner.write_text('{"status":"future-state"}', encoding="utf-8")
+            bump_scientific_config_digest(source)
         try:
             guard.authorize(
                 "Measurement plot refresh",
@@ -577,11 +593,12 @@ def test_real_plot_writer_rechecks_after_render_and_preserves_generation(
         )
 
     after_dirs, after_files = _tree_snapshot(source)
-    owner_key = owner.relative_to(source).as_posix()
+    perturbed = (
+        resolve_processing_state_path(source).relative_to(source).as_posix()
+    )
     assert checks == 3
     assert after_dirs == before_dirs
-    assert after_files.pop(owner_key)[0] == b'{"status":"future-state"}'
-    before_files.pop(owner_key)
+    assert after_files.pop(perturbed) != before_files.pop(perturbed)
     assert after_files == before_files
 
 
@@ -589,7 +606,7 @@ def test_inconsistent_results_layout_keeps_views_and_disables_mutations(
     tmp_path: Path,
 ) -> None:
     source = tmp_path / "layout"
-    _seed_output(source, contradictory=True)
+    _seed_output(source, complete=False)
     output = _discover(source)
     curation = CurationLabels.load(output.layout, output.master_df)
     page = build_results_layout(output, curation)
@@ -669,7 +686,7 @@ def test_inconsistent_results_app_keeps_read_only_browse_callback_available(
     tmp_path: Path,
 ) -> None:
     source = tmp_path / "browse"
-    _seed_output(source, contradictory=True)
+    _seed_output(source, complete=False)
     output = _discover(source)
     before = _tree_snapshot(source)
     app = create_results_app(
@@ -722,7 +739,7 @@ def test_inconsistent_analysis_layout_preserves_preview_chrome_read_only(
     tmp_path: Path,
 ) -> None:
     source = tmp_path / "analysis"
-    _seed_output(source, contradictory=True)
+    _seed_output(source, complete=False)
     output = _discover(source)
     recipe = RecipeState.from_layout(output.layout)
     page = build_analysis_layout(output, recipe)

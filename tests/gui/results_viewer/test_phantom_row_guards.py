@@ -77,7 +77,7 @@ def test_removed_count_in_ignores_phantom_rows(tmp_path: Path) -> None:
     A null ``Object_Label`` used to reach ``int(None)`` inside ``_keys_of``.
     """
     master = _master()
-    write_master(tmp_path, master, csv=False)
+    write_master(tmp_path, master)
     store = CurationLabels.load(_layout(tmp_path), master)
     store.remove("plateA", 1)
 
@@ -116,7 +116,7 @@ def test_filtered_measurements_removed_count_in_ignores_phantom_rows(
 ) -> None:
     """``FilteredMeasurements.removed_count_in`` counts real rows past a phantom."""
     master = _master()
-    write_master(tmp_path, master, csv=False)
+    write_master(tmp_path, master)
     state = FilteredMeasurements.load(tmp_path, master)
     state.remove("plateA", 1)
 

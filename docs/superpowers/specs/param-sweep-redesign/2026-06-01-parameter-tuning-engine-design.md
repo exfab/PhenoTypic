@@ -109,7 +109,7 @@ Full references in §13.
 | D1 | Objective function | **Pluggable** — supervised / reference-free / domain-QC / human-surfacing are interchangeable `Scorer` implementations; the optimizer never cares how a score was produced. **`QCScorer` (domain consistency) is the primary default** for colony arrays; **`ReferenceFreeScorer` is gated behind meta-validation** against a small ground-truth set (§4), since no-reference proxies can mislead. |
 | D2 | Scope | **One shared tuning engine.** Grid search is demoted to one `SearchStrategy`. CLI and MCP both wrap the same ask-and-tell core. Reuse the existing manifest / joblib / SLURM execution. |
 | D3 | Optimizer backend | **Optuna** is the default behind a thin `SearchStrategy` Protocol. We own random-search and a zero-dependency importance fallback directly (no lock-in). The seam stays open for an `AxStrategy` later. |
-| D4 | Robust evaluation | **Calibration set + direction-normalized aggregate + stability penalty + held-out validation.** Each trial scores over a representative, **metadata-stratified** calibration subset; for small image counts use **k-fold / leave-one-plate-out** CV. The aggregate applies `level − λ·dispersion` **per per-image term** on a normalized higher-is-better scale (so flat optima beat sharp ones; batch-only objectives carry their own reducer); the winner is validated on held-out images. |
+| D4 | Robust evaluation | **Calibration set + cost-normalized aggregate + stability penalty + held-out validation.** Each trial scores over a representative, **metadata-stratified** calibration subset; for small image counts use **k-fold / leave-one-plate-out** CV. The aggregate applies `level + λ·dispersion` **per per-image cost term** on a normalized lower-is-better scale (so flat optima beat sharp ones; batch-only objectives carry their own reducer); the winner is validated on held-out images. |
 | D5 | Co-pilot UI | **Dash only** (a new GUI-hub mount), not napari. |
 | D6 | Drivers | The engine is usable interchangeably by **a human (CLI + Dash) and an agent (MCP)**, collaborating on **one shared study**. |
 | D7 | Search space | An **automated `infer_search_space`** derives tunable domains from the pydantic operation fields; humans/agents review and edit before tuning. |
@@ -148,12 +148,12 @@ product, so **today's behaviour is a preserved special case**, not discarded.
 2. **`SearchStrategy` (Protocol)** — `suggest()`, `register_result(params, score)`,
    `is_exhausted()`. Implementations: `GridStrategy` + `RandomStrategy`
    (homegrown, zero deps, exact migration path), `OptunaStrategy`
-   (TPE / CMA-ES / GP / NSGA-II + pruning + SQLite persistence), future `AxStrategy`.
+   (TPE / CMA-ES / GP / NSGA-II + pruning + pluggable persistence), future `AxStrategy`.
 
-3. **`Scorer` (Protocol)** — `score(image, result) -> float | dict[str, float]`,
-   plus a declared **optimization direction** (`higher_is_better: bool`) and a
-   **value range / normalizer** per metric, so heterogeneous metrics can be
-   combined and a stability term applied on a common higher-is-better scale.
+3. **`Scorer` (Protocol)** — `score(image, result) -> float | dict[str, float]`.
+   Each scorer declares the sense and normalizer of its natural metrics; the
+   shared boundary converts them to bounded costs so every optimizer-facing
+   term and objective is lower-is-better and minimized.
    Implementations:
    - `SupervisedScorer` — ground truth → count error / IoU / Dice / F1 / adjusted
      Rand. (Metric choice matters: F-measure / QR / SEI track the visual optimum
@@ -168,15 +168,16 @@ product, so **today's behaviour is a preserved special case**, not discarded.
    - `QCScorer` — reuse the existing `analysis/` QC checks: expected-vs-detected
      grid count, ICC replicate reliability, MAD/Tukey outlier rates, edge effects.
      The most trustworthy objective for colony arrays and the **Phase-1 default**.
-   - `CompositeScorer` — weighted scalarization (one number) *or* return a dict
-     (true multi-objective Pareto).
+   - `CompositeScorer` — augmented-Tchebycheff scalarization by default, with an
+     optional weighted-mean blend (one number), *or* return a dict (true
+     multi-objective Pareto).
 
 4. **`Evaluator`** — the robustness layer (D4). Builds the pipeline from params,
    runs it across the **metadata-stratified calibration subset** via the existing
    joblib/SLURM machinery, applies the `Scorer` per image (the **`Scorer` owns
-   normalization** — it emits terms on a common higher-is-better scale; the Evaluator
-   validates the declared range), then aggregates `score = level − λ·dispersion`
-   **per per-image term** (default `level` = median, `dispersion` = IQR; batch-only
+   normalization and cost orientation** — it emits bounded lower-is-better costs;
+   the Evaluator validates the range), then aggregates `cost = level + λ·dispersion`
+   **per per-image cost term** (default `level` = median, `dispersion` = IQR; batch-only
    Scorer terms carry their own robust reducer — see robust-evaluation.md §4, §9). For small image counts it runs **k-fold /
    leave-one-plate-out** CV instead of a single split. With pruning enabled it
    evaluates calibration images **progressively** and reports intermediate scores
@@ -207,7 +208,7 @@ matter for your plates"* answer.
 SearchSpace → TuningEngine → [Screening: rank + freeze non-influential] → ask/tell loop:
      Strategy.suggest() → params → Evaluator(calibration imgs, joblib/SLURM)
          → ImagePipeline.measure() per image → Scorer per image → aggregate + stability
-         → Strategy.register_result() ──► study (SQLite, resumable)
+         → Strategy.register_result() ──► study (configured backend, resumable)
    → best params / Pareto front → validate on held-out → report + ready-to-run pipeline.json
 ```
 
@@ -343,7 +344,7 @@ base is what it applies against.
 
 ## 6. Surfaces — one engine, three drivers, one shared study
 
-The shared `TuningEngine` + persistent SQLite study means **agent and human drive
+The shared `TuningEngine` + persistent study backend means **agent and human drive
 the same ask-and-tell loop against the same study** — they collaborate rather than
 fork. An agent can run autonomous trials overnight while a human reviews and
 curates the surfaced candidates the next morning, in the same session.
@@ -365,9 +366,9 @@ runner/dashboard are deleted, §9).
 - **`-i`, `--input INPUT_DIR`** — the image directory (the plates to tune on); the
   metadata-stratified calibration/held-out split is drawn from here (robust-eval §6).
   Accepts a directory or a glob. Back-compatible with a bare positional `INPUT_DIR`.
-- **`-o`, `--output OUTPUT_DIR`** — where the run writes (`study.db`, `deliverables/`, …;
+- **`-o`, `--output OUTPUT_DIR`** — where the run writes its machine state and `deliverables/`;
   see §8). Defaults to `./<input-name>_tune/`. **Pointing `-o` at an existing run's
-  `OUTPUT_DIR` resumes it** (the persisted `study.db` + the recorded calibration split are
+  `OUTPUT_DIR` resumes it** (the persisted configured backend + recorded calibration split are
   reused — robust-eval §11, optuna §8).
 
 **Run options:** `--strategy {grid,random,tpe,cmaes}` · `--n-trials N` ·
@@ -408,10 +409,11 @@ trips the `FEATURES.md` / `WORKFLOWS.md` CI gates + tutorial-screenshot round-tr
 
 ### Concurrency note
 
-A shared SQLite study with concurrent agent + human writers needs WAL mode (fine
-at this scale). Heavy parallel SLURM trials *plus* live human writes is the point
-to graduate to a proper RDB backend — the Protocol seam makes that a config
-change, not a rewrite.
+Local single-node runs may use SQLite/WAL. Shared distributed runs use the
+journal backend by default or an explicitly configured external RDB such as
+PostgreSQL; distributed SQLite is rejected. Choosing the external RDB for heavy
+parallel Slurm trials plus live human writes is a configuration change, not a
+rewrite.
 
 ---
 
@@ -419,9 +421,9 @@ change, not a rewrite.
 
 Two paths from the same `Scorer`:
 
-- **Scalarized (default)** — `CompositeScorer` returns one weighted number
-  (a-priori weights; Taveira 2018). Natural colony conflicts: *count accuracy vs.
-  shape fidelity*, or *quality vs. runtime*.
+- **Scalarized (default)** — `CompositeScorer` returns one augmented-Tchebycheff
+  cost; a compensatory weighted mean is an explicit option. Natural colony
+  conflicts: *count accuracy vs. shape fidelity*, or *quality vs. runtime*.
 - **True Pareto (`--multi-objective`)** — `Scorer` returns a dict; `OptunaStrategy`
   runs NSGA-II / multi-objective TPE → a Pareto front; the report draws the
   trade-off curve and the user/agent picks a knee point.
@@ -455,7 +457,7 @@ OUTPUT_DIR/
 │       ├── best_pipeline_00.json #     one per knee-point / front member
 │       ├── …
 │       └── pareto.parquet        #     the front: params + objectives per member
-├── study.db                      # Optuna SQLite — resumable, WAL (the shared study, D6)
+├── .pht-tune-cache/              # local study.db or shared journal.log; external RDB has no DB file here
 ├── trials.parquet                # every trial: params + scores + per-image breakdown + curation user_attrs
 ├── trials/                       # full per-image outputs — kept ONLY for best+Pareto+flagged (disk policy)
 │   └── <trial_id>/
@@ -480,7 +482,7 @@ would blow up disk worse than today's grid.
 
 **Handoff & resume.** `deliverables/best_pipeline.json` is the product — run it on the
 *full* image set via `python -m phenotypic` (calibration tuned on a subset). Re-invoking with
-the same `-o OUTPUT_DIR` **resumes**: `study.db` continues from the last trial and
+the same `-o OUTPUT_DIR` **resumes**: the configured backend continues from the last trial and
 `splits/calibration.json` is reused so the calibration/held-out partition is identical.
 
 ---
@@ -518,7 +520,7 @@ makes a clean deletion possible.
 
 ## 10. Dependency policy
 
-`optuna` goes in an **optional extra** (`uv sync --extras tune`), not core,
+`optuna` goes in an **optional extra** (`uv sync --extra tune`), not core,
 matching the existing `gui` / `docs` extras and the project's care with heavy/
 platform-specific deps. Grid + random + screening + robust evaluation are
 **fully dependency-free** (homegrown), so Phase 1 ships with zero new deps.
@@ -543,7 +545,7 @@ src/phenotypic/tune/
   _evaluator.py            # calibration set, aggregate + stability, held-out validation
   _screening.py            # fANOVA importance (Optuna) + zero-dep correlation fallback; optional 1-at-a-time pre-screen
   _engine.py               # TuningEngine: ask/tell loop, budget, convergence, reporting
-  _study_store.py          # persistence (Optuna SQLite | homegrown journal fallback)
+  _study_store.py          # persistence (local SQLite | Optuna Journal | external RDB)
   _report.py               # tuning_report.html (standalone; sweep dashboard is deleted)
   _tune_cli/               # mirrors _sweep_cli/, imports the shared _execution module
   __main__.py
@@ -573,7 +575,7 @@ rather than duplicating it.
   never allowed to poison the surrogate model.
 - **Stop conditions**: n-trials / wall-clock / early-stop (no improvement in K
   trials); always emit best-so-far.
-- **Resume**: SQLite study + the existing event-log / drip-feed SLURM machinery →
+- **Resume**: configured study backend + the existing event-log / drip-feed Slurm machinery →
   re-invoking continues from the last trial; resume reproduces an identical study
   under a fixed seed.
 - **Overfitting guard**: if held-out validation ≪ calibration score, the report
@@ -584,7 +586,7 @@ rather than duplicating it.
 
 - **Unit**: domain sampling (incl. conditional/`Presence` nesting);
   `infer_search_space` on synthetic pydantic ops; each `Scorer` on
-  `load_synth_yeast_plate()` incl. the `higher_is_better` direction contract;
+  `load_synth_yeast_plate()` including natural-term sense → minimized-cost orientation;
   `ReferenceFreeScorer` **meta-validation correlation** against a GT fixture;
   Evaluator aggregate + stability + k-fold math with metric normalization;
   **`GridStrategy` enumeration over a conditional space == current
@@ -606,8 +608,8 @@ Each phase lands behind the review → simplifier → regression cadence.
    (direction-normalized robust eval + k-fold), `TuningEngine`, **`QCScorer`
    (primary)** + a zero-dep importance fallback, CLI. *Already beats grid*
    (random + importance + robust aggregation). Shippable alone.
-2. **Optuna backend (extra)** — `OptunaStrategy` (TPE/CMA-ES), SQLite
-   persistence/resume, **fANOVA importance**, ASHA pruning (fidelity =
+2. **Optuna backend (extra)** — `OptunaStrategy` (TPE/CMA-ES), local SQLite plus
+   Journal/external-RDB persistence and resume, **fANOVA importance**, ASHA pruning (fidelity =
    calibration images, opt-in).
 3. **Auto-space + `ReferenceFreeScorer`** — `infer_search_space`, `TuneSpec`, and
    the reference-free objective **with its mandatory meta-validation gate**.
@@ -670,8 +672,8 @@ Each phase lands behind the review → simplifier → regression cadence.
 ## 14. Open questions (defer to planning)
 
 - Default `λ` for the stability penalty (resolved: `level` = median, `dispersion`
-  = IQR, on a normalized higher-is-better scale; `λ` still needs a conservative
-  default + empirical calibration on real plates).
+  = IQR, combined as `level + λ·dispersion` on normalized lower-is-better costs;
+  `λ` still needs a conservative default + empirical calibration on real plates).
 - fANOVA freezing threshold, and how many warm-up trials before the first
   importance estimate is trustworthy enough to freeze a parameter.
 - Pruning low-fidelity representativeness: how many calibration images at the

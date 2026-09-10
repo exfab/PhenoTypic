@@ -1,5 +1,9 @@
+from pathlib import Path
+
+import pytest
 from click.testing import CliRunner
 
+from phenotypic._cli._cli_failure_tracker import read_terminal_failures
 from phenotypic._cli._cli_process_single import main
 
 
@@ -123,3 +127,57 @@ def test_dataset_column_excluded_when_flag_present(tmp_path, monkeypatch):
         tmp_path, monkeypatch, ["--no-dataset-column"]
     )
     assert captured["include_dataset_column"] is False
+
+
+def test_process_worker_terminalizes_provenance_initialization_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    simple_pipeline_json: Path,
+    synth_one_level_input: Path,
+) -> None:
+    """The process wrapper must reach the worker's durable classification."""
+    from phenotypic._cli import _cli_process_only
+
+    original = RuntimeError("provenance initialization failed")
+
+    def _fail_initialization(*args, **kwargs):
+        del args, kwargs
+        raise original
+
+    monkeypatch.setattr(
+        _cli_process_only, "initialize_cli_provenance", _fail_initialization
+    )
+    monkeypatch.setenv("SLURM_JOB_ID", "12345")
+    image = next(synth_one_level_input.rglob("*.tif"))
+    output_dir = tmp_path / "out"
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--pipeline",
+            str(simple_pipeline_json),
+            "--image",
+            str(image),
+            "--output-dir",
+            str(output_dir),
+            "--dataset-name",
+            "ds",
+            "--image-type",
+            "Image",
+            "--mode",
+            "process",
+            "--layer",
+            "rgb",
+            "--input-root",
+            str(synth_one_level_input),
+        ],
+    )
+
+    assert result.exit_code == 1
+    records = read_terminal_failures(output_dir)
+    assert len(records) == 1
+    record = records[0]
+    assert record.failed_stage == "process"
+    assert record.exception_type == "RuntimeError"
+    assert record.exception_message == str(original)
+    assert record.slurm_job_id == "12345"

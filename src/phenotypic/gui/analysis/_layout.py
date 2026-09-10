@@ -36,6 +36,7 @@ from phenotypic.gui._design import (
 from phenotypic.gui._operation_registry import OperationRegistry, get_registry
 from phenotypic.gui._param_forms import param_form
 from phenotypic.gui._shared import SHARED_LOGO_PATH
+from phenotypic.gui._snapshot_status import snapshot_refresh_status
 from phenotypic.gui.analysis import _ids as ids
 from phenotypic.gui.analysis._plot_controls import plot_controls_form
 
@@ -351,6 +352,15 @@ def _build_output_header(
     url_prefix: str = MOUNT_HOME,
     refresh_supported: bool = True,
 ) -> html.Div:
+    # The initial render and the 5-10 s poll must not be two implementations
+    # of one predicate. They were: this header open-coded the badge while
+    # `snapshot_refresh_status` computed it for the interval callback, so P6
+    # Task 1's change to the helper left this site spelling the same states
+    # differently -- "Read-only . incomplete" here, "Run incomplete . refresh
+    # snapshot" five seconds later. One call, one vocabulary.
+    snapshot_label, snapshot_color, _ = snapshot_refresh_status(
+        output_root, refresh_supported=refresh_supported
+    )
     return html.Div(
         [
             html.Img(
@@ -372,23 +382,9 @@ def _build_output_header(
                 title=output_root.snapshot.processing_fingerprint,
             ),
             dbc.Badge(
-                (
-                    "Active run snapshot"
-                    if output_root.snapshot.active_run
-                    else (
-                        f"Read-only · {output_root.consistency.state}"
-                        if output_root.consistency.is_read_only
-                        else "Current"
-                    )
-                ),
+                snapshot_label,
                 id=ids.ANALYSIS_SNAPSHOT_STATUS,
-                color=(
-                    "danger"
-                    if output_root.consistency.is_read_only
-                    else "warning"
-                    if output_root.snapshot.active_run
-                    else "success"
-                ),
+                color=snapshot_color,
                 className="ms-2",
             ),
             dbc.Button(

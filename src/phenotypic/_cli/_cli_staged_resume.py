@@ -4,26 +4,25 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Literal, Mapping, Sequence
 
 from phenotypic.sdk_ import (
     CommitGuard,
-    atomic_write_json,
     MEASUREMENT_TABLE_RELATIVE_PATH,
     dataset_measurements_dir,
     progress_dir,
-    publication_commit,
     source_image_stem,
     zarr_store_path,
 )
+from phenotypic.sdk_._image_record import STAGE_STAGE3, read_image_record
 from phenotypic.sdk_.ngff_ import (  # noqa: F401 -- public re-export
     PhenotypicAttr,
     read_phenotypic_attributes,
     valid_staged_store,
 )
 
+from ._cli_image_record import _now, consume_stage, record_stage
 from ._cli_process_only import process_only_output_path
 from ._cli_stage2_token import (
     delete_stage2_raw,
@@ -133,25 +132,30 @@ def staged_store_matches_work_id(path: Path, work_id: str) -> bool:
     )
 
 
-def stage3_completion_marker_path(
-    output_dir: Path, dataset: str, image_stem: str
-) -> Path:
-    """Return the durable per-image Stage 3 completion marker path."""
-    return (
-        progress_dir(output_dir)
-        / "stage3_complete"
-        / dataset
-        / f"{image_stem}.json"
-    )
-
-
 def stage3_completion_exists(
     output_dir: Path, dataset: str, image_stem: str
 ) -> bool:
-    """Return whether Stage 3 fully published all required image artifacts."""
-    return stage3_completion_marker_path(
-        output_dir, dataset, image_stem
-    ).is_file()
+    """Return whether Stage 3 fully published all required image artifacts.
+
+    Spec §6.1: the fact moved from its own ``stage3_complete/<ds>/<stem>.json``
+    tree into ``stages.stage3`` of the per-image record. **The name is kept on
+    purpose** -- six modules import it, the SLURM observer among them, and
+    renaming it is P6's job rather than this collapse's.
+
+    This membership test is the single implementation of "Stage 3 was
+    reported", and deliberately does **not** gain a wrapper in ``sdk_``. The
+    check already has exactly one home -- this function, which every consumer
+    already routes through -- so a second helper called only from here would be
+    indirection rather than deduplication. It reads through
+    :func:`read_image_record`, so an absent or unparseable record degrades to
+    "not reported", which re-runs a stage rather than skipping one on the
+    strength of a file nobody could parse.
+    """
+    record = read_image_record(output_dir, dataset, image_stem)
+    if record is None:
+        return False
+    stages = record.get("stages")
+    return isinstance(stages, dict) and STAGE_STAGE3 in stages
 
 
 def write_stage3_completion_marker(
@@ -163,21 +167,36 @@ def write_stage3_completion_marker(
     legacy_migration: bool = False,
     commit_guard: CommitGuard | None = None,
 ) -> Path:
-    """Atomically record complete Stage 3 publication for one image."""
-    path = stage3_completion_marker_path(output_dir, dataset, image_stem)
-    atomic_write_json(
-        path,
+    """Atomically record complete Stage 3 publication for one image.
+
+    Writes ``stages.stage3`` through :func:`record_stage`, which merges rather
+    than replaces -- Stage 2 and Stage 3 run in different jobs minutes apart
+    and neither may erase the other's entry.
+
+    ``legacy_migration`` lands **in the stage payload** (plan Task 1 Step 3b,
+    which required a decision rather than a translation). A stage recorded by
+    migration is a fact about that stage, ``stages`` entries are an open map,
+    and the alternative -- moving the call site to P7 -- is not available:
+    ``migrate_legacy_stage3_markers`` is called from the ordinary staged resume
+    path at ``phenotypicCLI.py:2552``, not only from ``--mode migrate``.
+
+    ``image_name`` is retained in the payload because it is the one fact a
+    record built by :func:`record_stage` alone cannot reconstruct -- the stem
+    is not the filename, and no ``relative_image_path`` exists until the image
+    is published.
+    """
+    return record_stage(
+        output_dir,
+        dataset,
+        image_stem,
+        STAGE_STAGE3,
         {
-            "version": 1,
-            "dataset": dataset,
+            "at": _now(),
             "image_name": image_name,
-            "stem": image_stem,
             "legacy_migration": legacy_migration,
-            "completed_at": datetime.now().isoformat(timespec="milliseconds"),
         },
         commit_guard=commit_guard,
     )
-    return path
 
 
 def remove_stage3_completion_marker(
@@ -187,11 +206,20 @@ def remove_stage3_completion_marker(
     *,
     commit_guard: CommitGuard | None = None,
 ) -> None:
-    """Remove a terminal marker before regenerating upstream artifacts."""
-    with publication_commit(commit_guard):
-        stage3_completion_marker_path(output_dir, dataset, image_stem).unlink(
-            missing_ok=True
-        )
+    """Remove a terminal marker before regenerating upstream artifacts.
+
+    Consumes only the ``stage3`` entry and leaves the rest of the record
+    standing, which is what the deleted ``unlink`` did: the stage-3 marker and
+    the per-image completion marker were separate files, and removing one never
+    removed the other.
+    """
+    consume_stage(
+        output_dir,
+        dataset,
+        image_stem,
+        STAGE_STAGE3,
+        commit_guard=commit_guard,
+    )
 
 
 def classify_staged_image(
@@ -475,7 +503,6 @@ __all__ = [
     "reconcile_stage3_publications",
     "remove_stage3_completion_marker",
     "stage3_completion_exists",
-    "stage3_completion_marker_path",
     "staged_store_matches_work_id",
     "valid_stage1_store",
     "valid_staged_store",

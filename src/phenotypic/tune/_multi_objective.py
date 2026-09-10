@@ -14,9 +14,27 @@ Used by the engine (to build a multi-objective Optuna study), the
 """
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any
+import unicodedata
 
 from .strategy._optuna_support import _MINIMIZE
+
+
+_WINDOWS_INVALID_FILENAME_CHARS = frozenset('<>:"/\\|?*')
+_WINDOWS_RESERVED_DEVICE_NAMES = frozenset(
+    {
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        "CONIN$",
+        "CONOUT$",
+        *(f"COM{suffix}" for suffix in (*range(1, 10), "¹", "²", "³")),
+        *(f"LPT{suffix}" for suffix in (*range(1, 10), "¹", "²", "³")),
+    }
+)
 
 
 def is_multi_objective(scorer: Any) -> bool:
@@ -37,6 +55,75 @@ def is_multi_objective(scorer: Any) -> bool:
     return bool(getattr(scorer, "multi_objective", False))
 
 
+def _safe_objective_axis_name(name: Any) -> str:
+    """Return a scorer axis safe for human-readable Pareto filenames."""
+    if not isinstance(name, str) or not name or name in {".", ".."}:
+        raise ValueError(
+            "multi-objective scorer axes must be nonempty safe filename components"
+        )
+    if any(char in _WINDOWS_INVALID_FILENAME_CHARS for char in name):
+        raise ValueError(
+            f"multi-objective scorer axis {name!r} is not a safe filename component"
+        )
+    if (
+        PurePosixPath(name).is_absolute()
+        or PureWindowsPath(name).is_absolute()
+        or bool(PureWindowsPath(name).drive)
+        or any(unicodedata.category(char) == "Cc" for char in name)
+        or name.endswith((".", " "))
+        or name.split(".", 1)[0].upper() in _WINDOWS_RESERVED_DEVICE_NAMES
+    ):
+        raise ValueError(
+            f"multi-objective scorer axis {name!r} is not a safe filename component"
+        )
+    return name
+
+
+def validate_objective_axes(
+    objective_axes: Sequence[Any], *, multi_objective: bool = True
+) -> tuple[str, ...]:
+    """Validate and preserve one authoritative ordered objective-axis tuple."""
+    axes = tuple(_safe_objective_axis_name(name) for name in objective_axes)
+    seen_exact: set[str] = set()
+    seen_casefold: dict[str, str] = {}
+    duplicates: list[str] = []
+    for name in axes:
+        folded = name.casefold()
+        if name in seen_exact and name not in duplicates:
+            duplicates.append(name)
+        elif folded in seen_casefold and name not in duplicates:
+            duplicates.append(name)
+        seen_exact.add(name)
+        seen_casefold.setdefault(folded, name)
+    if duplicates:
+        rendered = ", ".join(repr(name) for name in duplicates)
+        raise ValueError(
+            "multi-objective objective axes must be unique under Unicode "
+            "case-insensitive comparison; "
+            f"duplicate name(s): {rendered}"
+        )
+    if multi_objective and len(axes) < 2:
+        raise ValueError("multi-objective objective axes must declare at least two axes")
+    return axes
+
+
+def ordered_objective_values(
+    objectives: Mapping[str, Any], objective_axes: Sequence[str]
+) -> list[float]:
+    """Return an exact objective vector in scorer-authoritative axis order."""
+    axes = validate_objective_axes(objective_axes)
+    actual = set(objectives)
+    required = set(axes)
+    if actual != required:
+        missing = sorted(required - actual)
+        extra = sorted(actual - required)
+        raise ValueError(
+            "multi-objective results must contain exactly the scorer-declared axes; "
+            f"missing={missing!r}, extra={extra!r}"
+        )
+    return [float(objectives[name]) for name in axes]
+
+
 def objective_names(scorer: Any) -> list[str]:
     """The ordered objective-axis names of a multi-objective ``scorer``.
 
@@ -49,11 +136,16 @@ def objective_names(scorer: Any) -> list[str]:
 
     Returns:
         The objective-axis names in order; ``[]`` when the scorer exposes none.
+
+    Raises:
+        ValueError: When a scorer repeats an objective name. Silently
+            deduplicating would change the scorer-declared vector dimension.
     """
     names = getattr(scorer, "objective_names", None)
-    if callable(names):
-        return list(names())
-    return []
+    raw = list(names()) if callable(names) else []
+    return list(
+        validate_objective_axes(raw, multi_objective=is_multi_objective(scorer))
+    )
 
 
 def reject_grid_random_multi_objective(scorer: Any, strategy: Any) -> None:
@@ -78,6 +170,7 @@ def reject_grid_random_multi_objective(scorer: Any, strategy: Any) -> None:
         return
     # Duck-typed Optuna check: an Optuna strategy carries the ``sampler`` field
     # (avoids importing the concrete config here and keeps the guard reusable).
+    objective_names(scorer)
     if getattr(strategy, "kind", None) == "optuna":
         return
     raise ValueError(
@@ -93,10 +186,8 @@ def objective_directions(scorer: Any) -> list[str] | None:
 
     ``["minimize"] * n`` over the scorer's objective axes — every tuning
     objective is bounded cost, lower-is-better (cost convention §4). ``None`` for
-    a single-objective scorer (a scalar study), and also ``None`` when a
-    multi-objective scorer resolves to fewer than two named axes (a single axis
-    is not a Pareto problem — fall back to the scalar path rather than build a
-    degenerate one-objective "multi-objective" study).
+    a single-objective scorer (a scalar study). A scorer marked multi-objective
+    must declare at least two safe, ordered, unique axes or validation fails.
 
     Args:
         scorer: The tuning spec's scorer.
@@ -108,6 +199,4 @@ def objective_directions(scorer: Any) -> list[str] | None:
     if not is_multi_objective(scorer):
         return None
     names = objective_names(scorer)
-    if len(names) < 2:
-        return None
     return [_MINIMIZE] * len(names)

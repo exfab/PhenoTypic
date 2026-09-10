@@ -17,7 +17,6 @@ from phenotypic.sdk_ import (
     DIR_RESULTS,
     JOB_METADATA_JSON,
     MANIFEST_JSON,
-    MASTER_MEASUREMENTS_CSV,
     MASTER_MEASUREMENTS_PARQUET,
     MEASUREMENTS_CSV,
     MEASUREMENTS_PARQUET,
@@ -56,7 +55,6 @@ from phenotypic.sdk_ import (
     job_metadata_path,
     manifest_json_path,
     matches_any_suffix,
-    master_measurements_csv_path,
     master_measurements_parquet_path,
     measurements_by_feature_dir,
     measurements_csv_path,
@@ -66,7 +64,6 @@ from phenotypic.sdk_ import (
     processing_state_path,
     progress_dir,
     readme_md_path,
-    resolve_best_pipeline_path,
     resolve_execution_mode,
     resolve_pipeline_config_path,
     resolve_tuning_spec_path,
@@ -182,8 +179,19 @@ class TestCompositeBlendLiteral:
 
 class TestFilenameConstants:
     def test_master_measurements_filenames(self) -> None:
-        assert MASTER_MEASUREMENTS_CSV == "master_measurements.csv"
         assert MASTER_MEASUREMENTS_PARQUET == "master_measurements.parquet"
+
+    def test_the_master_csv_constant_is_gone(self) -> None:
+        """D8: the master is parquet-only, and the name went with the file.
+
+        A constant left behind after its artifact is deleted is how a later
+        caller reintroduces the write.
+        """
+        import phenotypic.sdk_ as sdk_
+
+        assert not hasattr(sdk_, "MASTER_MEASUREMENTS_CSV")
+        assert not hasattr(sdk_, "master_measurements_csv_path")
+        assert not hasattr(sdk_, "load_master_measurements")
 
     def test_measurements_mirror_filenames(self) -> None:
         assert MEASUREMENTS_CSV == "measurements.csv"
@@ -340,7 +348,6 @@ class TestPathHelpers:
 
     def test_master_measurements_paths(self, output: Path) -> None:
         deliv = output / "deliverables"
-        assert master_measurements_csv_path(output) == deliv / "master_measurements.csv"
         assert master_measurements_parquet_path(output) == deliv / "master_measurements.parquet"
 
     def test_measurements_mirror_paths(self, output: Path) -> None:
@@ -401,14 +408,6 @@ class TestPathHelpers:
 
         assert resolve_tuning_spec_path(tmp_path) == legacy
 
-    def test_resolve_best_pipeline_path_falls_back_to_legacy_file(
-        self, tmp_path: Path
-    ) -> None:
-        legacy = tmp_path / "deliverables" / "best_pipeline.json"
-        legacy.parent.mkdir(parents=True)
-        legacy.write_text("legacy", encoding="utf-8")
-
-        assert resolve_best_pipeline_path(tmp_path) == legacy
 
     def test_dashboard_html_path(self, output: Path) -> None:
         assert dashboard_html_path(output) == output / "deliverables" / "dashboard.html"
@@ -514,7 +513,6 @@ class TestDeliverablesLayout:
         """
         deliv = deliverables_dir(output)
         moved = {
-            "master_measurements_csv_path": master_measurements_csv_path,
             "master_measurements_parquet_path": master_measurements_parquet_path,
             "measurements_csv_path": measurements_csv_path,
             "measurements_parquet_path": measurements_parquet_path,
@@ -630,6 +628,100 @@ class TestParetoPaths:
         assert pareto_best_pipeline_path(output, "s0") == (
             pareto_dir(output) / "best_s0.json.pht-pipe"
         )
+
+    def test_validated_axes_keep_human_names_in_direct_path_helpers(
+        self, output: Path
+    ) -> None:
+        """Central identity validation precedes direct artifact-path rendering."""
+        from phenotypic.sdk_ import (
+            pareto_best_pipeline_path,
+            pareto_importance_path,
+        )
+        from phenotypic.tune._multi_objective import validate_objective_axes
+
+        axes = validate_objective_axes(("Dice", "IoU"))
+        paths = [
+            *(pareto_best_pipeline_path(output, axis) for axis in axes),
+            *(pareto_importance_path(output, axis) for axis in axes),
+        ]
+
+        assert [path.name for path in paths] == [
+            "best_Dice.json.pht-pipe",
+            "best_IoU.json.pht-pipe",
+            "param_importance_Dice.json",
+            "param_importance_IoU.json",
+        ]
+        assert len({path.name.casefold() for path in paths}) == len(paths)
+
+        with pytest.raises(ValueError, match="case-insensitive|casefold|unique"):
+            validate_objective_axes(("Dice", "dice"))
+
+
+    @pytest.mark.parametrize(
+        "objective",
+        ["", ".", "..", "../escape", r"..\escape", "/absolute", r"C:\escape"],
+    )
+    def test_pareto_axis_paths_reject_unsafe_components(
+        self, output: Path, objective: str
+    ) -> None:
+        """Both Pareto path helpers must remain contained under their directory."""
+        from phenotypic.sdk_ import (
+            pareto_best_pipeline_path,
+            pareto_importance_path,
+        )
+
+        with pytest.raises(ValueError, match="safe filename"):
+            pareto_best_pipeline_path(output, objective)
+        with pytest.raises(ValueError, match="safe filename"):
+            pareto_importance_path(output, objective)
+
+    @pytest.mark.parametrize(
+        "objective",
+        [
+            r"\\server\share",
+            "bad<axis",
+            "bad>axis",
+            'bad"axis',
+            "bad:axis",
+            "bad|axis",
+            "bad?axis",
+            "bad*axis",
+            "bad\x00axis",
+            "bad\x01axis",
+            "bad\x1faxis",
+            "bad\x7faxis",
+            "bad\x80axis",
+            "bad\x9faxis",
+            "trailing.",
+            "trailing ",
+            "CON",
+            "con.txt",
+            "PRN",
+            "AUX",
+            "NUL",
+            "COM1",
+            "com9.csv",
+            "LPT1",
+            "lpt9.json",
+            "CONIN$",
+            "CONOUT$",
+            "COM¹",
+            "LPT³.txt",
+        ],
+    )
+    def test_pareto_axis_paths_reject_cross_platform_unsafe_components(
+        self, output: Path, objective: str
+    ) -> None:
+        """Windows-invalid and control names cannot reach either path helper."""
+        from phenotypic.sdk_ import (
+            pareto_best_pipeline_path,
+            pareto_importance_path,
+        )
+
+        with pytest.raises(ValueError, match="safe filename"):
+            pareto_best_pipeline_path(output, objective)
+        with pytest.raises(ValueError, match="safe filename"):
+            pareto_importance_path(output, objective)
 
     def test_pareto_importance_path_per_objective(self, output: Path) -> None:
         from phenotypic.sdk_._io_constants import (
@@ -809,14 +901,6 @@ class TestReadRunManifest:
 
         # Should not raise; should warn and return None
         assert read_run_manifest(tmp_path) is None
-
-
-class TestLoadMasterMeasurements:
-    def test_missing_file_returns_none(self, tmp_path: Path) -> None:
-        from phenotypic.sdk_ import load_master_measurements
-
-        # master_measurements.csv doesn't exist
-        assert load_master_measurements(tmp_path) is None
 
 
 class TestLoadImageFromHdf:
@@ -1332,7 +1416,9 @@ class TestTuneReExports:
 
 
 # ---------------------------------------------------------------------------
-# Task 2: qc_dir relocated under deliverables/ + resolve_qc_dir back-compat
+# Task 2: qc_dir relocated under deliverables/
+# (the `resolve_qc_dir` back-compat resolver was deleted in P6 Task 7 --
+#  `BundleLayout.qc_dir` is the one with callers)
 # ---------------------------------------------------------------------------
 
 
@@ -1342,18 +1428,6 @@ def test_qc_dir_is_now_under_deliverables(tmp_path: Path) -> None:
     assert qc_dir(tmp_path) == deliverables_dir(tmp_path) / "qc"
 
 
-def test_resolve_qc_dir_prefers_deliverables_then_legacy(tmp_path: Path) -> None:
-    from phenotypic.sdk_ import qc_dir, resolve_qc_dir
-
-    # Neither exists -> canonical deliverables/qc.
-    assert resolve_qc_dir(tmp_path) == qc_dir(tmp_path)
-    # Legacy only -> legacy.
-    legacy = tmp_path / "qc"
-    legacy.mkdir()
-    assert resolve_qc_dir(tmp_path) == legacy
-    # Canonical present -> canonical wins.
-    qc_dir(tmp_path).mkdir(parents=True)
-    assert resolve_qc_dir(tmp_path) == qc_dir(tmp_path)
 
 
 def test_bundle_layout_qc_dir_resolves_legacy(tmp_path: Path) -> None:

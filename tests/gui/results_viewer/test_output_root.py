@@ -26,6 +26,7 @@ from phenotypic.sdk_ import (
     measurements_parquet_path,
 )
 
+from tests._output_layout import build_complete_viewer_run
 from tests._output_layout import write_complete_manifest, write_pipeline_json
 from phenotypic.schema import CULTURE, EXPERIMENT, GENETIC, IMAGE
 
@@ -61,6 +62,33 @@ def _tree_bytes(root: Path) -> tuple[tuple[str, ...], dict[str, bytes]]:
         if path.is_file()
     }
     return directories, files
+
+
+def _published_output(root: Path) -> Path:
+    """A run whose processing inventory is EXHAUSTIVE, not read-only bounded.
+
+    `_make_minimal_output` publishes no proofs, so its run state is
+    `incomplete` and discovery binds it with bounded structural anchors --
+    five entries, none of them an overlay or a per-image parquet. The three
+    tests below are about artifacts being *tracked*, so they need the
+    exhaustive path, and the only thing that reaches it now is a real run
+    proof over the accepted inventory. A `manifest.json` used to be enough;
+    §4.2 demotes it.
+
+    `_make_minimal_output` is left alone deliberately: 25 other tests in this
+    file depend on its unpublished shape and pass.
+    """
+    return build_complete_viewer_run(
+        root,
+        frame=pl.DataFrame(
+            {
+                "Metadata_Dataset": ["plate", "plate"],
+                str(IMAGE.IMAGE_NAME): ["a", "b"],
+                "Size_Area": [10.0, 20.0],
+            }
+        ),
+        stems=("a", "b"),
+    )
 
 
 def _make_minimal_output(
@@ -306,15 +334,11 @@ def test_legacy_backfill_parquets_are_part_of_snapshot_revision(
     tmp_path: Path,
 ) -> None:
     """Every per-image parquet consulted for backfill invalidates the snapshot."""
-    measurements = tmp_path / "results" / "d1" / "measurements"
-    measurements.mkdir(parents=True)
+    _published_output(tmp_path)
+    measurements = tmp_path / "results" / "plate" / "measurements"
+    measurements.mkdir(parents=True, exist_ok=True)
     legacy_parquet = measurements / "a.parquet"
     legacy_parquet.write_bytes(b"first")
-    _write_master_parquet(
-        tmp_path,
-        pl.DataFrame({str(IMAGE.IMAGE_NAME): ["a"], "Size_Area": [100.0]}),
-    )
-    write_complete_manifest(tmp_path, total_images=1)
 
     output = _discover(tmp_path)
     legacy_parquet.write_bytes(b"second")
@@ -329,8 +353,8 @@ def test_discover_retries_complete_read_after_snapshot_change(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A pre/post mismatch retries from the first source read."""
-    _make_minimal_output(tmp_path)
-    overlay = tmp_path / "deliverables" / "overlays" / "d1" / "a.png"
+    _published_output(tmp_path)
+    overlay = tmp_path / "deliverables" / "overlays" / "plate" / "a.png"
     real_is_current = _output_root.inventory_is_current
     calls = 0
 
@@ -385,10 +409,137 @@ def test_discover_retries_complete_read_after_snapshot_change(
     assert output.snapshot_is_current() is True
 
 
+def test_the_mirrorless_fallback_distinguishes_a_v1_master_from_a_v2_one(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """§7.3, at the viewer's one master-fallback (P6 Task 7b).
+
+    Both runs bind, and both bind the *same* frame -- the clean master --
+    because the mirror is absent in both. What differs is what that frame is
+    worth, and therefore what the viewer says about it:
+
+    * **v1** (pre-inversion) joined user metadata per image, so the master
+      carries it. The fallback is complete apart from the post ops, and no
+      warning is owed.
+    * **v2** (post-inversion) moved the join to finalization, so the master
+      is intrinsic identity plus measurements. Every metadata-driven surface
+      is presence-guarded and therefore shows **nothing rather than raising**
+      -- indistinguishable to the user from a run given no ``--metadata``.
+
+    Asserting on the diagnostic rather than on the column sets is deliberate:
+    the column sets differ by construction here, which would be true even if
+    the branch did not exist.
+    """
+    v1_root = tmp_path / "v1"
+    v2_root = tmp_path / "v2"
+    _make_minimal_output(v1_root)  # its master carries Metadata_Strain
+    _make_minimal_output(v2_root, write_master=False)
+    _write_master_parquet(
+        v2_root,
+        pl.DataFrame(
+            {
+                str(EXPERIMENT.DATASET): ["d1", "d1"],
+                str(IMAGE.IMAGE_NAME): ["a", "b"],
+                "Size_Area": [100.0, 200.0],
+            }
+        ),
+    )
+    write_complete_manifest(v2_root, total_images=2)
+    assert not measurements_parquet_path(v1_root).exists()
+    assert not measurements_parquet_path(v2_root).exists()
+
+    caplog.clear()
+    with caplog.at_level("INFO", logger=_output_root.__name__):
+        v1 = _discover(v1_root)
+    v1_warnings = [
+        r.message for r in caplog.records if r.levelname == "WARNING"
+    ]
+
+    caplog.clear()
+    with caplog.at_level("INFO", logger=_output_root.__name__):
+        v2 = _discover(v2_root)
+    v2_warnings = [
+        r.message for r in caplog.records if r.levelname == "WARNING"
+    ]
+
+    # Both took the fallback -- the display frame IS the clean master --
+    # so the difference below is the verdict on that frame, not the path.
+    assert v1.master_df.equals(v1.clean_master_df)
+    assert v2.master_df.equals(v2.clean_master_df)
+
+    assert not any("user metadata" in m for m in v1_warnings), (
+        "a v1 master carries its own metadata; the fallback is complete and "
+        f"owes no warning, but got: {v1_warnings}"
+    )
+    assert any("carries no user metadata" in m for m in v2_warnings), (
+        "a v2 master without its mirror leaves every metadata surface empty "
+        f"with nothing raised; that must be said, but got: {v2_warnings}"
+    )
+
+
+def test_one_currency_check_replaces_two() -> None:
+    """§11: ``snapshot_is_current()`` + ``refresh_state_is_current()`` -> one.
+
+    Two overlapping fingerprints with different lifecycles is audit S2, and
+    the fix is one owner, not two better-synchronised ones. The surviving
+    polled owner is ``snapshot_is_current``. The descriptor's
+    ``consumed_state_fingerprint`` stays -- discovery's torn-read guard and
+    ``require_session_snapshot_current``'s second question both need it --
+    but it is deliberately not re-exposed as a property on ``OutputRoot``,
+    because a one-line accessor there is what invited the per-tick
+    comparison in the first place.
+    """
+    assert not hasattr(OutputRoot, "refresh_state_is_current")
+    assert not hasattr(OutputRoot, "consumed_state_fingerprint")
+    assert hasattr(OutputRoot, "snapshot_is_current")
+    descriptor = _output_root.OutputSnapshotDescriptor
+    assert "consumed_state_fingerprint" in descriptor.__dataclass_fields__
+
+
+def test_a_chmod_does_not_report_changed_on_disk(tmp_path: Path) -> None:
+    """Audit S3, at the consumer.
+
+    ``_inventory_is_current`` used to compare ``st_ctime_ns``, which moves on
+    chmod, chown, hardlink and ``rsync -a`` -- all routine on a shared HPC
+    filesystem, and each one made the whole binding report "Changed on disk".
+    """
+    _make_minimal_output(tmp_path)
+    output = _discover(tmp_path)
+    assert output.snapshot_is_current() is True
+
+    files = [
+        (output.root / entry.relative_path, entry.mtime_ns)
+        for entry in output.processing_inventory.entries
+        if entry.kind == "file"
+    ]
+    assert files, "no inventoried files: the chmod below would be a no-op"
+    before = {path: path.stat().st_ctime_ns for path, _ in files}
+    for path, _ in files:
+        path.chmod(0o600)
+        path.chmod(0o644)
+    # Without this the test could pass on a filesystem where chmod leaves
+    # ctime alone, i.e. while exercising nothing at all.
+    assert any(
+        path.stat().st_ctime_ns != before[path] for path, _ in files
+    ), "chmod did not move ctime here, so this test is not exercising S3"
+    # ... and it is only ctime that moved, so nothing else explains a pass.
+    assert all(path.stat().st_mtime_ns == mtime for path, mtime in files)
+
+    assert output.snapshot_is_current() is True
+
+
 def test_mutable_viewer_state_does_not_stale_processing_snapshot(
     tmp_path: Path,
 ) -> None:
-    """GUI-owned state is refresh-visible without invalidating image reads."""
+    """GUI-owned state is refresh-visible without invalidating image reads.
+
+    Audit S2, at the consumer. Every path this test rewrites is one the GUI
+    itself writes -- ``_curation_labels.py`` owns the mirror and the labels,
+    ``_qc_tab/_rebuild.py`` owns the resolved pipeline config -- so the
+    currency check must stay ``True`` through all of them. Comparing them
+    against the frozen binding is what made marking one colony report the
+    viewer's own write back to the user as external drift.
+    """
     frame = _make_minimal_output(tmp_path)
     mirror = measurements_parquet_path(tmp_path)
     frame.write_parquet(mirror)
@@ -396,7 +547,7 @@ def test_mutable_viewer_state_does_not_stale_processing_snapshot(
 
     output = _discover(tmp_path)
     first_source = output.source_fingerprint
-    first_consumed = output.consumed_state_fingerprint
+    first_consumed = output.snapshot.consumed_state_fingerprint
 
     frame.with_columns(pl.lit("changed").alias("Mutable_State")).write_parquet(
         mirror
@@ -415,13 +566,17 @@ def test_mutable_viewer_state_does_not_stale_processing_snapshot(
     write_pipeline_json(tmp_path, json.dumps({"name": "second"}))
 
     assert output.snapshot_is_current() is True
-    assert output.refresh_state_is_current() is False
+    # The construction gate is the one thing that still looks at consumed
+    # state, and it is not on any poll -- so a curation click leaves the
+    # badge, the tiles and the mutation guard alone while a *rebuild* of the
+    # session still refuses to straddle two revisions of the mirror.
+    with pytest.raises(OutputSnapshotChangedError):
+        output.require_session_snapshot_current(context="Test")
 
     refreshed = _discover(tmp_path)
     assert refreshed.source_fingerprint == first_source
-    assert refreshed.consumed_state_fingerprint != first_consumed
+    assert refreshed.snapshot.consumed_state_fingerprint != first_consumed
     assert refreshed.cache_dir == output.cache_dir
-    assert refreshed.refresh_state_is_current() is True
     assert "Mutable_State" in refreshed.master_df.columns
     assert refreshed.pipeline_summary == "second"
 
@@ -467,16 +622,34 @@ def test_discover_retries_when_consumed_state_changes_during_read(
 
     assert calls == 4
     assert output.snapshot_is_current() is True
-    assert output.refresh_state_is_current() is True
+    # The torn-read guard survives the currency collapse: the descriptor
+    # fingerprint is still captured pre- and post-read within one discovery,
+    # which is what forced the retry that made `calls` 4 rather than 2 -- and
+    # the binding it produced is one the construction gate accepts, because
+    # the retry bound revision 2 rather than straddling both.
+    output.require_session_snapshot_current(context="Test")
 
 
 def test_discover_refuses_continuously_changing_snapshot(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Two unstable pre/post reads fail instead of binding mixed generations."""
-    _make_minimal_output(tmp_path)
-    overlay = tmp_path / "deliverables" / "overlays" / "d1" / "a.png"
+    """Two unstable pre/post reads fail instead of binding mixed generations.
+
+    **The churned file is deliberately not a declared artifact.** Mutating the
+    overlay -- which is one -- makes the run ``incomplete`` on the retry, so
+    the second attempt takes the bounded read-only path, does not track the
+    overlay, and binds successfully. That degradation is correct (a bounded
+    binding claims nothing about the artifacts it excludes, and the pixel
+    routes revalidate what they serve), but it is not what this test is
+    about. A stray file under ``results/`` keeps every declared artifact
+    verifying -- so the run stays ``complete``, the inventory stays
+    exhaustive, and both attempts genuinely observe a changing tree.
+    """
+    _published_output(tmp_path)
+    churn = tmp_path / "results" / "plate" / "measurements" / "churn.bin"
+    churn.parent.mkdir(parents=True, exist_ok=True)
+    churn.write_bytes(b"revision-0")
     real_is_current = _output_root.inventory_is_current
     revision = 0
 
@@ -489,7 +662,7 @@ def test_discover_refuses_continuously_changing_snapshot(
     ):
         nonlocal revision
         revision += 1
-        overlay.write_bytes(f"revision-{revision}".encode())
+        churn.write_bytes(f"revision-{revision}".encode())
         return real_is_current(
             inventory,
             source_root=source_root,
@@ -520,6 +693,63 @@ def test_column_value_sets_are_sorted_unique_str(tmp_path: Path) -> None:
     # Every column on the master frame is represented.
     for column in out.master_df.columns:
         assert column in cvs
+
+
+def test_column_value_sets_are_empty_for_a_list_valued_column(
+    tmp_path: Path,
+) -> None:
+    """A column polars cannot stringify has no value set -- it does not raise.
+
+    ``_compute`` casts to ``pl.String`` to build a filter value set.
+    ``List`` and ``Array`` dtypes reject that cast outright (a type-level
+    refusal, so ``strict=False`` does not help). A master carrying one is
+    unusual but legal -- nothing stops a post step or a user-added column
+    from being list-valued -- and every surface that asks "is this column
+    offerable?" reaches this method. Raising here fails **app boot**, not
+    just that one column, because building the layout asks every column
+    for its value set.
+
+    The empty list is the answer callers already know how to read: it is
+    falsy for the axis menus' non-empty guard, and
+    ``_all_parse_as_float([])`` is ``False``, so ``is_numeric_column``
+    reports the column non-numeric rather than offering a range filter
+    over values it cannot render.
+    """
+
+    _make_minimal_output(tmp_path)
+    df = pl.read_parquet(master_measurements_parquet_path(tmp_path))
+    _write_master_parquet(
+        tmp_path,
+        df.with_columns(pl.Series("Centroid", [[5.0, 5.0], [6.0, 6.0]])),
+    )
+    out = _discover(tmp_path)
+
+    assert out.master_df.schema["Centroid"] == pl.List(pl.Float64)
+    assert out.column_value_sets["Centroid"] == []
+    assert out.is_numeric_column("Centroid") is False
+    # The stringifiable columns beside it are unaffected.
+    assert out.column_value_sets["Size_Area"] == sorted({"100.0", "200.0"})
+
+
+def test_column_value_sets_still_serve_a_struct_column(tmp_path: Path) -> None:
+    """``Struct`` is nested but casts to ``String`` fine -- it keeps its set.
+
+    Guards the fix above against being written as a nested-dtype check.
+    ``DataType.is_nested()`` is ``True`` for ``Struct`` as well as for
+    ``List``/``Array``, so excluding on nestedness would silently drop a
+    column that has a perfectly good value set.
+    """
+
+    _make_minimal_output(tmp_path)
+    df = pl.read_parquet(master_measurements_parquet_path(tmp_path))
+    _write_master_parquet(
+        tmp_path,
+        df.with_columns(pl.Series("Bounds", [{"a": 1}, {"a": 2}])),
+    )
+    out = _discover(tmp_path)
+
+    assert out.master_df.schema["Bounds"] == pl.Struct({"a": pl.Int64})
+    assert out.column_value_sets["Bounds"] == ["{1}", "{2}"]
 
 
 def test_column_value_sets_outer_mapping_is_immutable(tmp_path: Path) -> None:

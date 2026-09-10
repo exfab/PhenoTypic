@@ -38,14 +38,24 @@ from phenotypic.schema import IMAGE
 
 
 def test_selectable_axis_columns_excludes_measurement_prefixes() -> None:
-    """Columns with measurement prefixes are not offered as axis options."""
+    """Columns with measurement prefixes are not offered as axis options.
+
+    Every excluded column here carries cardinality 3, so exclusion can only
+    be coming from the prefix and never from the ``[2, 50]`` cardinality
+    gate. The texture column is spelled the way ``TEXTURE.get_headers``
+    actually emits it (``Texture_<label>-deg###-scale##``); an earlier
+    revision pinned ``TextureGray_AvgContrast``, a header no schema
+    declares, which is exactly why real ``Texture_`` columns were reaching
+    the axis pickers.
+    """
     df = pl.DataFrame(
         {
             "Metadata_Strain": ["A", "B", "A"],
             "Bbox_MinRR": [1, 2, 3],
             "Shape_Area": [10, 20, 30],
+            "Size_Area": [11, 21, 31],
             "Intensity_Mean": [0.1, 0.2, 0.3],
-            "TextureGray_AvgContrast": [0.0, 0.1, 0.2],
+            "Texture_Contrast-deg000-scale05": [0.0, 0.1, 0.2],
             "Grid_RowNum": [1, 2, 1],
         }
     )
@@ -58,8 +68,9 @@ def test_selectable_axis_columns_excludes_measurement_prefixes() -> None:
 
     assert "Bbox_MinRR" not in out
     assert "Shape_Area" not in out
+    assert "Size_Area" not in out
     assert "Intensity_Mean" not in out
-    assert "TextureGray_AvgContrast" not in out
+    assert "Texture_Contrast-deg000-scale05" not in out
     # Metadata_* and Grid_* survive.
     assert str(GENETIC.STRAIN) in out
     assert "Grid_RowNum" in out

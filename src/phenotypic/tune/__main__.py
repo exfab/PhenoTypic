@@ -1,6 +1,6 @@
-"""``python -m phenotypic.tune`` — run a tuning spec, or auto-infer a space.
+"""``phenotypic-tune`` — run a tuning spec, or auto-infer a space.
 
-Two subcommands:
+Three subcommands:
 
 * ``run SPEC -i IMAGES [-o OUT]`` — load a ``tuning_spec.json`` and run the
   engine over an image directory (the Phase-1 behaviour).
@@ -8,27 +8,30 @@ Two subcommands:
   reviewable ``InferredSearchSpace`` proposal, written to
   ``deliverables/tuning_spec.json``; **no** engine run. File-only and
   non-blocking; ``--unattended`` is reserved for a future skip-the-prompt flow.
+* ``finalize OUT [--force]`` — publish a completed distributed study, with
+  cancellation and quiescence required before forced recovery.
 
-Back-compat: a bare ``SPEC`` positional with no subcommand defaults to ``run``,
-so ``python -m phenotypic.tune spec.json -i … -o …`` keeps working.
+Back-compat: a bare ``SPEC`` positional with no subcommand defaults to ``run``;
+``python -m phenotypic.tune spec.json -i … -o …`` remains equivalent.
 """
 from __future__ import annotations
 
 import argparse
-import os
 from pathlib import Path
 from typing import Optional, Sequence
 
+import click
 from phenotypic import ImagePipeline
 
 from ._spec import TuningSpec
 from .strategy._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV, STRATEGY_CHOICES
 from ._tune_cli._auto_space import _render_review_table, run_auto_space
+from ._tune_cli._finalize import finalize_distributed_study
 from ._tune_cli._run import _load_images, run_tuning
 
 #: The recognised subcommands; a leading token outside this set is treated as a
 #: bare ``run`` spec path (Phase-1 back-compat).
-_SUBCOMMANDS = ("run", "auto-space")
+_SUBCOMMANDS = ("run", "auto-space", "finalize")
 
 
 def _default_output(input_dir: str) -> Path:
@@ -37,7 +40,7 @@ def _default_output(input_dir: str) -> Path:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="python -m phenotypic.tune",
+        prog="uv run phenotypic-tune",
         description="Tune an ImagePipeline, or auto-infer a search space.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
@@ -77,18 +80,19 @@ def _build_parser() -> argparse.ArgumentParser:
         "--storage-url",
         default=None,
         help=(
-            "Optuna storage URL: sqlite:///… (local single node) or a "
-            "password-less postgresql+psycopg://USER@HOST:PORT/DB (distributed; "
-            "libpq reads the password from ~/.pgpass or $PGPASSWORD, so it never "
-            f"enters argv or the worker script); falls back to "
-            f"${PHENOTYPIC_TUNE_STORAGE_URL_ENV}"
+            "Optuna storage URL. Precedence is CLI, tuning spec, "
+            f"${PHENOTYPIC_TUNE_STORAGE_URL_ENV}, then the mode default: local "
+            "runs use run-local SQLite and --slurm uses a shared absolute "
+            "journal:// URL. Password-bearing URLs are rejected."
         ),
     )
     run_p.add_argument(
         "--slurm",
-        action="store_true",
-        default=False,
-        help="submit a distributed worker fleet over SLURM instead of running locally",
+        nargs="?",
+        action="append",
+        default=None,
+        metavar="KEY=VALUE",
+        help="submit over SLURM; repeat as --slurm KEY=VALUE for SBATCH options",
     )
     run_p.add_argument(
         "--n-workers",
@@ -180,6 +184,15 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="reserved: skip the interactive review prompt (currently a no-op)",
     )
+    finalize_p = sub.add_parser(
+        "finalize", help="publish a finished distributed tuning run"
+    )
+    finalize_p.add_argument("output", help="distributed tuning output directory")
+    finalize_p.add_argument(
+        "--force",
+        action="store_true",
+        help="cancel the recorded generation and publish after proven quiescence",
+    )
     return parser
 
 
@@ -195,7 +208,25 @@ def _normalize_argv(argv: Sequence[str]) -> list[str]:
     return args
 
 
-def _run_command(args: argparse.Namespace) -> None:
+def _resolve_slurm_request(
+    parser: argparse.ArgumentParser, raw: Optional[list[Optional[str]]]
+) -> tuple[bool, dict]:
+    """Parse repeatable ``--slurm`` occurrences while preserving bare-flag use."""
+    if raw is None:
+        return False, {}
+    pairs = [token for token in raw if token]
+    if not pairs:
+        return True, {}
+    from phenotypic._cli._cli_utils import parse_slurm_args
+
+    try:
+        return True, parse_slurm_args(pairs)
+    except click.BadParameter as exc:
+        parser.error(f"--slurm: {exc.format_message()}")
+        raise
+
+
+def _run_command(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     """Load a spec, scan ``--input``, and run the engine (writes deliverables)."""
     spec = TuningSpec.model_validate_json(Path(args.spec).read_text())
     output_dir = Path(args.output) if args.output else _default_output(args.input)
@@ -204,7 +235,8 @@ def _run_command(args: argparse.Namespace) -> None:
         raise SystemExit(f"no images found under {args.input!r}")
     # --storage-url falls back to the env var so a SLURM array can export one
     # shared URL to every worker (psycopg3 / sqlite scheme).
-    storage_url = args.storage_url or os.environ.get(PHENOTYPIC_TUNE_STORAGE_URL_ENV)
+    storage_url = args.storage_url
+    slurm, slurm_args = _resolve_slurm_request(parser, args.slurm)
     run_tuning(
         spec,
         images,
@@ -213,7 +245,7 @@ def _run_command(args: argparse.Namespace) -> None:
         n_trials=args.n_trials,
         screen=args.screen,
         storage_url=storage_url,
-        slurm=args.slurm,
+        slurm=slurm,
         spec_path=Path(args.spec),
         images_dir=Path(args.input),
         held_out_fraction=args.held_out_fraction,
@@ -223,6 +255,7 @@ def _run_command(args: argparse.Namespace) -> None:
         slurm_mem=args.slurm_mem,
         slurm_time=args.slurm_time,
         slurm_constraint=args.slurm_constraint,
+        slurm_args=slurm_args,
         nrows=args.nrows,
         ncols=args.ncols,
     )
@@ -238,6 +271,11 @@ def _auto_space_command(args: argparse.Namespace) -> None:
     print(_render_review_table(proposal))
 
 
+def _finalize_command(args: argparse.Namespace) -> None:
+    """Publish an existing distributed run under lifecycle exclusion."""
+    finalize_distributed_study(Path(args.output), force=args.force)
+
+
 def main(argv: Optional[Sequence[str]] = None) -> None:
     """CLI entry point. See ``--help``.
 
@@ -247,11 +285,14 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     import sys
 
     raw = list(sys.argv[1:]) if argv is None else list(argv)
-    args = _build_parser().parse_args(_normalize_argv(raw))
+    parser = _build_parser()
+    args = parser.parse_args(_normalize_argv(raw))
     if args.command == "auto-space":
         _auto_space_command(args)
+    elif args.command == "finalize":
+        _finalize_command(args)
     else:
-        _run_command(args)
+        _run_command(parser, args)
 
 
 if __name__ == "__main__":

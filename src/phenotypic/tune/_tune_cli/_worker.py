@@ -1,7 +1,8 @@
 """``python -m phenotypic.tune._tune_cli._worker`` — one distributed tune worker.
 
 A single SLURM array task runs this module: it opens the **shared** Optuna study
-by ``--study-name`` + ``--storage-url`` (SQLite-WAL or Postgres), binds a
+by ``--study-name`` + ``--storage-url`` (JournalStorage or an external RDB;
+distributed SQLite is rejected), binds a
 :class:`~phenotypic.tune.TuningEngine` to that resumable
 :class:`~phenotypic.tune._study._optuna_store.OptunaStudyStore`, and runs the
 ask→evaluate→tell loop until the shared budget exhausts (optuna-integration §7).
@@ -26,14 +27,19 @@ from ._run import _load_images
 
 
 def build_worker_store(
-    *, storage_url: str, study_name: str, directions: Optional[list[str]] = None
+    *,
+    storage_url: str,
+    study_name: str,
+    directions: Optional[list[str]] = None,
+    objective_axes: Optional[Sequence[str]] = None,
 ):
     """Open the shared, resumable Optuna study this worker contributes trials to.
 
     Args:
-        storage_url: The Optuna storage URL (``sqlite:///…`` or
-            ``postgresql+psycopg://…``). Every worker in the fleet passes the same
-            URL so they share one study.
+        storage_url: The Optuna storage URL (Journal, SQLite, or external RDB).
+            Every worker in the fleet passes the same URL so they share one
+            study. Distributed workers reject SQLite; use Journal or an external
+            RDB such as PostgreSQL.
         study_name: The shared study name (same across the fleet).
         directions: Per-objective directions inferred from the scorer (multi-
             objective) or ``None`` (single-objective). Must match what the
@@ -48,7 +54,10 @@ def build_worker_store(
     from .._study._optuna_store import OptunaStudyStore
 
     return OptunaStudyStore(
-        storage_url=storage_url, study_name=study_name, directions=directions
+        storage_url=storage_url,
+        study_name=study_name,
+        directions=directions,
+        objective_axes=objective_axes,
     )
 
 
@@ -79,7 +88,7 @@ def run_worker(
         study_name: The shared study name.
     """
     from .._engine import TuningEngine
-    from .._multi_objective import objective_directions
+    from .._multi_objective import is_multi_objective, objective_directions, objective_names
     from .._evaluation import Split
 
     spec = TuningSpec.model_validate_json(Path(spec_path).read_text())
@@ -95,8 +104,16 @@ def run_worker(
     # Match the study's objective shape (single vs multi) so binding to the shared,
     # submitter-pre-created study never conflicts on directions.
     directions = objective_directions(spec.scorer)
+    objective_axes = (
+        tuple(objective_names(spec.scorer))
+        if is_multi_objective(spec.scorer)
+        else None
+    )
     store = build_worker_store(
-        storage_url=storage_url, study_name=study_name, directions=directions
+        storage_url=storage_url,
+        study_name=study_name,
+        directions=directions,
+        objective_axes=objective_axes,
     )
     TuningEngine(spec, store=store).optimize(images)
 

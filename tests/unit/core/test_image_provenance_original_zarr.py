@@ -38,24 +38,23 @@ def test_operation_journal_round_trips_only_through_root_phenotypic_namespace(
 ) -> None:
     source = Image(np.arange(48 * 32 * 3, dtype=np.uint8).reshape(48, 32, 3))
     result = BlurGauss(sigma=1.25).apply(source)
-    result._metadata.provenance_journal.update(
-        {
-            "status": "in_progress",
-            "pipeline": {
-                "source_path": "/resolved/pipeline.json",
-                "sha256": "a" * 64,
-            },
-            "retry_base_length": 0,
-        }
-    )
+    journal = result._metadata.provenance_journal
+    application = journal["applications"][-1]
+    journal["status"] = "in_progress"
+    application["status"] = "in_progress"
+    application["pipeline"] = {
+        "source_path": "pipeline.json",
+        "sha256": "a" * 64,
+    }
 
     store = result.save2zarr(tmp_path / "journal.ome.zarr")
 
     root = _root_payload(store)
     stored = root["attributes"][PhenotypicAttr.ROOT]["provenance"]
     assert stored == result._metadata.provenance_journal
-    assert stored["schema_version"] == 1
+    assert stored["schema_version"] == 2
     assert stored["status"] == "in_progress"
+    assert stored["applications"][-1]["status"] == "in_progress"
     assert "provenance" not in root["attributes"]["ome"]
     assert STORE_SCHEMA_VERSION == 3
     for group_json in store.glob("*/zarr.json"):

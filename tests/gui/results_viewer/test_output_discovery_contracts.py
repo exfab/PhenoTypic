@@ -8,9 +8,7 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-from phenotypic._cli._cli_update_state import append_event
 from phenotypic.gui.results_viewer import (
-    OutputConsistencyReport,
     OutputDiscoveryCancellation as PublicCancellation,
     OutputDiscoveryProgress as PublicProgress,
     OutputRoot as PublicOutputRoot,
@@ -20,28 +18,75 @@ from phenotypic.gui.results_viewer._discovery_contracts import (
     OutputDiscoveryCancelledError,
     OutputDiscoveryProgress,
 )
-from phenotypic.gui.results_viewer._output_consistency import (
-    OutputCompletionEvidence,
-    classify_output_consistency,
-    inspect_output_consistency,
-)
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.gui.results_viewer._processing_inventory import (
     processing_inventory_cache_path,
 )
 from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import (
-    BundleLayout,
-    ProcessingStateKey,
-    event_log_path,
     master_measurements_parquet_path,
     measurements_parquet_path,
     gui_launch_owner_path,
-    processing_state_path,
-    resolve_manifest_json_path,
-    run_completion_marker_path,
+    verification_cache_path,
     zarr_store_path,
 )
+from phenotypic._cli._cli_completion import publish_aggregate_snapshot
+from tests._output_layout import build_complete_viewer_run
+
+
+def _scientific_tree(root: Path) -> dict[Path, bytes]:
+    """Every file discovery must leave byte-identical, and no others.
+
+    **One file is excluded, and only one.** Discovery now
+    resolves the run state, and a deep pass rewrites the tier-2 verification
+    cache at `.phenotypic/verification_cache.json`. That is designed
+    behaviour, not a leak: `persist_states` never creates `.phenotypic/`, so a
+    tree this package has never written to is still left byte-for-byte alone,
+    and a failed write is a return value rather than an exception, so a
+    read-only output degrades to a deep pass instead of raising.
+
+    What the viewer still must never touch is the scientific tree --
+    `deliverables/`, `results/`, overlays. Narrowing the assertion to those is
+    what keeps it meaningful; deleting it because one machine-state file moved
+    would have thrown away the guarantee it exists for.
+    """
+    skip = verification_cache_path(root)
+    return {
+        path.relative_to(root): path.read_bytes()
+        for path in sorted(root.rglob("*"))
+        if path.is_file() and path != skip
+    }
+
+
+def _build_complete(
+    root: Path, *, complete: bool = True, overlay_count: int = 0
+) -> Path:
+    """This file's `plate`/a,b tree, published so its verdict is real.
+
+    `_seed_output` below writes the same shape by hand and deliberately
+    publishes nothing, which is what the read-only tests want. This one runs
+    the real publishers over it, because a manifest no longer makes a run
+    complete -- §4.2 demotes it -- and the only thing that does is a run proof
+    over the accepted inventory.
+    """
+    build_complete_viewer_run(
+        root,
+        frame=pl.DataFrame(
+            {
+                "Metadata_Dataset": ["plate"] * 2,
+                str(IMAGE.IMAGE_NAME): ["a", "b"],
+                "Size_Area": [10.0, 20.0],
+            }
+        ),
+        stems=("a", "b"),
+        complete=complete,
+    )
+    if overlay_count:
+        overlays = root / "deliverables" / "overlays" / "plate"
+        overlays.mkdir(parents=True, exist_ok=True)
+        for index in range(overlay_count):
+            (overlays / f"image-{index}.png").write_bytes(b"overlay")
+    return root
 
 
 def _seed_output(root: Path, *, overlay_count: int = 2) -> None:
@@ -69,163 +114,24 @@ def _seed_output(root: Path, *, overlay_count: int = 2) -> None:
     (store / "zarr.json").write_text("{}", encoding="utf-8")
 
 
-def _publish_coherent_manifest(root: Path) -> None:
-    manifest = resolve_manifest_json_path(root)
-    manifest.parent.mkdir(parents=True, exist_ok=True)
-    manifest.write_text(
-        json.dumps(
-            {
-                "is_complete": True,
-                "completed": 2,
-                "failed": 0,
-                "total_images": 2,
-            }
-        ),
-        encoding="utf-8",
-    )
 
 
-def test_pure_consistency_classification_covers_all_states() -> None:
-    coherent = classify_output_consistency(
-        OutputCompletionEvidence(
-            standalone_bundle=False,
-            manifest_present=True,
-            manifest_is_complete=True,
-            manifest_completed=2,
-            manifest_failed=0,
-            manifest_total=2,
-        )
-    )
-    active = classify_output_consistency(
-        OutputCompletionEvidence(
-            standalone_bundle=False,
-            owner_status="running",
-        )
-    )
-    incomplete = classify_output_consistency(
-        OutputCompletionEvidence(standalone_bundle=False)
-    )
-    contradictory = classify_output_consistency(
-        OutputCompletionEvidence(
-            standalone_bundle=False,
-            manifest_present=True,
-            manifest_is_complete=False,
-            manifest_completed=4,
-            manifest_failed=1,
-            manifest_total=2,
-            staged_marker_present=True,
-            staged_marker_valid=True,
-        )
-    )
-    unreadable_present_evidence = classify_output_consistency(
-        OutputCompletionEvidence(
-            standalone_bundle=False,
-            manifest_present=True,
-            manifest_is_complete=True,
-            manifest_completed=2,
-            manifest_failed=0,
-            manifest_total=2,
-            completion_marker_present=True,
-            completion_marker_valid=False,
-        )
-    )
-    active_contradiction = classify_output_consistency(
-        OutputCompletionEvidence(
-            standalone_bundle=False,
-            owner_status="running",
-            manifest_present=True,
-            manifest_is_complete=True,
-            manifest_completed=2,
-            manifest_failed=0,
-            manifest_total=2,
-        )
-    )
-    unreadable_owner = classify_output_consistency(
-        OutputCompletionEvidence(
-            standalone_bundle=False,
-            owner_present=True,
-            owner_readable=False,
-            manifest_present=True,
-            manifest_is_complete=True,
-            manifest_completed=2,
-            manifest_failed=0,
-            manifest_total=2,
-        )
-    )
-    unknown_owner = classify_output_consistency(
-        OutputCompletionEvidence(
-            standalone_bundle=False,
-            owner_present=True,
-            owner_status="future-state",
-            manifest_present=True,
-            manifest_is_complete=True,
-            manifest_completed=2,
-            manifest_failed=0,
-            manifest_total=2,
-        )
-    )
-
-    assert coherent.state == "coherent"
-    assert coherent.cache_reusable is True
-    assert active.state == "active"
-    assert incomplete.state == "incomplete"
-    assert contradictory.state == "contradictory"
-    assert contradictory.is_read_only is True
-    assert unreadable_present_evidence.state == "incomplete"
-    assert unreadable_present_evidence.cache_reusable is False
-    assert active_contradiction.state == "contradictory"
-    assert active_contradiction.has_active_owner is True
-    assert unreadable_owner.state == "incomplete"
-    assert unreadable_owner.reasons == ("output owner record is unreadable",)
-    assert unknown_owner.state == "incomplete"
-    assert unknown_owner.reasons == (
-        "output owner status is missing or unknown",
-    )
 
 
-def test_active_owner_tolerates_nonterminal_manifest_event_lag() -> None:
-    report = classify_output_consistency(
-        OutputCompletionEvidence(
-            standalone_bundle=False,
-            owner_present=True,
-            owner_status="running",
-            manifest_present=True,
-            manifest_is_complete=False,
-            manifest_completed=1,
-            manifest_failed=0,
-            manifest_total=2,
-            processing_state_present=True,
-            processing_event_log_present=True,
-            processing_total=2,
-            processing_completed=2,
-            processing_failed=0,
-            processing_unfinished=0,
-        )
-    )
-
-    assert report.state == "active"
-    assert report.reasons == ("a nonterminal GUI owner is active",)
 
 
 def test_o2_discovery_contracts_are_publicly_importable() -> None:
     assert PublicCancellation is OutputDiscoveryCancellation
     assert PublicProgress is OutputDiscoveryProgress
     assert PublicOutputRoot is OutputRoot
-    assert OutputConsistencyReport.__name__ == "OutputConsistencyReport"
 
 
 def test_coherent_terminal_inventory_persists_and_reuses_externally(
     tmp_path: Path,
 ) -> None:
-    source = tmp_path / "output"
     cache_root = tmp_path / "sandbox" / ".phenotypic-gui" / "viewer_cache"
-    _seed_output(source)
-    _publish_coherent_manifest(source)
-    selected_before = {
-        path.relative_to(source): path.read_bytes()
-        for path in source.rglob("*")
-        if path.is_file()
-    }
+    source = _build_complete(tmp_path / "output")
+    selected_before = _scientific_tree(source)
 
     first = OutputRoot.discover(source, cache_root=cache_root)
     second = OutputRoot.discover(source, cache_root=cache_root)
@@ -234,165 +140,46 @@ def test_coherent_terminal_inventory_persists_and_reuses_externally(
         source,
         cache_root=cache_root,
     )
-    assert first.consistency.state == "coherent"
+    assert first.run_state is not None
+    assert first.run_state.completion == "complete"
     assert first.snapshot.processing_inventory_cache_hit is False
     assert second.snapshot.processing_inventory_cache_hit is True
     assert cache_path.is_file()
     assert cache_path.is_relative_to(cache_root)
-    assert {
-        path.relative_to(source): path.read_bytes()
-        for path in source.rglob("*")
-        if path.is_file()
-    } == selected_before
+    assert _scientific_tree(source) == selected_before
 
 
-def test_terminal_event_log_supersedes_stale_processing_snapshot(
-    tmp_path: Path,
-) -> None:
-    """Fresh CLI output remains coherent when its initial snapshot is stale."""
-    source = tmp_path / "output"
-    _seed_output(source)
-    _publish_coherent_manifest(source)
-    state_path = processing_state_path(source)
-    state_path.parent.mkdir(parents=True, exist_ok=True)
-    state_path.write_text(
-        json.dumps(
-            {
-                ProcessingStateKey.DATASETS: {
-                    "plate": {
-                        ProcessingStateKey.INITIAL_IMAGES: ["a", "b"],
-                        ProcessingStateKey.COMPLETED: [],
-                        ProcessingStateKey.FAILED: [],
-                    }
-                }
-            }
-        ),
-        encoding="utf-8",
-    )
-    log_path = event_log_path(source)
-    for image_name in ("a", "b"):
-        append_event(log_path, "plate", image_name, "started")
-        append_event(log_path, "plate", image_name, "completed")
-    selected_before = {
-        path.relative_to(source): path.read_bytes()
-        for path in source.rglob("*")
-        if path.is_file()
-    }
-
-    report = inspect_output_consistency(BundleLayout.detect(source))
-
-    assert report.state == "coherent"
-    assert report.evidence.processing_completed == 2
-    assert report.evidence.processing_unfinished == 0
-    assert {
-        path.relative_to(source): path.read_bytes()
-        for path in source.rglob("*")
-        if path.is_file()
-    } == selected_before
 
 
-def test_consistency_ignores_same_name_events_from_prior_generation(
-    tmp_path: Path,
-) -> None:
-    source = tmp_path / "output"
-    _seed_output(source)
-    _publish_coherent_manifest(source)
-    state_path = processing_state_path(source)
-    state_path.parent.mkdir(parents=True, exist_ok=True)
-    state_path.write_text(
-        json.dumps(
-            {
-                ProcessingStateKey.CONFIG: {
-                    "processing_generation": "current",
-                },
-                ProcessingStateKey.DATASETS: {
-                    "plate": {
-                        ProcessingStateKey.INITIAL_IMAGES: ["a", "b"],
-                        ProcessingStateKey.COMPLETED: [],
-                        ProcessingStateKey.FAILED: [],
-                    }
-                },
-            }
-        ),
-        encoding="utf-8",
-    )
-    log_path = event_log_path(source)
-    for image_name in ("a", "b"):
-        append_event(
-            log_path,
-            "plate",
-            image_name,
-            "completed",
-            generation="previous",
-        )
-        append_event(
-            log_path,
-            "plate",
-            image_name,
-            "started",
-            generation="current",
-        )
-
-    report = inspect_output_consistency(BundleLayout.detect(source))
-
-    assert report.evidence.processing_completed == 0
-    assert report.evidence.processing_unfinished == 2
-    assert report.state == "contradictory"
 
 
-def test_unreadable_processing_event_log_stays_read_only(
-    tmp_path: Path,
-) -> None:
-    source = tmp_path / "output"
-    _seed_output(source)
-    _publish_coherent_manifest(source)
-    state_path = processing_state_path(source)
-    state_path.parent.mkdir(parents=True, exist_ok=True)
-    state_path.write_text(
-        json.dumps(
-            {
-                ProcessingStateKey.DATASETS: {
-                    "plate": {
-                        ProcessingStateKey.INITIAL_IMAGES: ["a", "b"],
-                        ProcessingStateKey.COMPLETED: [],
-                        ProcessingStateKey.FAILED: [],
-                    }
-                }
-            }
-        ),
-        encoding="utf-8",
-    )
-    corrupt_log_path = event_log_path(source)
-    corrupt_log_path.write_bytes(b"\xff")
-
-    report = inspect_output_consistency(BundleLayout.detect(source))
-
-    assert report.state == "incomplete"
-    assert report.evidence.processing_event_log_present is True
-    assert report.evidence.processing_event_log_readable is False
-    assert "processing event log is unreadable" in report.reasons
 
 
 def test_mutable_state_is_always_fresh_while_processing_cache_reuses(
     tmp_path: Path,
 ) -> None:
-    source = tmp_path / "output"
     cache_root = tmp_path / "sandbox" / ".phenotypic-gui" / "viewer_cache"
-    _seed_output(source)
-    _publish_coherent_manifest(source)
+    source = _build_complete(tmp_path / "output")
 
     first = OutputRoot.discover(source, cache_root=cache_root)
     mirror = measurements_parquet_path(source)
     pl.read_parquet(mirror).with_columns(
         pl.lit("new").alias("Mutable")
     ).write_parquet(mirror)
+    # The aggregate proof fences `measurements_parquet` by size and sha256,
+    # so rewriting it out of band makes the run non-`core_readable` and
+    # discovery refuses it. A re-finalize republishes the proof over the new
+    # bytes; without this the fixture describes a tree no writer produces.
+    publish_aggregate_snapshot(
+        source, source_work_ids=["work-a", "work-b"]
+    )
     second = OutputRoot.discover(source, cache_root=cache_root)
 
     assert second.snapshot.processing_inventory_cache_hit is True
     assert second.source_fingerprint == first.source_fingerprint
     assert (
-        second.consumed_state_fingerprint
-        != first.consumed_state_fingerprint
+        second.snapshot.consumed_state_fingerprint
+        != first.snapshot.consumed_state_fingerprint
     )
     assert "Mutable" in second.master_df.columns
 
@@ -400,10 +187,8 @@ def test_mutable_state_is_always_fresh_while_processing_cache_reuses(
 def test_changed_processing_product_invalidates_terminal_cache(
     tmp_path: Path,
 ) -> None:
-    source = tmp_path / "output"
     cache_root = tmp_path / "sandbox" / ".phenotypic-gui" / "viewer_cache"
-    _seed_output(source)
-    _publish_coherent_manifest(source)
+    source = _build_complete(tmp_path / "output")
     first = OutputRoot.discover(source, cache_root=cache_root)
 
     (zarr_store_path(source, "plate", "a") / "zarr.json").write_text(
@@ -415,75 +200,54 @@ def test_changed_processing_product_invalidates_terminal_cache(
     assert second.source_fingerprint != first.source_fingerprint
 
 
-def test_incomplete_and_contradictory_outputs_never_persist_inventory(
+def test_an_unfinished_output_never_persists_an_inventory(
     tmp_path: Path,
 ) -> None:
-    incomplete_source = tmp_path / "incomplete"
+    """Only a `complete` run may seed the persistent inventory cache.
+
+    Formerly ``test_incomplete_and_contradictory_outputs_never_persist_inventory``.
+    Its second half drove the classifier into ``contradictory`` by writing a
+    manifest whose counts disagreed with the inventory beside a completion
+    marker claiming success. Spec §4.3 deletes ``contradictory`` and §4.2
+    demotes both manifest counts and that marker out of the evidence set, so
+    that half no longer has a state to reach. What survives is the invariant
+    it was really protecting: an output that is not `complete` is bound
+    read-only and leaves no cache record behind.
+    """
     cache_root = tmp_path / "sandbox" / ".phenotypic-gui" / "viewer_cache"
-    _seed_output(incomplete_source)
+    incomplete_source = _build_complete(
+        tmp_path / "incomplete", complete=False
+    )
 
     incomplete = OutputRoot.discover(
         incomplete_source,
         cache_root=cache_root,
     )
-    assert incomplete.consistency.state == "incomplete"
+    assert incomplete.run_state is not None
+    assert incomplete.run_state.completion == "incomplete"
+    assert incomplete.run_is_complete is False
     assert incomplete.processing_inventory.assurance == "read_only_bounded"
+    assert incomplete.mutation_snapshot_is_safe() is False
     assert not processing_inventory_cache_path(
         incomplete_source,
         cache_root=cache_root,
     ).exists()
 
-    contradictory_source = tmp_path / "contradictory"
-    _seed_output(contradictory_source)
-    manifest = resolve_manifest_json_path(contradictory_source)
-    manifest.parent.mkdir(parents=True, exist_ok=True)
-    manifest.write_text(
-        json.dumps(
-            {
-                "is_complete": False,
-                "completed": 4,
-                "failed": 1,
-                "total_images": 2,
-            }
-        ),
-        encoding="utf-8",
-    )
-    marker = run_completion_marker_path(contradictory_source)
-    marker.write_text(
-        json.dumps(
-            {
-                "status": "complete",
-                "finalizer_succeeded": True,
-            }
-        ),
-        encoding="utf-8",
-    )
-
-    contradictory = OutputRoot.discover(
-        contradictory_source,
-        cache_root=cache_root,
-    )
-    assert contradictory.consistency.state == "contradictory"
-    assert contradictory.processing_inventory.assurance == "read_only_bounded"
-    assert contradictory.mutation_snapshot_is_safe() is False
-    assert contradictory.consistency.is_read_only is True
-    assert contradictory.master_df.height == 2
-    assert not processing_inventory_cache_path(
-        contradictory_source,
-        cache_root=cache_root,
-    ).exists()
-
-    owner = gui_launch_owner_path(contradictory_source)
+    # An active owner is reported on the snapshot without changing the
+    # binding's read-only status -- the two are separate axes, and that
+    # separation is what lets the viewer display a running output at all.
+    owner = gui_launch_owner_path(incomplete_source)
+    owner.parent.mkdir(parents=True, exist_ok=True)
     owner.write_text(
         json.dumps({"status": "running"}),
         encoding="utf-8",
     )
-    active_contradiction = OutputRoot.discover(
-        contradictory_source,
+    active = OutputRoot.discover(
+        incomplete_source,
         cache_root=cache_root,
     )
-    assert active_contradiction.consistency.state == "contradictory"
-    assert active_contradiction.snapshot.active_run is True
+    assert active.snapshot.active_run is True
+    assert active.run_is_complete is False
 
 
 def test_read_only_inventory_never_walks_nested_processing_tree(
@@ -531,7 +295,7 @@ def test_read_only_inventory_never_walks_nested_processing_tree(
 
     output = OutputRoot.discover(source, cache_root=cache_root)
 
-    assert output.consistency.is_read_only
+    assert not output.run_is_complete
     assert output.processing_inventory.assurance == "read_only_bounded"
     assert len(output.processing_inventory.entries) <= 5
     assert stat_calls <= image_count * 4 + 100
@@ -554,10 +318,8 @@ def test_read_only_inventory_never_walks_nested_processing_tree(
 def test_discovery_reports_phases_and_can_cancel_during_inventory(
     tmp_path: Path,
 ) -> None:
-    source = tmp_path / "output"
     cache_root = tmp_path / "sandbox" / ".phenotypic-gui" / "viewer_cache"
-    _seed_output(source, overlay_count=300)
-    _publish_coherent_manifest(source)
+    source = _build_complete(tmp_path / "output", overlay_count=300)
     cancellation = OutputDiscoveryCancellation()
     updates: list[OutputDiscoveryProgress] = []
 
@@ -621,10 +383,8 @@ def test_successful_discovery_emits_complete_phase(tmp_path: Path) -> None:
 def test_late_cancellation_does_not_publish_terminal_inventory(
     tmp_path: Path,
 ) -> None:
-    source = tmp_path / "output"
     cache_root = tmp_path / "sandbox" / ".phenotypic-gui" / "viewer_cache"
-    _seed_output(source)
-    _publish_coherent_manifest(source)
+    source = _build_complete(tmp_path / "output")
     cancellation = OutputDiscoveryCancellation()
 
     def _cancel_after_inventory(update: OutputDiscoveryProgress) -> None:
