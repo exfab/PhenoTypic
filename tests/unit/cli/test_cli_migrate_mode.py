@@ -2339,3 +2339,55 @@ def test_revert_puts_a_migrated_tree_back(finished_legacy_run) -> None:
         )
         for name in legacy_trees
     } == before
+
+
+def test_slurm_is_refused_for_a_target_with_no_stores(tmp_path: Path) -> None:
+    """A pre-markers process tree has nothing for a store array to do.
+
+    The provenance SLURM topology is store array -> seal -> finalizer, and its
+    whole reporting vocabulary is store-upgrade counts: the seal barriers store
+    statuses and the finalizer reports how many were upgraded. Sent through it,
+    such a tree would come back "0 upgraded, succeeded" with the only real work
+    -- the machine-state conversion -- invisible in its own terminal report.
+
+    Two independent guards already refuse the shape, which is what makes it a
+    topology mismatch rather than an oversight in one place: the manifest
+    writer raises on zero tasks, and the worker config loader's `target_kind`
+    admits only `direct_store` and `process_tree`, so it cannot parse a config
+    naming this kind at all. The refusal routes the tree away instead of
+    weakening both.
+
+    **Fires when** the tree is accepted onto the array topology.
+    """
+    import json as _json
+
+    from phenotypic.sdk_ import resolve_processing_state_path
+
+    tree = tmp_path / "pre-markers"
+    (tree / "plate").mkdir(parents=True)
+    (tree / "plate" / "a.tiff").write_bytes(b"pixels")
+    state = resolve_processing_state_path(tree)
+    state.parent.mkdir(parents=True, exist_ok=True)
+    state.write_text(
+        _json.dumps(
+            {"version": "2.0.0", "config": {"process_only_layer": "rgb"}}
+        ),
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--mode",
+            "migrate",
+            "--output",
+            str(tree),
+            "--slurm",
+            "slurm_partition=short",
+        ],
+    )
+
+    assert result.exit_code == 2, result.output
+    assert "nothing to distribute" in result.output
+    # The refusal has to say what to do instead, or it is a dead end.
+    assert "without --slurm" in result.output

@@ -20,6 +20,7 @@ from ._cli_migrate_manifest import validate_migration_generation
 from ._cli_migrate_provenance import (
     ProvenanceMigrationTarget,
     provenance_migration_lifecycle_root,
+    target_kind_owns_machine_state,
     upgrade_store_provenance,
 )
 from ._cli_migrate_provenance_manifest import (
@@ -210,7 +211,15 @@ def _run_seal_worker(config: _ProvenanceWorkerConfig) -> int:
         # conversion failure is not missing seal authority, and reporting it as
         # one would be the MIG-23 conflation again. The local path lets this
         # propagate too.
-        migrate_machine_state(config.target_root)
+        #
+        # Gated by kind rather than left to luck. `direct_store` reaches this
+        # stage too, and its lifecycle state is a hashed sibling by contract --
+        # converting there would write `.phenotypic/` INSIDE the store. Every
+        # arm of `migrate_machine_state` happens to no-op on a bare store
+        # today, which is exactly the kind of accident that stops being true
+        # without anything failing to say so.
+        if target_kind_owns_machine_state(config.target_kind):
+            migrate_machine_state(config.target_root)
     try:
         seal = seal_provenance_migration(
             config.manifest_path,

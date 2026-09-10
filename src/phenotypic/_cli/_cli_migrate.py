@@ -66,6 +66,7 @@ from ._cli_migrate_provenance import (
     classify_provenance_migration_target,
     execute_provenance_migration,
     provenance_migration_lifecycle_root,
+    target_kind_owns_machine_state,
 )
 from ._cli_migrate_state import (
     migrate_machine_state,
@@ -1624,6 +1625,29 @@ def run_migrate(
                         dry_run=False,
                         commit_guard=provenance_commit_guard,
                     )
+                    # The fourth combination. `_run_migrate_owned` converts
+                    # machine state for a full run; this branch -- the local
+                    # arm for every OTHER kind -- did not, so a process tree
+                    # migrated locally got per-store provenance and nothing
+                    # else: no records, no state conversion, no master-CSV
+                    # deletion, no legacy-tree retention. `image_complete/`
+                    # survived and the schema gate still read CONVERT.
+                    #
+                    # AFTER the store upgrade, never before: MIG-11 mints
+                    # records FROM the outputs, and a store is only
+                    # projectable once its journal has been upgraded. Only
+                    # when the upgrade was clean -- minting records over a
+                    # partially-failed conversion would certify stores that
+                    # are not there.
+                    #
+                    # `direct_store` is excluded by kind, not by luck: its
+                    # lifecycle state is a hashed sibling, so converting here
+                    # would write `.phenotypic/` INSIDE the store, which that
+                    # kind's own contract forbids.
+                    if not failures and target_kind_owns_machine_state(
+                        target.kind
+                    ):
+                        migrate_machine_state(output_dir)
                 except Exception as exc:
                     mark_generation_failed(
                         lifecycle_root, generation, str(exc)
@@ -2524,6 +2548,25 @@ def handle_migrate_mode(
             f"Could not classify migration target: {exc}"
         ) from exc
     provenance_only = target.kind != "full_run"
+    # A storeless target has no work for a store array to do, and the chain
+    # cannot describe what it WOULD do: `seal_provenance_migration` barriers
+    # store statuses and the finalizer reports upgrade counts, so a
+    # pre-markers process tree would come back "0 upgraded, succeeded" with
+    # the only real work -- the machine-state conversion -- invisible in its
+    # own terminal report.
+    #
+    # Two independent guards already refuse this shape, which is what says it
+    # is a topology mismatch and not an oversight in one place:
+    # `write_provenance_migration_manifest` raises on zero tasks, and the
+    # worker config loader's `target_kind` admits only `direct_store` and
+    # `process_tree` -- it cannot even parse a config naming this kind. The
+    # fix is to route the tree away from the array, not to weaken both.
+    if provenance_only and not target.stores:
+        raise click.UsageError(
+            f"--mode migrate --slurm has nothing to distribute for {output_dir}: "
+            "this target has no OME-Zarr stores to convert, only machine state. "
+            "Run it without --slurm."
+        )
     if provenance_only and delete_sources:
         raise click.ClickException(
             "--delete-sources is not supported for direct-store or "

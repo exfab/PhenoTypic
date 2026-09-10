@@ -1923,3 +1923,129 @@ def test_the_provenance_only_chain_converts_machine_state_too() -> None:
     # Locally the conversion precedes the seal; the mirror must too, or the
     # seal binds a generation over a tree that is about to change.
     assert line < seals[0].lineno
+
+
+# ---------------------------------------------------------------------------
+# The fourth combination: local x provenance-only
+# ---------------------------------------------------------------------------
+
+
+def _minimal_store(path: Path) -> Path:
+    """One schema-1 PhenoTypic store: enough to classify and to upgrade."""
+    path.mkdir(parents=True)
+    (path / "zarr.json").write_text(
+        json.dumps(
+            {
+                "zarr_format": 3,
+                "node_type": "group",
+                "attributes": {
+                    "ome": {"version": "0.5"},
+                    "phenotypic": {
+                        "store_schema_version": 3,
+                        "provenance": {
+                            "schema_version": 1,
+                            "status": "complete",
+                            "pipeline": None,
+                            "retry_base_length": 0,
+                            "operations": [],
+                        },
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def _migrate_locally(output: Path) -> object:
+    """Invoke the real entry point, locally, on one migration target."""
+    from click.testing import CliRunner
+
+    from phenotypic.phenotypicCLI import phenotypic_cli
+
+    return CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(output)]
+    )
+
+
+def test_a_pre_markers_process_tree_is_migrated_by_the_local_cli(
+    tmp_path: Path,
+) -> None:
+    """MIG-11's minting must be reachable through `--mode migrate`.
+
+    It was not. `run_migrate` branches on `target.kind != "full_run"` into
+    `execute_provenance_migration`, which iterates `target.stores` and nothing
+    else -- and a pre-markers process tree has **no stores**, by definition:
+    the kind exists because `--mode process` gained OME-Zarr output in a later
+    release than the trees it converts. So the local arm did nothing, reported
+    `provenance_upgraded=0`, and **exited 0**. A silent successful no-op on
+    the exact tree the arm exists for.
+
+    The SLURM arm could not reach it either, so before this fix the minting
+    was reachable from no execution mode at all -- its passing tests call the
+    converter directly.
+
+    **Fires when** the local provenance branch stops converting machine state,
+    which returns the minting to being unreachable.
+    """
+    tree = _build_pre_markers_process_tree(tmp_path / "run", stems=("a", "b"))
+
+    result = _migrate_locally(tree)
+
+    assert result.exit_code == 0, result.output
+    # The co-witness that matters: exit 0 was already true when nothing
+    # happened, so success is not the assertion -- the records are.
+    assert _record(tree, "plate", "a")["mode"] == "process"
+    assert _record(tree, "plate", "b")["mode"] == "process"
+
+
+def test_a_process_tree_is_migrated_by_the_local_cli(tmp_path: Path) -> None:
+    """The same gap for the store-bearing kind, where it is less visible.
+
+    A process tree does get its per-store provenance upgraded locally, so the
+    migration looks like it worked. What it did not get was any machine-state
+    conversion -- which is why `image_complete/` survived a local migration
+    and the schema gate went on reading CONVERT.
+
+    **Fires when** the conversion is dropped from the local branch, which
+    would leave a tree that migrates successfully and stays unconverted.
+    """
+    from phenotypic._cli._cli_migrate_state import legacy_retention_dir
+    from phenotypic.sdk_ import progress_dir
+
+    tree = tmp_path / "run"
+    _minimal_store(tree / "dataset" / "a.ome.zarr")
+    _plant_legacy_markers(tree, dataset="dataset", stem="a", image_complete=True)
+
+    result = _migrate_locally(tree)
+
+    assert result.exit_code == 0, result.output
+    assert not (progress_dir(tree) / "image_complete").exists(), (
+        "the legacy tree survived a local migration"
+    )
+    assert legacy_retention_dir(tree).is_dir(), "nothing was retained"
+
+
+def test_a_direct_store_gets_no_machine_state_written_into_it(
+    tmp_path: Path,
+) -> None:
+    """The kind the conversion must NOT reach, asserted rather than assumed.
+
+    A direct store's lifecycle state is a hashed sibling below `.phenotypic`,
+    never inside the store -- so converting machine state for it would write
+    `.phenotypic/` exactly where that kind's contract forbids. Every arm of
+    `migrate_machine_state` happens to no-op on a bare store today, which is
+    why the gate is on `kind` and not on that accident.
+
+    **Fires when** the kind gate is dropped and the conversion is applied to
+    every provenance-only target.
+    """
+    store = _minimal_store(tmp_path / "solo.ome.zarr")
+
+    result = _migrate_locally(store)
+
+    assert result.exit_code == 0, result.output
+    assert not (store / ".phenotypic").exists(), (
+        "machine state was written inside the store"
+    )

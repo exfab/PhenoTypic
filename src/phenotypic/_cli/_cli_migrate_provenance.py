@@ -53,6 +53,30 @@ class ProvenanceMigrationTarget:
     outputs: tuple[Path, ...] = ()
 
 
+def target_kind_owns_machine_state(kind: str) -> bool:
+    """Whether a target of this kind is a run TREE with machine state of its own.
+
+    The distinction the ``kind != "full_run"`` dispatch does not make. That
+    predicate asks "is this not a full run?" and is used as though it asked "is
+    this per-store provenance work?" -- which is false for two of the three
+    provenance-only kinds.
+
+    * ``process_tree`` and ``pre_markers_process`` are trees. They have a
+      ``.phenotypic/`` of their own, so ``migrate_machine_state`` applies.
+    * ``direct_store`` is one store. Its lifecycle state is a **hashed
+      sibling**, never inside the store, so there is no tree machine state to
+      convert and writing one would put ``.phenotypic/`` where the store's own
+      contract forbids it.
+
+    Args:
+        kind: A :class:`ProvenanceMigrationTarget` kind.
+
+    Returns:
+        Whether ``migrate_machine_state`` applies to this kind.
+    """
+    return kind in {"full_run", "process_tree", "pre_markers_process"}
+
+
 @dataclass(frozen=True)
 class ProvenanceUpgradeResult:
     """Outcome of inspecting and optionally upgrading one store root."""
