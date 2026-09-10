@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime, timezone
 import shutil
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
@@ -76,10 +77,15 @@ from phenotypic.sdk_._image_record import (
     STAGE_MEASURED,
     STAGE_STAGE2,
     STAGE_STAGE3,
+    WORK_ID_UNRECOVERABLE,
 )
 
 __all__ = [
     "LEGACY_MARKER_SEGMENTS",
+    "convert_process_output_records",
+    "apply_process_output_records",
+    "plan_process_output_records",
+    "PlannedProcessRecord",
     "plan_machine_state_migration",
     "migrate_machine_state",
     "MigrationStatePlan",
@@ -254,6 +260,11 @@ def plan_per_image_records(output_dir: Path) -> tuple[PlannedRecord, ...]:
             )
         )
     return tuple(planned)
+
+
+def _now_iso() -> str:
+    """UTC now, in the spelling every stage entry in this tree uses."""
+    return datetime.now(timezone.utc).isoformat(timespec="milliseconds")
 
 
 def _stage_timestamp(entry: object) -> str:
@@ -868,6 +879,8 @@ class MigrationStatePlan:
     """
 
     records: tuple[PlannedRecord, ...]
+    #: MIG-11: records minted from a pre-markers process tree's outputs.
+    process_outputs: tuple[PlannedProcessRecord, ...]
     master_csv: Path | None
     retained_trees: tuple[Path, ...]
     unprojectable: tuple[str, ...]
@@ -890,6 +903,7 @@ def plan_machine_state_migration(output_dir: Path) -> MigrationStatePlan:
     """
     records = plan_per_image_records(output_dir)
     return MigrationStatePlan(
+        process_outputs=plan_process_output_records(output_dir),
         records=records,
         master_csv=plan_legacy_master_csv(output_dir),
         retained_trees=plan_legacy_tree_retention(output_dir),
@@ -914,6 +928,12 @@ def migrate_machine_state(output_dir: Path) -> MigrationStatePlan:
     records = plan_per_image_records(output_dir)
     apply_per_image_records(output_dir, records)
 
+    # MIG-11, before the state for the same reason the per-image records are:
+    # `plan_processing_state` reads through `read_image_record`, and these are
+    # records.
+    process_outputs = plan_process_output_records(output_dir)
+    apply_process_output_records(output_dir, process_outputs)
+
     master_csv = plan_legacy_master_csv(output_dir)
     apply_legacy_master_csv(master_csv)
 
@@ -927,9 +947,124 @@ def migrate_machine_state(output_dir: Path) -> MigrationStatePlan:
 
     return MigrationStatePlan(
         records=records,
+        process_outputs=process_outputs,
         master_csv=master_csv,
         retained_trees=retained,
         unprojectable=unprojectable_stores(output_dir),
         state=state,
         state_is_conditional=False,
+    )
+
+
+# ---------------------------------------------------------------------------
+# MIG-11: a pre-markers `--mode process` tree records completion in its outputs
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PlannedProcessRecord:
+    """One process output's record, computed and not yet written."""
+
+    dataset: str
+    image_stem: str
+    relative_image_path: str
+    output: Path
+
+
+def plan_process_output_records(
+    output_dir: Path,
+) -> tuple[PlannedProcessRecord, ...]:
+    """Enumerate records a pre-markers process tree's outputs imply.
+
+    **Writes nothing**, so a dry run renders this by calling it alone.
+
+    A ``--mode process`` run of this vintage wrote no ``image_complete/``, no
+    ``results/`` and no store -- the layer files under the mirrored input tree
+    are the only surviving statement that those images were produced. So the
+    output *is* the completion record, which is the user's own framing: *"the
+    fact there's an output image is sufficient for tracking."*
+
+    Enumerated through :func:`classify_provenance_migration_target`, so the
+    definition of "a pre-markers process tree" has one home and the classifier
+    and the converter cannot disagree about which trees qualify. That
+    classifier keys on ``config.process_only_layer`` being **declared**, never
+    on an absence of stores.
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        One record per output, ordered by path. Empty for every other shape.
+    """
+    from ._cli_migrate_provenance import classify_provenance_migration_target
+
+    try:
+        target = classify_provenance_migration_target(output_dir)
+    except ValueError:
+        return ()
+    if target.kind != "pre_markers_process":
+        return ()
+    return tuple(
+        PlannedProcessRecord(
+            dataset=output.parent.name,
+            image_stem=source_image_stem(output),
+            relative_image_path=output.relative_to(target.root).as_posix(),
+            output=output,
+        )
+        for output in target.stores
+    )
+
+
+def apply_process_output_records(
+    output_dir: Path, planned: tuple[PlannedProcessRecord, ...]
+) -> int:
+    """Mint one record per process output, identity marked unrecoverable.
+
+    **Publishes through :func:`publish_image_record`, not by hand.** That
+    function owns the record's shape and builds the artifact descriptors, so
+    minting them here would be a second home for the artifact format -- and
+    it resolves each artifact ``strict=True``, which is what makes "a record
+    cannot exist unless its output does" true of these records too.
+
+    ``publish_image_success`` is the wrong entry despite being the forward
+    process path's: it takes no ``provenance``, so it would stamp these
+    ``forward`` and the ``work_id`` fence would then be applied to an identity
+    that was never minted.
+
+    ``work_id`` is :data:`WORK_ID_UNRECOVERABLE`. It is never compared --
+    ``record_rejection`` skips that check for migrated records -- and U-10
+    forbids fabricating the content-derived identity a resume would re-derive.
+    The stage is ``measured`` to match what a forward process run records, so
+    a migrated tree and a forward one differ only where they must.
+
+    Args:
+        output_dir: Run output root.
+        planned: :func:`plan_process_output_records`'s result.
+
+    Returns:
+        The number of records written.
+    """
+    from ._cli_image_record import publish_image_record
+
+    for item in planned:
+        publish_image_record(
+            output_dir,
+            work_id=WORK_ID_UNRECOVERABLE,
+            dataset=item.dataset,
+            image_stem=item.image_stem,
+            relative_image_path=item.relative_image_path,
+            mode="process",
+            stages={STAGE_MEASURED: {"at": _now_iso(), "legacy_migration": True}},
+            artifacts={"process_output": item.output},
+            attempt_id="migrate",
+            lifecycle_epoch="migrate",
+            provenance=PROVENANCE_MIGRATED,
+        )
+    return len(planned)
+
+
+def convert_process_output_records(output_dir: Path) -> int:
+    """Mint records for a pre-markers process tree; a no-op for every other."""
+    return apply_process_output_records(
+        output_dir, plan_process_output_records(output_dir)
     )

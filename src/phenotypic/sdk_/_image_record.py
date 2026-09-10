@@ -31,6 +31,7 @@ from ._io_constants import image_record_path
 __all__ = [
     "PROVENANCE_FORWARD",
     "PROVENANCE_MIGRATED",
+    "WORK_ID_UNRECOVERABLE",
     "RECORD_VERSION",
     "STAGE_MEASURED",
     "STAGE_STAGE1",
@@ -58,6 +59,28 @@ STAGE_MEASURED: Final[str] = "measured"
 #: the spelling lives here rather than in either one.
 PROVENANCE_FORWARD: Final[str] = "forward"
 PROVENANCE_MIGRATED: Final[str] = "migrated"
+
+#: The ``work_id`` of a record migrate minted from an output alone (MIG-11).
+#:
+#: **Not a digest, and deliberately not empty.** A pre-markers ``--mode
+#: process`` tree records completion nowhere but in the outputs themselves, so
+#: migrate can say *"this output exists"* and cannot say which pipeline made
+#: it -- ``work_id_for_image`` folds in the pipeline's own hash, and U-10
+#: forbids fabricating an identity a resume would then compare against.
+#:
+#: It is **never compared**: :func:`record_rejection` skips the ``work_id``
+#: check entirely for :data:`PROVENANCE_MIGRATED` records, which is precisely
+#: what that provenance value means. So the field's only job is to say *why*
+#: it is not an identity.
+#:
+#: ``""`` was considered and rejected. It is indistinguishable from "we forgot
+#: to set this" in a file a support request will quote, and it is falsey where
+#: this repo's readers are not uniform about that -- ``_run_state`` goes
+#: through ``_optional_str``, ``_cli_recompile_recovery`` does a hard
+#: ``str(...)``, and :func:`record_rejection` compares by equality. "Absent"
+#: and "present but unrecoverable" are different facts and the empty string
+#: collapses them.
+WORK_ID_UNRECOVERABLE: Final[str] = "unrecoverable"
 
 #: A version mismatch **invalidates rather than migrates**, matching the
 #: policy `_cli/CLAUDE.md` states for the marker this record replaces.

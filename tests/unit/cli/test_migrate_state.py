@@ -1173,3 +1173,144 @@ def test_planning_the_whole_migration_writes_nothing(tmp_path: Path) -> None:
         for p in sorted(tmp_path.rglob("*"))
         if p.is_file()
     } == before
+
+
+# ---------------------------------------------------------------------------
+# MIG-11: a pre-markers process tree's outputs ARE its completion record
+# ---------------------------------------------------------------------------
+
+
+def _build_pre_markers_process_tree(root: Path, *, stems=("a",)) -> Path:
+    """A pre-markers ``--mode process`` run: flat layers, no store, no markers.
+
+    `ext: "png"` is copied from the shipped gate fixture deliberately, and it
+    is **wrong there** -- `process_only_output_path` derives the extension from
+    the layer and format, giving `.tiff` for `rgb`. Reproduced so this suite
+    proves the walk does not key on a field that is written at four sites and
+    read at none.
+    """
+    from phenotypic.sdk_ import resolve_processing_state_path
+
+    (root / "plate").mkdir(parents=True, exist_ok=True)
+    for stem in stems:
+        (root / "plate" / f"{stem}.tiff").write_bytes(b"pixels-" + stem.encode())
+    state = resolve_processing_state_path(root)
+    state.parent.mkdir(parents=True, exist_ok=True)
+    state.write_text(
+        json.dumps(
+            {
+                "version": "2.0.0",
+                "config": {"process_only_layer": "rgb", "ext": "png"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    return root
+
+
+def test_a_process_output_becomes_a_record(tmp_path: Path) -> None:
+    """MIG-11. The output is the only surviving statement that the image was
+    produced, so migrate records exactly that.
+
+    Three co-witnesses, because each kills a different stub: `provenance` is
+    `migrated` (not the forward default), the artifact descriptor resolves to
+    the file on disk (not an empty record), and `work_id` is the sentinel
+    (not a digest a future implementation quietly computes).
+    """
+    from phenotypic._cli._cli_migrate_state import convert_process_output_records
+    from phenotypic.sdk_._image_record import (
+        PROVENANCE_MIGRATED,
+        WORK_ID_UNRECOVERABLE,
+    )
+
+    _build_pre_markers_process_tree(tmp_path)
+    assert convert_process_output_records(tmp_path) == 1
+
+    record = _record(tmp_path, "plate", "a")
+    assert record["provenance"] == PROVENANCE_MIGRATED
+    assert record["work_id"] == WORK_ID_UNRECOVERABLE, (
+        "an identity was minted where U-10 forbids one"
+    )
+    assert len(record["work_id"]) != 64, "the work_id looks like a sha256"
+    descriptor = record["artifacts"]["process_output"]
+    assert (tmp_path / descriptor["path"]).is_file(), (
+        "the record certifies an artifact that is not there"
+    )
+    assert record["mode"] == "process"
+
+
+def test_the_minted_record_is_not_rejected_for_its_work_id(
+    tmp_path: Path,
+) -> None:
+    """The sentinel works because `record_rejection` skips the comparison for
+    migrated records -- which is what `PROVENANCE_MIGRATED` means.
+
+    **Fires when** the provenance stamp is dropped: the record would then be
+    fenced on a `work_id` that was never an identity, and the tree it was
+    minted for could never be read.
+    """
+    from phenotypic._cli._cli_migrate_state import convert_process_output_records
+    from phenotypic.sdk_ import read_image_record
+    from phenotypic.sdk_._image_record import record_rejection
+
+    _build_pre_markers_process_tree(tmp_path)
+    convert_process_output_records(tmp_path)
+
+    record = read_image_record(tmp_path, "plate", "a")
+    assert record is not None
+    assert (
+        record_rejection(
+            record, dataset="plate", image_stem="a", work_id="anything-at-all"
+        )
+        is None
+    )
+
+
+def test_a_tree_that_does_not_declare_a_process_run_mints_nothing(
+    tmp_path: Path,
+) -> None:
+    """The narrowness that keeps migrate from accepting any folder of images.
+
+    **Fires when** the classifier is made tolerant of an empty store set
+    instead of keying on the declared `process_only_layer` -- which would make
+    every directory of pictures a migratable process tree.
+    """
+    from phenotypic._cli._cli_migrate_state import plan_process_output_records
+    from phenotypic.sdk_ import resolve_processing_state_path
+
+    (tmp_path / "plate").mkdir(parents=True)
+    (tmp_path / "plate" / "a.tiff").write_bytes(b"pixels")
+    state = resolve_processing_state_path(tmp_path)
+    state.parent.mkdir(parents=True, exist_ok=True)
+    state.write_text(json.dumps({"version": "2.0.0", "config": {}}), encoding="utf-8")
+
+    assert plan_process_output_records(tmp_path) == ()
+
+
+def test_planning_process_records_writes_nothing(tmp_path: Path) -> None:
+    """The dry-run seam, with a co-witness that planning found an output."""
+    from phenotypic._cli._cli_migrate_state import plan_process_output_records
+
+    _build_pre_markers_process_tree(tmp_path, stems=("a", "b"))
+    before = {
+        p.relative_to(tmp_path): p.read_bytes()
+        for p in sorted(tmp_path.rglob("*"))
+        if p.is_file()
+    }
+
+    planned = plan_process_output_records(tmp_path)
+
+    assert len(planned) == 2, "planning found nothing, so the check is vacuous"
+    assert {
+        p.relative_to(tmp_path): p.read_bytes()
+        for p in sorted(tmp_path.rglob("*"))
+        if p.is_file()
+    } == before
+
+
+def test_the_process_arm_is_a_no_op_on_a_full_run_tree(tmp_path: Path) -> None:
+    """Every conversion in this module is unconditional and cheap elsewhere."""
+    from phenotypic._cli._cli_migrate_state import convert_process_output_records
+
+    _plant_legacy_markers(tmp_path, dataset="plate", stem="a", image_complete=True)
+    assert convert_process_output_records(tmp_path) == 0
