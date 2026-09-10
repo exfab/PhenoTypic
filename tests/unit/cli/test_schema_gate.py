@@ -1173,23 +1173,6 @@ def test_the_arming_flag_has_one_source() -> None:
 #: shape cannot leave a stale entry that marks nothing while the matrix looks
 #: marked.
 _UNDISCHARGEABLE_TODAY: dict[str, str] = {
-    "modern-process": (
-        "The LOCAL provenance-only path never runs `migrate_machine_state`. A "
-        "`--mode process` tree classifies as `process_tree` (no `results/`, "
-        "stores under the mirrored input tree), so `run_migrate` takes the "
-        "branch at `_cli_migrate.py:1575` and calls "
-        "`execute_provenance_migration`, which upgrades each store's "
-        "provenance and nothing else. The three `migrate_machine_state` call "
-        "sites are the local FULL-RUN path (`_cli_migrate.py:1866`), the SLURM "
-        "full-run worker (`_cli_migrate_worker.py:414`) and the SLURM "
-        "provenance worker (`_cli_migrate_provenance_worker.py:213`) -- none "
-        "is this one. So no marker conversion, no state conversion and no "
-        "legacy-tree retention happen, `image_complete/` survives, and signal "
-        "1 stands. NOT Step 1b: that landed "
-        "(`plan_legacy_tree_retention`/`apply_legacy_tree_retention`), which "
-        "is exactly why the other five signal-1/2 shapes now pass and this one "
-        "does not."
-    ),
     "pre-markers": (
         "NOT a blocker -- the wrong instrument. Signal 3 clears only when "
         "`_completed_is_fully_consumed` finds a record per image named in "

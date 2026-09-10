@@ -287,9 +287,14 @@ document the reader as its owner, not to invent a stand-in.
 ## Per-image completion markers
 
 `publish_image_success` certifies the artifacts an image produced;
-`valid_image_success` is the first conjunct of resume classification. Markers
-are **versioned** (`SUCCESS_MARKER_VERSION`, currently **2**) and a
-version mismatch invalidates rather than migrates.
+`valid_image_success` is the first conjunct of resume classification. Per-image publications are **versioned**, and there are **two constants, not
+one renamed**: `RECORD_VERSION` (`sdk_/_image_record.py:87`, currently **1**)
+stamps the per-image record `images/<ds>/<stem>.json`, and
+`SUCCESS_MARKER_VERSION` (`sdk_/_io_constants.py:741`, currently **2**) is the
+legacy `image_complete/` marker's, still written by the HDF→Zarr migrator
+(`sdk_/_hdf_to_zarr.py:607,645`). A version mismatch invalidates rather than
+migrates. Do not document either as having replaced the other; both have live
+writers.
 
 Never hand-declare the per-image data artifact. Call
 **`image_data_artifact(output_dir, output_manager, dataset, image_stem)`**,
@@ -357,6 +362,214 @@ The `"hdf"` branch is **not** dead code, though no forward path writes an
 releases, which have `results/<ds>/hdf/<stem>.h5` and no store; dropping the
 branch would make it name a nonexistent store and silently refuse to promote
 the very trees it exists to rescue — reprocessing all of them.
+
+---
+
+## Tracked state, and how everything else is derived
+
+**The claim this whole change rests on: four things are written down, and every
+other answer is computed from them plus the artifacts on disk.** A fifth tracked
+value appearing is a design regression, and the organising principle it violates
+is *move state that is tracked to state that is checked*.
+
+Read this before adding any counter, flag or cached count to `.phenotypic/`.
+
+### (a) Tracked state — written down, and irreducibly so
+
+The last column is the load-bearing one. If a proposed fifth entry cannot fill
+it, it is derived and belongs in (c).
+
+| # | State | Path helper | Writer | Why it cannot be derived |
+|---|---|---|---|---|
+| 1 | Accepted inventory | `processing_state_path` → `config.work_ids` | `create_initial_state` (`_cli_state_management.py:206`), resume | A directory listing answers *what is here*; this answers *what this run accepted*. They differ the moment an input arrives mid-run. |
+| 2 | Terminal failures | `terminal_failures_jsonl_path` (`sdk_/_io_constants.py:1103`) | `append_terminal_failure` (`_cli_failure_tracker.py:344`) | **A failure leaves no artifact.** Absence of output is indistinguishable from not-yet-started, so nothing on disk can tell you an image failed. |
+| 3 | Liveness & ownership | `slurm_lifecycle_path` (`:2158`), `gui_launch_owner_path` (`:2153`), the lifecycle ledger | CLI submitter / the GUI | Facts about external systems and live processes. A worker killed by the scheduler leaves no trace of having run. |
+| 4 | `restart_epoch` | `restart_epoch_path` (`:1049`) | `bump_restart_epoch` (`_cli_identity.py:386`) | A content-derived generation cannot distinguish *deliberately fresh attempt* from *same configuration again*. Preserved across `clear_machine_state` — a counter that resets on the operation it fences is not a fence. |
+
+**Entry 2 is the one to read twice.** `completion == "failed"` has exactly one
+source: an image verdict of `failed`, which comes only from this journal
+(`sdk_/_run_state.py::_terminal_failures`). Everything else about a run can be
+re-derived by looking at the tree; this cannot, and that is why it is written
+rather than computed.
+
+### (b) Content proofs — evidence, not tracked state
+
+The per-image record, the aggregate proof (`aggregate_publication_marker_path`,
+`sdk_/_io_constants.py:2173`) and the run proof (`run_completion_marker_path`,
+`:2168`) are **digest manifests over artifacts that already exist**. They record
+nothing that is not recoverable by re-reading what they describe; what they add
+is *that it was checked, and under which identity*.
+
+**Publication order, and it is never reordered:** the store's root `zarr.json`
+last → the per-image record after its artifacts → the aggregate proof after the
+aggregated outputs → the run proof after the aggregate. Each step certifies only
+what the previous one has already made durable, so an interruption always leaves
+a tree that is behind rather than one that is wrong.
+
+### (c) Derived, and by what
+
+One row per fact, naming the function. This is the table that stops the next
+contributor writing a counter.
+
+| Fact | Derived from | By |
+|---|---|---|
+| *Is this run done?* | (a) 1–4 plus the proofs in (b) | `resolve_run_state(output_dir, depth=...)` |
+| `processing_generation` | `sha256(pipeline_sha256 ‖ per_image_config_digest ‖ restart_epoch)` | `derive_processing_generation` (`_cli_identity.py:148`) |
+| `work_id` | schema version, dataset, input-relative path, input sha256, pipeline fingerprint, per-image config digest, mode | `work_id_for_image` (`_cli_failure_tracker.py:310`) |
+| per-dataset completed / failed counts | the per-image records | `RunState.diagnostics` — **and nothing branches on these** |
+| the master | the record-authorized embedded tables, and nothing else | `finalize_run` |
+
+**Deleted, and must not come back:**
+`processing_state.datasets.{completed,failed,started}` as live state — a cache of
+a cache, re-aggregated from the event log on every load
+(`_cli_state_management.py:148-167`); `manifest.json` as evidence; the event log
+as a completion source.
+
+> **`datasets.completed` and `failed` still appear on disk during migration, and
+> that is deliberate.** `--mode migrate` retains them per dataset until the
+> images they name have records — see *Legacy-tree migration* below. They are
+> being consumed, not tracked.
+
+### (d) Retained, and read by nothing
+
+Two directories survive on disk without belonging to any table above, and both
+need saying **because** they look like counter-examples to (a)'s "four".
+
+| Artifact | Written by | Consulted by | When it may be deleted |
+|---|---|---|---|
+| `.phenotypic/legacy-v2/` | `--mode migrate`, moving `image_complete/` and `stage3_complete/` aside (`_cli_migrate_state.py:762`) | **Nothing.** It exists only so `migrate --revert` is a rename back. | Once the migrated tree has been reprocessed, or the operator accepts migration is final. Deleting it costs the revert path and nothing else. |
+| `.phenotypic/verification_cache.json` | `persist_states` after a deep pass | Only `resolve_run_state(depth="shallow")`, and only to **skip re-hashing** an artifact whose `(size, mtime_ns)` is unchanged | Any time. A missing cache costs one deep pass. |
+
+**The test for whether a future artifact belongs here or is a fifth tracked
+state: nothing branches on it, and no verdict is derived from it.** Delete either
+of these and every answer the system gives is identical — only slower (the cache)
+or one option poorer (the revert).
+
+They differ on one axis worth knowing: `clear_machine_state` **preserves**
+`legacy-v2/` and **deletes** the cache. `_PRESERVED_ON_RESTART`
+(`sdk_/_io_constants.py:1271`) now has three members —
+`terminal_failures.jsonl`, `restart_epoch.json`, `legacy-v2/` — and its docstring
+named the third before it existed. A restart is not a revert.
+
+---
+
+## What `--mode migrate` asserts, and what it does not
+
+**It converts schema. It does not finish a run.** Everything below follows from
+that one sentence, and most of the surprises in this area come from expecting
+otherwise.
+
+- **A migrated-but-incomplete tree reports `incomplete`, and that is correct.**
+  `publish_run_completion_evidence` refuses to write a run proof when some
+  accepted image has no success record, and migrate does not override it.
+  Writing one there would certify a run that never finished.
+- **`stage2_done/` is read, never moved.** It holds a *consumable token* that
+  Stage 3 replays and then `unlink`s. Migrate reads it to enrich a record and
+  leaves it exactly where it is; renaming it into `legacy-v2/`, where nothing
+  reads it, would orphan the work of any staged run live across the migrate.
+  Only `image_complete/` and `stage3_complete/` move.
+- **`deliverables/metadata.csv` is byte-exact provenance**, with no exception for
+  migrate. The canonical view is emitted *alongside* it as
+  `metadata.canonical.csv`; `metadata.original.csv` does not exist and must not
+  be created.
+- **The master is parquet-only** (D8). `master_measurements.csv` is deleted on
+  sight, not rewritten.
+- **`work_id`s are not re-minted** (D-C), so every existing one stays valid.
+  Migrated records carry `provenance: "migrated"`, and `record_rejection`
+  (`sdk_/_image_record.py:207`) skips the `work_id` comparison for exactly those
+  — a migrated tree's identity cannot be re-derived, so it is marked unavailable
+  rather than fabricated. **Absent means `"forward"`**, so a writer that forgets
+  the field produces a fenced record rather than an accepted one, and
+  `resolve_run_state` advises when the relaxation is in effect.
+
+### A migrated tree is not continuable, and `--restart` is the remedy
+
+User ruling (2026-09-09). Migration rebuilds the admitted image set from the tree
+rather than from the original run's record of it, so continuation compares
+against a set the inputs no longer match. **That is accepted rather than
+repaired**: such a tree *"should be considered as if not ran then, and do a full
+restart"*.
+
+The refusal names the command — keyed on `.phenotypic/migration_manifest.json`,
+which is a declared fact rather than an inference. **Told, never done**: clearing
+machine state and reprocessing every image is hours of compute and a destructive
+step, and firing it automatically from a condition the user did not ask about is
+the hidden state transition this change exists to remove.
+
+Not every migrated tree is affected — a legacy tree **with markers** carries real
+filenames in `work_ids`, so nothing is rebuilt and it continues normally.
+
+---
+
+## Known limits — read these before trusting the above
+
+A register that records only what works is the shape this change exists to
+remove.
+
+- **`work_id` does not fold in `restart_epoch`** (`_cli_failure_tracker.py:331-339`).
+  So a pre-migration run's journalled failures still key-match after a
+  `--restart`, and a later plain re-run reports *"N recorded failure(s)
+  skipped"* for images the restart just reprocessed successfully. Inherited, not
+  created by migration; `--retry-failures` is the escape.
+- **Migration pollutes `initial_images` on a pre-markers tree**, adding bare
+  stems beside the real filenames, because `_ensure_migration_processing_state`
+  falls back to the stem when `work_ids` carries no filename for it. **Tolerated,
+  not fixed**, and pinned by an `xfail(strict=True)` in
+  `tests/integration/cli/test_migrate_end_to_end.py` so a future repair is loud.
+  It is inert only because a migrated tree refuses continuation *by rule* — if
+  that refusal is ever relaxed, this becomes live again.
+- **O-3 and O-4** are recorded in
+  `docs/superpowers/plans/2026-09-03-cli-gui-state-tracking/OPEN-QUESTIONS.md`.
+
+### Process trees, and the one target kind that is not a tree
+
+**Machine-state conversion follows a shared predicate, not the dispatch.**
+`target_kind_owns_machine_state` (`_cli_migrate_provenance.py:56`) is true for
+`full_run`, `process_tree` and `pre_markers_process`, and **false for
+`direct_store`**. The older `kind != "full_run"` test asks *is this not a full
+run?* and was read as *is this per-store provenance work?* — which is false for
+two of the three provenance-only kinds.
+
+`direct_store` is excluded **by kind, not by luck**: a single store keeps its
+lifecycle state in a hashed sibling, never inside itself, so converting there
+would write `.phenotypic/` where that kind's own contract forbids it.
+
+**A pre-markers process tree used to migrate to nothing, successfully.**
+`execute_provenance_migration` iterates `target.stores`, and such a tree has
+`stores=()` by construction — its outputs are process layers, not stores — so
+the local arm did no work, reported `provenance_upgraded=0`, and **exited 0**.
+The user saw success and got none. It now converts at
+`_cli_migrate.py:1647`, after a clean store upgrade and only when there are no
+failures.
+
+**`--slurm` on a storeless provenance-only target is refused, by design.** It is
+a `click.UsageError` naming the remedy, not a missing feature: the SLURM chain
+has no vocabulary for such a tree. `seal_provenance_migration` barriers store
+statuses and the finalizer reports upgrade counts, so the tree would come back
+*"0 upgraded, succeeded"* with the only real work — the machine-state conversion
+— invisible in its own terminal report. **Run it without `--slurm`.** Two
+independent guards already refuse the shape, which is what makes it a topology
+mismatch rather than an oversight in one place: the manifest writer raises on
+zero tasks, and the worker config loader's `target_kind` cannot even parse a
+config naming this kind.
+
+---
+
+## Readers live in `sdk_`; writers stay in `_cli`
+
+`resolve_run_state` and the run-state readers are in
+`phenotypic.sdk_._run_state`. Writers — anything that publishes a proof, bumps an
+epoch or appends to a journal — stay in `phenotypic._cli`, because `sdk_` may not
+import `_cli`. `tests/unit/sdk_/test_run_state_layering.py` enforces the
+direction with an AST walk, so a violation fails there rather than at import.
+
+**There is no migration version floor.** An earlier draft named v0.17.3 and it
+was withdrawn (U-6): `state.version` is a *state-schema* version, not a package
+one — `"2.0.0"` is its value both at v0.17.3 and immediately before `"3.0.0"`
+arrived — so there is no version string to refuse on. Detection is by **shape**,
+the pre-markers signal is an absent `work_ids` key, and a pre-markers tree is
+supported however old. `ConversionVerdict` has deliberately no `BELOW_FLOOR`
+member (`sdk_/_schema_shape.py:192`).
 
 ## Environment variables (important for future work)
 
