@@ -903,3 +903,273 @@ def test_enumerating_unprojectable_stores_writes_nothing(tmp_path: Path) -> None
         for p in sorted(tmp_path.rglob("*"))
         if p.is_file()
     } == before
+
+
+# ---------------------------------------------------------------------------
+# Task 5: retention and revert
+# ---------------------------------------------------------------------------
+
+
+def _retention(root: Path) -> Path:
+    from phenotypic._cli._cli_migrate_state import legacy_retention_dir
+
+    return legacy_retention_dir(root)
+
+
+def test_the_converted_trees_are_renamed_not_deleted(tmp_path: Path) -> None:
+    """CAN-12 / §15.1. A user who reverts the code after a migrate would
+    otherwise face a tree the old build reads as entirely unprocessed.
+
+    **Fires when** retention deletes instead of moving. The byte assertion is
+    the co-witness: a `mkdir` that produced an empty `legacy-v2/` would satisfy
+    "the directory exists" but not "the marker is in it, unchanged".
+    """
+    from phenotypic._cli._cli_migrate_state import retain_legacy_trees
+    from phenotypic.sdk_ import progress_dir
+
+    _plant_legacy_markers(tmp_path, dataset="plate", stem="a", image_complete=True)
+    before = _legacy_marker_path(tmp_path, "plate", "a").read_bytes()
+
+    assert retain_legacy_trees(tmp_path) == 1
+
+    assert not (progress_dir(tmp_path) / "image_complete").exists()
+    retained = _retention(tmp_path) / "image_complete" / "plate" / "a.json"
+    assert retained.is_file(), "the legacy tree was deleted, not retained"
+    assert retained.read_bytes() == before
+
+
+def test_the_retained_tree_does_not_make_the_output_look_unconverted(
+    tmp_path: Path,
+) -> None:
+    """It sits below `.phenotypic/`, not `progress/`, so the gate cannot see it.
+
+    **Fires when** retention is moved under `progress/` -- which would make
+    every migrated tree classify CONVERT forever, an INV-DISCHARGEABLE
+    violation that no test of retention alone would catch.
+    """
+    from phenotypic._cli._cli_migrate_state import retain_legacy_trees
+    from phenotypic.sdk_ import progress_dir
+    from phenotypic.sdk_._schema_shape import requires_conversion
+
+    _plant_legacy_markers(tmp_path, dataset="plate", stem="a", image_complete=True)
+    assert requires_conversion(tmp_path) is not None, (
+        "the tree did not classify CONVERT to begin with, so the check below "
+        "cannot show retention made the difference"
+    )
+
+    retain_legacy_trees(tmp_path)
+
+    assert _retention(tmp_path).is_dir()
+    assert progress_dir(tmp_path) not in _retention(tmp_path).parents
+    assert requires_conversion(tmp_path) is None
+
+
+def test_a_second_migrate_does_not_collide_on_a_non_empty_retention(
+    tmp_path: Path,
+) -> None:
+    """MIG-13, and this case is EXPECTED rather than exceptional.
+
+    Step 1c: an old-build SLURM array holds the old schema for its whole
+    lifetime and writes the legacy trees directly, so a tree migrated while
+    one is live re-acquires the old shape and is migrated again.
+
+    **Fires when** the rename uses either obvious primitive: `os.replace`
+    raises on a non-empty target directory, and `shutil.move` NESTS the source
+    inside it -- which would leave the second generation at
+    `legacy-v2/image_complete/image_complete/`, findable by nothing.
+    """
+    from phenotypic._cli._cli_migrate_state import retain_legacy_trees
+
+    _plant_legacy_markers(tmp_path, dataset="plate", stem="a", image_complete=True)
+    retain_legacy_trees(tmp_path)
+
+    # The late old-build worker recreates the tree.
+    _plant_legacy_markers(tmp_path, dataset="plate", stem="b", image_complete=True)
+    assert retain_legacy_trees(tmp_path) == 1
+
+    retained = _retention(tmp_path) / "image_complete"
+    assert (retained / "plate" / "b.json").is_file()
+    assert not (retained / "image_complete").exists(), (
+        "the second generation was nested inside the first"
+    )
+    assert not list(_retention(tmp_path).glob("*.trash")), "trash was left behind"
+
+
+def test_revert_puts_the_tree_back(tmp_path: Path) -> None:
+    """MIG-13 / §15.1: revert costs a rename back, not a reprocess."""
+    from phenotypic._cli._cli_migrate_state import (
+        retain_legacy_trees,
+        revert_legacy_trees,
+    )
+
+    _plant_legacy_markers(tmp_path, dataset="plate", stem="a", image_complete=True)
+    before = {
+        p.relative_to(tmp_path): p.read_bytes()
+        for p in sorted(tmp_path.rglob("*"))
+        if p.is_file()
+    }
+    retain_legacy_trees(tmp_path)
+    assert _retention(tmp_path).is_dir(), "nothing was retained, so revert is vacuous"
+
+    assert revert_legacy_trees(tmp_path) == 1
+
+    assert {
+        p.relative_to(tmp_path): p.read_bytes()
+        for p in sorted(tmp_path.rglob("*"))
+        if p.is_file()
+    } == before
+    assert not _retention(tmp_path).exists()
+
+
+def test_revert_refuses_when_a_record_the_legacy_tree_does_not_cover_exists(
+    tmp_path: Path,
+) -> None:
+    """Reverting past work done after the migration would discard it.
+
+    **Fires when** revert moves unconditionally. The error names the images,
+    because a refusal the user cannot act on is the bug class this whole
+    change exists to remove.
+    """
+    from phenotypic._cli._cli_image_record import record_stage
+    from phenotypic._cli._cli_migrate_state import (
+        retain_legacy_trees,
+        revert_legacy_trees,
+    )
+
+    _plant_legacy_markers(tmp_path, dataset="plate", stem="a", image_complete=True)
+    retain_legacy_trees(tmp_path)
+    # A forward run finishes a NEW image after the migration.
+    record_stage(tmp_path, "plate", "b", "measured", {"at": "later"})
+
+    with pytest.raises(RuntimeError, match="plate/b"):
+        revert_legacy_trees(tmp_path)
+
+    assert _retention(tmp_path).is_dir(), "the refusal still moved the trees"
+
+
+def test_revert_refuses_a_tree_with_nothing_retained(tmp_path: Path) -> None:
+    """A tree migrated before retention shipped, or already reverted."""
+    from phenotypic._cli._cli_migrate_state import revert_legacy_trees
+
+    with pytest.raises(RuntimeError, match="nothing to revert"):
+        revert_legacy_trees(tmp_path)
+
+
+def test_planning_retention_writes_nothing(tmp_path: Path) -> None:
+    """The dry-run seam, with a co-witness that planning found a tree."""
+    from phenotypic._cli._cli_migrate_state import plan_legacy_tree_retention
+
+    _plant_legacy_markers(tmp_path, dataset="plate", stem="a", image_complete=True)
+    before = {
+        p.relative_to(tmp_path): p.read_bytes()
+        for p in sorted(tmp_path.rglob("*"))
+        if p.is_file()
+    }
+
+    planned = plan_legacy_tree_retention(tmp_path)
+
+    assert planned, "planning found no tree, so the check below is vacuous"
+    assert {
+        p.relative_to(tmp_path): p.read_bytes()
+        for p in sorted(tmp_path.rglob("*"))
+        if p.is_file()
+    } == before
+
+
+def test_a_restart_preserves_the_revert_path(tmp_path: Path) -> None:
+    """MIG-12. `clear_machine_state` rmtrees every child of `.phenotypic/`
+    except `_PRESERVED_ON_RESTART`, so without the addition `--restart` would
+    silently destroy the revert path.
+
+    **Fires when** `legacy-v2` is dropped from that set. The progress
+    directory is the co-witness: it must be gone, or the test would pass
+    against a `clear_machine_state` that cleared nothing.
+    """
+    from phenotypic._cli._cli_migrate_state import retain_legacy_trees
+    from phenotypic.sdk_ import clear_machine_state, progress_dir
+
+    _plant_legacy_markers(tmp_path, dataset="plate", stem="a", image_complete=True)
+    retain_legacy_trees(tmp_path)
+    (progress_dir(tmp_path) / "sentinel.json").write_text("{}", encoding="utf-8")
+
+    clear_machine_state(tmp_path)
+
+    assert not progress_dir(tmp_path).exists(), (
+        "clear_machine_state cleared nothing, so the survival below is vacuous"
+    )
+    assert (
+        _retention(tmp_path) / "image_complete" / "plate" / "a.json"
+    ).is_file(), "--restart destroyed the revert path"
+
+
+def test_the_flow_converts_in_dependency_order(tmp_path: Path) -> None:
+    """The order is a dependency, not a preference.
+
+    `plan_processing_state` reads per-image records
+    (`_completed_is_fully_consumed`), so the records must exist before the
+    state is planned; retention moves the trees the record conversion read, so
+    moving them earlier would convert nothing.
+
+    **Fires when** retention is hoisted above the record conversion: the
+    record disappears, because there was no legacy tree left to read.
+    """
+    from phenotypic._cli._cli_migrate_state import migrate_machine_state
+    from phenotypic.sdk_ import progress_dir
+
+    _plant_legacy_markers(tmp_path, dataset="plate", stem="a", image_complete=True)
+    plan = migrate_machine_state(tmp_path)
+
+    assert len(plan.records) == 1, "nothing was converted, so the order is untested"
+    assert image_record_path(tmp_path, "plate", "a").is_file()
+    assert not (progress_dir(tmp_path) / "image_complete").exists()
+    assert (
+        _retention(tmp_path) / "image_complete" / "plate" / "a.json"
+    ).is_file()
+    assert plan.state_is_conditional is False
+
+
+def test_the_rendered_plan_says_when_its_state_half_is_a_prediction(
+    tmp_path: Path,
+) -> None:
+    """The dry run must not present a guess as the plan it will execute.
+
+    On a tree needing per-image conversion, `plan_processing_state` runs
+    against records that do not exist yet, so its result is a prediction. A
+    renderer has to say so; the flag is how it knows.
+
+    **Fires when** `plan_machine_state_migration` is folded into a single pass
+    that renders the state plan as exact -- which is the defect the composition
+    callout feared, arriving from the direction it did not consider.
+    """
+    from phenotypic._cli._cli_migrate_state import plan_machine_state_migration
+
+    _plant_legacy_markers(tmp_path, dataset="plate", stem="a", image_complete=True)
+    conditional = plan_machine_state_migration(tmp_path)
+    assert conditional.records, "no records planned, so the flag below is vacuous"
+    assert conditional.state_is_conditional is True
+
+    # A tree with no legacy markers has nothing the state plan depends on.
+    clean = tmp_path / "clean"
+    clean.mkdir()
+    assert plan_machine_state_migration(clean).state_is_conditional is False
+
+
+def test_planning_the_whole_migration_writes_nothing(tmp_path: Path) -> None:
+    """The dry-run seam for the folded flow, with a co-witness."""
+    from phenotypic._cli._cli_migrate_state import plan_machine_state_migration
+
+    _plant_legacy_markers(tmp_path, dataset="plate", stem="a", image_complete=True)
+    before = {
+        p.relative_to(tmp_path): p.read_bytes()
+        for p in sorted(tmp_path.rglob("*"))
+        if p.is_file()
+    }
+
+    plan = plan_machine_state_migration(tmp_path)
+
+    assert plan.records, "planning found nothing, so the check below is vacuous"
+    assert {
+        p.relative_to(tmp_path): p.read_bytes()
+        for p in sorted(tmp_path.rglob("*"))
+        if p.is_file()
+    } == before

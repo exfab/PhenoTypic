@@ -44,13 +44,19 @@ rollback.
 from __future__ import annotations
 
 import json
+import os
+import shutil
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
+from uuid import uuid4
 
 from phenotypic.sdk_ import (
     DIR_IMAGE_COMPLETE,
+    DIR_IMAGE_RECORDS,
+    DIR_LEGACY_V2,
+    phenotypic_cache_dir,
     deliverables_dir,
     results_dir,
     DIR_STAGE2_DONE,
@@ -63,7 +69,7 @@ from phenotypic.sdk_ import (
     source_image_stem,
 )
 from ._cli_identity import derive_processing_generation
-from phenotypic.sdk_.ngff_ import STORE_SUFFIX
+from phenotypic.sdk_.ngff_ import STORE_SUFFIX, TRASH_SUFFIX
 from phenotypic.sdk_._image_record import (
     PROVENANCE_MIGRATED,
     RECORD_VERSION,
@@ -74,6 +80,14 @@ from phenotypic.sdk_._image_record import (
 
 __all__ = [
     "LEGACY_MARKER_SEGMENTS",
+    "plan_machine_state_migration",
+    "migrate_machine_state",
+    "MigrationStatePlan",
+    "revert_legacy_trees",
+    "retain_legacy_trees",
+    "apply_legacy_tree_retention",
+    "plan_legacy_tree_retention",
+    "legacy_retention_dir",
     "LEGACY_MASTER_CSV",
     "PlannedRecord",
     "PlannedState",
@@ -662,3 +676,260 @@ def unprojectable_stores(output_dir: Path) -> tuple[str, ...]:
             # two things.
             continue
     return tuple(unprojectable)
+
+
+# ---------------------------------------------------------------------------
+# Task 5: retain the converted trees, and revert
+# ---------------------------------------------------------------------------
+
+
+def legacy_retention_dir(output_dir: Path) -> Path:
+    """Return ``<output>/.phenotypic/legacy-v2/`` -- retained, read by nothing.
+
+    Deliberately **not** below ``progress/``. The schema gate's directory
+    signals look only there, so a tree retained here cannot make an
+    already-converted output classify ``CONVERT`` again
+    (``sdk_/_schema_shape.py`` says so at its segment loop).
+    """
+    return phenotypic_cache_dir(output_dir) / DIR_LEGACY_V2
+
+
+def _move_aside(source: Path, target: Path) -> None:
+    """Rename ``source`` onto ``target``, tolerating a non-empty target.
+
+    **A second migrate onto a non-empty ``legacy-v2/`` is expected, not
+    exceptional.** The coexistence rule (Task 5 Step 1c) says an old-build
+    SLURM array holds the old schema for its whole lifetime -- up to 30 days
+    -- and writes the legacy trees directly, so a tree migrated while such an
+    array is live re-acquires the old shape and is migrated again. That is
+    precisely how a non-empty target arises.
+
+    Neither obvious primitive survives it: ``os.replace`` raises on a
+    non-empty target directory, and ``shutil.move`` **nests** the source
+    inside it, which would bury one generation of markers under another.
+
+    So this follows ``promote_store``'s existing move-aside discipline
+    (``sdk_/ngff_.py``) rather than inventing a third rename protocol:
+    uuid-suffixed trash path, replace, then discard the trash. Same
+    filesystem, a directory rename, no byte copied.
+    """
+    target.parent.mkdir(parents=True, exist_ok=True)
+    trash: Path | None = None
+    if target.exists():
+        trash = target.parent / f".{target.name}.{uuid4().hex}{TRASH_SUFFIX}"
+        os.replace(target, trash)
+    try:
+        os.replace(source, target)
+    except BaseException:
+        # Put the previous generation back before surfacing the failure: a
+        # half-moved retention directory is the one state neither shape reads.
+        if trash is not None:
+            os.replace(trash, target)
+        raise
+    if trash is not None:
+        shutil.rmtree(trash, ignore_errors=True)
+
+
+def plan_legacy_tree_retention(output_dir: Path) -> tuple[Path, ...]:
+    """Return the legacy trees a retention pass would move. **Writes nothing.**
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        The existing legacy tree directories, in
+        :data:`LEGACY_MARKER_SEGMENTS` order.
+    """
+    progress = progress_dir(output_dir)
+    return tuple(
+        progress / segment
+        for segment, _ in LEGACY_MARKER_SEGMENTS
+        if (progress / segment).is_dir()
+    )
+
+
+def apply_legacy_tree_retention(
+    output_dir: Path, planned: tuple[Path, ...]
+) -> int:
+    """Move the planned legacy trees into ``legacy-v2/``.
+
+    **Renamed, never deleted (CAN-12).** After a successful migrate a user who
+    reverts the code -- the ordinary first response to a regression in a change
+    this size -- would otherwise have a tree the old build reads as entirely
+    unprocessed. For 6,000 images and no backup that is a full reprocess.
+
+    Args:
+        output_dir: Run output root.
+        planned: :func:`plan_legacy_tree_retention`'s result.
+
+    Returns:
+        The number of trees moved.
+    """
+    retention = legacy_retention_dir(output_dir)
+    for source in planned:
+        _move_aside(source, retention / source.name)
+    return len(planned)
+
+
+def retain_legacy_trees(output_dir: Path) -> int:
+    """Move both converted legacy trees aside, keeping them for ``--revert``."""
+    return apply_legacy_tree_retention(
+        output_dir, plan_legacy_tree_retention(output_dir)
+    )
+
+
+def revert_legacy_trees(output_dir: Path) -> int:
+    """Move ``legacy-v2/`` back over ``progress/``, undoing a migration.
+
+    **Refuses rather than losing work.** If ``images/`` holds a record for an
+    image the retained trees do not cover, that record was written by a
+    forward run *after* the migration -- reverting would strand it behind a
+    tree that predates it. The caller is told which images, not just that it
+    failed.
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        The number of trees moved back.
+
+    Raises:
+        RuntimeError: If no retention directory exists, or if records exist
+            that the retained trees do not account for.
+    """
+    retention = legacy_retention_dir(output_dir)
+    if not retention.is_dir():
+        raise RuntimeError(
+            f"No retained legacy trees at {retention}; there is nothing to "
+            "revert. A tree migrated by a build before retention shipped, or "
+            "one already reverted, has none."
+        )
+
+    retained_stems = {
+        (dataset_dir.name, marker.stem)
+        for tree in retention.iterdir()
+        if tree.is_dir()
+        for dataset_dir in tree.iterdir()
+        if dataset_dir.is_dir()
+        for marker in dataset_dir.glob("*.json")
+    }
+    records = progress_dir(output_dir) / DIR_IMAGE_RECORDS
+    uncovered = sorted(
+        f"{dataset_dir.name}/{record.stem}"
+        for dataset_dir in (records.iterdir() if records.is_dir() else ())
+        if dataset_dir.is_dir()
+        for record in dataset_dir.glob("*.json")
+        if (dataset_dir.name, record.stem) not in retained_stems
+    )
+    if uncovered:
+        raise RuntimeError(
+            "Refusing to revert: these images have records the retained "
+            "legacy trees do not cover, so reverting would discard work done "
+            f"after the migration -- {', '.join(uncovered)}. Finish or "
+            "restart the run instead."
+        )
+
+    moved = 0
+    for tree in sorted(p for p in retention.iterdir() if p.is_dir()):
+        _move_aside(tree, progress_dir(output_dir) / tree.name)
+        moved += 1
+    if not any(retention.iterdir()):
+        retention.rmdir()
+    return moved
+
+
+# ---------------------------------------------------------------------------
+# The one flow, in dependency order
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class MigrationStatePlan:
+    """What a machine-state migration would do, rendered without doing it.
+
+    **Two of these fields are exact and one is conditional, and the type says
+    which.** ``state`` is computed against the tree as it stands, where the
+    real run computes it against a tree whose per-image records already exist
+    -- so on a tree that needs per-image conversion, the state plan rendered
+    here is a *prediction*, not the object the run will use.
+
+    That is why the three planners are **not** folded into one pass.
+    ``plan_processing_state`` reads through ``read_image_record``
+    (``_completed_is_fully_consumed``), so planning it before applying the
+    records computes it against records that do not exist yet: every dataset
+    reads as not-yet-consumed and the plan preserves ``completed`` keys the
+    real run would drop. A single ``plan_migration`` returning all three would
+    render a migration that does not happen the way it says -- the same defect
+    a dry run exists to prevent, arriving from the other direction.
+
+    So a renderer states the first exactly and the rest conditionally: *"if
+    these N per-image conversions succeed, the state conversion will
+    additionally drop K completed keys."*
+    """
+
+    records: tuple[PlannedRecord, ...]
+    master_csv: Path | None
+    retained_trees: tuple[Path, ...]
+    unprojectable: tuple[str, ...]
+    #: ``None`` when :attr:`records` is non-empty -- see the class docstring.
+    #: A caller rendering a dry run must say so rather than print a guess.
+    state: PlannedState | None
+    state_is_conditional: bool
+
+
+def plan_machine_state_migration(output_dir: Path) -> MigrationStatePlan:
+    """Render the whole machine-state migration. **Writes nothing.**
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        A :class:`MigrationStatePlan` whose ``state_is_conditional`` says
+        whether ``state`` is a prediction rather than the plan the run will
+        execute.
+    """
+    records = plan_per_image_records(output_dir)
+    return MigrationStatePlan(
+        records=records,
+        master_csv=plan_legacy_master_csv(output_dir),
+        retained_trees=plan_legacy_tree_retention(output_dir),
+        unprojectable=unprojectable_stores(output_dir),
+        state=plan_processing_state(output_dir),
+        state_is_conditional=bool(records),
+    )
+
+
+def migrate_machine_state(output_dir: Path) -> MigrationStatePlan:
+    """Convert every machine-state shape, in dependency order.
+
+    **The order is a dependency, not a preference.**
+    ``plan_processing_state`` reads per-image records, so the records must be
+    written before the state is planned. Retention comes last: it moves the
+    trees the record conversion read, so moving them earlier would convert
+    nothing.
+
+    Returns the plan as executed, for a caller that wants to report what
+    happened.
+    """
+    records = plan_per_image_records(output_dir)
+    apply_per_image_records(output_dir, records)
+
+    master_csv = plan_legacy_master_csv(output_dir)
+    apply_legacy_master_csv(master_csv)
+
+    # AFTER the records exist -- see `plan_machine_state_migration`.
+    state = plan_processing_state(output_dir)
+    if state is not None:
+        apply_processing_state(output_dir, state)
+
+    retained = plan_legacy_tree_retention(output_dir)
+    apply_legacy_tree_retention(output_dir, retained)
+
+    return MigrationStatePlan(
+        records=records,
+        master_csv=master_csv,
+        retained_trees=retained,
+        unprojectable=unprojectable_stores(output_dir),
+        state=state,
+        state_is_conditional=False,
+    )

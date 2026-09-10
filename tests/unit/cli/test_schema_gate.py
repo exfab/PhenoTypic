@@ -1096,13 +1096,31 @@ def test_the_arming_flag_has_one_source() -> None:
     )
 
 
-@pytest.mark.skip(
+@pytest.mark.xfail(
+    strict=True,
     reason=(
-        "INV-DISCHARGEABLE's migrate half: `--mode migrate` does not yet "
-        "convert `.phenotypic/` -- that is P7 Tasks 2, 2b and 3. The gate "
-        "ships four phases early (CAN-11), so this assertion cannot hold "
-        "until then. P7 Task 5 removes this mark; it is that phase's gate."
-    )
+        "P7 Step 1f. The `skip` this replaces WAS the defect, not the "
+        "blocker: a skip is silent, so the phase could have closed with its "
+        "own gate never running -- which is how the P7 pre-flight found it, "
+        "since no P7 step removed the mark. STRICT and xfail, so the day the "
+        "dependency lands this turns RED and has to be acknowledged rather "
+        "than passing quietly. "
+        "The dependency is NOT the one the old reason named. Tasks 2 and 3 "
+        "have landed and 2b is retired, yet two things this test needs are "
+        "still outstanding, both in P7 Task 5. "
+        "(1) Step 1b's rename-aside of `image_complete/` and "
+        "`stage3_complete/` into `.phenotypic/legacy-v2/`: Task 2 "
+        "deliberately LEAVES those trees in place, so signals 1 and 2 still "
+        "fire after a migrate -- `_schema_shape._classify`'s own comment "
+        "names Step 1b as what makes the renamed tree invisible to it. "
+        "(2) Wiring `convert_processing_state` into the migrator: only "
+        "`convert_per_image_markers` is called today "
+        "(`_cli_migrate.py:1834`), so signals 3 and 4 -- `datasets.completed` "
+        "present, and `work_ids` with no `restart_epoch` -- survive a "
+        "migrate untouched. "
+        "Run with `--runxfail` for the per-shape diagnosis; do not remove "
+        "this mark until both land."
+    ),
 )
 @pytest.mark.parametrize("shape", sorted(_EVERY_CONVERTIBLE_SHAPE))
 def test_every_convert_verdict_is_dischargeable_by_one_migrate(

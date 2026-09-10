@@ -674,6 +674,18 @@ DIR_IMAGE_COMPLETE: Final[str] = "image_complete"
 #: bulk replay data, not a record.
 DIR_IMAGE_RECORDS: Final[str] = "images"
 
+#: ``<output>/.phenotypic/legacy-v2/`` -- the pre-collapse marker trees, kept
+#: after ``--mode migrate`` so ``--mode migrate --revert`` costs a rename back
+#: rather than a full reprocess (CAN-12, §15.1).
+#:
+#: **Retained for revert; read by nothing.** It is not tracked state: no
+#: verdict consults it, nothing derives from it, and nothing must be kept in
+#: sync with it. It sits directly below ``.phenotypic/`` rather than below
+#: ``progress/`` **on purpose** -- the schema gate's directory signals look
+#: only below ``progress/``, so a retained tree here cannot make an
+#: already-converted output classify ``CONVERT`` again.
+DIR_LEGACY_V2: Final[str] = "legacy-v2"
+
 #: ``<progress>/stage2_done/`` -- the consumable Stage-2 token's tree.
 #:
 #: **Retained, not collapsed** (U-9), which is why it is here and
@@ -1257,7 +1269,7 @@ def migrate_legacy_qc(output_dir: Path) -> bool:
 #: those phases must find and extend does not belong in a function body where
 #: it can carry no documentation.
 _PRESERVED_ON_RESTART: Final[frozenset[str]] = frozenset(
-    {TERMINAL_FAILURES_JSONL, RESTART_EPOCH_JSON}
+    {TERMINAL_FAILURES_JSONL, RESTART_EPOCH_JSON, DIR_LEGACY_V2}
 )
 
 

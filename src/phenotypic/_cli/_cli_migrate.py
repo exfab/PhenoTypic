@@ -67,7 +67,7 @@ from ._cli_migrate_provenance import (
     execute_provenance_migration,
     provenance_migration_lifecycle_root,
 )
-from ._cli_migrate_state import convert_per_image_markers
+from ._cli_migrate_state import migrate_machine_state
 from ._cli_migrate_manifest import (
     MigrationImageSeal,
     MigrationImageTask,
@@ -1812,8 +1812,9 @@ def _run_migrate_owned(
                     ),
                 )
             else:
-                # Convert the two legacy per-image marker trees before the
-                # image tasks run.
+                # Convert every machine-state shape before the image
+                # tasks run: per-image records, the pre-D8 master CSV,
+                # `processing_state.json`, then retention.
                 #
                 # **Not for continuation.** Nothing downstream reads these
                 # records to decide what to skip: `discover_migration_tasks`
@@ -1831,7 +1832,7 @@ def _run_migrate_owned(
                 # holding only legacy markers with some images migrated past
                 # them. Re-running is the documented recovery either way; this
                 # makes the intermediate state the more converted one.
-                convert_per_image_markers(output_dir)
+                migrate_machine_state(output_dir)
                 results, stage_failures = _execute_migration_tasks(
                     output_dir,
                     tasks=tasks,
