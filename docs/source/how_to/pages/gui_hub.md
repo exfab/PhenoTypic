@@ -307,7 +307,7 @@ the symptom that you need a two-hop tunnel rather than a single-hop one.
 
 Cloud deployment (multi-user, per-session sandbox roots, authentication) is a
 non-goal in v1. The hub is single-user with no auth gate. A
-`TODO(cloud-deploy)` in `src/phenotypic/_gui/shell/_sandbox.py` marks the
+`TODO(cloud-deploy)` in the hub's sandbox module marks the
 hook point for a future auth layer.
 
 Do not expose the hub on `0.0.0.0` without authentication — there is nothing
