@@ -10,9 +10,8 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Optional, List
+from typing import Any, Optional, List, TYPE_CHECKING
 from datetime import datetime
-from uuid import uuid4
 
 from ._cli_types import ProcessingState, DatasetState, Dataset, ExecutionConfig
 from ._cli_update_state import aggregate_state_from_events
@@ -27,6 +26,9 @@ from phenotypic.sdk_ import (
 
 from ._cli_directory_scanner import image_manifest_digest
 from ._cli_staged_resume import pipeline_content_digest
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from ..sdk_._state_types import RunIdentity
 
 logger = logging.getLogger(__name__)
 
@@ -76,12 +78,35 @@ def save_processing_state(
         ProcessingStateKey.CONFIG: state.config
     }
 
-    # Add dataset states
+    # Spec §4.2: the DEMOTED sets are not written. Writing `completed` is
+    # what made schema signal 3 un-dischargeable -- P7 deletes it from the
+    # file, the next forward run puts it straight back, and the gate fires
+    # again: migrate, run, refused, forever, with `--overwrite` (which
+    # destroys the outputs) the only escape.
+    #
+    # `completed`, `failed` and `errors` are safe to drop because
+    # `load_processing_state` re-derives all three from the event log
+    # (`aggregate_state_from_events`), which is why §4.2 calls the stored
+    # copy "a cache of a cache".
+    #
+    # **`initial_images` is NOT one of them and is still written.** It is the
+    # accepted inventory, not a derived set: `:166` reads it back with the
+    # comment "preserve initial_images from stored state", and nothing in the
+    # event log can reconstruct it -- an image that was accepted and has not
+    # yet emitted an event appears nowhere else. Dropping it emptied every
+    # dataset's inventory across one save/load round trip.
+    #
+    # An earlier version of this comment said all four were droppable,
+    # following the task callout's "stop writing the four keys". The callout
+    # justified it with "the reader re-aggregates from the event log", which
+    # is true of three of them; §4.2 itself demotes only
+    # `{completed, failed, started}`.
+    #
+    # This moves in the SAME commit as the publisher and the gate arming.
+    # Splitting them opens the window `test_the_gate_is_armed_exactly_when
+    # _the_forward_path_stops_writing_markers` exists to close.
     for dataset_name, ds_state in state.datasets.items():
         dataset_entries[dataset_name] = {
-            ProcessingStateKey.COMPLETED: list(ds_state.completed),
-            ProcessingStateKey.FAILED: list(ds_state.failed),
-            ProcessingStateKey.ERRORS: ds_state.errors,
             ProcessingStateKey.INITIAL_IMAGES: list(ds_state.initial_images)
         }
     
@@ -181,16 +206,30 @@ def load_processing_state(output_dir: Path) -> Optional[ProcessingState]:
 def create_initial_state(
     config: ExecutionConfig,
     datasets: List[Dataset],
-    output_dir: Path
+    output_dir: Path,
+    *,
+    identity: "RunIdentity",
 ) -> ProcessingState:
     """
     Create initial processing state for a new run.
-    
+
+    ``identity`` is **required and keyword-only**, and that is deliberate.
+    Before P2 this function minted its own ``uuid4().hex``; a default here
+    would let a caller silently fall back to one, and a run whose generation
+    is a uuid is a run that cannot be fenced (spec D3). Required means the
+    four minting sites this change consolidates cannot quietly become five.
+
+    **This function does not mint.** ``mint_run_identity`` bumps and persists
+    the restart epoch, so calling it twice in one invocation burns an epoch
+    (CAN-21). The entry point mints once and threads the value down; this is
+    one of the places it lands.
+
     Args:
         config: Execution configuration
         datasets: List of datasets to process
         output_dir: Output directory
-        
+        identity: The invocation's already-minted run identity.
+
     Returns:
         New ProcessingState object
     """
@@ -234,7 +273,22 @@ def create_initial_state(
             "image_manifest_digest": _image_manifest_digest_for(config),
             "staged_stage3_markers": config.staged_stage3_markers,
             "success_markers_required": True,
-            "processing_generation": uuid4().hex,
+            # D3: content-derived, not `uuid4().hex`. Same inputs -> same
+            # token, so a worker starting cold fences itself correctly
+            # against a run it has never read.
+            "processing_generation": identity.processing_generation,
+            # P1's `requires_conversion` signal 4 is the ABSENCE of this key,
+            # so until this line existed the gate fired on signal 4 for every
+            # tree the current build wrote. A bisect between P1 and here
+            # lands in that window.
+            #
+            # It closes signal 4 and ONLY signal 4 (gate SPEC-B3). Signals 1
+            # and 3 still fire on a forward tree, because this writer emits
+            # `image_complete/` and `datasets.<ds>.completed`; retiring those
+            # is §4.2's work in P3+. The earlier wording here claimed the
+            # gate no longer fires at all, which overstated one line into a
+            # whole-gate guarantee.
+            "restart_epoch": identity.restart_epoch,
         }
     )
     

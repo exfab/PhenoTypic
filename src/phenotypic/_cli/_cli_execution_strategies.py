@@ -1060,9 +1060,60 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         }
         atomic_write_json(metadata_path, job_metadata)
 
+        # Fan-out begins HERE -- one writer, in the submitting process,
+        # before the array exists. Clearing at merge time instead would delete
+        # the shards the finalizer is about to merge, converting a correctness
+        # fix into data loss.
+        #
+        # K is sized from the run's PLANNED image count, which is an upper
+        # bound on what will succeed: the finalizer script has to exist before
+        # any image runs. A failure-heavy run therefore over-shards slightly
+        # and leaves some shards empty, which is harmless and handled -- an
+        # empty shard is written rather than skipped, because index K counts
+        # shard FILES against the carried K and a missing file reads there as
+        # a dead worker. At the measured K = 1 none of this is observable,
+        # which is exactly why it is written down.
+        from ._cli_finalize_fanout import (
+            SECONDS_PER_IMAGE_S2,
+            begin_aggregation_fanout,
+            finalizer_memory_advisory,
+            shard_count,
+        )
+
+        # S-3's verdict is IN-MEMORY, so the finalizer holds the whole master
+        # at once and its `--mem` has to cover that. PhenoTypic does not set
+        # it -- the finalizer inherits the user's `--slurm` profile verbatim,
+        # and rewriting an explicit flag silently is worse than an
+        # OOM-killed job that says why. So: warn, and proceed.
+        memory_advisory = finalizer_memory_advisory(
+            n_images=total_images,
+            configured_mem_gb=float(
+                self.config.slurm_args.get("mem_gb", 4.0)
+            ),
+        )
+        if memory_advisory:
+            console.print(f"[yellow]{memory_advisory}[/yellow]")
+
+        # `total_images` and `array_limit` are the values this method already
+        # computed above. Recomputing either here would give one derived value
+        # two producers, which `_cli/CLAUDE.md` names as the defect this whole
+        # change exists to remove -- and `get_slurm_array_limit()` is a
+        # subprocess call, so a second one could also disagree with the first.
+        shards = shard_count(
+            n_images=total_images,
+            seconds_per_image=SECONDS_PER_IMAGE_S2,
+            max_array_size=array_limit,
+        )
+        begin_aggregation_fanout(
+            output_dir,
+            scheduler_epoch=generation,
+            shards=shards,
+            dataset_names=[dataset.name for dataset in datasets],
+        )
         finalizer_script = generate_terminal_finalizer_script(
             self.config,
             output_dir,
+            shard_count=shards,
         )
         submission = submit_slurm_script_chain(
             flat_chunk_scripts=flat_scripts,

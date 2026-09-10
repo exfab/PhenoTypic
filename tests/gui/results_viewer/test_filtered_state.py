@@ -41,7 +41,7 @@ def _make_master(tmp_root: Path) -> pl.DataFrame:
             "Bbox_CenterCC": [50, 60, 70, 80],
         }
     )
-    write_master(tmp_root, df, csv=False)
+    write_master(tmp_root, df)
     return df
 
 

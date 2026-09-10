@@ -92,6 +92,27 @@ from ._windows_metadata_journal import (
     open_windows_journal_session,
     windows_journal_supported,
 )
+#: LEGACY BUNDLE ARTIFACT -- DELETE WHEN: no bundle predating D8 is still
+#: migratable, i.e. every deliverables base in the wild was written by
+#: ``finalize_run``'s parquet-only path. D8 deleted ``master_measurements.csv``
+#: along with its constant, its path helper and its reader, so nothing writes
+#: this file any more -- but a bundle produced before D8 still HAS one, and it
+#: still carries the legacy metadata headers this module normalizes. Dropping
+#: it from discovery would silently leave that file un-migrated, so the name
+#: survives here as a literal rather than as public ``sdk_`` surface.
+#:
+#: **This is the name's one home.** ``_cli/_cli_migrate_state.py`` deletes the
+#: same file and imports the name from here rather than restating it, so
+#: metadata discovery and the deleter cannot disagree about which file a
+#: pre-D8 bundle carries. It is deliberately absent from ``phenotypic.sdk_``'s
+#: exports: D8's removal of the public name stands.
+LEGACY_MASTER_MEASUREMENTS_CSV = "master_measurements.csv"
+
+
+def _legacy_master_csv(layout: BundleLayout) -> Path:
+    """Return a pre-D8 bundle's ``master_measurements.csv``, written or not."""
+    return layout.deliverables_base / LEGACY_MASTER_MEASUREMENTS_CSV
+
 
 MigrationStatus: TypeAlias = Literal[
     "compatible", "migratable", "blocked", "applied", "rolled_back", "failed"
@@ -1033,7 +1054,7 @@ def _discover_legacy_bundle_targets(
     else:
         # A portable standalone bundle has no per-image HDF authority. Its
         # clean master archive is therefore the authoritative table source.
-        for path in (layout.master_parquet, layout.master_csv):
+        for path in (layout.master_parquet, _legacy_master_csv(layout)):
             if path.exists() or path.is_symlink():
                 targets.append(
                     validated_candidate(path, deliverables_root, "master")
@@ -1063,7 +1084,7 @@ def _discover_bundle_targets(
         candidates = (
             layout.resolved_pipeline_config_path,
             layout.master_parquet,
-            layout.master_csv,
+            _legacy_master_csv(layout),
         )
         root = deliverables_root
     else:

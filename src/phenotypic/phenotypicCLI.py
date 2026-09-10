@@ -57,7 +57,7 @@ Examples:
     # Rerun measurements on a previous forward run without re-detecting
     # (reads image stores from <previous-output-dir>/results/*/zarr/,
     # rewrites
-    # parquet measurements + master CSV, skips detection, does NOT
+    # embedded measurement tables + master parquet, skips detection, does NOT
     # regenerate overlays, does NOT touch processing state):
     uv run python -m phenotypic --mode measure --pipeline pipeline.json \
         --output <previous-output-dir>
@@ -148,7 +148,7 @@ import shutil
 import sys
 from pathlib import Path
 from typing import Any, List, Optional, Sequence, cast
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import click
 import yaml  # type: ignore[import-untyped]
@@ -178,6 +178,7 @@ from phenotypic._cli._cli_interactive import (
     execute_dry_run,
     get_sample_datasets,
 )
+from phenotypic._cli._cli_identity import mint_run_identity
 from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_report_generator import HTMLReportGenerator
 from phenotypic._cli._cli_state_management import (
@@ -399,7 +400,7 @@ def _has_prior_scientific_artifacts(output_dir: Path) -> bool:
 
 
 def _refuse_unmigrated_output(output_dir: Path, *, mode: str) -> None:
-    """Refuse a tree whose per-image results are not all converted.
+    """Refuse a tree the forward path cannot read as it stands.
 
     Applied to **every mode that writes or reprocesses** -- ``full``,
     ``measure``, ``recompile``, ``process`` -- because after Phase 6 the
@@ -407,9 +408,16 @@ def _refuse_unmigrated_output(output_dir: Path, *, mode: str) -> None:
     itself is exempt: it is the remedy, and guarding it with its own
     predicate makes the tree unmigratable (ledger MIG-19).
 
-    The predicate is shared with the viewer, so the two cannot disagree
-    about what "needs migrating" means. The severities differ, not the
-    definition: a writing mode refuses, while the viewer reports.
+    Two independent reasons, one call site so the severities cannot drift:
+
+    1. **Per-image format** -- a dataset still holds ``.h5`` results with no
+       valid store. The predicate is shared with the viewer, so the two cannot
+       disagree about what "needs migrating" means; only the severity differs,
+       a writing mode refusing where the viewer reports.
+    2. **Run-state schema** -- the tree predates the consolidated per-image
+       record and identity schema (spec D1, §11.1). See
+       :mod:`phenotypic._cli._cli_schema_gate`, which owns the detection and
+       stays inert until P3 arms it.
 
     Format conversion rewrites the entire results tree, so it is typed
     deliberately rather than triggered as a side effect of an unrelated run.
@@ -420,8 +428,10 @@ def _refuse_unmigrated_output(output_dir: Path, *, mode: str) -> None:
 
     Raises:
         click.UsageError: At least one dataset holds an ``.h5`` result whose
-            store is absent or invalid.
+            store is absent or invalid, or the run-state schema is one this
+            build cannot read.
     """
+    from phenotypic._cli._cli_schema_gate import refuse_unconverted_schema
     from phenotypic.sdk_ import MIGRATION_REMEDY, datasets_needing_migration
 
     legacy = datasets_needing_migration(output_dir)
@@ -433,6 +443,7 @@ def _refuse_unmigrated_output(output_dir: Path, *, mode: str) -> None:
             f"  python -m phenotypic {MIGRATION_REMEDY} "
             f"--output {output_dir}"
         )
+    refuse_unconverted_schema(output_dir, mode=mode)
 
 
 def _snapshot_metadata_csv(
@@ -698,6 +709,45 @@ def _parse_slurm_args(slurm_args: Sequence[str]) -> dict:
     kept for backward compatibility within this module.
     """
     return parse_slurm_args(slurm_args)
+
+
+def _output_was_migrated(output_dir: Path) -> bool:
+    """Return whether ``--mode migrate`` has converted this output.
+
+    **Keyed on the migration manifest**, which migrate writes at
+    ``.phenotypic/migration_manifest.json`` (``_cli_migrate.py:1708``) and
+    which nothing in ``src/`` ever unlinks. It is a *declared fact* rather
+    than an inference from a symptom, and two more obvious signals are both
+    wrong:
+
+    * ``PROVENANCE_MIGRATED`` on the per-image records says ``forward`` on
+      exactly these trees -- ``migrate_image_task`` publishes through
+      ``publish_image_success``, which has no ``provenance`` parameter and
+      takes ``publish_image_record``'s ``PROVENANCE_FORWARD`` default. Anyone
+      reaching for provenance here will find it, and find it wrong.
+    * ``work_ids`` being keyed by bare stem is the *symptom* of the admitted-set
+      pollution this refusal exists to explain, so keying on it would be
+      circular and would break the moment that defect is repaired.
+
+    Self-limiting in the right direction: ``clear_machine_state`` deletes the
+    manifest along with the rest of ``.phenotypic/``, so the restart this
+    refusal recommends ends the tree's migrated status rather than leaving a
+    permanent special case.
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        Whether a migration manifest is present. Never raises.
+    """
+    from phenotypic.sdk_ import phenotypic_cache_dir
+
+    try:
+        return (
+            phenotypic_cache_dir(output_dir) / "migration_manifest.json"
+        ).is_file()
+    except OSError:  # pragma: no cover - defensive
+        return False
 
 
 def _validate_resume_input_images(
@@ -1260,7 +1310,10 @@ def _print_process_only_dry_run_plan(
     help=(
         "Execution mode: full applies the pipeline and measures images; "
         "measure reruns measurement from an existing output root; recompile "
-        "refreshes aggregate outputs from an existing output root; process "
+        "refreshes aggregate outputs from an existing output root (NOT "
+        "supported on a run built with --metadata: it refuses without "
+        "changing anything -- re-run the forward command with the new "
+        "--metadata and --force-local instead); process "
         "exports a single layer selected with --layer; migrate explicitly "
         "upgrades a full legacy run, direct OME-Zarr store, or process-output "
         "tree. A full legacy run uses two passes: metadata headers in every "
@@ -1278,6 +1331,16 @@ def _print_process_only_dry_run_plan(
         "measurement Parquet source after value-level re-read verifies the "
         "published store. The only irreversible step; sources are retained "
         "without it."
+    ),
+)
+@click.option(
+    "--revert",
+    is_flag=True,
+    help=(
+        "With --mode migrate: undo a previous migration by renaming the "
+        "retained legacy marker trees back over the current ones. Refuses if "
+        "an image gained a record the retained trees do not cover. Converts "
+        "nothing, so it accepts no conversion options."
     ),
 )
 @click.option(
@@ -1402,7 +1465,7 @@ def _print_process_only_dry_run_plan(
     "--no-dataset-column",
     "no_dataset_column",
     is_flag=True,
-    help=f"Exclude {_DATASET_COL!r} column from master_measurements.csv (included by default)",
+    help=f"Exclude {_DATASET_COL!r} column from master_measurements.parquet (included by default)",
 )
 @click.option(
     "--dry-run",
@@ -1539,6 +1602,7 @@ def phenotypic_cli(
     layer: Optional[str],
     process_format: Optional[str],
     delete_sources: bool,
+    revert: bool,
 ):
     """
     Execute a PhenoTypic image-processing pipeline on a file or directory.
@@ -1632,6 +1696,10 @@ def phenotypic_cli(
         if delete_sources and not migrate_only:
             raise click.UsageError(
                 "--delete-sources is only accepted with --mode migrate."
+            )
+        if revert and not migrate_only:
+            raise click.UsageError(
+                "--revert is only accepted with --mode migrate."
             )
 
         # Process mirrors source-relative names into its output tree. The two
@@ -1798,6 +1866,7 @@ def phenotypic_cli(
                         else None
                     ),
                     wait=wait,
+                    revert=revert,
                 )
             )
 
@@ -2169,6 +2238,34 @@ def phenotypic_cli(
                     )
                     sys.exit(1)
 
+        # Mint ONCE per invocation, then thread the value (CAN-21).
+        # Every branch below READS `identity`; none mints. A second mint
+        # would give one run two generations and burn a restart epoch.
+        #
+        # BELOW the overwrite branch, and that placement is the fix for a
+        # bug this comment previously helped hide. The earlier version sat
+        # above it and reasoned at length about `clear_machine_state` --
+        # the destructive operation *above* the mint, which preserves the
+        # counter on purpose -- while `shutil.rmtree(output_dir)` seventeen
+        # lines *below* deleted the counter the mint had just read. The
+        # comment defended the neighbour it could see.
+        #
+        # The failure was silent because `--overwrite` and `--restart` are
+        # mutually exclusive, so the mint only READ and nothing raised:
+        # `state.config["restart_epoch"]` kept the pre-overwrite value while
+        # the counter file was gone. A live SLURM run then never reported
+        # `active` (the lifecycle record stamps 0, the identity says 1), and
+        # the next `--restart` bumped 0 -> 1 and re-minted the SAME
+        # generation the overwrite run had used -- so pre-restart workers
+        # passed the event-log fence, which is the failure D5 and §14 exist
+        # to prevent.
+        #
+        # Still dominates both resume sites: they are all below this point,
+        # and the overwrite branch above is guarded by `not config.resume
+        # and not restart and not measure_only`, so no path reaches a resume
+        # site without passing here first.
+        identity = mint_run_identity(config, restart=restart)
+
         # Scan directory structure (or discover image stores in measure mode)
         if measure_only:
             click.echo(
@@ -2349,11 +2446,39 @@ def phenotypic_cli(
             )
             if not images_valid:
                 click.echo(f"Error: Cannot continue - {image_error}", err=True)
-                click.echo(
-                    "\nThe input image set has changed since the previous run. "
-                    "Continuation requires the same admitted input images.",
-                    err=True,
-                )
+                if _output_was_migrated(output_dir):
+                    # A migrated tree is not continuable, and that is the
+                    # ruled behaviour rather than a defect to route around
+                    # (user, 2026-09-09): it "should be considered as if not
+                    # ran then, and do a full restart". The refusal names the
+                    # command that does that, which is the same contract the
+                    # schema gate keeps -- a refusal the user can act on.
+                    #
+                    # Told, never done. Clearing machine state and
+                    # reprocessing every image is hours of compute and a
+                    # destructive step; firing it automatically from a
+                    # condition the user did not ask about is the hidden
+                    # state transition U-7 refused, and worse, because U-7's
+                    # case destroyed nothing.
+                    click.echo(
+                        "\nThis output was converted by `--mode migrate`, and "
+                        "a migrated tree cannot be continued: migration "
+                        "rebuilds the admitted image set from the tree rather "
+                        "than from the original run's record of it.\n"
+                        "Treat it as not yet run and start over:\n"
+                        f"    python -m phenotypic --restart --output {output_dir} ...\n"
+                        "This reprocesses every image. Existing stores under "
+                        "results/ and deliverables/ are kept until they are "
+                        "overwritten.",
+                        err=True,
+                    )
+                else:
+                    click.echo(
+                        "\nThe input image set has changed since the previous "
+                        "run. Continuation requires the same admitted input "
+                        "images.",
+                        err=True,
+                    )
                 sys.exit(1)
 
             try:
@@ -2387,11 +2512,11 @@ def phenotypic_cli(
                 )
                 if config.process_only_layer is not None:
                     from phenotypic._cli._cli_completion import (
-                        current_run_is_complete,
+                        _all_accepted_images_succeeded,
                         publish_run_completion_evidence,
                     )
 
-                    if current_run_is_complete(output_dir) is True:
+                    if _all_accepted_images_succeeded(output_dir) is True:
                         publish_run_completion_evidence(
                             output_dir,
                             execution_epoch=(
@@ -2404,12 +2529,44 @@ def phenotypic_cli(
                             ),
                         )
 
-            # Every compatible invocation owns a fresh machine-state epoch,
-            # including a no-work reconciliation. This fences workers left by
-            # a killed local attempt and prevents historical started events
-            # from remaining active forever. Scientific publication identity
-            # is work-ID based and is intentionally unchanged.
-            resume_state.config["processing_generation"] = uuid4().hex
+            # A RESUME IS NOT A RESTART -- see the mint above.
+            #
+            # This minted a fresh uuid here, justified as "every
+            # compatible invocation owns a fresh machine-state epoch
+            # ... this fences workers left by a killed local attempt".
+            # Both halves are now wrong: a fresh token per invocation
+            # is exactly what D3 forbids, and that fencing is
+            # `restart_epoch`'s job (P2 Task 1).
+            #
+            # THE FIFTH MINTING SITE -- named in the plan's prose,
+            # given no step, and the one that would have gone on
+            # minting uuids after every other site became
+            # content-derived, leaving the invariant almost true with
+            # nothing saying which site broke it.
+            #
+            # The old comment gave a SECOND justification -- "prevents
+            # historical started events from remaining active forever"
+            # -- and this replaced only the first. Saying so, because
+            # silence would read as an oversight (gate IMPL-F9).
+            #
+            # It is ACCEPTED, not answered. With a stable generation a
+            # resume does count prior `started` events, pinned by
+            # `test_a_resume_counts_events_from_its_own_generation`.
+            # The residue is display-only: `in_progress`
+            # (`_cli_types.py:50`) feeds the dashboard manifest builder
+            # and nothing else -- no verdict, no worklist, no fence.
+            # A killed image's `started` event also self-heals, since
+            # the image is in neither `completed` nor `failed` and is
+            # therefore reprocessed. So the cost is a stale `active`
+            # count in the dashboard for the window between a kill and
+            # its retry finishing, and that is a price worth paying for
+            # a generation that means one thing.
+            resume_state.config["processing_generation"] = (
+                identity.processing_generation
+            )
+            resume_state.config["restart_epoch"] = (
+                identity.restart_epoch
+            )
             save_processing_state(resume_state, output_dir)
             config.processing_generation = str(
                 resume_state.config["processing_generation"]
@@ -2420,14 +2577,19 @@ def phenotypic_cli(
             # aggregate source set with current success markers rather than
             # trusting the presence of old core files.
             from phenotypic._cli._cli_completion import (
-                current_aggregate_is_current,
-                current_success_counts,
+                state_requires_success_markers,
                 valid_run_completion,
             )
+            from phenotypic.sdk_ import resolve_run_state
 
-            startup_counts = current_success_counts(output_dir)
-            if startup_counts is not None:
-                startup_successful, startup_total = startup_counts
+            # P6 Task 0. `current_success_counts` was three questions under one
+            # name: `is not None` (is this schema-3? -- O(1) config field),
+            # `> 0` and `== total` (counts). Only the last two are counts, and
+            # `RunDiagnostics` supplies them as projections over `images`.
+            if state_requires_success_markers(output_dir):
+                startup_state = resolve_run_state(output_dir, depth="deep")
+                startup_successful = startup_state.diagnostics.verified
+                startup_total = startup_state.diagnostics.accepted
                 if config.process_only_layer:
                     publication_refresh_required = bool(
                         startup_successful == startup_total
@@ -2436,7 +2598,7 @@ def phenotypic_cli(
                 elif startup_successful > 0:
                     publication_refresh_required = bool(
                         publication_refresh_required
-                        or current_aggregate_is_current(output_dir) is not True
+                        or startup_state.completion != "complete"
                         or (
                             startup_successful == startup_total
                             and valid_run_completion(output_dir) is None
@@ -2643,9 +2805,6 @@ def phenotypic_cli(
             if config.resume:
                 assert resume_state is not None
                 state = update_state_from_events(resume_state, output_dir)
-                processing_generation = str(
-                    state.config.get("processing_generation") or uuid4().hex
-                )
                 state.execution_mode = (
                     "slurm" if config.is_slurm_mode() else "local"
                 )
@@ -2677,7 +2836,22 @@ def phenotypic_cli(
                     "include_dataset_column": config.include_dataset_column,
                     "overlay_alpha": config.overlay_alpha,
                     "no_qc": config.no_qc,
-                    "processing_generation": processing_generation,
+                    # A RESUME IS NOT A RESTART. Same configuration ->
+                    # same generation (D3); only `--restart` bumps the
+                    # epoch, and therefore the generation.
+                    #
+                    # The justification this replaces read: "Every
+                    # compatible invocation owns a fresh machine-state
+                    # epoch ... this fences workers left by a killed
+                    # local attempt." That is now false twice over. A
+                    # fresh token per invocation is exactly what D3
+                    # forbids, and the fencing it wanted is
+                    # `restart_epoch`'s job (P2 Task 1). If a resume
+                    # bumped, every resume would fence its OWN in-flight
+                    # workers -- the failure D5 exists to prevent, and
+                    # the opposite of what a resume is for.
+                    "processing_generation": identity.processing_generation,
+                    "restart_epoch": identity.restart_epoch,
                     "metadata_sha256": (
                         file_sha256(config.metadata_csv)
                         if config.metadata_csv is not None
@@ -2692,7 +2866,9 @@ def phenotypic_cli(
                         image.name for image in current_dataset.images
                     )
             else:
-                state = create_initial_state(config, full_datasets, output_dir)
+                state = create_initial_state(
+                    config, full_datasets, output_dir, identity=identity
+                )
                 state.config["save_overlays"] = config.save_overlays
             state.config["metadata_sha256"] = (
                 file_sha256(config.metadata_csv)
@@ -2709,11 +2885,15 @@ def phenotypic_cli(
                 for dataset in full_datasets
             }
             save_processing_state(state, output_dir)
-            config.processing_generation = str(
-                state.config["processing_generation"]
-            )
-        else:
-            config.processing_generation = uuid4().hex
+        # DF-16 / CAN-20: measure and process run under the SAME
+        # content-derived identity as `full`. The pipeline and per-image
+        # configuration are unchanged, so D3 says the generation is the
+        # same VALUE -- which is what lets §7.4 route measure through
+        # `finalize_run`, and P4 Task 4 parametrize a byte-identical
+        # master over ["full", "measure", "recompile"]. Measure minted
+        # its own uuid here and could therefore never match the run it
+        # was measuring.
+        config.processing_generation = identity.processing_generation
         os.environ[PROCESSING_GENERATION_ENV_VAR] = (
             config.processing_generation
         )
@@ -2869,13 +3049,18 @@ def phenotypic_cli(
         # Aggregate every current marker-authorized success. This republishes
         # a valid partial snapshot even when this invocation ended with only
         # terminal failures, while a true no-op preserves existing outputs.
-        from phenotypic._cli._cli_completion import current_success_counts
+        from phenotypic._cli._cli_completion import (
+            state_requires_success_markers,
+        )
+        from phenotypic.sdk_ import resolve_run_state
 
-        current_counts = current_success_counts(output_dir)
+        # `current_counts is None` was the legacy arm (O(1)); `counts[0] > 0`
+        # is "anything verified yet", which `diagnostics.verified` answers.
+        legacy_state = not state_requires_success_markers(output_dir)
         should_finalize_measurements = (
             results.total_completed > 0
-            if current_counts is None
-            else current_counts[0] > 0
+            if legacy_state
+            else resolve_run_state(output_dir, depth="deep").diagnostics.verified > 0
             and (
                 results.total_images > 0
                 or metadata_snapshot_changed
@@ -2896,6 +3081,7 @@ def phenotypic_cli(
                 pipeline=finalizer_pipeline,
                 no_qc=no_qc,
                 study_config=study_config,
+                njobs=config.n_jobs,
             )
             if master_path:
                 click.echo(f"✓ Master measurements: {master_path}")
@@ -2928,7 +3114,8 @@ def phenotypic_cli(
             else:
                 finalization_succeeded = False
                 click.echo(
-                    "⚠ Warning: Could not aggregate master CSV (check logs for details)",
+                    "⚠ Warning: Could not aggregate master measurements "
+                    "(check logs for details)",
                     err=True,
                 )
 
@@ -3643,7 +3830,8 @@ def _handle_recompile(
     """Recompile master measurements and dashboard from existing results.
 
     Auto-discovers datasets under ``output_dir/results``, re-aggregates
-    measurement Parquet files into ``master_measurements.csv``,
+    marker-authorized embedded measurement tables into
+    ``master_measurements.parquet``,
     regenerates any missing overlay PNGs from their image stores, rebuilds
     the progress manifest, and regenerates
     the HTML dashboard.
@@ -3718,11 +3906,11 @@ def _handle_recompile(
     if master_path:
         console.print(f"[green]Master measurements: {master_path}")
         from phenotypic._cli._cli_completion import (
-            current_run_is_complete,
+            _all_accepted_images_succeeded,
             publish_run_completion_evidence,
         )
 
-        if current_run_is_complete(output_dir) is True:
+        if _all_accepted_images_succeeded(output_dir) is True:
             publish_run_completion_evidence(
                 output_dir, execution_epoch="local"
             )

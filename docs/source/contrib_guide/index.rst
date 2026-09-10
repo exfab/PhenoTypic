@@ -11,6 +11,7 @@ This section provides documentation for developers who want to contribute to Phe
    contributing
    extending
    testing
+   tracked_state
    documentation
    docstring_style
 
@@ -28,3 +29,11 @@ Placeholder Pages
 
 **Testing Framework** (Coming Soon)
    Information about PhenoTypic's testing infrastructure and how to write effective tests.
+
+Reference Pages
+---------------
+
+**Run state: what is tracked, and how to read it**
+   The four tracked states, the three content proofs, what is derived and by
+   what function, and the table of known consumers. Read it before adding any
+   counter, flag or marker under ``.phenotypic/``.

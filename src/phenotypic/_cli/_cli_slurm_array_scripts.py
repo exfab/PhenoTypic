@@ -459,8 +459,41 @@ fi"""
 def generate_terminal_finalizer_script(
     config: ExecutionConfig,
     output_dir: Path,
+    shard_count: int = 1,
 ) -> Path:
-    """Write the dependent terminal publisher for an ordinary SLURM run."""
+    """Write the dependent terminal publisher for an ordinary SLURM run.
+
+    **P5: this one-task job becomes a ``0-K`` array**, K aggregation shards at
+    indices ``0..K-1`` and the reserved ``TASK_FINALIZE`` entry at index K.
+
+    Index K's command is **unchanged** (CAN-19). ``_run_finalize`` already
+    publishes the run proof and does far more besides -- it waits for
+    completion, aggregates, builds the manifest and dashboard, publishes the
+    staged report, deactivates the generation. Minting a *new* finalizer that
+    published would have created a second publisher of the run proof, which is
+    the failure this whole change exists to remove, arriving through the fix
+    for it. So the existing dependent job is kept and becomes index K, and no
+    site changes its publication behaviour.
+
+    **No new submission site.** The drip-feed dispatcher
+    (``_cli_execution_strategies.py`` -> ``submit_slurm_script_chain``) keeps
+    submitting one thing where it submitted one thing before; only
+    ``task_indices`` changes. *No standalone parallel job is submitted* is
+    therefore true **by construction** rather than by discipline, which is why
+    the guards in ``test_array_auxiliary_routing.py`` assert the absence of a
+    submission site instead of policing the behaviour of one.
+
+    Args:
+        config: Execution configuration.
+        output_dir: Run output root.
+        shard_count: K, from
+            :func:`~phenotypic._cli._cli_finalize_fanout.shard_count`. The
+            default of 1 gives a two-task array -- one shard plus the
+            finalizer -- which is what the measured design target produces.
+
+    Returns:
+        Path to the generated script.
+    """
     python_cmd, _ = get_python_command(for_slurm=True)
     checkpoint_type = (
         "manifest" if config.process_only_layer is not None else "finalize"
@@ -470,7 +503,7 @@ def generate_terminal_finalizer_script(
         if config.process_only_layer is not None
         else "ordinary_finalizer"
     )
-    command = " ".join(
+    finalize_command = " ".join(
         [
             *(shlex.quote(part) for part in python_cmd),
             "-m",
@@ -481,6 +514,36 @@ def generate_terminal_finalizer_script(
             checkpoint_type,
         ]
     )
+    shard_command = " ".join(
+        [
+            *(shlex.quote(part) for part in python_cmd),
+            "-m",
+            "phenotypic._cli._cli_finalize_fanout",
+            "--output-dir",
+            shlex.quote(str(output_dir.absolute())),
+            "--task-index",
+            "$CURRENT_TASK_INDEX",
+            *(
+                ["--epoch", shlex.quote(config.slurm_generation)]
+                if config.slurm_generation
+                else []
+            ),
+        ]
+    )
+    # Index K is the RESERVED TASK_FINALIZE entry, inside the array rather
+    # than beside it. Indices 0..K-1 aggregate; K publishes, with the command
+    # it has always had.
+    command = f"""if [ "$CURRENT_TASK_INDEX" -eq {shard_count} ]; then
+    echo "Running terminal finalization (reserved TASK_FINALIZE entry)"
+    echo ""
+
+    {finalize_command}
+else
+    echo "Aggregating measurement shard $CURRENT_TASK_INDEX/{shard_count}"
+    echo ""
+
+    {shard_command}
+fi"""
     script_path = slurm_scripts_dir(output_dir) / f"{finalizer_name}.sh"
     log_path = logs_dir(output_dir) / "slurm" / f"{finalizer_name}_%A_%a.log"
     prelude = SLURM_THREAD_PIN_BASH
@@ -502,12 +565,14 @@ def generate_terminal_finalizer_script(
             job_name="pht-finalizer",
             slurm_args=config.slurm_args,
             log_path=log_path,
-            task_indices=[0],
+            task_indices=list(range(shard_count + 1)),
             body=command,
             prelude=prelude,
             comments=[
                 "# Ordinary SLURM terminal finalizer",
                 "# Submitted after the final image chunk becomes terminal",
+                "# Indices 0..K-1 aggregate measurement shards;",
+                "# index K is the reserved TASK_FINALIZE entry.",
             ],
         ),
     )

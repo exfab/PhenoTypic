@@ -433,9 +433,11 @@ def process_single_store_measure_core(
     # nothing raises on.
     stem = store_stem(store_path)
 
-    # Publish the authoritative table inside the existing store. Descriptor
-    # changes use a root-last store transaction; compatible tables use one
-    # validated same-directory atomic file replacement.
+    # Publish the authoritative tables inside the existing store, through a
+    # root-last store transaction. There is no same-directory fast path: it
+    # rewrote a promoted store's Parquet without refreshing the root, so the
+    # per-image proof went on certifying content that had changed underneath
+    # it (CAN-3).
     output_manager.replace_image_store_measurements(
         store_path,
         measurements,
@@ -455,14 +457,50 @@ def process_single_store_measure_core(
     # Marker refresh is the final successful per-image publication. If any
     # earlier table or plot work raises, the old marker remains stale against
     # the new table/root and therefore cannot authorize a partial update.
-    from phenotypic.sdk_ import image_completion_marker_path
+    # THE RECORD, not `image_complete/` (P3 Task 2). This probe used to name
+    # the legacy marker, and after D1's clean break that file does not exist
+    # on a forward tree -- so `is_file()` was False, the re-publish was
+    # SKIPPED with no exception and no log, and this function still returned
+    # True. A `--mode measure` that changed the table's descriptor rewrote
+    # the store root, leaving the record's store descriptor stale, and the
+    # image read as unprocessed after successfully re-measuring.
+    #
+    # It falsifies `_cli/CLAUDE.md`'s "no store write outlives the
+    # publication that certifies it", which is load-bearing for the
+    # root-only fingerprint argument. Found by regenerating the plan's own
+    # marker-consumer table, which names every module that reads this
+    # surface and did not name this one.
+    # **Ask whether this image was PUBLISHED, not whether the file exists.**
+    # The path repoint was right; the predicate that came with it was not.
+    # `image_completion_marker_path(...).is_file()` was true only after a full
+    # `publish_image_success`, so the payload was guaranteed complete. The
+    # record file is different: `record_stage` creates it too, so a
+    # **partial** record -- `stages` and identity, no `artifacts` -- also
+    # satisfies `.is_file()`, and `_republish_table_marker` then does
+    # `marker["work_id"]` unconditionally and raises `KeyError` where this
+    # path used to skip cleanly.
+    #
+    # Partial records are a normal product of the staged engine, not a
+    # corruption case: `_cli_staged_slurm_worker` guards its publish with
+    # `if item.work_id:` while its `write_stage3_completion_marker` is
+    # unconditional, `_cli_staged_workers` writes stage 3 in its
+    # `work_id is None` branch, and `migrate_legacy_stage3_markers` writes
+    # stage-3 entries with no publish at all on the ordinary resume path.
+    #
+    # Non-empty `artifacts` is the property that makes the payload
+    # republishable, and it is the same clause `record_rejection` calls
+    # CAN-23 -- a record with no artifacts certifies nothing.
+    from phenotypic.sdk_ import image_record_path
+    from phenotypic.sdk_._image_record import read_image_record
 
-    marker_path = image_completion_marker_path(output_dir, dataset_name, stem)
-    if marker_path.is_file():
+    record_path = image_record_path(output_dir, dataset_name, stem)
+    record = read_image_record(output_dir, dataset_name, stem)
+    artifacts = record.get("artifacts") if record is not None else None
+    if isinstance(artifacts, dict) and artifacts:
         from ._cli_recompile_tables import _republish_table_marker
 
         _republish_table_marker(
-            output_dir, marker_path, commit_guard=commit_guard
+            output_dir, record_path, commit_guard=commit_guard
         )
 
     return True

@@ -44,7 +44,6 @@ from phenotypic.sdk_ import (
     chunk_parquet_filename,
     chunk_lock_path,
     analysis_full_parquet_path,
-    master_measurements_csv_path,
     master_measurements_parquet_path,
     progress_dir as progress_dir_helper,
 )
@@ -228,10 +227,10 @@ def _aggregate_chunks_locked(output_dir: Path, progress_dir: Path) -> None:
         )
 
         if not embedded_authority:
-            atomic_write_with_writer(
-                master_measurements_csv_path(output_dir),
-                lambda p: combined.write_csv(p),
-            )
+            # D8: parquet only. The rolling mid-run master is the same
+            # artifact `finalize_run` republishes at the end, so it has the
+            # same shape -- writing a CSV here would leave one behind that
+            # finalization never overwrites.
             atomic_write_with_writer(
                 master_measurements_parquet_path(output_dir),
                 lambda p: combined.write_parquet(p, **PARQUET_WRITE_OPTIONS),

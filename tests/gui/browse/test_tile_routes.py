@@ -1,3 +1,5 @@
+import tempfile
+
 import base64
 import os
 from pathlib import Path
@@ -32,7 +34,20 @@ def app_and_root(monkeypatch, tmp_path):
     # Redirect the ephemeral cache into the test's tmp dir.
     cache = tmp_path / "cache"
     cache.mkdir()
-    monkeypatch.setattr(sr.tempfile, "gettempdir", lambda: str(cache))
+    # Patch ``tempfile`` directly, not through ``_source_render``.
+    #
+    # This used to read ``sr.tempfile``, which worked only because that module
+    # imported ``tempfile`` for its own ephemeral cache. P6 Task 7 deleted that
+    # cache and the import with it, and every fixture reaching the module's
+    # attribute broke -- a consumer with no import edge, which no import-graph
+    # walk can see.
+    #
+    # The redirect itself is NOT vestigial. ``_cache.resolve_cache_location``
+    # falls back to ``tempfile.mkdtemp(prefix="phenotypic-browse-")`` with no
+    # ``dir=`` when neither the sandbox nor the user-cache tier is writable,
+    # and that consults ``gettempdir()``. Patching it keeps that last resort
+    # inside ``tmp_path`` instead of the real system temp dir.
+    monkeypatch.setattr(tempfile, "gettempdir", lambda: str(cache))
     # Sandbox root with one image.
     sandbox_root = tmp_path / "sandbox"
     (sandbox_root / "plates" / "b7").mkdir(parents=True)
@@ -114,7 +129,20 @@ def test_published_plain_zarr_store_is_served_as_generation_addressed_bytes(
     """Browse hands Viv store bytes; it must not build a PNG/DZI pyramid."""
     cache = tmp_path / "cache"
     cache.mkdir()
-    monkeypatch.setattr(sr.tempfile, "gettempdir", lambda: str(cache))
+    # Patch ``tempfile`` directly, not through ``_source_render``.
+    #
+    # This used to read ``sr.tempfile``, which worked only because that module
+    # imported ``tempfile`` for its own ephemeral cache. P6 Task 7 deleted that
+    # cache and the import with it, and every fixture reaching the module's
+    # attribute broke -- a consumer with no import edge, which no import-graph
+    # walk can see.
+    #
+    # The redirect itself is NOT vestigial. ``_cache.resolve_cache_location``
+    # falls back to ``tempfile.mkdtemp(prefix="phenotypic-browse-")`` with no
+    # ``dir=`` when neither the sandbox nor the user-cache tier is writable,
+    # and that consults ``gettempdir()``. Patching it keeps that last resort
+    # inside ``tmp_path`` instead of the real system temp dir.
+    monkeypatch.setattr(tempfile, "gettempdir", lambda: str(cache))
     sandbox_root = tmp_path / "sandbox"
     store = sandbox_root / "plate.zarr"
     chunk = store / "rgb" / "0" / "c" / "0"

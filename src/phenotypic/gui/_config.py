@@ -64,7 +64,6 @@ from phenotypic.sdk_ import (
     DIR_RESULTS,
     JOB_METADATA_JSON,
     MANIFEST_JSON,
-    MASTER_MEASUREMENTS_CSV,
     MASTER_MEASUREMENTS_PARQUET,
     MEASUREMENTS_CSV,
     MEASUREMENTS_PARQUET,
@@ -121,7 +120,6 @@ __all__ = [
     "SANDBOX_BUILDER_TILES_SUBDIR",
     "RUN_LOG_DIRNAME",
     "VIEWER_CACHE_DIRNAME",
-    "BROWSE_CACHE_TMP_SUBPATH",
     "BROWSE_CACHE_SUBDIR",
     "BROWSE_CACHE_HIGH_WATER_BYTES",
     "BROWSE_CACHE_LOW_WATER_BYTES",
@@ -134,7 +132,6 @@ __all__ = [
     "IMAGE_EXTS",
     "RAW_IMAGE_EXTS",
     # Output filenames (CLI ↔ GUI shared layout) — re-exported from phenotypic.sdk_
-    "MASTER_MEASUREMENTS_CSV",
     "MASTER_MEASUREMENTS_PARQUET",
     "MEASUREMENTS_CSV",
     "MEASUREMENTS_PARQUET",
@@ -430,11 +427,6 @@ BROWSE_SPECULATIVE_WORKERS: int = 1
 #: Increment whenever normalized pixels or DZI parameters change semantics.
 BROWSE_RENDER_SCHEMA_VERSION: int = 1
 
-#: Ephemeral Browse tile-cache subpath under ``tempfile.gettempdir()``. The
-#: Browse tab normalizes each source image to an 8-bit PNG + DZI tiles here,
-#: wiped on launch + at ``atexit`` (never persisted under the sandbox).
-BROWSE_CACHE_TMP_SUBPATH: tuple[str, str] = ("phenotypic", "browse")
-
 # ---------------------------------------------------------------------------
 # Image file extensions (shared by the directory browser, classifier, and the
 # Browse tab). Lifted here so neither browse nor the classifier imports the
@@ -471,8 +463,7 @@ RAW_IMAGE_EXTS: frozenset[str] = frozenset(
 # keep working with zero downstream churn. Do NOT redefine these as inline literals.
 #
 # Available re-exports (imported at module top):
-#   MASTER_MEASUREMENTS_CSV, MASTER_MEASUREMENTS_PARQUET,
-#   MEASUREMENTS_CSV, MEASUREMENTS_PARQUET,
+#   MASTER_MEASUREMENTS_PARQUET, MEASUREMENTS_CSV, MEASUREMENTS_PARQUET,
 #   PIPELINE_JSON, JOB_METADATA_JSON, MANIFEST_JSON, STDOUT_LOG,
 #   QC_REVIEW_STATE_JSON,
 #   DIR_RESULTS, DIR_PROGRESS, DIR_QC, DIR_DELIVERABLES, DASHBOARD_HTML

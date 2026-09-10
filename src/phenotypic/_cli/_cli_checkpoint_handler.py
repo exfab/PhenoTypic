@@ -274,6 +274,18 @@ def _run_finalize(
     metadata_csv_str = job_metadata.get(JobMetadataKey.METADATA_CSV)
     metadata_csv = Path(metadata_csv_str) if metadata_csv_str else None
 
+    # P5, CAN-19: this job is index K of its own array -- the reserved
+    # TASK_FINALIZE entry -- and indices 0..K-1 have aggregated the embedded
+    # tables into shards. `resolve_finalizer_shard_inputs` waits for them,
+    # refuses to proceed unless the shard set is complete, and hands back the
+    # source set the shards actually merged so the proof describes this
+    # master. `None` means this invocation never fanned out, which is the
+    # ordinary local path and not an error.
+    from ._cli_finalize_fanout import resolve_finalizer_shard_inputs
+
+    fanout_inputs = resolve_finalizer_shard_inputs(output_dir, slurm_generation)
+    shard_paths, planned_work_ids = fanout_inputs or (None, None)
+
     aggregate_path = aggregate_measurements(
         output_dir=output_dir,
         dataset_names=list(datasets_totals.keys()),
@@ -282,14 +294,20 @@ def _run_finalize(
         ),
         metadata_csv=metadata_csv,
         no_qc=bool(job_metadata.get(JobMetadataKey.NO_QC, False)),
+        shard_paths=shard_paths,
+        planned_work_ids=planned_work_ids,
     )
     if aggregate_path is None:
         message = "No current-epoch measurements were available to aggregate"
         if epoch is not None:
-            from ._cli_completion import current_success_counts
+            from ._cli_completion import state_requires_success_markers
+            from phenotypic.sdk_ import resolve_run_state
 
-            counts = current_success_counts(output_dir)
-            if counts is None or counts[0] > 0:
+            # `counts is None` was "legacy state" (O(1)); `counts[0] > 0` was
+            # "anything verified yet", which `RunDiagnostics.verified` answers
+            # -- a projection over `images`, which the caller already holds.
+            legacy = not state_requires_success_markers(output_dir)
+            if legacy or resolve_run_state(output_dir, depth="deep").diagnostics.verified > 0:
                 raise RuntimeError(message)
             logger.warning(
                 "%s; closing terminal-incomplete lifecycle", message
@@ -337,15 +355,25 @@ def _run_finalize(
     if epoch is not None:
         _publish_staged_report_and_readme(output_dir, job_metadata, epoch)
         from ._cli_completion import (
-            current_run_is_complete,
+            _all_accepted_images_succeeded,
             publish_run_completion_evidence,
+            state_requires_success_markers,
         )
         from ._cli_staged_orchestration import (
             deactivate_orchestration,
             mark_staged_complete,
         )
 
-        marker_completion = current_run_is_complete(output_dir)
+        # P6 Task 0. The `else` arm below catches BOTH `True` and `None`, so
+        # collapsing the tri-state would send a legacy tree to
+        # `deactivate_orchestration` where it is marked staged-complete today
+        # -- the opposite function, not a stricter version of the same one.
+        legacy = not state_requires_success_markers(output_dir)
+        marker_completion = (
+            None
+            if legacy
+            else _all_accepted_images_succeeded(output_dir) is True
+        )
         if marker_completion is False:
             deactivate_orchestration(output_dir, "terminal_incomplete")
         else:
@@ -396,9 +424,16 @@ def _publish_run_completion_marker(
                 "Cannot publish completion after the SLURM generation "
                 "was cancelled or superseded"
             )
-        from ._cli_completion import current_run_is_complete
+        from ._cli_completion import (
+            _all_accepted_images_succeeded,
+            state_requires_success_markers,
+        )
 
-        complete = current_run_is_complete(output_dir)
+        complete = (
+            None
+            if not state_requires_success_markers(output_dir)
+            else _all_accepted_images_succeeded(output_dir) is True
+        )
         if complete is None:
             try:
                 manifest = json.loads(

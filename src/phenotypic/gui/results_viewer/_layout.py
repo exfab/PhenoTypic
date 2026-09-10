@@ -41,6 +41,7 @@ from phenotypic.gui._config import (
     TILE_DIM_DEFAULT,
 )
 from phenotypic.gui._shared import SHARED_LOGO_PATH
+from phenotypic.gui._snapshot_status import snapshot_refresh_status
 from phenotypic.gui._design import (
     COLOR_BG,
     COLOR_BLUE,
@@ -179,6 +180,15 @@ def _build_header(
     Returns:
         A header :class:`dash.html.Div` styled as a navy-on-white bar.
     """
+    # The initial render and the 5-10 s poll must not be two implementations
+    # of one predicate. They were: this header open-coded the badge while
+    # `snapshot_refresh_status` computed it for the interval callback, so P6
+    # Task 1's change to the helper left this site spelling the same states
+    # differently -- "Read-only . incomplete" here, "Run incomplete . refresh
+    # snapshot" five seconds later. One call, one vocabulary.
+    snapshot_label, snapshot_color, _ = snapshot_refresh_status(
+        output_root, refresh_supported=refresh_supported
+    )
     pipeline_label = output_root.pipeline_summary or "unknown"
 
     pipeline_chip = html.Span(
@@ -237,23 +247,9 @@ def _build_header(
                 title=output_root.snapshot.processing_fingerprint,
             ),
             dbc.Badge(
-                (
-                    "Active run snapshot"
-                    if output_root.snapshot.active_run
-                    else (
-                        f"Read-only · {output_root.consistency.state}"
-                        if output_root.consistency.is_read_only
-                        else "Current"
-                    )
-                ),
+                snapshot_label,
                 id=ids.HEADER_SNAPSHOT_STATUS_ID,
-                color=(
-                    "danger"
-                    if output_root.consistency.is_read_only
-                    else "warning"
-                    if output_root.snapshot.active_run
-                    else "success"
-                ),
+                color=snapshot_color,
                 className="ms-2",
             ),
             dbc.Button(

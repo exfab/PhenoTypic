@@ -41,13 +41,30 @@ from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import (
     atomic_write_json,
     gui_launch_owner_path,
-    resolve_manifest_json_path,
 )
-from tests._output_layout import seed_output_dir, write_complete_manifest
+from tests._output_layout import (
+    build_complete_viewer_run,
+    seed_output_dir,
+    write_complete_manifest,
+)
 
 
-def _seed_output(parent: Path, name: str = "output") -> Path:
-    """Create a minimal complete output accepted by both sub-apps."""
+def _seed_output(
+    parent: Path, name: str = "output", *, publish: bool = False
+) -> Path:
+    """Create a minimal output accepted by both sub-apps.
+
+    ``publish`` mints the real proofs, which is what a test needs when it
+    performs a **write** -- curation, analysis publication -- since those
+    require a ``complete`` run state. It is opt-in because most of this
+    file's tests are about binding, refreshing and byte-preservation, and
+    ``test_status_polls_never_report_current_for_an_unproven_run`` asserts
+    the opposite: that an unproven tree never reads "Current".
+
+    The ``manifest.json`` below is written for continuity of the fixture
+    shape, not as evidence -- §4.2 demotes it and it no longer makes a run
+    complete.
+    """
     output = parent / name
     frame = pl.DataFrame(
         {
@@ -71,6 +88,17 @@ def _seed_output(parent: Path, name: str = "output") -> Path:
     overlay.parent.mkdir(parents=True, exist_ok=True)
     overlay.write_bytes(b"overlay")
     write_complete_manifest(output, total_images=1)
+    if publish:
+        # `with_overlay=False`: the overlay above belongs to this fixture, and
+        # a DECLARED artifact is fenced by content -- overwriting one after
+        # publication would invalidate its record.
+        build_complete_viewer_run(
+            output,
+            stems=("plate",),
+            dataset="dataset",
+            with_overlay=False,
+            write_outputs=False,
+        )
     return output
 
 
@@ -576,7 +604,12 @@ def test_final_publish_gap_change_returns_stale_and_rolls_back(
         },
     )
     assert current_page_probe.status_code != 409
-    assert old_root.refresh_state_is_current() is False
+    # `refresh_state_is_current` is gone (spec §11, audit S2). The fact it
+    # asserted here -- that `_build_then_change` really did move the mirror
+    # under the still-bound old root -- is read straight off disk instead.
+    assert pl.read_parquet(old_root.layout.mirror_parquet)[
+        "Shape_Area"
+    ].sum() != old_root.master_df["Shape_Area"].sum()
 
 
 def test_newer_bind_supersedes_slow_older_bind(
@@ -835,19 +868,20 @@ def test_nonterminal_run_after_bind_blocks_current_page_mutations(
     assert _source_tree(output) == before
 
 
-@pytest.mark.parametrize(
-    ("evidence_change", "expected_status"),
-    [
-        ("incomplete_manifest", "Read-only · incomplete completion evidence"),
-        ("terminal_owner", "Completion evidence changed"),
-    ],
-)
-def test_completion_evidence_only_changes_never_report_current(
+def test_status_polls_never_report_current_for_an_unproven_run(
     tmp_path: Path,
-    evidence_change: str,
-    expected_status: str,
 ) -> None:
-    """Hub and standalone status polls detect completion-only drift."""
+    """All four status polls refuse "Current" for a run with no run proof.
+
+    Formerly ``test_completion_evidence_only_changes_never_report_current``,
+    which drove the badge by writing an incomplete ``manifest.json`` and by
+    flipping the GUI owner record to ``complete``. Spec §4.2 demotes both out
+    of the evidence set and P6 Task 1 deletes the badge's
+    ``inspect_output_consistency`` branch, so neither mutation moves the badge
+    any more. What decides it is ``resolve_run_state``: a seeded tree carries
+    no run proof over its inventory, so its completion is ``incomplete`` and
+    every poll -- standalone and hub, Results and Analysis -- must say so.
+    """
     output = _seed_output(tmp_path)
     standalone_root = OutputRoot.discover(
         output,
@@ -867,29 +901,6 @@ def test_completion_evidence_only_changes_never_report_current(
     generation = shell_app.server.config[CFG_RESULTS_BINDING_STATE][
         "binding_generation"
     ]
-
-    if evidence_change == "incomplete_manifest":
-        atomic_write_json(
-            resolve_manifest_json_path(output),
-            {
-                "is_complete": False,
-                "completed": 0,
-                "failed": 0,
-                "total_images": 1,
-            },
-        )
-    else:
-        owner = gui_launch_owner_path(output)
-        owner.parent.mkdir(parents=True, exist_ok=True)
-        atomic_write_json(
-            owner,
-            {
-                "version": 1,
-                "run_id": "completed-after-bind",
-                "generation": "completed-generation",
-                "status": "complete",
-            },
-        )
 
     for app, status_id, interval_id, app_generation in (
         (
@@ -925,7 +936,7 @@ def test_completion_evidence_only_changes_never_report_current(
         )
         assert response.status_code == 200
         body = response.get_data(as_text=True)
-        assert expected_status in body
+        assert "Run incomplete" in body
         assert '"Current"' not in body
 
 
@@ -1071,7 +1082,7 @@ def test_hub_allows_two_sequential_curation_writes(
     tmp_path: Path,
 ) -> None:
     """GUI-owned consumed-state changes do not make curation one-shot."""
-    output = _seed_output(tmp_path)
+    output = _seed_output(tmp_path, publish=True)
     shell_app, viewer_session = compose_hub(
         SandboxRoot.from_path(tmp_path),
         start_idle_thread=False,
@@ -1108,7 +1119,7 @@ def test_external_consumed_write_is_refused_by_curation_cas(
     tmp_path: Path,
 ) -> None:
     """External mirror replacement reaches, then loses, the writer's CAS."""
-    output = _seed_output(tmp_path)
+    output = _seed_output(tmp_path, publish=True)
     shell_app, viewer_session = compose_hub(
         SandboxRoot.from_path(tmp_path),
         start_idle_thread=False,
@@ -1142,7 +1153,7 @@ def test_publish_waits_for_admitted_analysis_writer(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Publication drains an old Analysis writer before swapping sessions."""
-    output_a = _seed_output(tmp_path, "output-a")
+    output_a = _seed_output(tmp_path, "output-a", publish=True)
     output_b = _seed_output(tmp_path, "output-b")
     shell_app, _viewer_session = compose_hub(
         SandboxRoot.from_path(tmp_path),

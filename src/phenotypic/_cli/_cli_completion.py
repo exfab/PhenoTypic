@@ -5,21 +5,25 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Mapping
-from uuid import uuid4
 
 from phenotypic.sdk_ import (
+    AGGREGATE_PROOF_VERSION,
+    ARTIFACT_KIND_FILE,
+    ARTIFACT_KIND_STORE,
     CommitGuard,
     DIR_IMAGE_COMPLETE,
+    DIR_IMAGE_RECORDS,
+    RUN_PROOF_VERSION,
     STORE_ROOT_JSON,
+    SUCCESS_MARKER_VERSION,
     aggregate_publication_marker_path,
     atomic_write_json,
     file_fingerprint,
     image_completion_marker_path,
-    master_measurements_csv_path,
     master_measurements_parquet_path,
     measurements_csv_path,
     measurements_parquet_path,
@@ -29,14 +33,24 @@ from phenotypic.sdk_ import (
     source_image_stem,
     validated_published_metadata_migration_targets,
 )
+from phenotypic.sdk_._digests import canonical_digest
+from phenotypic.sdk_._image_record import (
+    STAGE_MEASURED,
+    read_image_record,
+    record_rejection,
+)
+from phenotypic.sdk_._run_state import (
+    fenced_artifact_path,
+    marker_rejection,
+)
 
-#: Bumped to 2 when artifact descriptors gained ``kind``. A v1 marker
-#: describes the per-image ``.h5``, and ``--mode migrate`` defaults to
-#: ``keep_source=True`` -- so that file is still present at its recorded size
-#: and sha256, and a v1 marker would *validate* against it while the store it
-#: should describe went entirely unverified. The bump protects against a false
-#: ``complete``, not against over-reprocessing (ledger FLOW-23).
-SUCCESS_MARKER_VERSION = 2
+# ``SUCCESS_MARKER_VERSION``, ``ARTIFACT_KIND_FILE``/``ARTIFACT_KIND_STORE``
+# and the two proof versions are imported above from ``sdk_/_io_constants``
+# and re-exported here, so every module that imports them from this one is
+# unchanged. They moved because the run-state reader must check the same
+# numbers and INV-LAYER forbids it importing this module: two copies of a
+# version that gates a *completion* verdict is the one duplication that can
+# silently manufacture a false ``complete``.
 
 # ``STORE_ROOT_JSON`` (imported above) is the root metadata document an
 # OME-Zarr store is fingerprinted by. ``promote_store`` writes it **last**, so
@@ -45,11 +59,6 @@ SUCCESS_MARKER_VERSION = 2
 # would be a constant function of the path -- ``paths_fingerprint`` emits one
 # sentinel byte for a directory and does not recurse -- and would certify a
 # store whose contents changed.
-
-#: Artifact descriptor kinds. ``"file"`` is the default for a descriptor
-#: written before the ``kind`` tag existed.
-ARTIFACT_KIND_FILE = "file"
-ARTIFACT_KIND_STORE = "store"
 
 
 def _sha256(path: Path) -> str:
@@ -189,19 +198,22 @@ def publish_image_success(
             raise RuntimeError(
                 "Cannot publish image success for a stale SLURM lifecycle"
             )
-    descriptors: dict[str, dict[str, object]] = {}
+    # Resolves only. The DESCRIPTORS are built by `publish_image_record`,
+    # which owns the record's shape -- this loop stays because it is what
+    # turns an escaping artifact into a named `ValueError` rather than the
+    # writer's generic failure, and because `_validate_expected_artifacts`
+    # needs the resolved paths.
     resolved_artifacts: dict[str, Path] = {}
     output_root = output_dir.resolve()
     for name, artifact in artifacts.items():
         resolved = artifact.resolve(strict=True)
         try:
-            relative = resolved.relative_to(output_root)
+            resolved.relative_to(output_root)
         except ValueError as exc:
             raise ValueError(
                 f"Artifact escapes output root: {artifact}"
             ) from exc
         resolved_artifacts[name] = resolved
-        descriptors[name] = _artifact_descriptor(resolved, relative)
 
     def _validate_expected_artifacts() -> None:
         if expected_artifact_descriptors is None:
@@ -222,26 +234,48 @@ def publish_image_success(
                 )
 
     _validate_expected_artifacts()
-    marker = {
-        "version": SUCCESS_MARKER_VERSION,
-        "work_id": work_id,
-        "dataset": dataset,
-        "relative_image_path": Path(relative_image_path).as_posix(),
-        "image_stem": image_stem,
-        "mode": mode,
-        "attempt_id": attempt_id,
-        "lifecycle_epoch": lifecycle_epoch,
-        "artifacts": descriptors,
-        "completed_at": datetime.now(timezone.utc).isoformat(
-            timespec="milliseconds"
-        ),
-    }
-    if source_provenance is not None:
-        marker["source_provenance"] = dict(source_provenance)
-    marker_path = image_completion_marker_path(output_dir, dataset, image_stem)
-    atomic_write_json(
-        marker_path,
-        marker,
+
+    # D1 is a CLEAN BREAK: the record replaces `image_complete/`, and nothing
+    # dual-writes. A tree carrying `image_complete/` and no `images/` is a
+    # legacy tree, which `--mode migrate` converts; a dual write would leave
+    # the schema gate unable to tell the two shapes apart, which is the whole
+    # reason the break is clean.
+    #
+    # **The gate is not armed**, and from P3 (`1cc6740c`) until P4 this
+    # comment said it flipped "in this same commit". It did not:
+    # `SCHEMA_GATE_ARMED` is `False` (`sdk_/_schema_shape.py:153`) and was
+    # last set in `17f144ef`. P7 Task 5 Step 1d flips it, as
+    # `_cli_recompile_recovery.py:71`, `_cli_finalize_run.py:94` and
+    # `_cli_migrate.py:719` all say. Until then a legacy tree still reaches
+    # every writing mode -- which is exactly why `_image_authority_shapes`
+    # carries a second, legacy arm, code an armed gate would have made dead.
+    # Drift register entry 41.
+    #
+    # DELEGATED, not restated. `publish_image_record` owns the record's shape,
+    # its `stages` merge (CAN-6 rule 1) and the provenance default, so this
+    # function contributes only the `measured` stage and its own artifact
+    # revalidation. Rebuilding the payload here would be the second writer of
+    # one schema, which is the defect P3 exists to remove.
+    from ._cli_image_record import publish_image_record
+
+    return publish_image_record(
+        output_dir,
+        work_id=work_id,
+        dataset=dataset,
+        image_stem=image_stem,
+        relative_image_path=Path(relative_image_path).as_posix(),
+        mode=mode,
+        stages={
+            STAGE_MEASURED: {
+                "at": datetime.now(timezone.utc).isoformat(
+                    timespec="milliseconds"
+                )
+            }
+        },
+        artifacts=artifacts,
+        attempt_id=attempt_id,
+        lifecycle_epoch=lifecycle_epoch,
+        source_provenance=source_provenance,
         pre_replace=(
             _validate_expected_artifacts
             if expected_artifact_descriptors is not None
@@ -249,7 +283,6 @@ def publish_image_success(
         ),
         commit_guard=commit_guard,
     )
-    return marker_path
 
 
 def valid_image_success(
@@ -259,45 +292,63 @@ def valid_image_success(
     image_stem: str,
     work_id: str,
 ) -> bool:
-    """Return whether the marker and every declared artifact match disk."""
-    marker_path = image_completion_marker_path(output_dir, dataset, image_stem)
+    """Return whether the record and every declared artifact match disk.
+
+    A ``bool`` over the shared readers, deliberately: the predicate is
+    ``record_rejection`` and the artifact walk is ``fenced_artifact_path``,
+    so this and ``resolve_run_state`` cannot return opposite verdicts for the
+    same image. Keeping the signature keeps this function's ~20 callers
+    untouched.
+
+    **It reads the record now, not ``image_complete/``** (D1, clean break).
+    The predicate moved with it, and moved *as one function* -- gate finding
+    IMPL-F3 spent an increment merging two readers that disagreed on migrated
+    markers, and re-splitting them here would have reproduced that defect
+    against the new schema while looking like ordinary migration in the diff.
+
+    Two clauses this function no longer spells and must not start spelling
+    again: the ``work_id`` relaxation for a migrated record (U-10), and
+    CAN-23's "a record with no artifacts certifies nothing" -- which matters
+    more after the collapse than before it, because a Stage-2 worker now
+    writes ``stages.stage2`` into this same file with no artifacts at all.
+    Both live in ``record_rejection``.
+    """
+    record = read_image_record(output_dir, dataset, image_stem)
+    if record is None:
+        return False
+    if (
+        record_rejection(
+            record,
+            work_id=work_id,
+            dataset=dataset,
+            image_stem=image_stem,
+        )
+        is not None
+    ):
+        return False
+    # `record_rejection` has already established that `artifacts` is a
+    # non-empty `dict` (CAN-23), so neither guard below can fire today.
+    # They are guards rather than a `cast` on purpose: a `cast` asserts the
+    # ordering and goes silent if someone reorders these two blocks, while a
+    # guard that survives the reorder returns `False` -- INV-VERDICT's degrade
+    # half. Previously this narrowing was done by `AttributeError` in the
+    # `except` clause below, i.e. by a crash the handler swallowed.
+    #
+    # `dict` and not `Mapping`, because this restates `record_rejection`'s own
+    # `isinstance(artifacts, dict)` and has to use the same predicate: a
+    # non-dict mapping passing here and failing there would put the two
+    # readers back into the disagreement IMPL-F3 spent an increment merging.
+    artifacts = record.get("artifacts")
+    if not isinstance(artifacts, dict):
+        return False
     try:
-        marker = json.loads(marker_path.read_text(encoding="utf-8"))
-        if (
-            marker.get("version") != SUCCESS_MARKER_VERSION
-            or marker.get("work_id") != work_id
-            or marker.get("dataset") != dataset
-            or marker.get("image_stem") != image_stem
-        ):
-            return False
-        artifacts = marker.get("artifacts")
-        if not isinstance(artifacts, dict) or not artifacts:
-            return False
         output_root = output_dir.resolve()
         for descriptor in artifacts.values():
             if not isinstance(descriptor, dict):
                 return False
-            relative = descriptor.get("path")
-            if not isinstance(relative, str):
+            if fenced_artifact_path(output_root, descriptor) is None:
                 return False
-            artifact = (output_root / relative).resolve()
-            artifact.relative_to(output_root)
-            kind = descriptor.get("kind", ARTIFACT_KIND_FILE)
-            if kind == ARTIFACT_KIND_STORE:
-                if not _store_artifact_matches(artifact, descriptor):
-                    return False
-            elif kind == ARTIFACT_KIND_FILE:
-                if (
-                    not artifact.is_file()
-                    or artifact.stat().st_size != descriptor.get("size")
-                    or _sha256(artifact) != descriptor.get("sha256")
-                ):
-                    return False
-            else:
-                # Fail closed: an unrecognized kind is a marker this build
-                # cannot certify, never a file descriptor by default.
-                return False
-    except (OSError, ValueError, json.JSONDecodeError, AttributeError):
+    except (OSError, ValueError, AttributeError):
         return False
     return True
 
@@ -508,7 +559,7 @@ def current_success_inventory(
     Returns:
         Dataset name to the image names carrying a valid success marker,
         or ``None`` for a legacy state that does not require markers --
-        the same ``None`` contract as :func:`current_success_counts`, so a
+        the same ``None`` contract as :func:`_current_success_counts`, so a
         caller handles the legacy path once for both.
 
     Examples:
@@ -537,7 +588,7 @@ def _walk_current_success(
     """Validate every image the current state claims, once.
 
     The one traversal behind both :func:`current_success_inventory` and
-    :func:`current_success_counts`, so a count can never disagree with
+    :func:`_current_success_counts`, so a count can never disagree with
     the names it is a count of. Each answers by projecting differently:
     the inventory keeps the names that succeeded, the counts keep how
     many did against how many were claimed.
@@ -656,8 +707,52 @@ def manifest_completion_inventory(
     return totals, None
 
 
-def current_success_counts(output_dir: Path) -> tuple[int, int] | None:
+def state_requires_success_markers(output_dir: Path) -> bool:
+    """Return whether this tree's state is schema-3 rather than legacy.
+
+    **O(1) — one JSON field.** This is the question the retired predicates'
+    ``None`` arm answered, and it was never a hashing reader, so the P6
+    migration does not target it: converting an O(1) config read to
+    ``resolve_run_state`` would make it *more* expensive for no gain.
+
+    It is deliberately **not** a tri-state helper. ``current_run_is_complete``
+    returned ``bool | None`` and four call sites branched on all three arms;
+    folding "is it legacy?" and "is it complete?" back into one function would
+    recreate that predicate under a new name, which
+    ``test_no_migrated_reader_gained_a_second_definition`` exists to catch.
+    Callers ask both questions and name both answers.
+
+    It is also **not** routed through ``sdk_/_schema_shape``: that module reads
+    ``success_markers_required`` zero times, asks about tree *shape* instead,
+    and is gated behind ``SCHEMA_GATE_ARMED`` which P7 Task 5 arms — so a
+    dependency on it here would change behaviour when P7 lands, at a distance.
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        ``True`` when the state requires per-image success markers, ``False``
+        for a legacy tree or one with no readable state.
+    """
+    from ._cli_state_management import load_processing_state
+
+    try:
+        state = load_processing_state(output_dir)
+    except (KeyError, TypeError, ValueError):
+        return False
+    if state is None:
+        return False
+    return bool(state.config.get("success_markers_required", False))
+
+
+def _current_success_counts(output_dir: Path) -> tuple[int, int] | None:
     """Return marker-validated ``(successful, total)`` for the current state.
+
+    **Privatised by P6 Task 0, not deleted.** Every *consumer* moved to
+    ``resolve_run_state``; what remains are two writer preconditions in this
+    module — ``_all_accepted_images_succeeded`` and
+    ``publish_aggregate_snapshot`` — which cannot use the reader, because the
+    reader's verdict depends on the proofs these writers are about to write.
 
     ``None`` identifies a legacy state that does not require general image
     success markers. Callers may retain their schema-2 compatibility path in
@@ -702,7 +797,7 @@ def _current_success_work_ids(output_dir: Path, work_ids: object) -> list[str]:
     return sorted(successful)
 
 
-def current_aggregate_is_current(output_dir: Path) -> bool | None:
+def _current_aggregate_is_current(output_dir: Path) -> bool | None:
     """Return whether aggregate evidence matches every current success.
 
     ``None`` identifies a legacy state. A valid partial aggregate is current
@@ -725,7 +820,7 @@ def current_aggregate_is_current(output_dir: Path) -> bool | None:
     if aggregate is None:
         return False
     work_ids = state.config.get("work_ids", {})
-    expected_finalization = _canonical_digest(
+    expected_finalization = canonical_digest(
         {
             "metadata_sha256": state.config.get("metadata_sha256"),
             "include_dataset_column": state.config.get(
@@ -736,19 +831,41 @@ def current_aggregate_is_current(output_dir: Path) -> bool | None:
     )
     successful_work_ids = _current_success_work_ids(output_dir, work_ids)
     return (
-        aggregate.get("inventory_digest") == _canonical_digest(work_ids)
+        aggregate.get("inventory_digest") == canonical_digest(work_ids)
         and aggregate.get("finalization_input_digest") == expected_finalization
         and aggregate.get("scientific_config_digest")
         == state.config.get("pipeline_sha256")
         and aggregate.get("source_set_digest")
-        == _canonical_digest(successful_work_ids)
+        == canonical_digest(successful_work_ids)
         and aggregate.get("source_image_count") == len(successful_work_ids)
     )
 
 
-def current_run_is_complete(output_dir: Path) -> bool | None:
-    """Return marker-derived current completion, or ``None`` for legacy state."""
-    counts = current_success_counts(output_dir)
+def _all_accepted_images_succeeded(output_dir: Path) -> bool | None:
+    """Return whether every accepted image has succeeded, or ``None`` if legacy.
+
+    **Renamed and privatised, not deleted — it is a WRITER'S PRECONDITION.**
+    ``publish_run_completion_evidence`` asks it before writing the run proof,
+    and the P6 mapping's replacement
+    (``resolve_run_state(d).completion == "complete"``) **requires that proof to
+    already exist**: rule 1 calls ``run_proof(output_dir)`` and returns ``False``
+    when it is absent (``sdk_/_run_state.py:1164`` ->
+    ``_run_proof_covers_current_inventory``). Converting the writer to it would
+    make the writer ask whether it has already run, get ``False`` forever, and
+    never publish.
+
+    So the two are **different questions**, not two names for one:
+
+    * this: *have all accepted images succeeded?* — marker/record-derived, and
+      independent of any run-level proof
+    * ``resolve_run_state(...).completion``: *is there a valid run proof that
+      covers the current inventory?*
+
+    Private, because every **consumer** of the old public name is migrated to
+    ``resolve_run_state``; what remains is the writer's own guard and
+    ``valid_run_completion``'s, both inside this module.
+    """
+    counts = _current_success_counts(output_dir)
     if counts is None:
         return None
     successful, total = counts
@@ -762,7 +879,114 @@ def current_run_is_complete(output_dir: Path) -> bool | None:
         return None
     if state is not None and state.config.get("process_only_layer"):
         return True
-    return current_aggregate_is_current(output_dir) is True
+    return _current_aggregate_is_current(output_dir) is True
+
+
+def _payload_authorizes(
+    output_root: Path,
+    payload: object,
+    rejection: Callable[..., str | None],
+) -> bool:
+    """Return whether one certification payload may authorize its sources.
+
+    The shape-specific predicate is passed in -- ``record_rejection`` for a
+    record, ``marker_rejection`` for a legacy ``image_complete/`` marker --
+    and the artifact walk after it is identical for both, because
+    :func:`~phenotypic.sdk_._run_state.fenced_artifact_path` reads a
+    descriptor, not a schema.
+
+    The identity is taken **from the payload itself**, which is what this arm
+    has always done: with no ``processing_state.json`` there is no
+    ``work_ids`` map to check against, so the question is only whether the
+    payload is internally coherent and its artifacts still match disk.
+    """
+    if not isinstance(payload, dict):
+        return False
+    try:
+        dataset = str(payload["dataset"])
+        stem = str(payload["image_stem"])
+        work_id = str(payload["work_id"])
+    except (KeyError, TypeError, ValueError):
+        return False
+    if (
+        rejection(payload, work_id=work_id, dataset=dataset, image_stem=stem)
+        is not None
+    ):
+        return False
+    artifacts = payload.get("artifacts")
+    if not isinstance(artifacts, dict):
+        return False
+    return all(
+        isinstance(descriptor, dict)
+        and fenced_artifact_path(output_root, descriptor) is not None
+        for descriptor in artifacts.values()
+    )
+
+
+def _sources_without_state(output_dir: Path) -> dict[Path, str] | None:
+    """Authorized sources for a tree with no ``success_markers_required``.
+
+    **Both shapes, each on its own predicate.** After D1's clean break this
+    arm globbed ``image_complete/`` and then asked ``valid_image_success`` --
+    a *record* predicate -- whether a *legacy marker* was valid. The two
+    consequences were both silent:
+
+    * a legacy tree returned ``{}`` rather than its real sources, because
+      every image failed a record read that a legacy tree cannot satisfy. And
+      ``{}`` is not ``None``: ``_cli_chunk_writer`` treats a non-``None``
+      result as embedded authority and skips its legacy fallback, while
+      ``_cli_recompile_tables`` never reaches the branch that raises *"Legacy
+      external measurement Parquets require --mode migrate"*. **A loud,
+      actionable migration error became a silent no-op.**
+    * a forward tree with no processing state returned ``None``, because
+      ``image_complete/`` no longer exists for it to glob.
+
+    So the record tree is scanned first and the legacy tree second, each
+    gated by the predicate written for it. ``marker_rejection`` exists
+    precisely for the second and this is its caller in ``src/`` -- its
+    docstring's "no caller" note was true only in the window between the
+    clean break and this repair.
+
+    Returns:
+        A mapping of authorized source Parquet to dataset, or ``None`` when
+        neither tree exists at all -- which is the signal callers read as
+        "fall back to legacy source discovery", and must not be confused with
+        an empty mapping meaning "authority exists and authorizes nothing".
+    """
+    output_root = Path(output_dir).resolve()
+    progress = progress_dir(output_dir)
+    shapes = (
+        (progress / DIR_IMAGE_RECORDS, record_rejection),
+        (progress / DIR_IMAGE_COMPLETE, marker_rejection),
+    )
+
+    payload_paths = [
+        (path, rejection)
+        for root, rejection in shapes
+        for path in sorted(root.glob("*/*.json"))
+    ]
+    if not payload_paths:
+        return None
+
+    sources: dict[Path, str] = {}
+    for path, rejection in payload_paths:
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if not _payload_authorizes(output_root, payload, rejection):
+                continue
+            relative = payload["artifacts"]["measurements"]["path"]
+            source = (output_root / str(relative)).resolve()
+            source.relative_to(output_root)
+        except (
+            KeyError,
+            OSError,
+            ValueError,
+            TypeError,
+            json.JSONDecodeError,
+        ):
+            continue
+        sources[source] = str(payload["dataset"])
+    return sources
 
 
 def authorized_measurement_sources(
@@ -782,38 +1006,7 @@ def authorized_measurement_sources(
     if state is None or not state.config.get(
         "success_markers_required", False
     ):
-        marker_root = progress_dir(output_dir) / DIR_IMAGE_COMPLETE
-        marker_paths = sorted(marker_root.glob("*/*.json"))
-        if not marker_paths:
-            return None
-        marker_sources: dict[Path, str] = {}
-        output_root = Path(output_dir).resolve()
-        for marker_path in marker_paths:
-            try:
-                marker = json.loads(marker_path.read_text(encoding="utf-8"))
-                dataset = str(marker["dataset"])
-                stem = str(marker["image_stem"])
-                work_id = str(marker["work_id"])
-                if not valid_image_success(
-                    output_dir,
-                    dataset=dataset,
-                    image_stem=stem,
-                    work_id=work_id,
-                ):
-                    continue
-                relative = marker["artifacts"]["measurements"]["path"]
-                source = (output_root / str(relative)).resolve()
-                source.relative_to(output_root)
-            except (
-                KeyError,
-                OSError,
-                ValueError,
-                TypeError,
-                json.JSONDecodeError,
-            ):
-                continue
-            marker_sources[source] = dataset
-        return marker_sources
+        return _sources_without_state(output_dir)
     raw_work_ids = state.config.get("work_ids")
     if not isinstance(raw_work_ids, dict):
         return {}
@@ -834,43 +1027,75 @@ def authorized_measurement_sources(
                 work_id=work_id,
             ):
                 continue
+            # CAN-22: the RECORD, not `image_complete/`. This arm used to
+            # re-open the legacy marker after `valid_image_success` passed --
+            # and after D1's clean break that file is gone, so every image
+            # would hit `OSError`, `continue`, and leave `sources` empty.
+            #
+            # That failure is silent and severe: `{}` is a VALID schema-3
+            # result meaning "no successful measurements yet", so P4's
+            # `finalize_run` would write an empty master and raise nothing.
+            # A successful-looking run that discarded every measurement.
+            record = read_image_record(output_dir, dataset, stem)
+            if record is None:
+                continue
+            # Narrowed rather than indexed-and-caught. The old shape leaned
+            # on `KeyError`/`TypeError` in the `except` to mean "malformed",
+            # which reads as error handling but was the only thing typing the
+            # payload -- and it shares its `continue` with the genuinely
+            # different `OSError`/`ValueError` path resolution below. Each
+            # `continue` here now names the one thing that was wrong.
+            artifacts = record.get("artifacts")
+            if not isinstance(artifacts, dict):
+                continue
+            descriptor = artifacts.get("measurements")
+            if not isinstance(descriptor, dict):
+                continue
+            relative = descriptor.get("path")
+            if not isinstance(relative, str):
+                continue
             try:
-                marker = json.loads(
-                    image_completion_marker_path(
-                        output_dir, dataset, stem
-                    ).read_text(encoding="utf-8")
-                )
-                descriptor = marker["artifacts"]["measurements"]
-                relative = descriptor["path"]
-                if not isinstance(relative, str):
-                    continue
                 source = (output_root / relative).resolve()
                 source.relative_to(output_root)
-            except (
-                KeyError,
-                OSError,
-                ValueError,
-                TypeError,
-                json.JSONDecodeError,
-            ):
+            except (OSError, ValueError):
                 continue
             sources[source] = dataset
     return sources
 
 
-def _canonical_digest(value: object) -> str:
-    encoded = json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
-
-
 def publish_aggregate_snapshot(
     output_dir: Path,
     *,
+    source_work_ids: Sequence[str],
     commit_guard: CommitGuard | None = None,
 ) -> Path:
-    """Publish marker-last integrity evidence for the canonical core snapshot."""
+    """Publish marker-last integrity evidence for the canonical core snapshot.
+
+    Args:
+        output_dir: Run output root.
+        source_work_ids: The source set the master being certified was built
+            from. **Required, deliberately, and not optional-with-a-live-
+            derive-fallback** (flow-r3 C2, flow-r4).
+
+            This value used to be re-derived here from the markers
+            (``_current_success_work_ids``). Under a rolling input more images
+            can succeed between the master being built and this proof being
+            written, so the master would hold ``planned`` while the proof
+            asserted ``authorized``, a strict superset -- **and no reader
+            could detect it**, because the reader compares proof-to-*live*
+            with the same predicate the writer used. Proof-to-master is
+            compared by nothing, before or after this change.
+
+            Making it required rather than defaulted is what puts the type
+            checker on the job of finding every caller. There are two in
+            shipped code and only one is ``finalize_run``; an optional
+            parameter would have left ``sdk_/_hdf_to_zarr.py`` on the old
+            live-derive behaviour, unmodified and unnoticed.
+        commit_guard: Publication guard threaded to the marker write.
+
+    Returns:
+        Path to the aggregate publication marker.
+    """
     from ._cli_state_management import load_processing_state
 
     state = load_processing_state(output_dir)
@@ -880,12 +1105,30 @@ def publish_aggregate_snapshot(
         raise RuntimeError(
             "Aggregate marker publication requires current state"
         )
-    counts = current_success_counts(output_dir)
+    counts = _current_success_counts(output_dir)
     if counts is None or counts[0] == 0:
         raise RuntimeError("No marker-authorized measurements to publish")
 
+    # D8: three descriptors, not four. `master_measurements.csv` is gone --
+    # the un-joined master is no longer the file a human opens, the mirror is
+    # -- and `finalize_run` writes no CSV, so certifying one would make every
+    # forward finalization fail on a `resolve(strict=True)` for a file nothing
+    # writes.
+    #
+    # O-3: the reader no longer validates whatever the proof LISTS, and that
+    # sentence used to stand here. All three are still WRITTEN -- the marker
+    # is a complete record of what finalization published, which is
+    # provenance worth keeping and is what lets a later reader say which
+    # artifacts a run declared. But `_run_state._valid_aggregate_proof` skips
+    # the two mirror descriptors when it checks, because `CurationLabels`
+    # rewrites them on every curation save: the proof's claim about them
+    # becomes false the moment a user marks one colony, and false by design.
+    #
+    # So do NOT infer enforcement from this dict. Adding an entry here
+    # records an artifact; whether it is enforced is decided by
+    # `_GUI_WRITTEN_PROOF_DESCRIPTORS` in `sdk_/_run_state.py`, and an entry
+    # this module adds that nothing there names is enforced by default.
     required_paths = {
-        "master_csv": master_measurements_csv_path(output_dir),
         "master_parquet": master_measurements_parquet_path(output_dir),
         "measurements_csv": measurements_csv_path(output_dir),
         "measurements_parquet": measurements_parquet_path(output_dir),
@@ -902,13 +1145,15 @@ def publish_aggregate_snapshot(
         }
 
     work_ids = state.config.get("work_ids", {})
-    source_work_ids = _current_success_work_ids(output_dir, work_ids)
+    # U-4: no `publication_id`. It was an opaque uuid4 whose only job was to
+    # bind this proof to the run proof; the run proof now COPIES
+    # `source_set_digest`/`source_image_count` from here instead, which states
+    # the same binding in the clear and is checkable against live state.
     marker = {
-        "version": 1,
-        "publication_id": uuid4().hex,
+        "version": AGGREGATE_PROOF_VERSION,
         "processing_generation": state.config.get("processing_generation"),
-        "inventory_digest": _canonical_digest(work_ids),
-        "finalization_input_digest": _canonical_digest(
+        "inventory_digest": canonical_digest(work_ids),
+        "finalization_input_digest": canonical_digest(
             {
                 "metadata_sha256": state.config.get("metadata_sha256"),
                 "include_dataset_column": state.config.get(
@@ -918,8 +1163,8 @@ def publish_aggregate_snapshot(
             }
         ),
         "scientific_config_digest": state.config.get("pipeline_sha256"),
-        "source_set_digest": _canonical_digest(sorted(source_work_ids)),
-        "source_image_count": len(source_work_ids),
+        "source_set_digest": canonical_digest(sorted(source_work_ids)),
+        "source_image_count": len(set(source_work_ids)),
         "required_outputs": descriptors,
         "published_at": datetime.now(timezone.utc).isoformat(
             timespec="milliseconds"
@@ -935,7 +1180,10 @@ def valid_aggregate_snapshot(output_dir: Path) -> dict[str, object] | None:
     path = aggregate_publication_marker_path(output_dir)
     try:
         marker = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(marker, dict) or marker.get("version") != 1:
+        if (
+            not isinstance(marker, dict)
+            or marker.get("version") != AGGREGATE_PROOF_VERSION
+        ):
             return None
         outputs = marker.get("required_outputs")
         if not isinstance(outputs, dict) or not outputs:
@@ -970,7 +1218,7 @@ def publish_run_completion_evidence(
     """Publish all-success run evidence, idempotently for a no-op run."""
     from ._cli_state_management import load_processing_state
 
-    completion = current_run_is_complete(output_dir)
+    completion = _all_accepted_images_succeeded(output_dir)
     state = load_processing_state(output_dir)
     if (
         completion is None
@@ -1010,19 +1258,34 @@ def publish_run_completion_evidence(
     )
     work_ids = state.config.get("work_ids", {})
     payload = {
-        "version": 2,
+        "version": RUN_PROOF_VERSION,
         "processing_generation": state.config.get("processing_generation"),
-        "inventory_digest": _canonical_digest(work_ids),
+        "inventory_digest": canonical_digest(work_ids),
         "finalization_input_digest": (
             aggregate.get("finalization_input_digest")
             if aggregate is not None
-            else _canonical_digest(
+            else canonical_digest(
                 {"process_only_layer": state.config.get("process_only_layer")}
             )
         ),
         "scientific_config_digest": state.config.get("pipeline_sha256"),
-        "publication_id": (
-            aggregate.get("publication_id") if aggregate is not None else None
+        # U-4: a COPY of the aggregate proof's values, exactly as
+        # `publication_id` was copied. **Not recomputed.** The copy IS the
+        # binding: it asserts "I was published against THAT aggregate", which
+        # rule 1 then checks against a live re-derivation of the verified
+        # image set. Recomputing here would assert only "here is my own view,
+        # at my own moment" -- and a stale aggregate proof beside a fresh run
+        # proof would then pass both checks independently, with nothing
+        # noticing they disagree.
+        "source_set_digest": (
+            aggregate.get("source_set_digest")
+            if aggregate is not None
+            else None
+        ),
+        "source_image_count": (
+            aggregate.get("source_image_count")
+            if aggregate is not None
+            else None
         ),
         "execution_epoch": execution_epoch,
         "gui_record_generation": gui_record_generation,
@@ -1043,12 +1306,17 @@ def publish_run_completion_evidence(
         existing = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError, TypeError):
         existing = None
+    # `publication_id` was minted fresh on every aggregate publication, so it
+    # was the entry that made this comparison meaningful. With it gone the
+    # entry would compare `None == None` and contribute nothing --
+    # `source_set_digest` is the value that belongs there instead: it changes
+    # exactly when the certified success set does.
     stable_keys = (
         "version",
         "inventory_digest",
         "finalization_input_digest",
         "scientific_config_digest",
-        "publication_id",
+        "source_set_digest",
         "status",
     )
     if isinstance(existing, dict) and all(
@@ -1080,25 +1348,34 @@ def valid_run_completion(output_dir: Path) -> dict[str, object] | None:
     ):
         return marker if marker.get("finalizer_succeeded") is True else None
     if (
-        marker.get("version") != 2
-        or current_run_is_complete(output_dir) is not True
+        marker.get("version") != RUN_PROOF_VERSION
+        or _all_accepted_images_succeeded(output_dir) is not True
     ):
         return None
     work_ids = state.config.get("work_ids", {})
     expected: dict[str, object] = {
-        "inventory_digest": _canonical_digest(work_ids),
+        "inventory_digest": canonical_digest(work_ids),
         "scientific_config_digest": state.config.get("pipeline_sha256"),
     }
     if state.config.get("process_only_layer"):
-        expected["publication_id"] = None
-        expected["finalization_input_digest"] = _canonical_digest(
+        # The `publication_id = None` entry that stood here is DELETED, not
+        # repointed. It asserted "a process-only run has no aggregate
+        # binding"; with no such field to be absent it would compare
+        # `None != None` and say nothing at all. A comparison that cannot
+        # fail is worse than a deleted one, because it still reads as a guard.
+        expected["finalization_input_digest"] = canonical_digest(
             {"process_only_layer": state.config.get("process_only_layer")}
         )
     else:
         aggregate = valid_aggregate_snapshot(output_dir)
         if aggregate is None:
             return None
-        expected["publication_id"] = aggregate.get("publication_id")
+        # U-4: the aggregate<->run binding, stated in the clear. This is the
+        # live one -- five call sites in four modules read this function's
+        # verdict -- so leaving it as a `None != None` tautology would stop
+        # the binding being checked at all.
+        expected["source_set_digest"] = aggregate.get("source_set_digest")
+        expected["source_image_count"] = aggregate.get("source_image_count")
         expected["finalization_input_digest"] = aggregate.get(
             "finalization_input_digest"
         )

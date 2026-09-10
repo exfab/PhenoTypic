@@ -26,7 +26,12 @@ from phenotypic.gui.results_viewer._viewer_card import _build_picker_options
 from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import zarr_store_path
 
-from tests._output_layout import write_complete_manifest, write_master
+from tests._output_layout import (
+    write_complete_manifest,
+    write_master,
+    write_measurements_mirror,
+    write_processing_state,
+)
 
 
 def _discover(root: Path) -> OutputRoot:
@@ -37,8 +42,19 @@ def _discover(root: Path) -> OutputRoot:
     )
 
 
-def _seed(root: Path, stems: list[str]) -> None:
-    """Seed a minimal store-backed output: real master, then one store per stem."""
+def _seed(root: Path, stems: list[str], *, publish: bool = False) -> None:
+    """Seed a minimal store-backed output: real master, then one store per stem.
+
+    ``publish`` runs the real publishers over the seeded stores, which is what
+    a test needs when it asserts on the **exhaustive** processing inventory.
+    Without it the run resolves ``incomplete`` and discovery binds bounded
+    structural anchors -- five entries, no per-image parquets and no store
+    roots -- so a staleness assertion about those paths cannot fire.
+
+    It is opt-in because 13 of this file's 16 ``_seed`` callers assert nothing
+    about assurance and are correct on the cheaper tree. A ``manifest.json``
+    used to buy the exhaustive path; §4.2 demotes it.
+    """
     write_master(
         root,
         pl.DataFrame(
@@ -56,6 +72,46 @@ def _seed(root: Path, stems: list[str]) -> None:
         (store / "gray" / "0").mkdir(parents=True)
         (store / "gray" / "0" / "c.0.0").write_bytes(b"chunk")
         (store / "zarr.json").write_text("{}", encoding="utf-8")
+    if not publish:
+        return
+
+    from phenotypic._cli._cli_completion import (
+        publish_aggregate_snapshot,
+        publish_image_success,
+        publish_run_completion_evidence,
+    )
+
+    frame = pl.DataFrame(
+        {
+            "Metadata_Dataset": ["ds"] * len(stems),
+            str(IMAGE.IMAGE_NAME): list(stems),
+            "Size_Area": [100.0] * len(stems),
+        }
+    )
+    # The aggregate proof fences the mirror and its CSV by content and
+    # `resolve(strict=True)`s both, so they have to exist before it is
+    # published.
+    write_measurements_mirror(root, frame)
+    for stem in stems:
+        publish_image_success(
+            root,
+            work_id=f"work-{stem}",
+            dataset="ds",
+            relative_image_path=f"{stem}.tif",
+            image_stem=stem,
+            mode="full",
+            attempt_id=f"attempt-{stem}",
+            lifecycle_epoch="local",
+            artifacts={"store": zarr_store_path(root, "ds", stem)},
+        )
+    write_processing_state(
+        root,
+        work_ids={"ds": {f"{stem}.tif": f"work-{stem}" for stem in stems}},
+    )
+    publish_aggregate_snapshot(
+        root, source_work_ids=[f"work-{stem}" for stem in stems]
+    )
+    publish_run_completion_evidence(root, execution_epoch="local")
 
 
 def test_store_path_resolves_a_directory(tmp_path: Path) -> None:
@@ -184,7 +240,9 @@ def test_discovery_still_walks_the_rest_of_the_results_tree(
         ProcessingInventoryEntry,
     )
 
-    _seed(tmp_path, ["a"])
+    # `publish=True`: this asserts a per-image parquet is INVENTORIED, which
+    # only the exhaustive scan does.
+    _seed(tmp_path, ["a"], publish=True)
     measurement = tmp_path / "results" / "ds" / "measurements" / "a.parquet"
     measurement.write_bytes(b"parquet-ish")
 
@@ -216,7 +274,10 @@ def test_processing_inventory_goes_stale_after_a_store_republish(
         inventory_is_current,
     )
 
-    _seed(tmp_path, ["a"])
+    # `publish=True`: the bounded inventory records the store DIRECTORY and
+    # skips its root `zarr.json`, so a republish leaves it verifying and this
+    # assertion could not fire.
+    _seed(tmp_path, ["a"], publish=True)
     source = tmp_path.resolve()
     inventory = _discover(tmp_path).processing_inventory
     assert inventory_is_current(
@@ -247,7 +308,9 @@ def test_processing_fingerprint_changes_when_a_store_changes(tmp_path: Path) -> 
     store's root. This asserts the property from the outside, so it holds
     across that change rather than describing one enumeration.
     """
-    _seed(tmp_path, ["a"])
+    # `publish=True`: a bounded inventory records the store DIRECTORY but not
+    # its root `zarr.json`, so a republish would not move the fingerprint.
+    _seed(tmp_path, ["a"], publish=True)
     before = _discover(tmp_path).source_fingerprint
     (zarr_store_path(tmp_path, "ds", "a") / "zarr.json").write_text(
         '{"changed": true}', encoding="utf-8"

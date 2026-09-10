@@ -283,7 +283,7 @@ QC module plus a `qc_modules` catalog); the QC tabs read it through the
 `review/_db.py` catalog-driven API (those tabs are currently unmounted --
 the writer, the store and the reader are unaffected). It moved
 *into* `deliverables/` so a deliverables bundle is self-contained and portable;
-`resolve_qc_dir(output)` / `BundleLayout.qc_dir` still read the legacy
+`BundleLayout.qc_dir` still reads the legacy
 output-root `qc/` of pre-relocation runs, and `migrate_legacy_qc` MOVES a
 legacy `qc/` into `deliverables/qc/` on discovery. The root-level
 `RESULTS_DIRNAME` (`results/`, per-image stores/measurements) is **not** a
@@ -291,6 +291,158 @@ deliverable. Machine state resolves under `.phenotypic/`: use
 `progress_dir(output)` for `.phenotypic/progress/` and
 `processing_state_path(output)` for `.phenotypic/processing_state.json`.
 The `resolve_*` helpers continue to read pre-migration root-level locations.
+
+---
+
+## State the GUI tracks
+
+The line that matters here, and that was nowhere written down before this
+section existed, is **what the GUI owns versus what it only reads**. Getting it
+backwards is not a style error: it is how the viewer came to report *its own
+writes* as external drift (audit S2), and how a completion predicate that walks
+every image ended up on a five-second timer.
+
+Three tables. The split between them is the content.
+
+### (a) GUI-owned durable state — the GUI is the writer
+
+| Artifact | Resolve with | Written by | Read back by |
+|---|---|---|---|
+| Launch ownership | `gui_launch_owner_path(output)` → `.phenotypic/progress/gui_launch_owner.json` | `RunRegistry._persist_record_locked` (`shell/_runs_registry.py:1371`) | the CLI's freshness guard, and `resolve_run_state`'s liveness rule |
+| Curation labels | `curation_labels_parquet_path(output)` | `_curation_labels.py:837` | the GUI, and the CLI re-emits `errors/` from it at finalize |
+| Custom categories | `custom_categories_json_path(output)` | `_curation_labels.py:767` | GUI only |
+| QC review state | `qc_review_state_path(output)` | the QC review tab | GUI — but **the CLI deletes it at finalize** (`_reset_qc_review_state`, `_cli_output_manager.py:1315`, called from `:1252`), so a fresh run resets review progress |
+| Verified rows | `verified_parquet_path(output)` | `_error_tab/_publication.py` | GUI only; finalize never writes it |
+| Error categories | `error_category_parquet_path(output, token)` | **both** — `_curation_labels.py:874` live, and the CLI re-emits at finalize | both |
+| Measurements mirror | `measurements_parquet_path(output)` / `..._csv_path` | **both** — the CLI publishes it, and `_curation_labels.py:846,848` rewrites it on every curation save | the viewer's display frame |
+
+**Launch ownership is a liveness authority, not a note.** It carries `pid` and
+`started_at`, and `resolve_run_state` believes it only while that pid is alive
+(`sdk_/_run_state.py:947-955`, `_process_is_alive` at `:979`). Nothing in this
+codebase deletes it — `RunRegistry.remove` and `.clear` drop the in-memory
+record and leave the file — so a GUI killed before it observes its run's exit
+used to own the output permanently. `RunRegistry._dead_owner_reason` releases a
+record that is *provably* gone; a live pid, a record with no pid, and every
+SLURM launch still refuse.
+
+### (b) GUI-owned ephemeral state — dies with the process or the tab
+
+136 `dcc.Store`s, of which only **32** declare a `storage_type` (the rest are
+`memory`, the Dash default, and vanish on reload); 14 `dcc.Interval`s; the
+`app.server.config` singletons enumerated under
+[Flask `app.server.config` keys](#flask-appserverconfig-keys) above; and the
+sandbox caches under [Sandbox / cache paths](#sandbox--cache-paths).
+
+**One bound output per process, shared by every browser tab.** `CFG_OUTPUT_ROOT`
+is a process-wide singleton, so two tabs are two views of one binding, not two
+sessions. Nothing in this change altered that, and a feature that assumes
+per-tab isolation is assuming something the hub does not provide.
+
+### (c) State the GUI reads and must never write
+
+**Everything under `.phenotypic/` except the owner record.** Processing state,
+progress markers, image success markers, the aggregate proof, the run
+completion marker, the SLURM lifecycle ledger — all CLI-owned. The GUI has
+exactly one question to ask about any of it, and one function that answers:
+
+```python
+from phenotypic.sdk_ import resolve_run_state
+
+state = resolve_run_state(output_dir, depth="shallow")   # poll
+state = resolve_run_state(output_dir, depth="deep")      # bind
+```
+
+`completion` is one of `complete`, `incomplete`, `failed`, `active` — four
+verdicts, total and ordered. **There is no `contradictory`.** A four-state
+consistency vocabulary (`coherent`/`active`/`incomplete`/`contradictory`) used
+to be derived separately inside the GUI; it and its classifier are deleted.
+`depth="shallow"` re-stats a verification cache, `depth="deep"` re-reads
+artifact content — a polled surface wants the first.
+
+### What `RunState` cannot answer
+
+`resolve_run_state` answers *"what does this output's own evidence prove?"* It
+does **not** answer *"did **this GUI launch** publish?"*, and the difference has
+already been designed against once.
+
+The fence for that second question lives on the completion marker, and **the
+marker carries two generation fields, written two lines apart**
+(`_cli_completion.py:1279-1280`):
+
+```python
+        "gui_record_generation": gui_record_generation,          # exact; None off-GUI
+        "generation": gui_record_generation or execution_epoch,  # falls back
+```
+
+`RunRegistry._local_completion_evidence_conflict` compares the **fallback**
+one, not the exact one (`shell/_runs_registry.py:718`):
+
+```python
+        if marker.get("generation") != str(record.generation):
+```
+
+That is load-bearing rather than incidental: a SLURM launch has no GUI
+generation, so `generation` holds `execution_epoch`, the comparison fails, and
+"a scheduler launch cannot satisfy a GUI generation" falls out of the fallback
+instead of needing a rule of its own. `gui_record_generation` itself is written
+and **read by nothing** — every other occurrence in `src/` is a writer argument
+or the dashboard manifest, which is a different artifact.
+
+`RunState` reads neither. The run proof is checked for `version`, `status` and
+`finalizer_succeeded` only.
+
+**`RunIdentity.owner_generation` looks like the answer and is not.**
+`sdk_/_run_state.py:266` reads it from `gui_launch_owner.json` — the file
+`_persist_record_locked` writes with `"generation": str(record.generation)`. So
+comparing it against a registry record's generation is the registry reading
+back its own write. A fence that compares a value to itself is not a weak
+fence; it is not a fence. Do not route the launch-generation question through
+`RunState` until it grows a reader for one of the marker's two generation
+fields. Both are **present on disk**; what is missing is a reader, not a value.
+
+### Master versus mirror, and the attribute names that invert them
+
+Two frames, and **`OutputRoot`'s attribute names point the opposite way to the
+files**:
+
+| Attribute | Actually holds | Read sites in `gui/` |
+|---|---|---|
+| `master_df` | the **mirror**, `deliverables/measurements.parquet` (`_output_root.py:449`), falling back to the master when no mirror exists | 23 |
+| `clean_master_df` | the **master**, `deliverables/master_measurements.parquet` (`_output_root.py:442`) | 4 |
+
+Feed display, filters, curation and analysis from `master_df` — the
+post-applied, metadata-joined mirror. Reach for `clean_master_df` only when you
+need the un-joined pre-post object set.
+
+**The mirror is deliberately excluded from the currency check, and that is a
+requirement rather than a limitation.** `snapshot_is_current()` re-stats the
+processing inventory — master, overlays, `results/` — and *not* the mirror,
+because `_curation_labels.py:846,848` rewrites the mirror on every curation
+save. Including it would make the viewer report its own write as external drift
+and flip the badge to "Changed on disk" when a user marks one colony (audit
+S2). This has been got backwards once already, in a docstring that described
+the exclusion as a cost. It is not a cost; restoring the mirror to that check
+reintroduces the bug.
+
+### Importing readers: `sdk_`, not `_cli`
+
+**Run-state readers come from `phenotypic.sdk_`.** The GUI used to reach into
+`phenotypic._cli` for them, which is how an O(N)-in-images completion predicate
+ended up on a polling timer (audit §7).
+
+This is a rule about *readers*, not a ban on the package — an absolute would be
+false the moment it was written. **19 symbols across 8 modules** legitimately
+survive, and a reader needs to tell them from a regression:
+
+| Group | Symbols | Where | Why it survives |
+|---|---|---|---|
+| SLURM lifecycle | `SchedulerQueryUnavailable`, `append_lifecycle_entry`, `cancel_generation`, `load_slurm_lifecycle`, `mirror_job_to_metadata`, `query_scheduler_comments`, `read_lifecycle_ledger` | `run_console/_slurm.py:26`, `_slurm_observer.py:17`, `_callbacks.py:869,1149` | DEFERRED D-1 — scheduler polling and the lifecycle ledger stay CLI-side |
+| Staged orchestration | `load_orchestration_state`, `staged_completion_matches`, `stage3_completion_exists`, `orchestration_state_path` | `run_console/_slurm_observer.py:25,29`, `shell/_runs_registry.py:1340` | the staged GPU engine's state has no `sdk_` reader |
+| Completion, post-split | `state_requires_success_markers`, `_all_accepted_images_succeeded`, `local_manifest_completion_problem` | `results_viewer/_output_root.py:154`, `shell/_runs_registry.py:620,52` | `core_readable` needs the CLI's half and INV-LAYER keeps `_cli` out of `sdk_`, so the join happens here; the third is the schema-2 manifest arm, which P7 removes with the rest of the legacy read path |
+| Single-purpose | `scan_directory_structure`, `prepare_metadata_join_keys`, `pipeline_requires_gpu`, `preload_custom_operation_modules`, `_emit_analysis_outputs` | `run_console/_request_safety.py:17,18`, `_callbacks.py:253`, `shell/_app.py:269`, `analysis/_callbacks.py:896` | launch-time work, not state reading |
+
+A **new** `_cli` import that answers "is this run finished?" is a regression;
+one that submits, cancels or polls a scheduler job is not.
 
 ---
 

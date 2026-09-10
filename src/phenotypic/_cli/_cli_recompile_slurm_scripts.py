@@ -12,7 +12,6 @@ from typing import Any, Final
 from ._cli_completion import (
     ARTIFACT_KIND_FILE,
     ARTIFACT_KIND_STORE,
-    SUCCESS_MARKER_VERSION,
     _sha256,
     _store_artifact_matches,
     authorized_measurement_sources,
@@ -20,6 +19,7 @@ from ._cli_completion import (
 from ._measurement_sources import discover_recompile_measurement_sources
 from ._cli_recompile_recovery import (
     assert_no_unrecoverable_measurement_authority,
+    image_authority_payload,
     recoverable_recompile_measurement_sources,
     recompile_store_lock_path,
 )
@@ -33,7 +33,6 @@ from phenotypic.sdk_ import (
     source_image_stem,
     store_stem,
     dataset_overlays_dir,
-    image_completion_marker_path,
     JobMetadataKey,
     RECOMPILE_TASK_MANIFEST_JSON,
     logs_dir,
@@ -183,23 +182,19 @@ def build_recompile_tasks(
         tasks.extend(overlay_tasks)
 
     if tasks:
-        from ._cli_output_manager import _consistent_embedded_join_keys
-
-        metadata_join_keys = (
-            None
-            if transition_sources
-            else (
-                _consistent_embedded_join_keys(measurement_sources)
-                if measurement_sources
-                else None
-            )
-        )
+        # CAN-2: no join keys are computed at SUBMISSION time any more, and the
+        # task no longer carries a `metadata_join_keys` field. Retiring the
+        # function from the finalizer alone would have left its mixed-generation
+        # abort firing HERE -- before any worker runs -- on exactly the state
+        # D-A deliberately manufactures. The finalizer derives its own common
+        # columns from the master and the snapshot; the mixed-AUTHORITY refusal
+        # it also carried is re-asserted in the worker, where the sources are
+        # read.
         finalizer_task = {
             "task_type": TASK_FINALIZE,
             "dataset_names": list(dataset_names),
             "include_dataset_column": include_dataset_column,
             JobMetadataKey.METADATA_CSV: None,
-            "metadata_join_keys": list(metadata_join_keys or ()),
             # Re-read provenance after measurement shards finish: a recompile
             # with new metadata rewrites these tables after task submission.
             "measurement_sources": [
@@ -554,10 +549,14 @@ def _overlay_recovery_marker(
         if overlay_present != Path(overlay_path).is_file():
             return None
 
-        marker_path = image_completion_marker_path(
+        # Both shapes, each on its own predicate, and the version travels
+        # with the shape: a record carries `RECORD_VERSION` and a legacy
+        # marker `SUCCESS_MARKER_VERSION`. Repointing the path alone would
+        # have left this comparing a record against 2, returning None, and
+        # disabling overlay-authority repair with nothing raising.
+        _marker_path, marker, authority_version = image_authority_payload(
             output_root, dataset_name, stem
         )
-        marker = json.loads(marker_path.read_text(encoding="utf-8"))
         work_id = marker.get("work_id")
         identity_values = (
             marker.get("relative_image_path"),
@@ -566,7 +565,7 @@ def _overlay_recovery_marker(
             marker.get("lifecycle_epoch"),
         )
         if (
-            marker.get("version") != SUCCESS_MARKER_VERSION
+            marker.get("version") != authority_version
             or marker.get("dataset") != dataset_name
             or marker.get("image_stem") != stem
             or not isinstance(work_id, str)

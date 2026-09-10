@@ -8,6 +8,15 @@
   with the topic name
 - **html artifacts** go in @docs/superpowers/artifacts/ under their own dated folder
   with the topic name
+- **Review and audit reports** go in @docs/superpowers/reports/ under their own dated
+  folder with the topic name (same name as the matching spec/plan). One file per
+  reviewer, named for what it reviewed — `spec-adherence.md`, `test-review.md`.
+  **A reviewer writes its report to a file rather than returning it in a message**: a
+  long report truncates in transit, and the truncated half is silently lost — during
+  the `cli-gui-state-tracking` P1 gate, three consecutive reports were cut mid-finding
+  and only recovered by asking. The file is also what a later phase reads; a finding
+  that lived only in a message is gone the moment the session ends. This is the sole
+  write an analysis-only reviewer may make.
 - **Executable logic-validation scripts** go in @docs/superpowers/logic_validation_scripts/
   under the change's own dated topic folder (same name as the matching spec/plan). One
   runnable script per subject, named `<subject>.py`; it re-derives the load-bearing numeric
@@ -50,6 +59,35 @@ file on shared storage; and `-x` silently truncates a run that then gets recorde
 as a baseline. The suite is ~65 minutes, not two — so it is a Slurm job
 (**`slurm-job`** skill), with a committed batch script at
 `docs/superpowers/plans/2026-08-18-ome-zarr-image-store/run_unit_suite.sbatch`.
+
+#### Focused between phases; full regression only at the end
+
+**Match the instrument to the stage.** The full suite is the *last* check of an
+implementation, never a step-level one:
+
+| Stage | What to run |
+|---|---|
+| Per step | the step's own guards — seconds |
+| Per task | the directly-touched test files — ~1 minute |
+| Per phase | the affected surface, **once** |
+| End of implementation | the full sharded regression, **once** |
+
+The affected surface is wider than the directory you edited. A change to a
+shared test helper reaches every file that imports it — one such helper in
+`tests/` has 49 importers across `gui/`, `integration/` and `sdk_`. Derive the
+surface from importers, mechanically, rather than from the directory name.
+
+**Why this is a rule and not a preference.** A full run is ~30 minutes on 24
+nodes; a step-level question is usually answered by a 15-test file in under a
+minute, and running the wide instrument *first* buys nothing except a longer
+feedback loop and a result that goes stale before you act on it. Worse, a
+mid-implementation full run is thrown away: every later task invalidates it, so
+the same 30 minutes is spent again for the same answer.
+
+**A red full suite mid-implementation is also hard to read.** Its failures mix
+your change with contamination from unrelated files sharing a shard, and
+separating them costs more than the run saved. Run each failing test in
+isolation before attributing it — most of them pass.
 
 ### Linting & Type Checking
 
@@ -136,7 +174,30 @@ as a baseline. The suite is ~65 minutes, not two — so it is a Slurm job
   an append-only ledger. After a Stage-2 timeout, the controller derives remaining work
   from complete Stage-2 signals and submits another round. No worker signal handler or self-requeue
   is used. Without `--wait`, the CLI reports submission only; the dependent finalizer is
-  the sole publisher of aggregated outputs and the completion marker.
+  the sole publisher of aggregated outputs and the completion marker. **P5 does not
+  change that.** The forward run's dependent finalizer becomes a `0-K` array whose
+  indices `0..K-1` aggregate measurement shards and whose index K is the reserved
+  `TASK_FINALIZE` entry — running the same command it always ran. The finalizer is
+  still the sole publisher; it now has K helpers that publish nothing.
+  **With `--wait`, the aggregated outputs are written twice** and the sentence
+  above does not cover it: `AutonomousSLURMStrategy` never sets
+  `remote_managed` (only the staged path does, `_cli_staged_slurm.py:680,760`),
+  so the CLI falls through to `aggregate_master_csv`
+  (`phenotypicCLI.py:2977`) and aggregates **in the submitting process**, while
+  the dependent finalizer later aggregates again. The two are serialized by
+  `.aggregate_publication.lock` and read the same authorized sources, so they
+  write the same bytes — redundant, not divergent. **That last clause is a
+  property of one recent decision, not of the design**, and it was false
+  before `87f933cb`: the in-process path fans out at K = worker count while
+  the finalizer merges the scheduler's shards at its own K, and until
+  `shard_sources` became a *contiguous* split, merge order depended on K — so
+  two writers with the same lock and the same sources produced **different
+  bytes**. Reverting the decomposition to a strided assignment would silently
+  break this consumer, which is not named anywhere near it. **The completion-marker half
+  of the claim holds either way:** the main flow never publishes the run proof,
+  which only `_run_finalize` does. Note also that `--njobs` defaults to `-1`,
+  so that in-process aggregation runs the *local* fan-out at K = worker count,
+  not the scheduler's K.
   Staged GPU flags (Spec 1 §10):
     - `--gpu-slurm key=value` — Stage-2 GPU SBATCH profile; **inherits/deltas over
       `--slurm`** (put a separate GPU partition/account here); auto-adds
@@ -403,11 +464,15 @@ enforces this for ruff, but the rule binds regardless of the tool.
   state lives in `results/<ds>/zarr/<stem>.ome.zarr/`, with authoritative
   object measurements at `tables/measurements/table.parquet` inside each
   store. Forward runs do not create external per-image measurement Parquets.
-  `master_measurements.*` is the exact pre-post concatenation of authorized
-  embedded tables (already metadata-joined measured rows);
-  `measurements.*` appends metadata-only phantoms once and is the post-applied
-  mirror the GUI reads/curates — feed analysis and dashboards from the
-  **mirror**, not the master. Always resolve paths via the
+  `master_measurements.parquet` is the exact pre-post concatenation of
+  authorized embedded tables: **un-joined**, carrying intrinsic identity only
+  and no user metadata at all. **Parquet only** — D8 deleted
+  `master_measurements.csv` along with its constant, its path helper and its
+  reader, because the un-joined master is not the file a human opens.
+  `measurements.{csv,parquet}` carries the metadata join, appends
+  metadata-only phantoms once, and is the post-applied mirror the GUI
+  reads/curates — feed analysis and dashboards from the **mirror**, not the
+  master. Always resolve paths via the
   `phenotypic.sdk_` helpers (never hand-join names), and route any FINAL master
   write through `finalize_post_master_outputs`. Full file inventory,
   master-vs-mirror rules, and the finalize/chunk-writer carve-out are in

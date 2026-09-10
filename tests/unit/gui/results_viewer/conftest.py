@@ -28,7 +28,7 @@ from phenotypic import Image
 from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.schema import IMAGE, OBJECT
 from phenotypic.sdk_._measurement_tables import (
-    PreparedEmbeddedMeasurementTable,
+    PreparedImageTables,
 )
 from phenotypic.sdk_.ngff_ import PhenotypicAttr, STORE_ROOT_JSON
 
@@ -95,19 +95,22 @@ def _plate_array(extent: int) -> np.ndarray:
     return arr
 
 
-def _measurement_table() -> PreparedEmbeddedMeasurementTable:
+def _measurement_table() -> PreparedImageTables:
     """One embedded per-object measurement payload.
 
     Its presence is what writes ``attributes.phenotypic.tables``, which is
     the only reliable discriminator between "Stage 1 done, Stage 3 pending"
     and "finished, detector found nothing" -- see task 3.4.
     """
-    return PreparedEmbeddedMeasurementTable(
-        frame=pd.DataFrame({str(OBJECT.LABEL): [1], "Size_Area": [16.0]}),
+    return PreparedImageTables(
+        measurements=pd.DataFrame(
+            {str(OBJECT.LABEL): [1], "Size_Area": [16.0]}
+        ),
+        metadata=None,
         measurement_columns=("Size_Area",),
         join_status="not_requested",
         join_keys=(),
-        metadata_snapshot_sha256="0" * 64,
+        metadata_snapshot_sha256="",
     )
 
 

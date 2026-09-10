@@ -83,6 +83,18 @@ MEASUREMENT_TABLE_RELATIVE_PATH: Final[Path] = Path(
 )
 MEASUREMENT_TABLE_SCHEMA_VERSION: Final[int] = 1
 
+#: The user-metadata sibling of the measurement table (spec §7.1-7.2). The
+#: measurement table carries measurements; whatever ``--metadata`` contributed
+#: for this image's join keys lands here instead, self-describing through its
+#: own Parquet key/value metadata. Versioned independently of the measurement
+#: sub-schema, because the two tables change for different reasons.
+METADATA_TABLE_GROUP: Final[str] = "metadata"
+METADATA_TABLE_FILENAME: Final[str] = "pht-metadata.parquet"
+METADATA_TABLE_RELATIVE_PATH: Final[Path] = Path(
+    TABLES_GROUP, METADATA_TABLE_GROUP, METADATA_TABLE_FILENAME
+)
+METADATA_TABLE_SCHEMA_VERSION: Final[int] = 1
+
 
 class EmbeddedMeasurementParquetMetadataKeys(NamedTuple):
     """Stable Parquet key/value metadata names for join provenance."""
@@ -458,6 +470,15 @@ class PhenotypicAttr:
     GAMMA: Final[str] = "gamma"
     GRID: Final[str] = "grid"
     METADATA: Final[str] = "metadata"
+    #: Which metadata snapshot the store's embedded tables were built against
+    #: (D-A), as ``{"snapshot_sha256": ..., "join_keys": [...],
+    #: "join_kind": ...}``. The key is ``metadata_table`` and **not**
+    #: ``metadata``, because :attr:`METADATA` directly above is already taken
+    #: by the ``{protected, public, imported}`` image-metadata sections. This
+    #: is the spelling's single home: ``_run_state.py`` binds its private
+    #: reader names to these two members rather than repeating the strings.
+    METADATA_TABLE: Final[str] = "metadata_table"
+    SNAPSHOT_SHA256: Final[str] = "snapshot_sha256"
     PROTECTED: Final[str] = "protected"
     PUBLIC: Final[str] = "public"
     IMPORTED: Final[str] = "imported"

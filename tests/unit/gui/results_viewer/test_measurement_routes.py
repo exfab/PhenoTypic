@@ -31,7 +31,7 @@ from phenotypic.gui.results_viewer._output_root import OutputRoot
 from phenotypic.schema import IMAGE, OBJECT
 from phenotypic.sdk_ import (
     MEASUREMENT_TABLE_RELATIVE_PATH,
-    PreparedEmbeddedMeasurementTable,
+    PreparedImageTables,
     zarr_store_path,
 )
 from phenotypic.sdk_.ngff_ import PhenotypicAttr, STORE_ROOT_JSON
@@ -48,17 +48,18 @@ UNMEASURED_STEM = "img-unmeasured"
 AREAS: dict[int, float] = {1: 12.0, 2: 512.0, 3: 128.0}
 
 
-def _table() -> PreparedEmbeddedMeasurementTable:
+def _table() -> PreparedImageTables:
     """An embedded table carrying one numeric and one string column."""
     labels = sorted(AREAS)
-    return PreparedEmbeddedMeasurementTable(
-        frame=pd.DataFrame(
+    return PreparedImageTables(
+        measurements=pd.DataFrame(
             {
                 str(OBJECT.LABEL): labels,
                 "Shape_Area": [AREAS[label] for label in labels],
                 "ColorLab_MedoidColorHex": ["#a08866"] * len(labels),
             }
         ),
+        metadata=None,
         measurement_columns=(
             str(OBJECT.LABEL),
             "Shape_Area",

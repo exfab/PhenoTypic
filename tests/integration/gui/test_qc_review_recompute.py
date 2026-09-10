@@ -39,10 +39,10 @@ from phenotypic.sdk_ import (
     measurements_parquet_path,
     pipeline_json_path,
     qc_review_state_path,
-    resolve_manifest_json_path,
 )
 
 from tests._output_layout import (
+    build_complete_viewer_run,
     write_master,
     write_measurements_mirror,
     write_pipeline_json,
@@ -104,9 +104,6 @@ def output_root(tmp_path: Path) -> OutputRoot:
             "Size_Area": [100.0, 101.0, 102.0, 100.0, 101.0, 900.0],
         }
     )
-    write_master(tmp_path, master)
-    write_measurements_mirror(tmp_path, master)
-
     (tmp_path / "results" / "d1" / "measurements").mkdir(
         parents=True, exist_ok=True
     )
@@ -118,23 +115,24 @@ def output_root(tmp_path: Path) -> OutputRoot:
         )
 
     pipeline = _build_pipeline()
-    write_pipeline_json(tmp_path, pipeline)
+
+    # Publish the run for real. This fixture used to declare completion with a
+    # `manifest.json`; §4.2 demotes it, so that tree now resolves `incomplete`
+    # and every QC rebuild here is refused before it starts. `with_overlay` is
+    # False because the overlays above are written by this fixture -- a
+    # DECLARED artifact is fenced by content, so overwriting one after
+    # publication would invalidate that image's record.
+    build_complete_viewer_run(
+        tmp_path,
+        frame=master,
+        stems=("img-1", "img-2"),
+        dataset="d1",
+        with_overlay=False,
+        pipeline=pipeline,
+    )
 
     # Seed the qc/ artifact exactly as the CLI would.
     run_qc(master.to_pandas(), pipeline, tmp_path)
-    manifest = resolve_manifest_json_path(tmp_path)
-    manifest.parent.mkdir(parents=True, exist_ok=True)
-    manifest.write_text(
-        json.dumps(
-            {
-                "is_complete": True,
-                "completed": 2,
-                "failed": 0,
-                "total_images": 2,
-            }
-        ),
-        encoding="utf-8",
-    )
 
     return OutputRoot.discover(
         tmp_path,

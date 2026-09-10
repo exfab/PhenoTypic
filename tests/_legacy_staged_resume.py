@@ -49,15 +49,37 @@ def sidecar_exists(output_dir: Path, dataset: str, image_stem: str) -> bool:
     return legacy_sidecar_path(output_dir, dataset, image_stem).is_file()
 
 
-def stage3_completion_exists(
+def legacy_stage3_marker_path(
     output_dir: Path, dataset: str, image_stem: str
-) -> bool:
+) -> Path:
+    """``<output>/.phenotypic/progress/stage3_complete/<ds>/<stem>.json``.
+
+    Hand-joined on purpose, exactly like :func:`legacy_hdf_path` and
+    :func:`legacy_sidecar_path`: the fixture that builds the HDF world and this
+    frozen classifier must agree with each other and with nothing else.
+
+    Extracted from the body of :func:`stage3_completion_exists` when P3 §6.1
+    collapsed the live stage-3 marker into the per-image record. **This is not
+    "keeping the frozen classifier in sync"** -- the path it names is unchanged
+    and stays unchanged whatever the live module does. It exists because the
+    HDF world must now *write* the artifact this function reads: the live
+    writer stopped producing this file, so a fixture that still called it would
+    leave the frozen side blind on the stage-3 axis, and the parity test would
+    report a divergence that is an artifact of the fixture rather than of the
+    port.
+    """
     return (
         progress_dir(output_dir)
         / "stage3_complete"
         / dataset
         / f"{image_stem}.json"
-    ).is_file()
+    )
+
+
+def stage3_completion_exists(
+    output_dir: Path, dataset: str, image_stem: str
+) -> bool:
+    return legacy_stage3_marker_path(output_dir, dataset, image_stem).is_file()
 
 
 def valid_staged_hdf(path: Path) -> bool:

@@ -21,6 +21,7 @@ from phenotypic.sdk_ import (
     dataset_overlays_dir,
     deliverables_dir,
     image_completion_marker_path,
+    image_record_path,
     phenotypic_cache_dir,
     results_dir,
     store_stem,
@@ -1017,8 +1018,17 @@ def publish_migration_task_status(
         raise ValueError("migration result work ID does not match current state")
     if not _valid_hex_digest(result.marker_digest):
         raise ValueError("migration result has an invalid marker digest")
+    # The RECORD. `result.marker_digest` is the worker's post-publish digest
+    # (`_cli_migrate_image.migrate_image_task`), so this re-derivation must
+    # hash the same file the worker did. `task.marker_path` is the LEGACY
+    # marker the task reads as input, and after P3's clean break the two are
+    # different files -- agreeing on the wrong one binds the seal silently.
     try:
-        current_marker_digest = _sha256_bytes(task.marker_path.read_bytes())
+        current_marker_digest = _sha256_bytes(
+            image_record_path(
+                output_root, task.dataset, task.stem
+            ).read_bytes()
+        )
     except OSError as exc:
         raise ValueError("migration result marker is missing") from exc
     if current_marker_digest != result.marker_digest:
@@ -1301,8 +1311,14 @@ def seal_migration_image_stage(
         if status.get("work_id") != expected_work_id:
             failures.append(f"status index {index} has wrong work ID")
         marker_digest = status.get("marker_payload_digest")
+        # The record -- `marker_payload_digest` originates from the worker's
+        # post-publish digest. See `publish_migration_task_status`.
         try:
-            current_marker_digest = _sha256_bytes(task.marker_path.read_bytes())
+            current_marker_digest = _sha256_bytes(
+                image_record_path(
+                    output_root, task.dataset, task.stem
+                ).read_bytes()
+            )
         except OSError:
             failures.append(f"status index {index} has missing current marker")
         else:
@@ -1435,8 +1451,13 @@ def _validate_reclaim_result(
     )
     if result.work_id != expected_work_id:
         failures.append("reclaim result work ID does not match current state")
+    # The record -- compared against `result.marker_digest` below.
     try:
-        current_marker_digest = _sha256_bytes(task.marker_path.read_bytes())
+        current_marker_digest = _sha256_bytes(
+            image_record_path(
+                output_root, task.dataset, task.stem
+            ).read_bytes()
+        )
     except OSError:
         current_marker_digest = ""
     retained_after_unclean_image = (
@@ -1727,8 +1748,14 @@ def seal_migration_reclaim_stage(
         )
         if status.get("work_id") != expected_work_id:
             failures.append(f"reclaim status index {index} has wrong work ID")
+        # The record -- `marker_payload_digest` is the worker's post-publish
+        # digest of it.
         try:
-            marker_digest = _sha256_bytes(task.marker_path.read_bytes())
+            marker_digest = _sha256_bytes(
+                image_record_path(
+                    output_root, task.dataset, task.stem
+                ).read_bytes()
+            )
         except OSError:
             marker_digest = ""
         if status.get("marker_payload_digest") != marker_digest:
@@ -1960,7 +1987,12 @@ def valid_migration_image_seal(
                 return False
             if evidence is not None and evidence.state != "complete":
                 return False
-            marker_digest = _sha256_bytes(task.marker_path.read_bytes())
+            # The record -- see `publish_migration_task_status`.
+            marker_digest = _sha256_bytes(
+                image_record_path(
+                    output_root, task.dataset, task.stem
+                ).read_bytes()
+            )
             if status.get("marker_payload_digest") != marker_digest:
                 return False
             work_id = _configured_work_id(
@@ -2040,8 +2072,28 @@ def valid_migration_reclaim_seal(
                 migration_reclaim_status_path(control_root, seal.generation, index),
                 "migration reclaim status",
             )
+            # The record, and the ONLY site in this set whose root is
+            # optional. `expected_scientific_output` is `Path | None`, and
+            # this branch already threads it into `read_migration_task`
+            # above -- but a `None` here means the caller did not supply an
+            # output root, so there is no record path to derive.
+            #
+            # `None` therefore yields the empty digest, which is the same
+            # answer the `OSError` arm gives for an unreadable record, and
+            # it fails the comparison below rather than passing it. That
+            # direction is deliberate: an absent root must make a seal look
+            # UNVERIFIABLE, never verified.
             try:
-                marker_digest = _sha256_bytes(task.marker_path.read_bytes())
+                if expected_scientific_output is None:
+                    marker_digest = ""
+                else:
+                    marker_digest = _sha256_bytes(
+                        image_record_path(
+                            expected_scientific_output,
+                            task.dataset,
+                            task.stem,
+                        ).read_bytes()
+                    )
             except OSError:
                 marker_digest = ""
             if status.get("marker_payload_digest") != marker_digest:

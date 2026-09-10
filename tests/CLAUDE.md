@@ -37,9 +37,30 @@ tests/
 │   └── gui/                  ← Playwright + Werkzeug subprocess
 │       ├── conftest.py       ← live_server, fake_sandbox helpers
 │       └── builder/          ← DAG builder sub-suite
+├── migration/                ← NOT in testpaths; golden-comparison suite
+│   └── _goldens/             ← recorded outputs — see the warning below
 └── fixtures/
     └── builder_dag/          ← JSON DAG fixtures (UTF-8; always read with encoding="utf-8")
 ```
+
+## `tests/migration` runs only when you ask for it — and it is currently red
+
+`testpaths` is `["tests/unit", "tests/smoke", "tests/integration", "tests/gui"]`.
+**`tests/migration` is not in it**, so a bare `uv run pytest` never collects it. It is
+reached only by naming it explicitly, or through the sharded gate harness with
+`SCOPE=full`.
+
+**As of 2026-09-05, 57 scenarios in `test_equivalence.py` fail against their goldens**,
+across every operation subpackage — `analysis`, `correction`, `detect`, `enhance`, `grid`,
+`measure`, `refine`. The differences are **not** rounding: the population is bimodal, with
+max absolute differences running from `1.9e-08` up to **`1.5157`**, and mismatched-element
+fractions up to **100%**. Something moved the output of these operations and nothing caught
+it, because nothing runs this suite.
+
+**Do not regenerate the goldens to get a green run.** Goldens exist to catch exactly this
+drift, and re-recording them converts an unexplained behaviour change into a blessed one with
+no trace that it happened. At a 100% mismatch that is not a tidy-up — it is the deletion of
+the only evidence. Diagnose the drift, or leave the suite red and state the exclusion.
 
 ## Gotchas
 

@@ -13,7 +13,11 @@ from phenotypic._core._provenance import (
     provenance_basename,
     validate_provenance_journal,
 )
-from phenotypic.sdk_ import CommitGuard, atomic_write_json
+from phenotypic.sdk_ import (
+    CommitGuard,
+    atomic_write_json,
+    resolve_processing_state_path,
+)
 
 from ._cli_directory_scanner import _is_store_dir, scan_directory_structure
 from ._cli_migrate_manifest import discover_migration_tasks
@@ -27,11 +31,50 @@ _V1_JOURNAL_FIELDS = frozenset(
 
 @dataclass(frozen=True)
 class ProvenanceMigrationTarget:
-    """A classified migration target and its non-recursive store inventory."""
+    """A classified migration target and its non-recursive store inventory.
 
-    kind: Literal["full_run", "direct_store", "process_tree"]
+    ``stores`` is what :func:`execute_provenance_migration` upgrades, and every
+    entry must therefore be a store directory with a readable root
+    ``zarr.json``. ``outputs`` is separate **because a pre-markers process
+    tree has flat layer files and no stores at all** -- putting those in
+    ``stores`` made the upgrader compose ``a.tiff/zarr.json`` and raise
+    ``NotADirectoryError``. A field named ``stores`` holding non-stores is the
+    kind of overload this change exists to remove, so the two are named apart
+    rather than the consumer taught to skip a kind.
+    """
+
+    kind: Literal[
+        "full_run", "direct_store", "process_tree", "pre_markers_process"
+    ]
     root: Path
     stores: tuple[Path, ...]
+    #: Flat output layers, for a kind that has them. Never upgraded: they
+    #: carry no store metadata to upgrade.
+    outputs: tuple[Path, ...] = ()
+
+
+def target_kind_owns_machine_state(kind: str) -> bool:
+    """Whether a target of this kind is a run TREE with machine state of its own.
+
+    The distinction the ``kind != "full_run"`` dispatch does not make. That
+    predicate asks "is this not a full run?" and is used as though it asked "is
+    this per-store provenance work?" -- which is false for two of the three
+    provenance-only kinds.
+
+    * ``process_tree`` and ``pre_markers_process`` are trees. They have a
+      ``.phenotypic/`` of their own, so ``migrate_machine_state`` applies.
+    * ``direct_store`` is one store. Its lifecycle state is a **hashed
+      sibling**, never inside the store, so there is no tree machine state to
+      convert and writing one would put ``.phenotypic/`` where the store's own
+      contract forbids it.
+
+    Args:
+        kind: A :class:`ProvenanceMigrationTarget` kind.
+
+    Returns:
+        Whether ``migrate_machine_state`` applies to this kind.
+    """
+    return kind in {"full_run", "process_tree", "pre_markers_process"}
 
 
 @dataclass(frozen=True)
@@ -159,6 +202,60 @@ def _full_run_stores(root: Path) -> tuple[Path, ...]:
     )
 
 
+def _declares_process_only_run(root: Path) -> bool:
+    """Return whether the state file declares this a ``--mode process`` run.
+
+    **A declared fact, not an inferred one** (MIG-11). The alternative --
+    treating "no stores found" as evidence of a process tree -- would widen
+    migrate to accept any directory of images, which is the opposite of what
+    a classifier is for.
+
+    ``config.process_only_layer`` is the right key because something reads it:
+    ``_cli_state_management`` compares it against the current run's value to
+    refuse a mode switch. ``config.ext`` sits beside it and is written by four
+    sites and read by none, so it states nothing about the tree.
+    """
+    payload = _read_state_payload(root)
+    if payload is None:
+        return False
+    config = payload.get("config")
+    if not isinstance(config, dict):
+        return False
+    return config.get("process_only_layer") is not None
+
+
+def _read_state_payload(root: Path) -> dict[str, object] | None:
+    """Return ``processing_state.json`` as plain JSON, or ``None``.
+
+    Deliberately not ``load_processing_state``: that reader **writes** (it
+    calls ``migrate_legacy_machine_state``) and subscripts the version key
+    unguarded, neither of which a classifier may do.
+    """
+    try:
+        payload = json.loads(
+            resolve_processing_state_path(root).read_text(encoding="utf-8")
+        )
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _pre_markers_process_outputs(root: Path) -> tuple[Path, ...]:
+    """Return a pre-markers process run's output layers.
+
+    Uses ``scan_directory_structure`` -- the same scanner
+    :func:`_process_tree_stores` already calls -- so the two cannot disagree
+    about what an output tree contains. It ignores ``.phenotypic/``.
+    """
+    try:
+        datasets = scan_directory_structure(root)
+    except (FileNotFoundError, ValueError):
+        return ()
+    return tuple(
+        sorted(path.resolve() for paths in datasets.values() for path in paths)
+    )
+
+
 def _process_tree_stores(root: Path) -> tuple[Path, ...]:
     """Return process-output stores without enumerating any store member."""
     try:
@@ -213,6 +310,19 @@ def classify_provenance_migration_target(
         return ProvenanceMigrationTarget("full_run", root, full_stores)
     if process_stores:
         return ProvenanceMigrationTarget("process_tree", root, process_stores)
+    # MIG-11: a pre-markers `--mode process` run has flat output layers and no
+    # stores at all -- `--mode process` gained OME-Zarr output in a later
+    # release than this vintage. Its outputs ARE its completion record, which
+    # is what migrate mints from. Reached only when the state file DECLARES
+    # the run, never by inferring one from an absence of stores.
+    if _declares_process_only_run(root):
+        outputs = _pre_markers_process_outputs(root)
+        if outputs:
+            # `stores` is EMPTY on purpose: there is nothing to
+            # provenance-upgrade. The outputs travel in their own field.
+            return ProvenanceMigrationTarget(
+                "pre_markers_process", root, (), outputs=outputs
+            )
     raise ValueError(
         f"no PhenoTypic OME-Zarr stores found for provenance migration: {root}"
     )

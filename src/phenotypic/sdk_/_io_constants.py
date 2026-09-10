@@ -24,7 +24,7 @@ Module layout
 
     - **`output_dir: Path`** — the run output root (e.g. ``./out``).
       Use these from any caller that has the run root in scope:
-      ``master_measurements_csv_path``, ``manifest_json_path``,
+      ``master_measurements_parquet_path``, ``manifest_json_path``,
       ``job_metadata_path``, ``pipeline_json_path``, ``task_status_path``,
       ``logs_dir``, ``slurm_scripts_dir``, ``processing_report_html_path``,
       ``measurements_by_feature_dir``,
@@ -44,8 +44,8 @@ Module layout
   cleanly with ``progress_dir(output_dir)`` if you need the progress
   directory separately. Helpers that take ``progress_dir_`` are noted
   in their individual docstrings.
-* **Reader helpers** — `read_run_manifest`, `load_master_measurements`,
-  `resolve_execution_mode` consolidate three high-frequency duplicates.
+* **Reader helpers** — `read_run_manifest` and `resolve_execution_mode`
+  consolidate two high-frequency duplicates.
 * **JSON contract keys** (`JobMetadataKey`, `DashboardManifestKey`,
   `ChunkStateKey`, `ChunkManifestKey`) — namespace classes
   whose class-level ``Final[str]`` attributes are the keys writers and
@@ -87,7 +87,6 @@ from .typing_ import (
 )
 
 if TYPE_CHECKING:
-    import polars as pl  # type: ignore[import-not-found]
 
     from phenotypic._core._grid_image import GridImage as _GridImage
     from phenotypic._core._image import Image as _Image
@@ -310,18 +309,21 @@ def generation_staging_path(target: Path, generation: str) -> Path:
 
 
 #: Master archive of all aggregated measurements (clean, pre-post). Written by
-#: :func:`phenotypic._cli._cli_output_manager.aggregate_measurements` after
-#: every per-image Parquet has been concatenated and joined with optional
-#: external metadata. Treated as the authoritative source by downstream
-#: tooling; never edited in place.
-MASTER_MEASUREMENTS_CSV: Final[str] = "master_measurements.csv"
-
-#: Parquet companion of :data:`MASTER_MEASUREMENTS_CSV`. Preserves dtypes the
-#: CSV cannot and is the format the GUI viewer prefers when present.
+#: :func:`phenotypic._cli._cli_finalize_run.finalize_run` as the exact
+#: concatenation of the authorized embedded measurement tables: **un-joined**,
+#: carrying intrinsic identity only. Treated as the authoritative source by
+#: downstream tooling; never edited in place.
+#:
+#: **Parquet-only since D8.** ``master_measurements.csv`` is gone, along with
+#: its path helper, its reader and its entry in the aggregate proof's
+#: ``required_outputs``. The un-joined master is no longer the file a human
+#: opens -- :data:`MEASUREMENTS_CSV`, which carries the metadata join and the
+#: post-applied frame, is -- and the master's dtypes are exactly what a CSV
+#: could not preserve.
 MASTER_MEASUREMENTS_PARQUET: Final[str] = "master_measurements.parquet"
 
-#: Editable curated CSV mirror seeded by the CLI as a copy of
-#: :data:`MASTER_MEASUREMENTS_CSV` after :func:`_apply_post_to_master`. The
+#: Editable curated CSV mirror seeded by the CLI from the post-applied master
+#: frame after :func:`_apply_post_to_master`. The
 #: results viewer rewrites this file in place when the user removes/restores
 #: colonies. Re-running the CLI overwrites it with a fresh full copy.
 MEASUREMENTS_CSV: Final[str] = "measurements.csv"
@@ -350,7 +352,6 @@ def _reserved_analysis_artifact_stems() -> frozenset[str]:
     return frozenset(
         Path(filename).stem.casefold()
         for filename in (
-            MASTER_MEASUREMENTS_CSV,
             MASTER_MEASUREMENTS_PARQUET,
             MEASUREMENTS_CSV,
             MEASUREMENTS_PARQUET,
@@ -580,6 +581,12 @@ GUI_RECORD_GENERATION_ENV_VAR: Final[str] = (
     "PHENOTYPIC_GUI_RECORD_GENERATION"
 )
 
+#: Mutable active-generation fence for a SLURM launch. One of spec §4.1's
+#: three written authorities (liveness and ownership), so the run-state
+#: reader needs the name and INV-LAYER forbids it importing the CLI module
+#: that used to be the name's only home.
+SLURM_LIFECYCLE_JSON: Final[str] = "slurm_lifecycle.json"
+
 #: Generation- and mode-bearing terminal publication marker.
 RUN_COMPLETION_JSON: Final[str] = "run_completion.json"
 
@@ -662,6 +669,103 @@ DIR_RESULTS: Final[str] = "results"
 DIR_PROGRESS: Final[str] = "progress"
 DIR_IMAGE_COMPLETE: Final[str] = "image_complete"
 
+#: One record per image, replacing ``image_complete/`` and
+#: ``stage3_complete/`` (spec §6.1). ``stage2_raw/`` stays a separate tree: it is
+#: bulk replay data, not a record.
+DIR_IMAGE_RECORDS: Final[str] = "images"
+
+#: ``<output>/.phenotypic/legacy-v2/`` -- the pre-collapse marker trees, kept
+#: after ``--mode migrate`` so ``--mode migrate --revert`` costs a rename back
+#: rather than a full reprocess (CAN-12, §15.1).
+#:
+#: **Retained for revert; read by nothing.** It is not tracked state: no
+#: verdict consults it, nothing derives from it, and nothing must be kept in
+#: sync with it. It sits directly below ``.phenotypic/`` rather than below
+#: ``progress/`` **on purpose** -- the schema gate's directory signals look
+#: only below ``progress/``, so a retained tree here cannot make an
+#: already-converted output classify ``CONVERT`` again.
+DIR_LEGACY_V2: Final[str] = "legacy-v2"
+
+#: ``<progress>/stage2_done/`` -- the consumable Stage-2 token's tree.
+#:
+#: **Retained, not collapsed** (U-9), which is why it is here and
+#: ``stage3_complete/`` is not. The stage-3 marker's segment stayed a
+#: module-private literal in :mod:`._schema_shape` on the reasoning that P3
+#: deletes the tree, so promoting it would add a constant the change was about
+#: to remove. That reasoning does not transfer: this tree survives the collapse
+#: with its file and its atomic ``unlink`` intact, so its segment is a durable
+#: layout fact with two readers -- the token's path helper and the schema gate,
+#: which must keep *not* firing on it -- and belongs beside its siblings.
+DIR_STAGE2_DONE: Final[str] = "stage2_done"
+
+#: ``<output>/.phenotypic/verification_cache.json`` -- the on-disk second tier
+#: of the verification cache (spec §9.1, as reversed back on by U-11).
+#:
+#: **A cache, and named like one.** Nothing branches on it and no verdict is
+#: derived from it; it only ever licenses *skipping* a deep pass whose stat
+#: tuples still match. It is **deleted** by :func:`clear_machine_state`; the
+#: rule that decides why, and the test that enforces it, are stated once at
+#: :data:`_PRESERVED_ON_RESTART`.
+VERIFICATION_CACHE_JSON: Final[str] = "verification_cache.json"
+
+#: ``<output>/.phenotypic/restart_epoch.json`` -- the run's restart counter
+#: (spec §5.1 D4), and the **one tracked value this design adds**.
+#:
+#: Preserved across ``--restart``, unlike everything else under
+#: ``.phenotypic/`` bar the terminal-failure journal. The rule that puts it
+#: there -- and keeps the verification cache out -- is at
+#: :data:`_PRESERVED_ON_RESTART`.
+RESTART_EPOCH_JSON: Final[str] = "restart_epoch.json"
+
+#: Schema version of the persisted verification cache.
+#:
+#: **Bump this when the deep-verification RULES change, not only when the JSON
+#: shape does.** The reader has no other way to tell that a file was written
+#: by a build whose notion of "verified" differed from its own: the payload
+#: records what was checked, never how. A rules change shipped without a bump
+#: is a build silently honouring another build's verdicts, which is the one
+#: failure the in-process tier could not have.
+VERIFICATION_CACHE_VERSION: Final[int] = 1
+
+#: Per-image success-marker schema version. Bumped to 2 when artifact
+#: descriptors gained ``kind``: a v1 marker describes the per-image ``.h5``,
+#: which ``--mode migrate`` keeps by default, so a v1 marker would *validate*
+#: against that file while the store it should describe went entirely
+#: unverified (ledger FLOW-23).
+#:
+#: It lives here rather than in ``_cli_completion`` -- which re-exports it,
+#: so every existing importer is unchanged -- because the run-state reader
+#: must check the same number and INV-LAYER forbids that module importing the
+#: writer. Two copies of a version number that gate a *completion* verdict is
+#: the one duplication that can silently manufacture a false ``complete``.
+SUCCESS_MARKER_VERSION: Final[int] = 2
+
+#: Artifact descriptor kinds. ``"file"`` is the default for a descriptor
+#: written before the ``kind`` tag existed; a ``"store"`` descriptor carries
+#: no ``size`` and digests the store's root ``zarr.json`` instead.
+ARTIFACT_KIND_FILE: Final[str] = "file"
+ARTIFACT_KIND_STORE: Final[str] = "store"
+
+#: Marker-last proof schema versions, read by the run-state resolver and
+#: written by ``_cli_completion``'s two publishers.
+#:
+#: ``AGGREGATE_PROOF_VERSION`` moved 1 -> 2 in P4. Two independent reasons, and
+#: the second is the decisive one: the proof lost its ``master_csv`` required
+#: output and its ``publication_id`` (D8, U-4); and **the master's own shape
+#: changed** -- it is now un-joined and carries intrinsic identity only. Every
+#: pre-P4 aggregate proof is therefore stale in substance whether or not the
+#: version moves, and a stale proof that still validates is indistinguishable
+#: from a current one. Invalidating costs **re-aggregation, not
+#: reprocessing**: the master is rebuilt from embedded tables already on disk,
+#: with no image re-measured and no store rewritten.
+#:
+#: ``RUN_PROOF_VERSION`` is deliberately NOT bumped alongside it. The run
+#: proof's new ``source_set_digest`` is read through
+#: ``_run_state._source_set_binding``, which handles both shapes on purpose so
+#: P1's comparison keeps being made across P4's writer bump.
+AGGREGATE_PROOF_VERSION: Final[int] = 2
+RUN_PROOF_VERSION: Final[int] = 2
+
 #: Per-dataset measurements subdirectory: ``<output>/results/<ds>/measurements/``.
 DIR_MEASUREMENTS: Final[str] = "measurements"
 
@@ -702,6 +806,39 @@ DIR_RECOMPILE_STATUS: Final[str] = "status"
 #: ``<progress>/recompile/measurement_shards/``.
 DIR_RECOMPILE_SHARDS: Final[str] = "measurement_shards"
 
+#: Per-invocation aggregation shard subdirectory:
+#: ``<progress>/aggregation_shards/<scheduler_epoch>/``.
+#:
+#: **Deliberately not ``measurement_shards``**, which is
+#: :data:`DIR_RECOMPILE_SHARDS` and already names two live and *different*
+#: paths: ``recompile_dir(progress) / DIR_RECOMPILE_SHARDS``, which
+#: ``_cli_finalize_run._invalidate_finalization_intermediates`` removes, and
+#: ``attempt_dir / DIR_RECOMPILE_SHARDS``, which the recompile worker writes
+#: and reads. A third use of that string would make an existing ambiguity
+#: harder to see rather than adding a new one, so the fan-out's shards get a
+#: leaf name whose ``grep`` means one thing.
+DIR_AGGREGATION_SHARDS: Final[str] = "aggregation_shards"
+
+#: Path segment standing in for a null ``scheduler_epoch``.
+#:
+#: :func:`phenotypic.sdk_._run_state._scheduler_epoch` returns ``None``
+#: whenever there is no ``slurm_lifecycle.json`` -- which is every local run --
+#: so the local fan-out driver has no epoch to namespace by. The segment keeps
+#: one path shape across both drivers instead of letting a ``None`` reach the
+#: filesystem as the literal string ``"None"``.
+#:
+#: **Namespacing is not what makes the local path correct.** Consecutive local
+#: runs share this segment, so the fan-out empties the shard directory when it
+#: starts (user ruling, P2 close) rather than relying on a distinct key.
+#:
+#: **A different field in this subsystem legitimately takes this same string,
+#: and they are not the same namespace.** ``execution_epoch`` is written as
+#: ``"local"`` by ``_cli_gui_lifecycle`` and compared against it in
+#: ``_cli_completion``. ``scheduler_epoch`` is a minted lifecycle generation
+#: and is never this literal, so the two cannot collide -- but they sit close
+#: enough that a reader could conclude otherwise.
+LOCAL_SCHEDULER_EPOCH: Final[str] = "local"
+
 #: Generated SLURM script subdirectory inside the hidden machine-state cache.
 DIR_SLURM_SCRIPTS: Final[str] = "slurm_scripts"
 
@@ -709,7 +846,7 @@ DIR_SLURM_SCRIPTS: Final[str] = "slurm_scripts"
 #: :data:`QC_DUCKDB` (written by ``run_qc``) and
 #: :data:`QC_REVIEW_STATE_JSON` (written by the GUI Review tab). Relocated
 #: under ``deliverables/`` so a bundle is self-contained;
-#: :func:`resolve_qc_dir` / :func:`migrate_legacy_qc` handle the legacy
+#: :attr:`BundleLayout.qc_dir` / :func:`migrate_legacy_qc` handle the legacy
 #: pre-relocation root ``<output>/qc/``.
 DIR_QC: Final[str] = "qc"
 
@@ -909,6 +1046,28 @@ def progress_dir(output_dir: Path) -> Path:
     return phenotypic_cache_dir(output_dir) / DIR_PROGRESS
 
 
+def restart_epoch_path(output_dir: Path) -> Path:
+    """Return ``<output>/.phenotypic/restart_epoch.json``.
+
+    Pure path expression. The readers and the writer are
+    :func:`phenotypic._cli._cli_identity.read_restart_epoch` and
+    :func:`~phenotypic._cli._cli_identity.bump_restart_epoch` -- the writer
+    lives in ``_cli`` because spec §5.2 keeps every publisher out of ``sdk_``,
+    and only the path belongs here.
+    """
+    return phenotypic_cache_dir(output_dir) / RESTART_EPOCH_JSON
+
+
+def verification_cache_path(output_dir: Path) -> Path:
+    """Return ``<output>/.phenotypic/verification_cache.json``.
+
+    Pure path expression; the caller decides whether to write. Note that the
+    cache's writer deliberately does **not** ``mkdir`` this path's parent --
+    see :func:`phenotypic.sdk_._verification_cache.persist_states`.
+    """
+    return phenotypic_cache_dir(output_dir) / VERIFICATION_CACHE_JSON
+
+
 def results_dir(output_dir: Path) -> Path:
     """Return ``<output>/results/``."""
     return output_dir / DIR_RESULTS
@@ -1078,14 +1237,55 @@ def migrate_legacy_qc(output_dir: Path) -> bool:
     return True
 
 
+#: Children of ``.phenotypic/`` that :func:`clear_machine_state` keeps.
+#:
+#: **THE MEMBERSHIP RULE — read this before adding a name.** A name belongs
+#: here only when carrying it across a restart is **safer than losing it**.
+#:
+#: * ``terminal_failures.jsonl`` qualifies: append-only history, and losing it
+#:   loses the record of *why* images failed.
+#: * ``restart_epoch.json`` qualifies: a counter that resets on the operation
+#:   it fences is not a fence.
+#:
+#: Anything recording a **verdict reached before the fence** does **not**
+#: qualify, however expensive it was to compute -- a restart exists to
+#: invalidate exactly those.
+#:
+#: **The worked exclusion, which is why this rule is written down at all:**
+#: ``verification_cache.json`` is a completion verdict, and an expensive one
+#: (spec U-11 measures the deep pass it replaces at 1403 s against ~37 s).
+#: That expense is precisely the argument that will be made for preserving it,
+#: and it is precisely the wrong argument -- a preserved cache would carry a
+#: pre-restart ``complete`` across the fence the restart exists to raise. It
+#: is deleted by falling into the sweep's everything-else branch, and that
+#: exclusion is enforced by
+#: ``test_clear_machine_state_deletes_the_persisted_cache`` in
+#: ``tests/unit/sdk_/test_verification_cache_disk.py`` -- a suite an editor of
+#: this set will not have open, which is why the rule lives here rather than
+#: only there.
+#:
+#: This set is a **module-level constant on purpose**: later phases are told
+#: to grow it (P7 adds ``legacy-v2/``, the retained revert path), and a set
+#: those phases must find and extend does not belong in a function body where
+#: it can carry no documentation.
+_PRESERVED_ON_RESTART: Final[frozenset[str]] = frozenset(
+    {TERMINAL_FAILURES_JSONL, RESTART_EPOCH_JSON, DIR_LEGACY_V2}
+)
+
+
 def clear_machine_state(output_dir: Path) -> bool:
     """Remove **all** of a run's machine-state for a clean ``--restart``.
 
     Deletes current state inside ``.phenotypic/`` (``progress/``,
     ``processing_state.json``, ``processing_events.log``, logs, and generated
     SLURM scripts) and any pre-migration root-level machine-state, while
-    preserving the append-only ``terminal_failures.jsonl`` journal and
-    user-facing output artifacts (``deliverables/``, ``results/``, ``qc/``, …).
+    preserving :data:`_PRESERVED_ON_RESTART` -- the append-only
+    ``terminal_failures.jsonl`` journal **and** ``restart_epoch.json``, because
+    a counter that resets on the operation it fences is not a fence -- along
+    with user-facing output artifacts (``deliverables/``, ``results/``,
+    ``qc/``, …). **Read that set's membership rule before adding to it**; it is
+    now the only thing standing between ``--restart`` and every artifact under
+    ``.phenotypic/``.
     This is
     the difference between ``--restart``
     (re-run the orchestration against clean state, keep outputs) and
@@ -1105,7 +1305,7 @@ def clear_machine_state(output_dir: Path) -> bool:
     cache = phenotypic_cache_dir(output_dir)
     if cache.exists():
         for child in cache.iterdir():
-            if child.name == TERMINAL_FAILURES_JSONL:
+            if child.name in _PRESERVED_ON_RESTART:
                 continue
             if child.is_dir() and not child.is_symlink():
                 shutil.rmtree(child)
@@ -1127,11 +1327,6 @@ def clear_machine_state(output_dir: Path) -> bool:
             legacy_file.unlink()
             removed = True
     return removed
-
-
-def master_measurements_csv_path(output_dir: Path) -> Path:
-    """Return ``<output>/deliverables/master_measurements.csv``."""
-    return deliverables_dir(output_dir) / MASTER_MEASUREMENTS_CSV
 
 
 def master_measurements_parquet_path(output_dir: Path) -> Path:
@@ -1209,22 +1404,6 @@ def resolve_tuning_spec_path(output_dir: Path) -> Path:
 def best_pipeline_path(output_dir: Path) -> Path:
     """Return the canonical typed tuned-winner pipeline path."""
     return deliverables_dir(output_dir) / BEST_PIPELINE_JSON
-
-
-def _legacy_best_pipeline_path(output_dir: Path) -> Path:
-    """Return the legacy plain-JSON tuned-winner pipeline path."""
-    return deliverables_dir(output_dir) / _LEGACY_BEST_PIPELINE_JSON
-
-
-def resolve_best_pipeline_path(output_dir: Path) -> Path:
-    """Return the best existing tuned-winner pipeline path for ``output_dir``."""
-    canonical = best_pipeline_path(output_dir)
-    if canonical.exists():
-        return canonical
-    legacy = _legacy_best_pipeline_path(output_dir)
-    if legacy.exists():
-        return legacy
-    return canonical
 
 
 def param_importance_path(output_dir: Path) -> Path:
@@ -1910,6 +2089,43 @@ def recompile_status_dir(progress_dir_: Path) -> Path:
     return recompile_dir(progress_dir_) / DIR_RECOMPILE_STATUS
 
 
+def aggregation_shard_dir(
+    output_dir: Path, scheduler_epoch: str | None
+) -> Path:
+    """Return ``<progress>/aggregation_shards/<scheduler_epoch>/``.
+
+    Spec §7.5: the fan-out's measurement shards are per-invocation scratch, so
+    a prior run's shards can never be merged into this run's master. Recompile
+    already namespaces its shards this way under
+    ``recompile/attempts/<attempt_id>/``; this generalises the pattern to the
+    forward path.
+
+    **The namespace is not the correctness argument, and must not be read as
+    one.** ``_scheduler_epoch`` returns ``None`` for every local run, so
+    consecutive local invocations share :data:`LOCAL_SCHEDULER_EPOCH` and would
+    collide. The fan-out therefore *empties* this directory when it starts, on
+    both drivers, at the same logical point -- which is strictly stronger than
+    namespacing, since namespacing also leaves every prior run's shards on disk
+    accumulating forever. The epoch stays in the path because it costs nothing
+    and keeps one path shape across the two drivers.
+
+    Pure path expression; callers ``mkdir`` when they intend to write.
+
+    Args:
+        output_dir: Run output root.
+        scheduler_epoch: The active SLURM lifecycle generation, or ``None``
+            for a local run.
+
+    Returns:
+        The shard directory for this invocation.
+    """
+    return (
+        progress_dir(output_dir)
+        / DIR_AGGREGATION_SHARDS
+        / (scheduler_epoch or LOCAL_SCHEDULER_EPOCH)
+    )
+
+
 def task_status_path(output_dir: Path, task_index: int) -> Path:
     """Return ``<progress>/recompile/status/task_<idx>.json``."""
     return recompile_status_dir(
@@ -1939,6 +2155,16 @@ def gui_launch_owner_path(output_dir: Path) -> Path:
     return progress_dir(output_dir) / GUI_LAUNCH_OWNER_JSON
 
 
+def slurm_lifecycle_path(output_dir: Path) -> Path:
+    """Return ``<output>/.phenotypic/progress/slurm_lifecycle.json``.
+
+    The mutable active-generation fence. ``_cli_slurm_lifecycle`` owns every
+    *write*; this helper exists because the run-state reader must be able to
+    ask who is in flight without importing a writer (INV-LAYER).
+    """
+    return progress_dir(output_dir) / SLURM_LIFECYCLE_JSON
+
+
 def run_completion_marker_path(output_dir: Path) -> Path:
     """Return the canonical generation-bearing completion marker path."""
     return progress_dir(output_dir) / RUN_COMPLETION_JSON
@@ -1954,6 +2180,13 @@ def image_completion_marker_path(
 ) -> Path:
     """Return the general marker path for one dataset image stem."""
     return progress_dir(output_dir) / DIR_IMAGE_COMPLETE / dataset / (
+        f"{image_stem}.json"
+    )
+
+
+def image_record_path(output_dir: Path, dataset: str, image_stem: str) -> Path:
+    """Return ``<output>/.phenotypic/progress/images/<ds>/<stem>.json``."""
+    return progress_dir(output_dir) / DIR_IMAGE_RECORDS / dataset / (
         f"{image_stem}.json"
     )
 
@@ -2016,9 +2249,13 @@ def slurm_scripts_dir(output_dir: Path) -> Path:
 def qc_dir(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/qc/`` — durable QC + curation state.
 
-    Relocated under ``deliverables/`` so a deliverables bundle is self-contained
-    and portable. Use :func:`resolve_qc_dir` for reads that must honour the legacy
-    root ``<output>/qc/`` layout of pre-relocation runs.
+    Relocated under ``deliverables/`` so a deliverables bundle is
+    self-contained and portable. For reads that must honour the legacy root
+    ``<output>/qc/`` of pre-relocation runs, use
+    :attr:`BundleLayout.qc_dir`, which resolves the same three branches and
+    is the one with callers. A second module-level resolver existed here and
+    was deleted in P6 Task 7 -- two implementations of one fallback, only one
+    of them reachable.
     """
     return deliverables_dir(output_dir) / DIR_QC
 
@@ -2026,21 +2263,6 @@ def qc_dir(output_dir: Path) -> Path:
 def _legacy_qc_dir(output_dir: Path) -> Path:
     """Pre-relocation location: ``<output>/qc/``."""
     return output_dir / DIR_QC
-
-
-def resolve_qc_dir(output_dir: Path) -> Path:
-    """Return the qc dir that exists, preferring ``deliverables/qc/``.
-
-    Read-only resolver: deliverables/qc if present, else legacy root qc if
-    present, else the canonical deliverables/qc (for fresh writes).
-    """
-    new = qc_dir(output_dir)
-    if new.exists():
-        return new
-    legacy = _legacy_qc_dir(output_dir)
-    if legacy.exists():
-        return legacy
-    return new
 
 
 def qc_duckdb_path(output_dir: Path) -> Path:
@@ -2131,23 +2353,6 @@ def read_run_manifest(output_dir: Path) -> Optional[dict]:
         return None
 
 
-def load_master_measurements(output_dir: Path) -> Optional["pl.DataFrame"]:
-    """Read ``<output>/master_measurements.csv`` into a polars DataFrame.
-
-    Args:
-        output_dir: Run output directory.
-
-    Returns:
-        DataFrame, or :data:`None` when the file is missing.
-    """
-    import polars as pl  # type: ignore[import-not-found]  # lazy
-
-    path = master_measurements_csv_path(output_dir)
-    if not path.exists():
-        return None
-    return pl.read_csv(path)
-
-
 def resolve_execution_mode(job_meta: Optional[dict]) -> ExecutionMode:
     """Extract :data:`ExecutionMode` from job metadata, defaulting to ``"local"``.
 
@@ -2226,6 +2431,14 @@ class DashboardManifestKey:
     these constants rather than spelling the bare string.
     """
 
+    #: **Written, never read -- and that is the correct state for it.** A
+    #: format version exists to be readable by something that does not exist
+    #: yet, so "zero readers" is the expected condition of a healthy one, not
+    #: evidence of death. P6 Task 7's deletion ledger listed it as dead on a
+    #: zero-reader count; it was removed and restored, because dropping it
+    #: leaves the manifest with no schema discriminator and that cannot be
+    #: added retroactively to trees written meanwhile. The criterion is right
+    #: for a function and wrong for a format version.
     VERSION: Final[str] = "version"
     LAST_UPDATED: Final[str] = "last_updated"
     EXECUTION_MODE: Final[str] = "execution_mode"
@@ -2525,11 +2738,6 @@ class BundleLayout:
     def master_parquet(self) -> Path:
         """Return path to ``master_measurements.parquet`` in the deliverables base."""
         return self.deliverables_base / MASTER_MEASUREMENTS_PARQUET
-
-    @property
-    def master_csv(self) -> Path:
-        """Return path to ``master_measurements.csv`` in the deliverables base."""
-        return self.deliverables_base / MASTER_MEASUREMENTS_CSV
 
     @property
     def mirror_parquet(self) -> Path:

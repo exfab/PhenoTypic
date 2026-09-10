@@ -8,7 +8,6 @@ from phenotypic._cli._cli_chunk_writer import _aggregate_chunks_locked
 from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import (
     analysis_full_parquet_path,
-    master_measurements_csv_path,
     master_measurements_parquet_path,
     progress_dir,
 )
@@ -37,14 +36,15 @@ def test_chunk_aggregation_preserves_rolling_and_master_outputs(tmp_path) -> Non
     master_parquet = pl.read_parquet(
         master_measurements_parquet_path(output_dir)
     ).sort(image_name)
-    master_csv = pl.read_csv(master_measurements_csv_path(output_dir)).sort(
-        image_name
-    )
-
     assert rolling["Size_Area"].to_list() == [10.0, 20.0]
     assert master_parquet.equals(rolling)
-    assert master_csv["Size_Area"].to_list() == [10.0, 20.0]
-    assert master_csv[image_name].to_list() == ["image_1", "image_2"]
+    assert master_parquet["Size_Area"].to_list() == [10.0, 20.0]
+    assert master_parquet[image_name].to_list() == ["image_1", "image_2"]
+
+    # D8: the rolling mid-run master is parquet-only, like the final one.
+    assert not (
+        output_dir / "deliverables" / "master_measurements.csv"
+    ).exists()
 
     assert not (prog_dir / "analysis_scatter.json").exists()
     assert not (prog_dir / "analysis_stats.json").exists()

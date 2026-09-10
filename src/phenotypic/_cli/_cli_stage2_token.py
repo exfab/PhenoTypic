@@ -34,17 +34,35 @@ import numpy as np
 
 from phenotypic.sdk_ import (
     CommitGuard,
+    DIR_STAGE2_DONE,
     atomic_write_with_writer,
     progress_dir,
     publication_commit,
 )
+from phenotypic.sdk_._image_record import STAGE_STAGE2  # noqa: F401
 
-_STAGE2_DIR = "stage2_done"
+# ``STAGE_STAGE2`` is imported but not called here, and that is the point of
+# CAN-27 rather than an oversight. This module is the Stage-2 vocabulary, and
+# the stage it signals must have exactly ONE spelling in the tree; a future
+# writer added here reaches for the constant already in scope instead of typing
+# `"stage2"` a second time. `test_the_stage_names_come_from_one_shared_constant`
+# asserts `_cli_stage2_token.STAGE_STAGE2 is STAGE_STAGE2` -- `is`, not `==`,
+# because two modules that happen to spell the same string identically is
+# precisely the state the constant exists to make unrepresentable.
 
 
 def stage2_token_path(output_dir: Path, dataset: str, image_stem: str) -> Path:
-    """``<output>/.phenotypic/progress/stage2_done/<dataset>/<stem>.json``."""
-    return progress_dir(output_dir) / _STAGE2_DIR / dataset / f"{image_stem}.json"
+    """``<output>/.phenotypic/progress/stage2_done/<dataset>/<stem>.json``.
+
+    The segment comes from :data:`~phenotypic.sdk_.DIR_STAGE2_DONE` rather than
+    a module-private literal. This tree is **retained** by the §6.1 collapse
+    (U-9) -- unlike ``stage3_complete/``, whose segment stayed private because
+    P3 removes it -- so the name is a durable layout fact with a second reader
+    in the schema gate, which must keep *not* firing on it.
+    """
+    return (
+        progress_dir(output_dir) / DIR_STAGE2_DONE / dataset / f"{image_stem}.json"
+    )
 
 
 def write_stage2_token(

@@ -24,9 +24,7 @@ from pathlib import Path
 
 import pytest
 
-from phenotypic.gui.results_viewer._output_consistency import (
-    inspect_output_consistency,
-)
+from phenotypic.gui.results_viewer._output_root import core_readable
 from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH, BundleLayout
 
 #: A real migrated run. Not a repo fixture -- see the module docstring.
@@ -61,9 +59,7 @@ def _run_is_readable() -> bool:
     if not MIGRATION_RUN.is_dir():
         return False
     try:
-        return inspect_output_consistency(
-            BundleLayout.detect(MIGRATION_RUN)
-        ).core_readable
+        return core_readable(BundleLayout.detect(MIGRATION_RUN))
     except Exception:  # noqa: BLE001 - unreadable for any reason means skip
         return False
 

@@ -19,7 +19,7 @@ from click.testing import CliRunner
 
 from phenotypic._cli._cli_utils import resolve_local_worker_count
 from phenotypic.sdk_ import (
-    master_measurements_csv_path,
+    master_measurements_parquet_path,
     store_stem,
     zarr_store_path,
 )
@@ -33,6 +33,17 @@ pytestmark = pytest.mark.skipif(
     sys.platform == "win32",
     reason="CLI recompile path has non-Windows dependencies",
 )
+
+
+#: The legacy-marker deferral is CLOSED. P4 repointed all five
+#: production call sites onto the per-image record, keeping the legacy
+#: `image_complete/` shape as a second arm under its own predicate and
+#: its own version constant -- `_image_authority_shapes` in
+#: `_cli_recompile_recovery.py` is the one home for that pairing, and
+#: carries the retirement condition (P7 arms the schema gate). The
+#: `_RECOMPILE_READS_THE_LEGACY_MARKER_UNTIL_P4` xfail marker that stood
+#: here went with the repoint, in the same commit: it was `strict=True`,
+#: so leaving it would have turned every test it decorated red.
 
 
 def _make_fake_results(tmp_path: Path) -> Path:
@@ -149,9 +160,11 @@ class TestHandleRecompile:
         output_dir = _make_fake_results(tmp_path)
 
         def _fake_aggregate(**_kwargs: object) -> Path:
-            master = master_measurements_csv_path(output_dir)
+            import polars as pl
+
+            master = master_measurements_parquet_path(output_dir)
             master.parent.mkdir(parents=True, exist_ok=True)
-            master.write_text("col_a\n1\n", encoding="utf-8")
+            pl.DataFrame({"col_a": [1]}).write_parquet(master)
             return master
 
         with (
@@ -669,13 +682,13 @@ def test_local_process_only_missing_overlay_remains_best_effort(
     _completed_run_two: Path,
     tmp_path: Path,
 ) -> None:
-    """A marker without measurement authority does not make overlay repair fatal."""
+    """A record without measurement authority does not make overlay repair fatal."""
     import json
 
     from phenotypic.sdk_ import (
         MEASUREMENT_TABLE_RELATIVE_PATH,
         dataset_overlays_dir,
-        image_completion_marker_path,
+        image_record_path,
     )
     from tests.unit.sdk_._migration_fixtures import DATASET, run_stems
 
@@ -683,11 +696,15 @@ def test_local_process_only_missing_overlay_remains_best_effort(
     shutil.copytree(_completed_run_two, output_dir)
     stem = run_stems(output_dir)[0]
     store = zarr_store_path(output_dir, DATASET, stem)
-    marker_path = image_completion_marker_path(output_dir, DATASET, stem)
-    marker = json.loads(marker_path.read_text(encoding="utf-8"))
-    marker["mode"] = "process"
-    marker["artifacts"].pop("measurements")
-    marker_path.write_text(json.dumps(marker), encoding="utf-8")
+    # The RECORD. `_completed_run_two` is a real forward run, and D1's clean
+    # break moved what it publishes from `image_complete/` to `images/`, so
+    # the legacy path is simply absent here -- this degrades the file the run
+    # actually wrote.
+    record_path = image_record_path(output_dir, DATASET, stem)
+    record = json.loads(record_path.read_text(encoding="utf-8"))
+    record["mode"] = "process"
+    record["artifacts"].pop("measurements")
+    record_path.write_text(json.dumps(record), encoding="utf-8")
     (store / MEASUREMENT_TABLE_RELATIVE_PATH).unlink()
     overlay = dataset_overlays_dir(output_dir, DATASET) / f"{stem}.png"
     overlay.unlink()

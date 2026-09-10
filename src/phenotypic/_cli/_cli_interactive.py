@@ -124,8 +124,8 @@ def _display_output_structure(config: ExecutionConfig, datasets: List[Dataset], 
     click.echo("    │   ├── processing_state.json")
     click.echo("    │   └── processing_events.log")
     click.echo("    ├── processing_report.html")
-    click.echo("    ├── master_measurements.csv")
-    click.echo("    ├── measurements.csv  (editable copy for GUI; refreshed on every run)")
+    click.echo("    ├── master_measurements.parquet  (clean un-joined archive; Parquet only)")
+    click.echo("    ├── measurements.csv  (metadata-joined mirror for GUI; refreshed on every run)")
     click.echo("    ├── pipeline.json  (reproducibility spec — read by the analysis GUI)")
     click.echo("    ├── <AnalysisClass>.csv   (named model fit; when configured)")
     click.echo("    ├── analysis_manifest.json")
@@ -147,7 +147,7 @@ def _display_save_configuration(config: ExecutionConfig) -> None:
 
     if config.include_dataset_column:
         click.echo(
-            f"  Master CSV will include {str(EXPERIMENT.DATASET)!r} column"
+            f"  Master will include {str(EXPERIMENT.DATASET)!r} column"
             " for multi-dataset analysis"
         )
 
