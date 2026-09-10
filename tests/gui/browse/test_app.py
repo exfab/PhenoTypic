@@ -1,3 +1,5 @@
+import tempfile
+
 import numpy as np
 import pytest
 from PIL import Image as PILImage
@@ -10,7 +12,20 @@ from phenotypic.gui.shell._sandbox import SandboxRoot
 
 @pytest.fixture
 def sandbox(tmp_path, monkeypatch):
-    monkeypatch.setattr(sr.tempfile, "gettempdir", lambda: str(tmp_path / "cache"))
+    # Patch ``tempfile`` directly, not through ``_source_render``.
+    #
+    # This used to read ``sr.tempfile``, which worked only because that module
+    # imported ``tempfile`` for its own ephemeral cache. P6 Task 7 deleted that
+    # cache and the import with it, and every fixture reaching the module's
+    # attribute broke -- a consumer with no import edge, which no import-graph
+    # walk can see.
+    #
+    # The redirect itself is NOT vestigial. ``_cache.resolve_cache_location``
+    # falls back to ``tempfile.mkdtemp(prefix="phenotypic-browse-")`` with no
+    # ``dir=`` when neither the sandbox nor the user-cache tier is writable,
+    # and that consults ``gettempdir()``. Patching it keeps that last resort
+    # inside ``tmp_path`` instead of the real system temp dir.
+    monkeypatch.setattr(tempfile, "gettempdir", lambda: str(tmp_path / "cache"))
     root = tmp_path / "imgs"
     root.mkdir()
     PILImage.fromarray(np.zeros((8, 8, 3), dtype=np.uint8)).save(root / "a.png")

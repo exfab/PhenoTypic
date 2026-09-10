@@ -834,7 +834,7 @@ DIR_SLURM_SCRIPTS: Final[str] = "slurm_scripts"
 #: :data:`QC_DUCKDB` (written by ``run_qc``) and
 #: :data:`QC_REVIEW_STATE_JSON` (written by the GUI Review tab). Relocated
 #: under ``deliverables/`` so a bundle is self-contained;
-#: :func:`resolve_qc_dir` / :func:`migrate_legacy_qc` handle the legacy
+#: :attr:`BundleLayout.qc_dir` / :func:`migrate_legacy_qc` handle the legacy
 #: pre-relocation root ``<output>/qc/``.
 DIR_QC: Final[str] = "qc"
 
@@ -1392,22 +1392,6 @@ def resolve_tuning_spec_path(output_dir: Path) -> Path:
 def best_pipeline_path(output_dir: Path) -> Path:
     """Return the canonical typed tuned-winner pipeline path."""
     return deliverables_dir(output_dir) / BEST_PIPELINE_JSON
-
-
-def _legacy_best_pipeline_path(output_dir: Path) -> Path:
-    """Return the legacy plain-JSON tuned-winner pipeline path."""
-    return deliverables_dir(output_dir) / _LEGACY_BEST_PIPELINE_JSON
-
-
-def resolve_best_pipeline_path(output_dir: Path) -> Path:
-    """Return the best existing tuned-winner pipeline path for ``output_dir``."""
-    canonical = best_pipeline_path(output_dir)
-    if canonical.exists():
-        return canonical
-    legacy = _legacy_best_pipeline_path(output_dir)
-    if legacy.exists():
-        return legacy
-    return canonical
 
 
 def param_importance_path(output_dir: Path) -> Path:
@@ -2253,9 +2237,13 @@ def slurm_scripts_dir(output_dir: Path) -> Path:
 def qc_dir(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/qc/`` — durable QC + curation state.
 
-    Relocated under ``deliverables/`` so a deliverables bundle is self-contained
-    and portable. Use :func:`resolve_qc_dir` for reads that must honour the legacy
-    root ``<output>/qc/`` layout of pre-relocation runs.
+    Relocated under ``deliverables/`` so a deliverables bundle is
+    self-contained and portable. For reads that must honour the legacy root
+    ``<output>/qc/`` of pre-relocation runs, use
+    :attr:`BundleLayout.qc_dir`, which resolves the same three branches and
+    is the one with callers. A second module-level resolver existed here and
+    was deleted in P6 Task 7 -- two implementations of one fallback, only one
+    of them reachable.
     """
     return deliverables_dir(output_dir) / DIR_QC
 
@@ -2263,21 +2251,6 @@ def qc_dir(output_dir: Path) -> Path:
 def _legacy_qc_dir(output_dir: Path) -> Path:
     """Pre-relocation location: ``<output>/qc/``."""
     return output_dir / DIR_QC
-
-
-def resolve_qc_dir(output_dir: Path) -> Path:
-    """Return the qc dir that exists, preferring ``deliverables/qc/``.
-
-    Read-only resolver: deliverables/qc if present, else legacy root qc if
-    present, else the canonical deliverables/qc (for fresh writes).
-    """
-    new = qc_dir(output_dir)
-    if new.exists():
-        return new
-    legacy = _legacy_qc_dir(output_dir)
-    if legacy.exists():
-        return legacy
-    return new
 
 
 def qc_duckdb_path(output_dir: Path) -> Path:
@@ -2446,6 +2419,14 @@ class DashboardManifestKey:
     these constants rather than spelling the bare string.
     """
 
+    #: **Written, never read -- and that is the correct state for it.** A
+    #: format version exists to be readable by something that does not exist
+    #: yet, so "zero readers" is the expected condition of a healthy one, not
+    #: evidence of death. P6 Task 7's deletion ledger listed it as dead on a
+    #: zero-reader count; it was removed and restored, because dropping it
+    #: leaves the manifest with no schema discriminator and that cannot be
+    #: added retroactively to trees written meanwhile. The criterion is right
+    #: for a function and wrong for a format version.
     VERSION: Final[str] = "version"
     LAST_UPDATED: Final[str] = "last_updated"
     EXECUTION_MODE: Final[str] = "execution_mode"

@@ -283,7 +283,7 @@ QC module plus a `qc_modules` catalog); the QC tabs read it through the
 `review/_db.py` catalog-driven API (those tabs are currently unmounted --
 the writer, the store and the reader are unaffected). It moved
 *into* `deliverables/` so a deliverables bundle is self-contained and portable;
-`resolve_qc_dir(output)` / `BundleLayout.qc_dir` still read the legacy
+`BundleLayout.qc_dir` still reads the legacy
 output-root `qc/` of pre-relocation runs, and `migrate_legacy_qc` MOVES a
 legacy `qc/` into `deliverables/qc/` on discovery. The root-level
 `RESULTS_DIRNAME` (`results/`, per-image stores/measurements) is **not** a

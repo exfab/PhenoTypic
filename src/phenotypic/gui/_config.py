@@ -120,7 +120,6 @@ __all__ = [
     "SANDBOX_BUILDER_TILES_SUBDIR",
     "RUN_LOG_DIRNAME",
     "VIEWER_CACHE_DIRNAME",
-    "BROWSE_CACHE_TMP_SUBPATH",
     "BROWSE_CACHE_SUBDIR",
     "BROWSE_CACHE_HIGH_WATER_BYTES",
     "BROWSE_CACHE_LOW_WATER_BYTES",
@@ -427,11 +426,6 @@ BROWSE_SPECULATIVE_WORKERS: int = 1
 
 #: Increment whenever normalized pixels or DZI parameters change semantics.
 BROWSE_RENDER_SCHEMA_VERSION: int = 1
-
-#: Ephemeral Browse tile-cache subpath under ``tempfile.gettempdir()``. The
-#: Browse tab normalizes each source image to an 8-bit PNG + DZI tiles here,
-#: wiped on launch + at ``atexit`` (never persisted under the sandbox).
-BROWSE_CACHE_TMP_SUBPATH: tuple[str, str] = ("phenotypic", "browse")
 
 # ---------------------------------------------------------------------------
 # Image file extensions (shared by the directory browser, classifier, and the

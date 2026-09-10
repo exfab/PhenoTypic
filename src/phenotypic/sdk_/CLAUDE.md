@@ -144,7 +144,7 @@ ContrastAdjustment)` yields `['gamma', 'gain', 'norm', 'input_layer']`.
   table replacement is now a root-last re-promote. What holds is the narrower
   invariant — **no path writes into a promoted store without rewriting its
   root last**, which is what the two readers above actually depend on.
-- `slurm_.py` / `submitit_.py` / `monitor_slurm_jobs.py` — SLURM integration.
+- `slurm_.py` / `submitit_.py` — SLURM integration.
 - `generate_report.py` — report generation.
 - `viz/` — shared visualization layer: the centralized Plotly theme
   (`viz.figures.apply_theme`, `PHENOTYPIC_TEMPLATE_NAME`, Okabe-Ito palette),

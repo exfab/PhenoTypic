@@ -14,34 +14,27 @@ def test_token_round_trip_is_slash_free():
     assert sr.decode_token(token) == rel
 
 
-def test_cache_base_under_tempdir(monkeypatch, tmp_path):
-    monkeypatch.setattr(sr.tempfile, "gettempdir", lambda: str(tmp_path))
-    assert sr.browse_cache_base() == tmp_path / "phenotypic" / "browse"
-    assert sr.cache_png_path("tok") == tmp_path / "phenotypic" / "browse" / "tok.png"
 
 
-def test_normalize_standard_png(monkeypatch, tmp_path):
-    monkeypatch.setattr(sr.tempfile, "gettempdir", lambda: str(tmp_path))
+def test_normalize_standard_png(tmp_path):
     src = tmp_path / "src.png"
     PILImage.fromarray(np.full((8, 8, 3), 200, dtype=np.uint8)).save(src)
-    out = sr.normalize_to_png(src, sr.cache_png_path("t1"))
+    out = sr.normalize_to_png(src, tmp_path / "cache" / "t1.png")
     assert out.exists()
     arr = np.asarray(PILImage.open(out).convert("RGB"))
     assert arr.dtype == np.uint8 and arr.shape == (8, 8, 3)
 
 
-def test_normalize_is_mtime_cached(monkeypatch, tmp_path):
-    monkeypatch.setattr(sr.tempfile, "gettempdir", lambda: str(tmp_path))
+def test_normalize_is_mtime_cached(tmp_path):
     src = tmp_path / "src.png"
     PILImage.fromarray(np.zeros((4, 4, 3), dtype=np.uint8)).save(src)
-    out = sr.normalize_to_png(src, sr.cache_png_path("t2"))
+    out = sr.normalize_to_png(src, tmp_path / "cache" / "t2.png")
     first_mtime = out.stat().st_mtime_ns
-    out2 = sr.normalize_to_png(src, sr.cache_png_path("t2"))  # cache hit
+    out2 = sr.normalize_to_png(src, tmp_path / "cache" / "t2.png")  # cache hit
     assert out2.stat().st_mtime_ns == first_mtime
 
 
 def test_raw_unavailable_raises_typed(monkeypatch, tmp_path):
-    monkeypatch.setattr(sr.tempfile, "gettempdir", lambda: str(tmp_path))
     raw = tmp_path / "shot.nef"
     raw.write_bytes(b"not really a raw file")
 
@@ -50,20 +43,19 @@ def test_raw_unavailable_raises_typed(monkeypatch, tmp_path):
 
     monkeypatch.setattr(sr.Image, "imread", _boom)
     with pytest.raises(sr.SourceRenderUnavailable):
-        sr.normalize_to_png(raw, sr.cache_png_path("t3"))
+        sr.normalize_to_png(raw, tmp_path / "cache" / "t3.png")
 
 
-def test_normalize_16bit_tiff_full_scale_no_stretch(monkeypatch, tmp_path):
+def test_normalize_16bit_tiff_full_scale_no_stretch(tmp_path):
     # A 16-bit TIFF must downcast on the FIXED dtype range (65535 -> 255),
     # with NO per-image min/max stretch. The discriminating fixture is a
     # *uniform half-scale* image: a fixed-range downcast yields 128, whereas
     # any per-image stretch on a uniform array could not.
-    monkeypatch.setattr(sr.tempfile, "gettempdir", lambda: str(tmp_path))
 
     full = tmp_path / "full16.tiff"
     tifffile.imwrite(full, np.full((4, 4, 3), 65535, dtype=np.uint16))
     out_full = np.asarray(
-        PILImage.open(sr.normalize_to_png(full, sr.cache_png_path("f16"))).convert(
+        PILImage.open(sr.normalize_to_png(full, tmp_path / "cache" / "f16.png")).convert(
             "RGB"
         )
     )
@@ -73,7 +65,7 @@ def test_normalize_16bit_tiff_full_scale_no_stretch(monkeypatch, tmp_path):
     half = tmp_path / "half16.tiff"
     tifffile.imwrite(half, np.full((4, 4, 3), 32768, dtype=np.uint16))
     out_half = np.asarray(
-        PILImage.open(sr.normalize_to_png(half, sr.cache_png_path("h16"))).convert(
+        PILImage.open(sr.normalize_to_png(half, tmp_path / "cache" / "h16.png")).convert(
             "RGB"
         )
     )
@@ -85,7 +77,6 @@ def test_normalize_standard_decode_failure_reraises(monkeypatch, tmp_path):
     # A decode failure on a STANDARD format (here .tiff) must re-raise the
     # original error verbatim — only RAW extensions map to the typed
     # SourceRenderUnavailable.
-    monkeypatch.setattr(sr.tempfile, "gettempdir", lambda: str(tmp_path))
     tiff = tmp_path / "broken.tiff"
     tiff.write_bytes(b"not really a tiff")
 
@@ -94,7 +85,7 @@ def test_normalize_standard_decode_failure_reraises(monkeypatch, tmp_path):
 
     monkeypatch.setattr(sr.Image, "imread", _boom)
     with pytest.raises(ValueError, match="corrupt tiff"):
-        sr.normalize_to_png(tiff, sr.cache_png_path("bt"))
+        sr.normalize_to_png(tiff, tmp_path / "cache" / "bt.png")
 
 
 def test_normalize_store_uses_image_imread_then_png(monkeypatch, tmp_path):
@@ -144,24 +135,5 @@ def test_process_store_round_trips_through_cli_scan_and_browse(tmp_path):
     assert np.asarray(PILImage.open(normalized)).shape == rgb.shape
 
 
-def test_init_cache_registers_atexit_once(monkeypatch, tmp_path):
-    monkeypatch.setattr(sr.tempfile, "gettempdir", lambda: str(tmp_path))
-    # Reset the module's one-shot guard so this test owns the registration.
-    monkeypatch.setattr(sr, "_atexit_registered", False)
-    calls: list[object] = []
-    monkeypatch.setattr(sr.atexit, "register", lambda fn: calls.append(fn))
-
-    sr.init_cache()
-    sr.init_cache()  # second call must NOT re-register
-
-    assert calls == [sr.wipe_cache]
 
 
-def test_wipe_and_init_cache(monkeypatch, tmp_path):
-    monkeypatch.setattr(sr.tempfile, "gettempdir", lambda: str(tmp_path))
-    base = sr.browse_cache_base()
-    base.mkdir(parents=True)
-    (base / "stale.png").write_bytes(b"x")
-    sr.init_cache()
-    assert base.is_dir()
-    assert not (base / "stale.png").exists()

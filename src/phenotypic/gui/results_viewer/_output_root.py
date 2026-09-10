@@ -1,9 +1,28 @@
-"""Output-root discovery and read-only access for the results viewer.
+"""Output-root discovery and read-only data access for the results viewer.
 
 The results viewer consumes a CLI output directory produced by
-``python -m phenotypic`` and never mutates it. This module locates the master
-measurements parquet, validates the expected layout, and exposes a
-small set of helpers used by the rest of the viewer package.
+``python -m phenotypic``. This module locates the master measurements
+parquet, validates the expected layout, and exposes a small set of helpers
+used by the rest of the viewer package.
+
+**It writes exactly one file, and never the run's data.** Discovery resolves
+the run state, and a pass that actually deep-verified rewrites tier 2 of the
+verification cache at ``.phenotypic/verification_cache.json``. Nothing under
+``deliverables/``, ``results/`` or ``overlays/`` is ever written here.
+
+That write is safe to leave enabled on a directory you do not own, and the
+two properties that make it so are worth knowing before you open a run the
+CLI is still writing:
+
+* ``persist_states`` **never creates** ``.phenotypic/``, so a tree this
+  package has never written to is left byte-for-byte alone;
+* a failed write is a **return value, not an exception**, so a read-only
+  output degrades to a deep pass on the next cold start rather than raising.
+
+This docstring used to say "and never mutates it". That was true before the
+verification cache existed and is now false in a way a reader would act on --
+so it says what is written and why that is safe, rather than dropping the
+guarantee and leaving nothing in its place.
 """
 
 from __future__ import annotations
@@ -203,7 +222,12 @@ class OutputSnapshotDescriptor:
 
 @dataclass(frozen=True)
 class OutputRoot:
-    """Validated, read-only handle on a PhenoTypic CLI output directory.
+    """Validated handle on a PhenoTypic CLI output directory.
+
+    **Read-only with respect to the run's data** -- every field here is
+    captured at discovery and no method writes a measurement, an overlay or a
+    store. Not read-only with respect to the *directory*: see the module
+    docstring for the one machine-state file discovery rewrites.
 
     The dataclass aggregates all viewer-relevant artefacts of a single
     output run: the master measurements DataFrame (one row per object),

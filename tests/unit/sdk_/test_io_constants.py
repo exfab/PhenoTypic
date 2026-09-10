@@ -64,7 +64,6 @@ from phenotypic.sdk_ import (
     processing_state_path,
     progress_dir,
     readme_md_path,
-    resolve_best_pipeline_path,
     resolve_execution_mode,
     resolve_pipeline_config_path,
     resolve_tuning_spec_path,
@@ -409,14 +408,6 @@ class TestPathHelpers:
 
         assert resolve_tuning_spec_path(tmp_path) == legacy
 
-    def test_resolve_best_pipeline_path_falls_back_to_legacy_file(
-        self, tmp_path: Path
-    ) -> None:
-        legacy = tmp_path / "deliverables" / "best_pipeline.json"
-        legacy.parent.mkdir(parents=True)
-        legacy.write_text("legacy", encoding="utf-8")
-
-        assert resolve_best_pipeline_path(tmp_path) == legacy
 
     def test_dashboard_html_path(self, output: Path) -> None:
         assert dashboard_html_path(output) == output / "deliverables" / "dashboard.html"
@@ -1425,7 +1416,9 @@ class TestTuneReExports:
 
 
 # ---------------------------------------------------------------------------
-# Task 2: qc_dir relocated under deliverables/ + resolve_qc_dir back-compat
+# Task 2: qc_dir relocated under deliverables/
+# (the `resolve_qc_dir` back-compat resolver was deleted in P6 Task 7 --
+#  `BundleLayout.qc_dir` is the one with callers)
 # ---------------------------------------------------------------------------
 
 
@@ -1435,18 +1428,6 @@ def test_qc_dir_is_now_under_deliverables(tmp_path: Path) -> None:
     assert qc_dir(tmp_path) == deliverables_dir(tmp_path) / "qc"
 
 
-def test_resolve_qc_dir_prefers_deliverables_then_legacy(tmp_path: Path) -> None:
-    from phenotypic.sdk_ import qc_dir, resolve_qc_dir
-
-    # Neither exists -> canonical deliverables/qc.
-    assert resolve_qc_dir(tmp_path) == qc_dir(tmp_path)
-    # Legacy only -> legacy.
-    legacy = tmp_path / "qc"
-    legacy.mkdir()
-    assert resolve_qc_dir(tmp_path) == legacy
-    # Canonical present -> canonical wins.
-    qc_dir(tmp_path).mkdir(parents=True)
-    assert resolve_qc_dir(tmp_path) == qc_dir(tmp_path)
 
 
 def test_bundle_layout_qc_dir_resolves_legacy(tmp_path: Path) -> None:

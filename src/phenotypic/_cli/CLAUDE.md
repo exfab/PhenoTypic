@@ -422,8 +422,9 @@ fallback described above. Machine state lives under
 helpers retain legacy root-level reads. The durable
 **QC + curation state** lives under `deliverables/qc/` (`qc.duckdb`,
 `review_state.json`, `curation_labels.parquet`, `custom_categories.json`) so a
-`deliverables/` bundle is self-contained and GUI-openable standalone; `resolve_qc_dir`
-/ `migrate_legacy_qc` still read/move a pre-relocation root `qc/`. `run_qc` writes the
+`deliverables/` bundle is self-contained and GUI-openable standalone;
+`BundleLayout.qc_dir` / `migrate_legacy_qc` still read/move a pre-relocation
+root `qc/`. `run_qc` writes the
 single `deliverables/qc/qc.duckdb` (one self-describing table per QC module plus a
 `qc_modules` catalog, atomic full rebuild). Resolve these paths via the
 `phenotypic.sdk_` helpers (`deliverables_dir`, `master_measurements_parquet_path`,
