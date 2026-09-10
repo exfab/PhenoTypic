@@ -33,10 +33,10 @@
 ## Execution DAG
 
 ```
-Task 0 (baseline) → Task 1 (Keystone: the move) → Task 2 (Seam: entry points) → Task 3 (Sweep: docs) → Task 4 (gates) → Task 5 (review, simplify, regression)
+Task 0 (baseline) → Task 1 (Keystone: the move) → Task 2 (Seam: entry points) → Task 3 (Sweep: docs) → Task 4 (gates) → Task 6 (Seam: browser-shard guard) → Task 7 (Keystone: e2e completed-run fixtures) → Task 8 (Leaf: capture script) → Task 5 (review, simplify, regression)
 ```
 
-Tasks 2 and 3 share no files, but they still run one after the other: one checkout, one git index. Model: Tasks 1, 2 and all review gates on the session (Opus-tier) model; Task 3 on a Sonnet-tier model at medium effort.
+Tasks 2 and 3 share no files, but they still run one after the other: one checkout, one git index. Model: Tasks 1, 2 and all review gates on the session (Opus-tier) model; Task 3 on a Sonnet-tier model at medium effort. Addendum A tasks (spec Addendum A, added at the user's request): Tasks 6 and 8 carry complete, dry-run-validated code and run on the Sonnet tier; Task 7 (fixture semantics across ten e2e modules, plus the e2e comparison) runs on the Opus tier. Tasks 6, 7 and 8 share no files.
 
 ## Test surface (derived mechanically)
 
@@ -608,6 +608,704 @@ uv run make -C docs html > /tmp/pht-docs-<label>.log 2>&1; echo "exit=$?" >> /tm
 then `uv run python docs/superpowers/logic_validation_scripts/2026-09-10-private-gui-module/compare_findings.py docs /tmp/pht-docs-main.log /tmp/pht-docs-branch.log` (exit 1 on any branch-only warning). A `sed` that strips only line numbers leaves each checkout's absolute path in every warning, so a `diff` of the two lists would differ on every line and prove nothing; the script also maps the package path and dotted name, and its `--selftest` includes negative controls. Write the build log straight to a file: piping a Sphinx build through `tee` into a background task's output produced a 619 KB transcript. Expected: exit 0 on both, and no new warning — in particular none naming `api_reference/gui`, `phenotypic._gui` or `phenotypic.gui`. The rewrite turns `:class:` targets in `sdk_/_qc_recipe/_recipe.py:25,272` and `_assets/__init__.py:22` into `phenotypic._gui…`, which `-n` checks.
 - [x] **Step 5:** (→ criteria 1–7 and the must-not-change paths PASS; recorded in `docs/superpowers/reports/2026-09-10-private-gui-module/acceptance.md`.) Amend spec acceptance criterion 4 to except `tests/unit/gui/test_private_package.py`, which must name the removed path to assert it is gone (controller ruling during Task 1). Then check criteria 1-7 one by one, and record the results in `docs/superpowers/reports/2026-09-10-private-gui-module/acceptance.md`.
 - [ ] **Step 6:** `git worktree remove /tmp/pht-main`.
+
+---
+
+### Task 6: Browser tests run only in shards that install a browser (Seam)
+
+Spec Addendum A — finding A1, decision DA1, criterion 8. Runs after Task 4.
+
+**Files:**
+- Modify: `tests/unit/ci/test_pytest_shard_manifest.py`
+
+**Interfaces:**
+- Produces: `_shards_by_module() -> dict[Path, list[dict]]`, `_requests_a_browser(path: Path) -> bool`, `PLAYWRIGHT_FIXTURES: frozenset[str]`, `KNOWN_BROWSER_MODULE: Path`. `_manifest_assignments() -> Counter[Path]` keeps its signature and behaviour.
+
+- [ ] **Step 1: Record the current result** — expect `2 passed`:
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/ci/test_pytest_shard_manifest.py -q -o addopts= -p no:cacheprovider
+```
+
+- [ ] **Step 2: Replace the module** with exactly this content (a dry run of this code passed, and four mutants each failed their target test):
+
+```python
+"""Coverage checks for the pull-request pytest shard manifest."""
+
+from __future__ import annotations
+
+import ast
+from collections import Counter
+import json
+from pathlib import Path
+import re
+import tomllib
+
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+MANIFEST = REPO_ROOT / ".github" / "pytest-shards.json"
+WORKFLOW = REPO_ROOT / ".github" / "workflows" / "run-pytest.yml"
+
+#: pytest-playwright fixtures that need an installed browser. ``context`` is
+#: deliberately absent: two unrelated test modules define a ``context`` fixture
+#: of their own, and the bare name would flag them.
+PLAYWRIGHT_FIXTURES = frozenset(
+    {"page", "browser", "browser_name", "browser_type", "launch_browser", "new_context", "playwright"}
+)
+
+#: A browser test module the scan must find, so an empty scan cannot pass.
+KNOWN_BROWSER_MODULE = Path("tests/gui/results_viewer/test_splitter_browser.py")
+
+
+def _is_test_file(path: Path) -> bool:
+    """Return whether pytest considers the path a test module by name."""
+    return path.name.startswith("test_") or path.name.endswith("_test.py")
+
+
+def _configured_test_files() -> set[Path]:
+    """Return every test module below pytest's configured test roots."""
+    config = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    testpaths = config["tool"]["pytest"]["ini_options"]["testpaths"]
+    return {
+        path.relative_to(REPO_ROOT)
+        for root in testpaths
+        for path in (REPO_ROOT / root).rglob("*.py")
+        if _is_test_file(path)
+    }
+
+
+def _shards_by_module() -> dict[Path, list[dict]]:
+    """Map every test module a manifest entry expands to onto the shards owning it."""
+    shards = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    owners: dict[Path, list[dict]] = {}
+
+    for shard in shards:
+        for entry in shard["paths"]:
+            matches = list(REPO_ROOT.glob(entry))
+            if not matches:
+                raise AssertionError(f"shard path does not exist: {entry}")
+            for match in matches:
+                if match.is_dir() and not any(match.rglob("*.py")):
+                    raise AssertionError(f"shard path has no source files: {entry}")
+                candidates = match.rglob("*.py") if match.is_dir() else (match,)
+                for path in candidates:
+                    if _is_test_file(path):
+                        owners.setdefault(path.relative_to(REPO_ROOT), []).append(shard)
+
+    return owners
+
+
+def _manifest_assignments() -> Counter[Path]:
+    """Expand every manifest entry into its assigned test modules."""
+    return Counter({path: len(shards) for path, shards in _shards_by_module().items()})
+
+
+def _requests_a_browser(path: Path) -> bool:
+    """Return whether a test module needs an installed Playwright browser."""
+    tree = ast.parse((REPO_ROOT / path).read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            parameters = {arg.arg for arg in [*node.args.args, *node.args.kwonlyargs]}
+            if parameters & PLAYWRIGHT_FIXTURES:
+                return True
+        elif isinstance(node, ast.Import):
+            if any(alias.name.split(".")[0] == "playwright" for alias in node.names):
+                return True
+        elif isinstance(node, ast.ImportFrom):
+            if (node.module or "").split(".")[0] == "playwright":
+                return True
+    return False
+
+
+def test_each_configured_test_file_belongs_to_exactly_one_shard() -> None:
+    """Prevent tests from being silently omitted or run more than once."""
+    configured = _configured_test_files()
+    assignments = _manifest_assignments()
+
+    assert set(assignments) == configured
+    assert all(count == 1 for count in assignments.values())
+
+
+def test_pr_workflow_uses_complete_shards_without_testmon() -> None:
+    """Keep the PR lane deterministic and independent of selection history."""
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+
+    assert "fromJSON(needs.check-manual-run.outputs.shards)" in workflow
+    assert "join(matrix.shard.paths, ' ')" in workflow
+    assert "-n auto" in workflow
+    assert "--testmon" not in workflow
+    assert ".testmondata" not in workflow
+
+
+def test_browser_tests_run_only_in_shards_that_install_a_browser() -> None:
+    """A browser test in a shard without Chromium errors with a missing executable."""
+    owners = _shards_by_module()
+    browser_modules = {path for path in owners if _requests_a_browser(path)}
+
+    assert KNOWN_BROWSER_MODULE in browser_modules
+    misplaced = sorted(
+        str(path)
+        for path in browser_modules
+        if not all(shard.get("playwright") for shard in owners[path])
+    )
+    assert misplaced == []
+
+
+def test_pr_workflow_installs_chromium_for_browser_shards() -> None:
+    """The browser install step exists and is gated on the shard's playwright flag."""
+    workflow = WORKFLOW.read_text(encoding="utf-8")
+
+    assert re.search(
+        r"if: matrix\.shard\.playwright\s*\n\s*run: uv run playwright install --with-deps chromium",
+        workflow,
+    )
+```
+
+The working tree is CRLF (see the shared context): write the file so its line endings stay consistent with the rest of the tree, and check `git diff --stat` shows a normal-sized change.
+
+- [ ] **Step 3: Run it** — expect `4 passed`, with no warnings in the output (report any warning verbatim):
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/ci/test_pytest_shard_manifest.py -q -o addopts= -p no:cacheprovider
+```
+
+- [ ] **Step 4: Prove each new test can fail** — a throwaway runner, no repository edits. Expected output: four `killed` lines and one `control passed` line:
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run python - <<'PY'
+import importlib, json, sys, tempfile
+from pathlib import Path
+
+sys.path.insert(0, ".")
+module = importlib.import_module("tests.unit.ci.test_pytest_shard_manifest")
+tmp = Path(tempfile.mkdtemp())
+shards = json.loads(module.MANIFEST.read_text(encoding="utf-8"))
+
+def patched(test, **patches):
+    saved = {name: getattr(module, name) for name in patches}
+    for name, value in patches.items():
+        setattr(module, name, value)
+    try:
+        test()
+    finally:
+        for name, value in saved.items():
+            setattr(module, name, value)
+
+def expect_failure(label, test, **patches):
+    try:
+        patched(test, **patches)
+    except AssertionError:
+        print(f"{label}: killed")
+    else:
+        raise SystemExit(f"{label}: SURVIVED")
+
+no_browser = tmp / "no-browser.json"
+no_browser.write_text(json.dumps([dict(s, playwright=False) if s["name"] == "gui-browser" else s for s in shards]), encoding="utf-8")
+moved = []
+for shard in shards:
+    shard = dict(shard, paths=list(shard["paths"]))
+    if shard["name"] == "gui-browser":
+        shard["paths"].remove("tests/gui/")
+    if shard["name"] == "detection":
+        shard["paths"].append("tests/gui/")
+    moved.append(shard)
+moved_manifest = tmp / "moved.json"
+moved_manifest.write_text(json.dumps(moved), encoding="utf-8")
+ungated = tmp / "ungated.yml"
+ungated.write_text(module.WORKFLOW.read_text(encoding="utf-8").replace("        if: matrix.shard.playwright\n", ""), encoding="utf-8")
+
+expect_failure("M1 gui-browser shard without a browser", module.test_browser_tests_run_only_in_shards_that_install_a_browser, MANIFEST=no_browser)
+expect_failure("M2 tests/gui/ in a shard without a browser", module.test_browser_tests_run_only_in_shards_that_install_a_browser, MANIFEST=moved_manifest)
+expect_failure("M3 the page fixture not recognised", module.test_browser_tests_run_only_in_shards_that_install_a_browser, PLAYWRIGHT_FIXTURES=module.PLAYWRIGHT_FIXTURES - {"page"})
+expect_failure("M4 install step ungated", module.test_pr_workflow_installs_chromium_for_browser_shards, WORKFLOW=ungated)
+patched(module.test_each_configured_test_file_belongs_to_exactly_one_shard, MANIFEST=moved_manifest)
+print("M2 control passed: exactly-one-shard cannot see a misplaced browser test")
+PY
+```
+
+- [ ] **Step 5: Commit** — `git add tests/unit/ci/test_pytest_shard_manifest.py`, check `git diff --cached --stat`, subject `test(ci): browser tests must run in shards that install a browser`, trailer from Global Constraints.
+
+---
+
+### Task 7: E2E fixtures publish the completed run the Results viewer requires (Keystone)
+
+Spec Addendum A — finding A2, decision DA2, criteria 9–10. Runs after Task 6.
+
+**Files:**
+- Create: `tests/gui/results_viewer/test_complete_run_fixture.py`
+- Modify: `tests/_output_layout.py` (add `publish_complete_run_over_outputs` directly after `build_complete_viewer_run`)
+- Modify: `tests/e2e/gui/conftest.py` (`publish_coherent_terminal_evidence` delegates; new `_write_terminal_manifest`; `_build_sandbox` calls the manifest-only helper)
+- Modify: `tests/e2e/gui/test_filter_offcanvas.py` (`_seed_viewer_output` writes its mirror through `write_measurements_mirror`)
+
+**Interfaces:**
+- Produces: `tests._output_layout.publish_complete_run_over_outputs(root: Path, *, total_images: int) -> Path`; `tests/e2e/gui/conftest._write_terminal_manifest(output_dir: Path, *, total_images: int) -> Path`. `publish_coherent_terminal_evidence(output_dir, *, total_images) -> Path` keeps its signature and still returns the manifest path.
+
+- [ ] **Step 1: Write the failing test** — `tests/gui/results_viewer/test_complete_run_fixture.py`:
+
+```python
+"""The e2e fixture helper publishes a run the Results viewer calls complete."""
+
+from __future__ import annotations
+
+import hashlib
+from pathlib import Path
+
+import numpy as np
+import polars as pl
+import pytest
+
+from phenotypic import Image
+from phenotypic._gui.results_viewer._mutation_guard import output_mutations_disabled
+from phenotypic._gui.results_viewer._output_root import OutputRoot
+from phenotypic.sdk_ import deliverables_dir, measurements_csv_path, zarr_store_path
+from tests._output_layout import (
+    publish_complete_run_over_outputs,
+    write_master,
+    write_measurements_mirror,
+)
+
+
+def _seed(root: Path, images: list[str], dataset: str = "ds1") -> None:
+    """Write a master and mirror listing ``images`` under one dataset."""
+    frame = pl.DataFrame(
+        {
+            "Metadata_Dataset": [dataset] * len(images),
+            "Metadata_ImageName": images,
+            "Object_Label": list(range(1, len(images) + 1)),
+            "Shape_Area": [100.0 + index for index in range(len(images))],
+        }
+    )
+    write_master(root, frame)
+    write_measurements_mirror(root, frame)
+
+
+def _digests(root: Path) -> dict[str, str]:
+    """Return a content digest for every file below ``root``."""
+    return {
+        str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in sorted(root.rglob("*"))
+        if path.is_file()
+    }
+
+
+def test_published_outputs_are_a_complete_mutable_run(tmp_path: Path) -> None:
+    """Completion evidence is written without touching the fixture's deliverables."""
+    root = tmp_path / "run"
+    _seed(root, ["plate_001.tif", "plate_002"])
+    before = _digests(deliverables_dir(root))
+
+    publish_complete_run_over_outputs(root, total_images=2)
+
+    output = OutputRoot.discover(root, cache_root=tmp_path / "cache")
+    assert output.run_completion == "complete", output.run_advisories
+    assert not output_mutations_disabled(output)
+    assert _digests(deliverables_dir(root)) == before
+
+
+def test_a_store_the_fixture_wrote_is_reused_not_replaced(tmp_path: Path) -> None:
+    """A real store survives publication byte for byte."""
+    root = tmp_path / "run"
+    _seed(root, ["plate_001"])
+    store = zarr_store_path(root, "ds1", "plate_001")
+    store.parent.mkdir(parents=True, exist_ok=True)
+    pixels = np.random.default_rng(0).integers(0, 255, (64, 64, 3), dtype=np.uint8)
+    Image(pixels).save2zarr(store)
+    before = _digests(store)
+
+    publish_complete_run_over_outputs(root, total_images=1)
+
+    assert _digests(store) == before
+    output = OutputRoot.discover(root, cache_root=tmp_path / "cache")
+    assert output.run_completion == "complete", output.run_advisories
+
+
+def test_a_missing_core_file_fails_loudly(tmp_path: Path) -> None:
+    """A fixture without the CSV mirror is told what to write."""
+    root = tmp_path / "run"
+    _seed(root, ["plate_001"])
+    measurements_csv_path(root).unlink()
+
+    with pytest.raises(FileNotFoundError, match="measurements CSV"):
+        publish_complete_run_over_outputs(root, total_images=1)
+
+
+def test_a_miscounted_fixture_fails_loudly(tmp_path: Path) -> None:
+    """The declared image count must match the master."""
+    root = tmp_path / "run"
+    _seed(root, ["plate_001", "plate_002"])
+
+    with pytest.raises(AssertionError, match="master lists 2 images"):
+        publish_complete_run_over_outputs(root, total_images=3)
+```
+
+- [ ] **Step 2: Run it — expect a collection error**, `ImportError: cannot import name 'publish_complete_run_over_outputs'`:
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run pytest tests/gui/results_viewer/test_complete_run_fixture.py -q -o addopts= -p no:cacheprovider
+```
+
+- [ ] **Step 3: Add the helper** to `tests/_output_layout.py`, directly after `build_complete_viewer_run`. `master_measurements_parquet_path`, `measurements_csv_path` and `measurements_parquet_path` are already imported at the top of that module; `_promote_minimal_store` and `write_processing_state` are defined in it:
+
+```python
+def publish_complete_run_over_outputs(root: Path, *, total_images: int) -> Path:
+    """Publish a complete run over the master and mirror a fixture already wrote.
+
+    :func:`build_complete_viewer_run` builds a run from nothing. Fixtures that
+    hand-craft their own master frame, overlays or stores need the opposite:
+    completion evidence for exactly what is on disk, without rewriting any of
+    it. The ``(dataset, image)`` inventory is read from the master. A store the
+    fixture already wrote is reused as that image's artifact, and a minimal one
+    is promoted only where none exists, so a real multiscale store survives.
+
+    Publication follows the contract's own order: per-image success markers,
+    then processing state, then the aggregate proof, then the run proof.
+
+    Args:
+        root: Run output root whose ``deliverables/`` already holds the master
+            parquet and the ``measurements.{csv,parquet}`` mirror.
+        total_images: The number of images the fixture meant to publish,
+            asserted against the master so a fixture cannot drift silently.
+
+    Returns:
+        ``root``.
+
+    Raises:
+        FileNotFoundError: If a core aggregate file is missing.
+        AssertionError: If the master's image count differs from ``total_images``.
+    """
+    import polars as pl
+
+    from phenotypic._cli._cli_completion import (
+        publish_aggregate_snapshot,
+        publish_image_success,
+        publish_run_completion_evidence,
+    )
+    from phenotypic.sdk_ import zarr_store_path
+
+    core = {
+        "master parquet": master_measurements_parquet_path(root),
+        "measurements CSV": measurements_csv_path(root),
+        "measurements parquet": measurements_parquet_path(root),
+    }
+    missing = [name for name, path in core.items() if not path.is_file()]
+    if missing:
+        raise FileNotFoundError(
+            f"cannot publish a complete run over {root}: missing {missing}; write "
+            "the master with write_master and the mirror with write_measurements_mirror"
+        )
+    images = (
+        pl.read_parquet(core["master parquet"])
+        .select("Metadata_Dataset", "Metadata_ImageName")
+        .unique()
+        .sort(["Metadata_Dataset", "Metadata_ImageName"])
+    )
+    assert images.height == total_images, (
+        f"master lists {images.height} images, fixture declared {total_images}"
+    )
+    work_ids: dict[str, dict[str, str]] = {}
+    for dataset, image in images.iter_rows():
+        stem = Path(str(image)).stem
+        work_id = f"work-{dataset}-{stem}"
+        store = zarr_store_path(root, dataset, stem)
+        if not (store / "zarr.json").is_file():
+            store = _promote_minimal_store(
+                root, dataset=dataset, stem=stem, work_id=work_id
+            )
+        publish_image_success(
+            root,
+            work_id=work_id,
+            dataset=dataset,
+            relative_image_path=f"{stem}.tif",
+            image_stem=stem,
+            mode="full",
+            attempt_id=f"attempt-{stem}",
+            lifecycle_epoch="local",
+            artifacts={"store": store},
+        )
+        work_ids.setdefault(dataset, {})[f"{stem}.tif"] = work_id
+    write_processing_state(root, work_ids=work_ids)
+    publish_aggregate_snapshot(
+        root,
+        source_work_ids=[
+            work_id for per_dataset in work_ids.values() for work_id in per_dataset.values()
+        ],
+    )
+    publish_run_completion_evidence(root, execution_epoch="local")
+    return root
+```
+
+- [ ] **Step 4: Run it — expect `4 passed`** (same command as Step 2).
+
+- [ ] **Step 5: Prove each test can fail** — make each temporary edit below in `tests/_output_layout.py`, run the Step 2 command, confirm the named test fails, and revert before the next one. Afterwards, `git diff tests/_output_layout.py` must show only the new function.
+  - Comment out the `publish_run_completion_evidence(...)` call → `test_published_outputs_are_a_complete_mutable_run` and `test_a_store_the_fixture_wrote_is_reused_not_replaced` fail.
+  - Change `if not (store / "zarr.json").is_file():` to `if True:` → `test_a_store_the_fixture_wrote_is_reused_not_replaced` fails.
+  - Delete the `assert images.height == total_images` statement → `test_a_miscounted_fixture_fails_loudly` fails.
+  - Delete the `raise FileNotFoundError(...)` (keep the `if`, body `pass`) → `test_a_missing_core_file_fails_loudly` fails.
+
+- [ ] **Step 6: Wire the e2e helper** in `tests/e2e/gui/conftest.py`:
+  - Add `from tests._output_layout import publish_complete_run_over_outputs` after `from phenotypic.sdk_ import manifest_json_path`.
+  - Replace the whole `publish_coherent_terminal_evidence` function with these two functions:
+
+```python
+def publish_coherent_terminal_evidence(
+    output_dir: Path,
+    *,
+    total_images: int,
+) -> Path:
+    """Publish a completed run over the outputs an E2E fixture wrote.
+
+    Mutation-capable Results fixtures must model a completed run rather than
+    relying on the viewer to infer write authority from deliverables. Run state
+    is resolved from ``processing_state.json`` and the per-image, aggregate and
+    run proofs, so a manifest alone reads as ``incomplete`` and every persistent
+    control renders disabled. This writes the manifest, then the whole evidence
+    chain through :func:`tests._output_layout.publish_complete_run_over_outputs`.
+
+    Args:
+        output_dir: Full-run output root whose master and
+            ``measurements.{csv,parquet}`` mirror are already written.
+        total_images: Number of images the fixture's master lists.
+
+    Returns:
+        Canonical manifest path.
+    """
+    manifest = _write_terminal_manifest(output_dir, total_images=total_images)
+    publish_complete_run_over_outputs(output_dir, total_images=total_images)
+    return manifest
+
+
+def _write_terminal_manifest(output_dir: Path, *, total_images: int) -> Path:
+    """Write the terminal manifest, and nothing else.
+
+    ``_build_sandbox`` calls this directly: its output's master is a zero-byte
+    placeholder, not a run any viewer can bind, so it carries no completion
+    evidence. Fixtures that seed a real master call
+    :func:`publish_coherent_terminal_evidence` instead.
+
+    Args:
+        output_dir: Output root to write the manifest under.
+        total_images: Number of images the manifest reports as completed.
+
+    Returns:
+        Canonical manifest path.
+    """
+    target = manifest_json_path(output_dir)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "execution_mode": "local",
+                "is_complete": True,
+                "total_images": total_images,
+                "completed": total_images,
+                "failed": 0,
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    return target
+```
+
+  - In `_build_sandbox`, change `publish_coherent_terminal_evidence(output_dir, total_images=2)` to `_write_terminal_manifest(output_dir, total_images=2)`.
+
+- [ ] **Step 7: Fix the one fixture without a CSV mirror** — in `tests/e2e/gui/test_filter_offcanvas.py`:
+  - Add `from tests._output_layout import write_measurements_mirror` to the module imports, after the `from tests.e2e.gui.conftest import (...)` block.
+  - In `_seed_viewer_output`, replace the local import block `from phenotypic.sdk_ import (master_measurements_parquet_path, measurements_parquet_path,)` with `from phenotypic.sdk_ import master_measurements_parquet_path`.
+  - Replace these lines:
+
+```python
+    master = _build_master()
+    master_path = master_measurements_parquet_path(out)
+    mirror_path = measurements_parquet_path(out)
+    master_path.parent.mkdir(parents=True, exist_ok=True)
+    master.write_parquet(master_path)
+    master.write_parquet(mirror_path)
+```
+
+  with:
+
+```python
+    master = _build_master()
+    master_path = master_measurements_parquet_path(out)
+    master_path.parent.mkdir(parents=True, exist_ok=True)
+    master.write_parquet(master_path)
+    write_measurements_mirror(out, master)
+```
+
+- [ ] **Step 8: Check every real fixture seeds a complete run** — no browser needed. Expected: 7 fixture lines with `complete` and `mutations_enabled=True`, plus the viv real-store line:
+
+```bash
+PLAYWRIGHT=1 QT_QPA_PLATFORM=offscreen uv run python - <<'PY'
+import importlib, os, sys, tempfile
+from pathlib import Path
+
+sys.path.insert(0, ".")
+import tests.e2e.gui.conftest as conftest
+from phenotypic._gui.results_viewer._mutation_guard import output_mutations_disabled
+from phenotypic._gui.results_viewer._output_root import OutputRoot
+
+def seeded_outputs(sandbox: Path):
+    for master in sorted(sandbox.rglob("master_measurements.parquet")):
+        if master.stat().st_size:          # skip _build_sandbox's zero-byte placeholder
+            yield master.parent.parent
+
+def check(label: str, sandbox: Path, tmp: Path) -> None:
+    for out in seeded_outputs(sandbox):
+        root = OutputRoot.discover(out, cache_root=tmp / "cache")
+        enabled = not output_mutations_disabled(root)
+        print(f"{label} {out.name}: completion={root.run_completion} mutations_enabled={enabled}")
+        if root.run_completion != "complete" or not enabled:
+            raise SystemExit(f"{label}: not a complete mutable run: {root.run_advisories}")
+
+cases = {
+    "test_analysis_app": lambda m, s: m._seed_analysis_output(s),
+    "test_deliverables_standalone_e2e": lambda m, s: m._seed_full_run(s),
+    "test_filter_offcanvas": lambda m, s: m._seed_viewer_output(s),
+    "test_heatmap_tab": lambda m, s: m._seed_master_df_in_output(s, m._default_master_df()),
+    "test_qc_review_splitter": lambda m, s: m._seed_review_output(s),
+    "test_qc_tab": lambda m, s: m._seed_real_output(s),
+    "test_radial_triage": lambda m, s: m._seed_real_output(s),
+}
+for name, seed in cases.items():
+    module = importlib.import_module(f"tests.e2e.gui.{name}")
+    tmp = Path(tempfile.mkdtemp(prefix=f"fixture-{name}-"))
+    sandbox = conftest._build_sandbox(tmp)
+    seed(module, sandbox)
+    check(name, sandbox, tmp)
+
+viv = importlib.import_module("tests.e2e.gui.test_viv_codec_reads_a_real_store")
+tmp = Path(tempfile.mkdtemp(prefix="fixture-viv-"))
+sandbox = Path(viv._build_viv_sandbox(tmp))
+check("test_viv_codec_reads_a_real_store", sandbox, tmp)
+store = next(sandbox.rglob("*.ome.zarr"))
+size = sum(p.stat().st_size for p in store.rglob("*") if p.is_file())
+print(f"viv real store kept: {size} bytes")
+assert size > 1_000_000, "the fixture's multiscale store was replaced by a minimal one"
+PY
+```
+
+- [ ] **Step 9: E2E run** (Playwright chromium is installed locally; it may run longer than one 10-minute command — run it in the background and wait rather than narrowing it):
+
+```bash
+PLAYWRIGHT=1 QT_QPA_PLATFORM=offscreen uv run pytest tests/e2e/gui -m "not ci_flaky" -q -o addopts= -p no:cacheprovider -n 4
+```
+
+Task 2's run on this machine (`/tmp/task2-e2e.log`) was `7 failed, 96 passed, 60 skipped`. Its failures were: `test_analysis_app.py` ×2, `test_viv_facade_renders.py` ×3 and `test_builder_preview_viv.py::test_the_objmap_channel_hides_the_image_layer` (macOS GL, failing identically on `main`), and `test_builder_preview_viv.py::test_the_overlay_channel_loads_both_layers` (xdist temp-path contention; passes alone).
+
+Expected now: both `test_analysis_app.py` tests pass, and no failure outside that list. Rerun any other failure alone before attributing it. Report the exact failure list.
+
+- [ ] **Step 10: Test surface** with `<label>=task7` (the command is in the shared context) — expect no failures, 16 skipped, and `3010 passed` (Task 1's 3006 plus the 4 new tests).
+
+- [ ] **Step 11: Commit** — `git add tests/gui/results_viewer/test_complete_run_fixture.py tests/_output_layout.py tests/e2e/gui/conftest.py tests/e2e/gui/test_filter_offcanvas.py`, check `git diff --cached --stat`, subject `test(e2e): fixtures publish the completed run the Results viewer requires`, trailer from Global Constraints.
+
+---
+
+### Task 8: The screenshot-capture job certifies the run it seeds (Leaf)
+
+Spec Addendum A — finding A3, decision DA3, criterion 11. Runs after Task 7.
+
+**Files:**
+- Modify: `scripts/capture_gui_tutorial_screenshots.py` (the `publish_aggregate_snapshot` call in `_seed_error_triage_labels`)
+
+**Interfaces:**
+- Consumes: `phenotypic._cli._cli_completion._current_success_work_ids(output_dir, work_ids) -> list[str]` and `phenotypic._cli._cli_state_management.load_processing_state(output_dir)`. Produces nothing new.
+
+The harness below runs the script's dataset → CLI → seeding path in a temp directory, so no tracked screenshot is touched. It is used twice, unchanged: once before the edit (RED), once after (GREEN). Save it as `/tmp/capture_seed_harness.py` — outside the repository, never committed:
+
+```python
+"""Run capture_gui_tutorial_screenshots' dataset -> CLI -> seeding path in a temp dir."""
+
+import json
+import sys
+import tempfile
+import types
+from pathlib import Path
+
+SCRIPT = Path("scripts/capture_gui_tutorial_screenshots.py").resolve()
+module = types.ModuleType("capture_harness")
+module.__file__ = str(SCRIPT)
+sys.modules["capture_harness"] = module
+exec(compile(SCRIPT.read_text(encoding="utf-8"), str(SCRIPT), "exec"), module.__dict__)
+
+base = Path(tempfile.mkdtemp(prefix="capture-seed-"))
+module.REPO_ROOT = base  # build_tutorial_dataset prints DATASET_DIR relative to REPO_ROOT
+module.DATASET_DIR = base / "_dataset"
+module.PLATES_DIR = module.DATASET_DIR / "plates"
+module.METADATA_CSV = module.DATASET_DIR / "metadata.csv"
+module.PIPELINE_JSON = module.DATASET_DIR / "pipeline.json.pht-pipe"
+module.OUTPUT_DIR = module.DATASET_DIR / "results"
+module.build_tutorial_dataset(force=True)
+module.run_cli_once()
+module._seed_error_triage_labels()
+
+from phenotypic._cli._cli_completion import _current_success_work_ids
+from phenotypic._cli._cli_state_management import load_processing_state
+from phenotypic.sdk_._digests import canonical_digest
+from phenotypic.sdk_._io_constants import aggregate_publication_marker_path
+
+out = module.OUTPUT_DIR
+authorized = _current_success_work_ids(out, load_processing_state(out).config.get("work_ids", {}))
+marker = json.loads(aggregate_publication_marker_path(out).read_text(encoding="utf-8"))
+print(f"authorized images: {len(authorized)}; marker source_image_count: {marker['source_image_count']}")
+print(f"source_set_digest matches authorized set: {marker['source_set_digest'] == canonical_digest(sorted(authorized))}")
+```
+
+- [ ] **Step 1: Reproduce the CI failure (RED)** — expect it to end with `TypeError: publish_aggregate_snapshot() missing 1 required keyword-only argument: 'source_work_ids'`, after `[cli]   done`:
+
+```bash
+QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg uv run python /tmp/capture_seed_harness.py
+```
+
+- [ ] **Step 2: Fix the call** — in `_seed_error_triage_labels`, replace
+
+```python
+    from phenotypic._cli._cli_completion import (
+        publish_aggregate_snapshot,
+        publish_run_completion_evidence,
+    )
+
+    publish_aggregate_snapshot(OUTPUT_DIR)
+```
+
+with
+
+```python
+    from phenotypic._cli._cli_completion import (
+        _current_success_work_ids,
+        publish_aggregate_snapshot,
+        publish_run_completion_evidence,
+    )
+    from phenotypic._cli._cli_state_management import load_processing_state
+
+    # The aggregate proof must be GIVEN the source set the master was built
+    # from (eadf0fdf5 made it a required argument). This tutorial output is one
+    # finished CLI run with no rolling input, so that set is the run's
+    # authorized success set -- the derivation sdk_/_hdf_to_zarr.py uses for a
+    # finished tree.
+    state = load_processing_state(OUTPUT_DIR)
+    if state is None:
+        raise RuntimeError(
+            f"no processing state under {OUTPUT_DIR}; run the CLI first"
+        )
+    source_work_ids = _current_success_work_ids(
+        OUTPUT_DIR, state.config.get("work_ids", {})
+    )
+    if not source_work_ids:
+        raise RuntimeError(
+            f"no marker-authorized images under {OUTPUT_DIR} to certify"
+        )
+    publish_aggregate_snapshot(OUTPUT_DIR, source_work_ids=source_work_ids)
+```
+
+The file is CRLF in the working tree; a multi-line exact-match edit needs `\r\n` (see the shared context). Confirm with `git diff --stat` that only this hunk changed.
+
+- [ ] **Step 3: Run the harness again (GREEN)** — expect `[seed] labeled 12 smallest-Size_Area objects as 'background_noise' and reviewed all QC image groups`, then `authorized images: 3; marker source_image_count: 3` and `source_set_digest matches authorized set: True`.
+
+- [ ] **Step 4: WORKFLOWS gate** — `uv run python scripts/check_workflows_md.py -v` exits 0 (it AST-walks the capture script).
+
+- [ ] **Step 5: Commit** — `git add scripts/capture_gui_tutorial_screenshots.py`, check `git diff --cached --stat`, subject `fix(gui-capture): certify the seeded run's authorized source set`, trailer from Global Constraints.
 
 ---
 
