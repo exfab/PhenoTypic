@@ -39,8 +39,10 @@ from phenotypic.sdk_ import (
     datasets_needing_migration,
     image_record_path,
     load_image_from_store,
+    deliverables_dir,
     metadata_migration_authority,
     phenotypic_cache_dir,
+    processing_state_path,
     zarr_store_path,
 )
 from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON, valid_staged_store
@@ -603,3 +605,299 @@ def test_delete_sources_reclaims_only_after_the_markers_validate(
     )
     assert reclaim_seal["deletion_requested"] is True
     assert reclaim_seal["clean"] is True
+
+
+# ---------------------------------------------------------------------------
+# P7 Task 2b -- the v0.17.3 floor shape
+# ---------------------------------------------------------------------------
+
+def _build_v0_17_3_tree(workspace: Path) -> Path:
+    """Return a tree in the **pre-markers** shape, built by the real CLI.
+
+    MIG-15: nothing in ``tests/`` builds this today. ``make_markerless`` is the
+    closest and is **not** it -- it sets ``success_markers_required = False``
+    (present, falsey) and **retains content-derived ``work_ids``**, so it is a
+    modern tree with its evidence stripped rather than a tree from before the
+    concepts existed. A test built on it exercises ``_configured_work_id``'s
+    *hit* path, which is the blind spot MIG-10 found.
+
+    The floor shape, per U-6's ruling that detection is by shape and not by a
+    version number: ``version="2.0.0"``, **no ``work_ids`` key**, **no**
+    ``success_markers_required`` key, ``datasets.<ds>.completed`` populated,
+    per-image ``.h5``, no store, no ``image_complete/``.
+    """
+    from tests.unit.sdk_._migration_fixtures import (
+        build_completed_run,
+        demote_run_to_hdf,
+        run_stems,
+    )
+
+    output = build_completed_run(workspace, ("a", "b"))
+    stems = run_stems(output)
+    demote_run_to_hdf(output, keep_markers=False)
+
+    path = processing_state_path(output)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["version"] = "2.0.0"
+    config = payload.get("config", {})
+    # The two keys whose ABSENCE is the shape. `pop`, not set-to-falsey:
+    # signal 5 keys on `work_ids` being absent, and a present-but-empty dict
+    # would clear it while describing a tree that never existed.
+    config.pop("work_ids", None)
+    config.pop("success_markers_required", None)
+    payload["config"] = config
+    for entry in payload.get("datasets", {}).values():
+        entry["completed"] = [f"{stem}.png" for stem in stems]
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    # `demote_run_to_hdf` writes `LEGACY_METADATA_CSV` into the deliverables,
+    # and that snapshot names `img.png` / `img2.png` -- not this run's `a`/`b`.
+    # `build_completed_run` was invoked with **no** `--metadata`, so the tree it
+    # produced had no snapshot at all; the demotion adds one that contradicts
+    # the state beside it. Left in place it admits an image set disjoint from
+    # the inputs, and a later resume refuses on continuation compatibility
+    # before reading a single record -- which looks exactly like a reuse
+    # failure and is not one.
+    snapshot = deliverables_dir(output) / "metadata.csv"
+    snapshot.unlink(missing_ok=True)
+    return output
+
+
+def test_a_pre_markers_tree_converts_end_to_end(tmp_path: Path) -> None:
+    """CAN-7 / U-1. The floor predates markers AND stores.
+
+    This is the shape that must work, not an edge case -- and it is built
+    through the **real** HDF migrator, because a hand-planted fixture cannot
+    catch the class of drift that let the gap survive the first draft.
+
+    **What this test is actually deciding.** The round-2 reversal argued the
+    promoter must be ported because it mints the content-derived id a resume
+    re-derives. U-10 dissolved that: a record marked ``PROVENANCE_MIGRATED``
+    skips the ``work_id`` comparison entirely (``sdk_/_run_state.py:587``), and
+    Task 2 stamps that on every record it writes. The reason U-10 left standing
+    is narrower -- that ``datasets.<ds>.completed`` is the only record of what
+    finished, so migrate needs it to know which images to publish for.
+
+    But the shipped migrator already seeds ``work_ids`` with
+    ``_migration_work_id`` (``_cli_migrate.py:634``), already publishes a
+    record per converted ``.h5`` (``_cli_migrate_image.py:589``), and already
+    publishes run-completion evidence (``_cli_migrate.py:1264``). So this test
+    asks whether any port is needed at all, rather than assuming one is.
+    """
+    from phenotypic.sdk_ import resolve_run_state
+
+    tree = _build_v0_17_3_tree(tmp_path)
+    config = json.loads(
+        processing_state_path(tree).read_text(encoding="utf-8")
+    )["config"]
+    assert config.get("success_markers_required") is None
+    assert "work_ids" not in config
+
+    result = CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(tree)]
+    )
+    assert result.exit_code == 0, result.output
+
+    state = resolve_run_state(tree, depth="deep")
+    assert len(state.images) == 2, (
+        f"records were not produced for both images: {sorted(state.images)}"
+    )
+    assert state.completion == "complete", (
+        f"{state.completion}: {state.advisories}"
+    )
+
+
+
+
+def _initial_images(root: Path) -> dict[str, list[str]]:
+    """Return each dataset's ``initial_images``, sorted, straight from disk."""
+    payload = json.loads(
+        processing_state_path(root).read_text(encoding="utf-8")
+    )
+    return {
+        name: sorted(entry.get("initial_images", []))
+        for name, entry in payload.get("datasets", {}).items()
+    }
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "TOLERATED, not fixed (user ruling 2026-09-09). A migrated tree is "
+        "not continuable and should be restarted, so the admitted-set "
+        "comparison this pollution corrupts is never reached for such a tree "
+        "-- the migrated-tree refusal fires first. The defect is real (one "
+        "rule applied at two of its three sites in "
+        "`_ensure_migration_processing_state`) and is left alone because "
+        "repairing it rewrites machine state on the one phase that cannot be "
+        "rolled back, for zero behavioural gain. STRICT so that a future "
+        "repair turns this red and has to be acknowledged rather than "
+        "silently changing what the refusal above is documenting."
+    ),
+)
+def test_migrate_does_not_pollute_the_admitted_image_set(
+    tmp_path: Path,
+) -> None:
+    """A migrated tree must still be continuable. Today it is not.
+
+    ``initial_images`` is the run's own record of which files it admitted, and
+    it is the **only** thing a continuation compares against:
+    ``_validate_resume_input_images`` prefers it whenever it is non-empty
+    (``phenotypicCLI.py:752-755``) and matches it against a fresh scan of
+    ``--input`` by ``image.name``.
+
+    ``_ensure_migration_processing_state`` unions ``state_names`` into it
+    (``_cli_migrate.py:653``). On a tree whose ``work_ids`` does not already
+    carry the image *filename* -- the floor shape, where ``work_ids`` is
+    absent entirely -- ``state_names`` falls back to the bare **stem**
+    (``:638-648``), so the set becomes ``{a.png, b.png, a, b}``. The two stems
+    match no file on disk, and every later ``--mode full`` refuses with
+    *"Image set mismatch"* before reading a single record.
+
+    **This is why the CAN-7 investigation kept coming back inconclusive**: the
+    resume stops on the admitted set, which is upstream of any ``work_id``
+    comparison, so no amount of reasoning about provenance could reach it.
+
+    Non-floor trees are unaffected: their ``work_ids`` carries ``a.png``, the
+    lookup at ``:641-646`` hits, ``state_names`` holds filenames, and the union
+    is a no-op. The parametrisation below asserts both halves, so a fix that
+    silences the floor case by disabling the union everywhere would fail the
+    other arm.
+    """
+    tree = _build_v0_17_3_tree(tmp_path)
+    before = _initial_images(tree)
+    assert before == {"ds": ["a.png", "b.png"]}, before
+
+    result = CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(tree)]
+    )
+    assert result.exit_code == 0, result.output
+
+    assert _initial_images(tree) == before, (
+        "migrate added entries to the admitted image set; every later "
+        "continuation now refuses on an image set that names files which "
+        "have never existed on disk"
+    )
+
+
+def test_migrate_leaves_a_modern_trees_admitted_set_alone(
+    tmp_path: Path,
+) -> None:
+    """The control, and the arm a careless fix would break.
+
+    A tree whose ``work_ids`` already carries the image filename resolves
+    ``state_names`` to that filename, so the union is a no-op and this passes
+    today. It is here so that a fix which simply stops unioning cannot be
+    mistaken for a correct one: the fallback still has to reach an
+    ``initial_images`` that genuinely holds nothing for a stem.
+    """
+    from tests.unit.sdk_._migration_fixtures import (
+        build_completed_run,
+        demote_run_to_hdf,
+    )
+
+    tree = build_completed_run(tmp_path, ("a", "b"))
+    demote_run_to_hdf(tree, keep_markers=False)
+    (deliverables_dir(tree) / "metadata.csv").unlink(missing_ok=True)
+    before = _initial_images(tree)
+
+    result = CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(tree)]
+    )
+    assert result.exit_code == 0, result.output
+
+    assert _initial_images(tree) == before, before
+
+
+def test_a_migrated_tree_refuses_continuation_and_names_the_remedy(
+    tmp_path: Path,
+) -> None:
+    """The ruled behaviour (user, 2026-09-09), and the refusal contract.
+
+    A migrated tree is legitimately not continuable -- migration rebuilds the
+    admitted image set from the tree instead of from the original run's record
+    of it -- and the ruling is that such a tree *"should be considered as if
+    not ran then, and do a full restart"*.
+
+    What the code owed was not a repair but an **actionable** refusal. It
+    already declined; it declined with *"The input image set has changed"*,
+    which is true of the symptom and useless as advice. This asserts the
+    refusal now names `--restart`.
+
+    **Told, never done.** Clearing machine state and reprocessing every image
+    is a destructive step costing hours; firing it automatically from a
+    condition the user did not ask about is the hidden state transition U-7
+    refused, and worse than U-7's case, which destroyed nothing.
+    """
+    tree = _build_v0_17_3_tree(tmp_path)
+    migrated = CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(tree)]
+    )
+    assert migrated.exit_code == 0, migrated.output
+    assert (
+        phenotypic_cache_dir(tree) / "migration_manifest.json"
+    ).is_file(), "the signal this refusal keys on is absent"
+
+    resumed = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--pipeline",
+            str(tmp_path / "pipeline.json"),
+            "--input",
+            str(tmp_path / "ds"),
+            "-o",
+            str(tree),
+            "--njobs",
+            "1",
+            "--skip-validation",
+            "--force-local",
+        ],
+    )
+
+    assert resumed.exit_code == 1, resumed.output
+    assert "--mode migrate" in resumed.output
+    assert "--restart" in resumed.output, (
+        "the refusal must name the command that fixes it; a refusal the user "
+        f"cannot act on is the bug class this change exists to remove\\n{resumed.output}"
+    )
+
+
+def test_an_ordinary_image_set_change_keeps_its_own_message(
+    tmp_path: Path,
+) -> None:
+    """The control. A non-migrated tree must not be told to restart.
+
+    An image-set mismatch on a forward tree usually means the user moved or
+    deleted inputs, and `--restart` there would destroy a run that is fine.
+    The migrated-tree advice is gated on the manifest precisely so it cannot
+    reach this case.
+    """
+    from tests.unit.sdk_._migration_fixtures import build_completed_run
+
+    tree = build_completed_run(tmp_path, ("a", "b"))
+    assert not (
+        phenotypic_cache_dir(tree) / "migration_manifest.json"
+    ).is_file()
+    (tmp_path / "ds" / "a.png").unlink()
+
+    resumed = CliRunner().invoke(
+        phenotypic_cli,
+        [
+            "--pipeline",
+            str(tmp_path / "pipeline.json"),
+            "--input",
+            str(tmp_path / "ds"),
+            "-o",
+            str(tree),
+            "--njobs",
+            "1",
+            "--skip-validation",
+            "--force-local",
+        ],
+    )
+
+    assert resumed.exit_code == 1, resumed.output
+    assert "--restart" not in resumed.output, (
+        "a forward tree with a changed input set was told to restart, which "
+        f"would destroy a run that is fine\\n{resumed.output}"
+    )

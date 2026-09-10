@@ -681,7 +681,79 @@ would lose the newer record's stages. The rename-aside and revert path are Task 
 
 ---
 
-## Task 2b: Port the legacy promoter into migrate (CAN-7, U-1)
+## Task 2b: ~~Port the legacy promoter into migrate~~ — **RETIRED** (CAN-7, U-1)
+
+> ### ⛔ RETIRED 2026-09-09, and the reason is not that the analysis was wrong
+>
+> **Every argument below is a correct analysis of a question that no longer has a
+> consumer.** The round-2 reversal, U-10's re-argument, and the morning's work on the
+> `provenance` parameter are all sound; what changed is that the thing they were protecting
+> stopped existing.
+>
+> **User ruling:** a migrated tree *"can't be continued … it should be considered as if not
+> ran then, and do a full restart"*.
+>
+> ⚠ **The scope is narrower than "nothing resumes a migrated tree", and getting that wrong
+> would retire a guarantee that still holds.** A legacy tree **with markers** migrates and
+> then continues cleanly today, doing no work on the next full run — pinned by
+> `test_the_migrated_tree_does_no_work_on_the_next_full_run` against the
+> `finished_legacy_run` fixture (`tests/unit/sdk_/conftest.py:66-78`,
+> `demote_run_to_hdf(keep_markers=True)`), which passes. Its `work_ids` carry real image
+> filenames, so nothing pollutes the admitted set and CAN-7 is upheld *for real* on that
+> population.
+>
+> The population the ruling covers is the **pre-markers floor tree**, whose `work_ids` is
+> absent before migrate and stem-seeded after it. **That** tree cannot continue, and that is
+> what is now accepted rather than repaired.
+>
+> So: whether a **floor** tree's records' `work_id`s match on resume has no consumer,
+> because no floor tree resumes. The machinery for making them match — the port, and the
+> `provenance` parameter that replaced it — existed for that population and retires with
+> it.
+>
+> **CAN-7 is not abandoned. It is upheld where it can be and satisfied vacuously where it
+> cannot.** On a marker-bearing legacy tree it still means what it always meant, and the
+> test above proves it. On a floor tree the invariant *"must not reprocess from source"* has
+> been withdrawn by ruling — reprocessing is the specified behaviour — so there is no guard
+> to drop, only one whose subject is gone.
+>
+> **What retires with it:** the port itself, the `provenance` parameter on
+> `publish_image_success` that replaced it, and MIG-10's untested `_configured_work_id`
+> fall-through — that arm's only consequence was a resume that will not happen. (The
+> *fixture* defect behind MIG-10 is real and independent; Entry 75.)
+>
+> **What deliberately stays put, and must not be tidied away:**
+> `_migrate_legacy_success_evidence` (`phenotypicCLI.py:571`), its predicate
+> `_requires_legacy_success_migration` (`:555`), the `--mode full` dispatch (`:2417-2426`)
+> and the `process_only_layer` arm that follows it (`:2427-2447`). Each was work in service
+> of a resume that will not happen, so **removing them is neither required nor safe to do
+> casually** — the arm in particular is live forward-path publication behaviour whose
+> deletion Step 1 would have caused silently.
+>
+> **What was built instead**, in Task 3's file and `phenotypicCLI.py`: an *actionable
+> refusal*. A migrated tree that cannot continue now says so and names `--restart`, keyed on
+> `.phenotypic/migration_manifest.json`. Told, never done — an automatic clear-and-reprocess
+> is the hidden state transition U-7 refused, and worse, since U-7's case destroyed nothing.
+>
+> **One test was retired with it, by the ruling and not by inconvenience.**
+> `test_a_migrated_pre_markers_tree_is_not_reprocessed` asserted *"a migrated floor tree
+> must not reprocess every image from source"* — CAN-7's protection, stated as an
+> assertion. The ruling makes reprocessing from source the **specified** behaviour, so the
+> test asserted the opposite of what the code is now required to do. Deleted rather than
+> inverted: `test_a_migrated_tree_refuses_continuation_and_names_the_remedy` already covers
+> the behaviour that replaced it, and two tests on one behaviour is how they drift apart.
+>
+> Recorded here because *a test asserting CAN-7's protection, removed in the change that
+> satisfies CAN-7 vacuously*, reads as a weakened suite to anyone who finds it without this
+> paragraph.
+>
+> What survives and should not be confused with it:
+> `test_a_pre_markers_tree_converts_end_to_end` still asserts that a floor tree **migrates**
+> to `complete` — that is migration working, and it is untouched by the ruling, which
+> concerns only what happens *afterwards*.
+>
+> Read the rest of this task as history. Do not implement it.
+
 
 > ### Reversed in round 2 — read this before anything else
 >
@@ -1093,11 +1165,33 @@ def test_an_unmarked_record_is_still_fenced_on_work_id(tmp_path):
     assert valid_image_success(tree, dataset, image.stem) is False
 ```
 
-- [ ] **Step 3: Make Task 3's deletion conditional, and give `datasets.failed` a home**
+- [ ] **Step 3: Give `datasets.failed` a home** *(the conditionality is already built)*
 
-Never delete `datasets.{completed,failed,started}` in the same pass that failed to consume
-them. Delete only after the tree has records for that dataset — cheap, and it converts a
-silent data loss into a loud refusal if a future shape slips through.
+> ### ⚠ HALF OF THIS STEP IS DONE, and in a finer form than it describes (2026-09-09)
+>
+> Task 3 shipped the conditionality as `2660e21f`. **Do not implement it again** — the
+> coarse version this step describes would be a *regression* over what is there, because
+> it treats three keys alike and they are not:
+>
+> | Key | What Task 3 does | Why |
+> |---|---|---|
+> | `started` | dropped **unconditionally** | Dead key. P5 stopped writing it, and `grep -rn "ProcessingStateKey.STARTED" src/` finds **no reader** — every other `"started"` is an *event-log status*, not a read of this key. The no-event-log fallback (`_cli_state_management.py:183-187`) reads `completed`, `failed`, `errors`, `initial_images` and **not** `started`. Nothing for a condition to protect. |
+> | `completed` | dropped only when **every stem it names has a record** (`_completed_is_fully_consumed`) | Per **stem**, not per dataset. `completed: ["a.tif"]` with a record for `b.tif` only must NOT be dropped — that deletes the tree's one statement that `a` finished on the strength of `b`. Reads through `read_image_record`, the same reader `apply_per_image_records` writes through, so the predicate cannot disagree with the pass that produced the records. |
+> | `failed` | **retained whole** | ⚠ **Not** because it cannot be re-aggregated — that claim is false: `load_processing_state` takes the event-derived `DatasetState` *wholesale* (`:176-179`), `failed` included. It is the **fallback** at `:181-187`: with no event log there is nowhere else to get it. That is the pre-markers shape, which is this task's whole subject. |
+>
+> **So this step's remaining work is the second half only: give `datasets.failed` a
+> destination.** Convert each entry to a `terminal_failures.jsonl` record via
+> `append_terminal_failure` (`_cli_failure_tracker.py:344`, **not** `:353`), then drop the
+> key — conditioned on that conversion having run, exactly as the original text said.
+>
+> **And the two halves compose without either retrofitting the other.** This task's
+> promoter publishes records for the images `datasets.<ds>.completed` names; Task 3's
+> predicate then *sees* those records on the same run and permits the deletion it withheld.
+> Order the promoter before `convert_processing_state` and both keys clear in one pass.
+>
+> One signature note: `append_terminal_failure` takes `failed_stage: str` and
+> `exception: Exception` as **required** keyword arguments. A floor tree has neither, so
+> construct an exception rather than passing a message string.
 
 **`datasets.failed` has no destination, and the conditional deletion does not cover it
 (MIG-16).** Records are success-only, so conditioning on "records exist" discards the

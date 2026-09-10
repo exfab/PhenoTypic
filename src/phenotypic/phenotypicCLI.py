@@ -711,6 +711,45 @@ def _parse_slurm_args(slurm_args: Sequence[str]) -> dict:
     return parse_slurm_args(slurm_args)
 
 
+def _output_was_migrated(output_dir: Path) -> bool:
+    """Return whether ``--mode migrate`` has converted this output.
+
+    **Keyed on the migration manifest**, which migrate writes at
+    ``.phenotypic/migration_manifest.json`` (``_cli_migrate.py:1708``) and
+    which nothing in ``src/`` ever unlinks. It is a *declared fact* rather
+    than an inference from a symptom, and two more obvious signals are both
+    wrong:
+
+    * ``PROVENANCE_MIGRATED`` on the per-image records says ``forward`` on
+      exactly these trees -- ``migrate_image_task`` publishes through
+      ``publish_image_success``, which has no ``provenance`` parameter and
+      takes ``publish_image_record``'s ``PROVENANCE_FORWARD`` default. Anyone
+      reaching for provenance here will find it, and find it wrong.
+    * ``work_ids`` being keyed by bare stem is the *symptom* of the admitted-set
+      pollution this refusal exists to explain, so keying on it would be
+      circular and would break the moment that defect is repaired.
+
+    Self-limiting in the right direction: ``clear_machine_state`` deletes the
+    manifest along with the rest of ``.phenotypic/``, so the restart this
+    refusal recommends ends the tree's migrated status rather than leaving a
+    permanent special case.
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        Whether a migration manifest is present. Never raises.
+    """
+    from phenotypic.sdk_ import phenotypic_cache_dir
+
+    try:
+        return (
+            phenotypic_cache_dir(output_dir) / "migration_manifest.json"
+        ).is_file()
+    except OSError:  # pragma: no cover - defensive
+        return False
+
+
 def _validate_resume_input_images(
     state, current_datasets, *, measure_only: bool = False
 ) -> tuple[bool, Optional[str]]:
@@ -2391,11 +2430,39 @@ def phenotypic_cli(
             )
             if not images_valid:
                 click.echo(f"Error: Cannot continue - {image_error}", err=True)
-                click.echo(
-                    "\nThe input image set has changed since the previous run. "
-                    "Continuation requires the same admitted input images.",
-                    err=True,
-                )
+                if _output_was_migrated(output_dir):
+                    # A migrated tree is not continuable, and that is the
+                    # ruled behaviour rather than a defect to route around
+                    # (user, 2026-09-09): it "should be considered as if not
+                    # ran then, and do a full restart". The refusal names the
+                    # command that does that, which is the same contract the
+                    # schema gate keeps -- a refusal the user can act on.
+                    #
+                    # Told, never done. Clearing machine state and
+                    # reprocessing every image is hours of compute and a
+                    # destructive step; firing it automatically from a
+                    # condition the user did not ask about is the hidden
+                    # state transition U-7 refused, and worse, because U-7's
+                    # case destroyed nothing.
+                    click.echo(
+                        "\nThis output was converted by `--mode migrate`, and "
+                        "a migrated tree cannot be continued: migration "
+                        "rebuilds the admitted image set from the tree rather "
+                        "than from the original run's record of it.\n"
+                        "Treat it as not yet run and start over:\n"
+                        f"    python -m phenotypic --restart --output {output_dir} ...\n"
+                        "This reprocesses every image. Existing stores under "
+                        "results/ and deliverables/ are kept until they are "
+                        "overwritten.",
+                        err=True,
+                    )
+                else:
+                    click.echo(
+                        "\nThe input image set has changed since the previous "
+                        "run. Continuation requires the same admitted input "
+                        "images.",
+                        err=True,
+                    )
                 sys.exit(1)
 
             try:
