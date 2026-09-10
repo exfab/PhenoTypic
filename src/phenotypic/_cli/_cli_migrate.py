@@ -54,6 +54,7 @@ from ._cli_migrate_image import (
     MigrationImageStageFailure,
     ReclaimResult,
     _configured_work_id,
+    _current_marker_digest,
     _existing_marker_identity,
     _migration_work_id,
     _source_artifact_state,
@@ -65,6 +66,11 @@ from ._cli_migrate_provenance import (
     classify_provenance_migration_target,
     execute_provenance_migration,
     provenance_migration_lifecycle_root,
+    target_kind_owns_machine_state,
+)
+from ._cli_migrate_state import (
+    migrate_machine_state,
+    revert_legacy_trees,
 )
 from ._cli_migrate_manifest import (
     MigrationImageSeal,
@@ -83,7 +89,9 @@ from ._cli_migrate_manifest import (
     valid_migration_reclaim_seal,
     write_migration_manifest,
 )
+from ._cli_identity import derive_processing_generation
 from ._cli_completion import (
+    _all_accepted_images_succeeded,
     publish_run_completion_evidence,
     valid_aggregate_snapshot,
     valid_run_completion,
@@ -111,6 +119,7 @@ from ._embedded_measurement_tables import embedded_measurement_table_matches
 from phenotypic.sdk_ import (
     BundleLayout,
     CommitGuard,
+    DIR_LEGACY_V2,
     MEASUREMENT_TABLE_RELATIVE_PATH,
     STORE_SUFFIX,
     aggregate_publication_marker_path,
@@ -674,11 +683,6 @@ def _ensure_migration_processing_state(
         (path for path in provenance_candidates if path.is_file()),
         output_dir / "pipeline.pht-pipe",
     )
-    inventory_payload = "\n".join(
-        f"{dataset}/{stem}:{work_id}"
-        for dataset, images in sorted(work_ids.items())
-        for stem, work_id in sorted(images.items())
-    )
     now = datetime.now(timezone.utc)
     metadata_snapshot = metadata_csv_deliverable_path(output_dir)
     state = ProcessingState(
@@ -693,9 +697,35 @@ def _ensure_migration_processing_state(
         config={
             "success_markers_required": True,
             "work_ids": work_ids,
-            "processing_generation": hashlib.sha256(
-                f"migration\n{inventory_payload}".encode()
-            ).hexdigest(),
+            # D7: the generation fences CONFIGURATION, never scope. This site
+            # folded the full `dataset/stem:work_id` inventory into the hash
+            # from `dd18d9c7` (2026-08-26) -- eight days before D7 was
+            # written -- so every migrated tree behaved the way D7 exists to
+            # prevent: each new image under a rolling input changed the
+            # generation, resetting live progress and fencing in-flight
+            # workers. A PRE-EXISTING defect, not a regression introduced by
+            # the change that names it.
+            #
+            # `per_image_config` is None because a converted tree never
+            # recorded one and migrate builds no `ExecutionConfig` (U-7).
+            # U-10's rule applies: mark what cannot be recovered rather than
+            # fabricate it. The per-image fence for these images comes from
+            # `provenance: "migrated"`, not from a manufactured digest.
+            "processing_generation": derive_processing_generation(
+                pipeline_sha256=_file_sha256(pipeline_path),
+                per_image_config=None,
+                restart_epoch=0,
+            ),
+            # P1's `requires_conversion` signal 4 is the ABSENCE of this key,
+            # and writing it closes signal 4 -- ONLY signal 4 (gate SPEC-B3).
+            # A migrated tree still carries `datasets.<ds>.completed`, which
+            # is signal 3 and fires first, so this does NOT yet make a fresh
+            # migration survive the next `--mode full`. Removing the derived
+            # sets is §4.2's job in P3+, for the forward writer and the
+            # migrator together; until then `requires_conversion` still
+            # returns CONVERT here, and `SCHEMA_GATE_ARMED` being False is
+            # the only reason nothing surfaces.
+            "restart_epoch": 0,
             "pipeline_sha256": _file_sha256(pipeline_path),
             "metadata_sha256": _file_sha256(metadata_snapshot),
             "include_dataset_column": True,
@@ -949,11 +979,35 @@ def _retained_reclaim_result(
     task: MigrationImageTask,
     result: MigrationImageResult | None,
 ) -> ReclaimResult:
-    """Record an exact no-op when the image barrier forbids deletion."""
-    try:
-        marker_digest = hashlib.sha256(task.marker_path.read_bytes()).hexdigest()
-    except OSError:
-        marker_digest = ""
+    """Record an exact no-op when the image barrier forbids deletion.
+
+    **Digests the RECORD, through the same helper the clean path uses.** This
+    site was the one read-back D1's sweep missed: the plan's consumer table
+    lists ``_cli_migrate.py`` and ``_cli_migrate_image.py`` as a single row
+    deferred to P7, but execution had to convert the second (it calls
+    ``publish_image_success``, which moved) and left this one behind. The pair
+    was split, and the halves then digested different files -- this one the
+    legacy marker, its validator
+    (``_cli_migrate_manifest._validate_reclaim_result``) the record.
+
+    On a migrating tree where the image was published, both exist with
+    different bytes, so the comparison appended *"reclaim result marker digest
+    does not match current bytes"* -- retaining the sources for a reason that
+    was an artifact of the split rather than the condition that caused it. It
+    failed safe and reported the wrong cause.
+
+    Neither of the two tests covering this function planted a marker OR a
+    record, so both digests were ``""``, ``retained_after_unclean_image`` was
+    True, and the disagreeing branch was never entered: **presence and
+    reachability differ by a branch.** Calling the shared helper rather than
+    re-deriving the digest here is the fix that keeps them from re-splitting.
+    """
+    work_id = (
+        result.work_id
+        if result is not None
+        else _configured_work_id(output_dir, task.dataset, task.stem)
+    )
+    marker_digest = _current_marker_digest(output_dir, task, work_id)
     hdf_state = _source_artifact_state(task.hdf_path)
     parquet_state = _source_artifact_state(task.measurement_path)
     intended = tuple(
@@ -968,11 +1022,7 @@ def _retained_reclaim_result(
         index=task.index,
         dataset=task.dataset,
         stem=task.stem,
-        work_id=(
-            result.work_id
-            if result is not None
-            else _configured_work_id(output_dir, task.dataset, task.stem)
-        ),
+        work_id=work_id,
         marker_digest=marker_digest,
         intended_deletions=intended,
         hdf_prestate=hdf_state,
@@ -1012,9 +1062,16 @@ def _publish_migration_aggregate(
     )
     if aggregate_path is None and embedded_tables_exist:
         raise RuntimeError("aggregate rebuild produced no measurements")
-    if not republish_aggregate(output_dir, commit_guard=commit_guard):
-        raise RuntimeError("aggregate marker publication returned false")
-    if valid_aggregate_snapshot(output_dir) is None:
+    # MIG-23. `republish_aggregate` now raises on its two faults and returns
+    # False only for the documented no-op -- a tree whose state does not
+    # require success markers, which a pre-markers archive is. Treating that
+    # False as fatal is what left eight of ten gate shapes with their stores
+    # written and the run reported as failed.
+    published = republish_aggregate(output_dir, commit_guard=commit_guard)
+    # Validate only what was published. Demanding a valid snapshot after a
+    # legitimate no-op was the same conflation one line down: there is no
+    # marker to validate on a tree that was never going to have one.
+    if published and valid_aggregate_snapshot(output_dir) is None:
         raise RuntimeError("aggregate marker validation failed")
 
 
@@ -1215,7 +1272,30 @@ def finalize_migration_attempt(
                 reason,
             )
 
-    if failure_category is None:
+    # Blocker 5. A converted tree whose run never finished is a real tree, not
+    # a failed migration: `work_ids` can claim two accepted images while only
+    # one carries a success marker, which is a run interrupted after its first
+    # image. `publish_run_completion_evidence` then raises "Current run does
+    # not have complete publication evidence", and this block's `except` turned
+    # that into a terminal `completion` failure for the entire conversion --
+    # with the stores already written, on the one phase that cannot be rolled
+    # back by reverting code.
+    #
+    # The raise is correct and stays. Publishing anyway would write a run proof
+    # asserting a run completed that did not. Migrate simply must not ask: it
+    # converts what is on disk and stops, `resolve_run_state` reports the tree
+    # `incomplete`, and a later run resumes or restarts.
+    #
+    # `is False` is the publisher's raise precondition exactly, and nothing
+    # wider. `_all_accepted_images_succeeded` reaches `False` only past
+    # `_walk_current_success` returning a mapping, which already implies a
+    # loadable state with `success_markers_required` -- so the two further
+    # disjuncts guarding that raise cannot fire on their own, and the legacy
+    # `None` arm, which publishes a state-free marker, keeps publishing.
+    may_assert_completion = failure_category is None and (
+        _all_accepted_images_succeeded(output_dir) is not False
+    )
+    if may_assert_completion:
         try:
             publish_run_completion_evidence(
                 output_dir,
@@ -1545,6 +1625,29 @@ def run_migrate(
                         dry_run=False,
                         commit_guard=provenance_commit_guard,
                     )
+                    # The fourth combination. `_run_migrate_owned` converts
+                    # machine state for a full run; this branch -- the local
+                    # arm for every OTHER kind -- did not, so a process tree
+                    # migrated locally got per-store provenance and nothing
+                    # else: no records, no state conversion, no master-CSV
+                    # deletion, no legacy-tree retention. `image_complete/`
+                    # survived and the schema gate still read CONVERT.
+                    #
+                    # AFTER the store upgrade, never before: MIG-11 mints
+                    # records FROM the outputs, and a store is only
+                    # projectable once its journal has been upgraded. Only
+                    # when the upgrade was clean -- minting records over a
+                    # partially-failed conversion would certify stores that
+                    # are not there.
+                    #
+                    # `direct_store` is excluded by kind, not by luck: its
+                    # lifecycle state is a hashed sibling, so converting here
+                    # would write `.phenotypic/` INSIDE the store, which that
+                    # kind's own contract forbids.
+                    if not failures and target_kind_owns_machine_state(
+                        target.kind
+                    ):
+                        migrate_machine_state(output_dir)
                 except Exception as exc:
                     mark_generation_failed(
                         lifecycle_root, generation, str(exc)
@@ -1768,6 +1871,27 @@ def _run_migrate_owned(
                     ),
                 )
             else:
+                # Convert every machine-state shape before the image
+                # tasks run: per-image records, the pre-D8 master CSV,
+                # `processing_state.json`, then retention.
+                #
+                # **Not for continuation.** Nothing downstream reads these
+                # records to decide what to skip: `discover_migration_tasks`
+                # derives the inventory from `results/` artifacts,
+                # `_migrate_image_result` runs every task unconditionally, and
+                # `publish_migrated_image_markers` is a producer of records,
+                # not a consumer. Ordering is also safe either way for the
+                # record contents -- `publish_image_record` unions `stages`
+                # (CAN-6 rule 1) and `_merge_stages` keeps the later entry --
+                # so neither sequence can lose a stage.
+                #
+                # What the order buys is the crash window. Converting first
+                # means an interruption between the two leaves a tree whose
+                # finished images already carry records, rather than one still
+                # holding only legacy markers with some images migrated past
+                # them. Re-running is the documented recovery either way; this
+                # makes the intermediate state the more converted one.
+                migrate_machine_state(output_dir)
                 results, stage_failures = _execute_migration_tasks(
                     output_dir,
                     tasks=tasks,
@@ -1998,6 +2122,77 @@ def _validate_migration_slurm_selection(
             "the scheduler owns migration worker parallelism."
         )
     _ = dry_run
+
+
+def _validate_migration_revert_selection(
+    *,
+    dry_run: bool,
+    delete_sources: bool,
+    slurm_args: Mapping[str, Any] | None,
+    njobs_was_explicit: bool,
+    wait: bool,
+) -> None:
+    """Reject options that cannot mean anything alongside ``--revert``.
+
+    A revert is one local rename of ``.phenotypic/legacy-v2/`` back over the
+    current trees. It converts nothing, so every option that describes *how to
+    convert* is not merely redundant here -- accepting it would let a user
+    believe they had asked for something the command never does.
+
+    ``--dry-run`` is refused rather than implemented: :func:`revert_legacy_trees`
+    has no preview seam, and a flag that silently reverts for real because its
+    dry run was ignored is the worst of the three options. The refusal names
+    the read-only alternative instead.
+    """
+    if dry_run:
+        raise click.UsageError(
+            "--revert cannot be combined with --dry-run. A revert has no "
+            f"preview mode; inspect the retained trees under {DIR_LEGACY_V2}/ "
+            "first."
+        )
+    if delete_sources:
+        raise click.UsageError(
+            "--revert cannot be combined with --delete-sources; a revert "
+            "converts nothing and deletes no sources."
+        )
+    if slurm_args is not None:
+        raise click.UsageError(
+            "--revert cannot be combined with --slurm; a revert is one local "
+            "rename and has no work to distribute."
+        )
+    if njobs_was_explicit:
+        raise click.UsageError(
+            "--revert cannot be combined with --njobs; a revert is one local "
+            "rename and has no work to parallelize."
+        )
+    # Named explicitly, because the revert arm returns before
+    # `_validate_migration_slurm_selection` -- the guard that otherwise
+    # rejects `--wait` without `--slurm`. Without this the flag would be
+    # accepted and ignored.
+    if wait:
+        raise click.UsageError(
+            "--revert cannot be combined with --wait; a revert is synchronous "
+            "and there is no scheduler attempt to wait for."
+        )
+
+
+def _run_migration_revert(output_dir: Path) -> int:
+    """Undo one migration by renaming the retained legacy trees back.
+
+    Both of :func:`revert_legacy_trees`'s refusals -- nothing retained, and a
+    record the retained trees do not cover -- are conditions a user can act
+    on, so they are reported as messages and a nonzero exit, never a
+    traceback.
+    """
+    try:
+        moved = revert_legacy_trees(output_dir)
+    except RuntimeError as exc:
+        click.echo(f"--mode migrate --revert: {exc}", err=True)
+        return 1
+    click.echo("")
+    click.echo(f"--mode migrate --revert: {output_dir}")
+    click.echo(f"  Restored {moved} retained legacy tree(s).")
+    return 0
 
 
 def _validated_submission_job_ids(submission: object) -> tuple[str, ...]:
@@ -2295,6 +2490,7 @@ def handle_migrate_mode(
     delete_sources: bool = False,
     slurm_args: Mapping[str, Any] | None = None,
     wait: bool = False,
+    revert: bool = False,
 ) -> int:
     """Run local or SLURM ``--mode migrate`` and return its exit semantics.
 
@@ -2312,11 +2508,22 @@ def handle_migrate_mode(
         delete_sources: Delete each provably-faithful source after conversion.
         slurm_args: Parsed SLURM arguments, or ``None`` for the local path.
         wait: Wait for a SLURM attempt's finalizer authority.
+        revert: Undo a previous migration by renaming the retained legacy
+            trees back, instead of converting anything.
 
     Returns:
         ``0`` on a clean local run, submitted dry run, submitted attempt, or
         waited successful terminal authority; ``1`` on local migration failure.
     """
+    if revert:
+        _validate_migration_revert_selection(
+            dry_run=dry_run,
+            delete_sources=delete_sources,
+            slurm_args=slurm_args,
+            njobs_was_explicit=njobs_was_explicit,
+            wait=wait,
+        )
+        return _run_migration_revert(output_dir)
     _validate_migration_slurm_selection(
         slurm_args=slurm_args,
         wait=wait,
@@ -2341,6 +2548,25 @@ def handle_migrate_mode(
             f"Could not classify migration target: {exc}"
         ) from exc
     provenance_only = target.kind != "full_run"
+    # A storeless target has no work for a store array to do, and the chain
+    # cannot describe what it WOULD do: `seal_provenance_migration` barriers
+    # store statuses and the finalizer reports upgrade counts, so a
+    # pre-markers process tree would come back "0 upgraded, succeeded" with
+    # the only real work -- the machine-state conversion -- invisible in its
+    # own terminal report.
+    #
+    # Two independent guards already refuse this shape, which is what says it
+    # is a topology mismatch and not an oversight in one place:
+    # `write_provenance_migration_manifest` raises on zero tasks, and the
+    # worker config loader's `target_kind` admits only `direct_store` and
+    # `process_tree` -- it cannot even parse a config naming this kind. The
+    # fix is to route the tree away from the array, not to weaken both.
+    if provenance_only and not target.stores:
+        raise click.UsageError(
+            f"--mode migrate --slurm has nothing to distribute for {output_dir}: "
+            "this target has no OME-Zarr stores to convert, only machine state. "
+            "Run it without --slurm."
+        )
     if provenance_only and delete_sources:
         raise click.ClickException(
             "--delete-sources is not supported for direct-store or "
