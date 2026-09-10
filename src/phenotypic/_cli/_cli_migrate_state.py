@@ -51,6 +51,8 @@ from typing import Final
 
 from phenotypic.sdk_ import (
     DIR_IMAGE_COMPLETE,
+    deliverables_dir,
+    results_dir,
     DIR_STAGE2_DONE,
     ProcessingStateKey,
     atomic_write_json,
@@ -61,6 +63,7 @@ from phenotypic.sdk_ import (
     source_image_stem,
 )
 from ._cli_identity import derive_processing_generation
+from phenotypic.sdk_.ngff_ import STORE_SUFFIX
 from phenotypic.sdk_._image_record import (
     PROVENANCE_MIGRATED,
     RECORD_VERSION,
@@ -71,15 +74,36 @@ from phenotypic.sdk_._image_record import (
 
 __all__ = [
     "LEGACY_MARKER_SEGMENTS",
+    "LEGACY_MASTER_CSV",
     "PlannedRecord",
     "PlannedState",
+    "apply_legacy_master_csv",
     "apply_per_image_records",
     "apply_processing_state",
+    "convert_legacy_master_csv",
     "convert_per_image_markers",
     "convert_processing_state",
+    "plan_legacy_master_csv",
     "plan_per_image_records",
     "plan_processing_state",
+    "unprojectable_stores",
 ]
+
+#: ``master_measurements.csv``. D8 deleted the constant, its path helper and
+#: its reader from ``sdk_`` -- the un-joined master is not the file a human
+#: opens -- so nothing public spells it any more and the on-disk half is this
+#: task's.
+#:
+#: **This is a second home for the name and should not stay one.**
+#: ``sdk_/_metadata_migration.py`` keeps ``_LEGACY_MASTER_MEASUREMENTS_CSV``
+#: private, with a comment explaining that the name must survive "in
+#: discovery" -- but its only user, ``_legacy_master_csv``, has **no caller**,
+#: so the discovery it describes does not happen. Reaching across a module
+#: boundary through that underscore is the shape this change has twice ruled
+#: against, so it is named here instead and flagged: the right consolidation
+#: is one public ``sdk_`` constant, which is a decision for whoever owns that
+#: file.
+LEGACY_MASTER_CSV: Final[str] = "master_measurements.csv" 
 
 #: ``stage3_complete`` is module-private in :mod:`~phenotypic.sdk_._schema_shape`
 #: -- P3 deleted the tree, so promoting its segment to a public constant would
@@ -542,3 +566,99 @@ def convert_processing_state(output_dir: Path) -> bool:
     if planned is None:
         return False
     return apply_processing_state(output_dir, planned)
+
+
+# ---------------------------------------------------------------------------
+# Task 4: the pre-D8 master CSV, and stores the projection cannot read
+# ---------------------------------------------------------------------------
+
+
+def plan_legacy_master_csv(output_dir: Path) -> Path | None:
+    """Return the pre-D8 ``master_measurements.csv`` to delete, or ``None``.
+
+    **Writes nothing**, so Task 5's ``--dry-run`` can render this deletion by
+    calling it alone -- the same seam the other two conversions use.
+
+    D8 removed the constant, the path helper and the reader from ``sdk_``: the
+    un-joined master is not the file a human opens, ``measurements.csv`` is.
+    What D8 could not do is remove the file from trees already written, which
+    is what this deletes.
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        The file's path when it exists, else ``None``.
+    """
+    candidate = deliverables_dir(output_dir) / LEGACY_MASTER_CSV
+    return candidate if candidate.is_file() else None
+
+
+def apply_legacy_master_csv(planned: Path | None) -> bool:
+    """Delete the planned legacy master CSV.
+
+    Takes the plan as data rather than re-deciding, so the file deleted is the
+    file the dry run named -- not one that appeared in between.
+
+    Args:
+        planned: :func:`plan_legacy_master_csv`'s result.
+
+    Returns:
+        Whether a file was deleted.
+    """
+    if planned is None:
+        return False
+    planned.unlink()
+    return True
+
+
+def convert_legacy_master_csv(output_dir: Path) -> bool:
+    """Delete a pre-D8 ``master_measurements.csv`` if the tree has one."""
+    return apply_legacy_master_csv(plan_legacy_master_csv(output_dir))
+
+
+def unprojectable_stores(output_dir: Path) -> tuple[str, ...]:
+    """Return stores whose embedded table cannot be projected, for an advisory.
+
+    **A reachable unhandled path, not a hypothetical.**
+    ``read_embedded_measurement_descriptor`` documents an absent descriptor as
+    *"a normal state, not a fault: a ``--mode process`` run never measures, and
+    a store written before embedded tables has none"* -- and
+    ``embedded_measurement_columns`` raises ``KeyError`` on exactly that state.
+    So the projection has a live crash path on trees this phase exists to
+    convert.
+
+    This enumerates them so migrate can say which stores it could not project,
+    per INV-VERDICT's rule that a doubtful reader degrades toward
+    ``incomplete`` rather than raising. **It does not skip them** -- the skip
+    belongs in the projection itself, which lives in ``_cli_finalize_run.py``
+    and is outside this task's files.
+
+    Writes nothing.
+
+    Args:
+        output_dir: Run output root.
+
+    Returns:
+        Store paths relative to ``output_dir``, sorted, for stores that
+        declare no measurement-table descriptor or no column list.
+    """
+    from phenotypic.sdk_ import embedded_measurement_columns
+
+    results = results_dir(output_dir)
+    if not results.is_dir():
+        return ()
+    unprojectable: list[str] = []
+    for store in sorted(results.rglob(f"*{STORE_SUFFIX}")):
+        if not store.is_dir():
+            continue
+        try:
+            embedded_measurement_columns(store)
+        except KeyError:
+            unprojectable.append(store.relative_to(output_dir).as_posix())
+        except (OSError, ValueError):
+            # An unreadable or wrong-version store is a different fault with
+            # its own reporting; naming it here would make one advisory mean
+            # two things.
+            continue
+    return tuple(unprojectable)

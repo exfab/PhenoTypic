@@ -785,3 +785,121 @@ def test_an_unreadable_state_is_left_alone(tmp_path: Path) -> None:
     assert plan_processing_state(tmp_path) is None
     assert convert_processing_state(tmp_path) is False
     assert path.read_text(encoding="utf-8") == "{truncated"
+
+
+# ---------------------------------------------------------------------------
+# Task 4: the pre-D8 master CSV, and stores the projection cannot read
+# ---------------------------------------------------------------------------
+
+
+def test_the_pre_d8_master_csv_is_deleted(tmp_path: Path) -> None:
+    """D8 removed the constant, the helper and the reader; this is the on-disk
+    half, for trees already written.
+
+    **Fires when** the deletion is dropped: the file survives. The co-witness
+    is the sibling parquet, which must NOT be deleted -- an implementation that
+    cleared the whole deliverables directory would pass a bare "the csv is
+    gone" assertion.
+    """
+    from phenotypic._cli._cli_migrate_state import convert_legacy_master_csv
+    from phenotypic.sdk_ import deliverables_dir
+
+    deliverables = deliverables_dir(tmp_path)
+    deliverables.mkdir(parents=True, exist_ok=True)
+    legacy = deliverables / "master_measurements.csv"
+    legacy.write_text("a,b\n1,2\n", encoding="utf-8")
+    sibling = deliverables / "master_measurements.parquet"
+    sibling.write_bytes(b"PAR1-not-really")
+
+    assert convert_legacy_master_csv(tmp_path) is True
+
+    assert not legacy.exists(), "the pre-D8 master CSV survived the migration"
+    assert sibling.is_file(), "the parquet master was deleted too"
+    assert sibling.read_bytes() == b"PAR1-not-really"
+
+
+def test_deleting_the_master_csv_is_a_no_op_when_absent(tmp_path: Path) -> None:
+    """Every conversion in this module is unconditional and cheap on a tree
+    that does not need it -- the shape the call site depends on."""
+    from phenotypic._cli._cli_migrate_state import convert_legacy_master_csv
+    from phenotypic.sdk_ import deliverables_dir
+
+    deliverables_dir(tmp_path).mkdir(parents=True, exist_ok=True)
+    assert convert_legacy_master_csv(tmp_path) is False
+
+
+def test_planning_the_master_csv_deletion_writes_nothing(tmp_path: Path) -> None:
+    """The dry-run seam, with a co-witness that planning found something.
+
+    **Fires when** planning gains a write. The `is not None` assertion is the
+    co-witness: without it, an implementation that returned `None`
+    unconditionally would satisfy "the tree is unchanged" most strongly of all.
+    """
+    from phenotypic._cli._cli_migrate_state import plan_legacy_master_csv
+    from phenotypic.sdk_ import deliverables_dir
+
+    deliverables = deliverables_dir(tmp_path)
+    deliverables.mkdir(parents=True, exist_ok=True)
+    (deliverables / "master_measurements.csv").write_text("a\n1\n", encoding="utf-8")
+    before = {
+        p.relative_to(tmp_path): p.read_bytes()
+        for p in sorted(tmp_path.rglob("*"))
+        if p.is_file()
+    }
+
+    planned = plan_legacy_master_csv(tmp_path)
+
+    assert planned is not None, "planning found nothing, so the check below is vacuous"
+    assert {
+        p.relative_to(tmp_path): p.read_bytes()
+        for p in sorted(tmp_path.rglob("*"))
+        if p.is_file()
+    } == before
+
+
+def test_a_store_with_no_measurement_descriptor_is_named_not_raised(
+    tmp_path: Path,
+) -> None:
+    """CAN-32 / Step 0b: a reachable unhandled path in the projection.
+
+    ``read_embedded_measurement_descriptor`` documents an absent descriptor as
+    a **normal state** -- a ``--mode process`` run never measures -- while
+    ``embedded_measurement_columns`` raises ``KeyError`` on it. So a tree this
+    phase exists to convert can crash the projection.
+
+    **Fires when** the enumeration lets the ``KeyError`` escape, or stops
+    finding the store. The second store is the co-witness: a function that
+    returned every store it saw, or none, would pass a one-store version.
+    """
+    from phenotypic._cli._cli_migrate_state import unprojectable_stores
+    from phenotypic.sdk_ import zarr_store_path
+
+    bare = zarr_store_path(tmp_path, "plate", "a")
+    bare.mkdir(parents=True)
+    (bare / "zarr.json").write_text("{}", encoding="utf-8")
+
+    assert unprojectable_stores(tmp_path) == ("results/plate/zarr/a.ome.zarr",)
+
+
+def test_enumerating_unprojectable_stores_writes_nothing(tmp_path: Path) -> None:
+    """It feeds an advisory, so it must not touch the tree it reports on."""
+    from phenotypic._cli._cli_migrate_state import unprojectable_stores
+    from phenotypic.sdk_ import zarr_store_path
+
+    bare = zarr_store_path(tmp_path, "plate", "a")
+    bare.mkdir(parents=True)
+    (bare / "zarr.json").write_text("{}", encoding="utf-8")
+    before = {
+        p.relative_to(tmp_path): p.read_bytes()
+        for p in sorted(tmp_path.rglob("*"))
+        if p.is_file()
+    }
+
+    found = unprojectable_stores(tmp_path)
+
+    assert found, "nothing was enumerated, so the check below is vacuous"
+    assert {
+        p.relative_to(tmp_path): p.read_bytes()
+        for p in sorted(tmp_path.rglob("*"))
+        if p.is_file()
+    } == before
