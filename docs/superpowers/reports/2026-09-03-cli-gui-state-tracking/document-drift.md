@@ -4323,3 +4323,83 @@ grep -c 'pattern' file            # before any head/next/first-match
 assert text.count(anchor) == 1    # before any edit derived from a search
 ```
 
+
+---
+
+### Entry 78 — a topology with no equivalence test cannot detect a class, and nothing on the page looks wrong
+
+Every other entry in this register was found by **reading**. That shared property is stated
+at the top of the file, and it is what makes the class expensive. This entry is here because
+it is the complement: a defect class that reading does not reach, because there is nothing
+written down to be wrong about.
+
+`--mode migrate` has two execution paths (local, SLURM) crossed with two target kinds (full
+run, provenance-only). Four combinations. Nobody had enumerated them, so nobody had noticed
+that `migrate_machine_state` was wired into one.
+
+**The full-run topology had a local-vs-SLURM equivalence test**
+(`test_local_and_synchronous_slurm_migration_publish_equivalent_runs`), and it earned its
+keep the moment the converter was wired into the local driver: the SLURM tree kept the
+**forward** run's `processing_generation`, minted with a real `per_image_config` digest,
+while the local tree re-derived it under migrate's inputs. One field, exact comparison,
+caught immediately.
+
+**The provenance-only topology had no such test**, and carried the identical gap. It was
+found by asking what else had the first gap's shape — not by anything failing.
+
+#### What writing the missing test then cost, and returned
+
+The absence was not a coverage gap in a *behaviour*. It was a gap in the ability to
+**detect**, and the difference is the whole entry: a behaviour gap leaves a wrong statement
+somewhere a reader can find; a detection gap leaves nothing at all. The cost of it was one
+bug found by luck rather than by a gate.
+
+Writing the test turned three things up, and they arrived by three different routes:
+
+- **Detected directly.** Its first execution failed on the SLURM planner refusing a tree
+  with zero stores — which is what a pre-markers process tree legitimately *is*, since
+  OME-Zarr postdates the vintage the kind exists to convert.
+- **Forced.** That failure made a question unavoidable that had been askable for weeks:
+  whether MIG-11's mint-from-outputs arm was reachable at all. It was not.
+  `execute_provenance_migration` iterates `target.stores` and never reads `target.outputs`,
+  so the local arm did nothing, reported `provenance_upgraded=0`, and **exited 0** — a
+  silent successful no-op on the exact tree the arm exists for.
+- **Found by asking its shape a second time.** Filling the first two gaps created an
+  asymmetry that had not existed before, and interrogating *that* turned up a defect in the
+  fix shipped one round earlier: the seal-stage call ran for `direct_store` too, whose
+  lifecycle state is a hashed sibling **by contract**, so it would have written
+  `.phenotypic/` inside the store. It no-ops on a bare store today only because every arm
+  happens to find nothing — the accident that stops being true without anything failing.
+
+#### The two things worth carrying into P7 Task 6's register
+
+**A register lists what is tracked. It cannot list what nothing checks.** Every entry above
+this one describes a statement that was wrong; this one describes a *question nobody asked*.
+The register's own failure mode is one level up from drift: not a stale row, but a row that
+was never written because the axis it belongs to was never enumerated. `xfail(strict=True)`
+is the instrument that survives this, because a mark that stops being true fails loudly —
+which is also why a strict mark must never carry a **superseded** reason, or the instrument
+becomes the failure it prevents.
+
+**"Compare approximately" is the wrong default for identity.** The exact comparison is what
+caught the first gap, and the pressure to relax it came on hardware-variance grounds that do
+not reach the field: `derive_processing_generation` digests a pipeline hash, a per-image
+config digest, and a restart epoch — no paths, no timestamps, no measurements. Two runs on
+different nodes produce identical digests. **Comparing approximately would have hidden a
+missing conversion, not absorbed variance.** The rule that generalises: tolerance belongs to
+measurement outputs, never to configuration identity, and a test that tolerates a difference
+it cannot name is worse than one that fails.
+
+#### The corollary about a test's claim
+
+When the second half of that test finally ran against the fixes, the two arms could no
+longer be equivalent — one of them had become a deliberate refusal, because the provenance
+chain has no vocabulary for a storeless tree (its seal barriers store statuses and its
+finalizer reports upgrade counts, so the only real work would be invisible in its own
+terminal report). The test's **claim** was rewritten to name the divergence; its rigour was
+not relaxed. It now asserts that the refusal precedes any write, which is a stronger
+property than the equivalence it replaced: a refused submission that already converted half
+a tree is the worst of both arms.
+
+"The test found something" and "the test's claim was wrong" are different, and only the
+second licenses a rewrite.
