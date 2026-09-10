@@ -1109,29 +1109,112 @@ def run_proof_is_current(output_dir: Path) -> bool:
     )
 
 
+#: Aggregate-proof descriptors that a **GUI** writer also owns (O-3).
+#:
+#: ``publish_aggregate_snapshot`` fences three artifacts by size + sha256, and
+#: ``CurationLabels._write_curated_mirror`` rewrites two of them on every
+#: curation save (``_curation_labels.py:846,848``) while republishing nothing.
+#: The proof's claim about those two -- *these are the bytes finalization
+#: published* -- becomes **false the moment a user marks one colony**, and it
+#: becomes false **by design**: the curated mirror is deliberately not the
+#: CLI's output. The response to a certificate whose statement has become
+#: false is to stop making the statement, not to re-issue it under a weaker
+#: meaning (which would put a publisher call on the GUI side of one-writer)
+#: and not to mint a second one (``curation_labels.parquet`` is already the
+#: durable authority for what changed).
+#:
+#: **The proof still RECORDS all three.** Only enforcement narrows: the marker
+#: stays a complete record of what finalization published, which is
+#: provenance worth keeping, and being reader-side is what repairs the trees
+#: already on disk. *Record what happened; enforce what must not change.*
+#:
+#: **Named rather than derived, and unknown descriptors are ENFORCED.** A
+#: descriptor this module has never heard of is checked, because a fence
+#: whose default is "do not check" is not a fence. ``master_parquet`` has no
+#: GUI writer, so its claim survives curation and goes on being enforced --
+#: which is what makes this a narrowing rather than a disabling.
+_GUI_WRITTEN_PROOF_DESCRIPTORS: frozenset[str] = frozenset(
+    {"measurements_csv", "measurements_parquet"}
+)
+
+
+def _aggregate_proof_state(
+    output_dir: Path,
+) -> tuple[dict[str, object] | None, str | None]:
+    """Return ``(proof, refusal reason)`` -- exactly one of them is ``None``.
+
+    The refusal reason exists because this predicate used to return a bare
+    ``None`` for five distinguishable causes, so nothing downstream -- a user,
+    a log, a support request -- could tell *"your master was tampered with"*
+    from *"your curation broke it"*, and those two have opposite dispositions.
+
+    **A reason is for reporting, never for downgrading the verdict.** Every
+    caller still treats any refusal as a refusal; see
+    :func:`aggregate_proof_refusal`.
+    """
+    marker_path = aggregate_publication_marker_path(output_dir)
+    marker = _read_json_object(marker_path)
+    if marker is None:
+        return None, (
+            f"no readable aggregate publication marker at {marker_path}"
+        )
+    version = marker.get("version")
+    if version != AGGREGATE_PROOF_VERSION:
+        return None, (
+            f"aggregate proof version {version!r}, expected "
+            f"{AGGREGATE_PROOF_VERSION!r}"
+        )
+    outputs = marker.get("required_outputs")
+    if not isinstance(outputs, dict) or not outputs:
+        return None, "aggregate proof lists no required outputs"
+    try:
+        output_root = Path(output_dir).resolve()
+    except OSError:
+        return None, f"run output root is unreadable: {output_dir}"
+    for name, descriptor in outputs.items():
+        if name in _GUI_WRITTEN_PROOF_DESCRIPTORS:
+            continue
+        if fenced_artifact_path(output_root, descriptor) is None:
+            return None, (
+                f"required output {name!r} no longer matches the bytes it "
+                "was published with"
+            )
+    return marker, None
+
+
+def aggregate_proof_refusal(output_dir: Path) -> str | None:
+    """Return why the aggregate proof is not current, or ``None`` if it is.
+
+    The reporting half of :func:`_valid_aggregate_proof`. Deliberately a
+    separate function: folding the reason into the predicate's return value
+    would tempt a caller into branching on *which* cause and treating some of
+    them as recoverable. They are not -- ``core_readable`` stays a boolean and
+    still refuses on every one of them.
+
+    Not yet exported from :mod:`phenotypic.sdk_`, and its user-facing consumer
+    is not yet wired: the message a user sees comes from
+    ``OutputRoot.discover``, and improving that string has to wait for the
+    remedy it should name (O-3). This is the capability, not its wiring.
+    """
+    return _aggregate_proof_state(output_dir)[1]
+
+
 def _valid_aggregate_proof(output_dir: Path) -> dict[str, object] | None:
-    """Return the aggregate proof when every required output still matches.
+    """Return the aggregate proof when every enforced output still matches.
 
     This is the only place the deep path hashes a *run-level* artifact, and
     the cost is O(1) in images -- three or four deliverables -- which is why
     the shallow path re-checks it rather than caching it. Audit §4's cost is
     the ~10^4 per-image reads and hashes, and those are what the verification
     cache removes.
+
+    **Enforced, not listed** (O-3): the descriptors in
+    :data:`_GUI_WRITTEN_PROOF_DESCRIPTORS` are recorded by the writer and
+    skipped here, because a GUI writer owns them too. See that constant for
+    why, and ``aggregate_proof_refusal`` for the cause when this returns
+    ``None``.
     """
-    marker = _read_json_object(aggregate_publication_marker_path(output_dir))
-    if marker is None or marker.get("version") != AGGREGATE_PROOF_VERSION:
-        return None
-    outputs = marker.get("required_outputs")
-    if not isinstance(outputs, dict) or not outputs:
-        return None
-    try:
-        output_root = Path(output_dir).resolve()
-    except OSError:
-        return None
-    for descriptor in outputs.values():
-        if fenced_artifact_path(output_root, descriptor) is None:
-            return None
-    return marker
+    return _aggregate_proof_state(output_dir)[0]
 
 
 def aggregate_proof_is_current(output_dir: Path) -> bool:

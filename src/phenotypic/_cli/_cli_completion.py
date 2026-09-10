@@ -1113,9 +1113,21 @@ def publish_aggregate_snapshot(
     # the un-joined master is no longer the file a human opens, the mirror is
     # -- and `finalize_run` writes no CSV, so certifying one would make every
     # forward finalization fail on a `resolve(strict=True)` for a file nothing
-    # writes. `valid_aggregate_snapshot` and the sdk_ reader both validate
-    # whatever the proof LISTS, so a three-entry proof validates on its own
-    # terms.
+    # writes.
+    #
+    # O-3: the reader no longer validates whatever the proof LISTS, and that
+    # sentence used to stand here. All three are still WRITTEN -- the marker
+    # is a complete record of what finalization published, which is
+    # provenance worth keeping and is what lets a later reader say which
+    # artifacts a run declared. But `_run_state._valid_aggregate_proof` skips
+    # the two mirror descriptors when it checks, because `CurationLabels`
+    # rewrites them on every curation save: the proof's claim about them
+    # becomes false the moment a user marks one colony, and false by design.
+    #
+    # So do NOT infer enforcement from this dict. Adding an entry here
+    # records an artifact; whether it is enforced is decided by
+    # `_GUI_WRITTEN_PROOF_DESCRIPTORS` in `sdk_/_run_state.py`, and an entry
+    # this module adds that nothing there names is enforced by default.
     required_paths = {
         "master_parquet": master_measurements_parquet_path(output_dir),
         "measurements_csv": measurements_csv_path(output_dir),

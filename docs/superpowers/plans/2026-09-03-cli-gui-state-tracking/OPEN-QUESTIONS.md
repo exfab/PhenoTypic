@@ -324,7 +324,35 @@ an unrecognised key — surfacing the typo without closing the map.
 
 ### O-3. Curating a run makes it undiscoverable — the aggregate proof fences two files the GUI owns
 
-**Status: established by measurement, not implemented. Owed task, red-first, after P6.**
+**Status: FIXED (user-ruled inside this change), reader-side, one call site.**
+
+> ## There is exactly one site, and the second candidate is NOT one
+>
+> An earlier revision of this entry claimed a second live instance in
+> `OutputRoot.require_session_snapshot_current` (`_output_root.py:829-845`), on the
+> grounds that `consumed_state_fingerprint` still compares the four GUI-owned files audit
+> S2 was about. **That was wrong, and it is recorded here so nobody "completes" the fix by
+> narrowing a check that must not be narrowed.**
+>
+> **The symptom is unreachable there.** All seven call sites pass a *freshly discovered*
+> root — `candidate_root` at `shell/_app.py:495`, and the `output_root` handed into
+> `create_app` at `results_viewer/_app.py:233,264,344` and
+> `analysis/_app.py:156,184,222`. The comparison is therefore a snapshot captured seconds
+> earlier against now: a narrow-window race check, not the frozen-at-bind comparison that
+> made the badge flip. A curation predating discovery is already *in* the candidate's
+> fingerprint and cannot mismatch. Same path set; different comparison — and it is the
+> comparison, not the path set, that made S2.
+>
+> **And the narrowing would have been wrong on its own terms.**
+> `test_final_publish_gap_change_returns_stale_and_rolls_back` fires an *external* mirror
+> republish between candidate-build and locked commit, and nothing else watches the mirror
+> — `_scan_processing_inventory` covers master, overlays and `results/` only. Removing the
+> mirror there would delete that protection.
+>
+> **It could not be fixed by path in any case**: at that site the same file must be
+> watched for *external* writes and ignored for the session's *own*, which path membership
+> cannot express. The only correct mechanism would be a CAS in which the GUI's own write
+> advances the bound fingerprint — which lives in `_curation_labels.py`, not here.
 
 > ## Read this first: do NOT bump `AGGREGATE_PROOF_VERSION`
 >
@@ -473,12 +501,29 @@ the cost `_rehydrated_status` already pays elsewhere and which the boot walk is 
 documented as synchronous. **Left open deliberately; it is a UX decision, not a
 correctness one.**
 
-#### What the owed task needs
+#### What was done
 
-The red test is the probe's FENCED arm, already written and committed beside this plan.
-Then the reader-side filter, the comment rewrite, and a decision on the open question
-above. It edits `sdk_/_run_state.py` and `_cli_completion.py`, so it needs its own commit
-and cannot share one with consumer-migration work.
+Red-first, from the probe's FENCED arm, as
+`tests/unit/gui/test_curation_does_not_unfence_the_run.py` — red at
+`assert core_readable(layout) is True` and green after.
+
+* `_GUI_WRITTEN_PROOF_DESCRIPTORS` names the two mirror descriptors, and
+  `_aggregate_proof_state` skips them when it **checks** while the writer goes on
+  **recording** all three. **No version bump**, so trees already on disk are repaired.
+* The exemption is a **named** skip list, not an enforce list, so a descriptor no module
+  recognises is enforced by default —
+  `test_an_unrecognized_descriptor_is_enforced_not_skipped` fails if that polarity is ever
+  flipped.
+* `aggregate_proof_refusal` names which of the five causes fired, tested one per cause.
+* `_cli_completion.py`'s contract comment is rewritten in the same change: it said both
+  readers "validate whatever the proof LISTS", which this falsifies, and it now says
+  enforcement is decided elsewhere.
+
+**Still owed, and small:** `aggregate_proof_refusal` has no user-facing consumer. The
+message a user sees comes from `OutputRoot.discover`, and O-3's own note says improving
+that string has to wait for this fix so it describes a tampered master rather than
+curation — that is now possible and was out of this task's file list. Exporting the
+function from `phenotypic.sdk_` is one line.
 
 **Also fold in: `_valid_aggregate_proof` must say *why* it refused.** Today it returns a
 bare `None` for four distinguishable causes, so nothing downstream — a user, a log, a
