@@ -140,6 +140,13 @@ spec D9/FLOW-4 — there is **no exception, including migrate**), or write into 
 > `result.output`, never `pytest.raises(SystemExit, match=...)`. `str(SystemExit(2))` is
 > `"2"`, so a `match=` on the refusal message cannot fail for its own reason. **The three
 > tests in Step 1 below are written in the broken idiom and must be converted.**
+>
+> **This warning is about the SNIPPETS IN THIS DOCUMENT, not about the code.** The shipped
+> tests already use the correct form — `assert result.exit_code != 0, result.output` and
+> `assert MIGRATION_REMEDY in result.output` (`test_schema_gate.py:779-780`), with the only
+> `SystemExit` in the file a `raise` inside a fake. Said explicitly because *"the plan warns
+> about X"* reads as *"X is in the code"* unless contradicted, and a reader who goes looking
+> will spend the search finding nothing wrong.
 
 > ### ⛔ THIS TASK IS ALREADY BUILT. It is a VERIFICATION step, not an implementation one.
 >
@@ -167,9 +174,23 @@ spec D9/FLOW-4 — there is **no exception, including migrate**), or write into 
 >
 > **What to do instead of implementing:** read Steps 1–3c as the specification they are,
 > confirm each against the tree, and record any drift. The one genuine gap is
-> `test_a_converted_tree_is_accepted`, which is subsumed by
-> `test_every_convert_verdict_is_dischargeable_by_one_migrate` —
-> **currently `@pytest.mark.skip`**, and Task 5 Step 1f is what removes the mark.
+> `test_a_converted_tree_is_accepted`.
+>
+> **CORRECTED (P7 Task 1 verification).** This block used to say that gap is
+> *"subsumed by `test_every_convert_verdict_is_dischargeable_by_one_migrate` — currently
+> `@pytest.mark.skip`"*, which reads as *the invariant is unguarded until Task 5*. It is
+> not. The coverage is **split across two tests, and one of them is live**:
+>
+> | Half | Covered by | Today |
+> |---|---|---|
+> | an armed gate accepts a converted tree | `test_an_armed_gate_does_not_refuse_a_converted_tree` (`test_schema_gate.py:1130`) | **passing** |
+> | migrate *produces* a tree the gate accepts | `test_every_convert_verdict_is_dischargeable_by_one_migrate` | skipped, correctly — migrate cannot convert `.phenotypic/` until Tasks 2, 2b and 3 |
+>
+> **Do not add `test_a_converted_tree_is_accepted`.** Today it either duplicates the live
+> test or fails for a reason that is not a defect. When Task 5 Step 1f removes the skip,
+> the round trip is covered by something **stronger** than this plan asked for: the
+> dischargeable test is parametrized over `_EVERY_CONVERTIBLE_SHAPE`, a dict of six shape
+> builders, where the snippet below builds one tree by hand.
 
 **Files:**
 - ~~Create: `src/phenotypic/_cli/_cli_schema_gate.py`~~ — exists (P1)
@@ -518,6 +539,48 @@ Enumerate the union of the **two** legacy trees — `image_complete/` and `stage
 — not just `image_complete/`. Write every record first, then **rename those two aside** —
 the rename primitive, its collision rule and the `--revert` path are **Task 5 Step 1b**, not
 this task's to invent. **Copy `artifacts` verbatim**; never re-derive.
+
+> ### Where the call goes, and the reason it goes there — which is not the obvious one
+>
+> **Site:** `_cli_migrate.py`, in the `else:` of the `_ensure_migration_processing_state`
+> `try`, immediately before `_execute_migration_tasks`. Shipped at `:1834`.
+>
+> **NOT for continuation.** The obvious argument — *convert first so the image tasks can see
+> records for work the legacy run already finished, and skip it* — is **false in this tree**,
+> and it was believed by two people before anyone checked. Three negatives, each read at the
+> call site rather than inferred:
+>
+> | Candidate reader | What it actually does |
+> |---|---|
+> | `discover_migration_tasks` (`_cli_migrate_manifest.py:329`) | builds the inventory by walking `results/` for hdf / store / measurement candidates. Never opens a record. |
+> | `_migrate_image_result` (`_cli_migrate.py:836`) | runs `migrate_image_task` for every task. No record-based skip anywhere in the path. |
+> | `publish_migrated_image_markers` (`_cli_migrate.py:1391`) | a **producer** — calls `publish_image_success`, validates with `valid_image_success`. Consumes no pre-existing record. |
+>
+> **So this converter's output is read by nothing downstream until a later phase.** Task 3
+> should plan on that rather than on the ordering having bought it something.
+>
+> **Ordering is also safe either way, and that took checking too.** If
+> `publish_migrated_image_markers` *replaced* records, converting first would destroy every
+> converted stage for the images it touches. It does not: `publish_image_record`'s docstring
+> is explicit that *"`stages` is a contribution, not a replacement (CAN-6 rule 1) … unioned
+> with whatever is on disk"* — for the same reason this task's merge exists, since the SLURM
+> Stage-3 worker publishes before recording stage 3. Both writers union, so neither sequence
+> can lose a stage.
+>
+> **The real reason is the crash window.** With continuation false and correctness a tie,
+> what the order buys is that an interruption between the two leaves a tree whose finished
+> images already carry records, rather than one still holding only legacy markers with some
+> images migrated past them. Re-running is the documented recovery either way; this makes
+> the intermediate state the more converted one.
+>
+> A modest true reason beats a strong false one. Anyone who preserves this ordering for the
+> continuation property will be preserving it for something this tree does not have — and
+> may reorder it on discovering that, losing the reason that is real.
+>
+> **The call is unconditional and is a cheap no-op on a tree with no legacy markers.**
+> `plan_per_image_records` returns an empty tuple and `apply_per_image_records` writes
+> nothing, so there is no guard at the call site and none is wanted. A state conversion
+> added beside it in Task 3 can take the same shape.
 
 > ### ⛔ `stage2_done/` is NOT one of them. Renaming it aside destroys a live run.
 >

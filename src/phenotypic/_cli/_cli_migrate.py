@@ -67,6 +67,7 @@ from ._cli_migrate_provenance import (
     execute_provenance_migration,
     provenance_migration_lifecycle_root,
 )
+from ._cli_migrate_state import convert_per_image_markers
 from ._cli_migrate_manifest import (
     MigrationImageSeal,
     MigrationImageTask,
@@ -1811,6 +1812,26 @@ def _run_migrate_owned(
                     ),
                 )
             else:
+                # Convert the two legacy per-image marker trees before the
+                # image tasks run.
+                #
+                # **Not for continuation.** Nothing downstream reads these
+                # records to decide what to skip: `discover_migration_tasks`
+                # derives the inventory from `results/` artifacts,
+                # `_migrate_image_result` runs every task unconditionally, and
+                # `publish_migrated_image_markers` is a producer of records,
+                # not a consumer. Ordering is also safe either way for the
+                # record contents -- `publish_image_record` unions `stages`
+                # (CAN-6 rule 1) and `_merge_stages` keeps the later entry --
+                # so neither sequence can lose a stage.
+                #
+                # What the order buys is the crash window. Converting first
+                # means an interruption between the two leaves a tree whose
+                # finished images already carry records, rather than one still
+                # holding only legacy markers with some images migrated past
+                # them. Re-running is the documented recovery either way; this
+                # makes the intermediate state the more converted one.
+                convert_per_image_markers(output_dir)
                 results, stage_failures = _execute_migration_tasks(
                     output_dir,
                     tasks=tasks,
