@@ -4451,3 +4451,66 @@ describing a tree. 76 is *coordinate system* — a measurement reported in the w
 needed was never on the menu. Four coordinates now, and only the first three are repaired
 by being careful.
 
+
+---
+
+### Entry 79 — the answer was right and the cost was wrong, so no assertion over outputs could see it
+
+**Found by the gate**, not by reading — the second entry here with that provenance, and the
+first found by a gate rather than by the absence of one. Entry 78 is the complement of this
+file's opening claim in one direction (nothing written down to be wrong about); this is the
+complement in the other (something checkable, checked, and caught by a machine).
+
+`unprojectable_stores` enumerated stores with `results.rglob(f"*{STORE_SUFFIX}")`. Every
+test over that function passed, and would have kept passing forever, because **the returned
+tuple was correct**. `rglob` descends *into* each matched store — roughly 400k `stat` calls
+at 10k images — and then filters back to exactly the list a two-level `glob` produces. The
+walk is invisible in the result by construction.
+
+`test_no_recursive_glob_for_stores` exists for precisely this, and its docstring says why in
+one line worth quoting: *"an assertion about results cannot see cost."*
+
+#### Why this is a fifth coordinate and not a face of 76b
+
+76b is about an operation that was **not on the menu**: the right answer could not be
+written, so care at the call site could not reach it. Here the right operation was on the
+menu, trivially available, and one character shorter. What was unavailable is **the
+observation**. The defect is not in what the code computes; it is in what it *does on the
+way*, and the entire instrument family this change relies on — assert the return value,
+compare the tuple, diff the tree — is blind to that by design, not by oversight.
+
+| | 76b | 79 |
+|---|---|---|
+| What was missing | the right **operation** | the right **observable** |
+| A perfect implementer would have | still got it wrong | got it right, and been unable to prove it stayed right |
+| Repair | change the return **type** | add an instrument in a **different modality** — read the source, not the result |
+| What a passing behavioural test proves | nothing about the choice | nothing about the cost, *and it never will* |
+
+The general form: **when correctness and cost are separable, a suite that only asserts
+correctness cannot regress-protect cost, and its greenness is not evidence either way.** The
+instrument has to change modality — here, an AST/regex sweep over the source. That is why
+the invariant test matches the f-string form deliberately, so that the function which once
+used the pattern cannot exempt itself.
+
+#### The companion finding, which is this register's ordinary kind
+
+Repairing the walk turned up a **never true** row in the repairer's own test.
+`test_a_store_with_no_measurement_descriptor_is_named_not_raised` claimed:
+
+> *"The second store is the co-witness: a function that returned every store it saw, or
+> none, would pass a one-store version."*
+
+**The body built one store.** The docstring described a discriminator that was never
+constructed — the claim written first, the fixture never catching up.
+
+It was not decorative. The tuple equality could catch *"returned none"*, but with a single
+store nothing could catch *"returned every store it walked past"* — which is exactly the
+failure mode a rewrite of the enumeration introduces, missing precisely where someone had
+just been editing. The repair builds the second store the docstring always claimed (an
+**unreadable** one, which must be absent because that is a different fault with its own
+reporting), so the equality now discriminates and the `(OSError, ValueError)` arm has a
+witness. The docstring records that it overclaimed, which is the honest form.
+
+**The pairing is the point.** A cost defect that no behavioural test can see was sitting
+behind a behavioural test whose stated discriminator did not exist. Neither would have
+found the other, and the gate found only the first.

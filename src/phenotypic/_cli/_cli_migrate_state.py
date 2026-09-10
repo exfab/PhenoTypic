@@ -59,6 +59,7 @@ from phenotypic.sdk_ import (
     DIR_LEGACY_V2,
     phenotypic_cache_dir,
     deliverables_dir,
+    dataset_zarr_dir,
     results_dir,
     DIR_STAGE2_DONE,
     ProcessingStateKey,
@@ -674,18 +675,36 @@ def unprojectable_stores(output_dir: Path) -> tuple[str, ...]:
     if not results.is_dir():
         return ()
     unprojectable: list[str] = []
-    for store in sorted(results.rglob(f"*{STORE_SUFFIX}")):
-        if not store.is_dir():
+    # Two non-recursive levels, never `rglob`. A recursive walk descends INTO
+    # every store -- roughly 400k stat calls at 10k images -- and then filters
+    # back to the same list, so it returns a byte-identical answer while doing
+    # all the work it was meant to avoid. No assertion about the RESULT can
+    # see that, which is why `test_no_recursive_glob_for_stores` exists and
+    # why every test over this function passed with the walk in place.
+    #
+    # `dataset_zarr_dir` rather than a hand-joined "zarr": the layout is that
+    # helper's business, and a literal here would keep globbing an empty
+    # directory after a rename.
+    for dataset_dir in sorted(
+        path for path in results.iterdir() if path.is_dir()
+    ):
+        zarr_dir = dataset_zarr_dir(output_dir, dataset_dir.name)
+        if not zarr_dir.is_dir():
             continue
-        try:
-            embedded_measurement_columns(store)
-        except KeyError:
-            unprojectable.append(store.relative_to(output_dir).as_posix())
-        except (OSError, ValueError):
-            # An unreadable or wrong-version store is a different fault with
-            # its own reporting; naming it here would make one advisory mean
-            # two things.
-            continue
+        for store in sorted(zarr_dir.glob(f"*{STORE_SUFFIX}")):
+            if not store.is_dir():
+                continue
+            try:
+                embedded_measurement_columns(store)
+            except KeyError:
+                unprojectable.append(
+                    store.relative_to(output_dir).as_posix()
+                )
+            except (OSError, ValueError):
+                # An unreadable or wrong-version store is a different fault
+                # with its own reporting; naming it here would make one
+                # advisory mean two things.
+                continue
     return tuple(unprojectable)
 
 

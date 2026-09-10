@@ -868,8 +868,17 @@ def test_a_store_with_no_measurement_descriptor_is_named_not_raised(
     phase exists to convert can crash the projection.
 
     **Fires when** the enumeration lets the ``KeyError`` escape, or stops
-    finding the store. The second store is the co-witness: a function that
-    returned every store it saw, or none, would pass a one-store version.
+    finding the store.
+
+    The **second store is the co-witness**, and it is the one that makes the
+    tuple equality discriminate: a function that simply returned every store
+    it walked past would pass a one-store version of this test. The unreadable
+    store must be absent, because that is a different fault with its own
+    reporting -- naming it here would make one advisory mean two things.
+
+    (An earlier version of this docstring described that co-witness while the
+    body built only one store. The claim came first and the fixture never
+    caught up, which is the register's own subject.)
     """
     from phenotypic._cli._cli_migrate_state import unprojectable_stores
     from phenotypic.sdk_ import zarr_store_path
@@ -877,6 +886,10 @@ def test_a_store_with_no_measurement_descriptor_is_named_not_raised(
     bare = zarr_store_path(tmp_path, "plate", "a")
     bare.mkdir(parents=True)
     (bare / "zarr.json").write_text("{}", encoding="utf-8")
+
+    unreadable = zarr_store_path(tmp_path, "plate", "b")
+    unreadable.mkdir(parents=True)
+    (unreadable / "zarr.json").write_text("{not json", encoding="utf-8")
 
     assert unprojectable_stores(tmp_path) == ("results/plate/zarr/a.ome.zarr",)
 
