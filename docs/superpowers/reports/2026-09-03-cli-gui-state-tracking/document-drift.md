@@ -4024,3 +4024,36 @@ And the diagnostic worth keeping: the fixture's comment now records *why* it pat
 `tempfile` directly. A test that reaches through a module attribute is depending on an
 implementation detail of that module; saying so at the point of use is what stops the next
 deletion re-breaking it — the deletion was correct, and the coupling was the defect.
+
+## A second instance of row 3, one layer out: the baseline of a differential test
+
+A failure was attributed to "pre-existing, proved against `820d4133`" and briefed that way
+twice. `820d4133` **is** the commit that introduces the change under suspicion
+(`feat(gui): P6 Tasks 1, 3, 4, 6`), so "fails at `820d4133`" is equally consistent with
+*predates Task 4* and *caused by Task 4*. Run at its parent, the test passes: Task 4 caused
+it.
+
+The baseline was chosen by **position** — *the commit before the failures started
+appearing* — rather than by the **property** the claim needed it to have: *does not contain
+Task 4*. Those two coincided for the other two suspects and diverged for the third, and the
+run printed the same green either way.
+
+**This is row 3 of the table above, at a different layer**, and the repair is identical —
+which is the test for whether something is a new kind. My own probe split its arms on a
+flag it assumed rather than asserted; this split a history on a commit whose contents were
+assumed rather than asserted. Both produce a measurement of a condition nobody confirmed.
+
+| | The condition assumed | What asserts it |
+|---|---|---|
+| probe arm | `success_markers_required` is unset in this fixture | read it back and compare |
+| differential baseline | this commit does not contain the change | `git log -1 --format=%s`, or diff it for the file |
+
+**Name the property the baseline must have, then assert the baseline has it.** A commit's
+position in history is not that property; it is a heuristic that correlates with it, and
+the correlation is exactly what breaks at a boundary commit — the one place a differential
+test is most often pointed.
+
+Filed here rather than as its own entry, and rather than in 74, because 74's coordinate is
+*scope* and its repair is widening the universe. Nothing here needs a wider universe. It
+needs the same one sentence as the probe arm: **say what condition you are measuring under,
+and check.**

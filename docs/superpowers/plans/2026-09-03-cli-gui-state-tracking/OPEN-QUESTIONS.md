@@ -509,3 +509,67 @@ today, and improving it must wait for the fix — written now the text would des
 acquiring a different subject. When it is written: *"re-running finalization replaces the
 curated mirror"* is a property of **re-running finalization**, true before and after this
 fix and for every caller. That caveat belongs on the command, not on this error.
+
+### O-4. A run killed by OOM or the wall clock is indistinguishable from one that never started
+
+**Status: established by reading, not implemented. Owed task, not P6.**
+
+> ## Read this first: the OOM carve-out is NOT the bug
+>
+> `is_terminal_scientific_exception` (`_cli/_cli_failure_tracker.py:73-83`) returns `False`
+> for `MemoryError`, `TimeoutError` and `torch.cuda.OutOfMemoryError`, and
+> `append_terminal_failure` returns without writing for any of them. **That is correct and
+> must stay.** An OOM is not the image's fault: the image is *retryable*, and journaling it
+> as a terminal failure would permanently condemn work that a re-run with more memory would
+> complete. A reader meeting this from the GUI side will see "OOM produces no failure
+> record" and try to remove the carve-out. Removing it trades a display defect for data
+> loss.
+>
+> The hole is structural, not a missing write.
+
+#### The finding
+
+`completion == "failed"` has exactly one source: `any(image.verdict == "failed" ...)`
+(`sdk_/_run_state.py:1560`), and image verdicts become `failed` only from
+`_terminal_failures` (`:852`), whose docstring gives the reason that authority has to exist
+at all — *"a failure leaves no artifact, so it cannot be derived from the tree."*
+
+So a run killed by OOM or a wall-clock timeout journals nothing, resolves `incomplete`, and
+reaches the GUI as **`unknown`**.
+
+And `incomplete` has no home. `RunStatus` is
+`queued | submitting | running | reconciling | cancelling | complete | failed | cancelled |
+unknown` — there is no `incomplete` literal — so `RunRegistry._rehydrated_status` funnels
+**three distinguishable states into one badge**:
+
+| The tree | What the system knows | What Recent Runs shows |
+|---|---|---|
+| no machine state at all | this is not a run of ours | `unknown` |
+| processing state, no proof, no failures | this run is **unfinished** | `unknown` |
+| the same, after an OOM or wall-clock kill | this run **died on infrastructure** | `unknown` |
+
+**The GUI cannot say "this run is unfinished" even though `resolve_run_state` has just told
+it exactly that.** That is information discarded at the boundary — the *tracked versus
+checked* shape this whole change is about, one layer further out than the change reaches.
+
+#### Severity, and it is local knowledge
+
+**On this cluster OOM and wall-clock kills are the common failure, not the exotic one.**
+`DefMemPerCPU` is 1 GB, images are large and operations copy, and `short` caps at two
+hours. The state this collapse hides is the one users hit most, and the badge they get for
+it is the same one a foreign folder gets.
+
+#### The shape of the fix
+
+A `RunStatus` literal plus its UI. The enumeration above **is** the specification: whatever
+literal is added has to separate at least *unfinished* from *unknown*, and the third row is
+what says whether "died on infrastructure" earns a fourth.
+
+Deliberately not specified here: whether that literal is `incomplete`, whether the
+infrastructure case deserves its own, and how the badge reads. Those are UX decisions on a
+surface this change does not otherwise touch.
+
+**Not P6.** It edits `RunStatus`, `_rehydrated_status` and the Recent Runs badge, none of
+which P6 owns, and nothing about P6 landing makes it worse or better. It is visible now
+only because P6 replaced a manifest-count reader — which answered `unknown` for every run
+in flight anyway — with a verdict that knows the difference and then cannot say it.
