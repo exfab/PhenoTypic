@@ -437,11 +437,26 @@ def _seed_error_triage_labels() -> None:
     # mutation path. Refresh both marker-last publications so the Results
     # viewer never observes a deliberately mixed tutorial snapshot.
     from phenotypic._cli._cli_completion import (
+        _current_success_work_ids,
         publish_aggregate_snapshot,
         publish_run_completion_evidence,
     )
+    from phenotypic._cli._cli_state_management import load_processing_state
 
-    publish_aggregate_snapshot(OUTPUT_DIR)
+    # The aggregate proof must be GIVEN the source set the master was built
+    # from (eadf0fdf5 made it a required argument). This tutorial output is one
+    # finished CLI run with no rolling input, so that set is the run's
+    # authorized success set -- the derivation sdk_/_hdf_to_zarr.py uses for a
+    # finished tree.
+    state = load_processing_state(OUTPUT_DIR)
+    if state is None:
+        raise RuntimeError(
+            f"no processing state under {OUTPUT_DIR}; run the CLI first"
+        )
+    source_work_ids = _current_success_work_ids(
+        OUTPUT_DIR, state.config.get("work_ids", {})
+    )
+    publish_aggregate_snapshot(OUTPUT_DIR, source_work_ids=source_work_ids)
     publish_run_completion_evidence(
         OUTPUT_DIR,
         execution_epoch="gui-tutorial-capture",
