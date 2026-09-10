@@ -4057,3 +4057,183 @@ Filed here rather than as its own entry, and rather than in 74, because 74's coo
 *scope* and its repair is widening the universe. Nothing here needs a wider universe. It
 needs the same one sentence as the probe arm: **say what condition you are measuring under,
 and check.**
+
+---
+
+### Entry 75 — a fixture that blanks fields cannot build a tree from before those fields existed
+
+**Where:** `tests/unit/sdk_/_migration_fixtures.py::make_markerless`, and every test standing
+on it. **Found:** P7 Task 2b, while building the v0.17.3 floor shape it turned out not to be.
+
+`make_markerless` is named for the pre-markers era and is not from it. It takes a **modern**
+`build_completed_run` and blanks two things:
+
+- `success_markers_required = False` — **present and falsey**, where the floor shape has the
+  key **absent**;
+- it leaves `work_ids` **in place**, content-derived, where the floor shape has no such key
+  at all — the concept did not exist.
+
+**The general form, which is the part worth carrying:** absence and emptiness are different
+shapes, and every detector in this change keys on **absence**. `requires_conversion`'s
+signal 5 fires on `work_ids` being *absent*; signal 4 on `restart_epoch` being *absent*. A
+fixture that sets a field to a falsey value clears the signal while describing a tree that
+never existed, so a suite built on it tests a shape the world does not contain.
+
+**What it cost, measured rather than supposed.** `_configured_work_id`
+(`_cli_migrate_image.py:126`) has two arms: a lookup that hits when `work_ids` carries the
+stem, and a fall-through to the synthetic `_migration_work_id`. MIG-10 named the
+fall-through as the blind spot. Because `make_markerless` *retains* `work_ids`, every test
+reaching that function has exercised the **hit** arm — so the arm MIG-10 flagged has been
+untested since it was flagged, **by the fixture that looked like it covered it**.
+
+**The naming hazard is the multiplier.** "Markerless" reads as *the shape from before
+markers* to everyone who does not open it, which is everyone who is using it to avoid
+building that shape themselves. A fixture whose name asserts a provenance its body does not
+produce is worse than an unnamed one: it answers the question a reader would otherwise ask.
+
+**Repair.** Build the absent-key shape by `pop`, never by assignment:
+
+```python
+config.pop("work_ids", None)              # absent -- the shape signal 5 detects
+config.pop("success_markers_required", None)
+```
+
+and assert the absence *before* the code under test runs, so a fixture that quietly stops
+producing the shape fails in its own test rather than in the conclusions drawn from it.
+
+**Relation to 74.** 74's coordinate is *scope* — a consumer outside the universe searched.
+This one's is *shape* — a fixture inside the universe that is not the thing it is named for.
+Different repair: 74 widens the search, this one changes how the input is built. Same
+underlying move, though, and it is the same one as the probe arm and the differential
+baseline above: **state the property the input must have, then assert the input has it.**
+Three coordinates now — scope, condition, shape — and one sentence repairs all three.
+
+---
+
+### Entry 76 — a citation measured in the wrong coordinate system
+
+**Where:** three citation-shaped errors across one session, in briefs and plan text.
+**Found:** each time by someone re-resolving the symbol against the file, never by a check.
+
+The register already carries two citation failures. This is a third axis, and the three are
+worth stating together because the repair differs for each:
+
+| Axis | The failure | What catches it |
+|---|---|---|
+| **Existence** | the cited line does not exist / is far off | print the line |
+| **Identifier** | the line exists and carries a *different* symbol than the claim names | print the line **and read it** |
+| **Coordinate system** | every number is present, plausible, and wrong by a constant | re-resolve by symbol against the **whole file** |
+
+The third is the nastiest, because nothing is missing. A representative production:
+
+```bash
+sed -n '/^def publish_image_success/,/^def [a-z]/p' file | grep -nE 'publish_image_record'
+```
+
+**`grep -n` numbers the stream it is given, not the file.** After a `sed` extract every
+number is an offset *within the extract*. The output looks exactly like file lines — same
+shape, same plausibility, no gap to notice — and is uniformly wrong by the extract's start
+offset. Reported as `:83-84` and `:90`; the real lines were `:254` and `:261`.
+
+Contrast the other two productions from the same session, which share the underlying move:
+
+- `grep -rn "deactivate_generation("` — the `(` excluded every wrapper call, returning **4**
+  where the symbol returns **18**. A *spelling* measured, an *enumeration* reported.
+- `grep -rn "def _run_finalize" … | head -2` — a truncation applied to a result whose size
+  had not been established, cutting the one hit that mattered.
+
+**One sentence covers all three: measure the quantity you are about to report.** Stream
+position is not file position; a spelling is not a symbol; the first two hits are not the
+hit set.
+
+**Mechanical repairs, in order of how often they are needed here:**
+
+1. `grep -n` on the **file**, never after a `sed` extract. If an extract is wanted for
+   reading, take the citation from a separate whole-file grep.
+2. Search the **symbol**, not a spelling that includes punctuation — `deactivate_generation`,
+   not `deactivate_generation(` — since wrappers, aliases and re-exports all fail the
+   punctuated form.
+3. `| wc -l` before `| head`. A truncation is only safe once the size is known.
+
+**Why this keeps landing.** All three were produced *while the author was writing about this
+very failure mode* — the enumeration error appears in the same message that documents it.
+Knowing the rule is not the control; the control is the instrument. That is the same
+conclusion as the three coordinates in Entry 75, arriving from the citation side rather than
+the fixture side: **state the property you are about to assert, then use an instrument that
+measures that property.**
+
+
+---
+
+### Entry 77 — two fitted chains agreeing is close to no evidence
+
+**Where:** P7 Task 2b, a resume-path test expected to fail that passed. **Found:** by the
+executing agent, about **its own** reasoning, after that reasoning had been independently
+corroborated.
+
+A test was run expecting failure. It passed. A four-link chain was then built explaining
+why the pass was consistent with the bug still being present. A second party built the same
+chain from the same four files and reached the same conclusion — which read as strong
+confirmation.
+
+**It is close to no confirmation at all.** Both chains were constructed **after** seeing
+that green, so each is *fitted to* the observation rather than *predictive of* it. Two
+explanations converging is evidence only when the convergence is independent, and reading
+the same four files in a different order is not independence — it is one derivation
+performed twice.
+
+## What separates this from its two neighbours
+
+The register already carries two agreement failures, and the repairs are all different,
+which is what makes this a third rather than a restatement:
+
+| | The agreement | Why it was worthless | Repair |
+|---|---|---|---|
+| **40** | two unrelated queries returned the same count | both measured the wrong population; cross-checking would have *agreed* and both been wrong | measure the right population |
+| **65** | a reviewer agreed with a justification | it was internally coherent and never tested against the code | test it against the code |
+| **77** | two chains explained one result | both were built **from** that result | predict a result **not yet observed** |
+
+**65 is the near neighbour and the contrast is the point.** Its failure was *not consulting
+the evidence*; this one's failure is consulting it **first and then explaining it**. So 65's
+repair is unavailable here — "test it against the code" is exactly what both parties did,
+and it did not help, because the code is what the explanation was fitted to. An explanation
+cannot be tested against the observation that produced it.
+
+**An explanation built after the observation must earn its keep by predicting a second
+one.**
+
+## The defence that worked, and why it belongs in this entry rather than its own
+
+The follow-up test came back **inconclusive** — it failed at a continuation refusal and
+never reached the record comparison the chain was about. The executing agent had named that
+outcome **in advance** as *inconclusive, not confirmation*.
+
+That advance naming is the only thing that held, and the reason is specific: **the failure
+was in the predicted direction.** A fitted chain predicts a direction — that is nearly all a
+fitted chain does — so a directional match is exactly what one produces whether or not it is
+true. Without the outcome named beforehand it would have been read as confirming the chain,
+and the chain would have been confirmed by the observation it was built from, one step
+removed.
+
+**A false positive that agrees with you is the one nobody re-examines.**
+
+It is filed here rather than as Entry 78 on the separateness test this register has been
+using — *does the repair differ?* At first pass it looks like it does: 77's repair is a
+novel prediction, the defence's is an outcome table written before the run. **But a
+prediction with no stated falsifier is not a prediction.** Naming what each outcome would
+mean, including the ones that mean nothing, is not a second repair — it is what the first
+repair requires in order to be real. Apart, 77 is aspirational and the defence is
+unmotivated; together they are one procedure.
+
+## Why this one was catchable at all, which is the least obvious part
+
+It was diagnosed by the agent whose reasoning it was, *after* corroboration — and
+corroboration is precisely the signal that stops people looking. Entries 40 and 65 were both
+caught by an outside party re-deriving the claim. This one had to be caught from the inside,
+because from the outside it looked like two independent analyses agreeing, which is the
+shape of a result nobody re-opens.
+
+The transferable form is uncomfortable and worth stating plainly: **agreement is the point
+at which to ask what would have had to be different for you both to be wrong.** If the
+answer is "nothing we looked at", the agreement is a property of the looking, not of the
+subject.
