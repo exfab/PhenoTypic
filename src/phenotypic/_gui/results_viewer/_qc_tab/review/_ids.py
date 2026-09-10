@@ -182,7 +182,7 @@ QC_REVIEW_DETAIL_HEADER_ID: str = "qc-review-detail-header"
 
 #: Faceted tile-gallery sub-region (one row per timepoint for time-course
 #: checks, else a single flat gallery via
-#: :func:`gui._shared.tiles.build_tile_grid`). The JS shift-click bridge
+#: :func:`_gui._shared.tiles.build_tile_grid`). The JS shift-click bridge
 #: attaches to this container so QC tile checkbox clicks emit a selection
 #: delta exactly like the colony grid (selection parity, M1).
 QC_REVIEW_GALLERY_ID: str = "qc-review-gallery"
