@@ -37,7 +37,7 @@ Renaming any of these orphans user state or changes behaviour; none refers to th
 1. `importlib.util.find_spec("phenotypic.gui") is None` — including no leftover `src/phenotypic/gui/` directory that would resolve as a namespace package.
 2. `importlib.util.find_spec("phenotypic._gui.__main__") is None`; each of the five sub-app `__main__` modules resolves.
 3. `[project.scripts] phenotypic-gui = "phenotypic._gui.shell._launcher:main"`, and the built wheel ships `phenotypic/_gui/**/*.{css,js,png}`.
-4. No tracked file outside `docs/superpowers/` names `phenotypic.gui` or `phenotypic/gui`.
+4. No tracked file outside `docs/superpowers/` names `phenotypic.gui` or `phenotypic/gui`, except `tests/unit/gui/test_private_package.py`, which must name the removed path to assert it is gone (controller ruling during Task 1).
 5. Nothing in tests, scripts, or CI starts the hub with `python -m`; all hub launches go through the console script, and a missing console script **fails** (never skips).
 6. User docs (README, `docs/source/**`) name only `phenotypic-gui`.
 7. The affected test surface matches its pre-change baseline; the mypy and ruff counts are not worse than 418 / 65.
