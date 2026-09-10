@@ -257,7 +257,7 @@ def _store_stem_sites() -> list[str]:
 
 
 def test_path_stem_is_never_taken_of_a_store_directory() -> None:
-    """``.ome.zarr`` is a DOUBLE suffix, so ``Path.stem`` yields ``img.ome``.
+    r"""``.ome.zarr`` is a DOUBLE suffix, so ``Path.stem`` yields ``img.ome``.
 
     That is a plausible-looking wrong name rather than an error: it propagates
     into parquet filenames and completion-marker keys, and
