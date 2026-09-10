@@ -22,7 +22,7 @@ and users start it one way only: the `phenotypic-gui` console script
 Renaming any of these orphans user state or changes behaviour; none refers to the package:
 
 - the external viewer cache root `<user cache>/phenotypic/gui/viewer_cache` (`results_viewer/_output_root.py:1044`, pinned by `tests/unit/gui/test_viewer_cache_ownership.py`);
-- the GUI submitter log directory `<output>/.phenotypic/logs/gui` (`run_console/_slurm.py:438`, `run_console/_slurm_observer.py:908`, the `'gui' in path.parts` test in `run_console/_callbacks.py:795`, and their tests);
+- the GUI submitter log directory `<output>/.phenotypic/logs/gui` (`run_console/_slurm.py:438`, `run_console/_slurm_observer.py:908`, the `'gui' in path.parts` test in `run_console/_callbacks.py:795`, the CLI's `gui_logs.name != "gui"` check at `phenotypicCLI.py:948`, and their tests);
 - the sandbox directory `.phenotypic-gui` and the thread-name prefix `"phenotypic-gui"`;
 - the console-script name `phenotypic-gui`;
 - test directory names (`tests/unit/gui`, `tests/integration/gui`, `tests/gui`, `tests/e2e/gui`) and `docs/source/tutorials/gui/`.

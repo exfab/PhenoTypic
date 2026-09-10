@@ -4,31 +4,39 @@
 
 **Goal:** Move `src/phenotypic/gui` to `src/phenotypic/_gui` and make the `phenotypic-gui` console script the only user entry to the hub.
 
-**Architecture:** One atomic, scripted move (`git mv` + a word-bounded textual rewrite + a short list of hand edits for path components that no regex can see). That is followed by two disjoint follow-ups: the entry-point seam (delete the hub `__main__`, route every hub launch through the console script) and the documentation sweep (user docs, contributor docs, API reference removal).
+**Architecture:** One atomic, scripted move (`git mv` + a word-bounded textual rewrite + a short list of hand edits for spellings no regex can see). That is followed by two disjoint follow-ups: the entry-point seam (delete the hub `__main__`, route every hub launch through the console script) and the documentation sweep (user docs, contributor docs, API reference removal).
 
 **Tech Stack:** Python 3.12, uv, pytest (+ xdist, pytest-qt, Playwright), Dash, Sphinx.
 
 **Spec:** `docs/superpowers/specs/2026-09-10-private-gui-module/spec.md`
 
+**Plan review:** `docs/superpowers/reports/2026-09-10-private-gui-module/plan-review.md` (all findings applied in this revision)
+
 ## Global Constraints
 
 - `uv` only — never bare `python`/`pip`.
-- The env re-sync after touching `[project.scripts]` is the full dev env: `uv sync --group dev --group test-qt --group docs --extra gui --extra napari`. Plain `uv sync` removes the GUI/napari extras.
+- The env re-sync after touching `[project.scripts]` matches CI and keeps every installed extra: `uv sync --group dev --group test-qt --group docs --all-extras`. `uv sync` is exact — a narrower extras list uninstalls optuna/torch/sam2/transformers/gudhi/psycopg and turns surface tests into silent skips. Diff `uv pip list` before and after.
 - The textual rewrite excludes `docs/superpowers/**` (spec D4) and `docs/source/api_reference/gui/**` (deleted in Task 3).
 - The "Must not change" runtime paths in the spec (`phenotypic/gui/viewer_cache`, `.phenotypic/logs/gui`, `.phenotypic-gui`, the `phenotypic-gui` script name, test directory names) stay byte-identical.
 - `ruff check --fix` only with explicit paths.
 - Pytest invocations: `QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg`, `-o addopts= -m "not slow"`, explicit `-n`, never `-x` for a measurement (`run-phenotypic-test` skill).
 - A test that cannot run must fail, not skip.
-- Subagents do **not** commit; the orchestrator reviews each task's diff and commits it.
+- Each task's implementer commits its own work. Stage by explicit path — a scoped `git add -A <pathspecs>` only where a step says so, never an unscoped `git add -A` or `git commit -a` — and check `git diff --cached --stat` before committing. Every commit message ends with:
+
+  ```
+  Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+  Claude-Session: https://claude.ai/code/session_01GxzwZcwTtBDMiX1Tk5Dzg5
+  ```
+
+- Tasks run strictly one at a time (one checkout, one git index).
 
 ## Execution DAG
 
 ```
-Task 0 (baseline, orchestrator) → Task 1 (Keystone: the move) ─┬→ Task 2 (Seam: entry points)  ─┬→ Task 4 (gates) → Task 5 (review, simplify, regression)
-                                                                └→ Task 3 (Sweep: docs)        ─┘
+Task 0 (baseline) → Task 1 (Keystone: the move) → Task 2 (Seam: entry points) → Task 3 (Sweep: docs) → Task 4 (gates) → Task 5 (review, simplify, regression)
 ```
 
-Tasks 2 and 3 have zero file overlap and may run in parallel in the same checkout (no commits by agents). Model: Tasks 1, 2 and all review gates on the session (Opus-tier) model; Task 3 on a Sonnet-tier model at medium effort.
+Tasks 2 and 3 share no files, but they still run one after the other: one checkout, one git index. Model: Tasks 1, 2 and all review gates on the session (Opus-tier) model; Task 3 on a Sonnet-tier model at medium effort.
 
 ## Test surface (derived mechanically)
 
@@ -53,7 +61,7 @@ QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg uv run pytest $(cat /tmp/private-gui-su
 
 - [x] **Step 1:** mypy `src/phenotypic` → `Found 418 errors in 121 files`; ruff `src/phenotypic scripts tests` → `Found 65 errors`.
 - [x] **Step 2:** Run the test surface with `<label>=baseline` on the untouched branch; record the summary line and the failing node IDs in `baseline.md`. → 262 files: `3009 passed, 16 skipped, 3 xfailed`, no failures.
-- [ ] **Step 3:** Commit the spec, this plan, and `baseline.md`.
+- [x] **Step 3:** Commit the spec, this plan, and `baseline.md`. → `676ae0d14`.
 
 ---
 
@@ -63,7 +71,7 @@ QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg uv run pytest $(cat /tmp/private-gui-su
 - Create: `tests/unit/gui/test_private_package.py`
 - Move: `src/phenotypic/gui/` → `src/phenotypic/_gui/` (all tracked files)
 - Modify (textual rewrite): every tracked text file matching `phenotypic[./]gui`, excluding `docs/superpowers/**` and `docs/source/api_reference/gui/**`
-- Modify (hand edits — separate path components, invisible to the rewrite):
+- Modify (hand edits — spellings invisible to the rewrite):
   - `pyproject.toml:253-255`
   - `scripts/check_features_md.py:31`
   - `scripts/check_workflows_md.py:41`
@@ -72,9 +80,10 @@ QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg uv run pytest $(cat /tmp/private-gui-su
   - `tests/e2e/gui/test_tune_launch_command.py:13-16`
   - `tests/unit/schema/test_no_metadata_literals.py:37-44`
   - `tests/unit/test_ome_zarr_invariants.py:150`
+  - `tests/unit/gui/test_optional_deps.py:25`
 
 **Interfaces:**
-- Produces: package `phenotypic._gui` (same submodule tree as `phenotypic.gui` today); console script `phenotypic-gui = "phenotypic._gui.shell._launcher:main"`.
+- Produces: package `phenotypic._gui` (same submodule tree as `phenotypic.gui` today); console script `phenotypic-gui = "phenotypic._gui.shell._launcher:main"`; test file `tests/unit/gui/test_private_package.py` (Task 2 appends to it).
 
 - [ ] **Step 1: Write the failing guard test** — `tests/unit/gui/test_private_package.py`:
 
@@ -117,7 +126,7 @@ def test_console_script_targets_private_launcher() -> None:
     assert 'phenotypic-gui = "phenotypic._gui.shell._launcher:main"' in pyproject
 ```
 
-- [ ] **Step 2: Run it — expect 8 failures** (the old path resolves; `_gui` does not; pyproject still names `phenotypic.gui`):
+- [ ] **Step 2: Run it — expect 8 failures** (the old path resolves; `_gui` does not, so its `find_spec` calls raise `ModuleNotFoundError`; pyproject still names `phenotypic.gui`):
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui/test_private_package.py -q -o addopts= -p no:cacheprovider
@@ -129,14 +138,22 @@ QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui/test_private_package.py -
 git mv src/phenotypic/gui src/phenotypic/_gui
 ```
 
-- [ ] **Step 4: Remove the untracked leftovers** — these would keep `phenotypic.gui` importable as a namespace package. First verify that only bytecode and `.DS_Store` remain (expected output: nothing), then delete:
+- [ ] **Step 4: Confirm nothing is left at the old path, and clear the bytecode-only directories** — `git mv` renames the directory on disk, so ignored contents (`__pycache__`, `.DS_Store`) move with it. Confirm the old path is gone (expected: exit 0, no output):
 
 ```bash
-find src/phenotypic/gui -type f -not -name '*.pyc' -not -name '.DS_Store'
-rm -rf src/phenotypic/gui
+test ! -e src/phenotypic/gui
 ```
 
-If the `find` prints anything, stop and report it — do not delete.
+Three directories that moved hold only bytecode from long-deleted modules (`sweep`, `_shared/timeline`, `results_viewer/timeline_view`), and each would resolve as a namespace package. Verify they contain nothing outside `__pycache__` (expected output: nothing), then remove them:
+
+```bash
+for d in src/phenotypic/_gui/sweep src/phenotypic/_gui/_shared/timeline src/phenotypic/_gui/results_viewer/timeline_view; do
+  find "$d" -type f -not -path '*/__pycache__/*'
+done
+rm -rf src/phenotypic/_gui/sweep src/phenotypic/_gui/_shared/timeline src/phenotypic/_gui/results_viewer/timeline_view
+```
+
+If the `find` loop prints anything, stop and report it — do not delete.
 
 - [ ] **Step 5: Textual rewrite** (word-bounded; `phenotypic-gui` is untouched because `-` is not in `[./]`):
 
@@ -151,48 +168,58 @@ git grep -lIz -E 'phenotypic[./]gui' -- . ':!docs/superpowers' ':!docs/source/ap
   - `tests/e2e/gui/test_tune_launch_command.py`: the `/ "gui"` line directly after `/ "phenotypic"` → `/ "_gui"`.
   - `tests/unit/schema/test_no_metadata_literals.py`: the four `_ALLOWED` keys `"gui/results_viewer/_curation_labels.py"`, `"gui/results_viewer/_compatibility.py"`, `"gui/shell/_metadata_context.py"`, `"gui/results_viewer/_scatter_tab/_facets.py"` → `"_gui/…"`.
   - `tests/unit/test_ome_zarr_invariants.py:150`: `"gui/builder/_preview_cache.py"` → `"_gui/builder/_preview_cache.py"`.
+  - `tests/unit/gui/test_optional_deps.py:25`: `from phenotypic import gui` → `from phenotypic import _gui as gui` (attribute-style import; it contains no `phenotypic.gui` substring for the rewrite to match).
 
 - [ ] **Step 7: Prove nothing was missed**
 
 ```bash
-git grep -nIE 'phenotypic[./]gui([^_a-zA-Z0-9]|$)' -- . ':!docs/superpowers' ':!docs/source/api_reference/gui'
+git grep -nIE 'phenotypic[./]gui([^_a-zA-Z0-9]|$)|from phenotypic import gui' -- . ':!docs/superpowers' ':!docs/source/api_reference/gui'
 ```
 Expected: no output.
 
 ```bash
-git grep -nE "[\"']gui[\"'/]" -- src tests scripts tools pyproject.toml
+git grep -lE "[\"']gui[\"'/]" -- '*.py' pyproject.toml
 ```
-Expected: hits **only** in these files, all runtime paths from the spec's "Must not change" list, or the doomed generators:
-- `src/phenotypic/_gui/results_viewer/_output_root.py` (cache root)
+Expected: **exactly** these 13 files. Each is a runtime path from the spec's "Must not change" list, or one of the two generator scripts deleted in Task 3:
+- `scripts/generate_dispatch_reference.py`, `scripts/generate_validation_reference.py` (deleted in Task 3)
+- `src/phenotypic/_gui/results_viewer/_output_root.py` (viewer cache root)
+- `src/phenotypic/_gui/run_console/_callbacks.py`
 - `src/phenotypic/_gui/run_console/_slurm.py`
 - `src/phenotypic/_gui/run_console/_slurm_observer.py`
-- `src/phenotypic/_gui/run_console/_callbacks.py`
-- `tests/unit/gui/run_console/test_slurm.py`
+- `src/phenotypic/phenotypicCLI.py` (`gui_logs.name != "gui"`)
+- `tests/integration/gui/test_run_console_callbacks.py`
 - `tests/unit/cli/test_cli_output_freshness.py`
-- `tests/unit/gui/test_viewer_cache_ownership.py`
+- `tests/unit/gui/run_console/test_slurm.py`
+- `tests/unit/gui/run_console/test_slurm_observer.py`
 - `tests/unit/gui/test_check_workflows_md.py` (`tutorials / "gui"`)
-- `scripts/generate_dispatch_reference.py`, `scripts/generate_validation_reference.py` (deleted in Task 3)
+- `tests/unit/gui/test_viewer_cache_ownership.py`
+
+Any other file is a missed package path: fix it and add it to your report.
 
 - [ ] **Step 8: Re-sync the env so the console script is regenerated**
 
 ```bash
-uv sync --group dev --group test-qt --group docs --extra gui --extra napari
-grep -c "phenotypic._gui.shell._launcher" .venv/bin/phenotypic-gui   # expect 1
-uv run phenotypic-gui --help | head -3                               # expect "usage: phenotypic-gui"
+uv pip list > /tmp/private-gui-pip-before.txt
+uv sync --group dev --group test-qt --group docs --all-extras
+uv pip list | diff /tmp/private-gui-pip-before.txt -                  # expect: no package added or removed
+grep -c "phenotypic._gui.shell._launcher" .venv/bin/phenotypic-gui    # expect 1
+uv run phenotypic-gui --help | head -3                                # expect "usage: phenotypic-gui"
 ```
 
 - [ ] **Step 9: Guard test green** — rerun the Step 2 command; expect 8 passed.
 
 - [ ] **Step 10: Mutation proof** — `mkdir -p src/phenotypic/gui/__pycache__` and rerun; `test_public_gui_import_path_is_gone` must FAIL (the namespace-package trap). Then `rm -rf src/phenotypic/gui` and confirm it passes again.
 
-- [ ] **Step 11: Task surface** — run the test surface with `<label>=task1`. Every failure must either be in the baseline or be attributed in isolation. Report the summary line.
+- [ ] **Step 11: Task surface** — run the test surface with `<label>=task1`. Every failure must either be in the baseline (there are none) or be attributed by rerunning it alone. Compare the skip count against the baseline's 16; any new skip needs its reason. Report the summary line.
 
-- [ ] **Step 12: Commit (orchestrator)**
+- [ ] **Step 12: Commit** — the move spans ~470 files, so a scoped `git add -A` over these pathspecs is required here. First confirm nothing outside them changed (expected: no output):
 
 ```bash
+git status --short -- . ':!src/phenotypic' ':!tests' ':!scripts' ':!tools' ':!pyproject.toml' ':!.github' ':!.pre-commit-config.yaml' ':!.claude/skills' ':!README.md' ':!CLAUDE.md' ':!NOTICE' ':!docs/diagrams' ':!docs/source'
 git add -A src/phenotypic tests scripts tools pyproject.toml .github .pre-commit-config.yaml .claude/skills README.md CLAUDE.md NOTICE docs/diagrams docs/source
-git commit -m "refactor(gui): move phenotypic.gui to the private phenotypic._gui package"
 ```
+
+Commit with subject `refactor(gui): move phenotypic.gui to the private phenotypic._gui package` and the trailer from Global Constraints.
 
 ---
 
@@ -212,8 +239,8 @@ git commit -m "refactor(gui): move phenotypic.gui to the private phenotypic._gui
   - `tests/integration/gui/test_console_script.py`
 
 **Interfaces:**
-- Consumes: `phenotypic._gui` and the regenerated console script from Task 1.
-- Produces: `_phenotypic_gui_executable() -> str`, a private helper defined separately in `tests/e2e/gui/conftest.py` and `scripts/capture_gui_tutorial_screenshots.py` (the script is standalone and imports nothing from `tests/`).
+- Consumes: `phenotypic._gui`, the regenerated console script, and `tests/unit/gui/test_private_package.py` from Task 1.
+- Produces: `_phenotypic_gui_executable() -> str`, a private helper defined separately in `tests/e2e/gui/conftest.py` and `scripts/capture_gui_tutorial_screenshots.py` (the script is standalone and imports nothing from `tests/`). It looks only in `sysconfig.get_path("scripts")`, never on `PATH`: seven other worktree venvs in this repo install their own `phenotypic-gui`, each importing its own checkout.
 
 - [ ] **Step 1: Failing test** — append to `tests/unit/gui/test_private_package.py`:
 
@@ -225,21 +252,20 @@ def test_hub_has_no_module_entry() -> None:
 
 Run the file; expect exactly this test to fail.
 
-- [ ] **Step 2: Make the console-script test require the script** — in `tests/integration/gui/test_console_script.py`, replace `_phenotypic_gui_argv`:
+- [ ] **Step 2: Make the console-script test require the script** — in `tests/integration/gui/test_console_script.py`, add `import sysconfig` to the imports and replace `_phenotypic_gui_argv`:
 
 ```python
 def _phenotypic_gui_argv() -> list[str]:
     """Return argv for ``phenotypic-gui``, the hub's only entry point.
 
-    Prefers the script installed beside ``sys.executable`` so the test uses
-    the environment it runs in. A missing script fails the test: there is no
-    module fallback to hide behind.
+    Looks only in this interpreter's scripts directory -- never ``PATH`` -- so
+    the test exercises this checkout's install. A missing script fails the
+    test: there is no module fallback to hide behind.
     """
-    binary = shutil.which(
-        "phenotypic-gui", path=str(Path(sys.executable).parent)
-    ) or shutil.which("phenotypic-gui")
+    scripts_dir = sysconfig.get_path("scripts")
+    binary = shutil.which("phenotypic-gui", path=scripts_dir)
     if binary is None:
-        pytest.fail("phenotypic-gui console script is not installed in this environment")
+        pytest.fail(f"phenotypic-gui console script is not installed in {scripts_dir}")
     return [binary]
 ```
 
@@ -249,23 +275,22 @@ def _phenotypic_gui_argv() -> list[str]:
 git rm src/phenotypic/_gui/__main__.py
 ```
 
-- [ ] **Step 4: Route the e2e fixture through the console script** — in `tests/e2e/gui/conftest.py`, add the helper above `_start_live_server` (add `import shutil` to the imports if absent):
+- [ ] **Step 4: Route the e2e fixture through the console script** — in `tests/e2e/gui/conftest.py`, add `import shutil` and `import sysconfig` to the imports if absent, and add this helper above `_start_live_server`:
 
 ```python
 def _phenotypic_gui_executable() -> str:
     """Return the ``phenotypic-gui`` console script of the running environment.
 
-    Prefers the script beside ``sys.executable`` so the hub boots from the
-    same environment as the tests; raises rather than skipping when the
-    script is missing.
+    Looks only in this interpreter's scripts directory -- never ``PATH`` -- so
+    the hub boots the checkout under test rather than another environment's
+    install, and raises rather than skipping when the script is missing.
     """
-    found = shutil.which(
-        "phenotypic-gui", path=str(Path(sys.executable).parent)
-    ) or shutil.which("phenotypic-gui")
+    scripts_dir = sysconfig.get_path("scripts")
+    found = shutil.which("phenotypic-gui", path=scripts_dir)
     if found is None:
         raise RuntimeError(
-            "phenotypic-gui console script not found; run "
-            "`uv sync --group dev --group test-qt --extra gui`"
+            f"phenotypic-gui console script not found in {scripts_dir}; run "
+            "`uv sync --group dev --group test-qt --all-extras`"
         )
     return found
 ```
@@ -284,14 +309,14 @@ and replace the first three elements of `cmd`:
     ]
 ```
 
-- [ ] **Step 5: Same change in `scripts/capture_gui_tutorial_screenshots.py::boot_gui`** — add the identical `_phenotypic_gui_executable` helper above `boot_gui` (the script already imports `shutil`, `sys`, `Path`) and replace `sys.executable, "-m", "phenotypic._gui",` with `_phenotypic_gui_executable(),`. The two standalone-viewer captures (`-m phenotypic._gui.analysis`, `-m phenotypic._gui.results_viewer`) stay — spec D1 keeps those launchers.
+- [ ] **Step 5: Same change in `scripts/capture_gui_tutorial_screenshots.py::boot_gui`** — add `import sysconfig` to the imports (the script already imports `shutil`), add the identical `_phenotypic_gui_executable` helper above `boot_gui`, and replace `sys.executable, "-m", "phenotypic._gui",` with `_phenotypic_gui_executable(),`. The two standalone-viewer captures (`-m phenotypic._gui.analysis`, `-m phenotypic._gui.results_viewer`) stay — spec D1 keeps those launchers.
 
 - [ ] **Step 6: Docstrings**
   - `src/phenotypic/_gui/__init__.py` — replace the module docstring's first paragraph with: `"""Private implementation of the PhenoTypic GUI hub.` + blank line + `Not a public API: import paths under ``phenotypic._gui`` may change without notice. Users start the hub with the ``phenotypic-gui`` console script. Components are lazy-loaded so that optional dependencies (Dash, napari) are only imported when used.`. Keep the "Sub-packages" / "Utilities" sections, with `gui.` → `_gui.`.
   - `src/phenotypic/_gui/shell/_launcher.py` — `:func:`launch_gui`` bullet: "programmatic boot used by downstream tests" (drop "the ``__main__`` module and"); `:func:`main`` bullet: "argparse front-end wired into ``[project.scripts]`` (``phenotypic-gui = phenotypic._gui.shell._launcher:main``), the hub's only entry point." (drop the `python -m` clause).
   - `src/phenotypic/_gui/run_console/__main__.py` — "The unified hub entry point is ``python -m phenotypic._gui``." → "The unified hub entry point is the ``phenotypic-gui`` console script."
 
-- [ ] **Step 7: FEATURES.md** (the CI `features-md-gate` requires this file to change)
+- [ ] **Step 7: FEATURES.md** (the ledger must describe the entry points as they now are)
   - Delete the row `| \`python -m phenotypic._gui\` | Module entry | Argparse …`.
   - Row `| \`phenotypic-gui\` console script |` — Expected behaviour → `Sole hub entry point; \`--help\` + \`--root\` work`.
   - Documentation table, row `CLAUDE.md update` — Expected behaviour → `Names \`phenotypic-gui\` as the only hub entry and lists the private sub-app debug launchers`.
@@ -307,12 +332,19 @@ Expected: 12 passed; both checkers exit 0.
 
 - [ ] **Step 9: Mutation proof** — temporarily make `_phenotypic_gui_argv` return `[sys.executable, "-m", "phenotypic._gui"]`; `test_phenotypic_gui_help_succeeds` must FAIL. Revert.
 
-- [ ] **Step 10: Boot the hub through the new e2e path** (live seam; needs Playwright chromium, which is installed locally):
+- [ ] **Step 10: Boot the hub through the new e2e path** (live seam; Playwright chromium is installed locally):
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run pytest tests/e2e/gui -m "not ci_flaky" -q -o addopts= -p no:cacheprovider -n 4
 ```
-Report the summary line; attribute any failure by rerunning it alone on this branch **and** on `main` (`git stash` is not needed — use `git worktree add /tmp/pht-main main`).
+Report the summary line. To attribute a failure, rerun it alone on this branch **and** on `main`:
+
+```bash
+git worktree add /tmp/pht-main main
+(cd /tmp/pht-main && uv sync --group dev --group test-qt --group docs --all-extras)   # a fresh worktree has no venv
+```
+
+Leave `/tmp/pht-main` in place; Task 4 reuses it.
 
 - [ ] **Step 11: Capture-script boot smoke**
 
@@ -329,7 +361,14 @@ PY
 ```
 Expected: `[gui] booting: …/phenotypic-gui --root …` then `ready http://127.0.0.1:<port>`.
 
-- [ ] **Step 12: Commit (orchestrator)** — `refactor(gui): make phenotypic-gui the only hub entry point`.
+- [ ] **Step 12: Commit** — stage only this task's files by name (the Step 3 `git rm` is already staged):
+
+```bash
+git add tests/unit/gui/test_private_package.py tests/integration/gui/test_console_script.py tests/e2e/gui/conftest.py scripts/capture_gui_tutorial_screenshots.py src/phenotypic/_gui/__init__.py src/phenotypic/_gui/shell/_launcher.py src/phenotypic/_gui/run_console/__main__.py src/phenotypic/_gui/FEATURES.md
+git diff --cached --stat    # expect exactly these 8 paths plus the deleted src/phenotypic/_gui/__main__.py
+```
+
+Commit with subject `refactor(gui): make phenotypic-gui the only hub entry point` and the trailer from Global Constraints.
 
 ---
 
@@ -347,9 +386,10 @@ Expected: `[gui] booting: …/phenotypic-gui --root …` then `ready http://127.
   - `README.md:178-212`
   - `docs/source/tutorials/getting_started.rst:53,274-280,314`
   - `docs/source/how_to/pages/gui_hub.md:27-32,143,290,316-333`
+  - `docs/source/tutorials/gui/02_file_explorer.md:27`
   - `docs/source/tutorials/gui/06_view_results.md:20-33`
   - `docs/source/tutorials/gui/08_analysis.md:23-30`
-  - `CLAUDE.md:236-241,249,348`
+  - `CLAUDE.md:237-241,249,348`
   - `src/phenotypic/_gui/CLAUDE.md` (top-level note)
 
 - [ ] **Step 1: Confirm the deletions have no other consumers** — expected: no output.
@@ -414,7 +454,7 @@ and replace "`phenotypic-gui` or `python -m phenotypic._gui`." with "`phenotypic
   - "Two equivalent entry points boot the same server:" → "The `phenotypic-gui` console script boots the hub:" and drop the `uv run python -m phenotypic._gui …` line from that code block.
   - Warning block: "Always use the hyphenated form `phenotypic-gui` or the module form `python -m phenotypic._gui`." → "Always use the hyphenated form `phenotypic-gui`."
   - Slurm walkthrough: `uv run python -m phenotypic._gui --root <project-dir> --port 8050` → `uv run phenotypic-gui --root <project-dir> --port 8050`.
-  - Delete the whole `## Standalone tools` section (the heading through "…the same defaults as the hub launcher."). Spec D1: debug launchers are contributor-only.
+  - Delete the whole `## Standalone tools` section (the heading through "…the same defaults as the hub launcher."). Spec D1: the debug launchers are contributor-only.
 
 - [ ] **Step 7: `docs/source/tutorials/gui/06_view_results.md`** — replace
 
@@ -444,18 +484,21 @@ Analysis, rebuild, and publication stay disabled. You can also:
 1. **Open `deliverables/dashboard.html`**
 ````
 
-- [ ] **Step 8: `docs/source/tutorials/gui/08_analysis.md`** — delete the note block:
+- [ ] **Step 8: The other two tutorials**
+  - `docs/source/tutorials/gui/08_analysis.md` — delete the note block:
 
-````markdown
-```{note}
-The standalone launcher is still useful for headless workflows or
-long-running fits where you don't need the rest of the hub:
+    ````markdown
+    ```{note}
+    The standalone launcher is still useful for headless workflows or
+    long-running fits where you don't need the rest of the hub:
 
-    uv run python -m phenotypic._gui.analysis \
-        --root <path-to-cli-output> --port 8051
-```
+        uv run python -m phenotypic._gui.analysis \
+            --root <path-to-cli-output> --port 8051
+    ```
 
-````
+    ````
+
+  - `docs/source/tutorials/gui/02_file_explorer.md:27` — replace ``Every entry is run through a small classifier (`phenotypic._gui.shell._classifier`)`` with ``Every entry is run through a small classifier``. User docs never name private modules (spec criterion 6).
 
 - [ ] **Step 9: Root `CLAUDE.md`** — replace the three bullets
 
@@ -494,28 +537,44 @@ and change both link texts `[gui/CLAUDE.md](src/phenotypic/_gui/CLAUDE.md)` → 
 - [ ] **Step 11: Verify** — both expected to print nothing:
 
 ```bash
-git grep -nE "python -m phenotypic\._gui" -- README.md docs/source
+git grep -nE "phenotypic[./]_gui" -- README.md docs/source
 git grep -nE "api_reference/gui|gui/index" -- docs/source/api_reference
 ```
 
-- [ ] **Step 12: Commit (orchestrator)** — `docs(gui): phenotypic-gui is the only documented entry; drop the GUI API reference`.
+- [ ] **Step 12: Commit** — stage the edited files by name (the Step 2 deletions are already staged):
+
+```bash
+git add README.md docs/source/api_reference/index.rst docs/source/tutorials/getting_started.rst docs/source/how_to/pages/gui_hub.md docs/source/tutorials/gui/02_file_explorer.md docs/source/tutorials/gui/06_view_results.md docs/source/tutorials/gui/08_analysis.md CLAUDE.md src/phenotypic/_gui/CLAUDE.md
+git diff --cached --stat    # expect only this task's paths: the 9 edits plus the Step 2 deletions
+```
+
+Commit with subject `docs(gui): phenotypic-gui is the only documented entry; drop the GUI API reference` and the trailer from Global Constraints.
 
 ---
 
 ### Task 4: Phase gates (orchestrator)
 
-- [ ] **Step 1:** Test surface with `<label>=final` — compare against `baseline.xml` node by node. New failures must be rerun alone before being attributed.
+- [ ] **Step 1:** Test surface with `<label>=final` — compare against `baseline.xml` node by node, including the skip count (baseline: 16). Rerun each new failure alone before attributing it.
 - [ ] **Step 2:** `uv run mypy src/phenotypic` ≤ 418 errors; `uv run ruff check src/phenotypic scripts tests` ≤ 65 errors (a drop is expected if the deleted scripts carried findings). Diff the finding sets, not just the counts.
 - [ ] **Step 3:** Wheel contents: `uv run --no-project --with pytest pytest tests/integration/packaging/test_package_contents.py -m slow -v -o addopts=`.
-- [ ] **Step 4:** Docs build in the background: `uv run sphinx-build -b html docs/source /tmp/pht-docs -q 2>&1 | grep -iE "gui|toctree|not found"`. Expected: no warning that names `api_reference/gui` or `phenotypic._gui`/`phenotypic.gui`.
-- [ ] **Step 5:** Spec acceptance criteria 1-7 checked one by one; record in `docs/superpowers/reports/2026-09-10-private-gui-module/acceptance.md`.
+- [ ] **Step 4:** Docs build exactly as CI runs it (`docs.yml:87` → `docs/Makefile:40`, `sphinx-build -n`), on this branch and in the `/tmp/pht-main` worktree (create and sync it as in Task 2 Step 10 if absent). For each `<label>` in `branch`, `main`:
+
+```bash
+set -o pipefail
+uv run make -C docs html 2>&1 | tee /tmp/pht-docs-<label>.log; echo "exit=$?"
+grep -E "WARNING|ERROR" /tmp/pht-docs-<label>.log | sed -E 's/:[0-9]+:/:/' | sort -u > /tmp/pht-docs-<label>.warnings
+```
+
+then `diff /tmp/pht-docs-main.warnings /tmp/pht-docs-branch.warnings`. Expected: exit 0 on both, and no new warning — in particular none naming `api_reference/gui`, `phenotypic._gui` or `phenotypic.gui`. The rewrite turns `:class:` targets in `sdk_/_qc_recipe/_recipe.py:25,272` and `_assets/__init__.py:22` into `phenotypic._gui…`, which `-n` checks.
+- [ ] **Step 5:** Check spec acceptance criteria 1-7 one by one; record the results in `docs/superpowers/reports/2026-09-10-private-gui-module/acceptance.md`.
+- [ ] **Step 6:** `git worktree remove /tmp/pht-main`.
 
 ---
 
 ### Task 5: Review, simplify, regression
 
-- [ ] **Step 1:** Dispatch `xander-local:implementation-test-reviewer` (Opus) over `main..refactor/private-gui`, with the spec. It writes `docs/superpowers/reports/2026-09-10-private-gui-module/implementation-test-review.md`.
+- [ ] **Step 1:** Dispatch `xander-local:implementation-test-reviewer` (Opus) over `main..refactor/private-gui`, with the spec. Its report goes to `docs/superpowers/reports/2026-09-10-private-gui-module/implementation-test-review.md`.
 - [ ] **Step 2:** Apply confirmed findings; rerun the test surface.
-- [ ] **Step 3:** Run `/simplify` over the branch diff; apply; rerun the test surface.
-- [ ] **Step 4:** Full regression once: `tests/unit tests/integration tests/gui tests/smoke` with the `run-phenotypic-test` settings (background locally, or the committed sbatch on HPCC). Attribute each failure by rerunning it alone here and on `main`.
+- [ ] **Step 3:** Run `/simplify` over the branch diff; apply its fixes; rerun the test surface.
+- [ ] **Step 4:** Full regression once: `tests/unit tests/integration tests/gui tests/smoke` with the `run-phenotypic-test` settings (in the background locally, or the committed sbatch on HPCC). Attribute each failure by rerunning it alone here and on `main`.
 - [ ] **Step 5:** Hand off with the `superpowers:finishing-a-development-branch` skill.
