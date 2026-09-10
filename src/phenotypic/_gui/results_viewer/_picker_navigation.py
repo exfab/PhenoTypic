@@ -1,4 +1,4 @@
-"""Back-compat shim: picker-navigation helpers moved to ``gui/_shared``."""
+"""Back-compat shim: picker-navigation helpers moved to ``_gui/_shared``."""
 from __future__ import annotations
 
 from phenotypic._gui._shared._picker_navigation import (

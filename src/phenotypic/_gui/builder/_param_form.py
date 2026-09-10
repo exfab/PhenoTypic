@@ -2,7 +2,7 @@
 
 Re-exports the shared :mod:`phenotypic._gui._param_forms` machinery and
 adds the builder's point-picker widget. Other modules (the analysis
-sub-app, future tools) import from ``gui/_param_forms.py`` directly;
+sub-app, future tools) import from ``_gui/_param_forms.py`` directly;
 the builder imports from here so its existing call sites
 (``_callbacks.py``, the inspector pane) continue to work without
 rewiring.

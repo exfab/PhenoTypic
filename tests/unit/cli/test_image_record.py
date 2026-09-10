@@ -734,7 +734,7 @@ def test_the_gui_does_not_call_a_state_this_build_wrote_unreadable(tmp_path):
     try:
         from phenotypic._gui.shell._runs_registry import RunRegistry
     except ImportError as exc:  # pragma: no cover - relocation or no extra
-        # Unlike tripwire 1, this import is NOT free: `gui/shell/__init__`
+        # Unlike tripwire 1, this import is NOT free: `_gui/shell/__init__`
         # eagerly imports `_app`, so it pulls in Dash. Without the `gui`
         # extra this tripwire skips and never fires, which is why the reason
         # carries the exception instead of asserting a cause.

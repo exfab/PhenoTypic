@@ -176,14 +176,10 @@ measurement/analysis suite — handy for previewing detection or enhanced layers
 # Launch the GUI
 
 The unified GUI hub bundles the pipeline builder, results viewer, and run console
-under one URL. Two equivalent entry points:
+under one URL. Start it with the `phenotypic-gui` console script:
 
 ```bash
-# Console script (preferred)
 uv run phenotypic-gui --root ./images --port 8050
-
-# Module entry (works in environments without the console script on PATH)
-uv run python -m phenotypic._gui --root ./images --port 8050
 ```
 
 `--root` freezes the sandbox the GUI's file browser is allowed to see (defaults to
@@ -208,7 +204,7 @@ Then open the full proxy URL, for example
 `https://ondemand.hpcc.ucr.edu/node/hz01/30099/`.
 
 Note: `phenotypic gui` (no hyphen, as a subcommand) is **not supported**. Use
-`phenotypic-gui` or `python -m phenotypic._gui`.
+`phenotypic-gui`.
 
 # Hyperparameter Tuning
 

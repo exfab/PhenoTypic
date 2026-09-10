@@ -3,8 +3,8 @@
  * -------------------------------------------------------------------------
  * PhenoTypic Results Viewer styles.
  * Tokens follow DESIGN.md: navy, blue, gold, and background colors are
- * sourced from gui/_design.py via var(--color-*) custom properties.
- * Font stack is injected from gui/_design.py via
+ * sourced from _gui/_design.py via var(--color-*) custom properties.
+ * Font stack is injected from _gui/_design.py via
  * var(--font-display | --font-body | --font-mono).
  * -------------------------------------------------------------------------
  */

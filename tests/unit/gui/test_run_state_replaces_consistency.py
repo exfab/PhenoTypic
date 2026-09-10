@@ -96,7 +96,7 @@ def test_no_production_module_still_imports_the_deleted_classifier() -> None:
     **An AST walk, not a grep, and the difference is not cosmetic.** The
     property is *depends on a deleted name*, which is semantic; ``grep``
     measures spellings. Two modules legitimately name
-    ``inspect_output_consistency`` in prose -- ``gui/_snapshot_status.py``
+    ``inspect_output_consistency`` in prose -- ``_gui/_snapshot_status.py``
     records what it stopped doing -- and a text search cannot tell that from a
     live import. A grep-based guard here would either fail on a correct tree
     or have to be weakened until it stopped catching anything.

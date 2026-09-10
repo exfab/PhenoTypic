@@ -1,4 +1,4 @@
-"""Unit tests for the shared param-form module ``gui/_param_forms.py``.
+"""Unit tests for the shared param-form module ``_gui/_param_forms.py``.
 
 Covers:
 - Type-classification helpers (multi-union detection in particular).

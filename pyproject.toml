@@ -335,7 +335,7 @@ ignore_missing_imports = true
 # Static figure renderer for the Scatter tab's PDF export. Its own block for
 # the same reason as zarr: it is a distinct package from `plotly.*` above,
 # with a distinct runtime prerequisite (a Chrome install -- see
-# `gui/results_viewer/_scatter_tab/_pdf.py`), and folding it into the long
+# `_gui/results_viewer/_scatter_tab/_pdf.py`), and folding it into the long
 # list would hide both facts.
 [[tool.mypy.overrides]]
 module = [

@@ -1,17 +1,23 @@
 # PhenoTypic GUI Module Guide
 
+> **Private package.** `phenotypic._gui` is not a public API. Users start the
+> hub only with the `phenotypic-gui` console script (`shell/_launcher.py:main`).
+> The per-sub-app `__main__.py` launchers are contributor debugging tools; do
+> not document them in user-facing docs, and do not add a `__main__.py` to the
+> package root.
+
 The GUI is a Dash-based hub: a shell plus five mounted sub-apps:
 
 | Mount        | Module                              | Purpose                                  |
 | ------------ | ----------------------------------- | ---------------------------------------- |
-| `/`          | `gui/shell/`                        | Top-bar chrome, sidebar, home page       |
-| `/builder/`  | `gui/builder/`                      | Pipeline builder (dash-cytoscape graph)  |
-| `/results/`  | `gui/results_viewer/`               | Output viewer (Viv/deck.gl + tables)     |
-| `/run/`      | `gui/run_console/`                  | Run console (form + log tail + recents)  |
-| `/analysis/` | `gui/analysis/`                     | Analyzer runner (via `_AnalysisProxy`)   |
-| `/browse/`   | `gui/browse/`                       | File / output browser                    |
+| `/`          | `_gui/shell/`                        | Top-bar chrome, sidebar, home page       |
+| `/builder/`  | `_gui/builder/`                      | Pipeline builder (dash-cytoscape graph)  |
+| `/results/`  | `_gui/results_viewer/`               | Output viewer (Viv/deck.gl + tables)     |
+| `/run/`      | `_gui/run_console/`                  | Run console (form + log tail + recents)  |
+| `/analysis/` | `_gui/analysis/`                     | Analyzer runner (via `_AnalysisProxy`)   |
+| `/browse/`   | `_gui/browse/`                       | File / output browser                    |
 
-> **Unmounted surfaces.** `gui/tune/` is **retained on disk and still
+> **Unmounted surfaces.** `_gui/tune/` is **retained on disk and still
 > imports**, but the hub no longer composes it, so `/tune/` 404s and the
 > **Pipeline ▾** group carries no Tune member. Inside the results viewer the
 > **QC**, **Heatmap** and **Error** tabs are unmounted the same way — package,
@@ -65,14 +71,14 @@ does the tiling. Two rules follow, and both have already been got wrong once:
 `BrowseCache` → OSD deliberately. The node preview left that path in the Viv
 rebuild's phase 6, which is what took the count from five to four. Deleting
 the module breaks Browse. `_tile_routes.py`'s two shared symbols
-(`TILE_NAME_RE`, `json_error`) moved to `gui/_shared/tiles.py` because the
+(`TILE_NAME_RE`, `json_error`) moved to `_gui/_shared/tiles.py` because the
 builder imports them across sub-app boundaries.
 
 **Only `results_viewer/_assets/viv_viewer.js` may touch
 `window.__vivBundle`.** It is the one imperative façade — `mount` /
 `setSource` / `setViewState` / `setGridViews` / `setLayerVisibility` /
 `setLayerOpacity` / `destroy`, all `containerId`-first — and the builder
-reaches it through the two-file `gui/_shared/_viv_assets.py` blueprint at
+reaches it through the two-file `_gui/_shared/_viv_assets.py` blueprint at
 `/_viv/` rather than committing a second copy of the 2.5 MiB artifact. Dash
 serves the façade **before** the bundle (root-level assets sort ahead of
 subdirectory ones), so the façade resolves the global lazily inside `ready()`
@@ -648,7 +654,7 @@ travels with the field annotation.
 ## Error-category triage (curation)
 
 Per-colony curation is an error-**category radial menu** (not a binary remove),
-implemented once for both tile surfaces in `gui/_shared/_radial.py` — see its
+implemented once for both tile surfaces in `_gui/_shared/_radial.py` — see its
 module docstring for the trigger/badge, lazy `dbc.Popover`, `surface` keying,
 wedge→`CurationLabels.mark`/`unmark`, and category colors. Two cross-cutting
 notes not tied to that component:

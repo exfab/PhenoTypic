@@ -286,11 +286,11 @@ here when you add a consumer.
 | `phenotypicCLI.py:714` (`_output_was_migrated`) | `migration_manifest.json` | — | Whether to refuse continuation and name `--restart` |
 | `_cli/_cli_checkpoint_handler.py:310` | `diagnostics.verified` | `deep` | Raise vs. close a terminal-incomplete lifecycle |
 | `_cli/_cli_completion.py` | the three proofs | — | Publishes them; the writer side |
-| `gui/shell/_runs_registry.py:1082` | `.completion` | `shallow` | Status of a historical output with no GUI launch generation |
-| `gui/shell/_runs_registry.py:1460` | `.completion`, `.diagnostics` | `shallow` | The run's row in the runs list |
-| `gui/results_viewer/_output_root.py:364` | full `RunState` | `deep` | Binds run state at discovery; gates opening via `core_readable` |
-| `gui/_snapshot_status.py:121` | `.completion` | `shallow` | Live status for a bound snapshot |
-| `gui/run_console/_slurm_observer.py:1334` | `.completion` | `shallow` | Whether a SLURM run is reconciling or done |
+| `_gui/shell/_runs_registry.py:1082` | `.completion` | `shallow` | Status of a historical output with no GUI launch generation |
+| `_gui/shell/_runs_registry.py:1460` | `.completion`, `.diagnostics` | `shallow` | The run's row in the runs list |
+| `_gui/results_viewer/_output_root.py:364` | full `RunState` | `deep` | Binds run state at discovery; gates opening via `core_readable` |
+| `_gui/_snapshot_status.py:121` | `.completion` | `shallow` | Live status for a bound snapshot |
+| `_gui/run_console/_slurm_observer.py:1334` | `.completion` | `shallow` | Whether a SLURM run is reconciling or done |
 
 ### Consumers that deliberately ask something else
 
@@ -299,12 +299,12 @@ must not. Both carry a comment saying so; **do not "simplify" them**.
 
 | Site | Asks instead | Why |
 |---|---|---|
-| `gui/shell/_runs_registry.py:699` | `_all_accepted_images_succeeded` | Asks *"have the accepted images succeeded?"*. `.completion` already requires the run proof, which would make the branch below it dead code. |
+| `_gui/shell/_runs_registry.py:699` | `_all_accepted_images_succeeded` | Asks *"have the accepted images succeeded?"*. `.completion` already requires the run proof, which would make the branch below it dead code. |
 | `_cli/_dashboard/_manifest_builder.py:729` | `valid_aggregate_snapshot` | Runs during recompile, **before any run proof exists**. `.completion` asks whether a valid run proof covers the inventory, which is a different question. |
 
 ### `core_readable` is not `completion`
 
-`core_readable(layout)` (`gui/results_viewer/_output_root.py:140`) decides
+`core_readable(layout)` (`_gui/results_viewer/_output_root.py:140`) decides
 whether the results viewer can open a bundle. It is **not** derivable from
 `completion`: a curated-but-incomplete run is core-readable, and a completion
 test that lists the acceptable verdicts gets it wrong. Ask `core_readable`
@@ -313,7 +313,7 @@ directly rather than approximating it.
 ### Status vocabulary is hand-copied
 
 `_runs_registry._RUN_STATUSES` is the vocabulary; other GUI sites hand-copy it.
-One copy (`gui/results_viewer/_qc_tab/_rebuild.py:157`) silently fell a member
+One copy (`_gui/results_viewer/_qc_tab/_rebuild.py:157`) silently fell a member
 behind when `incomplete` was added, and an unrecognised status there does not
 degrade — it **blocks a QC rebuild on a perfectly valid status**.
 

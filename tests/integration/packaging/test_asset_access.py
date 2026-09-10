@@ -43,7 +43,7 @@ def test_openseadragon_icon_resource_readable():
 def test_shell_layout_imports_and_inlines_css():
     """The exact import that crashes ``phenotypic-gui`` on a broken wheel.
 
-    ``gui/shell/_layout.py`` reads ``shell.css`` at import time, so a wheel
+    ``_gui/shell/_layout.py`` reads ``shell.css`` at import time, so a wheel
     missing that asset raises ``FileNotFoundError`` here — before argparse
     ever runs.
     """

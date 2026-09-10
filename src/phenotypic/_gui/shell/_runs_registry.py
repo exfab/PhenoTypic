@@ -892,7 +892,7 @@ class RunRegistry:
                         # pid in the record being downgraded, so believing
                         # this arm would be reading back our own write --
                         # the same non-fence `RunIdentity.owner_generation`
-                        # is (gui/CLAUDE.md, "What RunState cannot answer").
+                        # is (_gui/CLAUDE.md, "What RunState cannot answer").
                         # Liveness is precisely what a restarted GUI cannot
                         # vouch for; completion it can still ask about.
                         status = "unknown"

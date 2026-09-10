@@ -3,7 +3,7 @@
 Committing a second ~2.6 MB bundle beside the builder's own assets would put
 two artifacts under one build recipe (``tools/viv-bundle/``), and with no npm
 in CI nothing would notice them drifting apart. The blueprint in
-``gui/_shared/_viv_assets.py`` is what makes one copy reachable from two Dash
+``_gui/_shared/_viv_assets.py`` is what makes one copy reachable from two Dash
 apps; these tests pin that there is one, that it is served, and that the
 builder never talks to ``window.__vivBundle`` directly.
 """

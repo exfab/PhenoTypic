@@ -24,11 +24,10 @@ browser can only see the directory you pass via `--root`.
 
 ## Launching the hub
 
-Two equivalent entry points boot the same server:
+The `phenotypic-gui` console script boots the hub:
 
 ```bash
 uv run phenotypic-gui --root ./images --port 8050
-uv run python -m phenotypic._gui --root ./images --port 8050
 ```
 
 **Options:**
@@ -140,7 +139,7 @@ paths.
 
 The existing `phenotypic` CLI is reserved for batch pipeline execution with
 explicit path options, not subcommands. Always use the hyphenated form
-`phenotypic-gui` or the module form `python -m phenotypic._gui`. Typing
+`phenotypic-gui`. Typing
 `uv run phenotypic gui` will fail because `gui` is an unexpected positional
 argument.
 :::
@@ -287,7 +286,7 @@ interactive):**
    ```bash
    ssh <user>@<cluster>
    srun -A <account> -p <partition> -t 4:00:00 --pty -c 8 --mem=32g bash -l
-   uv run python -m phenotypic._gui --root <project-dir> --port 8050
+   uv run phenotypic-gui --root <project-dir> --port 8050
    ```
 
 2. Terminal B — open the two-hop tunnel from your workstation:
@@ -315,20 +314,3 @@ Do not expose the hub on `0.0.0.0` without authentication — there is nothing
 stopping another user from reading files or submitting jobs through the
 unguarded API.
 
-## Standalone tools
-
-Each component can be launched independently for debugging:
-
-```bash
-# Pipeline builder only
-uv run python -m phenotypic._gui.builder --image-root ./images
-
-# Results viewer only
-uv run python -m phenotypic._gui.results_viewer --output-root ./out
-
-# Run console only
-uv run python -m phenotypic._gui.run_console --root ./images
-```
-
-All three accept `--host`, `--port`, and `--debug` with the same defaults as
-the hub launcher.

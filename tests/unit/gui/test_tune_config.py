@@ -1,4 +1,4 @@
-"""``gui/tune`` config constants — mount prefix + browser title."""
+"""``_gui/tune`` config constants — mount prefix + browser title."""
 from __future__ import annotations
 
 

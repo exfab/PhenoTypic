@@ -4,7 +4,7 @@ These build a wheel + sdist from the project and assert that the GUI
 sub-app static assets (CSS/JS + vendored OpenSeadragon control icons) are
 actually shipped. This is the regression guard for the ``pip install``
 deployment bug where the ``phenotypic-gui`` entry point crashed on import
-because ``gui/shell/_assets/shell.css`` — read at import time — was missing
+because ``_gui/shell/_assets/shell.css`` — read at import time — was missing
 from the wheel.
 
 Two design choices matter:

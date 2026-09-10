@@ -283,7 +283,7 @@ class OutputRoot:
     #: standalone deliverables bundle, which has no run directory to read one
     #: from. Frozen at bind time on purpose -- the same lifetime the retired
     #: ``consistency`` report had. Surfaces that must notice a *change* poll
-    #: ``resolve_run_state`` live instead (``gui/_snapshot_status.py``).
+    #: ``resolve_run_state`` live instead (``_gui/_snapshot_status.py``).
     run_state: RunState | None
     processing_inventory: ProcessingInventory
     pipeline_summary: str | None

@@ -7,7 +7,7 @@
  * Implements the design system documented in DESIGN.md:
  *   -- Primary palette (navy, blue, gold) for chrome
  *   -- Okabe-Ito reserved for data viz only
- *   -- Single-family stack injected from gui/_design.py (currently Roboto;
+ *   -- Single-family stack injected from _gui/_design.py (currently Roboto;
  *      semantic var(--font-display | --font-body | --font-mono) at call
  *      sites makes the swap to a multi-family stack mechanical)
  *   -- 8pt spacing grid, navy-tinted shadows, generous radii
@@ -17,7 +17,7 @@
  * --font-size-*, --sp-*, --radius-*, --shadow-*, --ease-*, --transition)
  * are injected at runtime by `phenotypic._gui._design.inject_design_tokens`
  * so a single Python module controls the entire GUI palette. Do NOT
- * redeclare them here -- edit `gui/_design.py` instead.
+ * redeclare them here -- edit `_gui/_design.py` instead.
  *
  * Builder-specific overrides live below: a semantic accent for the
  * point-picker mixin. */

@@ -1,7 +1,7 @@
 """Auto-generate Dash form widgets from ``ParamInfo`` metadata.
 
 Pure-function tier shared by the builder and the analysis sub-app's
-section forms. Extracted from ``gui/builder/_param_form.py`` so the
+section forms. Extracted from ``_gui/builder/_param_form.py`` so the
 analysis sub-app can author the same kind of inline forms for
 ``SetAnalyzer`` / ``ModelFitter`` / ``PostMeasurement`` params without
 duplicating the type-classification + coercion machinery.

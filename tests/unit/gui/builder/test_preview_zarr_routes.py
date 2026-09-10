@@ -5,7 +5,7 @@ restriction and Range negotiation all live. No browser is needed for any of
 it.
 
 **The path-escape guard is NOT re-tested here.** It is
-``gui/_shared/tiles.resolve_within_root``, exercised exhaustively in
+``_gui/_shared/tiles.resolve_within_root``, exercised exhaustively in
 ``tests/unit/gui/shared/test_resolve_within_root.py``; the plan's Global
 Constraints put it in one place precisely so two routes cannot test two
 copies. What this file pins is that the route *routes through* it.

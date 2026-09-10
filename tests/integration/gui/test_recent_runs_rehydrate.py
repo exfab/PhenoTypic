@@ -57,7 +57,7 @@ def _make_run(
 
     The manifest is not a discovery signal either: ``classify`` reads it only
     on the ``is_process_only_output`` branch, which requires **no** ``results/``
-    (`gui/shell/_classifier.py:286-294`), and this fixture creates one.
+    (`_gui/shell/_classifier.py:286-294`), and this fixture creates one.
     """
     out = root / name
     out.mkdir(parents=True, exist_ok=True)

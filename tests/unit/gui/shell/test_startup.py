@@ -1,4 +1,4 @@
-"""Unit tests for the launcher startup reporter (``gui/shell/_startup.py``)."""
+"""Unit tests for the launcher startup reporter (``_gui/shell/_startup.py``)."""
 from __future__ import annotations
 
 import io
