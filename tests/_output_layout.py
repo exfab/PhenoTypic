@@ -587,6 +587,106 @@ def build_complete_viewer_run(
     return root
 
 
+def publish_complete_run_over_outputs(root: Path, *, total_images: int) -> Path:
+    """Publish a complete run over the master and mirror a fixture already wrote.
+
+    :func:`build_complete_viewer_run` builds a run from nothing. Fixtures that
+    hand-craft their own master frame, overlays or stores need the opposite:
+    completion evidence for exactly what is on disk, without rewriting any of
+    it. The ``(dataset, image)`` inventory is read from the master, and each
+    image's success marker certifies the pixel source the fixture provided:
+
+    * a store the fixture wrote is certified as-is, so a real multiscale store
+      survives;
+    * otherwise an overlay the fixture wrote is certified and **no store is
+      created** -- the Results viewer crops from a store in preference to an
+      overlay, so promoting one would silently change what the fixture renders;
+    * only an image with neither gets a minimal promoted store.
+
+    Publication follows the contract's own order: per-image success markers,
+    then processing state, then the aggregate proof, then the run proof.
+
+    Args:
+        root: Run output root whose ``deliverables/`` already holds the master
+            parquet and the ``measurements.{csv,parquet}`` mirror.
+        total_images: The number of images the fixture meant to publish,
+            asserted against the master so a fixture cannot drift silently.
+
+    Returns:
+        ``root``.
+
+    Raises:
+        FileNotFoundError: If a core aggregate file is missing.
+        AssertionError: If the master's image count differs from ``total_images``.
+    """
+    import polars as pl
+
+    from phenotypic._cli._cli_completion import (
+        publish_aggregate_snapshot,
+        publish_image_success,
+        publish_run_completion_evidence,
+    )
+    from phenotypic.sdk_ import dataset_overlays_dir, zarr_store_path
+
+    core = {
+        "master parquet": master_measurements_parquet_path(root),
+        "measurements CSV": measurements_csv_path(root),
+        "measurements parquet": measurements_parquet_path(root),
+    }
+    missing = [name for name, path in core.items() if not path.is_file()]
+    if missing:
+        raise FileNotFoundError(
+            f"cannot publish a complete run over {root}: missing {missing}; write "
+            "the master with write_master and the mirror with write_measurements_mirror"
+        )
+    images = (
+        pl.read_parquet(core["master parquet"])
+        .select("Metadata_Dataset", "Metadata_ImageName")
+        .unique()
+        .sort(["Metadata_Dataset", "Metadata_ImageName"])
+    )
+    assert images.height == total_images, (
+        f"master lists {images.height} images, fixture declared {total_images}"
+    )
+    work_ids: dict[str, dict[str, str]] = {}
+    for dataset, image in images.iter_rows():
+        stem = Path(str(image)).stem
+        work_id = f"work-{dataset}-{stem}"
+        store = zarr_store_path(root, dataset, stem)
+        overlay = dataset_overlays_dir(root, dataset) / f"{stem}.png"
+        if (store / "zarr.json").is_file():
+            artifacts = {"store": store}
+        elif overlay.is_file():
+            artifacts = {"overlay": overlay}
+        else:
+            artifacts = {
+                "store": _promote_minimal_store(
+                    root, dataset=dataset, stem=stem, work_id=work_id
+                )
+            }
+        publish_image_success(
+            root,
+            work_id=work_id,
+            dataset=dataset,
+            relative_image_path=f"{stem}.tif",
+            image_stem=stem,
+            mode="full",
+            attempt_id=f"attempt-{stem}",
+            lifecycle_epoch="local",
+            artifacts=artifacts,
+        )
+        work_ids.setdefault(dataset, {})[f"{stem}.tif"] = work_id
+    write_processing_state(root, work_ids=work_ids)
+    publish_aggregate_snapshot(
+        root,
+        source_work_ids=[
+            work_id for per_dataset in work_ids.values() for work_id in per_dataset.values()
+        ],
+    )
+    publish_run_completion_evidence(root, execution_epoch="local")
+    return root
+
+
 def extend_complete_run(root: Path, *, stem: str) -> Path:
     """Add one more fully published image to a complete run, and re-prove it.
 

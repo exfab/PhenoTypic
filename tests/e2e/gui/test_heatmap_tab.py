@@ -124,7 +124,10 @@ def _seed_master_df_in_output(sandbox: Path, df: pl.DataFrame) -> Path:
     for image in _IMAGES:
         (overlays / f"{image}.png").write_bytes(_TINY_PNG)
         (overlays / f"{Path(image).stem}.png").write_bytes(_TINY_PNG)
-    publish_coherent_terminal_evidence(cli_out, total_images=len(_IMAGES))
+    publish_coherent_terminal_evidence(
+        cli_out,
+        total_images=df.select(_DATASET_COLUMN, str(IMAGE.IMAGE_NAME)).unique().height,
+    )
     return cli_out
 
 
