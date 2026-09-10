@@ -66,13 +66,21 @@ fi
 echo
 echo "=== syncing the gate venv (own venv, shared uv cache) ==="
 # Every extra whose absence turns a test into an ERROR must be here, or the
-# gate reports a red that belongs to the harness. Two have bitten already:
-# without `test-qt` every Qt test errors `fixture 'qtbot' not found`, and
-# without `tune` the Optuna-backed strategies raise ModuleNotFoundError from
-# a lazy import the base package deliberately keeps optional. A missing extra
-# is indistinguishable from a real failure in the summary line.
+# gate reports a red that belongs to the harness. Three have bitten: `test-qt`
+# (every Qt test errors `fixture 'qtbot' not found`), `tune` (the Optuna-backed
+# strategies raise ModuleNotFoundError from a lazy import the base package
+# deliberately keeps optional), and `topology` (FilFinderDetector needs
+# filfinder + astropy). A missing extra is indistinguishable from a real
+# failure in the summary line, which is why the finalizer now triages for it.
+#
+# torch/foundation/gpu are deliberately EXCLUDED, and that is measured rather
+# than assumed: across all 24 shards of array 28236077 -- which ran without
+# them -- zero failures came from torch, sam2 or transformers. Those detectors
+# skip when the dependency is absent instead of erroring, so syncing several GB
+# of CUDA wheels onto a CPU partition would buy no coverage. `docs` likewise
+# builds documentation and is imported by no test.
 (cd "$WORKTREE" && uv sync --group dev --group test-qt \
-    --extra gui --extra napari --extra tune)
+    --extra gui --extra napari --extra tune --extra topology)
 
 # The durations file is deliberately NOT committed -- it is a machine-specific
 # measurement that churns on every harvest. But `regression_shard.sbatch` reads

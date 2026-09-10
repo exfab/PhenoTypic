@@ -123,3 +123,14 @@ graphify-out/
 # Agentic AI & Artifacts
 .mcp.json
 CLAUDE.local.md
+
+# Measured per-file test durations, harvested from a finished regression array
+# by docs/superpowers/plans/2026-09-03-cli-gui-state-tracking/
+# harvest_regression_durations.py. Machine-specific and rewritten on every
+# harvest, so it is not tracked -- but it must be IGNORED rather than merely
+# untracked: submit_regression_gate.sh refuses to submit against a dirty tree
+# (uncommitted work is invisible to a detached worktree, so the gate would
+# measure something other than what you are looking at), and `git status
+# --porcelain` counts untracked files. Left unignored, harvesting the file
+# blocks the very re-gate it exists to speed up.
+regression_durations.tsv
