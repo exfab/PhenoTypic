@@ -4403,3 +4403,51 @@ a tree is the worst of both arms.
 
 "The test found something" and "the test's claim was wrong" are different, and only the
 second licenses a rewrite.
+
+---
+
+### Entry 76b — when the right operation is not expressible, discipline cannot reach it
+
+**Found by P6-T1**, repairing a `--dry-run` guard in P7 Task 5, and written up here at
+its suggestion rather than by it — it declined to append to 76a unasked, on the grounds
+that a shared register gets contended exactly that way. The formulation below is its; the
+placement is mine.
+
+**A separate entry rather than an addendum to 76a, by 76a's own test.** The two look like
+one kind and have **different repairs**, which is the test that separates them here.
+
+The guard needed to know whether a call site passed `dry_run=True` or `dry_run=False`. Its
+helper returned **line numbers**. With a list of integers in hand, `min()` was available,
+looked correct, and was wrong — and the correct partition was **not representable at all**,
+because the information distinguishing the two calls is not in their positions. Returning
+`ast.Call` nodes did not make the right answer easier to write. **It made the wrong one
+impossible to write.**
+
+| | 76a | 76b |
+|---|---|---|
+| Coordinate | which instrument you **reach for** | which operations the data shape makes **available** |
+| The right move was | available, and not taken | **not available** |
+| Repair | `assert count == 1` before acting — a check | change what the function **returns** — a type |
+| Why the other repair fails | — | `assert len(candidates) == 1` passes: both integers are legitimate line numbers, and neither carries `dry_run` |
+
+That last row is why this is not 76a with more feeling. Someone who had internalised 76a
+perfectly, and who asserted their selection was unique before acting on it, **would still
+have written `min()`** — because the assertion would have held and the answer would still
+have been wrong. Discipline cannot reach a distinction the data does not carry.
+
+**The general form:** *before hardening a selection, ask whether the value being selected
+from carries the property you are selecting on.* If it does not, no amount of care at the
+call site helps, and the fix is upstream — return the richer thing.
+
+**And the guard's other half belongs here too.** `_literal_dry_run` **raises** on a call it
+cannot classify rather than defaulting, *"because that is how a guard starts agreeing with
+whatever it is shown."* That is the same move as `strict=True` on an `xfail`: refuse the
+default that quietly accepts. A guard with a fallback is a guard with an opinion about
+inputs it does not understand, and the opinion is always "fine".
+
+**Relation to the rest.** 75 is *shape* — a fixture that satisfies a check without
+describing a tree. 76 is *coordinate system* — a measurement reported in the wrong units.
+76a is *selection* — one of N taken silently. **76b is expressiveness** — the operation you
+needed was never on the menu. Four coordinates now, and only the first three are repaired
+by being careful.
+
