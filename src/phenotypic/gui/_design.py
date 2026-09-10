@@ -72,6 +72,7 @@ __all__ = [
     "OI_VERMILION_TEXT",
     # ---- Visual tokens (non-palette) ----
     "TILE_DIM_RGB",
+    "hex_to_rgb",
     # ---- Type scale / radius / shadow / motion ----
     "TEXT_2XS",
     "TEXT_XS",
@@ -372,6 +373,24 @@ OI_VERMILION_TEXT: str = "#D55E00"  # vermilion meets AA as-is; alerts use #8A3C
 #: continuous black backdrop. Tuple form (not a hex string) so it drops
 #: straight into the NumPy blend and the PIL ``Image.new`` fill.
 TILE_DIM_RGB: tuple[int, int, int] = (0, 0, 0)
+
+
+def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
+    """Convert a ``#RRGGBB`` design token to an ``(R, G, B)`` uint8 triple.
+
+    Lives here, beside the ``OI_*`` tokens it decodes, because both callers
+    decode the SAME tokens: the tune overlay painter and the crop contour
+    compositor each turned ``OI_SKY`` and ``OI_ORANGE`` into pixels with
+    their own private copy of these two lines.
+
+    Args:
+        hex_color: A 6-digit hex colour, with or without a leading ``#``.
+
+    Returns:
+        The ``(R, G, B)`` channel values as plain ints in ``[0, 255]``.
+    """
+    h = hex_color.lstrip("#")
+    return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
 
 # ---------------------------------------------------------------------------
 # Type scale (rem-based; tuned for ~15 px body)

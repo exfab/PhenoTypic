@@ -133,7 +133,6 @@ def test_store_crop_reads_window_without_full_layer_loader(
         center_rr=32,
         center_cc=32,
         size=16,
-        mtime_ns=store.stat().st_mtime_ns,
     )
     img = PILImage.open(io.BytesIO(png_bytes))
 

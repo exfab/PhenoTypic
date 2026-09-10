@@ -51,7 +51,7 @@ from __future__ import annotations
 import argparse
 import logging
 from pathlib import Path
-from typing import Literal
+from typing import Literal, NotRequired, TypedDict
 from urllib.parse import urlsplit
 
 from phenotypic.sdk_ import (
@@ -160,6 +160,18 @@ __all__ = [
     "BROWSE_TILES_PREFIX",
     "COLONY_CROPS_URL_SEGMENT",
     "QC_CROPS_URL_SEGMENT",
+    "SCATTER_CROPS_URL_SEGMENT",
+    # Scatter tab caps
+    "SCATTER_FACET_CAP",
+    "SECTION_GROUP_CAP",
+    # Scatter tab figure styling (spec section 9 "Sizing")
+    "SCATTER_STYLE_FIELDS",
+    "SCATTER_STYLE_SIZE_FIELDS",
+    "step_scatter_style",
+    # Drag-splitter handles (Scatter inspector + QC worklist)
+    "splitter_attrs",
+    "SplitterEdge",
+    "SPLITTER_EDGE_DEFAULT",
     # Closed value-set aliases
     "ChannelName",
     # Tile-spotlight dim strength (shared by both toolbars + the crop route)
@@ -560,6 +572,165 @@ COLONY_CROPS_URL_SEGMENT: str = "crops"
 #: serve identical centered PNGs; the namespaces are kept apart only so
 #: the blueprint registrations never collide.
 QC_CROPS_URL_SEGMENT: str = "qc-crops"
+
+#: URL segment for the Scatter inspector's crop route. Distinct from the
+#: colony and QC segments so the three can differ in their contour default
+#: without a shared flag.
+SCATTER_CROPS_URL_SEGMENT: str = "scatter-crops"
+
+# ---------------------------------------------------------------------------
+# Scatter tab caps
+# ---------------------------------------------------------------------------
+
+#: Maximum panels in one Scatter facet grid, as ``rows * cols``.
+#: NOT a WebGL-context bound -- Plotly pools every gl trace into one
+#: shared gl-container (measured: 1 container at 1, 4, 16 and 36
+#: subplots), so facet count does not consume contexts the way
+#: :data:`TIMELINE_COMPARE_CAP`'s independent OpenSeadragon viewers do.
+#: This bounds legibility (below ~200 px a panel stops being readable),
+#: point count per figure, and axis and tick DOM. Over-cap renders the
+#: first N in facet-value order plus a visible "showing first N of M"
+#: notice, never a silent truncation.
+SCATTER_FACET_CAP: int = 24
+
+#: Maximum distinct values a column may have to be offered as a section
+#: group. Each section is one PDF page and one pager step, so an
+#: unbounded control lets a continuous column ask for one page per colony.
+#:
+#: Deliberately ABOVE ``selectable_axis_columns``'s own
+#: ``max_cardinality=50`` default, which is not an inconsistency to be
+#: tidied away: that default caps a *facet axis*, where the cost of each
+#: extra value is a grid cell and the legibility of every other cell,
+#: while this caps a *section group*, where the cost is one more page and
+#: one more pager step. A 60-page PDF is unremarkable; a 60-column facet
+#: grid is not.
+SECTION_GROUP_CAP: int = 60
+
+# ---------------------------------------------------------------------------
+# Drag-splitter handles
+# ---------------------------------------------------------------------------
+
+
+#: The exact hyphenated kwargs :func:`splitter_attrs` supplies. Declared as
+#: a TypedDict rather than ``dict[str, str]`` so mypy can see WHICH keys a
+#: ``**splitter_attrs(...)`` call adds. An opaque ``dict[str, str]`` could
+#: supply any kwarg, so mypy has to reject it against Dash's typed
+#: component signatures -- which is why the inline ``**{...}`` literals
+#: this helper replaced type-checked and a plain dict return does not.
+SplitterAttrs = TypedDict(
+    "SplitterAttrs",
+    {
+        "data-splitter-target": str,
+        "data-splitter-store": str,
+        "data-splitter-edge": NotRequired[str],
+        "data-splitter-min": NotRequired[str],
+        "data-splitter-max": NotRequired[str],
+    },
+)
+
+#: Which edge of the resized pane the handle sits on. A handle on the
+#: pane's ``"right"`` edge grows the pane as the cursor moves right; one
+#: on its ``"left"`` edge grows it as the cursor moves *left*. Only the
+#: sign of the drag differs, but getting it wrong is not subtle -- the
+#: pane edge runs away from the cursor.
+SplitterEdge = Literal["left", "right"]
+
+#: Emitted only for a non-default edge, so the QC worklist's handle keeps
+#: the exact attribute set it had before the edge existed and the
+#: controller's default stays the case that needs no declaration.
+SPLITTER_EDGE_DEFAULT: SplitterEdge = "right"
+
+
+def splitter_attrs(
+    *,
+    target: str,
+    store: str,
+    edge: SplitterEdge = SPLITTER_EDGE_DEFAULT,
+    min_width: int | None = None,
+    max_width: int | None = None,
+) -> SplitterAttrs:
+    """The data attributes that make an element a drag-splitter handle.
+
+    The shared splitter controller in ``results_viewer.js`` (section H)
+    names no surface of its own: it selects handles by
+    ``[data-splitter-target]`` and reads both attributes off the element
+    it found, so carrying this pair is the whole of what makes a ``<div>``
+    a handle. Two surfaces mount one -- the Scatter click inspector and
+    the QC Review worklist -- and before this helper each spelled both
+    attribute names itself.
+
+    That is worth one function because of how the mistake presents. A
+    typo in either name does not raise: the controller simply does not
+    recognise the element, so the handle renders, the cursor still says
+    ``col-resize``, and nothing resizes -- on one surface, while the other
+    keeps working.
+
+    **The JavaScript side is not covered by this.** ``results_viewer.js``
+    spells ``"[data-splitter-target]"`` independently and cannot import a
+    Python constant; what this removes is the second Python spelling, not
+    the language boundary. The cross-language contract is pinned by test
+    instead -- ``tests/gui/results_viewer/test_splitter_browser.py`` drives
+    the real controller, and each surface asserts its handle reaches the
+    DOM carrying these attributes. Renaming an attribute here means
+    editing the JS selector in the same change.
+
+    **The two panes sit on opposite edges of their handle**, which is why
+    ``edge`` exists. The QC worklist is a left pane whose handle follows
+    it in flex order, so the handle rides the pane's *right* edge and the
+    pane grows with a rightward drag. The Scatter inspector is a
+    right-docked offcanvas whose handle is absolutely positioned at
+    ``left: 0``, so it rides the pane's *left* edge and grows with a
+    *leftward* drag. One shared controller cannot infer which; declaring
+    it is the whole of the difference.
+
+    ``min_width`` / ``max_width`` exist for the same reason. The
+    controller's built-in bounds were written around the worklist's 180 px
+    default; the inspector opens at 360 px, so under those same bounds it
+    could be dragged 20 px wider and no further. Bounds belong to the
+    pane, not to the controller.
+
+    Args:
+        target: Dash id of the pane the drag resizes.
+        store: Dash id of the ``dcc.Store`` the final width is written to,
+            which a Python callback re-applies after a re-render.
+        edge: Which edge of the pane the handle sits on. Defaults to
+            :data:`SPLITTER_EDGE_DEFAULT`, and the attribute is omitted
+            entirely at that value.
+        min_width: Smallest width the drag may set, in px. ``None`` uses
+            the controller's own bound.
+        max_width: Largest width the drag may set, in px. ``None`` uses
+            the controller's own bound.
+
+    Returns:
+        The attributes, to splat into a component: ``**splitter_attrs(...)``.
+    """
+    if (
+        min_width is not None
+        and max_width is not None
+        and min_width > max_width
+    ):
+        # Raised rather than swapped or clamped, because the JS cannot
+        # tell an inverted pair from a deliberate one: `Math.max(lo,
+        # Math.min(hi, n))` pins the pane at `lo` for every drag, so it
+        # jumps to the larger number on mousedown and then never moves.
+        # Nothing raises on either side, and the handle keeps its
+        # `col-resize` cursor while being inert.
+        raise ValueError(
+            f"splitter min_width {min_width} exceeds max_width {max_width}; "
+            "the pane would pin to min_width and never move"
+        )
+    attrs: SplitterAttrs = {
+        "data-splitter-target": target,
+        "data-splitter-store": store,
+    }
+    if edge != SPLITTER_EDGE_DEFAULT:
+        attrs["data-splitter-edge"] = edge
+    if min_width is not None:
+        attrs["data-splitter-min"] = str(min_width)
+    if max_width is not None:
+        attrs["data-splitter-max"] = str(max_width)
+    return attrs
+
 
 # ---------------------------------------------------------------------------
 # Closed value-set aliases
@@ -1050,3 +1221,78 @@ def print_launcher_banner(
     for line in extra_lines:
         print(f"  {line}")
     print()
+
+
+# ---------------------------------------------------------------------------
+# Scatter tab figure styling (shared numeric policy)
+# ---------------------------------------------------------------------------
+#
+# Spec section 9's "Sizing" row. Every value here was already consumed by
+# the Scatter figure builder and the PDF exporter, pinned at a
+# `FigureSpec` dataclass default with nothing able to move it; these
+# bounds are what let a stepper move it without producing a figure whose
+# type is illegible or whose markers occlude the data.
+
+#: Per-field ``(label, minimum, maximum, step)`` for the Style steppers,
+#: in the order the popover offers them. Defaults live on ``FigureSpec``
+#: and are read from there rather than restated, so the control and the
+#: dataclass cannot disagree about what "default" means.
+#:
+#: The type-size bounds are chosen to bracket DESIGN.md section 06, which
+#: fixes axis labels at 7-8 px and a chart title at 13 px -- the current
+#: defaults sit inside that, and the range gives room either side without
+#: reaching sizes that would overflow a facet cell. Marker size and
+#: opacity are chosen. The opacity step mirrors ``TILE_DIM_STEP`` so the
+#: two steppers in this GUI feel the same under the finger.
+SCATTER_STYLE_FIELDS: dict[str, tuple[str, float, float, float]] = {
+    "section": ("Section title", 8, 28, 1),
+    "facet": ("Facet labels", 6, 20, 1),
+    "axis": ("Axis titles", 6, 20, 1),
+    "tick": ("Tick labels", 5, 18, 1),
+    "legend": ("Legend text", 6, 20, 1),
+    "marker_size": ("Marker size", 2, 20, 1),
+    "marker_opacity": ("Marker opacity", 0.05, 1.0, 0.05),
+    "facet_height": ("Facet height", 120, 600, 20),
+}
+
+#: Fields whose value is a type size in px, keyed inside
+#: ``FigureSpec.sizes`` rather than being a field of their own. Keeping
+#: the split here means the stepper callback does not need to know the
+#: dataclass's shape, and adding a sixth size is one row above.
+SCATTER_STYLE_SIZE_FIELDS: tuple[str, ...] = (
+    "section",
+    "facet",
+    "axis",
+    "tick",
+    "legend",
+)
+
+
+def step_scatter_style(current: float, field: str, direction: int) -> float:
+    """Step one Style field a click and clamp it to that field's range.
+
+    Pure arithmetic, so the stepping is unit-testable without Dash --
+    the same reason :func:`step_dim_alpha` exists, and the same rounding
+    for the same reason: repeated clicks on a fractional step otherwise
+    accumulate binary drift (``0.5 + 0.05 + 0.05`` landing on
+    ``0.6000000000000001``).
+
+    Args:
+        current: The value before the click.
+        field: Key into :data:`SCATTER_STYLE_FIELDS`.
+        direction: ``+1`` for the ``+`` button, ``-1`` for the ``−``.
+
+    Returns:
+        The stepped value, clamped to the field's bounds. Integral-step
+        fields return a value that is integral; the fractional one is
+        rounded to two decimals.
+
+    Raises:
+        KeyError: If *field* is not a known Style field. Raised rather
+            than defaulted: a typo'd field would otherwise step something
+            silently, or nothing at all.
+    """
+    _, low, high, step = SCATTER_STYLE_FIELDS[field]
+    stepped = current + direction * step
+    clamped = min(high, max(low, stepped))
+    return round(clamped, 2)

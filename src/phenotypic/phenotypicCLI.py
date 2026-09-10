@@ -234,7 +234,6 @@ from phenotypic.sdk_ import (
     STORE_SUFFIX,
     JobMetadataKey,
     dashboard_html_path,
-    dataset_measurements_dir,
     load_image_from_store,
     source_image_stem,
     store_stem,
@@ -3733,32 +3732,25 @@ def _handle_recompile(
     console.print("[cyan]Rebuilding manifest...")
     prog_dir.mkdir(parents=True, exist_ok=True)
 
-    from phenotypic._cli._cli_completion import authorized_measurement_sources
+    from phenotypic._cli._cli_completion import manifest_completion_inventory
 
-    authorized = authorized_measurement_sources(output_dir)
-    datasets_totals: dict[str, int]
-    if authorized is not None:
-        datasets_totals = {
-            name: sum(dataset == name for dataset in authorized.values())
-            for name in dataset_names
-        }
-    else:
-        datasets_totals = {}
-        for name in dataset_names:
-            meas_dir = dataset_measurements_dir(output_dir, name)
-            datasets_totals[name] = (
-                len(
-                    [
-                        path
-                        for path in meas_dir.glob("*.parquet")
-                        if not path.name.startswith("_")
-                    ]
-                )
-                if meas_dir.is_dir()
-                else 0
-            )
+    # Sizing the manifest is completion accounting, and the basis it
+    # counts on is the whole of what went wrong here -- see
+    # `manifest_completion_inventory`, which owns that decision and is
+    # tested on it. The inventory travels with the totals it produced:
+    # `build_manifest` needs the names both to reconcile the totals and
+    # to count completions when the event log is silent, which every
+    # recompile's is.
+    datasets_totals, dataset_inventory = manifest_completion_inventory(
+        output_dir, dataset_names
+    )
 
-    regenerate_dashboard_artifacts(output_dir, job_meta, datasets_totals)
+    regenerate_dashboard_artifacts(
+        output_dir,
+        job_meta,
+        datasets_totals,
+        dataset_inventory=dataset_inventory,
+    )
     console.print("[green]Manifest + dashboard regenerated")
     console.print(f"[green]Dashboard: {dashboard_html_path(output_dir)}")
 

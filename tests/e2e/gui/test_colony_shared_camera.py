@@ -190,15 +190,16 @@ def test_toolbar_zoom_and_pan_move_every_tile_together(camera_page) -> None:
     )
     camera_page.wait_for_timeout(1_000)
     panned = _view_states(camera_page)
-    deltas = {
+    deltas = [
         (
             after["target"][0] - prior["target"][0],
             after["target"][1] - prior["target"][1],
         )
         for prior, after in zip(zoomed, panned, strict=True)
-    }
-    assert len(deltas) == 1, f"linked pan drifted: {sorted(deltas)}"
-    dx, dy = next(iter(deltas))
+    ]
+    dx, dy = deltas[0]
+    assert [delta[0] for delta in deltas] == pytest.approx([dx] * len(deltas))
+    assert [delta[1] for delta in deltas] == pytest.approx([dy] * len(deltas))
     assert dx > 0
     assert dy == pytest.approx(0)
 

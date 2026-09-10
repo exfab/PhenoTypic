@@ -18,6 +18,12 @@
   **`porting-a-reference-algorithm`** skill for the surrounding procedure. Precedent:
   `docs/superpowers/specs/2026-07-08-alt-phase-detection/verify_claims.py` — an existing
   script still co-located with its spec; `logic_validation_scripts/` is the going-forward home.
+  **That contract is load-bearing across the whole directory, not per file.** A
+  script there that imports the code under test costs a reader the assumption
+  that *anything* in the directory is an independent witness, and a docstring
+  exception does not give it back — so a check that must drive the shipped code
+  (an end-to-end run against real data, say) belongs beside its plan instead,
+  with the other executable artifacts of that change.
 
 ## Quick Start
 
@@ -364,6 +370,13 @@ enforces this for ruff, but the rule binds regardless of the tool.
   the old `phenotypic.sdk_.measurement_info` path was removed.
   `MeasurementInfo.get_labels()` returns unprefixed names; `get_headers()` returns the
   prefixed column names used in DataFrames.
+- **Ask the schema for the spelling, then assert the column is in the frame.** A
+  header the schema defines may belong to a measurer a given run never
+  configured — `SIZE.AREA` is a real member and `Size_Area` is this file's own
+  example, yet a run whose measurers are `MeasureShape`/`MeasureIntensity`/
+  `MeasureColor`/`MeasureTexture` carries no `Size_*` column at all and raises
+  `ColumnNotFoundError`. Spellability and presence are different questions, and
+  only presence is a property of the run.
 - **Metadata queries use schema ownership, never string prefixes:** determine whether a
   header or label is metadata, and which metadata type owns it, with
   `metadata_member_for_header()`, `metadata_owner_for_header()`,

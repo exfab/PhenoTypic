@@ -159,7 +159,19 @@ def _iter(component):
 
 
 def _ids_in(component) -> set:
-    return {getattr(c, "id", None) for c in _iter(component)}
+    """Every hashable component id in the tree.
+
+    Pattern-matching ids are dicts and therefore unhashable, so a bare
+    set comprehension raises ``TypeError`` the moment any surface mounts
+    one -- the Scatter tab's Style steppers are the first to. They are
+    skipped rather than stringified: every caller here asks whether a
+    specific literal id is present, which a wildcard id can never be.
+    """
+    return {
+        node_id
+        for c in _iter(component)
+        if not isinstance((node_id := getattr(c, "id", None)), dict)
+    }
 
 
 def _make_output(tmp_path: Path) -> OutputRoot:

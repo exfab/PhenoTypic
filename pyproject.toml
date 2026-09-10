@@ -78,6 +78,7 @@ dependencies = [
     "python-lucide>=0.2.24",
     "polars[rtcompat]>=1.41.2",
     "duckdb>=1.5.4",
+    "pypdf>=6.16.2",
 ]
 
 [project.urls]
@@ -157,7 +158,6 @@ dev = [
     "ipywidgets",
     "ruff>=0.14.7",
     "scipy-stubs>=1.15.3.0",
-    "pytest-testmon>=2.2.0",
     "pytest-memray>=1.7.0;sys_platform!='win32'",
     # Phase 0 of GUI hub roll-out (see GUI_SPEC_V1.md). Browser E2E suite is
     # gated on the ``PLAYWRIGHT=1`` env var locally and on CI path filters.
@@ -230,9 +230,8 @@ markers = [
 filterwarnings = [
     "ignore::SyntaxWarning:mahotas",
 ]
-# IMPORTANT: Do NOT combine --testmon and -n auto (SQLite concurrency issues)
-# CI Strategy: PR checks use --testmon (sequential, selective)
-#              Manual runs use -n auto (parallel, comprehensive)
+# CI runs the complete non-slow suite in logical matrix shards. Each shard uses
+# pytest-xdist; no test-selection cache is involved.
 
 [tool.setuptools.dynamic]
 version = { attr = "phenotypic.__version__" }
@@ -330,5 +329,17 @@ ignore_missing_imports = true
 module = [
     "zarr",
     "zarr.*",
+]
+ignore_missing_imports = true
+
+# Static figure renderer for the Scatter tab's PDF export. Its own block for
+# the same reason as zarr: it is a distinct package from `plotly.*` above,
+# with a distinct runtime prerequisite (a Chrome install -- see
+# `gui/results_viewer/_scatter_tab/_pdf.py`), and folding it into the long
+# list would hide both facts.
+[[tool.mypy.overrides]]
+module = [
+    "kaleido",
+    "kaleido.*",
 ]
 ignore_missing_imports = true

@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import functools
 import json
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from typing import Any, cast
 
 import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
@@ -63,7 +63,7 @@ from phenotypic.gui.results_viewer._ids import (
     colony_cell_popover_body_id,
     colony_cell_popover_data_id,
 )
-from phenotypic.schema import ErrorCategory
+from phenotypic.schema import ErrorCategory, MeasurementInfo
 from phenotypic.sdk_ import is_metadata_header
 from phenotypic.gui.results_viewer._filtered_state import (
     KEY_DATASET,
@@ -86,18 +86,58 @@ from phenotypic.gui.results_viewer._metadata import (
 # Constants
 # ---------------------------------------------------------------------------
 
+#: Categories that stay SELECTABLE as a grid axis. These name what a colony
+#: *is* — where it sits, which sample it came from, how it was curated — not
+#: what was measured about it, so they are the carve-out from the derivation
+#: below rather than entries in it.
+_AXIS_ELIGIBLE_CATEGORIES: frozenset[str] = frozenset(
+    {"Metadata", "Grid", "Object", "Curation", "Status"}
+)
+
+
+def _derive_measurement_prefixes() -> tuple[str, ...]:
+    """Return the ``<Category>_`` prefixes excluded from axis pickers.
+
+    Walks every leaf of the :class:`~phenotypic.schema.MeasurementInfo`
+    hierarchy — the member-carrying enums, skipping the member-less tier
+    bases they hang off — and keeps each leaf's category except the
+    grouping families in :data:`_AXIS_ELIGIBLE_CATEGORIES`.
+
+    Derived rather than hand-maintained because the literal this replaced
+    was wrong in both directions: it listed ``TextureGray_``, which no
+    schema declares (so ``Texture_`` columns were never excluded), and it
+    omitted every other real category, ``Size_`` and ``ColorLab_`` among
+    them.
+
+    Returns:
+        Sorted ``"<Category>_"`` prefixes. A leaf that never implements
+        ``category()`` is skipped rather than allowed to raise: this runs
+        at module scope, so one raising leaf would fail the import of the
+        whole colony view.
+    """
+    def leaves(cls: type) -> Iterator[type]:
+        subclasses = cls.__subclasses__()
+        if not subclasses:
+            yield cls
+        for sub in subclasses:
+            yield from leaves(sub)
+
+    categories: set[str] = set()
+    for leaf in leaves(MeasurementInfo):
+        try:
+            categories.add(leaf.category())  # type: ignore[attr-defined]
+        except NotImplementedError:
+            continue
+    return tuple(
+        sorted(f"{name}_" for name in categories - _AXIS_ELIGIBLE_CATEGORIES)
+    )
+
+
 #: Column-name prefixes that mark a measurement (rather than metadata or
 #: grid context). Columns starting with one of these are excluded from
 #: :func:`selectable_axis_columns` because they have unbounded cardinality
 #: and don't make sense as a grid axis.
-_MEASUREMENT_PREFIXES: tuple[str, ...] = (
-    "Bbox_",
-    "Shape_",
-    "Intensity_",
-    "TextureGray_",
-    "SymZones_",
-    "GridSpatial_",
-)
+_MEASUREMENT_PREFIXES: tuple[str, ...] = _derive_measurement_prefixes()
 
 #: Per-object identifier alias — sourced from :mod:`._filtered_state` so
 #: the curation key columns and the colony grid stay in sync.
@@ -209,9 +249,9 @@ def selectable_axis_columns(
 
     - cardinality (unique non-null values) is in ``[2, max_cardinality]``
       (or ``>= 2`` when ``max_cardinality`` is ``None``);
-    - name does not start with one of the measurement prefixes
-      (``Bbox_``, ``Shape_``, ``Intensity_``, ``TextureGray_``,
-      ``SymZones_``, ``GridSpatial_``);
+    - name does not start with one of :data:`_MEASUREMENT_PREFIXES` — every
+      ``MeasurementInfo`` category except the grouping families named in
+      :data:`_AXIS_ELIGIBLE_CATEGORIES`;
     - name is not ``Object_Label`` (per-object identifier — too high
       cardinality and not a meaningful axis).
 

@@ -24,7 +24,10 @@ from pathlib import Path
 
 import pytest
 
-from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+from phenotypic.gui.results_viewer._output_consistency import (
+    inspect_output_consistency,
+)
+from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH, BundleLayout
 
 #: A real migrated run. Not a repo fixture -- see the module docstring.
 MIGRATION_RUN = Path(
@@ -38,9 +41,38 @@ DATASET = "7-24-26_redo_full"
 #: ``rgb/labels/objmap``.
 STEM = "d000475_280_079_2026-08-01_23-40-28"
 
+def _run_is_readable() -> bool:
+    """Is the run present *and* published, i.e. would discovery accept it?
+
+    Presence alone is not enough. This is a live results tree that the
+    CLI republishes: a run in progress clears its aggregate publication
+    marker, rewrites ``master_measurements.parquet``, then republishes.
+    Inside that window the directory exists and ``OutputRoot.discover``
+    correctly refuses it, so a presence-only gate turns a routine
+    republish into three red tests -- observed on 2026-09-01, green at
+    21:59 and erroring at 22:07 with no code change between.
+
+    Refusing to read an unpublished run is the behaviour under test
+    elsewhere; here it means "no evidence available right now", which is
+    what skip is for. Any failure to determine readability is also a
+    skip: this module's value is the assertions below, and none of them
+    is about discovery's own gate.
+    """
+    if not MIGRATION_RUN.is_dir():
+        return False
+    try:
+        return inspect_output_consistency(
+            BundleLayout.detect(MIGRATION_RUN)
+        ).core_readable
+    except Exception:  # noqa: BLE001 - unreadable for any reason means skip
+        return False
+
+
 pytestmark = pytest.mark.skipif(
-    not MIGRATION_RUN.is_dir(),
-    reason=f"migration-test run not present at {MIGRATION_RUN}",
+    not _run_is_readable(),
+    reason=(
+        f"migration-test run absent, or mid-republish, at {MIGRATION_RUN}"
+    ),
 )
 
 

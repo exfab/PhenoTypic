@@ -3162,6 +3162,7 @@ dependencies = [
     { name = "pyarrow" },
     { name = "pydantic" },
     { name = "pympler" },
+    { name = "pypdf" },
     { name = "python-lucide" },
     { name = "rawpy", marker = "sys_platform != 'win32'" },
     { name = "rich" },
@@ -3236,7 +3237,6 @@ dev = [
     { name = "pytest-memray", marker = "sys_platform != 'win32'" },
     { name = "pytest-playwright", marker = "sys_platform != 'win32'" },
     { name = "pytest-rerunfailures" },
-    { name = "pytest-testmon" },
     { name = "pytest-xdist" },
     { name = "referencing" },
     { name = "ruff" },
@@ -3308,6 +3308,7 @@ requires-dist = [
     { name = "pyarrow", specifier = ">=23.0.1" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pympler", specifier = ">=1.0.1" },
+    { name = "pypdf", specifier = ">=6.16.2" },
     { name = "python-lucide", specifier = ">=0.2.24" },
     { name = "pyvips", marker = "sys_platform != 'darwin' and sys_platform != 'win32' and extra == 'gui'", specifier = ">=2.2" },
     { name = "pyvips", extras = ["binary"], marker = "(sys_platform == 'darwin' and extra == 'gui') or (sys_platform == 'win32' and extra == 'gui')", specifier = ">=3.1.1" },
@@ -3349,7 +3350,6 @@ dev = [
     { name = "pytest-memray", marker = "sys_platform != 'win32'", specifier = ">=1.7.0" },
     { name = "pytest-playwright", marker = "sys_platform != 'win32'", specifier = ">=0.5.0" },
     { name = "pytest-rerunfailures", specifier = ">=14.0" },
-    { name = "pytest-testmon", specifier = ">=2.2.0" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
     { name = "referencing" },
     { name = "ruff", specifier = ">=0.14.7" },
@@ -3979,6 +3979,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pypdf"
+version = "6.16.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/44/66/54212e75406afd9f3e933d0dda23072f6aecc55c5a273077dc2e0b028b23/pypdf-6.16.2.tar.gz", hash = "sha256:595647f6191de6f402cfde1d0c455d6cbccbd509aac32b34783009c032de5d6e", size = 7008996, upload-time = "2026-08-23T13:50:07.135Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/13/f1/a2da3b55acd4ab737bf728c97edaaed5ec1d3c1236acb639dcdfa97e42c7/pypdf-6.16.2-py3-none-any.whl", hash = "sha256:c8b09a59399062fb45a1b8156c18a787a10a3dae03ac9674397a226712c94604", size = 385060, upload-time = "2026-08-23T13:50:05.349Z" },
+]
+
+[[package]]
 name = "pyproject-hooks"
 version = "1.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -4178,19 +4187,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/4d/f0/74f8e685be7ecd1572c1256132f18fce3a665d7e07649a3f23b7eb2d3bec/pytest_rerunfailures-16.3.tar.gz", hash = "sha256:37c9b1231c8083e9f4e724f50f7a21241822f9516c15c700ebbf218d6452355c", size = 34148, upload-time = "2026-05-22T06:51:22.292Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f8/98/58a71d68d3126d7f6a6ed1944c37ec207a4ff3dc66cad3bed7b59d38df61/pytest_rerunfailures-16.3-py3-none-any.whl", hash = "sha256:6bdfb8ffb46c46072e6c16bdedee38b6c13eac620d9415ed5b63152cbf283170", size = 15396, upload-time = "2026-05-22T06:51:20.547Z" },
-]
-
-[[package]]
-name = "pytest-testmon"
-version = "2.2.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "coverage" },
-    { name = "pytest" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/4d/1d/3e4230cc67cd6205bbe03c3527500c0ccaf7f0c78b436537eac71590ee4a/pytest_testmon-2.2.0.tar.gz", hash = "sha256:01f488e955ed0e0049777bee598bf1f647dd524e06f544c31a24e68f8d775a51", size = 23108, upload-time = "2025-12-01T07:30:24.76Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/61/55/ebb3c2f59fb089f08d00f764830d35780fc4e4c41dffcadafa3264682b65/pytest_testmon-2.2.0-py3-none-any.whl", hash = "sha256:2604ca44a54d61a2e830d9ce828b41a837075e4ebc1f81b148add8e90d34815b", size = 25199, upload-time = "2025-12-01T07:30:23.623Z" },
 ]
 
 [[package]]

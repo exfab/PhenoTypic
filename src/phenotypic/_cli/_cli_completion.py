@@ -484,12 +484,72 @@ def refresh_success_markers_after_metadata_migration(
     return refreshed
 
 
-def current_success_counts(output_dir: Path) -> tuple[int, int] | None:
-    """Return marker-validated ``(successful, total)`` for the current state.
+def current_success_inventory(
+    output_dir: Path,
+) -> dict[str, frozenset[str]] | None:
+    """Return the marker-validated image names of each dataset.
 
-    ``None`` identifies a legacy state that does not require general image
-    success markers. Callers may retain their schema-2 compatibility path in
-    that case, but schema-3 completion never depends on a manifest.
+    **The processing inventory: every image that completed.** Contrast
+    :func:`authorized_measurement_sources`, which answers a different
+    question -- which completed images left something to aggregate. An
+    image whose detector found no colonies belongs to this set and not to
+    that one, because it publishes a success marker carrying its store
+    and overlay but no ``measurements`` artifact.
+
+    Conflating the two is what flagged whole runs read-only: a recompile
+    sized its manifest from the aggregation basis, so a run with 4
+    zero-detection images out of 36 declared ``total_images: 32`` against
+    an inventory of 36, and the viewer's completion guard refused it.
+    Both functions were right; the caller asked the wrong one.
+
+    Args:
+        output_dir: Root output directory.
+
+    Returns:
+        Dataset name to the image names carrying a valid success marker,
+        or ``None`` for a legacy state that does not require markers --
+        the same ``None`` contract as :func:`current_success_counts`, so a
+        caller handles the legacy path once for both.
+
+    Examples:
+        The inventory a colony-counting run leaves behind, where one
+        plate image grew nothing::
+
+            >>> inventory = current_success_inventory(output_dir)
+            ...     # doctest: +SKIP
+            >>> sorted(inventory["plate"])  # doctest: +SKIP
+            ['blank_control.tif', 'yeast_day3.tif']
+    """
+    walked = _walk_current_success(output_dir)
+    if walked is None:
+        return None
+    return {
+        dataset: frozenset(
+            name for name, succeeded in images.items() if succeeded
+        )
+        for dataset, images in walked.items()
+    }
+
+
+def _walk_current_success(
+    output_dir: Path,
+) -> dict[str, dict[str, bool]] | None:
+    """Validate every image the current state claims, once.
+
+    The one traversal behind both :func:`current_success_inventory` and
+    :func:`current_success_counts`, so a count can never disagree with
+    the names it is a count of. Each answers by projecting differently:
+    the inventory keeps the names that succeeded, the counts keep how
+    many did against how many were claimed.
+
+    Args:
+        output_dir: Root output directory.
+
+    Returns:
+        Dataset name to a mapping of image name to whether its success
+        marker validates, or ``None`` for a legacy state that does not
+        require markers. A dataset whose images all failed maps to an
+        all-``False`` mapping, which is distinct from being absent.
     """
     from ._cli_state_management import load_processing_state
 
@@ -503,27 +563,119 @@ def current_success_counts(output_dir: Path) -> tuple[int, int] | None:
         return None
     raw_work_ids = state.config.get("work_ids")
     if not isinstance(raw_work_ids, dict):
-        return (
-            0,
-            sum(len(item.initial_images) for item in state.datasets.values()),
-        )
+        # No work-id projection: which images the state claims is known,
+        # but not which of them succeeded, so none can be validated.
+        return {
+            str(dataset): {
+                str(image): False for image in item.initial_images
+            }
+            for dataset, item in state.datasets.items()
+        }
 
-    successful = 0
-    total = 0
+    walked: dict[str, dict[str, bool]] = {}
     for dataset, raw_images in raw_work_ids.items():
         if not isinstance(dataset, str) or not isinstance(raw_images, dict):
             continue
+        claimed = walked.setdefault(dataset, {})
         for image_name, work_id in raw_images.items():
             if not isinstance(image_name, str) or not isinstance(work_id, str):
                 continue
-            total += 1
-            if valid_image_success(
+            claimed[image_name] = valid_image_success(
                 output_dir,
                 dataset=dataset,
                 image_stem=source_image_stem(Path(image_name)),
                 work_id=work_id,
-            ):
-                successful += 1
+            )
+    return walked
+
+
+def manifest_completion_inventory(
+    output_dir: Path, dataset_names: Iterable[str]
+) -> tuple[dict[str, int], dict[str, frozenset[str]] | None]:
+    """Size a rebuilt manifest from what was **processed**.
+
+    The pair ``build_manifest`` wants: per-dataset totals, and the image
+    names those totals count. Extracted from the recompile path so the
+    choice of basis is a named decision with a test on it rather than a
+    line inside a CLI command -- the previous version was neither, and
+    was wrong.
+
+    **Completion accounting counts processed images, not measured ones.**
+    An image whose detector found no colonies completes normally and
+    publishes a success marker carrying its store and overlay, but no
+    ``measurements`` artifact, so :func:`authorized_measurement_sources`
+    -- correct for deciding what to aggregate -- omits it. Sizing a
+    manifest that way under-counts every empty image, and the results
+    viewer's completion guard reads the shortfall against the processing
+    inventory as contradictory evidence and puts the run read-only.
+    Measured on a 36-image run with 4 empty images: ``total_images: 32``
+    against an inventory of 36.
+
+    Args:
+        output_dir: Root output directory.
+        dataset_names: Datasets the manifest covers. A dataset with no
+            surviving images is reported as zero rather than dropped, so
+            the manifest keeps naming it.
+
+    Returns:
+        ``(totals, inventory)``. ``inventory`` is ``None`` only for a
+        legacy state carrying no success markers, where totals fall back
+        to counting per-image measurement Parquets on disk and no
+        inventory can be established. Pass both to
+        ``regenerate_dashboard_artifacts``: the totals alone leave it
+        unable to reconcile them or to count completions when the event
+        log is silent, which every recompile's is.
+    """
+    from phenotypic.sdk_ import dataset_measurements_dir
+
+    names = list(dataset_names)
+    walked = current_success_inventory(output_dir)
+    if walked is not None:
+        inventory = {
+            name: walked.get(name, frozenset()) for name in names
+        }
+        return (
+            {name: len(images) for name, images in inventory.items()},
+            inventory,
+        )
+
+    totals: dict[str, int] = {}
+    for name in names:
+        meas_dir = dataset_measurements_dir(output_dir, name)
+        totals[name] = (
+            len(
+                [
+                    path
+                    for path in meas_dir.glob("*.parquet")
+                    if not path.name.startswith("_")
+                ]
+            )
+            if meas_dir.is_dir()
+            else 0
+        )
+    return totals, None
+
+
+def current_success_counts(output_dir: Path) -> tuple[int, int] | None:
+    """Return marker-validated ``(successful, total)`` for the current state.
+
+    ``None`` identifies a legacy state that does not require general image
+    success markers. Callers may retain their schema-2 compatibility path in
+    that case, but schema-3 completion never depends on a manifest.
+
+    Counts, not names -- :func:`current_success_inventory` is the same
+    traversal keeping the names instead. Note ``total`` counts every
+    image the state claims, so a run with a failed image reports
+    ``successful < total``; the inventory simply omits that image.
+    """
+    walked = _walk_current_success(output_dir)
+    if walked is None:
+        return None
+    successful = sum(
+        sum(1 for succeeded in images.values() if succeeded)
+        for images in walked.values()
+    )
+    total = sum(len(images) for images in walked.values())
     return successful, total
 
 
