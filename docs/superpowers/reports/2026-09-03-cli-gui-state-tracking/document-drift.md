@@ -4514,3 +4514,58 @@ witness. The docstring records that it overclaimed, which is the honest form.
 **The pairing is the point.** A cost defect that no behavioural test can see was sitting
 behind a behavioural test whose stated discriminator did not exist. Neither would have
 found the other, and the gate found only the first.
+
+---
+
+### Entry 80 — "migrated records carry `provenance: migrated`" is true of two writers and false of the third
+
+**Kind: true but incomplete.** Found while writing the contributor-guide page
+that replaces `_cli/CLAUDE.md`'s state tables — i.e. by having to state the rule
+completely for a reader who could not check it, which is a different exercise
+from checking it.
+
+`_cli/CLAUDE.md` said:
+
+> *"Migrated records carry `provenance: "migrated"`, and `record_rejection`
+> skips the `work_id` comparison for exactly those."*
+
+Every clause is correct. What it omits is that **`--mode migrate` has three
+record-writing paths and only two of them stamp it**:
+
+| Path | Publisher | Provenance |
+|---|---|---|
+| Converting an existing marker | `_cli_migrate_state.py:350` | `migrated` |
+| Minting from outputs (MIG-11) | `_cli_migrate_state.py:1080` | `migrated` |
+| Migrating the image artifact | `_cli_migrate_image.py:589` | **`forward`** |
+
+The third goes through `publish_image_success`, which has **no `provenance`
+parameter** and so takes `publish_image_record`'s `PROVENANCE_FORWARD` default.
+Verified by signature, not by inference.
+
+#### Why the omission is load-bearing rather than pedantic
+
+A markerless legacy tree — the case the continuation refusal exists for — is
+converted by exactly the third path. **So on precisely the trees where you most
+want to ask "was this migrated?", the field says `forward`.** A reader who
+believed the sentence would reach for provenance, find it, and get the wrong
+answer on the only trees that matter.
+
+`_output_was_migrated`'s docstring already said this, in `phenotypicCLI.py`,
+where nobody comparing it against `_cli/CLAUDE.md` would look. **Two documents
+were each locally consistent and jointly misleading**, which is what makes this
+kind expensive: neither is wrong on its own page, so neither review catches it.
+
+#### The general form
+
+*A rule stated over a mode is wrong whenever the mode has more than one code
+path.* "Migrate writes X" is a claim about a **mode**; the truth was a claim
+about a **publisher**. The repair is not more caveats but changing the subject
+of the sentence — the table above is keyed by path, and a fourth path added
+tomorrow forces a fourth row rather than silently joining a majority.
+
+**And it is why the disposition is a page, not a paragraph.** This register's
+running complaint is that prose nobody checks drifts; the answer adopted here is
+a single reference with the consumer table in it and an explicit instruction to
+update it in the same change, with `_cli/CLAUDE.md` reduced to a pointer.
+**Two copies of a table are two things to keep true.** The pointer cannot
+disagree with the page, because it does not restate it.
