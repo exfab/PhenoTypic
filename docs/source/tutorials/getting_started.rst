@@ -269,7 +269,7 @@ Launching the GUI
 -----------------
 
 The unified GUI hub bundles the pipeline builder, results viewer, and
-run console under one URL. Two equivalent entry points:
+run console under one URL. Start it with the ``phenotypic-gui`` console script:
 
 .. code-block:: bash
 

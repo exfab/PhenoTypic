@@ -105,7 +105,7 @@ def test_paper_bgcolor_matches_design_bg() -> None:
 def test_chart_body_font_intentionally_differs_from_gui_chrome() -> None:
     """The chart body font is IBM Plex Sans, decoupled from the GUI chrome body.
 
-    The GUI chrome moved to Comfortaa (``gui/_design.FONT_FAMILY_BODY``), but the
+    The GUI chrome moved to Comfortaa (``_gui/_design.FONT_FAMILY_BODY``), but the
     chart subsystem deliberately stays on IBM Plex Sans for plot titles and legend
     names (DESIGN.md "06 -- Charts"). The two are expected to *differ* now -- this
     test pins that intent so neither side silently re-converges.
@@ -120,7 +120,7 @@ def test_chart_body_font_intentionally_differs_from_gui_chrome() -> None:
 def test_chart_body_font_is_loaded_by_gui_import() -> None:
     """IBM Plex Sans must stay in the GUI ``@import`` so GUI-embedded charts render it.
 
-    Plotly figures render inside Dash pages that load ``gui/_design`` tokens; if the
+    Plotly figures render inside Dash pages that load ``_gui/_design`` tokens; if the
     webfont were dropped from the ``@import`` the chart body text would silently fall
     back to the system sans instead of IBM Plex Sans.
     """
@@ -130,7 +130,7 @@ def test_chart_body_font_is_loaded_by_gui_import() -> None:
 
 
 def test_mono_font_does_not_drift_from_gui_design() -> None:
-    """The theme mono stack mirrors ``gui/_design.FONT_FAMILY_MONO`` (no drift).
+    """The theme mono stack mirrors ``_gui/_design.FONT_FAMILY_MONO`` (no drift).
 
     Numeric axes / hover render in mono; keeping the two stacks identical means
     a chart's tick labels match the GUI's mono data text exactly.
