@@ -1314,3 +1314,612 @@ def test_the_process_arm_is_a_no_op_on_a_full_run_tree(tmp_path: Path) -> None:
 
     _plant_legacy_markers(tmp_path, dataset="plate", stem="a", image_complete=True)
     assert convert_process_output_records(tmp_path) == 0
+
+
+# ---------------------------------------------------------------------------
+# MIG-23: `False` means the documented no-op, and nothing else
+# ---------------------------------------------------------------------------
+
+
+def _write_legacy_state(
+    root: Path,
+    *,
+    datasets: dict[str, dict[str, object]] | None = None,
+    **config: object,
+) -> Path:
+    """A readable legacy `processing_state.json`, with the fields readers index.
+
+    `timestamp` and `last_updated` are not decoration: `load_processing_state`
+    subscripts both unguarded, so a state without them is *unreadable* rather
+    than legacy -- which is the fault case, not the no-op.
+
+    `datasets` defaults to empty, which is what every MIG-23 caller wants. The
+    Blocker 5 fixtures pass it, because `_current_success_counts` derives its
+    `total` from `initial_images`: a state that claims no images can never
+    report the shortfall those tests are about.
+    """
+    from phenotypic.sdk_ import resolve_processing_state_path
+
+    state = resolve_processing_state_path(root)
+    state.parent.mkdir(parents=True, exist_ok=True)
+    state.write_text(
+        json.dumps(
+            {
+                "version": "2.0.0",
+                "pipeline_path": str(root / "pipeline.json"),
+                "input_path": str(root / "input"),
+                "output_dir": str(root),
+                "timestamp": "2026-09-03T00:00:00",
+                "last_updated": "2026-09-03T00:00:00",
+                "execution_mode": "local",
+                "datasets": dict(datasets or {}),
+                "config": dict(config),
+            }
+        ),
+        encoding="utf-8",
+    )
+    return state
+
+
+def test_a_pre_markers_archive_is_a_no_op_not_a_failure(tmp_path: Path) -> None:
+    """MIG-23, and the user-visible defect it caused.
+
+    `republish_aggregate`'s docstring says a legacy tree with no markers is a
+    documented no-op and warns that aborting there "would leave the stores
+    written and the run reported as failed". Its own return value made that
+    outcome unavoidable: `False` meant both "nothing to do" and "it went
+    wrong", so the only safe reading at the caller was to treat every `False`
+    as fatal.
+
+    **Fires when** the no-op raises again -- which is what a pre-markers
+    archive, the likeliest migration subject there is, would hit first.
+    """
+    from phenotypic.sdk_._hdf_to_zarr import republish_aggregate
+
+    _write_legacy_state(tmp_path)
+    assert republish_aggregate(tmp_path) is False
+
+
+def test_markers_required_with_none_authorized_is_also_a_no_op(
+    tmp_path: Path,
+) -> None:
+    """The third no-op, and the one an exception-message match would lose.
+
+    A tree that requires markers but has none authorized yet has nothing to
+    publish. The old code reached that verdict by letting
+    `publish_aggregate_snapshot`'s "No marker-authorized measurements" fall
+    into the same `except` as a genuine I/O failure.
+
+    **Fires when** that case is folded back into the failure branch -- which
+    my own first draft of this fix did, turning a no-op into a fault.
+    """
+    from phenotypic.sdk_._hdf_to_zarr import republish_aggregate
+
+    _write_legacy_state(tmp_path, success_markers_required=True)
+    assert republish_aggregate(tmp_path) is False
+
+
+def test_an_unreadable_state_raises_rather_than_returning_false(
+    tmp_path: Path,
+) -> None:
+    """The fault half, which is why the raise could not simply be deleted.
+
+    Making the caller's raise conditional without separating the two would
+    have traded a false failure for a **silent** one: a corrupt tree
+    migrating "successfully" on the phase that cannot be rolled back.
+
+    **Fires when** a fault returns `False` again. The message must name the
+    file, because a refusal the user cannot act on is the bug class this
+    whole change exists to remove.
+    """
+    from phenotypic.sdk_ import resolve_processing_state_path
+    from phenotypic.sdk_._hdf_to_zarr import republish_aggregate
+
+    state = resolve_processing_state_path(tmp_path)
+    state.parent.mkdir(parents=True, exist_ok=True)
+    state.write_text("{truncated", encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="unreadable"):
+        republish_aggregate(tmp_path)
+
+
+def test_the_no_op_and_the_fault_are_distinguishable_at_all(
+    tmp_path: Path,
+) -> None:
+    """The property the fix is actually for, asserted directly.
+
+    Before, both returned `False` from four sites meaning two things. A caller
+    given only that boolean could not act correctly on either. This asserts
+    the two are now different observable outcomes -- not that each is right
+    in isolation, which the tests above cover, but that they *differ*.
+    """
+    from phenotypic.sdk_ import resolve_processing_state_path
+    from phenotypic.sdk_._hdf_to_zarr import republish_aggregate
+
+    no_op = tmp_path / "pre-markers"
+    no_op.mkdir()
+    _write_legacy_state(no_op)
+
+    fault = tmp_path / "corrupt"
+    fault.mkdir()
+    state = resolve_processing_state_path(fault)
+    state.parent.mkdir(parents=True, exist_ok=True)
+    state.write_text("{truncated", encoding="utf-8")
+
+    assert republish_aggregate(no_op) is False
+    with pytest.raises(RuntimeError):
+        republish_aggregate(fault)
+
+
+# ---------------------------------------------------------------------------
+# Blocker 5: migrate converts a tree, it does not assert the run completed
+# ---------------------------------------------------------------------------
+
+_B5_GENERATION = "b5-generation"
+_B5_METADATA_DIGEST = "b5-metadata-digest"
+_B5_MANIFEST_DIGEST = "b5-manifest-digest"
+
+
+def _incomplete_run(root: Path) -> Path:
+    """A converted tree whose run never finished.
+
+    Two accepted images, neither carrying a valid success marker. That is the
+    same shortfall as the real subject -- a run interrupted after its first
+    image, where `work_ids` claims two and one marker exists -- taken to the
+    extreme that needs no valid record to build, and it lands on the same
+    `successful != total` branch of `_all_accepted_images_succeeded`.
+    """
+    root.mkdir(parents=True, exist_ok=True)
+    _write_legacy_state(
+        root,
+        datasets={"plate": {"initial_images": ["a.tiff", "b.tiff"]}},
+        success_markers_required=True,
+    )
+    return root
+
+
+def _drive_finalizer(
+    monkeypatch: pytest.MonkeyPatch,
+    run: Path,
+    *,
+    seam_publisher: bool = False,
+) -> tuple[object, list[str], dict[str, object]]:
+    """Run `finalize_migration_attempt` past its authority gates.
+
+    Everything patched here is a gate this test is not about -- metadata
+    authority, the manifest/image-seal pair, the canonical view, the aggregate
+    (MIG-23's subject, covered above). What is *not* patched is the thing under
+    test: the completion gate reads the real tree, and with `seam_publisher`
+    false so does `publish_run_completion_evidence`.
+
+    Args:
+        monkeypatch: pytest patcher.
+        run: Output root to finalize.
+        seam_publisher: Replace the publisher and its validator with recorders.
+            Used by the two arms whose point is *that* publication was reached,
+            not what the publisher then wrote.
+
+    Returns:
+        The final report, the ordered event names, and the kwargs the terminal
+        status publisher was called with.
+    """
+    from types import SimpleNamespace
+
+    from phenotypic._cli import _cli_migrate as subject
+    from phenotypic._cli import _cli_migrate_manifest as manifest_module
+    from phenotypic._cli._cli_migrate import (
+        MetadataPassResult,
+        finalize_migration_attempt,
+    )
+    from phenotypic.sdk_ import deliverables_dir
+    from phenotypic.sdk_._hdf_to_zarr import MigrationReport
+
+    events: list[str] = []
+    terminal: dict[str, object] = {}
+    authority = SimpleNamespace(
+        terminal_receipt_digest=_B5_METADATA_DIGEST,
+        status_path=run / "metadata_status.json",
+    )
+
+    monkeypatch.setattr(
+        subject, "metadata_migration_authority", lambda *_: authority
+    )
+    monkeypatch.setattr(
+        manifest_module,
+        "_read_manifest",
+        lambda *_, **__: (
+            None,
+            SimpleNamespace(
+                generation=_B5_GENERATION,
+                inventory_digest=_B5_MANIFEST_DIGEST,
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        subject, "valid_migration_image_seal", lambda *_, **__: True
+    )
+    monkeypatch.setattr(
+        subject,
+        "emit_canonical_metadata_view",
+        lambda *_, **__: events.append("canonical") or Path("canonical.csv"),
+    )
+    monkeypatch.setattr(
+        subject,
+        "_publish_migration_aggregate",
+        lambda *_, **__: events.append("aggregate"),
+    )
+    if seam_publisher:
+        monkeypatch.setattr(
+            subject,
+            "publish_run_completion_evidence",
+            lambda *_, **__: (
+                events.append("completion") or run / "completion.json"
+            ),
+        )
+        monkeypatch.setattr(
+            subject, "valid_run_completion", lambda *_: {"status": "complete"}
+        )
+    monkeypatch.setattr(
+        subject,
+        "publish_migration_terminal_status",
+        lambda *_, **kwargs: (
+            events.append("terminal")
+            or terminal.update(kwargs)
+            or run / "terminal.json"
+        ),
+    )
+    monkeypatch.setattr(
+        subject, "close_migration_generation", lambda *_, **__: None
+    )
+
+    report = finalize_migration_attempt(
+        run,
+        manifest_path=run / "manifest.json",
+        expected_scientific_output=deliverables_dir(run),
+        generation=_B5_GENERATION,
+        metadata_pass=MetadataPassResult(
+            headers_migrated=0, failures=(), authority=authority
+        ),
+        image_seal=SimpleNamespace(
+            generation=_B5_GENERATION,
+            manifest_digest=_B5_MANIFEST_DIGEST,
+            metadata_terminal_digest=_B5_METADATA_DIGEST,
+            clean=True,
+            failures=(),
+        ),
+        reclaim_seal=None,
+        deletion_requested=False,
+        dry_run=False,
+        report=MigrationReport(converted=2),
+        image_failures=(),
+        reclaim_failures=(),
+        commit_guard=None,
+    )
+    return report, events, terminal
+
+
+def test_an_incomplete_run_converts_without_claiming_it_completed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Blocker 5, and the defect it names.
+
+    `publish_run_completion_evidence` raises "Current run does not have
+    complete publication evidence" for a run whose accepted images did not all
+    succeed. The finalizer called it unconditionally and its `except` turned
+    that raise into a terminal `completion` failure, so migrate refused the
+    *entire* conversion over a run state it was never asked to fix -- with the
+    stores already written, on the one phase §15.1 says cannot be rolled back
+    by reverting code.
+
+    The ruling is to skip the publication, not to soften the raise: publishing
+    anyway would write a run proof asserting a run completed that did not.
+
+    **Fires when** the call goes back to unconditional, or when a completion
+    marker is written for an incomplete run -- the two failure directions are
+    separately asserted below, because a fix that satisfies one by breaking
+    the other is exactly what the ruling excludes.
+    """
+    from phenotypic.sdk_ import run_completion_marker_path
+    from phenotypic.sdk_._run_state import resolve_run_state
+
+    run = _incomplete_run(tmp_path / "run")
+
+    report, events, terminal = _drive_finalizer(monkeypatch, run)
+
+    assert report.ok, report.publication_failures
+    assert terminal["succeeded"] is True
+    assert events == ["canonical", "aggregate", "terminal"]
+    # Not "the publisher was skipped" by proxy: the marker itself is absent.
+    assert not run_completion_marker_path(run).exists()
+    # The co-witness. Skipping publication is only honest if the tree then
+    # says so out loud -- a silent skip would leave migrate reporting success
+    # over a tree indistinguishable from a finished one.
+    assert resolve_run_state(run).completion == "incomplete"
+
+
+def test_the_skipped_publication_is_exactly_the_one_that_would_raise(
+    tmp_path: Path,
+) -> None:
+    """The witness that the test above is not vacuous.
+
+    A skip that fires on a tree the publisher would have accepted proves
+    nothing. This asserts the fixture really is in the raising condition, by
+    calling the real publisher on it directly, and that the predicate the gate
+    reads reports it as `False` rather than the legacy `None`.
+    """
+    from phenotypic._cli._cli_completion import (
+        _all_accepted_images_succeeded,
+        publish_run_completion_evidence,
+    )
+
+    run = _incomplete_run(tmp_path / "run")
+
+    assert _all_accepted_images_succeeded(run) is False
+    with pytest.raises(
+        RuntimeError, match="does not have complete publication evidence"
+    ):
+        publish_run_completion_evidence(run, execution_epoch=_B5_GENERATION)
+
+
+def test_a_legacy_tree_still_gets_its_completion_marker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The gate is `is False`, not `is not True`, and the difference is a tree.
+
+    `_all_accepted_images_succeeded` returns `None` for a state that does not
+    require success markers, and the publisher's *first* branch answers that
+    arm by writing a state-free marker -- it never reaches the raise. Gating on
+    `is True` would read that `None` as "not complete" and stop publishing for
+    the pre-markers archive, which is the likeliest migration subject there is.
+
+    **Fires when** the gate is widened to the `None` arm.
+    """
+    from phenotypic._cli._cli_completion import _all_accepted_images_succeeded
+
+    run = tmp_path / "run"
+    run.mkdir()
+    _write_legacy_state(run)
+
+    assert _all_accepted_images_succeeded(run) is None
+
+    _, events, terminal = _drive_finalizer(monkeypatch, run, seam_publisher=True)
+
+    assert "completion" in events
+    assert terminal["succeeded"] is True
+
+
+def test_a_complete_run_still_gets_its_completion_marker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The third arm, so the gate is pinned across the whole tri-state.
+
+    A process-only run whose claimed images all succeeded returns `True`
+    without consulting an aggregate proof, which is the cheapest honest `True`
+    a fixture can reach. The image count is zero, so this witnesses the
+    *predicate arm* rather than a realistic run -- which is the point: the gate
+    must key on the predicate, not on how many images a tree happens to have.
+
+    **Fires when** the gate stops admitting a complete run at all.
+    """
+    from phenotypic._cli._cli_completion import _all_accepted_images_succeeded
+
+    run = tmp_path / "run"
+    run.mkdir()
+    _write_legacy_state(
+        run,
+        success_markers_required=True,
+        process_only_layer="rgb",
+        work_ids={},
+    )
+
+    assert _all_accepted_images_succeeded(run) is True
+
+    _, events, terminal = _drive_finalizer(monkeypatch, run, seam_publisher=True)
+
+    assert "completion" in events
+    assert terminal["succeeded"] is True
+
+
+# ---------------------------------------------------------------------------
+# Both execution paths convert machine state, not just the local one
+# ---------------------------------------------------------------------------
+
+
+def _calls_in(module_path: Path, function: str, callee: str) -> list:
+    """Return every bare-name call to `callee` inside `function`.
+
+    Returns the `ast.Call` nodes rather than their line numbers, because the
+    first version of this helper returned lines and the test then reached for
+    `min()` to pick among them -- choosing one of N without ever establishing
+    what N was, or which one it wanted. The nodes carry the keywords that say
+    which call is which.
+    """
+    import ast
+
+    tree = ast.parse(module_path.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == function:
+            return [
+                call
+                for call in ast.walk(node)
+                if isinstance(call, ast.Call)
+                and isinstance(call.func, ast.Name)
+                and call.func.id == callee
+            ]
+    raise AssertionError(f"{function} is not defined in {module_path}")
+
+
+def _literal_dry_run(call) -> bool:
+    """Return one call's literal `dry_run=` keyword.
+
+    Raises rather than defaulting: a call that passes the flag through a
+    variable is a call this guard cannot classify, and silently sorting it
+    into one bucket is how a guard starts agreeing with whatever it is shown.
+    """
+    import ast
+
+    for keyword in call.keywords:
+        if keyword.arg == "dry_run":
+            if not isinstance(keyword.value, ast.Constant) or not isinstance(
+                keyword.value.value, bool
+            ):
+                raise AssertionError(
+                    f"dry_run= at line {call.lineno} is no longer a literal"
+                )
+            return keyword.value.value
+    raise AssertionError(f"call at line {call.lineno} passes no dry_run=")
+
+
+def _not_dry_run_spans(module_path: Path, function: str) -> list[tuple[int, int]]:
+    """Return the line spans of `if not <something>.dry_run:` bodies."""
+    import ast
+
+    tree = ast.parse(module_path.read_text(encoding="utf-8"))
+    spans: list[tuple[int, int]] = []
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.FunctionDef) and node.name == function):
+            continue
+        for branch in ast.walk(node):
+            if not isinstance(branch, ast.If):
+                continue
+            test = branch.test
+            if not (
+                isinstance(test, ast.UnaryOp)
+                and isinstance(test.op, ast.Not)
+                and isinstance(test.operand, ast.Attribute)
+                and test.operand.attr == "dry_run"
+            ):
+                continue
+            lines = [
+                inner.lineno
+                for statement in branch.body
+                for inner in ast.walk(statement)
+                if hasattr(inner, "lineno")
+            ]
+            spans.append((min(lines), max(lines)))
+        return spans
+    raise AssertionError(f"{function} is not defined in {module_path}")
+
+
+def test_both_migrate_execution_paths_convert_machine_state() -> None:
+    """The local driver and the SLURM chain must both run the conversion.
+
+    Wiring `migrate_machine_state` into `_run_migrate_owned` alone converted
+    the local tree and left the SLURM tree unconverted. The visible symptom
+    was one field: the SLURM tree kept the **forward** run's
+    `processing_generation`, minted with a real `per_image_config` digest,
+    while the local tree re-derived it under migrate's inputs
+    (`per_image_config=None`, U-7/U-10). Two trees migrated from one archive
+    then disagreed about configuration identity, which is precisely what a
+    content-derived generation exists to make impossible.
+
+    Asserted structurally because the defect is structural -- a path that does
+    not call it at all cannot be caught by a seam. The end-to-end equivalence
+    is `test_local_and_synchronous_slurm_migration_publish_equivalent_runs`.
+
+    **Fires when** either call site is dropped, duplicated, or moved across
+    one of the two orderings below.
+    """
+    from phenotypic._cli import _cli_migrate, _cli_migrate_worker
+
+    local = Path(_cli_migrate.__file__)
+    worker = Path(_cli_migrate_worker.__file__)
+
+    local_conversion = _calls_in(
+        local, "_run_migrate_owned", "migrate_machine_state"
+    )
+    worker_conversion = _calls_in(
+        worker, "_run_metadata_worker", "migrate_machine_state"
+    )
+    assert len(local_conversion) == 1, [
+        call.lineno for call in local_conversion
+    ]
+    assert len(worker_conversion) == 1, [
+        call.lineno for call in worker_conversion
+    ]
+
+    # `_execute_migration_tasks` is called TWICE in this one function, and the
+    # two calls want opposite orderings. Partitioned by the flag that says
+    # which is which, never by position: the earlier call is the dry run.
+    by_mode: dict[bool, list[int]] = {}
+    for call in _calls_in(
+        local, "_run_migrate_owned", "_execute_migration_tasks"
+    ):
+        by_mode.setdefault(_literal_dry_run(call), []).append(call.lineno)
+    assert sorted(by_mode) == [False, True], by_mode
+    assert len(by_mode[False]) == 1, by_mode[False]
+    assert len(by_mode[True]) == 1, by_mode[True]
+
+    conversion = local_conversion[0].lineno
+    # The crash-window argument in the call site's own comment: an
+    # interruption between the two must leave the more converted tree.
+    assert conversion < by_mode[False][0]
+    # And the opposite ordering, which nothing pinned before. A dry run
+    # writes nothing, so converting state ahead of it would be a bug -- the
+    # `if dry_run:` branch returns before ever reaching the conversion.
+    assert conversion > by_mode[True][0]
+
+
+def test_the_slurm_conversion_is_guarded_by_the_worker_dry_run_flag() -> None:
+    """The SLURM half of the same property, which line order cannot express.
+
+    `_run_metadata_worker` has no dry-run early return to sit behind: it takes
+    the flag as configuration and guards the writing half with
+    `if not config.dry_run:`. The conversion has to be inside that guard, and
+    "inside" is a containment question, not a position on the page.
+
+    **Fires when** the call is lifted out of the guard, which would convert
+    machine state during `--mode migrate --dry-run` on the SLURM path.
+    """
+    from phenotypic._cli import _cli_migrate_worker
+
+    worker = Path(_cli_migrate_worker.__file__)
+    conversion = _calls_in(
+        worker, "_run_metadata_worker", "migrate_machine_state"
+    )
+    assert len(conversion) == 1, [call.lineno for call in conversion]
+    line = conversion[0].lineno
+
+    spans = _not_dry_run_spans(worker, "_run_metadata_worker")
+    assert spans, "the worker no longer guards its writes on dry_run"
+    assert any(start <= line <= end for start, end in spans), (line, spans)
+
+
+def test_the_provenance_only_chain_converts_machine_state_too() -> None:
+    """The same gap, in the second topology, found by looking rather than failing.
+
+    `_run_migrate_owned` is the local arm for **both** target kinds, so the
+    local path converts machine state for a process-output tree as well. The
+    provenance-only SLURM chain is store array -> seal -> finalizer and had no
+    stage that did -- so a SLURM migration of a process tree skipped the MIG-11
+    record minting its local counterpart performs.
+
+    The seal, not a new pre-array stage: `_pre_markers_process_outputs` mints
+    records **from the outputs**, so a stage running before the store array
+    would run before the outputs it reads exist. The seal is the first
+    singleton after the store work, which mirrors the local *data* order.
+
+    No test failed to find this one; it was found by asking what else had the
+    shape of the bug already caught. That is why the guard exists.
+
+    **Fires when** the call is dropped, duplicated, lifted out of the dry-run
+    guard, or moved after the seal it must precede.
+    """
+    from phenotypic._cli import _cli_migrate_provenance_worker
+
+    worker = Path(_cli_migrate_provenance_worker.__file__)
+    conversion = _calls_in(worker, "_run_seal_worker", "migrate_machine_state")
+    assert len(conversion) == 1, [call.lineno for call in conversion]
+    line = conversion[0].lineno
+
+    # A dry run writes nothing, and this stage has no early return to sit
+    # behind -- the flag is configuration, so the guard is containment.
+    spans = _not_dry_run_spans(worker, "_run_seal_worker")
+    assert spans, "the seal stage no longer guards its writes on dry_run"
+    assert any(start <= line <= end for start, end in spans), (line, spans)
+
+    seals = _calls_in(worker, "_run_seal_worker", "seal_provenance_migration")
+    assert len(seals) == 1, [call.lineno for call in seals]
+    # Locally the conversion precedes the seal; the mirror must too, or the
+    # seal binds a generation over a tree that is about to change.
+    assert line < seals[0].lineno

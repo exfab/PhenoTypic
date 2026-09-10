@@ -30,6 +30,7 @@ from ._cli_migrate_image import (
     migrate_image_task,
     reclaim_image_sources,
 )
+from ._cli_migrate_state import migrate_machine_state
 from ._cli_migrate_manifest import (
     MigrationImageSeal,
     MigrationReclaimSeal,
@@ -394,6 +395,23 @@ def _run_metadata_worker(config: _WorkerConfig) -> int:
                 tasks=tasks,
                 commit_guard=_commit_guard(config),
             )
+            # The SLURM mirror of `_run_migrate_owned`'s call, and it belongs
+            # in this stage for the same two reasons the local one is placed
+            # where it is (see the comment there): it is bundle-wide, so it
+            # must run exactly once -- this metadata stage is the chain's only
+            # singleton before the image array -- and it must run BEFORE the
+            # image tasks, so an interruption between the two leaves a tree
+            # whose finished images already carry records.
+            #
+            # Omitting it did not merely skip a conversion. The tree kept the
+            # FORWARD run's `processing_generation`, minted with a real
+            # `per_image_config` digest, while the local path re-derived it
+            # under migrate's inputs (`per_image_config=None`, U-10/U-7). Two
+            # trees converted from one archive then disagreed about
+            # configuration identity -- caught by
+            # `test_local_and_synchronous_slurm_migration_publish_equivalent_runs`
+            # on exactly that field.
+            migrate_machine_state(config.output_dir)
         extra: dict[str, Any] = {
             "headers_migrated": result.headers_migrated,
             "authority": (

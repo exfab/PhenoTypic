@@ -30,6 +30,7 @@ from ._cli_migrate_provenance_manifest import (
     read_provenance_migration_task,
     seal_provenance_migration,
 )
+from ._cli_migrate_state import migrate_machine_state
 from ._cli_slurm_lifecycle import (
     assert_generation_active,
     generation_publication_guard,
@@ -189,6 +190,27 @@ def _run_store_worker(config: _ProvenanceWorkerConfig, index: int) -> int:
 def _run_seal_worker(config: _ProvenanceWorkerConfig) -> int:
     """Barrier all exact store statuses into one generation-bound seal."""
     assert_generation_active(config.lifecycle_root, config.generation)
+    if not config.dry_run:
+        # The second instance of the gap the full-run chain had: the local arm
+        # `_run_migrate_owned` serves BOTH target kinds and converts machine
+        # state for each, while this topology -- store array -> seal ->
+        # finalizer -- had no stage that did. A SLURM migration of a
+        # process-output tree therefore skipped the record minting the local
+        # path performs.
+        #
+        # This stage, not a new one before the array.
+        # `_pre_markers_process_outputs` mints records FROM the outputs, so the
+        # outputs must already exist; locally they do, because provenance
+        # conversion runs first. The seal is the first singleton after the
+        # store work, which mirrors the local DATA order even though it
+        # inverts the local statement order -- and the data order is the one
+        # that matters here.
+        #
+        # Deliberately outside the `try` below, and deliberately not caught. A
+        # conversion failure is not missing seal authority, and reporting it as
+        # one would be the MIG-23 conflation again. The local path lets this
+        # propagate too.
+        migrate_machine_state(config.target_root)
     try:
         seal = seal_provenance_migration(
             config.manifest_path,

@@ -31,13 +31,26 @@ _V1_JOURNAL_FIELDS = frozenset(
 
 @dataclass(frozen=True)
 class ProvenanceMigrationTarget:
-    """A classified migration target and its non-recursive store inventory."""
+    """A classified migration target and its non-recursive store inventory.
+
+    ``stores`` is what :func:`execute_provenance_migration` upgrades, and every
+    entry must therefore be a store directory with a readable root
+    ``zarr.json``. ``outputs`` is separate **because a pre-markers process
+    tree has flat layer files and no stores at all** -- putting those in
+    ``stores`` made the upgrader compose ``a.tiff/zarr.json`` and raise
+    ``NotADirectoryError``. A field named ``stores`` holding non-stores is the
+    kind of overload this change exists to remove, so the two are named apart
+    rather than the consumer taught to skip a kind.
+    """
 
     kind: Literal[
         "full_run", "direct_store", "process_tree", "pre_markers_process"
     ]
     root: Path
     stores: tuple[Path, ...]
+    #: Flat output layers, for a kind that has them. Never upgraded: they
+    #: carry no store metadata to upgrade.
+    outputs: tuple[Path, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -281,8 +294,10 @@ def classify_provenance_migration_target(
     if _declares_process_only_run(root):
         outputs = _pre_markers_process_outputs(root)
         if outputs:
+            # `stores` is EMPTY on purpose: there is nothing to
+            # provenance-upgrade. The outputs travel in their own field.
             return ProvenanceMigrationTarget(
-                "pre_markers_process", root, outputs
+                "pre_markers_process", root, (), outputs=outputs
             )
     raise ValueError(
         f"no PhenoTypic OME-Zarr stores found for provenance migration: {root}"

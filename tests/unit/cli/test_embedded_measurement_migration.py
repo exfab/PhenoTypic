@@ -513,11 +513,23 @@ def test_migration_does_not_certify_stale_outputs_after_aggregate_failure(
     )
 
 
-def test_false_aggregate_publication_makes_report_not_ok(
+def test_a_no_op_aggregate_publication_does_not_fail_the_report(
     legacy_headers_run: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A guarded false return is a publication failure, not success."""
+    """MIG-23. **This test previously asserted the opposite, and was wrong.**
+
+    It was titled ``test_false_aggregate_publication_makes_report_not_ok`` and
+    said *"a guarded false return is a publication failure, not success"* --
+    pinning the conflation that caused the defect. ``republish_aggregate``
+    returned ``False`` from four sites meaning two different things, and its
+    own docstring calls one of them a *"documented no-op, not an exception"*
+    while warning that aborting there "would leave the stores written and the
+    run reported as failed". That is what a pre-markers archive got.
+
+    ``False`` now means the no-op alone; the two faults raise. So a ``False``
+    return must leave the report OK.
+    """
     from phenotypic._cli import _cli_migrate
 
     monkeypatch.setattr(
@@ -528,9 +540,34 @@ def test_false_aggregate_publication_makes_report_not_ok(
 
     report = _cli_migrate.run_migrate(legacy_headers_run)
 
+    assert report.ok is True, (
+        "the documented no-op was treated as a failure -- the MIG-23 defect"
+    )
+    assert not report.publication_failures
+
+
+def test_a_raising_aggregate_publication_still_fails_the_report(
+    legacy_headers_run: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The other half, without which the test above is a licence to swallow.
+
+    Separating the no-op from the fault is only safe if the fault still
+    fails. Asserting the no-op alone would let an implementation that
+    swallowed *everything* pass -- trading a false failure for a silent one on
+    the phase that cannot be rolled back.
+    """
+    from phenotypic._cli import _cli_migrate
+
+    def _boom(_root, **_kwargs):
+        raise RuntimeError("aggregate marker publication failed for /x")
+
+    monkeypatch.setattr(_cli_migrate, "republish_aggregate", _boom)
+
+    report = _cli_migrate.run_migrate(legacy_headers_run)
+
     assert report.ok is False
     assert report.publication_failures
-    assert "returned false" in report.publication_failures[0][1]
 
 
 def test_source_reclamation_failure_blocks_terminal_completion(

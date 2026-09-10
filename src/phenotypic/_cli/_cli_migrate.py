@@ -87,6 +87,7 @@ from ._cli_migrate_manifest import (
 )
 from ._cli_identity import derive_processing_generation
 from ._cli_completion import (
+    _all_accepted_images_succeeded,
     publish_run_completion_evidence,
     valid_aggregate_snapshot,
     valid_run_completion,
@@ -1056,9 +1057,16 @@ def _publish_migration_aggregate(
     )
     if aggregate_path is None and embedded_tables_exist:
         raise RuntimeError("aggregate rebuild produced no measurements")
-    if not republish_aggregate(output_dir, commit_guard=commit_guard):
-        raise RuntimeError("aggregate marker publication returned false")
-    if valid_aggregate_snapshot(output_dir) is None:
+    # MIG-23. `republish_aggregate` now raises on its two faults and returns
+    # False only for the documented no-op -- a tree whose state does not
+    # require success markers, which a pre-markers archive is. Treating that
+    # False as fatal is what left eight of ten gate shapes with their stores
+    # written and the run reported as failed.
+    published = republish_aggregate(output_dir, commit_guard=commit_guard)
+    # Validate only what was published. Demanding a valid snapshot after a
+    # legitimate no-op was the same conflation one line down: there is no
+    # marker to validate on a tree that was never going to have one.
+    if published and valid_aggregate_snapshot(output_dir) is None:
         raise RuntimeError("aggregate marker validation failed")
 
 
@@ -1259,7 +1267,30 @@ def finalize_migration_attempt(
                 reason,
             )
 
-    if failure_category is None:
+    # Blocker 5. A converted tree whose run never finished is a real tree, not
+    # a failed migration: `work_ids` can claim two accepted images while only
+    # one carries a success marker, which is a run interrupted after its first
+    # image. `publish_run_completion_evidence` then raises "Current run does
+    # not have complete publication evidence", and this block's `except` turned
+    # that into a terminal `completion` failure for the entire conversion --
+    # with the stores already written, on the one phase that cannot be rolled
+    # back by reverting code.
+    #
+    # The raise is correct and stays. Publishing anyway would write a run proof
+    # asserting a run completed that did not. Migrate simply must not ask: it
+    # converts what is on disk and stops, `resolve_run_state` reports the tree
+    # `incomplete`, and a later run resumes or restarts.
+    #
+    # `is False` is the publisher's raise precondition exactly, and nothing
+    # wider. `_all_accepted_images_succeeded` reaches `False` only past
+    # `_walk_current_success` returning a mapping, which already implies a
+    # loadable state with `success_markers_required` -- so the two further
+    # disjuncts guarding that raise cannot fire on their own, and the legacy
+    # `None` arm, which publishes a state-free marker, keeps publishing.
+    may_assert_completion = failure_category is None and (
+        _all_accepted_images_succeeded(output_dir) is not False
+    )
+    if may_assert_completion:
         try:
             publish_run_completion_evidence(
                 output_dir,

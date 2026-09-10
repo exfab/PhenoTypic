@@ -1011,7 +1011,7 @@ def plan_process_output_records(
             relative_image_path=output.relative_to(target.root).as_posix(),
             output=output,
         )
-        for output in target.stores
+        for output in target.outputs
     )
 
 

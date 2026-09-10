@@ -705,11 +705,30 @@ def republish_aggregate(
     migration subject; aborting there would leave the stores written and the
     run reported as failed.
 
+    **``False`` means the no-op and nothing else (MIG-23).** It used to mean
+    two different things at four sites -- corrupt state and failed publication
+    returned it alongside "no markers required" and "legacy state" -- so a
+    caller could not tell "there was nothing to do" from "it went wrong". The
+    only *safe* reading available to ``_cli_migrate`` was to treat every
+    ``False`` as fatal, which is why a pre-markers archive migrated its stores
+    and was then reported as failed: the outcome this docstring warns against,
+    produced by the ambiguity of its own return value.
+
+    The two faults now raise. Making the caller's raise conditional without
+    separating them would have traded a false failure for a **silent** one --
+    a corrupt tree migrating "successfully" on the phase that cannot be rolled
+    back.
+
     Args:
         output_dir: Run output root.
 
     Returns:
-        Whether an aggregate marker was published.
+        ``True`` when a marker was published; ``False`` for the documented
+        no-op -- a tree whose state does not require success markers.
+
+    Raises:
+        RuntimeError: If the processing state cannot be read, or if
+            publication itself fails. Both are faults, not absences.
     """
     from phenotypic._cli._cli_completion import (
         _current_success_work_ids,
@@ -720,8 +739,16 @@ def republish_aggregate(
 
     try:
         state = load_processing_state(output_dir)
-    except (KeyError, TypeError, ValueError):
-        return False
+    except (KeyError, TypeError, ValueError) as exc:
+        # A FAULT, not an absence: the state file is there and unreadable.
+        # Returning False here made a corrupt tree indistinguishable from a
+        # pre-markers one.
+        raise RuntimeError(
+            f"Cannot re-publish the aggregate marker: {output_dir}'s "
+            f"processing state is unreadable ({type(exc).__name__}: {exc}). "
+            "Repair or remove that file; migration cannot recover one it "
+            "cannot read."
+        ) from exc
     if state is None or not state.config.get(
         "success_markers_required", False
     ):
@@ -742,16 +769,31 @@ def republish_aggregate(
     # path, where a live derivation would let the proof assert images the
     # master does not carry (flow-r3 C2). Making the parameter required is
     # what forced this distinction to be stated rather than assumed.
+    # THE THIRD NO-OP, made explicit rather than inferred from an exception
+    # message. A tree that requires markers but has none authorized yet is
+    # "nothing to publish", not a fault -- the comment above says so, and the
+    # old code reached that conclusion by letting
+    # `publish_aggregate_snapshot`'s "No marker-authorized measurements to
+    # publish" fall into the same `except` as a genuine I/O failure. Deciding
+    # it here keeps the two apart without matching on prose.
+    authorized = _current_success_work_ids(
+        output_dir, state.config.get("work_ids", {})
+    )
+    if not authorized:
+        return False
     try:
         publish_aggregate_snapshot(
             output_dir,
-            source_work_ids=_current_success_work_ids(
-                output_dir, state.config.get("work_ids", {})
-            ),
+            source_work_ids=authorized,
             commit_guard=commit_guard,
         )
-    except (OSError, RuntimeError, ValueError):
-        return False
+    except (OSError, RuntimeError, ValueError) as exc:
+        # Also a FAULT: the tree requires markers and publishing them failed,
+        # which is not the documented no-op.
+        raise RuntimeError(
+            f"Aggregate marker publication failed for {output_dir}: "
+            f"{type(exc).__name__}: {exc}"
+        ) from exc
     return True
 
 
