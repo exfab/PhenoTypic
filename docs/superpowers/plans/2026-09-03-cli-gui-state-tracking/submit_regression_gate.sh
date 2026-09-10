@@ -74,6 +74,28 @@ echo "=== syncing the gate venv (own venv, shared uv cache) ==="
 (cd "$WORKTREE" && uv sync --group dev --group test-qt \
     --extra gui --extra napari --extra tune)
 
+# The durations file is deliberately NOT committed -- it is a machine-specific
+# measurement that churns on every harvest. But `regression_shard.sbatch` reads
+# it from ${WORKTREE}, and a detached worktree contains only COMMITTED files, so
+# leaving it in the source tree makes the LPT path unreachable while the harvest
+# still reports success. The array then falls back to strided packing, which
+# balances file COUNT and costs ~3.6x in wall time -- announced only in a shard
+# log, long after anyone would look. Carry it across explicitly.
+DURATIONS_REL="docs/superpowers/plans/2026-09-03-cli-gui-state-tracking/regression_durations.tsv"
+echo
+echo "=== shard packing ==="
+if [[ -f "${SRC_WORKTREE}/${DURATIONS_REL}" ]]; then
+    cp "${SRC_WORKTREE}/${DURATIONS_REL}" "${WORKTREE}/${DURATIONS_REL}"
+    echo "  LPT, balanced by measured runtime ($(wc -l <"${SRC_WORKTREE}/${DURATIONS_REL}") known files)"
+    echo "  copied into the gate worktree (it is untracked, so the worktree lacks it)"
+else
+    echo "  STRIDED FALLBACK -- balances file COUNT, not time."
+    echo "  The array's wall is set by its slowest shard; measured spread was"
+    echo "  4m31s to 42m31s against a 285-minute total, i.e. 3.6x of the wall"
+    echo "  was imbalance rather than work. Harvest from any finished array:"
+    echo "    uv run python ${HERE}/harvest_regression_durations.py <ARRAY_ID>"
+fi
+
 echo
 echo "=== provenance check ==="
 RESOLVED=$(cd "$WORKTREE" && uv run python -c "import phenotypic; print(phenotypic.__file__)")
