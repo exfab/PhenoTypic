@@ -48,7 +48,12 @@ class RecentRunRow:
             ``False``.
         last_modified_seconds: Unix epoch (seconds) of the directory's
             most recent modification. Lets the UI sort by recency.
-        mode: ``"local"`` / ``"slurm"`` / ``"unknown"`` from the manifest.
+        mode: ``"local"`` / ``"slurm"`` / ``"unknown"``, from the CLI's
+            ``job_metadata.json`` submission record. **Not from
+            ``manifest.json``** -- spec §4.2 demoted it and P6 Task 4
+            removed the last reader, so an output with no submission
+            record reads ``"unknown"`` rather than defaulting to
+            ``"local"``.
     """
 
     rel_path: str
