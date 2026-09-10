@@ -479,3 +479,33 @@ The red test is the probe's FENCED arm, already written and committed beside thi
 Then the reader-side filter, the comment rewrite, and a decision on the open question
 above. It edits `sdk_/_run_state.py` and `_cli_completion.py`, so it needs its own commit
 and cannot share one with consumer-migration work.
+
+**Also fold in: `_valid_aggregate_proof` must say *why* it refused.** Today it returns a
+bare `None` for four distinguishable causes, so nothing downstream — a user, a log, a
+support request — can tell *"your master was tampered with"* from *"your curation broke
+it"*, and those two have opposite dispositions. The enumeration **is** the specification:
+
+| Cause | Site |
+|---|---|
+| no marker on disk | `_read_json_object(...) is None` |
+| `version` != `AGGREGATE_PROOF_VERSION` | `:1122` |
+| `required_outputs` absent, non-mapping, or empty | `:1124-1126` |
+| one named descriptor no longer matches its bytes | `:1131-1133` — **say which** |
+
+Two constraints on the shape:
+
+* **`core_readable` stays a boolean and still refuses.** Whatever carries the cause must
+  not tempt a caller into treating a proof problem as recoverable; a reason is for
+  reporting, never for downgrading the verdict.
+* It is a **behaviour change** to `sdk_/_run_state.py:1112-1134` and wants its own test.
+
+Its value does not depend on how the fence question is resolved: it is useful before and
+after the fix, implies no remedy, and legitimises nothing — which is why it belongs here
+rather than waiting on the ruling above.
+
+**A note for whoever writes the remedy string.** The user-facing message names no remedy
+today, and improving it must wait for the fix — written now the text would describe
+*curation*, written after it describes a *tampered master*, which is the same string
+acquiring a different subject. When it is written: *"re-running finalization replaces the
+curated mirror"* is a property of **re-running finalization**, true before and after this
+fix and for every caller. That caveat belongs on the command, not on this error.

@@ -3943,3 +3943,84 @@ common repair is not more checking; it is **making the report say what was actua
 established** — read the identifier, print `refs resolve`, assert the arm's condition. A
 check, a citation and an experiment are the same object here: something that licenses a
 conclusion, and can license the wrong one for free by describing itself generously.
+
+---
+
+### Entry 74 — AN "UNUSED IMPORT" IS NOT DECIDABLE FROM THE MODULE THAT HOLDS IT. 2026-09-09.
+
+**Kind: never true** — of the claim an orphaned-import pass makes. Recorded as its own
+entry rather than folded into 72 because **a third coordinate slipped**, and the repair is
+different.
+
+P6 Task 7 deleted `browse/_source_render.py`'s ephemeral cache and, with it, the
+`tempfile` import that served it. Module-locally that import was genuinely orphaned: after
+the cache went, nothing in the file referenced the name. Deleting it broke **15 tests**,
+which reached the name through the module object:
+
+```python
+from phenotypic.gui.browse import _source_render as sr
+monkeypatch.setattr(sr, "tempfile", ...)
+```
+
+The repaired fixture states the mechanism better than a summary would
+(`tests/gui/browse/test_tile_routes.py:39-43`):
+
+> *"This used to read `sr.tempfile`, which worked only because that module imported
+> `tempfile` for its own ephemeral cache. P6 Task 7 deleted that cache and the import with
+> it, and every fixture reaching the module's attribute broke — a consumer with no import
+> edge, which no import-graph walk can see."*
+
+## The fact underneath, which is a property of Python and not of this codebase
+
+**An `import` statement binds a module attribute, and that attribute is part of the
+module's public surface whether or not the module uses it.** `sr.tempfile` is a legitimate
+reference to a name the module never mentions again. So *"is this import orphaned?"* has
+**no module-local answer** — it is a whole-program question, and the program includes the
+test suite.
+
+That is why three separate checks missed it, per the executing agent's report, and they
+missed it for one reason: the consumer names the target through **an alias plus a string**,
+so neither the target's qualified name nor its import edge ever appears.
+
+* an **import-graph AST walk** sees import edges; a `setattr` consumer has none;
+* a **`_source_render.tempfile` grep** cannot match, because the test aliases the module
+  to `sr`;
+* a **name-based target grep** is defeated by the same alias.
+
+## Why this is a third axis and not another face of 72
+
+Entry 73's closing collapsed 71, 72 and 73 into one claim: *a check, a citation and an
+experiment are the same object, and can license the wrong conclusion for free by
+describing themselves generously.* This one is that family, but the slip is elsewhere:
+
+| | The check established | The claim was | Slipped | Repair |
+|---|---|---|---|---|
+| **45** | P of the wrong population | P of the right one | **population** | re-scope the enumeration |
+| **71 / 72** | a weak P of the right thing | a strong Q of it | **predicate** | do more work, or shrink the claim |
+| **74** | P **within one module** | P **across the program** | **scope** | widen the universe |
+
+Folding 74 into 72 would blur exactly the distinction 72 was written to draw. The test is
+the repair: a population error is fixed by re-scoping, a predicate error by strengthening
+the check or weakening the claim, and **neither of those fixes this one.** A better AST
+walk over `_source_render.py` returns the same answer, correctly, forever.
+
+## Disposition
+
+**Treat deleting an import as a public-API change when anything uses the module as a
+namespace.** Concretely, an orphaned-import pass needs either:
+
+* a whole-program reference check that includes aliased attribute access and **string**
+  targets (`getattr`/`setattr`/`monkeypatch.setattr`), which is what defeats name-based
+  greps; or
+* a gate that **runs** the affected tests rather than reasoning statically about them —
+  which is the honest option, because the static version is trying to decide a
+  whole-program property from one file.
+
+The cheap rule that would have caught it with no tooling: **before deleting an import,
+grep the test suite for the module's aliases, not for the module's name.** The alias is
+where the reference lives.
+
+And the diagnostic worth keeping: the fixture's comment now records *why* it patches
+`tempfile` directly. A test that reaches through a module attribute is depending on an
+implementation detail of that module; saying so at the point of use is what stops the next
+deletion re-breaking it — the deletion was correct, and the coupling was the defect.
