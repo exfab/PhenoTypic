@@ -622,6 +622,51 @@ Deliberately not specified here: whether that literal is `incomplete`, whether t
 infrastructure case deserves its own, and how the badge reads. Those are UX decisions on a
 surface this change does not otherwise touch.
 
+> ### RULED (2026-09-09), and implemented — do not re-open from the GUI end
+>
+> The literal is **`incomplete`**, the same word `Completion` uses: a synonym would be a
+> second vocabulary for one state, and a translation layer between two vocabularies is the
+> drift this change exists to remove. It is **not terminal**
+> (`run_status_is_nonterminal("incomplete")` is `True`), which is the trap —
+> `_release_dead_owner_locked` coerces any nonterminal verdict to `failed` before
+> persisting, precisely so a repaired owner record can never carry it. The badge is
+> `INCOMPLETE` in `--oi-orange-text`, shared with `cancelled` ("stopped without
+> finishing"); never vermilion, because an incomplete run is resumable and colouring it as
+> an outcome is the same class of lie as the collapse this fixes.
+>
+> **What would earn the infrastructure kill its own literal.** Nothing, today: an
+> OOM-killed local run, a `kill -9` and a reboot leave the same tree — a dead pid and no
+> proof — and the SLURM evidence that would separate them (`sacct`'s `OUT_OF_MEMORY` /
+> `TIMEOUT`) lives in the observer, which DEFERRED D-1 deliberately keeps out of this path.
+> **A fourth badge nothing can ever light is worse than three honest ones.** It earns one
+> when something writes a terminal-kill fact to disk — an observer that records `sacct`
+> state, or a wall-clock-aware finalizer. That is CLI-side and a different task. **Do not
+> re-litigate this from the GUI end.**
+>
+> ### Two corrections to the finding above, established while implementing it
+>
+> **1. The three states are distinguishable, but NOT from `resolve_run_state`'s return
+> value.** `completion` is `incomplete` for a directory holding no run *and* for a run that
+> died, and both fields that carry the difference are closed to a caller:
+> `identity.processing_generation == ""` is the `_UNIDENTIFIED` sentinel *and* reads empty
+> for a real pre-P2 tree whose `config` predates the field, so branching on it would call a
+> real run "not a run" — in the direction that lets a second launch write over it; and
+> `diagnostics.accepted == 0` is forbidden by spec §9 in as many words, *"a predicate
+> reaching into `state.diagnostics` is visibly wrong in review"*. The discriminator is a
+> file-existence gate, `_runs_registry._output_holds_a_run`, which also checks
+> `staged_orchestration.json` because a controller writes that before its first stage writes
+> any state.
+>
+> **2. There is a SECOND collapse site, which the table above does not name.**
+> `_rehydrated_status` runs only on the no-owner-record branch — a CLI-launched run found by
+> the scan. A **GUI-launched** run takes the other branch of `rehydrate_from_sandbox`, which
+> hard-coded `"unknown"` and never consulted the verdict at all. On this cluster the
+> GUI-launched local run killed by OOM is the common case, so fixing only the first branch
+> would have left most of the symptom standing. Both are fixed. The second needed a rule of
+> its own: for a local owner record the only reachable liveness authority is the pid in the
+> record being downgraded, so believing an `active` verdict there is reading back our own
+> write — the same non-fence `RunIdentity.owner_generation` is. That arm is clamped.
+
 **Not P6.** It edits `RunStatus`, `_rehydrated_status` and the Recent Runs badge, none of
 which P6 owns, and nothing about P6 landing makes it worse or better. It is visible now
 only because P6 replaced a manifest-count reader — which answered `unknown` for every run

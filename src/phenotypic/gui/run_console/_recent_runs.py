@@ -41,8 +41,13 @@ class RecentRunRow:
         rel_path: Path of the output dir relative to sandbox root. Used
             both as a display label and as the iframe-src component
             (``/runs/<rel>/deliverables/dashboard.html``).
-        status: ``"running"``, ``"complete"``, ``"failed"``, ``"cancelled"``,
-            or ``"unknown"``. Matches :data:`RunStatus`.
+        status: One of :data:`RunStatus`. The five this surface can show are
+            ``"running"``, ``"complete"``, ``"incomplete"``, ``"failed"`` and
+            ``"cancelled"``, plus ``"unknown"``, which means **this directory
+            holds no run of ours** and nothing else. ``"incomplete"`` -- a run
+            the verdict knows did not finish -- was folded into ``"unknown"``
+            until O-4, which is what made a run killed by OOM look the same as
+            a foreign folder.
         has_dashboard: Whether ``<rel>/deliverables/dashboard.html``
             exists. The UI disables the "Open dashboard" link when
             ``False``.

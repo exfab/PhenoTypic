@@ -1187,6 +1187,304 @@ def test_concurrent_update_status_is_serialised(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# O-4 -- `incomplete` is a status, and `unknown` stops meaning three things
+# ---------------------------------------------------------------------------
+
+def test_the_status_literal_and_its_frozenset_agree() -> None:
+    """Two enumerations of one set, kept in step by a test rather than by care.
+
+    ``RunStatus`` is what mypy narrows and ``_RUN_STATUSES`` is what
+    ``_read_owner_record`` validates against, so a literal added to one and
+    not the other produces a status the type system accepts and the reader
+    silently discards -- an owner record that round-trips to ``None``.
+
+    Derived by walking the module's AST, not by restating the members here:
+    a third copy of the list would need the same test.
+    """
+    import ast
+    import inspect
+
+    tree = ast.parse(inspect.getsource(runs_registry_module))
+    literal: set[str] | None = None
+    frozen: set[str] | None = None
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Assign)
+            and getattr(node.targets[0], "id", "") == "RunStatus"
+        ):
+            literal = {e.value for e in node.value.slice.elts}  # type: ignore[attr-defined]
+        if (
+            isinstance(node, ast.AnnAssign)
+            and getattr(node.target, "id", "") == "_RUN_STATUSES"
+        ):
+            frozen = {e.value for e in node.value.args[0].elts}  # type: ignore[union-attr]
+
+    assert literal is not None and frozen is not None
+    assert literal == frozen, sorted(literal ^ frozen)
+    assert "incomplete" in literal
+
+
+def _status_collections_in_gui() -> dict[str, set[str]]:
+    """Return every literal status collection under ``gui/``, keyed ``file:line``.
+
+    An **AST walk over the package**, not a list of the copies known when this
+    was written. That distinction is the whole point: the defect this guards is
+    a member added to one spelling of the vocabulary and not another, and a
+    hand-maintained list of spellings has exactly the same failure mode as the
+    duplication it is trying to police.
+
+    A collection counts when it is a set/frozenset/list/tuple of string
+    constants that mentions ``"cancelled"`` — a token no other vocabulary in
+    this package uses — and every member of which is a known run status.
+    Browse's preparation states and the binding-job states also carry
+    ``"cancelled"`` and are deliberately excluded by that second condition:
+    they are different vocabularies that happen to share one word.
+    """
+    import ast
+    import pathlib
+
+    import phenotypic.gui as gui_pkg
+
+    root = pathlib.Path(gui_pkg.__file__).parent
+    known = set(runs_registry_module._RUN_STATUSES)
+    found: dict[str, set[str]] = {}
+    for path in sorted(root.rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.Set, ast.List, ast.Tuple)):
+                continue
+            values = {
+                element.value
+                for element in node.elts
+                if isinstance(element, ast.Constant)
+                and isinstance(element.value, str)
+            }
+            if "cancelled" not in values or not values <= known:
+                continue
+            found[f"{path.relative_to(root)}:{node.lineno}"] = values
+    return found
+
+
+def test_every_status_vocabulary_in_the_gui_agrees_with_the_registry() -> None:
+    """One vocabulary, however many times it is spelled.
+
+    ``RunStatus`` is what mypy narrows, ``_RUN_STATUSES`` is what
+    ``_read_owner_record`` validates against, and **at least one more copy
+    lives outside this module** and validates a persisted owner record against
+    its own hand-written set. A status added to the registry and not to that
+    copy is not a type error and not a crash: the outside reader classifies a
+    valid status as unknown and refuses on it.
+
+    Only collections that are *entirely* run statuses are compared, so a
+    partial set — the terminal three, or ``{"cancelled", "cancelling"}`` — is
+    checked for being a subset rather than for equality. The failure this
+    catches is a **superset-shaped** copy that has fallen behind, which is what
+    a full vocabulary restated elsewhere always eventually is.
+    """
+    registry = set(runs_registry_module._RUN_STATUSES)
+    collections = _status_collections_in_gui()
+    assert collections, "the AST walk found nothing; it has stopped measuring"
+
+    stale = {
+        where: sorted(registry - values)
+        # A copy is a VOCABULARY (not a subset like the terminal three) when it
+        # carries a terminal and a nonterminal status and more than half the
+        # registry -- so it is trying to enumerate the whole thing.
+        for where, values in collections.items()
+        if len(values) > len(registry) // 2 and values != registry
+    }
+    assert not stale, (
+        "these copies of the run-status vocabulary have fallen behind "
+        f"{sorted(registry)}: {stale}"
+    )
+
+
+def test_every_terminal_status_set_in_the_gui_agrees() -> None:
+    """The terminal three, wherever they are spelled.
+
+    ``run_console`` restates :data:`_TERMINAL_STATUSES` twice more under its
+    own name. All three agree today and all three correctly exclude
+    ``incomplete`` — a run that did not finish is resumable, not an outcome —
+    so nothing is broken; what this pins is that adding a terminal status later
+    means finding every copy, and that the count is measured rather than
+    remembered.
+    """
+    registry = set(runs_registry_module._TERMINAL_STATUSES)
+    terminal_sets = {
+        where: values
+        for where, values in _status_collections_in_gui().items()
+        if values == registry
+    }
+    assert len(terminal_sets) >= 3, sorted(terminal_sets)
+    for where, values in terminal_sets.items():
+        assert "incomplete" not in values, where
+
+
+def test_incomplete_is_not_terminal() -> None:
+    """The trap in adding this literal.
+
+    A run that did not finish can be resumed by re-running the same command,
+    so it is not an outcome. Putting it in ``_TERMINAL_STATUSES`` would make
+    ``allocate`` treat an unfinished run as claimable and let a second launch
+    write over it, and would stop
+    ``_release_dead_owner_locked`` coercing it to ``failed`` -- so a repaired
+    owner record would persist a nonterminal status and the dead end would
+    survive its own repair.
+    """
+    assert runs_registry_module.run_status_is_nonterminal("incomplete")
+    assert "incomplete" not in runs_registry_module._TERMINAL_STATUSES
+
+
+def test_an_unfinished_run_reports_incomplete(tmp_path: Path) -> None:
+    """O-4's second row: the system knows this run is unfinished.
+
+    Before this, ``_rehydrated_status`` collapsed the verdict onto
+    ``"unknown"`` and the row lost what ``resolve_run_state`` had just
+    established -- the same badge a foreign folder gets. On this cluster
+    (`DefMemPerCPU` 1 GB, `short` capped at two hours) that is the state
+    users hit most.
+    """
+    output = build_incomplete_run(tmp_path)
+
+    status, detail = RunRegistry._rehydrated_status(output)
+
+    assert status == "incomplete"
+    assert "did not finish" in detail
+
+
+def test_a_directory_with_no_run_reports_unknown(tmp_path: Path) -> None:
+    """O-4's first row, and the other half of the same distinction.
+
+    ``resolve_run_state`` answers ``incomplete`` here too -- it cannot tell a
+    fresh directory from a dead run -- so a reader that took ``completion``
+    alone would label every folder in a user's sandbox an unfinished run of
+    ours. ``_output_holds_a_run`` is what separates them.
+    """
+    empty = tmp_path / "not-a-run"
+    empty.mkdir()
+
+    status, detail = RunRegistry._rehydrated_status(empty)
+
+    assert status == "unknown"
+    assert "no run state" in detail
+
+
+def test_the_gate_fires_on_a_staged_controller_with_no_state_yet(
+    tmp_path: Path,
+) -> None:
+    """The second file `_output_holds_a_run` checks, and why.
+
+    A staged controller writes `staged_orchestration.json` before its first
+    stage writes any processing state. A tree in that window holds a run and
+    has no state file, so a one-file gate would call it "not a run" -- the
+    direction that lets a second launch land on top of a live controller.
+    """
+    output = tmp_path / "staged"
+    state_path = (
+        output / ".phenotypic" / "progress" / "staged_orchestration.json"
+    )
+    state_path.parent.mkdir(parents=True)
+    state_path.write_text(
+        json.dumps({"epoch": "e1", "phase": "stage2"}), encoding="utf-8"
+    )
+
+    assert runs_registry_module._output_holds_a_run(output) is True
+
+
+def test_the_gate_does_not_fire_on_a_manifest_only_tree(
+    tmp_path: Path,
+) -> None:
+    """§4.2, at the gate. A demoted cache is not run state.
+
+    Fires if `manifest.json` is ever added to the gate's file set: that would
+    make every pre-migration legacy tree report a verdict derived from a file
+    nothing reads any more.
+    """
+    output = tmp_path / "legacy"
+    (output / "progress").mkdir(parents=True)
+    (output / "progress" / "manifest.json").write_text(
+        json.dumps({"is_complete": True}), encoding="utf-8"
+    )
+
+    assert runs_registry_module._output_holds_a_run(output) is False
+
+
+def test_a_rehydrated_gui_owned_run_also_reports_incomplete(
+    tmp_path: Path,
+) -> None:
+    """O-4's SECOND collapse site, which O-4 itself does not name.
+
+    ``_rehydrated_status`` runs only on the no-owner-record branch -- a
+    CLI-launched run found by the scan. A **GUI-launched** run takes the
+    other branch, which hard-coded ``"unknown"`` and never consulted the
+    verdict at all. On this cluster that is the common case, so fixing only
+    the first branch would have left most of the symptom standing.
+    """
+    # Claim FIRST, then build. `allocate` consults `_foreign_run_conflict`,
+    # which refuses an output that already holds an unfinished run -- so
+    # building the tree first makes this fixture unbuildable, and the claim
+    # order here is also the real one: the GUI claims, then the run writes.
+    source = RunRegistry()
+    original = source.allocate(
+        mode="local",
+        output_dir=tmp_path / "run",
+        rel_path="run",
+        command_digest="digest",
+        status="running",
+    )
+    assert source.compare_and_set("run", original.generation, pid=999_999)
+    build_incomplete_run(tmp_path)
+    _seed_discoverable(tmp_path, "run")
+
+    restored = RunRegistry()
+    restored.rehydrate_from_sandbox(SandboxRoot.from_path(tmp_path))
+
+    record = restored.get("run")
+    assert record is not None
+    assert record.generation == original.generation
+    assert record.status == "incomplete"
+    assert record.pid is None
+    # Both halves: liveness is dropped, completion is reported.
+    assert "restarted" in (record.status_detail or "")
+    assert "did not finish" in (record.status_detail or "")
+
+
+def test_a_downgraded_owner_never_inherits_running_from_its_own_record(
+    tmp_path: Path,
+) -> None:
+    """The circularity this branch has to refuse.
+
+    The only liveness authority reachable for a local owner record is the pid
+    in the record being downgraded, so a live pid would make the verdict read
+    ``active`` and the row claim ``running`` on the strength of the very
+    record whose liveness the restart invalidated -- the non-fence
+    ``RunIdentity.owner_generation`` already is. Uses this process's own pid,
+    which is certainly alive, so the arm is genuinely reachable.
+    """
+    import os
+
+    source = RunRegistry()
+    original = source.allocate(
+        mode="local",
+        output_dir=tmp_path / "run",
+        rel_path="run",
+        command_digest="digest",
+        status="running",
+    )
+    assert source.compare_and_set("run", original.generation, pid=os.getpid())
+    build_incomplete_run(tmp_path)
+    _seed_discoverable(tmp_path, "run")
+
+    restored = RunRegistry()
+    restored.rehydrate_from_sandbox(SandboxRoot.from_path(tmp_path))
+
+    record = restored.get("run")
+    assert record is not None
+    assert record.status != "running"
+    assert record.status == "unknown"
+    assert "liveness cannot be re-established" in (record.status_detail or "")
+
+# ---------------------------------------------------------------------------
 # rehydrate_from_sandbox
 # ---------------------------------------------------------------------------
 
@@ -1240,7 +1538,9 @@ def test_rehydrate_picks_up_cli_outputs(tmp_path: Path) -> None:
     reg.rehydrate_from_sandbox(SandboxRoot.from_path(tmp_path))
 
     statuses = {r.run_id: r.status for r in reg.list()}
-    assert statuses == {"a/run": "complete", "b/run": "unknown"}
+    # `incomplete`, not `unknown` (O-4): the unfinished run is a run, and the
+    # badge now says so. `unknown` is reserved for a directory holding none.
+    assert statuses == {"a/run": "complete", "b/run": "incomplete"}
 
 
 def test_rehydrate_marks_failed_from_the_terminal_journal(
@@ -1356,7 +1656,12 @@ def test_rehydrate_unknown_without_a_submission_record(
     assert record is not None
     assert record.mode == "unknown"
     assert record.status == "unknown"
-    assert "no observable nonterminal owner" in (record.status_detail or "")
+    # No `status_detail` assertion, deliberately. This test is about MODE --
+    # its name and docstring say so -- and the detail string it used to check
+    # belongs to `test_a_directory_with_no_run_reports_unknown`, which owns it.
+    # Asserting a shared message from a test that is not about that message
+    # couples the two, and the coupling costs a red run the next time the
+    # wording legitimately improves (O-4 did exactly that).
 
 
 def test_rehydrate_preserves_existing_records(tmp_path: Path) -> None:
@@ -1508,7 +1813,8 @@ def test_a_complete_manifest_no_longer_terminalizes_a_run(
     assert record is not None
     assert record.status == "unknown"
     assert record.mode == "unknown"
-    assert "no observable nonterminal owner" in (record.status_detail or "")
+    # Same as above: the subject here is the manifest demotion, which
+    # `status == "unknown"` pins. The detail string has its own test.
 
 
 def test_rehydrate_invalid_owner_does_not_invent_generation(

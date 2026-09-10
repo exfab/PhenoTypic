@@ -25,8 +25,12 @@ Boot rehydration
     parquet + ``results/`` dir), and registers a :class:`RunRecord` for
     each. Status comes from :func:`~phenotypic.sdk_.resolve_run_state`
     (spec §4.2 demoted ``manifest.json`` from evidence); mode and the
-    scheduler-id hint come from the CLI's own ``job_metadata.json``. An
-    output with neither reads as ``"unknown"``.
+    scheduler-id hint come from the CLI's own ``job_metadata.json``.
+
+    ``"unknown"`` means *this directory holds no run of ours*, and nothing
+    else. A run the verdict knows is unfinished reads ``"incomplete"`` — the
+    two were one badge until O-4, which is what made a run killed by OOM
+    indistinguishable from a foreign folder.
 """
 
 from __future__ import annotations
@@ -82,6 +86,20 @@ __all__ = [
 # supersets (via Literal) so the records survive ``json.dumps`` for any
 # future persistence step while gaining static narrowability.
 RunMode = Literal["local", "slurm", "validate", "unknown"]
+#: ``incomplete`` is the O-4 addition, and it is deliberately the same word
+#: :data:`~phenotypic.sdk_.Completion` uses. A synonym here would be a second
+#: vocabulary for one state, and a translation layer between two vocabularies
+#: is the drift this whole change exists to remove.
+#:
+#: **It is NOT terminal**, and that is the trap. A run that did not finish can
+#: be resumed by re-running the same command, so it is not an outcome —
+#: :data:`_TERMINAL_STATUSES` below excludes it, and
+#: :func:`run_status_is_nonterminal` therefore returns ``True`` for it. Two
+#: consumers read that off a persisted owner record
+#: (``results_viewer/_output_root.py``, ``_qc_tab/review/_rebuild.py``), and
+#: :meth:`RunRegistry._release_dead_owner_locked` coerces any nonterminal
+#: verdict to ``failed`` before persisting precisely so a repaired record can
+#: never carry it.
 RunStatus = Literal[
     "queued",
     "submitting",
@@ -89,6 +107,7 @@ RunStatus = Literal[
     "reconciling",
     "cancelling",
     "complete",
+    "incomplete",
     "failed",
     "cancelled",
     "unknown",
@@ -105,6 +124,7 @@ _RUN_STATUSES: frozenset[str] = frozenset(
         "reconciling",
         "cancelling",
         "complete",
+        "incomplete",
         "failed",
         "cancelled",
         "unknown",
@@ -164,6 +184,60 @@ def _is_recognized_backup_artifact_name(name: str) -> bool:
     return name.endswith(_BACKUP_NAME_SUFFIXES)
 
 
+def _output_holds_a_run(output_dir: Path) -> bool:
+    """Return whether any run has ever written durable state here.
+
+    **The one question :class:`~phenotypic.sdk_.RunState` cannot answer**, and
+    the reason both readers below need it. ``resolve_run_state`` reports
+    ``completion == "incomplete"`` for a directory holding no run *and* for a
+    run that is genuinely unfinished — the same verdict for "this is not ours"
+    and "this one died". Separating them is what lets the claim gate allow a
+    launch into a fresh directory (:meth:`RunRegistry._foreign_run_conflict`)
+    and what lets Recent Runs say *unfinished* instead of *unknown*
+    (:meth:`RunRegistry._rehydrated_status`).
+
+    **Fires** when the output carries a `processing_state.json` (in either the
+    `.phenotypic/` or the legacy root spelling — the resolver handles both) or
+    a staged controller's `staged_orchestration.json`. Both are checked
+    because a controller writes its record *before* its first stage writes any
+    processing state, so a tree in that window holds a run and has no state
+    file.
+
+    **Why not `RunState`'s own fields.** Two look like they would work and
+    neither may be used:
+
+    * ``identity.processing_generation == ""`` is the `_UNIDENTIFIED`
+      sentinel, private to ``_run_state`` — and a *real* pre-P2 tree whose
+      ``config`` block predates the field reads empty too, so this would
+      classify an actual run as "not a run", in the direction that lets a
+      second launch write over it.
+    * ``diagnostics.accepted == 0`` is forbidden outright: spec §9 says a
+      predicate reaching into ``diagnostics`` is visibly wrong in review, and
+      :class:`~phenotypic.sdk_.RunDiagnostics` says nothing branches on those
+      counts.
+
+    Args:
+        output_dir: Any directory, including one this package never wrote.
+
+    Returns:
+        Whether durable run state exists here. Never raises.
+    """
+    from phenotypic._cli._cli_staged_orchestration import (
+        orchestration_state_path,
+    )
+
+    try:
+        return bool(
+            resolve_processing_state_path(output_dir).exists()
+            or orchestration_state_path(output_dir).exists()
+        )
+    except OSError:
+        # An unreadable parent must not raise out of a boot-time scan. "No
+        # run here" is the degrade that lets discovery continue; the claim
+        # gate's own owner-record check still stands in front of it.
+        return False
+
+
 @dataclass
 class RunRecord:
     """One row in the registry.
@@ -181,11 +255,12 @@ class RunRecord:
             ``progress/manifest.json`` lives). Stored as :class:`Path`.
         rel_path: ``output_dir.relative_to(sandbox.root)`` as a string —
             cached so the UI does not re-compute it on every render.
-        status: Current status — one of :data:`RunStatus` — ``"running"``,
-            ``"submitting"``, ``"complete"``, ``"failed"``, ``"cancelled"``,
-            or ``"unknown"``. ``"submitting"`` is the transient state for
-            SLURM runs between sbatch dispatch and the first chunk's
-            sentinel update.
+        status: Current status — one of :data:`RunStatus`. ``"submitting"``
+            is the transient state for SLURM runs between sbatch dispatch and
+            the first chunk's sentinel update; ``"incomplete"`` is a run the
+            verdict knows did not finish (O-4), and is **not** terminal —
+            see :data:`RunStatus` for why that matters; ``"unknown"`` means
+            this directory holds no run of ours.
         pid: Subprocess PID for local runs (``None`` for SLURM and
             rehydrated historical runs).
         scheduler_ids: Every known scheduler id for this launch generation.
@@ -804,9 +879,28 @@ class RunRegistry:
                     record.mode in {"local", "validate"}
                     and record.status not in _TERMINAL_STATUSES
                 ):
-                    record.status = "unknown"
+                    # O-4's SECOND collapse site. This arm used to hard-code
+                    # `"unknown"`, so a GUI-launched run -- the common case on
+                    # this cluster -- lost the verdict entirely and fixing
+                    # `_rehydrated_status` alone would have left most of the
+                    # symptom standing.
+                    status, detail = self._rehydrated_status(
+                        record.output_dir
+                    )
+                    if status == "running":
+                        # The ONLY liveness authority reachable here is the
+                        # pid in the record being downgraded, so believing
+                        # this arm would be reading back our own write --
+                        # the same non-fence `RunIdentity.owner_generation`
+                        # is (gui/CLAUDE.md, "What RunState cannot answer").
+                        # Liveness is precisely what a restarted GUI cannot
+                        # vouch for; completion it can still ask about.
+                        status = "unknown"
+                        detail = "its liveness cannot be re-established"
+                    record.status = status
                     record.status_detail = (
-                        "GUI restarted before local process exit was observed"
+                        "GUI restarted before local process exit was "
+                        f"observed; {detail}"
                     )
                     record.pid = None
             self.register(record, persist=False)
@@ -945,18 +1039,33 @@ class RunRegistry:
         a restart, which was correct, and is why it answered ``"unknown"``
         for every run actually in flight.
 
-        ``incomplete`` still answers ``"unknown"``, for that same reason
-        pointed the other way: an unfinished run with no live authority is a
-        run nothing is working on, and a nonterminal badge would say
-        otherwise.
+        **``incomplete`` and ``unknown`` are different answers (O-4).** They
+        used to be the same one: this method collapsed the verdict onto
+        ``"unknown"`` and the row lost what ``resolve_run_state`` had just
+        established. Three states reached one badge — a directory holding no
+        run of ours, a run the system knows is unfinished, and a run killed by
+        infrastructure — and on this cluster, where ``DefMemPerCPU`` is 1 GB
+        and ``short`` caps at two hours, the middle and last ones are the
+        common case rather than the exotic one.
+
+        ``_output_holds_a_run`` is what separates the first from the other
+        two; see it for why ``RunState``'s own fields cannot.
+
+        **The infrastructure kill shares ``incomplete``, deliberately.**
+        Nothing on disk distinguishes an OOM kill from a ``kill -9`` or a
+        reboot — a dead pid and no proof, in every case — and the SLURM
+        evidence that would (``sacct``'s ``OUT_OF_MEMORY`` / ``TIMEOUT``)
+        lives in the observer, which DEFERRED D-1 keeps out of this path. A
+        fourth status nothing could ever set is worse than three that are
+        honest. What it would take to earn one: a writer that records a
+        terminal-kill fact to disk.
 
         **Cost.** One shallow resolution per discovered output, on the boot
         walk :meth:`_discover_output_dirs` already flags as synchronous. A
         tree with a warm ``verification_cache.json`` re-stats rather than
-        re-hashes; a tree with no readable processing state -- every legacy
-        and foreign directory in a sandbox -- returns before touching an
-        image at all. The tree that pays a full pass is a current-build run
-        whose cache has not been written yet, once.
+        re-hashes; a tree holding no run returns from the gate above without
+        resolving at all. The tree that pays a full pass is a current-build
+        run whose cache has not been written yet, once.
 
         Args:
             output_dir: A discovered CLI output root.
@@ -964,6 +1073,12 @@ class RunRegistry:
         Returns:
             ``(status, status_detail)`` for the rehydrated record.
         """
+        if not _output_holds_a_run(output_dir):
+            return (
+                "unknown",
+                "no run state under this directory, so it has no status to "
+                "report",
+            )
         completion = resolve_run_state(output_dir, depth="shallow").completion
         if completion == "complete":
             return (
@@ -982,8 +1097,9 @@ class RunRegistry:
                 "launch generation owns it",
             )
         return (
-            "unknown",
-            "historical output has no observable nonterminal owner",
+            "incomplete",
+            "this run did not finish, and no liveness record claims it; "
+            "re-running the same command resumes it",
         )
 
     @staticmethod
@@ -1255,10 +1371,11 @@ class RunRegistry:
         being replaced, so asking it here is not circular.
 
         A verdict that is still nonterminal is written as ``failed``: an
-        ``incomplete`` run nothing is working on resolves to ``"unknown"``,
-        and ``"unknown"`` is nonterminal by
+        unfinished run nothing is working on resolves to ``"incomplete"``
+        (``"unknown"`` before O-4), and both are nonterminal by
         :func:`run_status_is_nonterminal`. The record has to land terminal or
-        the dead end survives its own repair.
+        the dead end survives its own repair — which is why this coerces
+        rather than passing the verdict through.
 
         The caller holds ``exclusive_path_lock`` on the owner record, so this
         write cannot race another GUI's claim.
@@ -1337,14 +1454,7 @@ class RunRegistry:
         Returns:
             A refusal message, or ``None`` when the output is claimable.
         """
-        from phenotypic._cli._cli_staged_orchestration import (
-            orchestration_state_path,
-        )
-
-        if not (
-            resolve_processing_state_path(output_dir).exists()
-            or orchestration_state_path(output_dir).exists()
-        ):
+        if not _output_holds_a_run(output_dir):
             return None
 
         state = resolve_run_state(output_dir, depth="shallow")

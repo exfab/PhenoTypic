@@ -141,9 +141,11 @@ def test_scan_rows_carry_status_and_mode(tmp_path: Path) -> None:
 
     assert rows["rs/run"].status == "failed"
     assert rows["rs/run"].mode == "local"
-    # Unfinished with no live authority is not a liveness claim: `unknown`,
-    # deliberately, so the row does not imply anyone is working on it.
-    assert rows["rl/run"].status == "unknown"
+    # Unfinished with no live authority is `incomplete` (O-4), which is a
+    # verdict rather than a liveness claim -- it says the run did not finish,
+    # not that anyone is working on it. `unknown` now means only "no run of
+    # ours lives here", which is what `test_a_manifest_alone_...` pins.
+    assert rows["rl/run"].status == "incomplete"
     assert rows["rl/run"].mode == "slurm"
 
 

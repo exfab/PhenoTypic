@@ -154,6 +154,13 @@ def _owner_blocker(layout: BundleLayout) -> str | None:
     if not isinstance(payload, dict):
         return "Output owner record is not a JSON object."
     status = payload.get("status")
+    # Must stay in step with `_runs_registry._RUN_STATUSES`. This is a hand
+    # copy, and it silently fell one member behind when `incomplete` was added
+    # -- an unrecognised status here does not degrade to None, it returns
+    # "owner status is missing or unknown" and BLOCKS a QC rebuild on a
+    # perfectly valid status. `test_every_status_vocabulary_in_the_gui_agrees_
+    # with_the_registry` walks the package AST and is what caught it; do not
+    # add a member to the registry without running it.
     known_statuses = {
         "queued",
         "submitting",
@@ -162,6 +169,7 @@ def _owner_blocker(layout: BundleLayout) -> str | None:
         "cancelling",
         "unknown",
         "complete",
+        "incomplete",
         "failed",
         "cancelled",
     }

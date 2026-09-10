@@ -327,6 +327,16 @@
   color: var(--oi-orange-text);
 }
 
+/* Shares `cancelled`'s orange: both are "stopped without finishing", which is
+   the honest grouping. Deliberately NOT vermilion -- that is `failed`, and an
+   incomplete run is resumable, so colouring it as an outcome would be the same
+   class of lie. Deliberately not muted either: `unknown` keeps that, so the
+   states carrying information stay visually separate from "no run of ours
+   lives here". Yellow is unavailable as text (DESIGN.md). */
+.run-console-recents-status-incomplete {
+  color: var(--oi-orange-text);
+}
+
 .run-console-recents-status-unknown {
   color: var(--color-muted);
 }
