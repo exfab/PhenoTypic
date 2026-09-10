@@ -80,6 +80,7 @@ from phenotypic.sdk_._image_record import (
     STAGE_STAGE3,
     WORK_ID_UNRECOVERABLE,
 )
+from phenotypic.sdk_._metadata_migration import LEGACY_MASTER_MEASUREMENTS_CSV
 
 __all__ = [
     "LEGACY_MARKER_SEGMENTS",
@@ -95,7 +96,6 @@ __all__ = [
     "apply_legacy_tree_retention",
     "plan_legacy_tree_retention",
     "legacy_retention_dir",
-    "LEGACY_MASTER_CSV",
     "PlannedRecord",
     "PlannedState",
     "apply_legacy_master_csv",
@@ -109,22 +109,6 @@ __all__ = [
     "plan_processing_state",
     "unprojectable_stores",
 ]
-
-#: ``master_measurements.csv``. D8 deleted the constant, its path helper and
-#: its reader from ``sdk_`` -- the un-joined master is not the file a human
-#: opens -- so nothing public spells it any more and the on-disk half is this
-#: task's.
-#:
-#: **This is a second home for the name and should not stay one.**
-#: ``sdk_/_metadata_migration.py`` keeps ``_LEGACY_MASTER_MEASUREMENTS_CSV``
-#: private, with a comment explaining that the name must survive "in
-#: discovery" -- but its only user, ``_legacy_master_csv``, has **no caller**,
-#: so the discovery it describes does not happen. Reaching across a module
-#: boundary through that underscore is the shape this change has twice ruled
-#: against, so it is named here instead and flagged: the right consolidation
-#: is one public ``sdk_`` constant, which is a decision for whoever owns that
-#: file.
-LEGACY_MASTER_CSV: Final[str] = "master_measurements.csv" 
 
 #: ``stage3_complete`` is module-private in :mod:`~phenotypic.sdk_._schema_shape`
 #: -- P3 deleted the tree, so promoting its segment to a public constant would
@@ -201,7 +185,20 @@ def _stage2_entry(
     payload = _read_json(token)
     if payload is None:
         return None
-    return {"at": payload.get("completed_at"), "legacy_migration": True}
+    # The token records no time -- ``write_stage2_token`` stores only the
+    # objmap shape and the detector duration -- so ``at`` is its mtime. The
+    # token is published by ``os.replace`` of a temp file, so that is when
+    # Stage 2 finished. Reading a payload key instead left every migrated
+    # entry at ``None``, which loses every ``_merge_stages`` collision.
+    try:
+        written = token.stat().st_mtime
+    except OSError:
+        # Consumed by a live Stage 3 between the read and the stat.
+        return None
+    at = datetime.fromtimestamp(written, tz=timezone.utc).isoformat(
+        timespec="milliseconds"
+    )
+    return {"at": at, "legacy_migration": True}
 
 
 def plan_per_image_records(output_dir: Path) -> tuple[PlannedRecord, ...]:
@@ -616,7 +613,7 @@ def plan_legacy_master_csv(output_dir: Path) -> Path | None:
     Returns:
         The file's path when it exists, else ``None``.
     """
-    candidate = deliverables_dir(output_dir) / LEGACY_MASTER_CSV
+    candidate = deliverables_dir(output_dir) / LEGACY_MASTER_MEASUREMENTS_CSV
     return candidate if candidate.is_file() else None
 
 

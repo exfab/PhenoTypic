@@ -100,12 +100,18 @@ from ._windows_metadata_journal import (
 #: still carries the legacy metadata headers this module normalizes. Dropping
 #: it from discovery would silently leave that file un-migrated, so the name
 #: survives here as a literal rather than as public ``sdk_`` surface.
-_LEGACY_MASTER_MEASUREMENTS_CSV = "master_measurements.csv"
+#:
+#: **This is the name's one home.** ``_cli/_cli_migrate_state.py`` deletes the
+#: same file and imports the name from here rather than restating it, so
+#: metadata discovery and the deleter cannot disagree about which file a
+#: pre-D8 bundle carries. It is deliberately absent from ``phenotypic.sdk_``'s
+#: exports: D8's removal of the public name stands.
+LEGACY_MASTER_MEASUREMENTS_CSV = "master_measurements.csv"
 
 
 def _legacy_master_csv(layout: BundleLayout) -> Path:
     """Return a pre-D8 bundle's ``master_measurements.csv``, written or not."""
-    return layout.deliverables_base / _LEGACY_MASTER_MEASUREMENTS_CSV
+    return layout.deliverables_base / LEGACY_MASTER_MEASUREMENTS_CSV
 
 
 MigrationStatus: TypeAlias = Literal[

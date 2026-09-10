@@ -11,11 +11,14 @@ and, unlike the rest of the change, cannot be rolled back by reverting code"
 from __future__ import annotations
 
 import json
+import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
 from phenotypic._cli._cli_identity import derive_processing_generation
+from phenotypic._cli._cli_stage2_token import write_stage2_token
 from phenotypic._cli._cli_migrate_state import (
     LEGACY_MARKER_SEGMENTS,
     apply_per_image_records,
@@ -96,8 +99,15 @@ def _plant_legacy_markers(
 
 
 def _plant_stage2_token(root: Path, dataset: str, stem: str) -> Path:
-    token = progress_dir(root) / DIR_STAGE2_DONE / dataset / f"{stem}.json"
-    atomic_write_json(token, {"completed_at": "2026-09-03T00:00:00.000+00:00"})
+    """Plant a token through the shipped writer, never a hand-built payload.
+
+    This helper used to write ``{"completed_at": ...}`` -- a key
+    ``write_stage2_token`` has never recorded -- so the suite exercised a
+    token shape no run produces, and ``stages.stage2.at`` read ``None`` on
+    every real tree while every test here stayed green.
+    """
+    token = write_stage2_token(root, dataset, stem, objmap_shape=(4, 4))
+    assert token == progress_dir(root) / DIR_STAGE2_DONE / dataset / f"{stem}.json"
     return token
 
 
@@ -181,6 +191,34 @@ def test_the_stage2_token_is_read_into_the_record(tmp_path: Path) -> None:
     _plant_stage2_token(tmp_path, "plate", "a")
     convert_per_image_markers(tmp_path)
     assert set(_record(tmp_path, "plate", "a")["stages"]) == {"stage3", "stage2"}
+
+
+def test_the_stage2_entry_is_timestamped_from_the_token_write_time(
+    tmp_path: Path,
+) -> None:
+    """The token records no time, so its write time is the file's mtime.
+
+    ``_merge_stages`` keeps the later ``at`` on a collision, and an entry with
+    no ``at`` loses every one of them. The token is published by
+    ``os.replace`` of its temp file, so the mtime is when Stage 2 finished.
+
+    **Fires when** ``at`` is read from a payload key the writer never records
+    (it was ``completed_at``, so every migrated entry read ``None``), or when
+    the mtime loses its UTC offset or millisecond spelling -- ``at`` values
+    are compared as strings against forward entries written by ``_now_iso``.
+    """
+    _plant_legacy_markers(
+        tmp_path, dataset="plate", stem="a", stage3_complete=True
+    )
+    token = _plant_stage2_token(tmp_path, "plate", "a")
+    written = datetime(2026, 9, 3, 12, 34, 56, 789_000, tzinfo=timezone.utc)
+    ns = int(written.timestamp()) * 1_000_000_000 + 789_000_000
+    os.utime(token, ns=(ns, ns))
+
+    convert_per_image_markers(tmp_path)
+
+    stage2 = _record(tmp_path, "plate", "a")["stages"]["stage2"]
+    assert stage2["at"] == "2026-09-03T12:34:56.789+00:00"
 
 
 def test_the_stage2_token_survives_the_conversion_byte_for_byte(
