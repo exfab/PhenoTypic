@@ -1159,33 +1159,98 @@ def test_the_arming_flag_has_one_source() -> None:
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "P7 Step 1f. The `skip` this replaces WAS the defect, not the "
-        "blocker: a skip is silent, so the phase could have closed with its "
-        "own gate never running -- which is how the P7 pre-flight found it, "
-        "since no P7 step removed the mark. STRICT and xfail, so the day the "
-        "dependency lands this turns RED and has to be acknowledged rather "
-        "than passing quietly. "
-        "The dependency is NOT the one the old reason named. Tasks 2 and 3 "
-        "have landed and 2b is retired, yet two things this test needs are "
-        "still outstanding, both in P7 Task 5. "
-        "(1) Step 1b's rename-aside of `image_complete/` and "
-        "`stage3_complete/` into `.phenotypic/legacy-v2/`: Task 2 "
-        "deliberately LEAVES those trees in place, so signals 1 and 2 still "
-        "fire after a migrate -- `_schema_shape._classify`'s own comment "
-        "names Step 1b as what makes the renamed tree invisible to it. "
-        "(2) Wiring `convert_processing_state` into the migrator: only "
-        "`convert_per_image_markers` is called today "
-        "(`_cli_migrate.py:1834`), so signals 3 and 4 -- `datasets.completed` "
-        "present, and `work_ids` with no `restart_epoch` -- survive a "
-        "migrate untouched. "
-        "Run with `--runxfail` for the per-shape diagnosis; do not remove "
-        "this mark until both land."
+#: Shapes that do NOT discharge in one migrate today, each with its own reason.
+#:
+#: **Per shape, not per test.** One block-level mark was right while all ten
+#: failed for one reason; it became wrong the moment six started passing,
+#: because `strict` then reported their success as failure. It is also wrong in
+#: a quieter way: three distinct causes under one reason string is a claim
+#: nobody can check against a single shape.
+#:
+#: Keyed by shape name and cross-checked against
+#: :data:`_EVERY_CONVERTIBLE_SHAPE` by
+#: ``test_the_undischargeable_list_names_real_shapes``, so a renamed or removed
+#: shape cannot leave a stale entry that marks nothing while the matrix looks
+#: marked.
+_UNDISCHARGEABLE_TODAY: dict[str, str] = {
+    "modern-process": (
+        "The LOCAL provenance-only path never runs `migrate_machine_state`. A "
+        "`--mode process` tree classifies as `process_tree` (no `results/`, "
+        "stores under the mirrored input tree), so `run_migrate` takes the "
+        "branch at `_cli_migrate.py:1575` and calls "
+        "`execute_provenance_migration`, which upgrades each store's "
+        "provenance and nothing else. The three `migrate_machine_state` call "
+        "sites are the local FULL-RUN path (`_cli_migrate.py:1866`), the SLURM "
+        "full-run worker (`_cli_migrate_worker.py:414`) and the SLURM "
+        "provenance worker (`_cli_migrate_provenance_worker.py:213`) -- none "
+        "is this one. So no marker conversion, no state conversion and no "
+        "legacy-tree retention happen, `image_complete/` survives, and signal "
+        "1 stands. NOT Step 1b: that landed "
+        "(`plan_legacy_tree_retention`/`apply_legacy_tree_retention`), which "
+        "is exactly why the other five signal-1/2 shapes now pass and this one "
+        "does not."
     ),
+    "pre-markers": (
+        "NOT a blocker -- the wrong instrument. Signal 3 clears only when "
+        "`_completed_is_fully_consumed` finds a record per image named in "
+        "`datasets.completed`, and records come from converting image data. A "
+        "schema-shape fixture has none BY CONSTRUCTION: `_plant_run_outputs` "
+        "plants layout and says why a stub `.h5` would be worse than nothing. "
+        "The claim lives where it can be true -- "
+        "`test_migrate_end_to_end.py::test_a_pre_markers_tree_converts_end_to_end` "
+        "builds real `.h5` and asserts `requires_conversion(tree) is None` "
+        "after one migrate, and it PASSES. "
+        "Do NOT make Task 3's deletion unconditional to clear this: the "
+        "retention IS the data-loss protection, and dropping `completed` for "
+        "an image with no record deletes the tree's only account that it "
+        "finished."
+    ),
+    "pre-markers-process": (
+        "Same as `pre-markers`: signal 3, no image data, claim relocated to "
+        "the integration test."
+    ),
+    "pre-markers-half-converted": (
+        "Same family, signal 5. `_ensure_migration_processing_state` seeds "
+        "`work_ids` from real `.h5` tasks or real `*.ome.zarr` stores "
+        "(`_cli_migrate.py:604-621`) and returns early at `:662` with neither, "
+        "so a data-free fixture can never clear it."
+    ),
+}
+
+
+def test_the_undischargeable_list_names_real_shapes() -> None:
+    """A stale entry marks nothing, and reports nothing while doing it.
+
+    ``_UNDISCHARGEABLE_TODAY`` is keyed by shape name, so a shape renamed or
+    removed from :data:`_EVERY_CONVERTIBLE_SHAPE` leaves an entry that applies
+    to no test -- and the matrix would read as marked while running unmarked,
+    which is the silent-skip failure this whole step exists to remove, one
+    level up.
+    """
+    unknown = sorted(
+        set(_UNDISCHARGEABLE_TODAY) - set(_EVERY_CONVERTIBLE_SHAPE)
+    )
+    assert not unknown, unknown
+
+
+@pytest.mark.parametrize(
+    "shape",
+    [
+        pytest.param(
+            name,
+            marks=(
+                [
+                    pytest.mark.xfail(
+                        strict=True, reason=_UNDISCHARGEABLE_TODAY[name]
+                    )
+                ]
+                if name in _UNDISCHARGEABLE_TODAY
+                else []
+            ),
+        )
+        for name in sorted(_EVERY_CONVERTIBLE_SHAPE)
+    ],
 )
-@pytest.mark.parametrize("shape", sorted(_EVERY_CONVERTIBLE_SHAPE))
 def test_every_convert_verdict_is_dischargeable_by_one_migrate(
     tmp_path: Path, cli_inputs: tuple[Path, Path], shape: str
 ) -> None:

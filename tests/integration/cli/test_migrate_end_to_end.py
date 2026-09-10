@@ -47,7 +47,11 @@ from phenotypic.sdk_ import (
 )
 from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON, valid_staged_store
 
-from tests.unit.sdk_._migration_fixtures import LegacyRun
+from tests.unit.sdk_._migration_fixtures import (
+    LegacyRun,
+    build_completed_run,
+    demote_run_to_hdf,
+)
 
 
 WINDOWS_ONLY = pytest.mark.skipif(
@@ -706,6 +710,27 @@ def test_a_pre_markers_tree_converts_end_to_end(tmp_path: Path) -> None:
         f"{state.completion}: {state.advisories}"
     )
 
+    # INV-DISCHARGEABLE, on a tree that CAN be discharged.
+    #
+    # The unit matrix in `test_schema_gate.py` cannot assert this for a
+    # pre-markers shape, and not because its fixtures are careless: the
+    # discharge of signals 3 and 5 runs through *converting image data*.
+    # `_completed_is_fully_consumed` needs a record per named image, and
+    # `_ensure_migration_processing_state` builds its inventory from real
+    # `.h5` tasks or real `*.ome.zarr` stores (`_cli_migrate.py:604-621`),
+    # returning early at `:662` when it finds neither. A schema-shape fixture
+    # has neither by construction.
+    #
+    # This tree does: `demote_run_to_hdf` leaves real per-image `.h5`, migrate
+    # converts them, and both mechanisms fire. So the claim lives here, where
+    # it can be true, rather than in a matrix that can only ever fail it.
+    from phenotypic.sdk_._schema_shape import requires_conversion
+
+    assert requires_conversion(tree) is None, (
+        "a pre-markers tree with real image data did not discharge in one "
+        "migrate: " + str(requires_conversion(tree))
+    )
+
 
 
 
@@ -900,4 +925,139 @@ def test_an_ordinary_image_set_change_keeps_its_own_message(
     assert "--restart" not in resumed.output, (
         "a forward tree with a changed input set was told to restart, which "
         f"would destroy a run that is fine\\n{resumed.output}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# MIG-23: the four `republish_aggregate` returns mean two different things
+# ---------------------------------------------------------------------------
+#
+# `republish_aggregate` (`sdk_/_hdf_to_zarr.py:694`) returns False from four
+# places. Two are the **documented no-op** its own docstring describes -- "a
+# legacy tree with no markers is a documented no-op, not an exception (ledger
+# MIG-23)" -- and two are genuine **failures**. `_cli_migrate.py:1059` raises on
+# all four, which is the only safe reading available to a caller that cannot
+# tell them apart.
+#
+# The two `xfail(strict=True)` markers here were REMOVED when the fix
+# landed, not because they were inconvenient: strict is what turned
+# their passing into a failure that had to be acknowledged, and
+# removing the mark IS the acknowledgement. `republish_aggregate` now
+# raises on its faults (`_hdf_to_zarr.py:742`, `:790`) and returns
+# False only for a no-op, of which there proved to be THREE, not two:
+# the empty authorized set is decided explicitly at `:782` rather than
+# by catching `publish_aggregate_snapshot`'s message.
+#
+# These four tests pin the CONTRACT rather than the boolean: what matters is
+# what `--mode migrate` reports, not what an internal helper returns. A fix
+# that makes all four non-fatal would pass the schema-gate test and be strictly
+# worse than the bug, so the two fatal arms are asserted as hard as the two
+# no-op ones.
+
+
+def _legacy_tree_without_markers(tmp_path: Path) -> Path:
+    """A migrated-shape tree with state but nothing marker-authorized."""
+    tree = build_completed_run(tmp_path, ("a", "b"))
+    demote_run_to_hdf(tree, keep_markers=False)
+    (deliverables_dir(tree) / "metadata.csv").unlink(missing_ok=True)
+    return tree
+
+
+def test_a_tree_with_no_authorized_markers_migrates_cleanly(
+    tmp_path: Path,
+) -> None:
+    """No-op arm 1: `success_markers_required` falsey, or state absent.
+
+    `republish_aggregate`'s docstring names this population directly -- *"a
+    pre-markers archive is a likely migration subject; aborting there would
+    leave the stores written and the run reported as failed"* -- which is
+    exactly the outcome asserted against here.
+    """
+    tree = _legacy_tree_without_markers(tmp_path)
+
+    result = CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(tree)]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "returned false" not in result.output
+
+
+def test_a_tree_with_zero_images_migrates_cleanly(tmp_path: Path) -> None:
+    """No-op arm 2: state present and authorized, but nothing to aggregate.
+
+    Distinct from arm 1 on purpose. A fix that keys only on
+    `success_markers_required` clears arm 1 and leaves this one raising, and
+    the schema-gate matrix would still be blocked -- its shapes carry
+    `success_markers_required: True` with no images.
+    """
+    tree = build_completed_run(tmp_path, ("a", "b"))
+    demote_run_to_hdf(tree, keep_markers=False)
+    (deliverables_dir(tree) / "metadata.csv").unlink(missing_ok=True)
+    payload = json.loads(
+        processing_state_path(tree).read_text(encoding="utf-8")
+    )
+    payload["config"]["success_markers_required"] = True
+    processing_state_path(tree).write_text(
+        json.dumps(payload), encoding="utf-8"
+    )
+
+    result = CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(tree)]
+    )
+
+    assert result.exit_code == 0, result.output
+
+
+def test_a_corrupt_processing_state_still_fails_the_migrate(
+    tmp_path: Path,
+) -> None:
+    """Failure arm 1, and **this must keep failing**.
+
+    `republish_aggregate` returns False here from
+    `except (KeyError, TypeError, ValueError)` -- a *corrupt* state, not an
+    absent one. A fix that makes every False non-fatal turns this into a
+    successful migrate over a tree nobody can read, on the one phase that
+    cannot be rolled back by reverting code. That is strictly worse than the
+    bug being fixed, and it is why this arm is asserted as hard as the no-op
+    ones.
+
+    Passes today. It is here so that it cannot start failing quietly.
+    """
+    tree = build_completed_run(tmp_path, ("a", "b"))
+    demote_run_to_hdf(tree, keep_markers=False)
+    processing_state_path(tree).write_text("{truncated", encoding="utf-8")
+
+    result = CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(tree)]
+    )
+
+    assert result.exit_code != 0, (
+        "a migrate over an unreadable processing state reported success"
+    )
+
+
+def test_an_unwritable_deliverables_dir_still_fails_the_migrate(
+    tmp_path: Path,
+) -> None:
+    """Failure arm 2, and this must keep failing too.
+
+    `republish_aggregate`'s outer `except (OSError, RuntimeError, ValueError)`
+    covers a publication that was attempted and failed -- as distinct from one
+    that was correctly not attempted. Same reasoning as arm 1: silence here
+    would report success over a tree whose deliverables were never written.
+    """
+    tree = build_completed_run(tmp_path, ("a", "b"))
+    demote_run_to_hdf(tree, keep_markers=False)
+    (deliverables_dir(tree) / "metadata.csv").unlink(missing_ok=True)
+    blocked = deliverables_dir(tree) / "master_measurements.parquet"
+    blocked.unlink(missing_ok=True)
+    blocked.mkdir(parents=True, exist_ok=True)
+
+    result = CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(tree)]
+    )
+
+    assert result.exit_code != 0, (
+        "a migrate that could not write its deliverables reported success"
     )

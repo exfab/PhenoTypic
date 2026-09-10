@@ -4294,3 +4294,32 @@ is chosen at typing time**, and only one of those is a moment of deliberation. T
 that works is the one small enough to become reflex: `assert count == 1`, every time, before
 the edit.
 
+**A fourth production, and the one that settles what kind of failure this is.** While
+routing the fix for a defect *diagnosed by counting*, the corrector counted
+`republish_aggregate`'s `return False` sites with a `sed` range that overran into the next
+function, and reported the range's count (six) as the function's (four) — correcting
+someone who was right. Same instrument, same coordinate-system error as 76's opening
+example, produced by the person applying the discipline, in the message applying it.
+
+That is the argument against reading any of this as inattention. It has now been produced
+by both participants, in messages *about* it, in both directions of correction. **A failure
+that survives knowing about it, caring about it, and actively looking for it in someone
+else is not an attention failure — it is a tooling default.** `grep -n` numbers the stream
+it is handed; `sed -n 'a,bp'` yields whatever the range contains and not what the symbol
+spans; `next(...)` returns one of N silently. None of them can express *"I expected exactly
+one"* or *"I expected this to be the whole function"*, so the expectation lives only in the
+author's head, where it cannot fail.
+
+The repairs are therefore all shaped the same way — make the expectation something the
+command can contradict:
+
+```bash
+grep -n 'pattern' file            # not: sed -n 'a,bp' file | grep -n
+awk '/^def name/,/^def /' file    # symbol-bounded, not line-bounded
+grep -c 'pattern' file            # before any head/next/first-match
+```
+
+```python
+assert text.count(anchor) == 1    # before any edit derived from a search
+```
+
