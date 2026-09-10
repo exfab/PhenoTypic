@@ -65,7 +65,14 @@ fi
 
 echo
 echo "=== syncing the gate venv (own venv, shared uv cache) ==="
-(cd "$WORKTREE" && uv sync --group dev --group test-qt --extra gui --extra napari)
+# Every extra whose absence turns a test into an ERROR must be here, or the
+# gate reports a red that belongs to the harness. Two have bitten already:
+# without `test-qt` every Qt test errors `fixture 'qtbot' not found`, and
+# without `tune` the Optuna-backed strategies raise ModuleNotFoundError from
+# a lazy import the base package deliberately keeps optional. A missing extra
+# is indistinguishable from a real failure in the summary line.
+(cd "$WORKTREE" && uv sync --group dev --group test-qt \
+    --extra gui --extra napari --extra tune)
 
 echo
 echo "=== provenance check ==="
