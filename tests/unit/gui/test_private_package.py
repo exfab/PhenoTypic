@@ -34,3 +34,8 @@ def test_sub_app_debug_launchers_remain(sub_app: str) -> None:
 def test_console_script_targets_private_launcher() -> None:
     pyproject = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     assert 'phenotypic-gui = "phenotypic._gui.shell._launcher:main"' in pyproject
+
+
+def test_hub_has_no_module_entry() -> None:
+    """``python -m phenotypic._gui`` is not a way to start the hub."""
+    assert importlib.util.find_spec("phenotypic._gui.__main__") is None

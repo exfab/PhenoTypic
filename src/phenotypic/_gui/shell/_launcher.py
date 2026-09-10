@@ -2,13 +2,12 @@
 
 This module ships two callables:
 
-    * :func:`launch_gui` — programmatic boot used by the ``__main__`` module
-      and downstream tests. Mirrors
-      :func:`phenotypic._gui.results_viewer.launch_results_viewer` for
-      consistency with the existing standalone tools.
+    * :func:`launch_gui` — programmatic boot used by downstream tests.
+      Mirrors :func:`phenotypic._gui.results_viewer.launch_results_viewer`
+      for consistency with the existing standalone tools.
     * :func:`main` — argparse front-end wired into ``[project.scripts]``
-      (``phenotypic-gui = phenotypic._gui.shell._launcher:main``) and into
-      ``python -m phenotypic._gui``.
+      (``phenotypic-gui = phenotypic._gui.shell._launcher:main``), the hub's
+      only entry point.
 
 The launcher refuses to boot if ``--root`` does not exist or is not a
 directory; we catch :class:`ValueError`/``FileNotFoundError``/etc. from

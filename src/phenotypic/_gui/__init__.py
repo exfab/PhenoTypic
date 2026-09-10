@@ -1,13 +1,14 @@
-"""PhenoTypic GUI components.
+"""Private implementation of the PhenoTypic GUI hub.
 
-This package provides interactive interfaces for building and visualising
-ImagePipelines.  Components are lazy-loaded so that optional dependencies
-(Panel, napari, Dash) are only imported when actually used.
+Not a public API: import paths under ``phenotypic._gui`` may change without
+notice. Users start the hub with the ``phenotypic-gui`` console script.
+Components are lazy-loaded so that optional dependencies (Dash, napari) are
+only imported when used.
 
 Sub-packages
 ------------
-- ``gui.builder``        — Dash node-graph pipeline builder
-- ``gui.results_viewer`` — Dash CLI-output results viewer
+- ``_gui.builder``        — Dash node-graph pipeline builder
+- ``_gui.results_viewer`` — Dash CLI-output results viewer
 
 Utilities
 ---------

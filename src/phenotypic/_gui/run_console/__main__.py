@@ -3,7 +3,7 @@
 Mirrors :mod:`phenotypic._gui.builder.__main__` and
 :mod:`phenotypic._gui.results_viewer.__main__` so contributors can spin
 up just the Run console while iterating on its form / callbacks. The
-unified hub entry point is ``python -m phenotypic._gui``.
+unified hub entry point is the ``phenotypic-gui`` console script.
 """
 from __future__ import annotations
 

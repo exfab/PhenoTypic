@@ -33,9 +33,10 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import socket
 import subprocess
-import sys
+import sysconfig
 import tempfile
 import time
 from pathlib import Path
@@ -204,6 +205,23 @@ def _wait_for_http_200(url: str, *, timeout: float = 20.0) -> None:
     )
 
 
+def _phenotypic_gui_executable() -> str:
+    """Return the ``phenotypic-gui`` console script of the running environment.
+
+    Looks only in this interpreter's scripts directory -- never ``PATH`` -- so
+    the hub boots the checkout under test rather than another environment's
+    install, and raises rather than skipping when the script is missing.
+    """
+    scripts_dir = sysconfig.get_path("scripts")
+    found = shutil.which("phenotypic-gui", path=scripts_dir)
+    if found is None:
+        raise RuntimeError(
+            f"phenotypic-gui console script not found in {scripts_dir}; run "
+            "`uv sync --group dev --group test-qt --all-extras`"
+        )
+    return found
+
+
 def _start_live_server(
     sandbox: Path,
     *,
@@ -227,9 +245,7 @@ def _start_live_server(
     """
     port = _free_port()
     cmd = [
-        sys.executable,
-        "-m",
-        "phenotypic._gui",
+        _phenotypic_gui_executable(),
         "--root",
         str(sandbox),
         "--port",
