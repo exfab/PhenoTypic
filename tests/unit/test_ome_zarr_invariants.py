@@ -147,7 +147,7 @@ def test_store_suffix_is_joined_in_exactly_one_place() -> None:
 
 def test_the_builder_preview_exemption_is_not_a_results_store_exemption() -> None:
     """The two exempted files must stay out of the per-image store namespace."""
-    for name in ("gui/builder/_preview_cache.py", "_core/_pipeline_parts/_image_pipeline_core.py"):
+    for name in ("_gui/builder/_preview_cache.py", "_core/_pipeline_parts/_image_pipeline_core.py"):
         text = (SRC / name).read_text(encoding="utf-8")
         assert "zarr_store_path" not in text, (
             f"{name} is exempt from the suffix gate but now builds results-store "

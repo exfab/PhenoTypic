@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from phenotypic.gui.shell._binding_ui import (
+from phenotypic._gui.shell._binding_ui import (
     binding_error_text,
     binding_ui_state,
 )

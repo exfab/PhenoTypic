@@ -1,5 +1,5 @@
-from phenotypic.gui._param_forms import param_form
-from phenotypic.gui.tune._scorer_form import scorer_operation_info
+from phenotypic._gui._param_forms import param_form
+from phenotypic._gui.tune._scorer_form import scorer_operation_info
 from phenotypic.tune.score import QCScorer
 
 

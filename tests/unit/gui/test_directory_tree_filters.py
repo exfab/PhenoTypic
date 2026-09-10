@@ -1,7 +1,7 @@
 """Lock-in tests for ``directory_tree`` extension/file-selection filters.
 
 These tests pin the public contract of
-:func:`phenotypic.gui.builder._directory_browser.directory_tree`'s
+:func:`phenotypic._gui.builder._directory_browser.directory_tree`'s
 ``extensions`` and ``select_files`` keyword arguments, alongside the existing
 path-safety guarantees (no hidden entries, no out-of-root symlink traversal,
 parent link gated by the configured root).
@@ -30,7 +30,7 @@ pytestmark = pytest.mark.skipif(
     reason="dash / dash_bootstrap_components not installed",
 )
 
-from phenotypic.gui.builder._directory_browser import (  # noqa: E402
+from phenotypic._gui.builder._directory_browser import (  # noqa: E402
     IMAGE_EXTS,
     PIPELINE_EXTS,
     directory_tree,

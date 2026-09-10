@@ -1,7 +1,7 @@
 """Integration tests for the inspector aux ports section (spec §4.5).
 
 Exercises the new DAG branch of
-:func:`phenotypic.gui.builder._layout.build_inspector` for the
+:func:`phenotypic._gui.builder._layout.build_inspector` for the
 "block-selected" state.  Each op-typed parameter on the selected block
 renders as either a scalar row (single source label + ``Disconnect``)
 or a list row (drag handle + arrow reorder + per-row remove + ``+ Add
@@ -18,13 +18,13 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 
-from phenotypic.gui._operation_registry import OperationInfo, ParamInfo
-from phenotypic.gui.builder import _ids as ids
-from phenotypic.gui.builder._layout import (
+from phenotypic._gui._operation_registry import OperationInfo, ParamInfo
+from phenotypic._gui.builder import _ids as ids
+from phenotypic._gui.builder._layout import (
     _build_aux_ports_section,
     _build_dag_inspector,
 )
-from phenotypic.gui.builder._state import (
+from phenotypic._gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
     PIPELINE_CLASS_NAME,
     BlockNode,

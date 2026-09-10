@@ -1,7 +1,7 @@
 """Integration tests for the Input Image inspector card (spec §4.5).
 
 Exercises the DAG branch of
-:func:`phenotypic.gui.builder._layout.build_inspector` for the
+:func:`phenotypic._gui.builder._layout.build_inspector` for the
 "Input Image selected" state.  When ``state.selected_block_id``
 resolves to a block with ``class_name == INPUT_IMAGE_CLASS_NAME``,
 the inspector renders a dedicated card carrying:
@@ -24,12 +24,12 @@ independent of clientside JS.
 
 from __future__ import annotations
 
-from phenotypic.gui.builder import _ids as ids
-from phenotypic.gui.builder._layout import (
+from phenotypic._gui.builder import _ids as ids
+from phenotypic._gui.builder._layout import (
     _build_dag_inspector,
     _build_input_image_card,
 )
-from phenotypic.gui.builder._state import (
+from phenotypic._gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
     _DagBuilderScope,
     _DagBuilderState,

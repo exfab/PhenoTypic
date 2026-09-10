@@ -34,14 +34,14 @@ _LITERAL_PAT = re.compile(r"""["'](Metadata_[A-Za-z][A-Za-z0-9_]*)["']""")
 # conversion.
 _ALLOWED = {
     # generic-fallback + legacy shims (kept literals, load old data)
-    "gui/results_viewer/_curation_labels.py": {"Metadata_ImageFile"},  # _LEGACY_IMAGE_FILE curation shim
-    "gui/results_viewer/_compatibility.py": {"Metadata_ImageName"},  # explicit output migration alias
-    "gui/shell/_metadata_context.py": {  # metadata CSV identity aliases
+    "_gui/results_viewer/_curation_labels.py": {"Metadata_ImageFile"},  # _LEGACY_IMAGE_FILE curation shim
+    "_gui/results_viewer/_compatibility.py": {"Metadata_ImageName"},  # explicit output migration alias
+    "_gui/shell/_metadata_context.py": {  # metadata CSV identity aliases
         "Metadata_ImageFileName",
     },
     "_cli/_cli_recompile_worker.py": {"Metadata_Well"},             # no WELL schema member
     # user metadata column from the --metadata CSV; no MetadataInfo member
-    "gui/results_viewer/_scatter_tab/_facets.py": {"Metadata_ImageDatetime"},
+    "_gui/results_viewer/_scatter_tab/_facets.py": {"Metadata_ImageDatetime"},
     # arbitrary-column doctest examples (demonstrate non-vocabulary columns)
     "abc_/_post_measurement.py": {"Metadata_Flag"},                # AddConstant(column="Metadata_Flag")
     "post/_merge_metadata.py": {"Metadata_Condition"},             # doctest "Metadata_Condition"

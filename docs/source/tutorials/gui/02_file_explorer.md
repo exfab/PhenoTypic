@@ -24,7 +24,7 @@ The sidebar header carries three controls:
 
 ## Capability badges
 
-Every entry is run through a small classifier (`phenotypic.gui.shell._classifier`)
+Every entry is run through a small classifier (`phenotypic._gui.shell._classifier`)
 that emits one or more capability tags:
 
 | Badge | Meaning |

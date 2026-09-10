@@ -183,7 +183,7 @@ under one URL. Two equivalent entry points:
 uv run phenotypic-gui --root ./images --port 8050
 
 # Module entry (works in environments without the console script on PATH)
-uv run python -m phenotypic.gui --root ./images --port 8050
+uv run python -m phenotypic._gui --root ./images --port 8050
 ```
 
 `--root` freezes the sandbox the GUI's file browser is allowed to see (defaults to
@@ -208,7 +208,7 @@ Then open the full proxy URL, for example
 `https://ondemand.hpcc.ucr.edu/node/hz01/30099/`.
 
 Note: `phenotypic gui` (no hyphen, as a subcommand) is **not supported**. Use
-`phenotypic-gui` or `python -m phenotypic.gui`.
+`phenotypic-gui` or `python -m phenotypic._gui`.
 
 # Hyperparameter Tuning
 

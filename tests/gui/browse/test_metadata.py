@@ -1,7 +1,7 @@
 import numpy as np
 from PIL import Image as PILImage
 
-from phenotypic.gui.browse._metadata import _extract_exif, read
+from phenotypic._gui.browse._metadata import _extract_exif, read
 
 
 def test_extract_exif_from_exifread_keys():

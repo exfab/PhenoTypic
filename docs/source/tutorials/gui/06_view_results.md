@@ -24,11 +24,11 @@ Analysis, rebuild, and publication stay disabled. Two other ways to get a
 populated viewer are:
 
 1. **Standalone launch** (recommended for now). Run
-   `phenotypic.gui.results_viewer` directly with `--output-root` pointing
+   `phenotypic._gui.results_viewer` directly with `--output-root` pointing
    at the CLI output:
 
    ```bash
-   uv run python -m phenotypic.gui.results_viewer \
+   uv run python -m phenotypic._gui.results_viewer \
        --output-root gui_tutorial_dataset/results --port 8051
    ```
 

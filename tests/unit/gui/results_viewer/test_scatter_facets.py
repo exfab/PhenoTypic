@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import polars as pl
 
-from phenotypic.gui.results_viewer._scatter_tab._facets import (
+from phenotypic._gui.results_viewer._scatter_tab._facets import (
     plan_facets,
     sort_facet_values,
 )
-from phenotypic.gui.results_viewer._scatter_tab._spec import FigureSpec
+from phenotypic._gui.results_viewer._scatter_tab._spec import FigureSpec
 
 
 def test_numeric_looking_values_sort_numerically() -> None:

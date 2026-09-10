@@ -26,7 +26,7 @@ def _phenotypic_gui_argv() -> list[str]:
     binary = shutil.which("phenotypic-gui")
     if binary is not None:
         return [binary]
-    return [sys.executable, "-m", "phenotypic.gui"]
+    return [sys.executable, "-m", "phenotypic._gui"]
 
 
 def test_phenotypic_gui_help_succeeds() -> None:

@@ -1,4 +1,4 @@
-from phenotypic.gui.browse import _ids
+from phenotypic._gui.browse import _ids
 
 
 def test_ids_are_unique_nonempty_strings():

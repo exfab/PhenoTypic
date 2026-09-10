@@ -24,8 +24,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pytest
 
-from phenotypic.gui._operation_registry import OperationInfo
-from phenotypic.gui.builder._state import (
+from phenotypic._gui._operation_registry import OperationInfo
+from phenotypic._gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
     PIPELINE_CLASS_NAME,
     BlockNode,
@@ -34,7 +34,7 @@ from phenotypic.gui.builder._state import (
     _DagBuilderState,
     _new_block_id,
 )
-from phenotypic.gui.builder._validation import Issue, validate
+from phenotypic._gui.builder._validation import Issue, validate
 
 from .conftest import _make_op_info, _make_param
 

@@ -110,7 +110,7 @@ def test_chart_body_font_intentionally_differs_from_gui_chrome() -> None:
     names (DESIGN.md "06 -- Charts"). The two are expected to *differ* now -- this
     test pins that intent so neither side silently re-converges.
     """
-    from phenotypic.gui._design import FONT_FAMILY_BODY
+    from phenotypic._gui._design import FONT_FAMILY_BODY
 
     assert FONT_FAMILY.startswith("'IBM Plex Sans'")
     assert FONT_FAMILY_BODY.startswith("'Comfortaa'")
@@ -124,7 +124,7 @@ def test_chart_body_font_is_loaded_by_gui_import() -> None:
     webfont were dropped from the ``@import`` the chart body text would silently fall
     back to the system sans instead of IBM Plex Sans.
     """
-    from phenotypic.gui._design import FONT_TOKENS_CSS
+    from phenotypic._gui._design import FONT_TOKENS_CSS
 
     assert "IBM+Plex+Sans" in FONT_TOKENS_CSS
 
@@ -135,7 +135,7 @@ def test_mono_font_does_not_drift_from_gui_design() -> None:
     Numeric axes / hover render in mono; keeping the two stacks identical means
     a chart's tick labels match the GUI's mono data text exactly.
     """
-    from phenotypic.gui._design import FONT_FAMILY_MONO as GUI_FONT_FAMILY_MONO
+    from phenotypic._gui._design import FONT_FAMILY_MONO as GUI_FONT_FAMILY_MONO
     from phenotypic.sdk_.viz.figures._theme import FONT_FAMILY_MONO
 
     assert FONT_FAMILY_MONO == GUI_FONT_FAMILY_MONO

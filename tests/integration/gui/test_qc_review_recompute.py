@@ -24,14 +24,14 @@ from PIL import Image as PILImage
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ReplicateAgreement
-from phenotypic.gui._config import (
+from phenotypic._gui._config import (
     CFG_FILTERED_STATE,
     CFG_QC_PIPELINE,
     CFG_QC_RECIPE,
     QC_CROPS_URL_SEGMENT,
 )
-from phenotypic.gui.results_viewer._app import create_app
-from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.results_viewer._app import create_app
+from phenotypic._gui.results_viewer._output_root import OutputRoot
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
 from phenotypic.sdk_._qc_recipe._runner import run_qc
 from phenotypic.sdk_ import (
@@ -175,7 +175,7 @@ def test_recompute_matches_cli_for_identical_removals(
     data path; the rewritten qc_summary metric for img-2 must equal a
     direct CLI-style run_qc on measurements.parquet minus that key.
     """
-    from phenotypic.gui.results_viewer._qc_tab.review import _data, _db
+    from phenotypic._gui.results_viewer._qc_tab.review import _data, _db
 
     removed = {("img-2", 3)}
 
@@ -216,7 +216,7 @@ def test_recompute_does_not_touch_review_state(
     output_root, tmp_path: Path
 ) -> None:
     """``run_qc`` (the only recompute call) must never clear review_state.json."""
-    from phenotypic.gui.results_viewer._qc_tab.review._review_state import (
+    from phenotypic._gui.results_viewer._qc_tab.review._review_state import (
         ReviewState,
     )
 
@@ -325,7 +325,7 @@ def test_recompute_delta_carries_after_status(
     just the number. Removing the wild img-2 outlier tightens the group,
     so its metric moves and the delta reports a concrete ``status_after``.
     """
-    from phenotypic.gui.results_viewer._qc_tab.review import _callbacks, _db
+    from phenotypic._gui.results_viewer._qc_tab.review import _callbacks, _db
 
     app = create_app(output_root)
     filtered = app.server.config[CFG_FILTERED_STATE]
@@ -371,10 +371,10 @@ def test_review_per_tile_curation_contract(
     this drives the extracted mutation helpers directly so the contract is
     caught without a browser.
     """
-    from phenotypic.gui.results_viewer._filtered_state import (
+    from phenotypic._gui.results_viewer._filtered_state import (
         FilteredMeasurements,
     )
-    from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
+    from phenotypic._gui.results_viewer._qc_tab.review._callbacks import (
         bulk_review_curation,
         toggle_review_tile,
     )
@@ -430,7 +430,7 @@ def test_qc_gallery_threads_dim_alpha_into_tile_urls(output_root) -> None:
     mount prefix, and asserts every tile ``<img src>`` carries the exact
     store alpha as ``&dim=``.
     """
-    from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
+    from phenotypic._gui.results_viewer._qc_tab.review._callbacks import (
         _render_faceted_gallery,
     )
 
@@ -460,7 +460,7 @@ def test_qc_gallery_threads_dim_alpha_into_tile_urls(output_root) -> None:
 
 def test_qc_gallery_default_dim_alpha_is_zero(output_root) -> None:
     """No ``dim_alpha`` degrades the gallery URLs to ``&dim=0.0``."""
-    from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
+    from phenotypic._gui.results_viewer._qc_tab.review._callbacks import (
         _render_faceted_gallery,
     )
 
@@ -498,16 +498,16 @@ def test_settings_edit_waits_for_explicit_database_rebuild(
     img-1 as ``fail``. A later curated-frame recompute must keep those new
     settings instead of reverting to the boot-time pipeline.
     """
-    from phenotypic.gui.results_viewer._qc_tab import (
+    from phenotypic._gui.results_viewer._qc_tab import (
         _callbacks as qc_callbacks,
     )
-    from phenotypic.gui.results_viewer._qc_tab._rebuild import (
+    from phenotypic._gui.results_viewer._qc_tab._rebuild import (
         preflight_qc_rebuild,
     )
-    from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
+    from phenotypic._gui.results_viewer._qc_tab.review._callbacks import (
         _recompute_full_rebuild,
     )
-    from phenotypic.gui.results_viewer._qc_tab.review import _db
+    from phenotypic._gui.results_viewer._qc_tab.review import _db
 
     app = create_app(output_root)
     recipe = app.server.config[CFG_QC_RECIPE]
@@ -577,10 +577,10 @@ def test_disabling_all_checks_preserves_database_and_blocks_rebuild(
     output_root, tmp_path: Path
 ) -> None:
     """Disabling every check does not implicitly delete prior QC results."""
-    from phenotypic.gui.results_viewer._qc_tab._rebuild import (
+    from phenotypic._gui.results_viewer._qc_tab._rebuild import (
         preflight_qc_rebuild,
     )
-    from phenotypic.gui.results_viewer._qc_tab.review import _db
+    from phenotypic._gui.results_viewer._qc_tab.review import _db
 
     app = create_app(output_root)
     recipe = app.server.config[CFG_QC_RECIPE]
@@ -600,7 +600,7 @@ def test_disabling_all_checks_preserves_database_and_blocks_rebuild(
 
 
 def test_reconcile_drops_vanished_reviewed_keys(tmp_path: Path) -> None:
-    from phenotypic.gui.results_viewer._qc_tab.review._review_state import (
+    from phenotypic._gui.results_viewer._qc_tab.review._review_state import (
         ReviewState,
         encode_group_key,
     )

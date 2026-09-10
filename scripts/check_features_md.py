@@ -1,7 +1,7 @@
 """FEATURES.md validator — invoked by the pre-commit hook and CI gate.
 
 Behaviour:
-    * Parses ``src/phenotypic/gui/FEATURES.md`` as a sequence of markdown tables.
+    * Parses ``src/phenotypic/_gui/FEATURES.md`` as a sequence of markdown tables.
     * For rows with ``Status == ✅ shipping``, resolves ``Test ref`` to a real
       ``path::test`` reference and asserts the file (and named test) exists.
     * Rows with ``Status == 🚧 in progress`` cause failure when ``--strict`` is
@@ -28,7 +28,7 @@ except ModuleNotFoundError:  # pragma: no cover - path-script execution
     from _markdown_table import split_markdown_row_cells
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-FEATURES_MD = REPO_ROOT / "src" / "phenotypic" / "gui" / "FEATURES.md"
+FEATURES_MD = REPO_ROOT / "src" / "phenotypic" / "_gui" / "FEATURES.md"
 
 STATUS_SHIPPING = "✅ shipping"
 STATUS_IN_PROGRESS = "🚧 in progress"

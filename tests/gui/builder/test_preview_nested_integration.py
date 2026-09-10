@@ -1,10 +1,10 @@
 """Nested previews: faithful threaded input + scope coexistence + route serves."""
-from phenotypic.gui.builder import _preview_cache as pc
-from phenotypic.gui.builder._app import create_app
-from phenotypic.gui.builder._preview_zarr_routes import preview_zarr_url
-from phenotypic.gui.results_viewer._zarr_routes import store_generation_token
+from phenotypic._gui.builder import _preview_cache as pc
+from phenotypic._gui.builder._app import create_app
+from phenotypic._gui.builder._preview_zarr_routes import preview_zarr_url
+from phenotypic._gui.results_viewer._zarr_routes import store_generation_token
 from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON
-from phenotypic.gui.builder._state import (
+from phenotypic._gui.builder._state import (
     BlockNode,
     Edge,
     _DagBuilderScope,

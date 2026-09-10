@@ -116,7 +116,7 @@ class NapariPipelineViewer(ImagePipelineCore):
 
         if viewer is None:
             viewer = _napari.Viewer()
-            from phenotypic.gui._smart_grid import install_smart_grid
+            from phenotypic._gui._smart_grid import install_smart_grid
             install_smart_grid(viewer)
 
         effective_reset = reset if reset is not None else self._reset

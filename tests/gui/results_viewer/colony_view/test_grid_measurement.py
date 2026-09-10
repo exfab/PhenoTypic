@@ -24,9 +24,9 @@ import polars as pl
 from dash import html
 from dash.development.base_component import Component
 
-from phenotypic.gui._shared._measurement_tint import sequential_tint
-from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.gui.results_viewer.colony_view._grid import build_grid
+from phenotypic._gui._shared._measurement_tint import sequential_tint
+from phenotypic._gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.results_viewer.colony_view._grid import build_grid
 from phenotypic.schema import IMAGE
 
 from tests._output_layout import write_master

@@ -22,7 +22,7 @@ This module provides three things:
   that performs a **scoped** atomic read-modify-write of only the ``qc``
   array (operations/post/filters/model are preserved byte-for-byte) with
   an mtime-staleness guard mirroring
-  :class:`phenotypic.gui.analysis._recipe_state.RecipeState`. It also
+  :class:`phenotypic._gui.analysis._recipe_state.RecipeState`. It also
   exposes an explicitly authorized legacy-sidecar migration. Merely loading
   or binding a viewer never performs that migration.
 
@@ -269,7 +269,7 @@ class QcRecipe:
     CLI), and atomically swaps the file in. An mtime guard refuses the
     write when the file changed since load (typical cause: a CLI
     recompile-mode run happened while the viewer was open), mirroring
-    :class:`phenotypic.gui.analysis._recipe_state.RecipeState`.
+    :class:`phenotypic._gui.analysis._recipe_state.RecipeState`.
 
     Unlike the legacy sidecar :class:`QcRecipe`, the recipe is *not* the
     sole owner of its file — the CLI also writes ``pipeline.json`` — so the

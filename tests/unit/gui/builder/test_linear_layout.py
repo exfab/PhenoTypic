@@ -7,10 +7,10 @@ import json
 from pathlib import Path
 from typing import Any, Optional
 
-from phenotypic.gui._operation_registry import OperationInfo, ParamInfo
-from phenotypic.gui.builder import _ids as ids
-from phenotypic.gui.builder import _linear_layout as linear_layout
-from phenotypic.gui.builder._state import (
+from phenotypic._gui._operation_registry import OperationInfo, ParamInfo
+from phenotypic._gui.builder import _ids as ids
+from phenotypic._gui.builder import _linear_layout as linear_layout
+from phenotypic._gui.builder._state import (
     BlockNode,
     BuilderScope,
     BuilderState,
@@ -152,7 +152,7 @@ def _registry() -> _FakeRegistry:
 
 
 def test_linear_map_empty_scope_renders_container_and_floating_port():
-    from phenotypic.gui.builder._linear_layout import build_linear_map_section
+    from phenotypic._gui.builder._linear_layout import build_linear_map_section
 
     tree = build_linear_map_section(BuilderState(), _registry())
 
@@ -165,7 +165,7 @@ def test_linear_map_empty_scope_renders_container_and_floating_port():
 def test_input_image_card_reserves_left_port_grid_cell():
     """The source card keeps its body in the center grid column."""
 
-    from phenotypic.gui.builder._linear_layout import build_linear_map_section
+    from phenotypic._gui.builder._linear_layout import build_linear_map_section
 
     tree = build_linear_map_section(BuilderState(), _registry())
     input_cards = [
@@ -187,7 +187,7 @@ def test_input_image_card_reserves_left_port_grid_cell():
 
 
 def test_linear_map_renders_view_only_zoom_controls():
-    from phenotypic.gui.builder._linear_layout import build_linear_map_section
+    from phenotypic._gui.builder._linear_layout import build_linear_map_section
 
     tree = build_linear_map_section(BuilderState(), _registry())
 
@@ -229,7 +229,7 @@ def test_linear_fit_icon_falls_back_when_scan_is_unavailable(monkeypatch):
 
 
 def test_linear_map_renders_port_menu_only_for_open_target():
-    from phenotypic.gui.builder._linear_layout import build_linear_map_section
+    from phenotypic._gui.builder._linear_layout import build_linear_map_section
 
     state = _state_with_consumer()
     block = state.root.blocks[1]
@@ -250,7 +250,7 @@ def test_linear_map_renders_port_menu_only_for_open_target():
 
 
 def test_linear_map_marks_selected_side_port_green():
-    from phenotypic.gui.builder._linear_layout import build_linear_map_section
+    from phenotypic._gui.builder._linear_layout import build_linear_map_section
 
     state = _state_with_consumer()
     block = state.root.blocks[1]
@@ -272,7 +272,7 @@ def test_linear_map_marks_selected_side_port_green():
 
 
 def test_linear_map_renders_doc_help_buttons():
-    from phenotypic.gui.builder._linear_layout import build_linear_map_section
+    from phenotypic._gui.builder._linear_layout import build_linear_map_section
 
     tree = build_linear_map_section(_state_with_consumer(), _registry())
 
@@ -288,7 +288,7 @@ def test_linear_map_renders_doc_help_buttons():
 
 
 def test_linear_map_unsupported_state_renders_panel():
-    from phenotypic.gui.builder._linear_layout import build_linear_map_section
+    from phenotypic._gui.builder._linear_layout import build_linear_map_section
 
     state = _state_with_consumer()
     extra = BlockNode(
@@ -327,7 +327,7 @@ def test_linear_map_unsupported_state_renders_panel():
 
 
 def test_side_loader_badge_precedes_title_and_port_is_left_aligned():
-    from phenotypic.gui.builder._linear_layout import build_linear_side_loader
+    from phenotypic._gui.builder._linear_layout import build_linear_side_loader
 
     tree = build_linear_side_loader(_state_with_consumer(), _registry())
 
@@ -343,7 +343,7 @@ def test_side_loader_badge_precedes_title_and_port_is_left_aligned():
 def test_breadcrumb_renders_dag_nested_scope_labels():
     """DAG string breadcrumbs resolve through blocks, not legacy nodes."""
 
-    from phenotypic.gui.builder._layout import build_breadcrumb
+    from phenotypic._gui.builder._layout import build_breadcrumb
 
     nested = BuilderScope(name="Inoculum detector")
     container = BlockNode(
@@ -364,7 +364,7 @@ def test_breadcrumb_renders_dag_nested_scope_labels():
 
 
 def test_side_loader_renders_linear_move_and_delete_actions():
-    from phenotypic.gui.builder._linear_layout import build_linear_side_loader
+    from phenotypic._gui.builder._linear_layout import build_linear_side_loader
 
     tree = build_linear_side_loader(_state_with_consumer(), _registry())
 
@@ -379,7 +379,7 @@ def test_side_loader_renders_linear_move_and_delete_actions():
 
 
 def test_app_layout_mounts_linear_map_instead_of_cytoscape():
-    from phenotypic.gui.builder._layout import build_app_layout
+    from phenotypic._gui.builder._layout import build_app_layout
 
     tree = build_app_layout(BuilderState(), _registry(), image_root=None)
 
@@ -390,7 +390,7 @@ def test_app_layout_mounts_linear_map_instead_of_cytoscape():
 def test_app_layout_docks_inspector_as_slideover():
     """Canvas + palette fill the body; the inspector docks as a slide-over
     overlay (a tab handle toggles it) rather than taking a third column."""
-    from phenotypic.gui.builder._layout import build_app_layout
+    from phenotypic._gui.builder._layout import build_app_layout
 
     tree = build_app_layout(BuilderState(), _registry(), image_root=None)
 
@@ -409,7 +409,7 @@ def test_app_layout_docks_inspector_as_slideover():
 
 
 def test_dynamic_side_loader_never_contains_preview_mount() -> None:
-    from phenotypic.gui.builder._linear_layout import build_linear_side_loader
+    from phenotypic._gui.builder._linear_layout import build_linear_side_loader
 
     tree = build_linear_side_loader(_state_with_consumer(), _registry())
 
@@ -422,7 +422,7 @@ def test_app_layout_palette_is_collapsible_and_resizable():
     columns wrapper, a drag divider carrying the collapse toggle, and the
     pane itself. Operation labels carry the truncation class so long names
     ellipsis instead of wrapping."""
-    from phenotypic.gui.builder._layout import build_app_layout
+    from phenotypic._gui.builder._layout import build_app_layout
 
     tree = build_app_layout(BuilderState(), _registry(), image_root=None)
 
@@ -439,7 +439,7 @@ def test_app_layout_palette_is_collapsible_and_resizable():
 
 
 def test_app_layout_keeps_retired_viewport_controls_hidden_and_inert():
-    from phenotypic.gui.builder._layout import build_app_layout
+    from phenotypic._gui.builder._layout import build_app_layout
 
     tree = build_app_layout(BuilderState(), _registry(), image_root=None)
 
@@ -458,7 +458,7 @@ def test_app_layout_keeps_retired_viewport_controls_hidden_and_inert():
 
 
 def test_app_layout_palette_is_click_only_not_draggable():
-    from phenotypic.gui.builder._layout import build_app_layout
+    from phenotypic._gui.builder._layout import build_app_layout
 
     tree = build_app_layout(BuilderState(), _registry(), image_root=None)
 
@@ -471,7 +471,7 @@ def test_app_layout_palette_is_click_only_not_draggable():
 
 
 def test_app_layout_has_no_duplicate_ids_with_selected_block():
-    from phenotypic.gui.builder._layout import build_app_layout
+    from phenotypic._gui.builder._layout import build_app_layout
 
     tree = build_app_layout(_state_with_consumer(), _registry(), image_root=None)
 
@@ -501,7 +501,7 @@ def test_linear_ids_are_exported():
 def test_mobile_limited_mode_css_keeps_help_and_drill_available():
     css_path = (
         Path(__file__).parents[4]
-        / "src/phenotypic/gui/builder/assets/builder.css"
+        / "src/phenotypic/_gui/builder/assets/builder.css"
     )
     css = css_path.read_text()
 
@@ -527,7 +527,7 @@ def test_mobile_limited_mode_css_keeps_help_and_drill_available():
 def test_mobile_limited_mode_js_applies_real_disabled_and_readonly_attributes():
     js_path = (
         Path(__file__).parents[4]
-        / "src/phenotypic/gui/builder/assets/builder.js"
+        / "src/phenotypic/_gui/builder/assets/builder.js"
     )
     js = js_path.read_text()
 
@@ -547,7 +547,7 @@ def test_mobile_limited_mode_js_applies_real_disabled_and_readonly_attributes():
 def test_linear_zoom_js_is_ui_only_and_preserves_clickable_ports():
     js_path = (
         Path(__file__).parents[4]
-        / "src/phenotypic/gui/builder/assets/builder.js"
+        / "src/phenotypic/_gui/builder/assets/builder.js"
     )
     js = js_path.read_text()
 
@@ -569,7 +569,7 @@ def test_linear_card_width_fits_longest_operation_label():
     Sized at server-build time so long names like
     ``GridOversizedObjectRemover`` render without the title ellipsis.
     """
-    from phenotypic.gui._operation_registry import get_registry
+    from phenotypic._gui._operation_registry import get_registry
 
     linear_layout._linear_card_width_px = None  # bust the memo
     try:
@@ -605,7 +605,7 @@ def test_linear_card_width_is_memoised():
 def test_linear_map_section_freezes_card_width_css_var():
     """The map section carries the computed fixed card width as a CSS
     custom property so every ``.linear-node-card`` descendant reads it."""
-    from phenotypic.gui.builder._linear_layout import build_linear_map_section
+    from phenotypic._gui.builder._linear_layout import build_linear_map_section
 
     linear_layout._linear_card_width_px = None
     try:

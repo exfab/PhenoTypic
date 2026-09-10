@@ -18,8 +18,8 @@ import pytest
 from PIL import Image as PILImage
 
 from phenotypic import Image
-from phenotypic.gui.results_viewer._app import create_app
-from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.results_viewer._app import create_app
+from phenotypic._gui.results_viewer._output_root import OutputRoot
 from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import zarr_store_path
 

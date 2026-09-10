@@ -1,6 +1,6 @@
 """Unit tests for the Launch command renderer (Task C1).
 
-:func:`~phenotypic.gui.tune._command.render_launch_command` is the
+:func:`~phenotypic._gui.tune._command.render_launch_command` is the
 **source-of-truth** for the ``uv run phenotypic-tune run …`` invocation the
 Launch view shows (the clientside callback mirrors it, but this pure function is
 the unit-tested truth). The flag spellings are confirmed against the real CLI in
@@ -16,7 +16,7 @@ import shlex
 import sys
 from pathlib import Path
 
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.shell._sandbox import SandboxRoot
 
 
 def _command_paths(tmp_path: Path) -> tuple[SandboxRoot, Path, Path, Path]:
@@ -29,7 +29,7 @@ def _command_paths(tmp_path: Path) -> tuple[SandboxRoot, Path, Path, Path]:
 
 
 def test_render_postgres_tpe_run_includes_strategy_trials_and_storage() -> None:
-    from phenotypic.gui.tune._command import render_launch_command
+    from phenotypic._gui.tune._command import render_launch_command
 
     command = render_launch_command(
         "out/deliverables/tuning_spec.json",
@@ -55,7 +55,7 @@ def test_render_postgres_tpe_run_includes_strategy_trials_and_storage() -> None:
 
 
 def test_render_local_grid_omits_storage_screen_and_slurm() -> None:
-    from phenotypic.gui.tune._command import render_launch_command
+    from phenotypic._gui.tune._command import render_launch_command
 
     command = render_launch_command(
         "spec.json",
@@ -77,7 +77,7 @@ def test_render_local_grid_omits_storage_screen_and_slurm() -> None:
 
 def test_render_grid_suppresses_n_trials_even_when_set() -> None:
     """Grid is exhaustive and ignores ``--n-trials`` — never emit it for grid."""
-    from phenotypic.gui.tune._command import render_launch_command
+    from phenotypic._gui.tune._command import render_launch_command
 
     command = render_launch_command(
         "spec.json",
@@ -94,7 +94,7 @@ def test_render_grid_suppresses_n_trials_even_when_set() -> None:
 
 
 def test_render_appends_screen_and_slurm_when_toggled() -> None:
-    from phenotypic.gui.tune._command import render_launch_command
+    from phenotypic._gui.tune._command import render_launch_command
 
     command = render_launch_command(
         "spec.json",
@@ -119,7 +119,7 @@ def test_render_appends_screen_and_slurm_when_toggled() -> None:
 
 
 def test_render_includes_run_form_overrides() -> None:
-    from phenotypic.gui.tune._command import render_launch_command
+    from phenotypic._gui.tune._command import render_launch_command
 
     command = render_launch_command(
         "spec.json",
@@ -146,7 +146,7 @@ def test_render_includes_run_form_overrides() -> None:
 
 
 def test_render_quotes_paths_with_spaces() -> None:
-    from phenotypic.gui.tune._command import render_launch_command
+    from phenotypic._gui.tune._command import render_launch_command
 
     command = render_launch_command(
         "my runs/spec.json",
@@ -180,7 +180,7 @@ def test_render_parses_through_the_real_cli_parser() -> None:
     ``phenotypic.tune.__main__._build_parser()`` and assert the parsed namespace
     carries every value. A future flag rename breaks this test.
     """
-    from phenotypic.gui.tune._command import render_launch_command
+    from phenotypic._gui.tune._command import render_launch_command
     from phenotypic.tune.__main__ import _build_parser, _normalize_argv
 
     command = render_launch_command(
@@ -214,7 +214,7 @@ def test_render_parses_through_the_real_cli_parser() -> None:
 
 def test_render_grid_command_parses_without_n_trials() -> None:
     """A grid command (no ``--n-trials``) still parses; the budget defaults None."""
-    from phenotypic.gui.tune._command import render_launch_command
+    from phenotypic._gui.tune._command import render_launch_command
     from phenotypic.tune.__main__ import _build_parser, _normalize_argv
 
     command = render_launch_command(
@@ -238,14 +238,14 @@ def test_render_launch_command_does_not_import_optuna() -> None:
     sys.modules.pop("optuna", None)
     import importlib
 
-    importlib.import_module("phenotypic.gui.tune._command")
+    importlib.import_module("phenotypic._gui.tune._command")
     assert "optuna" not in sys.modules
 
 
 def test_validated_command_owns_actual_display_and_portable_tokens(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.tune._command import build_tune_command
+    from phenotypic._gui.tune._command import build_tune_command
 
     sandbox, spec, images, output = _command_paths(tmp_path)
     storage = "postgresql+psycopg://user@db/tune"
@@ -282,7 +282,7 @@ def test_validated_command_owns_actual_display_and_portable_tokens(
 def test_inline_password_environment_storage_is_rejected_without_disclosure(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.tune._command import build_tune_command
+    from phenotypic._gui.tune._command import build_tune_command
 
     sandbox, spec, images, output = _command_paths(tmp_path)
     password = "do-not-disclose"
@@ -317,7 +317,7 @@ def test_inline_password_environment_storage_is_rejected_without_disclosure(
 def test_validated_command_disables_copy_for_missing_images_and_env(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.tune._command import build_tune_command
+    from phenotypic._gui.tune._command import build_tune_command
 
     sandbox, spec, _, output = _command_paths(tmp_path)
     command = build_tune_command(
@@ -342,7 +342,7 @@ def test_validated_command_disables_copy_for_missing_images_and_env(
 def test_local_storage_path_is_sandbox_resolved_and_displayable(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.tune._command import build_tune_command
+    from phenotypic._gui.tune._command import build_tune_command
 
     sandbox, spec, images, output = _command_paths(tmp_path)
     command = build_tune_command(

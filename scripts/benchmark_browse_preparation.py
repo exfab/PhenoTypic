@@ -13,10 +13,10 @@ from typing import Any
 
 from PIL import Image as PILImage
 
-from phenotypic.gui.browse._cache import BrowseCache, CacheLocation
-from phenotypic.gui.browse._preparation import BrowsePreparationManager
-from phenotypic.gui.browse._source_probe import probe_source
-from phenotypic.gui.results_viewer._dzi_tiler import DZI_BACKEND_INFO
+from phenotypic._gui.browse._cache import BrowseCache, CacheLocation
+from phenotypic._gui.browse._preparation import BrowsePreparationManager
+from phenotypic._gui.browse._source_probe import probe_source
+from phenotypic._gui.results_viewer._dzi_tiler import DZI_BACKEND_INFO
 
 
 def benchmark_browse_preparation() -> None:

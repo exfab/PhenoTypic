@@ -11,21 +11,21 @@ import polars as pl
 import pytest
 
 from phenotypic import ImagePipeline
-from phenotypic.gui import results_viewer as results_viewer_module
-from phenotypic.gui._config import (
+from phenotypic._gui import results_viewer as results_viewer_module
+from phenotypic._gui._config import (
     CFG_ANALYSIS_SESSION,
     CFG_OUTPUT_ROOT,
     CFG_RESULTS_BINDING_COORDINATOR,
     CFG_RESULTS_BINDING_JOBS,
     CFG_RESULTS_BINDING_STATE,
 )
-from phenotypic.gui.shell import SandboxRoot
-from phenotypic.gui.shell._app import compose_hub
-from phenotypic.gui.shell._binding import BindingCoordinator
-from phenotypic.gui.shell._binding_jobs import ResultsBindJobManager
-from phenotypic.gui.shell._binding_jobs import ResultsBindJobContext
-from phenotypic.gui.shell._session import ToolSession
-from phenotypic.gui.results_viewer._discovery_contracts import (
+from phenotypic._gui.shell import SandboxRoot
+from phenotypic._gui.shell._app import compose_hub
+from phenotypic._gui.shell._binding import BindingCoordinator
+from phenotypic._gui.shell._binding_jobs import ResultsBindJobManager
+from phenotypic._gui.shell._binding_jobs import ResultsBindJobContext
+from phenotypic._gui.shell._session import ToolSession
+from phenotypic._gui.results_viewer._discovery_contracts import (
     OutputDiscoveryProgress,
 )
 from phenotypic.schema import IMAGE

@@ -24,7 +24,7 @@ an output here also binds the viewer to the same directory.
 The standalone launcher is still useful for headless workflows or
 long-running fits where you don't need the rest of the hub:
 
-    uv run python -m phenotypic.gui.analysis \
+    uv run python -m phenotypic._gui.analysis \
         --root <path-to-cli-output> --port 8051
 ```
 

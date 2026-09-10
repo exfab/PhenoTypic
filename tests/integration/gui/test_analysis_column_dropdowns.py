@@ -15,8 +15,8 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis import LogGrowthModel, TukeyOutlierRemover
-from phenotypic.gui.analysis._app import create_app
-from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.analysis._app import create_app
+from phenotypic._gui.results_viewer._output_root import OutputRoot
 
 from tests._output_layout import write_master, write_measurements_mirror, write_pipeline_json
 from phenotypic.schema import IMAGE
@@ -101,7 +101,7 @@ def output_root_with_filter(tmp_path: Path) -> OutputRoot:
 
 class TestSchemaWiredIntoApp:
     def test_create_app_stashes_measurement_schema(self, output_root):
-        from phenotypic.gui._config import CFG_MEASUREMENT_SCHEMA
+        from phenotypic._gui._config import CFG_MEASUREMENT_SCHEMA
 
         app = create_app(output_root=output_root)
         schema = app.server.config.get(CFG_MEASUREMENT_SCHEMA)

@@ -5,9 +5,9 @@ from pathlib import Path
 
 from PIL import Image as PILImage
 
-from phenotypic.gui.browse._cache import BrowseCache, CacheLocation
-from phenotypic.gui.browse._preparation import BrowsePreparationManager
-from phenotypic.gui.browse._source_probe import probe_source
+from phenotypic._gui.browse._cache import BrowseCache, CacheLocation
+from phenotypic._gui.browse._preparation import BrowsePreparationManager
+from phenotypic._gui.browse._source_probe import probe_source
 
 
 def _revision(root: Path, name: str):

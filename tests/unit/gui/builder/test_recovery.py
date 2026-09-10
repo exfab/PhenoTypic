@@ -19,8 +19,8 @@ Three guards are covered here:
 
 from __future__ import annotations
 
-from phenotypic.gui._operation_registry import OperationInfo
-from phenotypic.gui.builder._state import (
+from phenotypic._gui._operation_registry import OperationInfo
+from phenotypic._gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
     BlockNode,
     _DagBuilderScope,
@@ -28,7 +28,7 @@ from phenotypic.gui.builder._state import (
     _new_block_id,
     _seed_input_image,
 )
-from phenotypic.gui.builder._validation import validate
+from phenotypic._gui.builder._validation import validate
 
 from .conftest import _make_param
 
@@ -94,7 +94,7 @@ def test_unknown_class_does_not_crash_validation(empty_registry):
     )
     scope.blocks.append(ghost)
     # Wire ghost so it's not also a stub (so we can focus the assert).
-    from phenotypic.gui.builder._state import Edge
+    from phenotypic._gui.builder._state import Edge
 
     scope.edges.append(
         Edge(
@@ -178,7 +178,7 @@ def test_from_pipeline_dag_shared_instance_clone():
     recovery suite stands alone.
     """
 
-    from phenotypic.gui.builder._conversion_dag import from_pipeline_dag
+    from phenotypic._gui.builder._conversion_dag import from_pipeline_dag
 
     from phenotypic import ImagePipeline
     from phenotypic.detect import OtsuDetector, FilamentousFungiDetector

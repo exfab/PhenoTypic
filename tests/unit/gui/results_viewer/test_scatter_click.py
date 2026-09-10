@@ -11,12 +11,12 @@ from __future__ import annotations
 
 import polars as pl
 
-from phenotypic.gui.results_viewer._filter_state import (
+from phenotypic._gui.results_viewer._filter_state import (
     METHOD_IS_ANY_OF,
     FilterSpec,
 )
-from phenotypic.gui.results_viewer._scatter_tab._figure import CUSTOMDATA_COL
-from phenotypic.gui.results_viewer._scatter_tab._inspector import (
+from phenotypic._gui.results_viewer._scatter_tab._figure import CUSTOMDATA_COL
+from phenotypic._gui.results_viewer._scatter_tab._inspector import (
     ColonyRef,
     index_frame,
     resolve_click,

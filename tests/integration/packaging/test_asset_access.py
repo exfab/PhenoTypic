@@ -17,20 +17,20 @@ import importlib.resources as resources
 
 def test_shell_css_resource_readable():
     """``shell.css`` resolves as package data and is non-empty."""
-    ref = resources.files("phenotypic.gui.shell") / "_assets" / "shell.css"
+    ref = resources.files("phenotypic._gui.shell") / "_assets" / "shell.css"
     assert ref.is_file(), "shell.css not found in installed package"
     assert ref.read_text(encoding="utf-8").strip(), "shell.css is empty"
 
 
 def test_builder_js_resource_readable():
-    ref = resources.files("phenotypic.gui.builder") / "assets" / "builder.js"
+    ref = resources.files("phenotypic._gui.builder") / "assets" / "builder.js"
     assert ref.is_file(), "builder.js not found in installed package"
     assert ref.read_text(encoding="utf-8").strip(), "builder.js is empty"
 
 
 def test_openseadragon_icon_resource_readable():
     ref = (
-        resources.files("phenotypic.gui.results_viewer")
+        resources.files("phenotypic._gui.results_viewer")
         / "_assets"
         / "openseadragon"
         / "images"
@@ -47,6 +47,6 @@ def test_shell_layout_imports_and_inlines_css():
     missing that asset raises ``FileNotFoundError`` here — before argparse
     ever runs.
     """
-    layout = importlib.import_module("phenotypic.gui.shell._layout")
+    layout = importlib.import_module("phenotypic._gui.shell._layout")
     assert isinstance(layout._SHELL_CSS, str)
     assert layout._SHELL_CSS.strip(), "_SHELL_CSS inlined as empty string"

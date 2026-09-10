@@ -7,7 +7,7 @@ moved without a spec change behind it.
 
 from __future__ import annotations
 
-from phenotypic.gui.results_viewer import _ids as ids
+from phenotypic._gui.results_viewer import _ids as ids
 
 
 def _tab_ids(layout) -> list[str]:

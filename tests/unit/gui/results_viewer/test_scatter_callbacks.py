@@ -32,20 +32,20 @@ import dash
 import polars as pl
 import pytest
 
-from phenotypic.gui._config import MOUNT_HOME, SCATTER_CROPS_URL_SEGMENT
-from phenotypic.gui.results_viewer import _ids as rv_ids
-from phenotypic.gui.results_viewer._filter_state import (
+from phenotypic._gui._config import MOUNT_HOME, SCATTER_CROPS_URL_SEGMENT
+from phenotypic._gui.results_viewer import _ids as rv_ids
+from phenotypic._gui.results_viewer._filter_state import (
     METHOD_IS_ANY_OF,
     FilterSpec,
 )
-from phenotypic.gui.results_viewer._filtered_state import (
+from phenotypic._gui.results_viewer._filtered_state import (
     KEY_DATASET,
     KEY_IMAGE_FILE,
     KEY_OBJECT_LABEL,
 )
-from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.gui.results_viewer._scatter_tab import _ids as ids
-from phenotypic.gui.results_viewer._scatter_tab._callbacks import (
+from phenotypic._gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.results_viewer._scatter_tab import _ids as ids
+from phenotypic._gui.results_viewer._scatter_tab._callbacks import (
     build_render_state,
     clamp_section_index,
     click_index,
@@ -62,19 +62,19 @@ from phenotypic.gui.results_viewer._scatter_tab._callbacks import (
     section_values,
     store_int,
 )
-from phenotypic.gui.results_viewer._scatter_tab._figure import (
+from phenotypic._gui.results_viewer._scatter_tab._figure import (
     CUSTOMDATA_COL,
     REMOVED_COL,
     REMOVED_LABEL,
 )
-from phenotypic.gui.results_viewer._scatter_tab._inspector import resolve_click
-from phenotypic.gui.results_viewer._scatter_tab._layout import (
+from phenotypic._gui.results_viewer._scatter_tab._inspector import resolve_click
+from phenotypic._gui.results_viewer._scatter_tab._layout import (
     LEGEND_CORNER_DEFAULT,
     PAGE_SIZE_CUSTOM,
     build_scatter_tab_body,
     default_style_payload,
 )
-from phenotypic.gui.results_viewer._scatter_tab._spec import CURATION_PHANTOM_COL
+from phenotypic._gui.results_viewer._scatter_tab._spec import CURATION_PHANTOM_COL
 from phenotypic.schema import CULTURE, SIZE
 from tests._dash_layout import mounted_string_ids, walk_components
 from tests._output_layout import (
@@ -353,7 +353,7 @@ def test_every_id_the_callbacks_bind_is_mounted(
     app, _ = dash_app_and_root
     register_callbacks(app, output_root)
 
-    from phenotypic.gui.results_viewer._app import create_app
+    from phenotypic._gui.results_viewer._app import create_app
 
     mounted = mounted_string_ids(create_app(output_root))
     missing = _bound_ids(app) - mounted

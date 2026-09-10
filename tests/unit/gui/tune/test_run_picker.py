@@ -1,6 +1,6 @@
 """Unit tests for the pure run-picker bind helper (Chunk C).
 
-:func:`~phenotypic.gui.tune._run_picker.discover_run_payload` is the headless
+:func:`~phenotypic._gui.tune._run_picker.discover_run_payload` is the headless
 seam the bind callback wraps: it resolves a candidate directory inside the
 sandbox, runs ``TuneRunRoot.discover``, and returns either the
 ``tune-run-root-store`` payload (``{"path": <abs>}``) or ``(None, <note>)`` with
@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from phenotypic.gui.shell import SandboxRoot
+from phenotypic._gui.shell import SandboxRoot
 
 
 def _write_tune_marker(run_dir: Path) -> None:
@@ -34,7 +34,7 @@ def _write_tune_marker(run_dir: Path) -> None:
 
 
 def test_discover_run_payload_success_returns_path(tmp_path: Path) -> None:
-    from phenotypic.gui.tune._run_picker import discover_run_payload
+    from phenotypic._gui.tune._run_picker import discover_run_payload
 
     run_dir = tmp_path / "run"
     run_dir.mkdir()
@@ -47,7 +47,7 @@ def test_discover_run_payload_success_returns_path(tmp_path: Path) -> None:
 
 
 def test_discover_run_payload_non_tune_dir_returns_note(tmp_path: Path) -> None:
-    from phenotypic.gui.tune._run_picker import discover_run_payload
+    from phenotypic._gui.tune._run_picker import discover_run_payload
 
     plain = tmp_path / "plain"
     plain.mkdir()
@@ -59,7 +59,7 @@ def test_discover_run_payload_non_tune_dir_returns_note(tmp_path: Path) -> None:
 
 
 def test_discover_run_payload_out_of_sandbox_is_refused(tmp_path: Path) -> None:
-    from phenotypic.gui.tune._run_picker import discover_run_payload
+    from phenotypic._gui.tune._run_picker import discover_run_payload
 
     sandbox = SandboxRoot.from_path(tmp_path)
 
@@ -69,7 +69,7 @@ def test_discover_run_payload_out_of_sandbox_is_refused(tmp_path: Path) -> None:
 
 
 def test_discover_run_payload_blank_candidate_returns_note(tmp_path: Path) -> None:
-    from phenotypic.gui.tune._run_picker import discover_run_payload
+    from phenotypic._gui.tune._run_picker import discover_run_payload
 
     sandbox = SandboxRoot.from_path(tmp_path)
 

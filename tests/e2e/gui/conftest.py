@@ -43,7 +43,7 @@ from typing import Any, Iterator
 
 import pytest
 
-from phenotypic.gui._config import DELIVERABLES_DIRNAME
+from phenotypic._gui._config import DELIVERABLES_DIRNAME
 from phenotypic.sdk_ import manifest_json_path
 
 if os.environ.get("PLAYWRIGHT") != "1":
@@ -229,7 +229,7 @@ def _start_live_server(
     cmd = [
         sys.executable,
         "-m",
-        "phenotypic.gui",
+        "phenotypic._gui",
         "--root",
         str(sandbox),
         "--port",

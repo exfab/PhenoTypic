@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import inspect
 
-from phenotypic.gui.builder import _callbacks
-from phenotypic.gui.builder import _ids as ids
+from phenotypic._gui.builder import _callbacks
+from phenotypic._gui.builder import _ids as ids
 
 
 def test_linear_pattern_id_decoders_round_trip_dash_safe_fields():

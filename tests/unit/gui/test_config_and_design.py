@@ -1,6 +1,6 @@
 """Unit tests for the shared GUI constants + design tokens.
 
-These modules (``phenotypic.gui._config`` and ``phenotypic.gui._design``)
+These modules (``phenotypic._gui._config`` and ``phenotypic._gui._design``)
 are the single source of truth for launcher defaults, mount prefixes,
 Flask config keys, sandbox subdirectory names, and CSS design tokens.
 The tests below assert their public surface and helpers behave as
@@ -13,7 +13,7 @@ import argparse
 
 import pytest
 
-from phenotypic.gui import _config, _design
+from phenotypic._gui import _config, _design
 
 
 # ---------------------------------------------------------------------------
@@ -22,7 +22,7 @@ from phenotypic.gui import _config, _design
 
 
 class TestConfigConstants:
-    """Public-surface guarantees for ``phenotypic.gui._config``."""
+    """Public-surface guarantees for ``phenotypic._gui._config``."""
 
     def test_launcher_defaults(self) -> None:
         """Default host/port match the CLI launchers and SSH-tunnel hint."""
@@ -94,8 +94,8 @@ class TestConfigConstants:
         import sys
 
         # Force a fresh import via reimport pathway.
-        sys.modules.pop("phenotypic.gui._config", None)
-        import phenotypic.gui._config  # noqa: F401
+        sys.modules.pop("phenotypic._gui._config", None)
+        import phenotypic._gui._config  # noqa: F401
 
         # After the reimport, the heavy GUI deps must NOT have been pulled in
         # transitively from _config alone. (Other tests in the session may
@@ -103,7 +103,7 @@ class TestConfigConstants:
         # *trigger* the import.)
         # We can only assert what _config itself imports at module top.
         import inspect
-        src = inspect.getsource(phenotypic.gui._config)
+        src = inspect.getsource(phenotypic._gui._config)
         assert "import dash" not in src
         assert "import flask" not in src
         assert "import werkzeug" not in src
@@ -584,7 +584,7 @@ class TestScatterStyleFields:
 
     def _defaults(self) -> dict[str, float]:
         """Every Style field's default, read off ``FigureSpec`` itself."""
-        from phenotypic.gui.results_viewer._scatter_tab._spec import FigureSpec
+        from phenotypic._gui.results_viewer._scatter_tab._spec import FigureSpec
 
         spec = FigureSpec(x_col="x", y_col="y")
         values: dict[str, float] = dict(spec.sizes)
@@ -620,7 +620,7 @@ class TestScatterStyleFields:
 
     def test_the_size_fields_are_the_ones_keyed_inside_sizes(self) -> None:
         """``SCATTER_STYLE_SIZE_FIELDS`` must match ``FigureSpec.sizes``."""
-        from phenotypic.gui.results_viewer._scatter_tab._spec import FigureSpec
+        from phenotypic._gui.results_viewer._scatter_tab._spec import FigureSpec
 
         spec = FigureSpec(x_col="x", y_col="y")
         assert set(_config.SCATTER_STYLE_SIZE_FIELDS) == set(spec.sizes)

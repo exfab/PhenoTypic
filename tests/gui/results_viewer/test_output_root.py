@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`phenotypic.gui.results_viewer._output_root`.
+"""Unit tests for :mod:`phenotypic._gui.results_viewer._output_root`.
 
 Validates ``OutputRoot.discover`` against tmp-path fixtures that mimic
 the on-disk layout produced by ``python -m phenotypic`` and exercises
@@ -14,8 +14,8 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-from phenotypic.gui.results_viewer import _output_root
-from phenotypic.gui.results_viewer._output_root import (
+from phenotypic._gui.results_viewer import _output_root
+from phenotypic._gui.results_viewer._output_root import (
     OutputRoot,
     OutputSnapshotChangedError,
     _all_parse_as_float,

@@ -50,7 +50,7 @@ PhenoTypic provides optional extras for different use cases:
   integration. Does **not** include napari.
 - ``[napari]`` — The interactive napari desktop viewers (pulls napari + PyQt6).
   Required for ``image.rgb.napari()`` and related viewer methods, the point
-  picker, and the napari sweep viewer (``python -m phenotypic.gui.sweep``).
+  picker, and the napari sweep viewer (``python -m phenotypic._gui.sweep``).
 - ``[torch]`` — PyTorch + SAM2 for ``Sam2`` (Linux/macOS only).
 
 .. code-block:: bash
@@ -277,7 +277,7 @@ run console under one URL. Two equivalent entry points:
    uv run phenotypic-gui --root ./images --port 8050
 
    # Module entry (works in environments without the console script on PATH)
-   uv run python -m phenotypic.gui --root ./images --port 8050
+   uv run python -m phenotypic._gui --root ./images --port 8050
 
 ``--root`` freezes the sandbox the GUI's file browser is allowed to see
 (defaults to the current working directory). ``--host 127.0.0.1`` (the
@@ -311,6 +311,6 @@ Then open the full proxy URL, for example
 .. note::
 
    ``phenotypic gui`` (no hyphen, as a subcommand) is **not supported**.
-   Use ``phenotypic-gui`` or ``python -m phenotypic.gui``. The existing
+   Use ``phenotypic-gui`` or ``python -m phenotypic._gui``. The existing
    ``phenotypic`` CLI is reserved for batch pipeline execution with explicit
    path options, not subcommands.

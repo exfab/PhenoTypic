@@ -1,6 +1,6 @@
 """Integration tests for the Phase 3 standalone shell Dash app.
 
-We boot the app via :func:`phenotypic.gui.shell.create_app` and exercise it
+We boot the app via :func:`phenotypic._gui.shell.create_app` and exercise it
 two ways:
 
     * ``app.server.test_client()`` for HTTP endpoints (the index page,
@@ -18,8 +18,8 @@ from typing import Any, Iterator
 
 import pytest
 
-from phenotypic.gui._config import DELIVERABLES_DIRNAME
-from phenotypic.gui.shell import SandboxRoot, create_app
+from phenotypic._gui._config import DELIVERABLES_DIRNAME
+from phenotypic._gui.shell import SandboxRoot, create_app
 
 
 @pytest.fixture()

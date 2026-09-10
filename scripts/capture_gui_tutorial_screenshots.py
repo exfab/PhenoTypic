@@ -356,8 +356,8 @@ def _seed_error_triage_labels() -> None:
     """
     import polars as pl
 
-    from phenotypic.gui.results_viewer._curation_labels import CurationLabels
-    from phenotypic.gui.results_viewer._qc_tab.review._review_state import ReviewState
+    from phenotypic._gui.results_viewer._curation_labels import CurationLabels
+    from phenotypic._gui.results_viewer._qc_tab.review._review_state import ReviewState
     from phenotypic import ImagePipeline
     from phenotypic.analysis.qc import MaxModifiedZScore
     from phenotypic.sdk_ import (
@@ -536,7 +536,7 @@ def boot_gui(root: Path) -> tuple[subprocess.Popen[str], str]:
     cmd = [
         sys.executable,
         "-m",
-        "phenotypic.gui",
+        "phenotypic._gui",
         "--root",
         str(root),
         "--port",
@@ -868,8 +868,8 @@ def _browse_source_payload() -> dict | None:
     cannot resolve the path (e.g. the dataset was not built).
     """
     try:
-        from phenotypic.gui.shell._sandbox import SandboxRoot
-        from phenotypic.gui.shell._source_context import source_payload_from_path
+        from phenotypic._gui.shell._sandbox import SandboxRoot
+        from phenotypic._gui.shell._source_context import source_payload_from_path
     except Exception as exc:  # pragma: no cover - best-effort
         print(f"[shot]   browse: source payload import failed: {exc!r}")
         return None
@@ -1792,7 +1792,7 @@ def _capture_analysis(context, base_url: str) -> None:
 
 
 def capture_standalone_analysis_screenshots(headed: bool = False) -> None:
-    """Boot ``python -m phenotypic.gui.analysis --root <real>`` and capture.
+    """Boot ``python -m phenotypic._gui.analysis --root <real>`` and capture.
 
     Mirrors :func:`capture_standalone_viewer_screenshots`: spawns the
     standalone analysis launcher against the synthetic CLI output dir,
@@ -1812,7 +1812,7 @@ def capture_standalone_analysis_screenshots(headed: bool = False) -> None:
     cmd = [
         sys.executable,
         "-m",
-        "phenotypic.gui.analysis",
+        "phenotypic._gui.analysis",
         "--root",
         str(OUTPUT_DIR),
         "--port",
@@ -1883,7 +1883,7 @@ def capture_standalone_analysis_screenshots(headed: bool = False) -> None:
 
 
 def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
-    """Boot ``python -m phenotypic.gui.results_viewer --output-root <real>``
+    """Boot ``python -m phenotypic._gui.results_viewer --output-root <real>``
     on a fresh port and capture the populated viewer.
     """
     try:
@@ -1896,7 +1896,7 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
     cmd = [
         sys.executable,
         "-m",
-        "phenotypic.gui.results_viewer",
+        "phenotypic._gui.results_viewer",
         "--output-root",
         str(OUTPUT_DIR),
         "--port",

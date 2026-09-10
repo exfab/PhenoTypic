@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from phenotypic.gui.results_viewer._scatter_tab._grouping import group_columns
+from phenotypic._gui.results_viewer._scatter_tab._grouping import group_columns
 
 MEAS = {
     "MeasureShape": {"class": "MeasureShape", "params": {}},

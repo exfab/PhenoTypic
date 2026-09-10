@@ -1,7 +1,7 @@
 """Preview compute delegate: layer options + a Viv source spec for a node."""
-from phenotypic.gui.builder import _preview_cache as pc
-from phenotypic.gui.builder._preview_callbacks import build_preview_payload
-from phenotypic.gui.builder._state import (
+from phenotypic._gui.builder import _preview_cache as pc
+from phenotypic._gui.builder._preview_callbacks import build_preview_payload
+from phenotypic._gui.builder._state import (
     BlockNode,
     Edge,
     _DagBuilderScope,

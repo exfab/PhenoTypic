@@ -15,7 +15,7 @@ import polars as pl
 
 import phenotypic.sdk_ as tools_
 from phenotypic.sdk_ import BundleLayout
-from phenotypic.gui.results_viewer._curation_labels import CurationLabels
+from phenotypic._gui.results_viewer._curation_labels import CurationLabels
 from phenotypic.schema import IMAGE
 
 

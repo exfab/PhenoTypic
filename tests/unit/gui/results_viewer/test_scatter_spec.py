@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import polars as pl
 
-from phenotypic.gui.results_viewer._scatter_tab._spec import FigureSpec, plottable
+from phenotypic._gui.results_viewer._scatter_tab._spec import FigureSpec, plottable
 
 
 def test_plottable_drops_phantom_rows() -> None:

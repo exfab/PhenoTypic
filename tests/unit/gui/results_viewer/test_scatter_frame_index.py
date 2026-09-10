@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import polars as pl
 
-from phenotypic.gui.results_viewer._scatter_tab._facets import derive_frame_index
+from phenotypic._gui.results_viewer._scatter_tab._facets import derive_frame_index
 
 
 def test_index_ranks_within_each_plate_independently() -> None:

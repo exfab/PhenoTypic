@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from phenotypic.gui.tune._run_root import TuneRunRoot
+from phenotypic._gui.tune._run_root import TuneRunRoot
 from phenotypic.tune._study_store import Trial
 
 
@@ -31,7 +31,7 @@ def _single_objective_root(path: Path) -> TuneRunRoot:
 
 
 def test_build_objective_figure_best_trace_is_monotone_non_increasing() -> None:
-    from phenotypic.gui.tune._study_read import build_objective_figure
+    from phenotypic._gui.tune._study_read import build_objective_figure
 
     trials = [_trial(0, 0.7), _trial(1, 0.5), _trial(2, 0.6), _trial(3, 0.3)]
     fig = build_objective_figure(trials)
@@ -47,14 +47,14 @@ def test_build_objective_figure_best_trace_is_monotone_non_increasing() -> None:
 
 
 def test_build_objective_figure_empty_is_safe() -> None:
-    from phenotypic.gui.tune._study_read import build_objective_figure
+    from phenotypic._gui.tune._study_read import build_objective_figure
 
     fig = build_objective_figure([])
     assert fig is not None  # no raise on an empty journal
 
 
 def test_build_importance_figure_one_bar_per_param() -> None:
-    from phenotypic.gui.tune._study_read import build_importance_figure
+    from phenotypic._gui.tune._study_read import build_importance_figure
 
     importances = {"thresh": 0.6, "min_size": 0.3, "sigma": 0.1}
     fig = build_importance_figure(importances)
@@ -67,14 +67,14 @@ def test_build_importance_figure_one_bar_per_param() -> None:
 
 
 def test_monitor_pareto_visible_false_for_single_objective(tmp_path: Path) -> None:
-    from phenotypic.gui.tune._study_read import monitor_pareto_visible
+    from phenotypic._gui.tune._study_read import monitor_pareto_visible
 
     root = _single_objective_root(tmp_path)
     assert monitor_pareto_visible(root) is False
 
 
 def test_monitor_pareto_visible_true_for_multi_objective(tmp_path: Path) -> None:
-    from phenotypic.gui.tune._study_read import monitor_pareto_visible
+    from phenotypic._gui.tune._study_read import monitor_pareto_visible
 
     root = TuneRunRoot(
         path=tmp_path,

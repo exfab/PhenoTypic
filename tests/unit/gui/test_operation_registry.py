@@ -8,7 +8,7 @@ import pytest
 
 from phenotypic.abc_ import ObjectDetector
 from phenotypic.enhance import BlurGauss
-from phenotypic.gui._operation_registry import (
+from phenotypic._gui._operation_registry import (
     OperationRegistry,
     ParamInfo,
     OperationInfo,

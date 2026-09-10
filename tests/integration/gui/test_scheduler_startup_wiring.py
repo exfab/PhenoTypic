@@ -16,33 +16,33 @@ from uuid import UUID, uuid4
 
 import pytest
 
-import phenotypic.gui.builder as builder_package
-import phenotypic.gui.run_console as run_console_package
+import phenotypic._gui.builder as builder_package
+import phenotypic._gui.run_console as run_console_package
 from phenotypic._cli import _cli_preload
 from phenotypic._cli._cli_slurm_lifecycle import (
     CancellationResult,
     append_lifecycle_entry,
     initialize_slurm_lifecycle,
 )
-from phenotypic.gui._config import CFG_RUN_REGISTRY
-from phenotypic.gui.run_console._app import SLURM_OBSERVER_EXTENSION
-from phenotypic.gui.run_console._request_safety import (
+from phenotypic._gui._config import CFG_RUN_REGISTRY
+from phenotypic._gui.run_console._app import SLURM_OBSERVER_EXTENSION
+from phenotypic._gui.run_console._request_safety import (
     build_metadata_preflight,
     confirm_output_target,
 )
-from phenotypic.gui.run_console._slurm import (
+from phenotypic._gui.run_console._slurm import (
     SlurmSubmitResult,
     SubmittedJobSet,
 )
-from phenotypic.gui.run_console._slurm_observer import (
+from phenotypic._gui.run_console._slurm_observer import (
     SchedulerCommentQueryResult,
     SchedulerQueryResult,
     SlurmLifecycleObserver,
 )
-from phenotypic.gui.run_console._state import RunConsoleState
-from phenotypic.gui.shell._app import compose_hub
-from phenotypic.gui.shell._runs_registry import RunRecord, RunRegistry
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.run_console._state import RunConsoleState
+from phenotypic._gui.shell._app import compose_hub
+from phenotypic._gui.shell._runs_registry import RunRecord, RunRegistry
+from phenotypic._gui.shell._sandbox import SandboxRoot
 from phenotypic.sdk_ import JobMetadataKey, atomic_write_json, job_metadata_path
 
 

@@ -5,7 +5,7 @@ from pathlib import Path
 
 _ASSET = (
     Path(__file__).parents[3]
-    / "src/phenotypic/gui/browse/_assets/browse.js"
+    / "src/phenotypic/_gui/browse/_assets/browse.js"
 )
 
 

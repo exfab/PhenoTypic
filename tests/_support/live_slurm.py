@@ -25,7 +25,7 @@ from phenotypic._cli._cli_slurm_lifecycle import (
     read_lifecycle_ledger,
 )
 from phenotypic.detect import OtsuDetector
-from phenotypic.gui.run_console._slurm_observer import (
+from phenotypic._gui.run_console._slurm_observer import (
     SchedulerQueryResult,
     SlurmCommandScheduler,
 )

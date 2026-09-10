@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`phenotypic.gui.results_viewer.colony_view._cropper`.
+"""Unit tests for :mod:`phenotypic._gui.results_viewer.colony_view._cropper`.
 
 Exercises the PNG-bytes-returning crop function:
 
@@ -16,8 +16,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image as PILImage
 
-from phenotypic.gui._shared import tiles
-from phenotypic.gui.results_viewer.colony_view._cropper import crop_overlay
+from phenotypic._gui._shared import tiles
+from phenotypic._gui.results_viewer.colony_view._cropper import crop_overlay
 
 
 def _write_solid_png(

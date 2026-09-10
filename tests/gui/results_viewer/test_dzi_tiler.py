@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`phenotypic.gui.results_viewer._dzi_tiler`.
+"""Unit tests for :mod:`phenotypic._gui.results_viewer._dzi_tiler`.
 
 Covers the public ``tile()`` contract: manifest generation, DZI XML
 schema, tile-pyramid level count, top-level tile fan-out, mtime-based
@@ -20,8 +20,8 @@ import numpy as np
 import pytest
 from PIL import Image as PILImage
 
-from phenotypic.gui.results_viewer import _dzi_tiler
-from phenotypic.gui.results_viewer._dzi_tiler import (
+from phenotypic._gui.results_viewer import _dzi_tiler
+from phenotypic._gui.results_viewer._dzi_tiler import (
     DZI_BACKEND_INFO,
     DziBackendInfo,
     resolve_dzi_backend,

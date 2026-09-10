@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from phenotypic.gui.results_viewer.colony_view._grid import _MEASUREMENT_PREFIXES
+from phenotypic._gui.results_viewer.colony_view._grid import _MEASUREMENT_PREFIXES
 
 
 def test_texture_is_excluded_and_texturegray_is_not_invented() -> None:

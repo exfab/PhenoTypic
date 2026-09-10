@@ -11,43 +11,43 @@ import pytest
 
 from phenotypic._core._image_pipeline import ImagePipeline
 from phenotypic.analysis import ReplicateAgreement
-from phenotypic.gui._binding_generation import (
+from phenotypic._gui._binding_generation import (
     BINDING_GENERATION_PAYLOAD_KEY,
 )
-from phenotypic.gui._schema_cache import MeasurementSchema
-from phenotypic.gui.analysis import _ids as analysis_ids
-from phenotypic.gui.analysis._layout import (
+from phenotypic._gui._schema_cache import MeasurementSchema
+from phenotypic._gui.analysis import _ids as analysis_ids
+from phenotypic._gui.analysis._layout import (
     build_app_layout as build_analysis_layout,
 )
-from phenotypic.gui.analysis._recipe_state import RecipeState
-from phenotypic.gui.results_viewer import _ids as viewer_ids
-from phenotypic.gui.results_viewer._app import create_app as create_results_app
-from phenotypic.gui.results_viewer._curation_labels import CurationLabels
-from phenotypic.gui.results_viewer._error_tab import (
+from phenotypic._gui.analysis._recipe_state import RecipeState
+from phenotypic._gui.results_viewer import _ids as viewer_ids
+from phenotypic._gui.results_viewer._app import create_app as create_results_app
+from phenotypic._gui.results_viewer._curation_labels import CurationLabels
+from phenotypic._gui.results_viewer._error_tab import (
     _ids as error_ids,
     build_error_tab_body,
 )
-from phenotypic.gui.results_viewer._layout import (
+from phenotypic._gui.results_viewer._layout import (
     build_app_layout as build_results_layout,
 )
-from phenotypic.gui.results_viewer._mutation_guard import (
+from phenotypic._gui.results_viewer._mutation_guard import (
     OutputMutationBlocked,
     OutputMutationGuard,
 )
-from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.gui.results_viewer._qc_tab import (
+from phenotypic._gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.results_viewer._qc_tab import (
     _ids as qc_ids,
     build_qc_tab_body,
 )
-from phenotypic.gui.results_viewer._qc_tab._rebuild import (
+from phenotypic._gui.results_viewer._qc_tab._rebuild import (
     QcRebuildError,
     preflight_qc_rebuild,
     qc_publication_lock_path,
     rebuild_qc_database,
 )
-from phenotypic.gui.results_viewer._qc_tab.review import _ids as review_ids
-from phenotypic.gui.results_viewer.colony_view._grid import build_grid
-from phenotypic.gui.results_viewer._viewer_card import (
+from phenotypic._gui.results_viewer._qc_tab.review import _ids as review_ids
+from phenotypic._gui.results_viewer.colony_view._grid import build_grid
+from phenotypic._gui.results_viewer._viewer_card import (
     layout as build_viewer_card,
 )
 from phenotypic.abc_.plotting import PlotOutput, PlotPage

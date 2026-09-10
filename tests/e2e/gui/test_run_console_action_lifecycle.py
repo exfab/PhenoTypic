@@ -18,14 +18,14 @@ from dash import dcc, html
 from playwright.sync_api import Page, Route, expect
 from werkzeug.serving import make_server
 
-from phenotypic.gui.run_console._app import create_app
-from phenotypic.gui.run_console._slurm import SlurmSubmitError
-from phenotypic.gui.shell._runs_registry import RunRecord
-from phenotypic.gui.shell._ids import (
+from phenotypic._gui.run_console._app import create_app
+from phenotypic._gui.run_console._slurm import SlurmSubmitError
+from phenotypic._gui.shell._runs_registry import RunRecord
+from phenotypic._gui.shell._ids import (
     SHELL_METADATA_CSV_STORE,
     SHELL_SOURCE_IMAGE_ROOT_STORE,
 )
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.shell._sandbox import SandboxRoot
 from phenotypic.sdk_ import gui_launch_owner_path
 from tests.e2e.gui.test_run_console import (
     _prepare_action_paths,

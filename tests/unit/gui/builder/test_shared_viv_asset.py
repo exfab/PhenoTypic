@@ -15,8 +15,8 @@ from pathlib import Path
 import dash
 import pytest
 
-from phenotypic.gui import builder as builder_pkg
-from phenotypic.gui._shared import (
+from phenotypic._gui import builder as builder_pkg
+from phenotypic._gui._shared import (
     VIV_BUNDLE_PATH,
     VIV_FACADE_PATH,
     register_viv_assets,
@@ -74,7 +74,7 @@ def test_registering_twice_is_a_no_op() -> None:
 
 
 def test_the_builder_app_links_both_scripts(tmp_path: Path) -> None:
-    from phenotypic.gui.builder._app import create_app
+    from phenotypic._gui.builder._app import create_app
 
     app = create_app(image_root=tmp_path, url_prefix="/builder/")
     assert app.config.external_scripts == viv_script_urls("/builder/")

@@ -7,10 +7,10 @@ import time
 from pathlib import Path
 from typing import Any
 
-from phenotypic.gui.results_viewer._discovery_contracts import (
+from phenotypic._gui.results_viewer._discovery_contracts import (
     OutputDiscoveryProgress,
 )
-from phenotypic.gui.shell._binding_jobs import ResultsBindJobManager
+from phenotypic._gui.shell._binding_jobs import ResultsBindJobManager
 
 
 def _wait_for_job(

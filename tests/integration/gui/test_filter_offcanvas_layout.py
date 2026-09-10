@@ -9,11 +9,11 @@ import polars as pl
 import pytest
 from PIL import Image as PILImage
 
-import phenotypic.gui.results_viewer as results_viewer_pkg
-from phenotypic.gui.results_viewer import _ids as ids
-from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
-from phenotypic.gui.results_viewer._layout import build_app_layout
-from phenotypic.gui.results_viewer._output_root import OutputRoot
+import phenotypic._gui.results_viewer as results_viewer_pkg
+from phenotypic._gui.results_viewer import _ids as ids
+from phenotypic._gui.results_viewer._filtered_state import FilteredMeasurements
+from phenotypic._gui.results_viewer._layout import build_app_layout
+from phenotypic._gui.results_viewer._output_root import OutputRoot
 from tests._output_layout import write_master, write_measurements_mirror
 from phenotypic.schema import IMAGE
 

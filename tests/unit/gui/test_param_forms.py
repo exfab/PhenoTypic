@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from phenotypic.gui._param_forms import (
+from phenotypic._gui._param_forms import (
     _is_multi_union,
     _multi_union_branches,
     _opaque_str_union,
@@ -244,7 +244,7 @@ class TestParamFormViaRegistry:
 
     @pytest.fixture(scope="class")
     def registry(self):
-        from phenotypic.gui._operation_registry import OperationRegistry
+        from phenotypic._gui._operation_registry import OperationRegistry
 
         reg = OperationRegistry()
         reg.discover()
@@ -301,12 +301,12 @@ class TestColumnWidgets:
         return ["Metadata_Strain", "Metadata_Time", "Shape_Area"]
 
     def _scalar_spec(self, with_alt=False):
-        from phenotypic.gui._operation_registry import ColumnRefSpec
+        from phenotypic._gui._operation_registry import ColumnRefSpec
 
         return ColumnRefSpec(source="measurements", multi=False, with_alt=with_alt)
 
     def _multi_spec(self):
-        from phenotypic.gui._operation_registry import ColumnRefSpec
+        from phenotypic._gui._operation_registry import ColumnRefSpec
 
         return ColumnRefSpec(source="measurements", multi=True, with_alt=False)
 
@@ -409,7 +409,7 @@ class TestColumnWidgets:
         gap immediately rather than silently rendering a scalar widget
         on a list value.
         """
-        from phenotypic.gui._operation_registry import ColumnRefSpec
+        from phenotypic._gui._operation_registry import ColumnRefSpec
         from phenotypic.sdk_ import ColumnRefList
 
         p = _StubParamInfo(
@@ -430,7 +430,7 @@ class TestColumnWidgets:
 
 class TestParseColumnValue:
     def test_scalar_passthrough(self):
-        from phenotypic.gui._operation_registry import ColumnRefSpec
+        from phenotypic._gui._operation_registry import ColumnRefSpec
 
         p = _StubParamInfo(
             "on",
@@ -442,7 +442,7 @@ class TestParseColumnValue:
         assert parse_widget_value(None, p) is None
 
     def test_multi_passthrough(self):
-        from phenotypic.gui._operation_registry import ColumnRefSpec
+        from phenotypic._gui._operation_registry import ColumnRefSpec
 
         p = _StubParamInfo(
             "groupby",
@@ -453,7 +453,7 @@ class TestParseColumnValue:
         assert parse_widget_value(None, p) == []
 
     def test_mode_column_returns_scalar(self):
-        from phenotypic.gui._operation_registry import ColumnRefSpec
+        from phenotypic._gui._operation_registry import ColumnRefSpec
 
         p = _StubParamInfo(
             "Kmax_label",
@@ -463,7 +463,7 @@ class TestParseColumnValue:
         assert parse_widget_value(("column", "Shape_Area"), p) == "Shape_Area"
 
     def test_mode_none_returns_none(self):
-        from phenotypic.gui._operation_registry import ColumnRefSpec
+        from phenotypic._gui._operation_registry import ColumnRefSpec
 
         p = _StubParamInfo(
             "Kmax_label",
@@ -475,7 +475,7 @@ class TestParseColumnValue:
 
 class TestColumnsProviderPlumbing:
     def test_param_form_passes_provider_to_columnref_params(self):
-        from phenotypic.gui._operation_registry import get_registry
+        from phenotypic._gui._operation_registry import get_registry
 
         reg = get_registry()
         info = reg.get("EdgeCorrector")
@@ -501,7 +501,7 @@ class TestColumnsProviderPlumbing:
 
 class TestBuilderShimReExports:
     def test_param_form_importable_from_builder(self):
-        from phenotypic.gui.builder._param_form import (  # noqa: F401
+        from phenotypic._gui.builder._param_form import (  # noqa: F401
             param_form,
             parse_widget_value,
             serialize_param_for_widget,
@@ -509,8 +509,8 @@ class TestBuilderShimReExports:
         )
 
     def test_builder_param_form_injects_picker(self):
-        from phenotypic.gui.builder._param_form import param_form as builder_form
-        from phenotypic.gui._operation_registry import OperationRegistry
+        from phenotypic._gui.builder._param_form import param_form as builder_form
+        from phenotypic._gui._operation_registry import OperationRegistry
 
         reg = OperationRegistry()
         reg.discover()

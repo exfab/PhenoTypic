@@ -28,7 +28,7 @@ Two equivalent entry points boot the same server:
 
 ```bash
 uv run phenotypic-gui --root ./images --port 8050
-uv run python -m phenotypic.gui --root ./images --port 8050
+uv run python -m phenotypic._gui --root ./images --port 8050
 ```
 
 **Options:**
@@ -140,7 +140,7 @@ paths.
 
 The existing `phenotypic` CLI is reserved for batch pipeline execution with
 explicit path options, not subcommands. Always use the hyphenated form
-`phenotypic-gui` or the module form `python -m phenotypic.gui`. Typing
+`phenotypic-gui` or the module form `python -m phenotypic._gui`. Typing
 `uv run phenotypic gui` will fail because `gui` is an unexpected positional
 argument.
 :::
@@ -287,7 +287,7 @@ interactive):**
    ```bash
    ssh <user>@<cluster>
    srun -A <account> -p <partition> -t 4:00:00 --pty -c 8 --mem=32g bash -l
-   uv run python -m phenotypic.gui --root <project-dir> --port 8050
+   uv run python -m phenotypic._gui --root <project-dir> --port 8050
    ```
 
 2. Terminal B — open the two-hop tunnel from your workstation:
@@ -308,7 +308,7 @@ the symptom that you need a two-hop tunnel rather than a single-hop one.
 
 Cloud deployment (multi-user, per-session sandbox roots, authentication) is a
 non-goal in v1. The hub is single-user with no auth gate. A
-`TODO(cloud-deploy)` in `src/phenotypic/gui/shell/_sandbox.py` marks the
+`TODO(cloud-deploy)` in `src/phenotypic/_gui/shell/_sandbox.py` marks the
 hook point for a future auth layer.
 
 Do not expose the hub on `0.0.0.0` without authentication — there is nothing
@@ -321,13 +321,13 @@ Each component can be launched independently for debugging:
 
 ```bash
 # Pipeline builder only
-uv run python -m phenotypic.gui.builder --image-root ./images
+uv run python -m phenotypic._gui.builder --image-root ./images
 
 # Results viewer only
-uv run python -m phenotypic.gui.results_viewer --output-root ./out
+uv run python -m phenotypic._gui.results_viewer --output-root ./out
 
 # Run console only
-uv run python -m phenotypic.gui.run_console --root ./images
+uv run python -m phenotypic._gui.run_console --root ./images
 ```
 
 All three accept `--host`, `--port`, and `--debug` with the same defaults as

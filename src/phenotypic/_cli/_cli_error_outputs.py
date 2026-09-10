@@ -24,7 +24,7 @@ from phenotypic.sdk_ import (
 )
 
 if TYPE_CHECKING:
-    from phenotypic.gui.results_viewer._curation_labels import CurationLabels
+    from phenotypic._gui.results_viewer._curation_labels import CurationLabels
 
 def reemit_error_deliverables(
     output_dir: Path, master_df: pl.DataFrame
@@ -46,7 +46,7 @@ def reemit_error_deliverables(
         return
     # Local import keeps the GUI package off the hot CLI import path; it is
     # Dash-free (verified) so this stays cheap.
-    from phenotypic.gui.results_viewer._curation_labels import CurationLabels
+    from phenotypic._gui.results_viewer._curation_labels import CurationLabels
 
     # The CLI always has a real output root, so build the full-run layout
     # directly (``BundleLayout.detect`` would require the master parquet to
@@ -78,7 +78,7 @@ def _write_error_analysis(
         deliverables_base=deliverables_dir(output_dir),
         output_root=output_dir,
     )
-    from phenotypic.gui.results_viewer._error_tab._publication import (
+    from phenotypic._gui.results_viewer._error_tab._publication import (
         capture_error_source_fingerprints,
         compute_all_category_analysis,
         publish_error_analysis,

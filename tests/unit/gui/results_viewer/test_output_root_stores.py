@@ -21,8 +21,8 @@ from pathlib import Path
 
 import polars as pl
 
-from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.gui.results_viewer._viewer_card import _build_picker_options
+from phenotypic._gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.results_viewer._viewer_card import _build_picker_options
 from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import zarr_store_path
 
@@ -179,7 +179,7 @@ def test_missing_overlay_warning_preserves_store_picker_claim(
     _seed(tmp_path, ["a"])
 
     with caplog.at_level(
-        logging.WARNING, logger="phenotypic.gui.results_viewer._output_root"
+        logging.WARNING, logger="phenotypic._gui.results_viewer._output_root"
     ):
         _discover(tmp_path)
 
@@ -236,7 +236,7 @@ def test_discovery_still_walks_the_rest_of_the_results_tree(
     nothing about them changed -- pruning them as well would trade a real
     cost problem for a real correctness one.
     """
-    from phenotypic.gui.results_viewer._processing_inventory import (
+    from phenotypic._gui.results_viewer._processing_inventory import (
         ProcessingInventoryEntry,
     )
 
@@ -267,10 +267,10 @@ def test_processing_inventory_goes_stale_after_a_store_republish(
     inventory must stop verifying, or a viewer bound across a run never
     notices new pixels.
     """
-    from phenotypic.gui.results_viewer._discovery_contracts import (
+    from phenotypic._gui.results_viewer._discovery_contracts import (
         OutputDiscoveryCancellation,
     )
-    from phenotypic.gui.results_viewer._processing_inventory import (
+    from phenotypic._gui.results_viewer._processing_inventory import (
         inventory_is_current,
     )
 
@@ -320,7 +320,7 @@ def test_processing_fingerprint_changes_when_a_store_changes(tmp_path: Path) -> 
 
 def test_image_source_token_changes_when_a_store_changes(tmp_path: Path) -> None:
     """It is a staleness fingerprint, not a report label (D4)."""
-    from phenotypic.gui.results_viewer._output_root import _image_source_token
+    from phenotypic._gui.results_viewer._output_root import _image_source_token
     from phenotypic.sdk_ import BundleLayout
 
     _seed(tmp_path, ["a"])
@@ -341,7 +341,7 @@ def test_image_source_token_ignores_a_chunk_rewrite_only_via_the_root(
     rewritten, so this is the mutation the D4 fix has to survive: the token
     must key on a real file whose stat moves on every publish.
     """
-    from phenotypic.gui.results_viewer._output_root import _image_source_token
+    from phenotypic._gui.results_viewer._output_root import _image_source_token
     from phenotypic.sdk_ import BundleLayout
 
     _seed(tmp_path, ["a"])

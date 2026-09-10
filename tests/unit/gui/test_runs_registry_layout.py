@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from phenotypic.gui.shell._runs_registry import RunRegistry
+from phenotypic._gui.shell._runs_registry import RunRegistry
 from phenotypic.sdk_ import processing_state_path
 from tests._output_layout import build_complete_run
 

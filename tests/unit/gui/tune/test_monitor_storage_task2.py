@@ -21,7 +21,7 @@ def _root(tmp_path: Path):
 
 
 def test_connect_bound_fits_inside_whole_read_bound() -> None:
-    from phenotypic.gui.tune._callbacks import (
+    from phenotypic._gui.tune._callbacks import (
         _LIVE_CONNECT_TIMEOUT_S,
         _LIVE_READ_TIMEOUT_S,
     )
@@ -30,7 +30,7 @@ def test_connect_bound_fits_inside_whole_read_bound() -> None:
 
 
 def test_completed_importance_refresh_is_reused_for_same_trial_count() -> None:
-    from phenotypic.gui.tune._callbacks import _ImportanceCache
+    from phenotypic._gui.tune._callbacks import _ImportanceCache
 
     cache = _ImportanceCache()
     calls: list[int] = []
@@ -48,7 +48,7 @@ def test_completed_importance_refresh_is_reused_for_same_trial_count() -> None:
 
 
 def test_only_one_importance_refresh_can_be_in_flight() -> None:
-    from phenotypic.gui.tune._callbacks import _ImportanceCache
+    from phenotypic._gui.tune._callbacks import _ImportanceCache
 
     cache = _ImportanceCache()
     calls: list[int] = []
@@ -88,7 +88,7 @@ class _RecordingPool:
 def test_importance_refresh_remains_globally_bounded_across_run_switch(
     monkeypatch,
 ) -> None:
-    from phenotypic.gui.tune import _callbacks
+    from phenotypic._gui.tune import _callbacks
 
     pool = _RecordingPool()
     monkeypatch.setattr(_callbacks, "_LIVE_IMPORTANCE_POOL", pool)
@@ -108,7 +108,7 @@ def test_importance_refresh_remains_globally_bounded_across_run_switch(
 
 
 def test_failed_importance_refresh_is_absorbed_and_run_switch_clears_value() -> None:
-    from phenotypic.gui.tune._callbacks import _ImportanceCache
+    from phenotypic._gui.tune._callbacks import _ImportanceCache
 
     cache = _ImportanceCache()
     first = ("journal:///a/journal.log", "tune_cost_v1")
@@ -167,7 +167,7 @@ class _CountingStore:
 def test_whole_storage_read_is_bounded_and_degrades_without_joining(
     tmp_path: Path, monkeypatch
 ) -> None:
-    from phenotypic.gui.tune import _callbacks
+    from phenotypic._gui.tune import _callbacks
 
     monkeypatch.setattr(_callbacks.importlib.util, "find_spec", lambda _name: object())
     monkeypatch.setattr(_callbacks, "_LIVE_READ_TIMEOUT_S", 0.1)
@@ -189,7 +189,7 @@ def test_whole_storage_read_is_bounded_and_degrades_without_joining(
 def test_slow_fanova_is_outside_read_deadline_and_snapshot_is_detached(
     tmp_path: Path, monkeypatch
 ) -> None:
-    from phenotypic.gui.tune import _callbacks
+    from phenotypic._gui.tune import _callbacks
     from phenotypic.tune._study_store import Trial
 
     _callbacks._IMPORTANCES.clear()
@@ -226,7 +226,7 @@ def test_slow_fanova_is_outside_read_deadline_and_snapshot_is_detached(
 def test_live_read_timeouts_coalesce_one_pending_storage_future(
     tmp_path: Path, monkeypatch
 ) -> None:
-    from phenotypic.gui.tune import _callbacks
+    from phenotypic._gui.tune import _callbacks
 
     pool = _RecordingPool()
     fallback = object()
@@ -251,7 +251,7 @@ def test_live_read_timeouts_coalesce_one_pending_storage_future(
 def test_terminal_state_progression_refreshes_importances(
     tmp_path: Path, monkeypatch
 ) -> None:
-    from phenotypic.gui.tune import _callbacks
+    from phenotypic._gui.tune import _callbacks
     from phenotypic.tune._study_store import Trial
 
     _callbacks._IMPORTANCES.clear()

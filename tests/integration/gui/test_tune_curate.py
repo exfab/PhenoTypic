@@ -10,13 +10,13 @@ from pathlib import Path
 
 import pytest
 
-from phenotypic.gui.shell import SandboxRoot
+from phenotypic._gui.shell import SandboxRoot
 
 
 def _curate_app(tmp_path: Path):  # type: ignore[no-untyped-def]
     """Build a loaded Curate app over a 3-trial journal + an Image Source."""
-    from phenotypic.gui.tune import create_app
-    from phenotypic.gui.tune._run_root import TuneRunRoot
+    from phenotypic._gui.tune import create_app
+    from phenotypic._gui.tune._run_root import TuneRunRoot
     from phenotypic.sdk_ import trials_parquet_path
     from phenotypic.tune._study_store import JournalStudyStore, Trial
 
@@ -64,26 +64,26 @@ def test_curate_exposes_one_card_per_shortlisted_trial(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 def test_pinned_pair_assigns_a_first() -> None:
-    from phenotypic.gui.tune._callbacks import pinned_pair
+    from phenotypic._gui.tune._callbacks import pinned_pair
 
     assert pinned_pair(1, {"a": None, "b": None}) == {"a": 1, "b": None}
 
 
 def test_pinned_pair_assigns_b_second() -> None:
-    from phenotypic.gui.tune._callbacks import pinned_pair
+    from phenotypic._gui.tune._callbacks import pinned_pair
 
     assert pinned_pair(2, {"a": 1, "b": None}) == {"a": 1, "b": 2}
 
 
 def test_pinned_pair_repins_a_when_both_full() -> None:
-    from phenotypic.gui.tune._callbacks import pinned_pair
+    from phenotypic._gui.tune._callbacks import pinned_pair
 
     # Both slots full → re-pin into A (the oldest slot cycles out).
     assert pinned_pair(3, {"a": 1, "b": 2}) == {"a": 3, "b": 2}
 
 
 def test_pinned_pair_same_trial_into_empty_slot_is_idempotent() -> None:
-    from phenotypic.gui.tune._callbacks import pinned_pair
+    from phenotypic._gui.tune._callbacks import pinned_pair
 
     # Clicking the already-A trial while B is empty does not duplicate it into B.
     assert pinned_pair(1, {"a": 1, "b": None}) == {"a": 1, "b": None}
@@ -91,7 +91,7 @@ def test_pinned_pair_same_trial_into_empty_slot_is_idempotent() -> None:
 
 @pytest.mark.parametrize("bad_store", [None, {}, {"a": None}])
 def test_pinned_pair_tolerates_missing_store(bad_store: object) -> None:
-    from phenotypic.gui.tune._callbacks import pinned_pair
+    from phenotypic._gui.tune._callbacks import pinned_pair
 
     result = pinned_pair(5, bad_store)  # type: ignore[arg-type]
     assert result["a"] == 5
@@ -102,7 +102,7 @@ def test_pinned_pair_tolerates_missing_store(bad_store: object) -> None:
 # ---------------------------------------------------------------------------
 
 def _tune_css() -> str:
-    import phenotypic.gui.tune as tune_pkg
+    import phenotypic._gui.tune as tune_pkg
 
     css_path = Path(tune_pkg.__file__).parent / "_assets" / "tune.css"
     return css_path.read_text(encoding="utf-8")

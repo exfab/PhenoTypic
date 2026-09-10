@@ -1,4 +1,4 @@
-"""Unit tests for ``phenotypic.gui.shell._runs_registry``.
+"""Unit tests for ``phenotypic._gui.shell._runs_registry``.
 
 Coverage:
 
@@ -22,14 +22,14 @@ from uuid import uuid4
 
 import pytest
 
-import phenotypic.gui.shell._runs_registry as runs_registry_module
+import phenotypic._gui.shell._runs_registry as runs_registry_module
 from phenotypic._cli._cli_update_state import append_event
-from phenotypic.gui._config import DELIVERABLES_DIRNAME
-from phenotypic.gui.shell._runs_registry import (
+from phenotypic._gui._config import DELIVERABLES_DIRNAME
+from phenotypic._gui.shell._runs_registry import (
     RunRecord,
     RunRegistry,
 )
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.shell._sandbox import SandboxRoot
 from phenotypic.sdk_ import (
     event_log_path,
     job_metadata_path,
@@ -1243,7 +1243,7 @@ def _status_collections_in_gui() -> dict[str, set[str]]:
     import ast
     import pathlib
 
-    import phenotypic.gui as gui_pkg
+    import phenotypic._gui as gui_pkg
 
     root = pathlib.Path(gui_pkg.__file__).parent
     known = set(runs_registry_module._RUN_STATUSES)

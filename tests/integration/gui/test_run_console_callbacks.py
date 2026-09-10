@@ -30,9 +30,9 @@ from uuid import uuid4
 import pytest
 from dash import no_update
 
-import phenotypic.gui.run_console._app as app_module
-import phenotypic.gui.run_console._callbacks as callbacks_module
-from phenotypic.gui.run_console._callbacks import (
+import phenotypic._gui.run_console._app as app_module
+import phenotypic._gui.run_console._callbacks as callbacks_module
+from phenotypic._gui.run_console._callbacks import (
     _SlurmLogTailCache,
     _action_control_states,
     _local_run_active,
@@ -41,21 +41,21 @@ from phenotypic.gui.run_console._callbacks import (
     _state_from_action_controls,
     _track_pending_slurm,
 )
-from phenotypic.gui.run_console._state import RunConsoleState
-from phenotypic.gui.run_console._slurm import SlurmSubmitResult
-from phenotypic.gui.run_console._slurm import (
+from phenotypic._gui.run_console._state import RunConsoleState
+from phenotypic._gui.run_console._slurm import SlurmSubmitResult
+from phenotypic._gui.run_console._slurm import (
     SlurmSubmitPending,
     SubmittedJobSet,
 )
-from phenotypic.gui.run_console._slurm_observer import SlurmLifecycleObserver
-from phenotypic.gui.run_console._runner import LocalRunner
-from phenotypic.gui.run_console._app import create_app
-from phenotypic.gui.run_console._request_safety import (
+from phenotypic._gui.run_console._slurm_observer import SlurmLifecycleObserver
+from phenotypic._gui.run_console._runner import LocalRunner
+from phenotypic._gui.run_console._app import create_app
+from phenotypic._gui.run_console._request_safety import (
     build_metadata_preflight,
     confirm_output_target,
 )
-from phenotypic.gui.shell._runs_registry import RunRecord, RunRegistry
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.shell._runs_registry import RunRecord, RunRegistry
+from phenotypic._gui.shell._sandbox import SandboxRoot
 from phenotypic._cli._cli_slurm_lifecycle import (
     CancellationResult,
     append_lifecycle_entry,
@@ -1085,7 +1085,7 @@ def test_preset_round_trip_restores_all_controls_for_raw_run(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Save and Load preserve every control consumed by the Run callback."""
-    from phenotypic.gui.shell._metadata_context import (
+    from phenotypic._gui.shell._metadata_context import (
         metadata_payload_from_path,
     )
     from phenotypic.schema import IMAGE
@@ -1560,7 +1560,7 @@ def test_run_console_has_no_passive_shared_authority_writer(
     tmp_path: Path,
 ) -> None:
     """Run may consume shell descriptors but never publish either authority."""
-    from phenotypic.gui.shell._ids import (
+    from phenotypic._gui.shell._ids import (
         SHELL_METADATA_CSV_STORE,
         SHELL_SOURCE_IMAGE_ROOT_STORE,
     )
@@ -1576,10 +1576,10 @@ def test_run_console_has_no_passive_shared_authority_writer(
 
 
 def test_shared_source_initializes_empty_run_input(tmp_path: Path) -> None:
-    from phenotypic.gui.run_console._callbacks import (
+    from phenotypic._gui.run_console._callbacks import (
         _input_dir_from_shared_source,
     )
-    from phenotypic.gui.shell._source_context import source_payload_from_path
+    from phenotypic._gui.shell._source_context import source_payload_from_path
 
     plates = tmp_path / "plates"
     plates.mkdir()
@@ -1594,10 +1594,10 @@ def test_shared_source_initializes_empty_run_input(tmp_path: Path) -> None:
 def test_shared_source_does_not_overwrite_non_empty_run_input(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.run_console._callbacks import (
+    from phenotypic._gui.run_console._callbacks import (
         _input_dir_from_shared_source,
     )
-    from phenotypic.gui.shell._source_context import source_payload_from_path
+    from phenotypic._gui.shell._source_context import source_payload_from_path
 
     plates = tmp_path / "plates"
     existing = tmp_path / "existing"
@@ -1614,8 +1614,8 @@ def test_shared_source_does_not_overwrite_non_empty_run_input(
 def test_form_state_omits_ambient_metadata_until_explicit_include(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.run_console._callbacks import _form_inputs_to_state
-    from phenotypic.gui.shell._metadata_context import (
+    from phenotypic._gui.run_console._callbacks import _form_inputs_to_state
+    from phenotypic._gui.shell._metadata_context import (
         metadata_payload_from_path,
     )
     from phenotypic.schema import IMAGE

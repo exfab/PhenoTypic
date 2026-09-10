@@ -19,8 +19,8 @@ from pathlib import Path
 import polars as pl
 from dash.development.base_component import Component
 
-from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.gui.results_viewer.colony_view._grid import (
+from phenotypic._gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.results_viewer.colony_view._grid import (
     COLONY_VIEW_CELL_CAP,
     build_grid,
     plan_visible_cells,

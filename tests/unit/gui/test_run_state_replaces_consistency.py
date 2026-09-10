@@ -22,11 +22,11 @@ from pathlib import Path
 
 import pytest
 
-from phenotypic.gui.results_viewer._mutation_guard import (
+from phenotypic._gui.results_viewer._mutation_guard import (
     OutputMutationBlocked,
     OutputMutationGuard,
 )
-from phenotypic.gui.results_viewer._output_root import OutputRoot, core_readable
+from phenotypic._gui.results_viewer._output_root import OutputRoot, core_readable
 from phenotypic.sdk_ import (
     BundleLayout,
     aggregate_publication_marker_path,
@@ -103,14 +103,14 @@ def test_no_production_module_still_imports_the_deleted_classifier() -> None:
 
     It also catches a form a search for the module name misses entirely: the
     package re-exported ``OutputConsistencyReport`` through ``__getattr__``,
-    so ``from phenotypic.gui.results_viewer import OutputConsistencyReport``
+    so ``from phenotypic._gui.results_viewer import OutputConsistencyReport``
     depends on the deleted module without spelling it. That form was live in
     ``test_output_discovery_contracts.py`` when this task started.
 
     **Fires when:** any module under ``src/`` imports any of the five names,
     by any of the three import forms.
     """
-    package = "phenotypic.gui.results_viewer"
+    package = "phenotypic._gui.results_viewer"
     offenders: list[str] = []
     for path in sorted((_REPO_ROOT / "src").rglob("*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -141,12 +141,12 @@ def test_the_module_file_is_gone_and_no_longer_importable() -> None:
     """
     module = (
         _REPO_ROOT
-        / "src/phenotypic/gui/results_viewer/_output_consistency.py"
+        / "src/phenotypic/_gui/results_viewer/_output_consistency.py"
     )
     assert not module.exists(), module
     with pytest.raises(ImportError):
         __import__(
-            "phenotypic.gui.results_viewer._output_consistency",
+            "phenotypic._gui.results_viewer._output_consistency",
         )
 
 
@@ -157,7 +157,7 @@ def test_the_package_no_longer_re_exports_the_report_type() -> None:
     entry -- and removing only one of them leaves the type importable while
     looking deleted.
     """
-    import phenotypic.gui.results_viewer as results_viewer
+    import phenotypic._gui.results_viewer as results_viewer
 
     assert "OutputConsistencyReport" not in results_viewer.__all__
     with pytest.raises(AttributeError):
@@ -290,7 +290,7 @@ def test_the_ledger_row_for_this_feature_still_resolves() -> None:
     description while migrating the file its test lives in, and the CI job
     that catches a broken ref runs only on a PR -- so it is asserted here too.
     """
-    ledger = (_REPO_ROOT / "src/phenotypic/gui/FEATURES.md").read_text(
+    ledger = (_REPO_ROOT / "src/phenotypic/_gui/FEATURES.md").read_text(
         encoding="utf-8"
     )
     row = next(

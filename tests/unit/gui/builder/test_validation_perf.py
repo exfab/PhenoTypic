@@ -25,14 +25,14 @@ from typing import List
 
 import pytest
 
-from phenotypic.gui.builder._state import (
+from phenotypic._gui.builder._state import (
     BlockNode,
     Edge,
     _DagBuilderScope,
     _DagBuilderState,
     _new_block_id,
 )
-from phenotypic.gui.builder._validation import validate
+from phenotypic._gui.builder._validation import validate
 
 
 _BUDGET_MS = float(

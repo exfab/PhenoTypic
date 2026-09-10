@@ -120,7 +120,7 @@ def test_dispatch_reference_order_matches_live_dispatch_kind_order() -> None:
     """The generated page should follow the live dispatcher declaration order."""
     module = _load_script("generate_dispatch_reference.py")
 
-    from phenotypic.gui.builder._callbacks import DispatchKind
+    from phenotypic._gui.builder._callbacks import DispatchKind
 
     assert [entry["kind"] for entry in module._DISPATCH_KINDS] == list(
         get_args(DispatchKind)

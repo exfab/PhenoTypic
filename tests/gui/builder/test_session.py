@@ -1,4 +1,4 @@
-"""Tests for :mod:`phenotypic.gui.builder._session`.
+"""Tests for :mod:`phenotypic._gui.builder._session`.
 
 Covers the bounded LRU/FIFO behavior of :class:`IntermediatesCache` and the
 mixed payload-type contract introduced with the pre-baked PNG cache:
@@ -11,7 +11,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from phenotypic.gui.builder._session import (
+from phenotypic._gui.builder._session import (
     IntermediatesCache,
     PreviewRenderError,
     SessionData,

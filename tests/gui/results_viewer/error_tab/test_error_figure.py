@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from phenotypic.gui._design import category_color
-from phenotypic.gui.results_viewer._error_tab._figure import build_distribution_figure
+from phenotypic._gui._design import category_color
+from phenotypic._gui.results_viewer._error_tab._figure import build_distribution_figure
 
 
 def _arrays():
