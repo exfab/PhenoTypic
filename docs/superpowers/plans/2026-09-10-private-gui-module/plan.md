@@ -597,17 +597,15 @@ Commit with subject `docs(gui): phenotypic-gui is the only documented entry; dro
 ### Task 4: Phase gates (orchestrator)
 
 - [ ] **Step 1:** Test surface with `<label>=final` — compare against `baseline.xml` node by node, including the skip count (baseline: 16). Rerun each new failure alone before attributing it.
-- [ ] **Step 2:** `uv run mypy src/phenotypic` ≤ 418 errors; `uv run ruff check src/phenotypic scripts tests` ≤ 65 errors (a drop is expected if the deleted scripts carried findings). Diff the finding sets, not just the counts.
-- [ ] **Step 3:** Wheel contents: `uv run --no-project --with pytest pytest tests/integration/packaging/test_package_contents.py -m slow -v -o addopts=`.
+- [x] **Step 2:** `uv run mypy --cache-dir <fresh dir> src/phenotypic` ≤ 418 errors; `uv run ruff check src/phenotypic scripts tests --output-format concise` ≤ 65 errors. Diff the finding sets, not just the counts: `uv run python docs/superpowers/logic_validation_scripts/2026-09-10-private-gui-module/compare_findings.py mypy|ruff <main file> <branch file>`, with main's lists produced in the `/tmp/pht-main` worktree. Use a fresh mypy cache on both sides: at `da352a50e` the branch's persistent `.mypy_cache` hid one pre-existing finding (a dangling `TYPE_CHECKING` import in `_cli/_cli_finalize_run.py:19`), which proves cache state can change the finding set. → mypy 418 = 418 and ruff 65 = 65, identical finding multisets (0 new, 0 gone); ruff re-confirmed at `c9cacf8b0` after a fix round touched a test file.
+- [x] **Step 3:** Wheel contents: `uv run --no-project --with pytest pytest tests/integration/packaging/test_package_contents.py -m slow -v -o addopts=`. → 5 passed at `da352a50e`.
 - [ ] **Step 4:** Docs build exactly as CI runs it (`docs.yml:87` → `docs/Makefile:40`, `sphinx-build -n`), on this branch and in the `/tmp/pht-main` worktree (create and sync it as in Task 2 Step 10 if absent). For each `<label>` in `branch`, `main`:
 
 ```bash
-set -o pipefail
-uv run make -C docs html 2>&1 | tee /tmp/pht-docs-<label>.log; echo "exit=$?"
-grep -E "WARNING|ERROR" /tmp/pht-docs-<label>.log | sed -E 's/:[0-9]+:/:/' | sort -u > /tmp/pht-docs-<label>.warnings
+uv run make -C docs html > /tmp/pht-docs-<label>.log 2>&1; echo "exit=$?" >> /tmp/pht-docs-<label>.log
 ```
 
-then `diff /tmp/pht-docs-main.warnings /tmp/pht-docs-branch.warnings`. Expected: exit 0 on both, and no new warning — in particular none naming `api_reference/gui`, `phenotypic._gui` or `phenotypic.gui`. The rewrite turns `:class:` targets in `sdk_/_qc_recipe/_recipe.py:25,272` and `_assets/__init__.py:22` into `phenotypic._gui…`, which `-n` checks.
+then `uv run python docs/superpowers/logic_validation_scripts/2026-09-10-private-gui-module/compare_findings.py docs /tmp/pht-docs-main.log /tmp/pht-docs-branch.log` (exit 1 on any branch-only warning). A `sed` that strips only line numbers leaves each checkout's absolute path in every warning, so a `diff` of the two lists would differ on every line and prove nothing; the script also maps the package path and dotted name, and its `--selftest` includes negative controls. Write the build log straight to a file: piping a Sphinx build through `tee` into a background task's output produced a 619 KB transcript. Expected: exit 0 on both, and no new warning — in particular none naming `api_reference/gui`, `phenotypic._gui` or `phenotypic.gui`. The rewrite turns `:class:` targets in `sdk_/_qc_recipe/_recipe.py:25,272` and `_assets/__init__.py:22` into `phenotypic._gui…`, which `-n` checks.
 - [ ] **Step 5:** Amend spec acceptance criterion 4 to except `tests/unit/gui/test_private_package.py`, which must name the removed path to assert it is gone (controller ruling during Task 1). Then check criteria 1-7 one by one, and record the results in `docs/superpowers/reports/2026-09-10-private-gui-module/acceptance.md`.
 - [ ] **Step 6:** `git worktree remove /tmp/pht-main`.
 
