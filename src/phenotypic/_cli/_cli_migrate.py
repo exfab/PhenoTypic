@@ -67,7 +67,10 @@ from ._cli_migrate_provenance import (
     execute_provenance_migration,
     provenance_migration_lifecycle_root,
 )
-from ._cli_migrate_state import migrate_machine_state
+from ._cli_migrate_state import (
+    migrate_machine_state,
+    revert_legacy_trees,
+)
 from ._cli_migrate_manifest import (
     MigrationImageSeal,
     MigrationImageTask,
@@ -115,6 +118,7 @@ from ._embedded_measurement_tables import embedded_measurement_table_matches
 from phenotypic.sdk_ import (
     BundleLayout,
     CommitGuard,
+    DIR_LEGACY_V2,
     MEASUREMENT_TABLE_RELATIVE_PATH,
     STORE_SUFFIX,
     aggregate_publication_marker_path,
@@ -2096,6 +2100,77 @@ def _validate_migration_slurm_selection(
     _ = dry_run
 
 
+def _validate_migration_revert_selection(
+    *,
+    dry_run: bool,
+    delete_sources: bool,
+    slurm_args: Mapping[str, Any] | None,
+    njobs_was_explicit: bool,
+    wait: bool,
+) -> None:
+    """Reject options that cannot mean anything alongside ``--revert``.
+
+    A revert is one local rename of ``.phenotypic/legacy-v2/`` back over the
+    current trees. It converts nothing, so every option that describes *how to
+    convert* is not merely redundant here -- accepting it would let a user
+    believe they had asked for something the command never does.
+
+    ``--dry-run`` is refused rather than implemented: :func:`revert_legacy_trees`
+    has no preview seam, and a flag that silently reverts for real because its
+    dry run was ignored is the worst of the three options. The refusal names
+    the read-only alternative instead.
+    """
+    if dry_run:
+        raise click.UsageError(
+            "--revert cannot be combined with --dry-run. A revert has no "
+            f"preview mode; inspect the retained trees under {DIR_LEGACY_V2}/ "
+            "first."
+        )
+    if delete_sources:
+        raise click.UsageError(
+            "--revert cannot be combined with --delete-sources; a revert "
+            "converts nothing and deletes no sources."
+        )
+    if slurm_args is not None:
+        raise click.UsageError(
+            "--revert cannot be combined with --slurm; a revert is one local "
+            "rename and has no work to distribute."
+        )
+    if njobs_was_explicit:
+        raise click.UsageError(
+            "--revert cannot be combined with --njobs; a revert is one local "
+            "rename and has no work to parallelize."
+        )
+    # Named explicitly, because the revert arm returns before
+    # `_validate_migration_slurm_selection` -- the guard that otherwise
+    # rejects `--wait` without `--slurm`. Without this the flag would be
+    # accepted and ignored.
+    if wait:
+        raise click.UsageError(
+            "--revert cannot be combined with --wait; a revert is synchronous "
+            "and there is no scheduler attempt to wait for."
+        )
+
+
+def _run_migration_revert(output_dir: Path) -> int:
+    """Undo one migration by renaming the retained legacy trees back.
+
+    Both of :func:`revert_legacy_trees`'s refusals -- nothing retained, and a
+    record the retained trees do not cover -- are conditions a user can act
+    on, so they are reported as messages and a nonzero exit, never a
+    traceback.
+    """
+    try:
+        moved = revert_legacy_trees(output_dir)
+    except RuntimeError as exc:
+        click.echo(f"--mode migrate --revert: {exc}", err=True)
+        return 1
+    click.echo("")
+    click.echo(f"--mode migrate --revert: {output_dir}")
+    click.echo(f"  Restored {moved} retained legacy tree(s).")
+    return 0
+
+
 def _validated_submission_job_ids(submission: object) -> tuple[str, ...]:
     """Return nonempty numeric scheduler IDs from the shared submitter result."""
     job_ids = getattr(submission, "job_ids", None)
@@ -2391,6 +2466,7 @@ def handle_migrate_mode(
     delete_sources: bool = False,
     slurm_args: Mapping[str, Any] | None = None,
     wait: bool = False,
+    revert: bool = False,
 ) -> int:
     """Run local or SLURM ``--mode migrate`` and return its exit semantics.
 
@@ -2408,11 +2484,22 @@ def handle_migrate_mode(
         delete_sources: Delete each provably-faithful source after conversion.
         slurm_args: Parsed SLURM arguments, or ``None`` for the local path.
         wait: Wait for a SLURM attempt's finalizer authority.
+        revert: Undo a previous migration by renaming the retained legacy
+            trees back, instead of converting anything.
 
     Returns:
         ``0`` on a clean local run, submitted dry run, submitted attempt, or
         waited successful terminal authority; ``1`` on local migration failure.
     """
+    if revert:
+        _validate_migration_revert_selection(
+            dry_run=dry_run,
+            delete_sources=delete_sources,
+            slurm_args=slurm_args,
+            njobs_was_explicit=njobs_was_explicit,
+            wait=wait,
+        )
+        return _run_migration_revert(output_dir)
     _validate_migration_slurm_selection(
         slurm_args=slurm_args,
         wait=wait,

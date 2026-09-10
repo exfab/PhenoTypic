@@ -1334,6 +1334,16 @@ def _print_process_only_dry_run_plan(
     ),
 )
 @click.option(
+    "--revert",
+    is_flag=True,
+    help=(
+        "With --mode migrate: undo a previous migration by renaming the "
+        "retained legacy marker trees back over the current ones. Refuses if "
+        "an image gained a record the retained trees do not cover. Converts "
+        "nothing, so it accepts no conversion options."
+    ),
+)
+@click.option(
     "--durable-writes/--no-durable-writes",
     "durable_writes",
     default=None,
@@ -1592,6 +1602,7 @@ def phenotypic_cli(
     layer: Optional[str],
     process_format: Optional[str],
     delete_sources: bool,
+    revert: bool,
 ):
     """
     Execute a PhenoTypic image-processing pipeline on a file or directory.
@@ -1685,6 +1696,10 @@ def phenotypic_cli(
         if delete_sources and not migrate_only:
             raise click.UsageError(
                 "--delete-sources is only accepted with --mode migrate."
+            )
+        if revert and not migrate_only:
+            raise click.UsageError(
+                "--revert is only accepted with --mode migrate."
             )
 
         # Process mirrors source-relative names into its output tree. The two
@@ -1851,6 +1866,7 @@ def phenotypic_cli(
                         else None
                     ),
                     wait=wait,
+                    revert=revert,
                 )
             )
 

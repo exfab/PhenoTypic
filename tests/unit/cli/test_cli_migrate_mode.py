@@ -2190,3 +2190,152 @@ def test_the_viewer_says_nothing_about_a_fully_migrated_tree(
     assert not any(
         "--mode migrate" in advisory for advisory in state.advisories
     )
+
+
+# ---------------------------------------------------------------------------
+# --revert (MIG-13 / spec §15.1)
+# ---------------------------------------------------------------------------
+
+
+def test_revert_appears_in_the_migrate_help() -> None:
+    """A flag the gate invokes but `--help` never mentions is undiscoverable.
+
+    `test_migrate_is_revertible` calls this flag, so it exists for users too,
+    not only for the gate.
+    """
+    result = CliRunner().invoke(phenotypic_cli, ["--help"])
+
+    assert result.exit_code == 0, result.output
+    assert "--revert" in result.output
+    # Read off the declared help rather than the rendered page: click wraps at
+    # the terminal width, so a substring search over the output can miss a
+    # phrase that is present and split across two lines.
+    option = next(
+        param for param in phenotypic_cli.params if param.name == "revert"
+    )
+    assert option.help is not None
+    # Not just the spelling: it has to say it is migrate-only and that it
+    # undoes rather than converts, or a user reaches for it in `--mode full`.
+    assert "--mode migrate" in option.help
+    assert "undo" in option.help.lower()
+
+
+def test_revert_is_rejected_outside_migrate_mode(legacy_run: Path) -> None:
+    """Mirrors `--delete-sources`, whose refusal this one is modelled on.
+
+    **Fires when** the flag is accepted by a mode that has nothing to revert,
+    where it would be silently ignored.
+    """
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "recompile", "--output", str(legacy_run), "--revert"],
+    )
+
+    assert result.exit_code == 2, result.output
+    assert "--revert is only accepted with --mode migrate." in result.output
+
+
+@pytest.mark.parametrize(
+    ("flag", "because"),
+    [
+        (["--dry-run"], "a revert has no preview seam to render"),
+        (["--delete-sources"], "a revert deletes no sources"),
+        (["--slurm", "slurm_partition=short"], "a revert distributes nothing"),
+        (["--njobs", "4"], "a revert parallelizes nothing"),
+        (["--wait"], "a revert is synchronous"),
+    ],
+    ids=["dry-run", "delete-sources", "slurm", "njobs", "wait"],
+)
+def test_revert_refuses_the_options_that_describe_a_conversion(
+    legacy_run: Path, flag: list[str], because: str
+) -> None:
+    """Every option here describes *how to convert*, and a revert converts nothing.
+
+    Refused rather than ignored: accepting one would let a user believe they
+    had asked for something the command never does. `--wait` is the one worth
+    naming -- the revert arm returns before the guard that normally rejects
+    `--wait` without `--slurm`, so without its own refusal it would be
+    accepted and silently dropped.
+
+    **Fires when** any of them becomes a no-op instead of a usage error.
+    """
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "migrate", "--output", str(legacy_run), "--revert", *flag],
+    )
+
+    assert result.exit_code == 2, (because, result.output)
+    assert "--revert cannot be combined with" in result.output
+
+
+def test_revert_reports_an_empty_retention_as_a_message(tmp_path: Path) -> None:
+    """A tree with nothing retained is a condition the user can act on.
+
+    Migrated by a build before retention shipped, or already reverted -- both
+    are ordinary, so both get a sentence and a nonzero exit rather than a
+    traceback.
+
+    **Fires when** the `RuntimeError` escapes to the terminal.
+    """
+    output = tmp_path / "never-migrated"
+    output.mkdir()
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "migrate", "--output", str(output), "--revert"],
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "nothing to revert" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_revert_puts_a_migrated_tree_back(finished_legacy_run) -> None:
+    """The flag reaches the primitive, end to end through the real entry point.
+
+    The unit suite covers what `revert_legacy_trees` does with the trees; what
+    is untested without this is whether `--revert` reaches it at all, and
+    whether it reaches it *instead of* running a migration.
+
+    **Fires when** the flag is parsed but never wired, which would convert the
+    tree a second time and report success.
+    """
+    from phenotypic._cli._cli_migrate_state import (
+        LEGACY_MARKER_SEGMENTS,
+        legacy_retention_dir,
+    )
+    from phenotypic.sdk_ import progress_dir
+
+    tree = finished_legacy_run.path
+    # Derived, not spelled: which trees migrate retains is that module's
+    # business, and a literal here would keep passing after a rename.
+    legacy_trees = [segment for segment, _stage in LEGACY_MARKER_SEGMENTS]
+    before = {
+        name: sorted(
+            path.relative_to(progress_dir(tree)).as_posix()
+            for path in (progress_dir(tree) / name).rglob("*.json")
+        )
+        for name in legacy_trees
+    }
+    assert any(before.values()), "the fixture carries no legacy markers to move"
+
+    migrated = CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(tree)]
+    )
+    assert migrated.exit_code == 0, migrated.output
+    assert legacy_retention_dir(tree).is_dir(), "migration retained nothing"
+
+    reverted = CliRunner().invoke(
+        phenotypic_cli, ["--mode", "migrate", "--output", str(tree), "--revert"]
+    )
+
+    assert reverted.exit_code == 0, reverted.output
+    assert "--revert" in reverted.output
+    assert not legacy_retention_dir(tree).exists()
+    assert {
+        name: sorted(
+            path.relative_to(progress_dir(tree)).as_posix()
+            for path in (progress_dir(tree) / name).rglob("*.json")
+        )
+        for name in legacy_trees
+    } == before
