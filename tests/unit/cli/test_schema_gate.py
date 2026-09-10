@@ -127,6 +127,59 @@ def _legacy_marker_payload(stem: str) -> dict[str, object]:
     }
 
 
+def _plant_run_outputs(root: Path, *, era: str) -> Path:
+    """Give a fixture the per-image output tree a real run of that era has.
+
+    **Why the builders needed this at all.** They were written to exercise
+    ``requires_conversion``, which reads only ``.phenotypic/`` -- so they built
+    only that, and described trees that cannot exist. ``--mode migrate``
+    classifies before it converts, and
+    ``classify_provenance_migration_target`` keys on ``(root / "results")``
+    being a directory (``_cli_migrate_provenance.py:205``). With no
+    ``results/`` and no process stores it raises *"no PhenoTypic OME-Zarr
+    stores found"*, so **every** shape failed at classification and no verdict
+    was ever reached. That is Entry 75's shape: a fixture that satisfies the
+    check it was written for while describing nothing real.
+
+    Note what is **not** required: ``has_full_layout`` is satisfied by the
+    directory alone, and ``full_stores`` may be empty (``:212-213``). So the
+    minimum to unblock the classifier is smaller than what a real tree holds.
+
+    **This plants the LAYOUT, not the contents, and that is a deliberate
+    limit.** A faithful ``a.h5`` or ``a.ome.zarr`` needs the real writers --
+    these are unit fixtures for schema *detection*, and running a pipeline per
+    shape would make them something else. Crucially, a **stub** would be worse
+    than nothing: an empty ``a.h5`` is not valid HDF5, so
+    ``discover_migration_tasks`` would find it and migration would fail on a
+    corrupt artifact instead of answering the schema question under test --
+    turning every one of these into a test of something it is not about.
+
+    So the contract these fixtures can support is: *the tree is classifiable
+    and migrate reaches the converters*. What they cannot support is *the
+    per-image conversion succeeded*, which is
+    ``tests/integration/cli/test_migrate_end_to_end.py``'s job and is built
+    there through the real CLI.
+
+    Args:
+        root: The output root being built.
+        era: ``"hdf"`` for a pre-OME-Zarr run, whose per-image outputs live at
+            ``results/<ds>/hdf/``; ``"zarr"`` for a store-era run, whose
+            outputs live at ``results/<ds>/zarr/``. The distinction is
+            recorded even though only the ``results/`` parent is load-bearing
+            today, because a builder that wrote the wrong era's directory
+            would be describing a tree that never existed -- which is the
+            defect this helper exists to end.
+
+    Returns:
+        ``root``, for chaining.
+    """
+    dataset = root / "results" / "plate"
+    (dataset / ("hdf" if era == "hdf" else "zarr")).mkdir(
+        parents=True, exist_ok=True
+    )
+    return root
+
+
 def _build_markers_era(root: Path) -> Path:
     """Today's shape: image markers, derived dataset sets, no restart epoch."""
     root.mkdir(parents=True, exist_ok=True)
@@ -139,7 +192,7 @@ def _build_markers_era(root: Path) -> Path:
         image_completion_marker_path(root, "plate", "a"),
         _legacy_marker_payload("a"),
     )
-    return root
+    return _plant_run_outputs(root, era="zarr")
 
 
 def _build_stage3_only(root: Path) -> Path:
@@ -165,7 +218,7 @@ def _build_stage3_only(root: Path) -> Path:
         / "a.json",
         {"image_stem": "a", "dataset": "plate"},
     )
-    return root
+    return _plant_run_outputs(root, era="zarr")
 
 
 def _build_derived_dataset_sets_only(root: Path) -> Path:
@@ -189,7 +242,7 @@ def _build_derived_dataset_sets_only(root: Path) -> Path:
         datasets=_DATASETS_WITH_COMPLETED,
         config={"work_ids": _WORK_IDS, "restart_epoch": 0},
     )
-    return root
+    return _plant_run_outputs(root, era="zarr")
 
 
 def _build_no_restart_epoch(root: Path) -> Path:
@@ -200,7 +253,7 @@ def _build_no_restart_epoch(root: Path) -> Path:
         datasets=_DATASETS_CONVERTED,
         config={"work_ids": _WORK_IDS},
     )
-    return root
+    return _plant_run_outputs(root, era="zarr")
 
 
 def _build_pre_markers(root: Path) -> Path:
@@ -212,7 +265,7 @@ def _build_pre_markers(root: Path) -> Path:
         datasets=_DATASETS_WITH_COMPLETED,
         config={"image_type": "brightfield", "ext": "png"},
     )
-    return root
+    return _plant_run_outputs(root, era="hdf")
 
 
 def _build_pre_markers_process(root: Path) -> Path:
@@ -252,7 +305,7 @@ def _build_pre_markers_half_converted(root: Path) -> Path:
         datasets=_DATASETS_CONVERTED,
         config={"restart_epoch": 0, "image_type": "brightfield", "ext": "png"},
     )
-    return root
+    return _plant_run_outputs(root, era="hdf")
 
 
 def _build_modern_process(root: Path) -> Path:
@@ -290,6 +343,16 @@ def _build_modern_process(root: Path) -> Path:
         image_completion_marker_path(root, "plate", "a"),
         _legacy_marker_payload("a"),
     )
+    # A modern `--mode process` run writes its OME-Zarr stores under the
+    # MIRRORED INPUT tree, not `results/` -- so unlike the seven full-run
+    # shapes this one is faithful with no `results/` at all, and
+    # `_process_tree_stores` is what has to find it. Recorded rather than
+    # normalised: `pre-markers-process` shares the property and is the one
+    # shape where it is a real gap (MIG-11), because at that vintage the
+    # layers were not stores.
+    store = root / "plate" / "a.ome.zarr"
+    store.mkdir(parents=True, exist_ok=True)
+    _write_json(store / "zarr.json", {"zarr_format": 3, "node_type": "group"})
     return root
 
 
@@ -316,7 +379,7 @@ def _build_pre_phenotypic_dir(root: Path) -> Path:
         root / DIR_PROGRESS / DIR_IMAGE_COMPLETE / "plate" / "a.json",
         _legacy_marker_payload("a"),
     )
-    return root
+    return _plant_run_outputs(root, era="hdf")
 
 
 #: Every shape that must classify ``CONVERT``. **This list is the invariant.**

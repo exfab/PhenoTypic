@@ -4237,3 +4237,60 @@ The transferable form is uncomfortable and worth stating plainly: **agreement is
 at which to ask what would have had to be different for you both to be wrong.** If the
 answer is "nothing we looked at", the agreement is a property of the looking, not of the
 subject.
+
+---
+
+### Entry 76a (addendum) — the write variant is the same error with consequences instead of output
+
+Entry 76 named three productions of one instrument failure: `grep -n` after a `sed` extract,
+a punctuated spelling searched instead of a symbol, and `| head -2` on an unmeasured result.
+All three **printed** a wrong answer. There is a fourth production that **applies** one, and
+it is the same error:
+
+```python
+start = next(i for i, l in enumerate(lines) if l.startswith("@pytest.mark.xfail("))
+```
+
+That file held **three** `xfail` markers. `next(...)` took the first, the span ran to the
+following `@pytest.mark.parametrize`, and the write removed **224 lines and four tests** —
+`test_a_legacy_tree_is_refused_now_that_the_gate_is_armed`,
+`test_the_arming_flag_has_one_source`,
+`test_the_gate_is_armed_exactly_when_the_forward_path_stops_writing_markers` and
+`test_the_gui_reports_rather_than_refuses`.
+
+**`next(...)` is `head -1` wearing different clothes.** Both silently select one of N without
+telling you N. So is `str.replace(old, new)` with no count assertion, and so is `sed -i`
+without `/g` reasoning. The list is not the point; the shape is: **a selector that cannot
+express "I expected exactly one" will not tell you when there were more.**
+
+**What makes the write variant worse is not the instrument, it is the absence of a reader.**
+A wrong line number gets read by a human who may notice it looks odd. A wrong span gets
+applied, and the only thing standing between it and lost work is whether someone checks
+afterwards. Nothing failed here: the file still parsed, the suite still collected, and the
+four deletions were invisible until a `git diff --stat` was read.
+
+**The repair is the one already in 76, applied one step earlier — to the anchor rather than
+to the citation:**
+
+```python
+assert t.count(old) == 1        # before ANY edit derived from a search
+```
+
+Two further notes, both from how this one was caught rather than from how it was made:
+
+- **`git diff --stat` after a scripted edit is the cheap check.** `24 insertions(+), 6
+  deletions(-)` was the expected shape; `21 insertions(+), 224 deletions(-)` was not, and the
+  difference is visible in one line without reading any code.
+- **Verify a restore against the source of truth, not against the restorer.** The AST count
+  said "44 defs, none lost", which is what a *correct* restore looks like and also what a
+  restore that silently kept a stale copy would look like. The independent check that
+  settled it was a second party resolving the four names and the def count from `HEAD`.
+
+**This is the second time in one session that a defence recorded in this register was not
+applied by the person who wrote it up** — 76 was written hours before its author used
+`next(...)` on an uncounted pattern. That is not carelessness and treating it as such
+predicts the wrong fix. It is that **the register is read at review time and the instrument
+is chosen at typing time**, and only one of those is a moment of deliberation. The repair
+that works is the one small enough to become reflex: `assert count == 1`, every time, before
+the edit.
+
