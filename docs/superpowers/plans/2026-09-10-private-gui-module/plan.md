@@ -335,9 +335,9 @@ Expected: 12 passed; both checkers exit 0.
 - [ ] **Step 10: Boot the hub through the new e2e path** (live seam; Playwright chromium is installed locally):
 
 ```bash
-QT_QPA_PLATFORM=offscreen uv run pytest tests/e2e/gui -m "not ci_flaky" -q -o addopts= -p no:cacheprovider -n 4
+PLAYWRIGHT=1 QT_QPA_PLATFORM=offscreen uv run pytest tests/e2e/gui -m "not ci_flaky" -q -o addopts= -p no:cacheprovider -n 4
 ```
-Report the summary line. To attribute a failure, rerun it alone on this branch **and** on `main`:
+Without `PLAYWRIGHT=1`, `tests/e2e/gui/conftest.py:50` skips every test and the run reads green (CI sets it at `gui-checks.yml:208`). Report the summary line. To attribute a failure, rerun it alone on this branch **and** on `main`:
 
 ```bash
 git worktree add /tmp/pht-main main
@@ -390,7 +390,8 @@ Commit with subject `refactor(gui): make phenotypic-gui the only hub entry point
   - `docs/source/tutorials/gui/06_view_results.md:20-33`
   - `docs/source/tutorials/gui/08_analysis.md:23-30`
   - `CLAUDE.md:237-241,249,348`
-  - `src/phenotypic/_gui/CLAUDE.md` (top-level note)
+  - `src/phenotypic/_gui/CLAUDE.md` (top-level note, plus its `gui/…` shorthand)
+- Modify (package-relative `gui/…` shorthand in prose and comments, Step 11; the list is derived by grep, 28 files at `a19478769`): `.github/workflows/package-integrity.ci.yml`, `DESIGN.md`, `docs/source/contrib_guide/tracked_state.md`, `pyproject.toml` (a comment), `src/phenotypic/_gui/FEATURES.md`, `src/phenotypic/_gui/_param_forms.py`, `src/phenotypic/_gui/_shared/tiles.py`, `src/phenotypic/_gui/builder/_param_form.py`, `src/phenotypic/_gui/builder/assets/builder.css`, `src/phenotypic/_gui/results_viewer/_assets/results_viewer.css`, `src/phenotypic/_gui/results_viewer/_output_root.py`, `src/phenotypic/_gui/results_viewer/_picker_navigation.py`, `src/phenotypic/_gui/shell/_assets/shell.css`, `src/phenotypic/_gui/shell/_runs_registry.py`, `src/phenotypic/sdk_/_verification_cache.py`, and ten test files (comments and docstrings only), plus the two CLAUDE.md files above
 
 - [ ] **Step 1: Confirm the deletions have no other consumers** — expected: no output.
 
@@ -399,6 +400,12 @@ git grep -nE "generate_(dispatch|validation)_reference|_reference_generator|api_
 ```
 
 (The toctree entry in `docs/source/api_reference/index.rst` spells the page `gui/index`, not `api_reference/gui`, so it does not show up here; Step 3 removes it.)
+
+Also record N, the number of tests collected from the test file Step 2 deletes (Step 12 needs it):
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run pytest --collect-only -q -o addopts= -p no:cacheprovider tests/unit/gui/test_reference_generators.py | tail -1
+```
 
 - [ ] **Step 2: Delete**
 
@@ -446,7 +453,19 @@ uv run phenotypic-gui --root ./images --port 8050
 and replace "`phenotypic-gui` or `python -m phenotypic._gui`." with "`phenotypic-gui`."
 
 - [ ] **Step 5: `docs/source/tutorials/getting_started.rst`**
-  - Line 53: delete ` (``python -m phenotypic._gui.sweep``)` — `_gui/sweep` has no tracked files.
+  - Lines 52-53: the `sweep` viewer was deleted long ago (no tracked module, and no napari sweep code under `src/phenotypic`). Replace these two lines
+
+    ```rst
+      Required for ``image.rgb.napari()`` and related viewer methods, the point
+      picker, and the napari sweep viewer (``python -m phenotypic._gui.sweep``).
+    ```
+
+    with
+
+    ```rst
+      Required for ``image.rgb.napari()`` and related viewer methods, and the point
+      picker.
+    ```
   - Lines 276-280: keep only `   uv run phenotypic-gui --root ./images --port 8050` in the code block (drop both comments and the module line).
   - Line 314: "Use ``phenotypic-gui`` or ``python -m phenotypic._gui``." → "Use ``phenotypic-gui``."
 
@@ -534,18 +553,41 @@ and change both link texts `[gui/CLAUDE.md](src/phenotypic/_gui/CLAUDE.md)` → 
 > package root.
 ```
 
-- [ ] **Step 11: Verify** — both expected to print nothing:
+- [ ] **Step 11: Package-relative `gui/…` shorthand** — prose and comments still point at `gui/<subpath>`, which no longer exists (for example the file:line citation ``gui/builder/_point_picker.py:549`` at `src/phenotypic/sdk_/_verification_cache.py:104`). Task 1's rewrite and greps could not see these, because they have no `phenotypic` prefix. At `a19478769` the grep below finds 69 lines in 28 files, all package pointers and none a runtime path (a dry run of this exact substitution on committed copies changed 69 lines, left no match, and doubled no prefix). Record the file list, rewrite, then verify:
+
+```bash
+SUBS='builder|shell|results_viewer|run_console|browse|analysis|tune|sweep|_shared|_smart_grid|_config\.py|_design\.py|_operation_registry\.py|_param_forms\.py|_plot_refresh\.py|_schema_cache\.py|_snapshot_status\.py|_url_prefix\.py|_async_binding_client\.py|_binding_generation\.py|CLAUDE\.md|FEATURES\.md|WORKFLOWS\.md|__init__\.py|__main__\.py'
+git grep -lE "(^|[^_./a-zA-Z0-9-])gui/($SUBS)" -- . ':!docs/superpowers' > /tmp/private-gui-shorthand-files.txt
+wc -l < /tmp/private-gui-shorthand-files.txt   # expect 28, or 27 once Step 9 has changed the root CLAUDE.md link labels
+tr '\n' '\0' < /tmp/private-gui-shorthand-files.txt | xargs -0 perl -pi -e "s{(^|[^_./a-zA-Z0-9-])gui/($SUBS)}{\${1}_gui/\${2}}g"
+git grep -nE "(^|[^_./a-zA-Z0-9-])gui/($SUBS)" -- . ':!docs/superpowers'   # expect: no output
+git diff --stat -- $(cat /tmp/private-gui-shorthand-files.txt)            # expect small per-file line counts, no whole-file rewrites
+```
+
+The pattern cannot touch runtime paths: those are built from separate string components (`"phenotypic" / "gui"`, `"logs" / "gui"`) or are followed by names outside the list (`tutorials/gui/01_setup.md`, `tests/unit/gui/…`).
+
+- [ ] **Step 12: Verify** — both greps expected to print nothing:
 
 ```bash
 git grep -nE "phenotypic[./]_gui" -- README.md docs/source
 git grep -nE "api_reference/gui|gui/index" -- docs/source/api_reference
 ```
 
-- [ ] **Step 12: Commit** — stage the edited files by name (the Step 2 deletions are already staged):
+Then the ledger checkers (FEATURES.md changed in Step 11) and the Test surface with `<label>=task3` (Step 11 changed source comments and test docstrings):
+
+```bash
+uv run python scripts/check_features_md.py --strict
+uv run python scripts/check_workflows_md.py -v
+```
+
+Expected: both checkers exit 0. The surface has no failures and 16 skipped, and passed = 3009 + 9 − N: Task 1's 3009, plus the 9 tests of `tests/unit/gui/test_private_package.py` (untracked during Task 1's run), minus the N tests of the deleted generator test file (Step 1).
+
+- [ ] **Step 13: Commit** — stage the edited files by name (the Step 2 deletions are already staged):
 
 ```bash
 git add README.md docs/source/api_reference/index.rst docs/source/tutorials/getting_started.rst docs/source/how_to/pages/gui_hub.md docs/source/tutorials/gui/02_file_explorer.md docs/source/tutorials/gui/06_view_results.md docs/source/tutorials/gui/08_analysis.md CLAUDE.md src/phenotypic/_gui/CLAUDE.md
-git diff --cached --stat    # expect only this task's paths: the 9 edits plus the Step 2 deletions
+tr '\n' '\0' < /tmp/private-gui-shorthand-files.txt | xargs -0 git add --
+git diff --cached --stat    # expect only this task's paths: the 9 named edits, the Step 11 shorthand files, and the Step 2 deletions
 ```
 
 Commit with subject `docs(gui): phenotypic-gui is the only documented entry; drop the GUI API reference` and the trailer from Global Constraints.
@@ -566,7 +608,7 @@ grep -E "WARNING|ERROR" /tmp/pht-docs-<label>.log | sed -E 's/:[0-9]+:/:/' | sor
 ```
 
 then `diff /tmp/pht-docs-main.warnings /tmp/pht-docs-branch.warnings`. Expected: exit 0 on both, and no new warning — in particular none naming `api_reference/gui`, `phenotypic._gui` or `phenotypic.gui`. The rewrite turns `:class:` targets in `sdk_/_qc_recipe/_recipe.py:25,272` and `_assets/__init__.py:22` into `phenotypic._gui…`, which `-n` checks.
-- [ ] **Step 5:** Check spec acceptance criteria 1-7 one by one; record the results in `docs/superpowers/reports/2026-09-10-private-gui-module/acceptance.md`.
+- [ ] **Step 5:** Amend spec acceptance criterion 4 to except `tests/unit/gui/test_private_package.py`, which must name the removed path to assert it is gone (controller ruling during Task 1). Then check criteria 1-7 one by one, and record the results in `docs/superpowers/reports/2026-09-10-private-gui-module/acceptance.md`.
 - [ ] **Step 6:** `git worktree remove /tmp/pht-main`.
 
 ---
