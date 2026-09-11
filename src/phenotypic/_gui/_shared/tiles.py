@@ -580,7 +580,7 @@ def image_display_range(store_path: Path, layer: LayerName) -> tuple[int, int]:
     #    rgb only because the series map is the identity, raises KeyError
     #    for objmap (member rgb/labels/objmap), and returns (0, 0) silently
     #    for detect_mat and gray.
-    # 2. Scan the directory for level names. _gui/CLAUDE.md:58 -- "Never
+    # 2. Scan the directory for level names. _gui/CLAUDE.md:64 -- "Never
     #    recompute the pyramid. The level count is recorded in
     #    phenotypic.pyramid." An iterdir()/isdigit() scan is that
     #    recomputation. Depth is uniform across layers (verified on the

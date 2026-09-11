@@ -617,7 +617,8 @@ def publish_complete_run_over_outputs(root: Path, *, total_images: int) -> Path:
 
     Raises:
         FileNotFoundError: If a core aggregate file is missing.
-        AssertionError: If the master's image count differs from ``total_images``.
+        AssertionError: If the master's image count differs from ``total_images``,
+            or two of its images in one dataset share a stem.
     """
     import polars as pl
 
@@ -647,6 +648,11 @@ def publish_complete_run_over_outputs(root: Path, *, total_images: int) -> Path:
     )
     assert images.height == total_images, (
         f"master lists {images.height} images, fixture declared {total_images}"
+    )
+    stems = [(dataset, Path(str(image)).stem) for dataset, image in images.iter_rows()]
+    shared = sorted({pair for pair in stems if stems.count(pair) > 1})
+    assert not shared, (
+        f"master images share a stem within a dataset {shared}; each image needs its own work id"
     )
     work_ids: dict[str, dict[str, str]] = {}
     for dataset, image in images.iter_rows():

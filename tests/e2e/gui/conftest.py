@@ -241,7 +241,8 @@ def _phenotypic_gui_executable() -> str:
     if found is None:
         raise RuntimeError(
             f"phenotypic-gui console script not found in {scripts_dir}; run "
-            "`uv sync --group dev --group test-qt --all-extras`"
+            "`uv sync` with the groups and extras you already use (CI runs "
+            "`uv sync --group dev --group test-qt --all-extras`)"
         )
     return found
 

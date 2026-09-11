@@ -19,7 +19,11 @@ SUB_APP_DEBUG_LAUNCHERS = ("analysis", "browse", "builder", "results_viewer", "r
 
 def test_public_gui_import_path_is_gone() -> None:
     """``phenotypic.gui`` must not resolve -- not even as a namespace package."""
-    assert importlib.util.find_spec("phenotypic.gui") is None
+    spec = importlib.util.find_spec("phenotypic.gui")
+    assert spec is None, (
+        f"phenotypic.gui still resolves ({spec.submodule_search_locations}); a checkout "
+        "that predates the move keeps src/phenotypic/gui/__pycache__ -- delete src/phenotypic/gui/"
+    )
 
 
 def test_private_gui_package_resolves() -> None:

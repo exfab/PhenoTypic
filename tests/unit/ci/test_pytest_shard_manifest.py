@@ -70,7 +70,7 @@ def _manifest_assignments() -> Counter[Path]:
 
 def _requests_a_browser(path: Path) -> bool:
     """Return whether a test module needs an installed Playwright browser."""
-    tree = ast.parse((REPO_ROOT / path).read_text(encoding="utf-8"))
+    tree = ast.parse((REPO_ROOT / path).read_text(encoding="utf-8"), filename=str(path))
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             parameters = {arg.arg for arg in [*node.args.args, *node.args.kwonlyargs]}
@@ -126,4 +126,4 @@ def test_pr_workflow_installs_chromium_for_browser_shards() -> None:
     assert re.search(
         r"if: matrix\.shard\.playwright\s*\n\s*run: uv run playwright install --with-deps chromium",
         workflow,
-    )
+    ), "run-pytest.yml must install Chromium in the step gated by `if: matrix.shard.playwright`"

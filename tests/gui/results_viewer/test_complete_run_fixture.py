@@ -115,3 +115,12 @@ def test_a_miscounted_fixture_fails_loudly(tmp_path: Path) -> None:
 
     with pytest.raises(AssertionError, match="master lists 2 images"):
         publish_complete_run_over_outputs(root, total_images=3)
+
+
+def test_images_sharing_a_stem_fail_loudly(tmp_path: Path) -> None:
+    """Two master names with one stem would collapse into a single work id."""
+    root = tmp_path / "run"
+    _seed(root, ["plate_001", "plate_001.tif"])
+
+    with pytest.raises(AssertionError, match="share a stem"):
+        publish_complete_run_over_outputs(root, total_images=2)
