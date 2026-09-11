@@ -402,11 +402,19 @@ def write_measurement_shard(
     """Aggregate this shard's authorized tables into one Parquet.
 
     One pass over its images and nothing else: read each store's
-    ``tables/measurements/table.parquet``, concatenate, write
-    ``shard_NNNN.parquet``. **No store write, no metadata projection, no
-    global frame.** D-A removed the metadata half of §8's array task -- per-
-    store metadata is written at promote time (P4 Task 2) -- so a shard
-    worker aggregates and does not certify.
+    ``tables/measurements/table.parquet`` projected onto its own descriptor,
+    concatenate, write ``shard_NNNN.parquet``. **No store write, no metadata
+    join, no global frame.** D-A removed the metadata half of §8's array task
+    -- per-store metadata is written at promote time (P4 Task 2) -- so a
+    shard worker aggregates and does not certify.
+
+    The projection is the same
+    :func:`~phenotypic._cli._cli_parquet_agg.project_embedded_measurement_table`
+    ``build_master_frame`` applies, because shards are a second read path
+    into the master (P7 Task 4): a legacy joined table read raw here would
+    make ``--njobs N`` publish a different master than ``--njobs 1``. A store
+    the projection excludes is absent from the returned work ids, so the
+    aggregate proof does not certify it.
 
     Args:
         output_dir: Run output root.
@@ -427,7 +435,7 @@ def write_measurement_shard(
     )
 
     from ._cli_completion import authorized_measurement_sources
-    from ._cli_parquet_agg import aggregate_parquet_files
+    from ._cli_parquet_agg import aggregate_measurement_sources
     from ._cli_recompile_worker import _sort_measurement_shard
     from ._measurement_sources import add_metadata_image_name_from_filename
 
@@ -442,11 +450,24 @@ def write_measurement_shard(
     shard_path = shard_parquet_path(output_dir, scheduler_epoch, shard_id)
     shard_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if not mine:
+    if mine:
+        shard_df, merged = aggregate_measurement_sources(
+            mine, include_dataset_column=include_dataset_column
+        )
+    else:
+        shard_df, merged = None, {}
+    if shard_df is None and merged:
+        raise RuntimeError(
+            f"Shard {shard_id} found no readable measurements among "
+            f"{len(mine)} authorized source(s)"
+        )
+    if shard_df is None:
         # An EMPTY shard is written, deliberately, rather than skipped. K is
         # sized from the run's PLANNED image count, so a failure-heavy run can
-        # leave a shard with no sources; index K checks the file COUNT against
-        # the carried K, and a skipped file would read there as a dead worker.
+        # leave a shard with no sources -- or with only sources the projection
+        # excluded, each with its own advisory; index K checks the file COUNT
+        # against the carried K, and a skipped file would read there as a dead
+        # worker.
         import polars as pl
 
         atomic_write_with_writer(
@@ -454,18 +475,6 @@ def write_measurement_shard(
             lambda p: pl.DataFrame().write_parquet(p, **PARQUET_WRITE_OPTIONS),
         )
         return []
-
-    shard_df = aggregate_parquet_files(
-        file_paths=list(mine.keys()),
-        path_to_dataset=mine,
-        include_dataset_column=include_dataset_column,
-        keep_filename=True,
-    )
-    if shard_df is None:
-        raise RuntimeError(
-            f"Shard {shard_id} found no readable measurements among "
-            f"{len(mine)} authorized source(s)"
-        )
     shard_df = _sort_measurement_shard(
         add_metadata_image_name_from_filename(shard_df)
     )
@@ -473,7 +482,7 @@ def write_measurement_shard(
         shard_path,
         lambda p: shard_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
     )
-    return sorted(_work_ids_for_sources(output_dir, mine))
+    return sorted(_work_ids_for_sources(output_dir, merged))
 
 
 def _work_ids_for_sources(

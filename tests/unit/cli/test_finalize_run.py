@@ -1160,12 +1160,18 @@ def _reader_outcomes(master_path: Path) -> dict[str, object]:
     return outcomes
 
 
-def _publish_v1_run(output_dir: Path, *, snapshot: str | None) -> None:
-    """Build a genuine PRE-INVERSION tree and finalize it.
+def _build_v1_tree(
+    output_dir: Path,
+    *,
+    snapshot: str | None,
+    measurements: dict[str, object] | None = None,
+) -> Path | None:
+    """Build a genuine PRE-INVERSION tree, without finalizing it.
 
     **The v1 arm cannot be a second call to the forward writer.** That is two
     runs of one function, and an equality between them holds by construction
-    -- which is what this test used to do, and what made it unable to fail.
+    -- which is what the falsifier below used to do, and what made it unable
+    to fail.
 
     It is built through the producer the inversion replaced instead.
     ``prepare_embedded_measurement_table`` still ships (``06809fbc`` retains
@@ -1173,8 +1179,9 @@ def _publish_v1_run(output_dir: Path, *, snapshot: str | None) -> None:
     ``recompile_embedded_measurement_tables`` is the caller that drives it
     over a whole tree: it projects each store's recorded baseline, re-joins
     the snapshot into ``table.parquet``, and writes no
-    ``pht-metadata.parquet``. That is the v1 store shape, so the master
-    aggregated from those stores is a v1 master.
+    ``pht-metadata.parquet``. That is the v1 store shape -- the shape
+    ``--mode migrate`` leaves in every store it embeds a legacy Parquet into
+    -- so the master aggregated from those stores is a v1 master.
 
     The stores are written WITHOUT a snapshot and the snapshot installed
     afterwards, because a store built with ``--metadata`` is inverted and
@@ -1186,23 +1193,95 @@ def _publish_v1_run(output_dir: Path, *, snapshot: str | None) -> None:
         output_dir: Directory to build the run in.
         snapshot: The metadata CSV text to re-join, or ``None`` for the
             metadata-free arm.
+        measurements: Per-stem baselines. ``None`` is the two-image,
+            ``Metadata_Well``-free baseline the falsifier needs.
+
+    Returns:
+        The installed snapshot, or ``None`` for the metadata-free arm.
     """
     from phenotypic._cli._cli_recompile_tables import (
         recompile_embedded_measurement_tables,
     )
 
+    frames = measurements or {
+        stem: _measurements(stem, include_well=False) for stem in ("a", "b")
+    }
     output_dir.mkdir(parents=True, exist_ok=True)
-    _publish_successful_images(output_dir, snapshot=None, include_well=False)
+    _install_snapshot(output_dir, None)
+    for stem, frame in frames.items():
+        _publish_store(output_dir, stem, frame)  # type: ignore[arg-type]
+    _install_state(output_dir, list(frames))
     metadata_csv = (
         _install_snapshot(output_dir, snapshot) if snapshot is not None else None
     )
     rewritten = recompile_embedded_measurement_tables(output_dir, metadata_csv)
-    assert rewritten == 2, (
-        f"the pre-inversion producer rewrote {rewritten} of 2 stores; this "
-        "arm is not a v1 tree and every comparison below is about something "
-        "else"
+    assert rewritten == len(frames), (
+        f"the pre-inversion producer rewrote {rewritten} of {len(frames)} "
+        "stores; this arm is not a v1 tree and every comparison against it is "
+        "about something else"
     )
+    return metadata_csv
+
+
+def _publish_v1_run(output_dir: Path, *, snapshot: str | None) -> None:
+    """Build a genuine pre-inversion tree (:func:`_build_v1_tree`) and finalize it.
+
+    **Only the metadata-free arm may be built this way.** ``finalize_run``
+    projects every embedded table onto its descriptor (P7 Task 4). On a
+    ``not_requested`` table that projection is the identity -- the table
+    carries exactly its ``measurement_columns`` and no join fan-out -- so
+    finalizing still writes the bytes a pre-projection build wrote for such a
+    tree. A JOINED tree is different: finalizing it now yields a v2-shaped
+    master, so a joined v1 master must be written as the pre-projection
+    artifact instead -- see :func:`_write_pre_projection_v1_master`.
+    """
+    _build_v1_tree(output_dir, snapshot=snapshot)
     assert finalize_run(output_dir, dataset_names=[DATASET]) is not None
+
+
+def _write_pre_projection_v1_master(output_dir: Path, *, snapshot: str) -> None:
+    """Build a joined v1 tree and write the master a pre-projection build left.
+
+    ``finalize_run`` projects each table onto its own descriptor (P7 Task 4),
+    so **no current code path writes a joined v1 master** any more. Such
+    masters still exist in the wild -- every finalization before this change,
+    including every earlier ``--mode migrate``, wrote one -- and the
+    falsifier's positive control needs a real one, so it is written as that
+    artifact: the pre-projection aggregation of the joined embedded tables
+    (:func:`_concat_of_embedded_tables`, i.e. the unchanged
+    ``aggregate_parquet_files`` plus identity recovery, exactly what
+    ``build_master_frame`` did before), written to the master path.
+    """
+    from phenotypic.sdk_ import PARQUET_WRITE_OPTIONS
+
+    _build_v1_tree(output_dir, snapshot=snapshot)
+    master = master_measurements_parquet_path(output_dir)
+    master.parent.mkdir(parents=True, exist_ok=True)
+    _concat_of_embedded_tables(output_dir).write_parquet(
+        master, **PARQUET_WRITE_OPTIONS
+    )
+
+
+def _embedded_table(output_dir: Path, stem: str) -> pl.DataFrame:
+    return pl.read_parquet(
+        zarr_store_path(output_dir, DATASET, stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    )
+
+
+def _join_status(output_dir: Path, stem: str) -> str:
+    """The ``phenotypic.join.status`` a store's table Parquet records."""
+    import pyarrow.parquet as pq
+
+    from phenotypic.sdk_.ngff_ import (
+        EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS as keys,
+    )
+
+    metadata = pq.read_schema(
+        zarr_store_path(output_dir, DATASET, stem)
+        / MEASUREMENT_TABLE_RELATIVE_PATH
+    ).metadata or {}
+    return metadata[keys.JOIN_STATUS.encode()].decode()
 
 
 def test_a_v1_metadata_free_master_is_indistinguishable_from_v2_and_that_is_harmless(
@@ -1252,7 +1331,10 @@ def test_a_v1_metadata_free_master_is_indistinguishable_from_v2_and_that_is_harm
     _publish_v1_run(v1, snapshot=None)
 
     v1_joined = tmp_path / "v1-joined"
-    _publish_v1_run(v1_joined, snapshot=_SNAPSHOT_BY_IMAGE)
+    # Written as the pre-projection artifact, not finalized: `finalize_run`
+    # now projects a joined table, so finalizing this arm would yield a v2
+    # master and collapse the positive control below.
+    _write_pre_projection_v1_master(v1_joined, snapshot=_SNAPSHOT_BY_IMAGE)
 
     # STANDING RULE, the control half. Establish that the pre-inversion
     # producer really did join user metadata into the master when given a
@@ -1300,6 +1382,591 @@ def test_a_v1_metadata_free_master_is_indistinguishable_from_v2_and_that_is_harm
         "the no-stamp ruling has to be revisited"
     )
     assert outcomes_v1 == outcomes_v2
+
+
+# ---------------------------------------------------------------------------
+# P7 Task 4 -- a legacy joined embedded table is projected at read
+# ---------------------------------------------------------------------------
+#
+# Migrate leaves every store's embedded table exactly as it found it -- joined,
+# for a pre-inversion tree -- and `finalize_run` projects each table onto the
+# store's own recorded `measurement_columns` before concatenating. That makes
+# the master v2-shaped, so the single global join in
+# `finalize_post_master_outputs` runs on intrinsic keys only.
+
+#: The field regression's shape (a 6,657-image migration): keyed on image
+#: identity, integer-valued user columns, and ``b.tiff`` ABSENT, so store
+#: ``b``'s joined table carries every user column as null.
+_SNAPSHOT_INT_USER_COLUMNS_WITHOUT_B = (
+    "Metadata_ImageName,Metadata_pH,Metadata_Replicate\na.tiff,7,1\n"
+)
+
+#: Three metadata rows per image key. A legacy joined table therefore holds
+#: every measured row three times (CAN-10(a)).
+_SNAPSHOT_FANOUT = (
+    "Metadata_ImageName,Metadata_Replicate\n"
+    "a.tiff,1\na.tiff,2\na.tiff,3\nb.tiff,1\nb.tiff,2\nb.tiff,3\n"
+)
+
+
+def _strip_measurement_descriptor(output_dir: Path, stem: str) -> Path:
+    """Remove one store's ``tables.measurements`` descriptor, then re-certify.
+
+    Step 0b's shape: ``table.parquet`` on disk, no descriptor declaring it.
+    The record is republished because a store is fingerprinted by its root
+    ``zarr.json`` -- without that the image silently stops being authorized,
+    and the skip under test is never reached.
+    """
+    from phenotypic.sdk_ import atomic_write_json
+    from phenotypic.sdk_.ngff_ import MEASUREMENT_TABLE_GROUP, PhenotypicAttr
+
+    store = zarr_store_path(output_dir, DATASET, stem)
+    root_path = store / STORE_ROOT_JSON
+    root = json.loads(root_path.read_text(encoding="utf-8"))
+    root["attributes"][PhenotypicAttr.ROOT][PhenotypicAttr.TABLES].pop(
+        MEASUREMENT_TABLE_GROUP
+    )
+    atomic_write_json(root_path, root)
+    publish_image_success(
+        output_dir,
+        work_id=f"work-{stem}",
+        dataset=DATASET,
+        relative_image_path=f"{stem}.tiff",
+        image_stem=stem,
+        mode="full",
+        attempt_id="attempt-1",
+        lifecycle_epoch="epoch-1",
+        artifacts={
+            "measurements": store / MEASUREMENT_TABLE_RELATIVE_PATH,
+            "store": store,
+        },
+    )
+    return store
+
+
+def _warnings_naming(
+    caplog: pytest.LogCaptureFixture, needle: str | Path
+) -> list[str]:
+    """WARNING+ messages naming *needle*, by its given or resolved spelling."""
+    import logging
+
+    spellings = {str(needle)}
+    if isinstance(needle, Path):
+        spellings.add(str(needle.resolve()))
+    return [
+        record.getMessage()
+        for record in caplog.records
+        if record.levelno >= logging.WARNING
+        and any(spelling in record.getMessage() for spelling in spellings)
+    ]
+
+
+def test_a_legacy_joined_master_carries_no_user_metadata(tmp_path: Path) -> None:
+    """P7 Task 4: finalization projects each table onto its own descriptor.
+
+    Classified by OWNERSHIP (``master_carries_user_metadata``), never by the
+    ``Metadata_`` prefix: the projected master still carries
+    ``Metadata_ImageName``, and must.
+    """
+    from phenotypic.sdk_ import master_carries_user_metadata
+
+    snapshot = _build_v1_tree(tmp_path, snapshot=_SNAPSHOT_BY_IMAGE)
+
+    # STANDING RULE, the positive control. Without a JOINED table in the store
+    # there is no user metadata to project away, and the negative below holds
+    # on an aggregator that projects nothing.
+    assert _join_status(tmp_path, "a") == "joined"
+    assert master_carries_user_metadata(_embedded_table(tmp_path, "a")) is True, (
+        "the fixture's embedded table carries no user metadata; this is not a "
+        "legacy joined store"
+    )
+
+    finalize_run(tmp_path, dataset_names=[DATASET], metadata_csv=snapshot)
+
+    master = _master(tmp_path)
+    assert master.height > 0, "the master is empty; the negative is vacuous"
+    assert master_carries_user_metadata(master) is False, (
+        "a joined embedded table reached the master unprojected -- the master "
+        "is v1-shaped and the global join will run on user columns again"
+    )
+    assert "Metadata_ImageName" in master.columns, (
+        "intrinsic identity was projected away along with the user metadata"
+    )
+    assert master_carries_user_metadata(_mirror(tmp_path)) is True, (
+        "the join did not happen at finalization"
+    )
+
+
+def test_a_legacy_joined_tree_keeps_its_measured_rows_when_an_image_has_no_metadata(
+    tmp_path: Path,
+) -> None:
+    """The field failure, at unit scale.
+
+    A real 6,657-image ``--mode migrate`` produced a correct master and a
+    mirror with **0 measured rows** -- every row ``QC_MetadataOnly=True`` --
+    plus duplicate ``*_right`` columns. Mechanism: each legacy table is
+    already joined; an image absent from ``metadata.csv`` carries the user
+    columns as null, so the concat widened integer columns (``7`` -> ``7.0``);
+    the global join then re-joined on those user columns, where ``"7.0"``
+    never equals the CSV's ``"7"``; and the ragged path, grouping by null
+    pattern, matched nothing and suffixed the colliding columns ``_right``.
+    """
+    from phenotypic.sdk_ import user_metadata_headers
+
+    snapshot = _build_v1_tree(
+        tmp_path, snapshot=_SNAPSHOT_INT_USER_COLUMNS_WITHOUT_B
+    )
+
+    # Preconditions -- the defect's two ingredients, asserted rather than
+    # trusted. Without either, the mirror below is correct on unprojected code.
+    table_a = _embedded_table(tmp_path, "a")
+    table_b = _embedded_table(tmp_path, "b")
+    user_a = user_metadata_headers(table_a.columns)
+    user_b = user_metadata_headers(table_b.columns)
+    assert user_a and user_b, "the stores carry no joined user metadata"
+    assert all(table_a[c].null_count() == 0 for c in user_a), (
+        "image a's user metadata is not populated"
+    )
+    assert all(table_b[c].null_count() == table_b.height for c in user_b), (
+        "image b's user metadata is not all-null; the image-absent-from-"
+        "metadata ingredient is missing"
+    )
+    # The third ingredient: the two tables DISAGREE on the user columns'
+    # dtype (a's integers, b's all-null columns stored as float), which is what
+    # renders 7 as "7.0" after the concat. Without it this test reduces to
+    # "an image is absent from metadata" alone.
+    assert set(user_a) == set(user_b)
+    assert all(table_a.schema[c] != table_b.schema[c] for c in user_a), (
+        "a's and b's user columns share a dtype; the concat-widening "
+        "ingredient of the field failure is missing"
+    )
+
+    finalize_run(tmp_path, dataset_names=[DATASET], metadata_csv=snapshot)
+
+    master = _master(tmp_path)
+    mirror = _mirror(tmp_path)
+    assert master.height > 0 and mirror.height > 0, (
+        "finalization produced nothing; every assertion below is vacuous"
+    )
+    assert set(master["Metadata_ImageName"]) == {"a.tiff", "b.tiff"}, (
+        "the master must keep every authorized measured row"
+    )
+
+    measured = _measured(mirror)
+    assert measured.height > 0, (
+        "every measured row was dropped from the mirror -- the field failure"
+    )
+    # b is outside the described experiment, so the mirror drops it by design
+    # (test_a_measured_row_absent_from_metadata_is_dropped_deliberately).
+    assert set(measured["Metadata_ImageName"]) == {"a.tiff"}
+    assert measured.height == (
+        master.filter(pl.col("Metadata_ImageName") == "a.tiff").height
+    ), "some of image a's measured rows were lost from the mirror"
+    assert measured["QC_MetadataOnly"].to_list() == [False] * measured.height
+
+    joined_user = user_metadata_headers(measured.columns)
+    assert joined_user, "the mirror carries no user metadata column"
+    for column in joined_user:
+        assert measured[column].null_count() == 0, (
+            f"{column} is null on measured rows -- the join matched nothing"
+        )
+    suffixed = [column for column in mirror.columns if column.endswith("_right")]
+    assert not suffixed, f"the join collided on user columns: {suffixed}"
+    assert _phantoms(mirror).height == 0, (
+        "a.tiff's metadata row was reported as a phantom although it matched"
+    )
+
+
+def test_a_legacy_fanout_store_and_a_fresh_store_produce_equal_masters(
+    tmp_path: Path,
+) -> None:
+    """CAN-10(a). Projection fixes the column set, not the row count.
+
+    A legacy table joined against *k* metadata rows per key holds each
+    measured row *k* times; the global join then fans it out again, so the
+    mirror would carry *k*² rows. Compare ROW COUNTS and full equality
+    against a fresh tree, which the column-membership test above cannot see.
+    """
+    legacy = tmp_path / "legacy"
+    _build_v1_tree(legacy, snapshot=_SNAPSHOT_FANOUT)
+    fresh = tmp_path / "fresh"
+    fresh.mkdir()
+    _publish_successful_images(
+        fresh, snapshot=_SNAPSHOT_FANOUT, include_well=False
+    )
+
+    # STANDING RULE. The equality below is satisfied by a legacy tree that
+    # never fanned out, and by a "fresh" tree that was never inverted.
+    fresh_rows = _embedded_table(fresh, "a").height
+    assert fresh_rows > 0
+    assert _join_status(legacy, "a") == "joined"
+    assert _embedded_table(legacy, "a").height == 3 * fresh_rows, (
+        "the legacy table does not carry the 3x fan-out this test is about"
+    )
+    assert "Metadata_Replicate" not in _embedded_table(fresh, "a").columns, (
+        "the fresh arm is not inverted; it is a second legacy tree"
+    )
+
+    for root in (legacy, fresh):
+        finalize_run(
+            root, dataset_names=[DATASET], metadata_csv=_snapshot_path(root)
+        )
+
+    for read in (_master, _mirror):
+        got, want = read(legacy), read(fresh)
+        assert want.height > 0, f"{read.__name__}: the fresh arm is empty"
+        assert got.height == want.height, (
+            f"{read.__name__}: legacy {got.height} rows != fresh {want.height}"
+        )
+        assert got.equals(want), f"{read.__name__}: legacy != fresh"
+
+
+def test_the_fanout_shards_project_legacy_tables_to_the_same_master(
+    tmp_path: Path,
+) -> None:
+    """The P5 shards are a second read path into the master.
+
+    A projection applied only where ``build_master_frame`` reads tables
+    directly would leave ``--njobs N`` aggregating unprojected, fanned-out
+    shards -- a different master for the same tree, certified by the same
+    proof.
+    """
+    from phenotypic._cli._cli_output_manager import aggregate_measurements
+    from phenotypic.sdk_ import aggregation_shard_dir, master_carries_user_metadata
+
+    def _aggregate(root: Path, njobs: int) -> Path:
+        _build_v1_tree(root, snapshot=_SNAPSHOT_FANOUT)
+        aggregate_measurements(
+            output_dir=root,
+            dataset_names=[DATASET],
+            include_dataset_column=True,
+            metadata_csv=_snapshot_path(root),
+            njobs=njobs,
+        )
+        return root
+
+    direct = _aggregate(tmp_path / "direct", 1)
+    fanned = _aggregate(tmp_path / "fanned", 2)
+
+    # STANDING RULE: if the allocation clamped K to 1, both arms took the same
+    # single-shard path and the byte equality compares a run against itself.
+    shards = sorted(aggregation_shard_dir(fanned, None).glob("shard_*.parquet"))
+    assert len(shards) == 2, f"the fan-out ran {len(shards)} shard(s), not 2"
+
+    for root in (direct, fanned):
+        master = _master(root)
+        assert master.height == 4, (
+            f"{root.name}: {master.height} master rows for 2 images x 2 objects"
+        )
+        assert master_carries_user_metadata(master) is False, (
+            f"{root.name}: the master carries user metadata"
+        )
+    assert _master_bytes(direct) == _master_bytes(fanned)
+
+
+@pytest.mark.parametrize("njobs", [1, 2])
+def test_a_string_drifted_join_key_widens_the_master_and_keeps_the_mirrors_metadata(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    njobs: int,
+) -> None:
+    """CAN-10(b), as ruled R4 (2026-09-10): pinned and advised, not repaired.
+
+    ``_restore_join_key_dtypes`` logs and keeps the string-safe type when it
+    cannot restore a join key, so a legacy store can carry ``Metadata_Well``
+    as ``String`` beside stores carrying ``Int64``. The plan predicted that
+    widening at concat would null those rows' metadata after the global join.
+    **Measured false**: ``join_metadata`` casts every key to ``String`` on
+    both sides and the drifted values render identically. So the widening is
+    advised -- a warning naming the column and its dtypes -- rather than
+    repaired.
+
+    **Both finalization paths, because that advisory is the whole of what R4
+    kept.** ``njobs=1`` concatenates every store at once. ``njobs=2`` puts
+    ``a`` and ``b`` in different shards, each internally uniform, so only the
+    merge sees the disagreement -- and the forward CLI's default ``--njobs
+    -1`` takes that path.
+
+    If the metadata assertion ever fails, the harm the plan predicted became
+    real and the R4 ruling must be revisited.
+    """
+    import logging
+
+    from phenotypic._cli import _embedded_measurement_tables as producer
+    from phenotypic._cli._cli_output_manager import aggregate_measurements
+    from phenotypic.sdk_ import aggregation_shard_dir
+
+    restore = producer._restore_join_key_dtypes
+
+    def _restore_fails_for_b(frame, baseline, keys):
+        # The producer's own failure branch: the string-safe type is kept.
+        if "b.tiff" in set(frame["Metadata_ImageName"]):
+            return frame.copy()
+        return restore(frame, baseline, keys)
+
+    monkeypatch.setattr(
+        producer, "_restore_join_key_dtypes", _restore_fails_for_b
+    )
+    snapshot = _build_v1_tree(
+        tmp_path,
+        snapshot="Metadata_Well,Metadata_Strain\n1,WT\n2,WT\n3,MUT\n4,MUT\n",
+        measurements={
+            stem: _measurements(stem, well_dtype=pl.Int64) for stem in ("a", "b")
+        },
+    )
+    monkeypatch.undo()
+
+    # Preconditions: the drift exists, in one store and not the other.
+    assert _embedded_table(tmp_path, "a").schema["Metadata_Well"] == pl.Int64
+    assert _embedded_table(tmp_path, "b").schema["Metadata_Well"] == pl.String, (
+        "the fixture did not drift b's join key; there is nothing to pin"
+    )
+
+    with caplog.at_level(logging.WARNING):
+        aggregate_measurements(
+            output_dir=tmp_path,
+            dataset_names=[DATASET],
+            include_dataset_column=True,
+            metadata_csv=snapshot,
+            njobs=njobs,
+        )
+
+    # STANDING RULE: at njobs=2 the drift must actually straddle a shard
+    # boundary, or the merge advisory is never the one under test.
+    shards = sorted(aggregation_shard_dir(tmp_path, None).glob("shard_*.parquet"))
+    if njobs == 2:
+        assert [set(pl.read_parquet(s)["Metadata_ImageName"]) for s in shards] == [
+            {"a.tiff"},
+            {"b.tiff"},
+        ], f"the drifted stores did not land in separate shards: {shards}"
+    else:
+        assert not shards, "njobs=1 fanned out; both arms take the same path"
+
+    master = _master(tmp_path)
+    assert master.height > 0, "the master is empty; every pin below is vacuous"
+    assert master.schema["Metadata_Well"] == pl.String, (
+        "the concat no longer widens a drifted key -- if it now repairs it, "
+        "update this pin and the R4 ruling it records"
+    )
+    assert any(
+        "Int64" in message and "String" in message
+        for message in _warnings_naming(caplog, "Metadata_Well")
+    ), "the dtype widening happened silently"
+
+    measured = _measured(_mirror(tmp_path))
+    assert set(measured["Metadata_ImageName"]) == {"a.tiff", "b.tiff"}, (
+        "a drifted store's rows left the mirror"
+    )
+    assert measured["Metadata_Strain"].null_count() == 0, (
+        "the drifted key nulled its rows' metadata -- the harm CAN-10(b) "
+        "predicted is real; revisit R4"
+    )
+
+
+@pytest.mark.parametrize("njobs", [1, 2])
+def test_a_finalization_that_excludes_every_store_publishes_nothing(
+    tmp_path: Path, njobs: int
+) -> None:
+    """MF-2 (Task 4 review): the direct path's outcome is the contract.
+
+    When the projection excludes every authorized store, ``finalize_run``
+    returns ``None`` and publishes nothing -- *"no measurement source could be
+    read"*. Fan-out reached a different outcome: each shard wrote its empty
+    sentinel, the merge concatenated them into a 0x0 master that overwrote the
+    previous one, an empty mirror was seeded, and an aggregate proof
+    certified 0 images while the live success count was 2. The outcome may
+    not depend on ``njobs``.
+    """
+    from phenotypic._cli._cli_completion import valid_aggregate_snapshot
+    from phenotypic._cli._cli_output_manager import aggregate_measurements
+    from phenotypic.sdk_ import aggregation_shard_dir
+
+    _publish_successful_images(tmp_path, include_well=False)
+    for stem in ("a", "b"):
+        _strip_measurement_descriptor(tmp_path, stem)
+    master = master_measurements_parquet_path(tmp_path)
+    master.parent.mkdir(parents=True, exist_ok=True)
+    pl.DataFrame({"Object_Label": [1, 2], "Shape_Area": [4.0, 4.0]}).write_parquet(
+        master
+    )
+    planted = master.read_bytes()
+
+    # Preconditions. Both stores are still AUTHORIZED, so the live success
+    # count is 2 -- not the zero-success case where a proof is refused anyway
+    # -- and neither a mirror nor a proof exists for "still none" to be about.
+    sources = authorized_measurement_sources(tmp_path) or {}
+    assert len(sources) == 2, "stripping a descriptor de-authorized a store"
+    assert not measurements_parquet_path(tmp_path).exists()
+    assert valid_aggregate_snapshot(tmp_path) is None
+
+    result = aggregate_measurements(
+        output_dir=tmp_path,
+        dataset_names=[DATASET],
+        include_dataset_column=True,
+        njobs=njobs,
+    )
+
+    shards = sorted(aggregation_shard_dir(tmp_path, None).glob("shard_*.parquet"))
+    assert len(shards) == (2 if njobs == 2 else 0), (
+        f"njobs={njobs} ran {len(shards)} shard(s); the arms are not the two paths"
+    )
+    assert result is None, "a finalization that aggregated no store reported a master"
+    assert master.read_bytes() == planted, "the previous master was overwritten"
+    assert not measurements_parquet_path(tmp_path).exists(), (
+        "a mirror was published for a master built from no store"
+    )
+    assert valid_aggregate_snapshot(tmp_path) is None, (
+        "an aggregate proof was published for a master built from no store"
+    )
+
+
+def test_a_projection_that_raises_still_removes_its_scratch_staging(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """FU-2 (Task 4 review): the projection raises by design -- a newer store
+    schema, a table missing a column its descriptor declares -- and
+    ``build_master_frame`` has already staged every table to ``$SCRATCH`` by
+    then. Removing the staging directory must not depend on it returning."""
+    from phenotypic._cli import _cli_parquet_agg
+
+    run = tmp_path / "run"
+    run.mkdir()
+    _publish_successful_images(run, include_well=False)
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    monkeypatch.setenv("SCRATCH", str(scratch))
+
+    staged: list[tuple[Path | None, bool]] = []
+
+    def _raising_projection(table_path, *, read_path=None):
+        staged.append((read_path, read_path is not None and read_path.is_file()))
+        raise RuntimeError("projection failed")
+
+    monkeypatch.setattr(
+        _cli_parquet_agg, "project_embedded_measurement_table", _raising_projection
+    )
+    with pytest.raises(RuntimeError, match="projection failed"):
+        finalize_run(run, dataset_names=[DATASET])
+
+    # STANDING RULE: the staged copy existed while the projection ran, under
+    # $SCRATCH, or its directory's absence below proves nothing.
+    assert staged, "the projection was never reached"
+    read_path, existed = staged[0]
+    assert read_path is not None and existed, (
+        "nothing was staged to $SCRATCH; there is no leak to test"
+    )
+    assert read_path.parent.parent == scratch
+    assert not read_path.parent.exists(), (
+        "the $SCRATCH staging directory leaked when the projection raised"
+    )
+
+
+def test_a_joined_store_whose_duplicate_labels_disagree_is_excluded_not_collapsed(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """CAN-10(a)'s proof obligation: never collapse two distinct objects.
+
+    Collapsing a joined store's rows on ``Object_Label`` is safe only when
+    every row sharing a label is identical across the projected columns --
+    then the duplicates are fan-out copies of one object. When they disagree
+    the store is excluded with an advisory, and the aggregate proof must not
+    certify the image the master omits.
+    """
+    import logging
+
+    from phenotypic._cli._cli_completion import valid_aggregate_snapshot
+
+    def _conflicting() -> dict[str, object]:
+        # Label 1 twice, on different wells: two rows that are NOT copies.
+        return {
+            "a": _measurements("a", extra_objects=[(1, "A02")]),
+            "b": _measurements("b"),
+        }
+
+    joined = tmp_path / "joined"
+    snapshot = _build_v1_tree(
+        joined, snapshot=_SNAPSHOT_BY_IMAGE, measurements=_conflicting()
+    )
+    unjoined = tmp_path / "unjoined"
+    _build_v1_tree(unjoined, snapshot=None, measurements=_conflicting())
+
+    # Preconditions: the conflict is in the joined store, and the control arm
+    # carries the same rows under a status the rule does not apply to.
+    assert _join_status(joined, "a") == "joined"
+    conflict = _embedded_table(joined, "a").filter(pl.col("Object_Label") == 1)
+    assert conflict.height == 2 and conflict["Metadata_Well"].n_unique() == 2, (
+        "the fixture did not produce two disagreeing rows under one label"
+    )
+    assert _join_status(unjoined, "a") == "not_requested"
+
+    with caplog.at_level(logging.WARNING):
+        finalize_run(joined, dataset_names=[DATASET], metadata_csv=snapshot)
+
+    master = _master(joined)
+    assert master.height > 0, "the whole master is empty, not one store"
+    assert set(master["Metadata_ImageName"]) == {"b.tiff"}, (
+        "a store whose same-label rows disagree was aggregated -- collapsed "
+        "(losing an object) or kept"
+    )
+    store_a = str(zarr_store_path(joined, DATASET, "a"))
+    assert _warnings_naming(caplog, store_a), "the store was excluded silently"
+    aggregate = valid_aggregate_snapshot(joined)
+    assert aggregate is not None
+    assert aggregate["source_image_count"] == 1, (
+        "the aggregate proof certifies an image the master does not carry"
+    )
+
+    # Control: the rule is about JOIN fan-out, so a table the join never
+    # touched keeps every row it has.
+    finalize_run(unjoined, dataset_names=[DATASET])
+    assert (
+        _master(unjoined).filter(pl.col("Metadata_ImageName") == "a.tiff").height
+        == 3
+    ), "a not_requested store lost rows to a rule that only concerns joins"
+
+
+def test_a_store_without_a_measurement_descriptor_is_skipped_with_an_advisory(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Step 0b. ``read_embedded_measurement_descriptor`` documents an absent
+    descriptor as a normal state, while ``embedded_measurement_columns``
+    raises ``KeyError`` on it -- so projection has a reachable unhandled
+    path. Skip the store, advise, and degrade the proof toward incomplete."""
+    import logging
+
+    from phenotypic._cli._cli_completion import valid_aggregate_snapshot
+    from phenotypic.sdk_._measurement_tables import (
+        read_embedded_measurement_descriptor,
+    )
+
+    _publish_successful_images(tmp_path, include_well=False)
+    store = _strip_measurement_descriptor(tmp_path, "a")
+
+    # Preconditions: the store is still AUTHORIZED (otherwise the skip is
+    # never reached) and the descriptor really is gone.
+    sources = authorized_measurement_sources(tmp_path) or {}
+    table = (store / MEASUREMENT_TABLE_RELATIVE_PATH).resolve()
+    assert table in {Path(path).resolve() for path in sources}, (
+        "stripping the descriptor de-authorized the store; the skip is unreached"
+    )
+    with pytest.raises(KeyError):
+        read_embedded_measurement_descriptor(store)
+
+    with caplog.at_level(logging.WARNING):
+        finalize_run(tmp_path, dataset_names=[DATASET])
+
+    master = _master(tmp_path)
+    assert master.height > 0, "the whole master is empty, not one store"
+    assert set(master["Metadata_ImageName"]) == {"b.tiff"}, (
+        "a store with no descriptor was aggregated without its column list"
+    )
+    assert _warnings_naming(caplog, str(store)), "the store was skipped silently"
+    aggregate = valid_aggregate_snapshot(tmp_path)
+    assert aggregate is not None
+    assert aggregate["source_image_count"] == 1, (
+        "the aggregate proof certifies an image the master does not carry"
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -311,7 +311,7 @@ def _run_measurement_task(
 ) -> None:
     """Aggregate one measurement shard and write it under progress."""
 
-    from ._cli_parquet_agg import aggregate_parquet_files
+    from ._cli_parquet_agg import aggregate_measurement_sources
 
     files = [Path(path) for path in task.get("files", [])]
     metadata_csv_raw = task.get(JobMetadataKey.METADATA_CSV)
@@ -359,11 +359,14 @@ def _run_measurement_task(
         path: _dataset_name_from_measurement_path(output_dir, path)
         for path in files
     }
-    shard_df = aggregate_parquet_files(
-        file_paths=files,
-        path_to_dataset=path_to_dataset,
+    # Projected like every other read path into the master (P7 Task 4): the
+    # tables above were just rewritten by the pre-inversion producer, so they
+    # are joined. KNOWN GAP: a store the projection excludes is not reported
+    # to the finalizer, whose aggregate proof is published against the
+    # sources it selects itself rather than what these shards merged.
+    shard_df, _merged = aggregate_measurement_sources(
+        path_to_dataset,
         include_dataset_column=bool(task.get("include_dataset_column", True)),
-        keep_filename=True,
     )
     if shard_df is None:
         raise RuntimeError("No valid measurements found for shard")
