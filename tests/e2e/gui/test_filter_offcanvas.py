@@ -29,7 +29,7 @@ from tests.e2e.gui.conftest import (
     bind_results_output,
     publish_coherent_terminal_evidence,
 )
-from tests._output_layout import write_measurements_mirror
+from tests._output_layout import write_master, write_measurements_mirror
 
 # Module-level marker: skipped on CI via ``-m "not ci_flaky"`` in the
 # gui-e2e workflow. Locally these tests pass reliably; on GHA ubuntu-latest
@@ -93,15 +93,11 @@ def _seed_viewer_output(sandbox: Path) -> Path:
     requires the master there. Resolve the paths via the ``phenotypic.sdk_``
     helpers rather than hand-joining names.
     """
-    from phenotypic.sdk_ import master_measurements_parquet_path
-
     out = sandbox / "results" / _OUTPUT_NAME
     out.mkdir(parents=True, exist_ok=True)
 
     master = _build_master()
-    master_path = master_measurements_parquet_path(out)
-    master_path.parent.mkdir(parents=True, exist_ok=True)
-    master.write_parquet(master_path)
+    write_master(out, master)
     write_measurements_mirror(out, master)
 
     # Overlay PNGs — seed ds1 overlays so the viewer can resolve them.

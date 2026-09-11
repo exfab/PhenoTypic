@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import ast
-from collections import Counter
 import json
 from pathlib import Path
 import re
@@ -23,6 +22,10 @@ PLAYWRIGHT_FIXTURES = frozenset(
 
 #: A browser test module the scan must find, so an empty scan cannot pass.
 KNOWN_BROWSER_MODULE = Path("tests/gui/results_viewer/test_splitter_browser.py")
+
+#: Every name the AST scan can match. A module whose source spells none of them
+#: cannot match, so the scan skips parsing it -- which is most modules.
+_BROWSER_NEEDLES = ("playwright", *PLAYWRIGHT_FIXTURES)
 
 
 def _is_test_file(path: Path) -> bool:
@@ -63,14 +66,12 @@ def _shards_by_module() -> dict[Path, list[dict]]:
     return owners
 
 
-def _manifest_assignments() -> Counter[Path]:
-    """Expand every manifest entry into its assigned test modules."""
-    return Counter({path: len(shards) for path, shards in _shards_by_module().items()})
-
-
 def _requests_a_browser(path: Path) -> bool:
     """Return whether a test module needs an installed Playwright browser."""
-    tree = ast.parse((REPO_ROOT / path).read_text(encoding="utf-8"), filename=str(path))
+    source = (REPO_ROOT / path).read_text(encoding="utf-8")
+    if not any(needle in source for needle in _BROWSER_NEEDLES):
+        return False
+    tree = ast.parse(source, filename=str(path))
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             parameters = {arg.arg for arg in [*node.args.args, *node.args.kwonlyargs]}
@@ -87,11 +88,10 @@ def _requests_a_browser(path: Path) -> bool:
 
 def test_each_configured_test_file_belongs_to_exactly_one_shard() -> None:
     """Prevent tests from being silently omitted or run more than once."""
-    configured = _configured_test_files()
-    assignments = _manifest_assignments()
+    owners = _shards_by_module()
 
-    assert set(assignments) == configured
-    assert all(count == 1 for count in assignments.values())
+    assert set(owners) == _configured_test_files()
+    assert all(len(shards) == 1 for shards in owners.values())
 
 
 def test_pr_workflow_uses_complete_shards_without_testmon() -> None:

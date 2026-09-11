@@ -26,11 +26,11 @@ from tests._output_layout import (
 )
 
 
-def _seed(root: Path, images: list[str], dataset: str = "ds1") -> None:
-    """Write a master and mirror listing ``images`` under one dataset."""
+def _seed(root: Path, images: list[str]) -> None:
+    """Write a master and mirror listing ``images`` under dataset ``ds1``."""
     frame = pl.DataFrame(
         {
-            "Metadata_Dataset": [dataset] * len(images),
+            "Metadata_Dataset": ["ds1"] * len(images),
             "Metadata_ImageName": images,
             "Object_Label": list(range(1, len(images) + 1)),
             "Shape_Area": [100.0 + index for index in range(len(images))],

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from collections import Counter
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
 
@@ -372,31 +373,22 @@ def bump_scientific_config_digest(
     return digest
 
 
-def _publish_one_image(
+def _publish_success_marker(
     output: Path,
     *,
+    dataset: str,
     stem: str,
+    work_id: str,
     mode: str,
-    with_overlay: bool = True,
-    dataset: str = FIXTURE_DATASET,
+    artifacts: dict[str, Path],
 ) -> None:
-    """Promote one image's artifacts and publish its success marker.
+    """Publish one image's success marker in the fixtures' single marker shape.
 
-    Marker-last, artifacts first -- the publication contract's own order.
-    Factored out so ``build_complete_run`` and :func:`extend_complete_run`
-    cannot drift into publishing two different shapes of image.
+    Every fixture publisher routes its marker through here, whatever artifacts it
+    certifies, so no two fixtures publish differently shaped images.
     """
     from phenotypic._cli._cli_completion import publish_image_success
 
-    work_id = f"work-{stem}"
-    store = _promote_minimal_store(
-        output, dataset=dataset, stem=stem, work_id=work_id
-    )
-    artifacts = {"store": store}
-    if with_overlay:
-        artifacts["overlay"] = _write_overlay(
-            output, dataset=dataset, stem=stem
-        )
     publish_image_success(
         output,
         work_id=work_id,
@@ -412,6 +404,34 @@ def _publish_one_image(
         # (`RunIdentity.scheduler_epoch`) -- see the drift register's entry 24.
         lifecycle_epoch="local",
         artifacts=artifacts,
+    )
+
+
+def _publish_one_image(
+    output: Path,
+    *,
+    stem: str,
+    mode: str,
+    with_overlay: bool = True,
+    dataset: str = FIXTURE_DATASET,
+) -> None:
+    """Promote one image's artifacts and publish its success marker.
+
+    Marker-last, artifacts first -- the publication contract's own order.
+    Factored out so ``build_complete_run`` and :func:`extend_complete_run`
+    cannot drift into publishing two different shapes of image.
+    """
+    work_id = f"work-{stem}"
+    store = _promote_minimal_store(
+        output, dataset=dataset, stem=stem, work_id=work_id
+    )
+    artifacts = {"store": store}
+    if with_overlay:
+        artifacts["overlay"] = _write_overlay(
+            output, dataset=dataset, stem=stem
+        )
+    _publish_success_marker(
+        output, dataset=dataset, stem=stem, work_id=work_id, mode=mode, artifacts=artifacts
     )
 
 
@@ -624,7 +644,6 @@ def publish_complete_run_over_outputs(root: Path, *, total_images: int) -> Path:
 
     from phenotypic._cli._cli_completion import (
         publish_aggregate_snapshot,
-        publish_image_success,
         publish_run_completion_evidence,
     )
     from phenotypic.sdk_ import dataset_overlays_dir, zarr_store_path
@@ -649,14 +668,13 @@ def publish_complete_run_over_outputs(root: Path, *, total_images: int) -> Path:
     assert images.height == total_images, (
         f"master lists {images.height} images, fixture declared {total_images}"
     )
-    stems = [(dataset, Path(str(image)).stem) for dataset, image in images.iter_rows()]
-    shared = sorted({pair for pair in stems if stems.count(pair) > 1})
+    keys = [(dataset, Path(str(image)).stem) for dataset, image in images.iter_rows()]
+    shared = sorted(key for key, count in Counter(keys).items() if count > 1)
     assert not shared, (
         f"master images share a stem within a dataset {shared}; each image needs its own work id"
     )
     work_ids: dict[str, dict[str, str]] = {}
-    for dataset, image in images.iter_rows():
-        stem = Path(str(image)).stem
+    for dataset, stem in keys:
         work_id = f"work-{dataset}-{stem}"
         store = zarr_store_path(root, dataset, stem)
         overlay = dataset_overlays_dir(root, dataset) / f"{stem}.png"
@@ -670,16 +688,8 @@ def publish_complete_run_over_outputs(root: Path, *, total_images: int) -> Path:
                     root, dataset=dataset, stem=stem, work_id=work_id
                 )
             }
-        publish_image_success(
-            root,
-            work_id=work_id,
-            dataset=dataset,
-            relative_image_path=f"{stem}.tif",
-            image_stem=stem,
-            mode="full",
-            attempt_id=f"attempt-{stem}",
-            lifecycle_epoch="local",
-            artifacts=artifacts,
+        _publish_success_marker(
+            root, dataset=dataset, stem=stem, work_id=work_id, mode="full", artifacts=artifacts
         )
         work_ids.setdefault(dataset, {})[f"{stem}.tif"] = work_id
     write_processing_state(root, work_ids=work_ids)
