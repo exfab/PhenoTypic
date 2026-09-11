@@ -248,6 +248,21 @@ All startup guards run the entry point in a **subprocess** (`sys.executable`), b
 - Memory footprint. First-use latency in notebooks is accepted (B2).
 - Moving the Dash-free modules `_cli/_cli_error_outputs.py` imports out of `_gui` (a non-goal carried from the private-gui spec).
 
+## Amendment A — findings while writing the plan (2026-09-11)
+
+The plan resolves these against the code; they refine the design without changing its decisions.
+
+| # | Spec text | Finding | Change |
+|---|---|---|---|
+| P1 | Design §3: the CLI's phenotypic imports "move into the command body or into the helpers that use them" | 36 test files import from `phenotypic.phenotypicCLI`. 27 `mock.patch` sites target names on it, 5 of them imported names such as `create_execution_strategy`, and a function-local import would silently bypass those patches. A post-change static closure (`probes/post_change_closure.py`) shows only 9 of the 25 phenotypic import statements stay heavy (24 names). | Those 24 names plus `available_modes` are bound into module globals by `_load_cli_runtime()` using `globals().setdefault`, so an active patch wins. It is called first in `phenotypic_cli`, `_migrate_legacy_success_evidence`, `_regenerate_missing_overlays` and `_handle_recompile_slurm`. A module `__getattr__` serves external access, and a `TYPE_CHECKING` block serves mypy. The 16 light import statements stay at module level. |
+| P2 | Design §4 changes only the launcher module | `phenotypic._gui.shell/__init__.py` eagerly imports `_app` (dash) and `_launcher`, and the console script imports that package first. | `shell/__init__.py` gets PEP 562 re-exports. |
+| P3 | Appendix A lists `_core/_image_parts/plot_accessor/_diagnostics_plotter.py`, `correction/_color_correction/_color_correction_report.py` and `grid/_grid_fit_report.py` as simple moves | Each imports `sdk_.viz.figures._theme`, which imports plotly by contract, so moving their own plotly/matplotlib imports would not keep plotly out; none is on a guarded path. | Left unchanged. 33 modules are edited. |
+| P4 | Design §2: the dash handler's docs-build renderer switch moves into a first-plot helper | Under `PHENOTYPIC_DOCS_BUILD`, today's switch runs at `import phenotypic` and affects every plotly figure the notebook kernel renders, not only accessor figures. | The switch moves to `_startup_perf`. It still runs at `import phenotypic`, and only when the variable is set. |
+| P5 | Design §1: "the 14 subpackages" | `phenotypic/__init__.py` imports 15: `abc_` plus 14. | 15. |
+| P6 | Design §2 names the `sdk_.colourspace` importers without their use sites | The use sites are `_xyz_conversion.rgb_to_xyz`, `ColorDenoise._operate` and `DenoiseBlockMatch._denoise_channel`. | They are named in the plan's deferral table. |
+| P7 | Tests, tier 2 runs the `phenotypic-gui` console script | A console script's `sys.modules` cannot be inspected after it exits. | The guard runs `phenotypic._gui.shell._launcher.main(["--help"])` in a fresh interpreter. The installed script's exit code and help text stay covered by `tests/integration/gui/test_console_script.py`. |
+| P8 | Where each lazy `__init__` defines `__getattr__` is unspecified | A cycle that re-enters a package `__init__` before its end would not see a `__getattr__` defined at the bottom. | Each lazy `__init__` defines its lazy map and `__getattr__` before its first eager import. |
+
 ## Known risks
 
 - **Cycles in leaf-first imports the sweep does not cover.** The sweep covers every package and the named entry modules, not every leaf module. Mitigation: the `__init__` of the package containing any leaf runs first, so package coverage catches the cycles found so far; the three known sites are fixed at the source.
