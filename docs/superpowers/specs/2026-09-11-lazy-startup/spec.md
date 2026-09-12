@@ -211,7 +211,7 @@ All startup guards run the entry point in a **subprocess** (`sys.executable`), b
   - the full default lanes (`tests/unit tests/integration tests/gui tests/smoke`, run-phenotypic-test settings);
   - `PLAYWRIGHT=1` e2e: the builder suite (`tests/e2e/gui/builder/`, 10 files) plus the six ci_flaky helper-caller modules;
   - `sphinx-build -n` warnings vs the pre-change commit via `docs/superpowers/logic_validation_scripts/2026-09-10-private-gui-module/compare_findings.py docs` (autosummary imports the lazy modules);
-  - mypy (fresh `--cache-dir`) finding set not worse than the pre-change commit (418), and ruff not worse than 65.
+  - mypy (fresh `--cache-dir`) and `ruff check src/phenotypic` finding sets not worse than the pre-change commit (418 and 25 at `BASE_PRE`; compared as sets with `compare_findings.py`).
 - **Known pre-existing local failures** (not caused by this change): `tests/unit/test_ngff_schema_fixtures.py::test_schema_matches_recorded_digest[*]` fails on autocrlf checkouts, because the committed LF blobs match `SOURCE.md` but the CRLF working copies don't.
 
 ## Documentation in the same change
@@ -234,7 +234,7 @@ All startup guards run the entry point in a **subprocess** (`sys.executable`), b
    - the full default lanes pass, apart from the known pre-existing local failures;
    - the builder e2e suite and the ci_flaky helper modules pass;
    - there are 0 new Sphinx warnings;
-   - mypy and ruff are not worse than 418/65.
+   - the mypy and ruff (`src/phenotypic`) finding sets are not worse than at `BASE_PRE` (418 / 25).
 9. **Measurements:** a before/after table for the seven paths is committed in the report and quoted in the PR.
 10. **Documentation:** the updates listed above land in the same change.
 11. **No numeric change:** no numba kernel, colour constant value or algorithm output changes; existing numeric and golden tests pass unmodified.

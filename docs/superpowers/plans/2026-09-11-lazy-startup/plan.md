@@ -34,7 +34,7 @@ Deterministic subprocess guards keep all of it that way.
 - **Failing tests.** A test that cannot run must fail, not skip.
 - **Commits.** Each task's implementer commits its own work.
   - Stage by explicit path, never `git add -A`/`git commit -a`, and check `git diff --cached --stat` before committing.
-  - End every commit message with the `Co-Authored-By:` trailer your environment specifies (it names the model that wrote the commit), followed by `Claude-Session: https://claude.ai/code/session_01GxzwZcwTtBDMiX1Tk5Dzg5`.
+  - End every commit message with the `Co-Authored-By:` trailer your environment specifies (it names the model that wrote the commit), followed by `Claude-Session: https://claude.ai/code/session_017uC78YpUE6Wh24wuAzWFe6`.
 - **Sequencing.** Tasks run strictly one at a time: one checkout, one git index. Do not push.
 - **Line endings.** The working tree is CRLF (`core.autocrlf=true`).
   - A multi-line exact-match edit that your editor cannot apply must go through a `uv run python -c` script that reads bytes, asserts the old block occurs exactly once, and writes back with the file's own line endings.
@@ -331,7 +331,7 @@ def test_every_deferred_module_is_watched_at_startup() -> None:
 - **Produces:** `phenotypic.__getattr__`/`__dir__`; `phenotypic.sdk_._LAZY_ATTRS`; `phenotypic.abc_._LAZY_ATTRS`. Import-order independence for every package.
 
 - [ ] **Step 1: Append the tests** to `tests/unit/ci/test_startup_imports.py`.
-  - Merge `from pathlib import Path`, `import importlib` and `import pytest` into the import block at the top of the file.
+  - Merge `from pathlib import Path` and `import pytest` into the import block at the top of the file.
   - Import the name `phenotypic` inside the lazy-attribute test, so collection does not import it early.
 
 ```python
