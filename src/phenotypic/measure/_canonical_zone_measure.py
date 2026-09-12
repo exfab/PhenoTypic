@@ -279,11 +279,3 @@ class CanonicalZoneMeasure(MeasureFeatures):
             legacy_mode=self.legacy_mode,
             detected_centers=self._detected_centers(image),
         )
-
-    @classmethod
-    def _migrate_serialized_params(cls, params: dict[str, Any]) -> dict[str, Any]:
-        """Preserve behavior for payloads created before either new default."""
-        migrated = dict(params)
-        migrated.setdefault("center_detector", None)
-        migrated.setdefault("legacy_mode", True)
-        return migrated

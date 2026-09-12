@@ -490,14 +490,14 @@ def test_canonical_mode_does_not_execute_legacy_colony_ness(
 
 
 @pytest.mark.parametrize("operation", [MeasureSymZones, MeasureOrientationZones])
-def test_new_instances_are_canonical_but_old_serialized_payloads_migrate(operation):
+def test_omitted_fields_follow_current_canonical_defaults(operation):
     new_operation = operation()
     assert new_operation.legacy_mode is False
     assert isinstance(new_operation.center_detector, ImagePipeline)
     old_payload = {"class": operation.__name__, "params": {}}
     restored = BaseOperation.from_json(json.dumps(old_payload))
-    assert restored.legacy_mode is True
-    assert restored.center_detector is None
+    assert restored.legacy_mode is False
+    assert isinstance(restored.center_detector, ImagePipeline)
     new_payload = json.loads(new_operation.to_json())
     assert new_payload["params"]["legacy_mode"] is False
     assert new_payload["params"]["center_detector"]["__type__"] == "pipeline"
@@ -541,7 +541,7 @@ def test_explicit_none_retains_the_final_mask_edt_center(operation):
 
 
 @pytest.mark.parametrize("operation", [MeasureSymZones, MeasureOrientationZones])
-def test_pre_default_canonical_payload_migrates_to_edt_center(operation):
+def test_payload_without_center_detector_uses_current_default(operation):
     restored = BaseOperation.from_json(
         json.dumps(
             {
@@ -552,19 +552,21 @@ def test_pre_default_canonical_payload_migrates_to_edt_center(operation):
     )
 
     assert restored.legacy_mode is False
-    assert restored.center_detector is None
+    assert isinstance(restored.center_detector, ImagePipeline)
 
 
-def test_old_pipeline_measurement_payload_migrates_to_legacy_mode():
+def test_pipeline_payload_with_omitted_fields_uses_current_defaults():
     payload = json.loads(ImagePipeline(meas=[MeasureSymZones()]).to_json())
     del payload["meas"]["MeasureSymZones"]["params"]["legacy_mode"]
     del payload["meas"]["MeasureSymZones"]["params"]["center_detector"]
     restored = ImagePipeline.from_json(json.dumps(payload))
-    assert restored._meas["MeasureSymZones"].legacy_mode is True
-    assert restored._meas["MeasureSymZones"].center_detector is None
+    assert restored._meas["MeasureSymZones"].legacy_mode is False
+    assert isinstance(
+        restored._meas["MeasureSymZones"].center_detector, ImagePipeline
+    )
 
 
-def test_old_nested_operation_payload_migrates_to_legacy_mode():
+def test_nested_payload_with_omitted_fields_uses_current_defaults():
     class _OperationHost(BaseModel):
         model_config = ConfigDict(arbitrary_types_allowed=True)
         operation: OperationField  # type: ignore[valid-type]
@@ -572,7 +574,8 @@ def test_old_nested_operation_payload_migrates_to_legacy_mode():
     restored = _OperationHost.model_validate(
         {"operation": {"class": "MeasureSymZones", "params": {}}}
     )
-    assert restored.operation.legacy_mode is True
+    assert restored.operation.legacy_mode is False
+    assert isinstance(restored.operation.center_detector, ImagePipeline)
 
 
 @pytest.mark.parametrize(

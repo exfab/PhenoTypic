@@ -2,9 +2,10 @@
 
 This fixture is intentionally broader than the older legacy-only SymZones
 parquets. It freezes the public measurement tables, selected center, solver
-status, and operation serialization before the orientation-zone orchestration
-is simplified. The source images are deterministic synthetic arrays generated
-below, so the golden contains behavior rather than duplicated pixel data.
+status, hard-cutover defaults, and operation serialization before the
+orientation-zone orchestration is simplified. The source images are
+deterministic synthetic arrays generated below, so the golden contains behavior
+rather than duplicated pixel data.
 """
 
 from __future__ import annotations
@@ -214,8 +215,8 @@ def _current_snapshot() -> dict[str, Any]:
             ),
         },
         "serialization": {
-            "old_symmetric_migrated": json.loads(old_symmetric.to_json()),
-            "old_orientation_migrated": json.loads(old_orientation.to_json()),
+            "omitted_symmetric_defaults": json.loads(old_symmetric.to_json()),
+            "omitted_orientation_defaults": json.loads(old_orientation.to_json()),
             "configured_roundtrip": json.loads(
                 MeasureOrientationZones.from_json(configured.to_json()).to_json()
             ),

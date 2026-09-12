@@ -228,7 +228,7 @@ its historical family-specific domains.
 `SymmetricRadius` remains visible as an independent mask-symmetry measurement;
 it is not the canonical Method B outer boundary.
 
-## 7. Serialization compatibility
+## 7. Serialization hard cutover
 
 Direct construction with no arguments selects canonical mode and the default
 grayscale-reset inoculum-center pipeline. Newly serialized operations always
@@ -237,20 +237,24 @@ include the complete default center pipeline unless the user explicitly chose
 `"center_detector": null`. A configured detector round-trips through the
 shared `OperationField` class-tagged representation.
 
-Serialized `MeasureOrientationZones` and `MeasureSymZones` payloads that lack
-`legacy_mode` predate the Method B redesign. The class-specific migration hook
-inserts `legacy_mode=True`. Payloads that lack `center_detector` predate the
-new center default, so the same hook inserts `center_detector=None` and retains
-their original final-mask EDT behavior. This applies through every operation
-deserialization path:
+Deserialization uses ordinary Pydantic `model_validate` behavior with no
+class-specific orientation migration hook. A payload that omits `legacy_mode`
+therefore receives the current declared default, `False`. A payload that omits
+`center_detector` receives the current default grayscale-reset inoculum-center
+pipeline. Historical payloads retain the old colony-ness and final-mask EDT
+behavior only when they explicitly contain `"legacy_mode": true` and
+`"center_detector": null`, respectively. This hard cutover applies through
+every operation deserialization path:
 
 - standalone `BaseOperation.from_json()`;
 - pipeline measurement deserialization;
 - legacy nested operation markers; and
 - `OperationField` reconstruction.
 
-This distinguishes historical reproducibility from the new-construction
-default without maintaining two canonical surfaces.
+The same validation path is shared by operation-like Pydantic models that are
+not `BaseOperation` subclasses, including tuning scorers. Keeping the generic
+deserializer free of orientation-specific hooks avoids imposing an operation
+method on those models.
 
 ## 8. Evaluation and interpretation
 
@@ -335,17 +339,18 @@ extent sensitivity setting.
 - Canonical failure must not expose legacy zone boundaries.
 - Canonical mode must not execute the legacy colony-ness extension.
 - `legacy_mode=True` must preserve the historical measurement goldens.
-- The pre-simplification migration golden at
+- The pre-simplification serialization golden at
   `tests/unit/measure/_golden/orientation_zones_pre_simplification.json` freezes
   complete `MeasureSymZones` and diagnostic `MeasureOrientationZones` tables,
-  selected centers, solver states, configured-detector serialization, and old
-  payload migration for exact, collapsed, missing, tiny, detector-center, and
+  selected centers, solver states, configured-detector serialization, and
+  hard-cutover defaults for exact, collapsed, missing, tiny, detector-center, and
   legacy cases. Regenerate it only through the opt-in capture test in
   `test_orientation_zone_migration_golden.py` before intentional behavior
   changes. Its initial SHA-256 is
   `7f67797ea72d2e9c54b1352d06db55c5f3a6eff260819141e89e899f2b1dd073`.
-- Old standalone, pipeline, legacy-nested, and `OperationField` payloads must
-  migrate to legacy mode; new payloads must serialize the canonical default.
+- Standalone, pipeline, legacy-nested, and `OperationField` payloads that omit
+  the new fields must use the current canonical defaults. Explicit
+  `legacy_mode=True` payloads must continue to select legacy behavior.
 - Inspection figures must show the exact configured outer percentile and apply
   the same inner exclusion used by measurement.
 - The crop notebook must execute top-to-bottom and save traceable manifests,

@@ -1492,14 +1492,46 @@
         "zone_support_weight": 4.0
       }
     },
-    "old_orientation_migrated": {
+    "omitted_orientation_defaults": {
       "class": "MeasureOrientationZones",
       "params": {
-        "center_detector": null,
+        "center_detector": {
+          "__type__": "pipeline",
+          "config": {
+            "desc": "Reset detect_mat to grayscale and locate compact inoculum centers with the validated Otsu InoculumDetector regime.",
+            "filters": {},
+            "meas": {},
+            "model": null,
+            "name": "orientation-zone-default-center-detector",
+            "pipe_cfgs": {
+              "InoculumDetector": {
+                "class": "InoculumDetector",
+                "params": {
+                  "enable_gmm": true,
+                  "gmm_n_components": 2,
+                  "gmm_separation_threshold": 0.9,
+                  "max_diameter": 140.0,
+                  "min_diameter": 20.0,
+                  "thresh_method": "otsu",
+                  "validate_obj_count": true
+                }
+              },
+              "SetDetectMode": {
+                "class": "SetDetectMode",
+                "params": {
+                  "mode": "gray"
+                }
+              }
+            },
+            "post": {},
+            "reset": false,
+            "version": "0.19.0"
+          }
+        },
         "extent_margin": 0.05,
         "include_diagnostics": false,
         "intensity_source": "detect_mat",
-        "legacy_mode": true,
+        "legacy_mode": false,
         "long_range_lag": 16.0,
         "method": "distance",
         "min_samples_per_ring": 5,
@@ -1527,13 +1559,45 @@
         "zone_support_weight": 4.0
       }
     },
-    "old_symmetric_migrated": {
+    "omitted_symmetric_defaults": {
       "class": "MeasureSymZones",
       "params": {
-        "center_detector": null,
+        "center_detector": {
+          "__type__": "pipeline",
+          "config": {
+            "desc": "Reset detect_mat to grayscale and locate compact inoculum centers with the validated Otsu InoculumDetector regime.",
+            "filters": {},
+            "meas": {},
+            "model": null,
+            "name": "orientation-zone-default-center-detector",
+            "pipe_cfgs": {
+              "InoculumDetector": {
+                "class": "InoculumDetector",
+                "params": {
+                  "enable_gmm": true,
+                  "gmm_n_components": 2,
+                  "gmm_separation_threshold": 0.9,
+                  "max_diameter": 140.0,
+                  "min_diameter": 20.0,
+                  "thresh_method": "otsu",
+                  "validate_obj_count": true
+                }
+              },
+              "SetDetectMode": {
+                "class": "SetDetectMode",
+                "params": {
+                  "mode": "gray"
+                }
+              }
+            },
+            "post": {},
+            "reset": false,
+            "version": "0.19.0"
+          }
+        },
         "extent_margin": 0.05,
         "intensity_source": "gray",
-        "legacy_mode": true,
+        "legacy_mode": false,
         "method": "distance",
         "min_samples_per_ring": 5,
         "n_angular_bins": 6,
