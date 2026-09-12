@@ -266,7 +266,7 @@ def test_every_deferred_module_is_watched_at_startup() -> None:
   Expected: a collection error, `ImportError: cannot import name 'DEFERRED_RUNTIME_MODULES'`.
 
 - [ ] **Step 4: Implement.** Make these changes in `src/phenotypic/_startup_perf.py`:
-  - Add `import os` and `import warnings` to the imports.
+  - Add `import warnings` to the imports. Do **not** add `import os`: only Task 3's renderer function uses it, and an unused import fails this task's own ruff step.
   - Replace `__all__ = ["IMPORT_STARTED_AT", "install_lazy_colour_plotting"]` with:
 
     ```python
@@ -978,7 +978,7 @@ def test_docs_build_still_selects_the_notebook_connected_renderer() -> None:
     ```
 
   - Add `import plotly.express as px` as the first statement after the docstring of `AccessorDashHandler._plotly_imshow`.
-  - In `src/phenotypic/_startup_perf.py`, add `"configure_docs_build_plotly_renderer"` to `__all__`, then define this function above the module's final `install_lazy_colour_plotting()` call:
+  - In `src/phenotypic/_startup_perf.py`, add `import os` to the imports and `"configure_docs_build_plotly_renderer"` to `__all__`, then define this function above the module's final `install_lazy_colour_plotting()` call:
 
     ```python
     def configure_docs_build_plotly_renderer() -> bool:

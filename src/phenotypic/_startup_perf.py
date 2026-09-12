@@ -24,7 +24,6 @@ to it — so this is an optimization, not a feature removal.
 from __future__ import annotations
 
 import importlib
-import os
 import sys
 import time
 import types
