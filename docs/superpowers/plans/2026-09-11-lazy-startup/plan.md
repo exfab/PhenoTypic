@@ -1175,6 +1175,7 @@ Deferral table (paths relative to `src/phenotypic/`; apply the point-of-use rule
 
 **Files:**
 - Modify: `src/phenotypic/phenotypicCLI.py`
+- Modify: `src/phenotypic/_startup_perf.py`
 - Modify: `src/phenotypic/_cli/_cli_process_single.py`, `src/phenotypic/_cli/_cli_staged_slurm_worker.py`, `src/phenotypic/_cli/_cli_recompile_worker.py`, `src/phenotypic/_cli/_cli_checkpoint_handler.py`
 - Modify: `tests/unit/ci/test_startup_imports.py`
 - Create: `tests/unit/cli/test_cli_runtime_preload.py`
@@ -1449,6 +1450,66 @@ def __getattr__(name: str) -> Any:
   - `_cli/_cli_staged_slurm_worker.py`: directly after `args = parser.parse_args(argv)`.
   - `_cli/_cli_recompile_worker.py`: first statement of `main`, before `try:`.
   - `_cli/_cli_checkpoint_handler.py`: first statement of `main`, before the `checkpoint: CheckpointType = (` assignment.
+
+- [ ] **Step 5b: Keep the preload honest about optional extras.** Every name in `DEFERRED_RUNTIME_MODULES` is a hard `[project.dependencies]` entry today, so the preload cannot fail on a missing extra. This step makes that a property the code enforces rather than a fact someone must remember.
+  1. In `src/phenotypic/_startup_perf.py`, change `import importlib` to `import importlib.util` (the submodule is needed for `find_spec`, and it still binds the name `importlib`), then add this constant beside `DEFERRED_RUNTIME_MODULES`:
+
+     ```python
+     #: Deferred libraries that ship as optional extras. They are imported only when
+     #: installed, so a CPU-only or GUI-less environment does not fail at startup for a
+     #: library it never uses. Empty today: every name in DEFERRED_RUNTIME_MODULES is a
+     #: hard ``[project.dependencies]`` entry, which
+     #: ``test_every_deferred_runtime_module_is_a_hard_dependency`` pins.
+     DEFERRED_OPTIONAL_MODULES: tuple[str, ...] = ()
+     ```
+
+  2. Add `"DEFERRED_OPTIONAL_MODULES"` to `__all__`, and append this loop to `load_runtime_dependencies()` after the existing one:
+
+     ```python
+     for module_name in DEFERRED_OPTIONAL_MODULES:
+         if importlib.util.find_spec(module_name) is not None:
+             importlib.import_module(module_name)
+     ```
+
+  3. Extend the function's docstring with one sentence: optional modules are imported only when installed, so a missing extra is skipped rather than raising.
+  4. Append this test to `tests/unit/ci/test_startup_imports.py` (it needs `import re` and `import tomllib` in the file's import block; `REPO_ROOT` already exists there):
+
+     ```python
+     def test_every_deferred_runtime_module_is_a_hard_dependency() -> None:
+         """The required preload set must hold only libraries every install has.
+
+         An extras-only library here would make `phenotypic --help`'s sibling — an actual
+         run — fail at startup on any environment without that extra. Such a library
+         belongs in ``DEFERRED_OPTIONAL_MODULES``, which is skipped when absent.
+         """
+         from importlib.metadata import packages_distributions
+
+         project = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+         required = {
+             re.split(r"[<>=!\[;]", specifier, maxsplit=1)[0].strip().lower().replace("_", "-")
+             for specifier in project.get("dependencies", [])
+         }
+         installed = packages_distributions()
+
+         unresolved, optional_only = [], []
+         for module_name in DEFERRED_RUNTIME_MODULES:
+             distributions = {
+                 name.lower().replace("_", "-")
+                 for name in installed.get(module_name.split(".")[0], ())
+             }
+             if not distributions:
+                 unresolved.append(module_name)
+             elif not distributions & required:
+                 optional_only.append(f"{module_name} -> {sorted(distributions)}")
+
+         assert unresolved == [], f"not installed, so this check cannot run: {unresolved}"
+         assert optional_only == [], (
+             f"extras-only libraries in the required preload set: {optional_only}; "
+             "move them to DEFERRED_OPTIONAL_MODULES"
+         )
+     ```
+
+  5. Prove it can fail: temporarily append `"optuna"` (a `tune` extra) to `DEFERRED_RUNTIME_MODULES`, run the test and confirm it fails naming optuna, then restore. Record both runs.
 
 - [ ] **Step 6: Run Step 3's command (GREEN).** Expected: all pass.
 - [ ] **Step 7: Test surface.** Expected: no failures beyond attributed pre-existing ones.
