@@ -11,16 +11,18 @@ flag from any row.
 from __future__ import annotations
 
 from math import sqrt
-from typing import Any, ClassVar
+from typing import Any, ClassVar, TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 
 from phenotypic.analysis.abc_._quality_check import QualityCheck
 from phenotypic.abc_.plotting import PlotQc
 from phenotypic.schema import CULTURE, QUALITY_SE
 from phenotypic.sdk_ import ColumnRef
+
+if TYPE_CHECKING:
+    import plotly.graph_objects as go
 
 _TIME = str(CULTURE.TIME)
 
@@ -241,6 +243,8 @@ class ReplicateAgreement(QualityCheck, PlotQc):
         Raises:
             RuntimeError: If :meth:`analyze` has not been called yet.
         """
+        import plotly.graph_objects as go
+
         del subject, for_save
         df = self._latest_measurements
         if df.empty:

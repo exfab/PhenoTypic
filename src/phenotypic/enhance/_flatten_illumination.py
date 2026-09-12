@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated
 
-import cv2
 import numpy as np
 from pydantic import Field
 
@@ -144,6 +143,8 @@ class FlattenIllumination(BackgroundSubtraction):
           (kernel side = 6*sigma + 1 can exceed 1200 pixels). For high-resolution
           images, consider downsampling or reducing sigma.
         """
+        import cv2
+
         log_image = np.log(array.astype(np.float32) + eps)
 
         ksize = int(6 * sigma + 1)
