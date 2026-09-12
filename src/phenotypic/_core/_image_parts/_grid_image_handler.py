@@ -85,13 +85,15 @@ class ImageGridHandler(Image):
             _accessors.grid (GridAccessor): The grid accessor object for managing and
                 accessing grid-related functionalities.
         """
-        from phenotypic.grid import CenteredAutoGridFinder
-
         super().__init__(arr=arr, name=name, **kwargs)
 
         if hasattr(arr, "grid_finder"):
             grid_finder = arr.grid_finder
         elif grid_finder is None:
+            # Inside the branch, not at the top of __init__: a caller that supplies a
+            # finder should not pay for importing phenotypic.grid at all.
+            from phenotypic.grid import CenteredAutoGridFinder
+
             grid_finder = CenteredAutoGridFinder(nrows=nrows, ncols=ncols)
 
         self._grid_finder: Optional[GridFinder] = grid_finder

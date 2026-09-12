@@ -115,9 +115,12 @@ class AccessorDashHandler(AccessorMplHandler):
         Returns:
             A ``plotly.graph_objects.Figure`` with zoom-friendly defaults.
         """
-        import plotly.express as px
-
+        # Deliberately before the import, against the plan's "import first" rule: this
+        # guard exists to replace plotly's ModuleNotFoundError with an actionable message,
+        # and an import above it would raise first and make the guard unreachable.
         AccessorDashHandler._require_plotly()
+
+        import plotly.express as px
 
         if arr.ndim == 3:
             fig = px.imshow(arr, binary_string=True)

@@ -135,11 +135,16 @@ def configure_docs_build_plotly_renderer() -> bool:
     point imports plotly.
 
     Returns:
-        ``True`` if the renderer was set.
+        ``True`` if the renderer was set. ``False`` if this is not a docs build, or if
+        plotly cannot be imported -- the code this replaced degraded the same way, and
+        ``import phenotypic`` must not start failing on an optional-feature library.
     """
     if not os.environ.get("PHENOTYPIC_DOCS_BUILD"):
         return False
-    import plotly.io as pio
+    try:
+        import plotly.io as pio
+    except ImportError:
+        return False
 
     pio.renderers.default = "notebook_connected"
     return True
