@@ -1375,12 +1375,12 @@ footer p{max-width:80ch;margin-bottom:8px}
           <th scope="row">Colony missed entirely</th>
           <td><span class="chip c-moss">Count</span> <span class="chip c-moss">GridOccupancy</span></td>
           <td>—</td>
-          <td><span class="chip c-clay st">ShapeRegularity</span> <span class="chip c-clay st">SizeCV</span> <span class="chip c-clay st">Contrast</span> <span class="chip c-clay">all spread checks</span></td>
+          <td><span class="chip c-clay st">ShapeRegularity</span> <span class="chip c-clay st">SizeCV</span> <span class="chip c-clay st">Contrast</span> <span class="chip c-plain">in principle; ~1/N of the histogram</span> <span class="chip c-clay">all spread checks</span> <span class="chip c-plain">ICC and Tukey record a pass on the short bin</span></td>
         </tr>
         <tr>
           <th scope="row">Debris scored as a colony</th>
           <td><span class="chip c-moss">Count</span></td>
-          <td><span class="chip c-gold st">ShapeRegularity</span> <span class="chip c-gold st">SizeCV</span></td>
+          <td><span class="chip c-gold st">ShapeRegularity</span> <span class="chip c-plain">unless min_area drops it first</span> <span class="chip c-gold st">SizeCV</span></td>
           <td><span class="chip c-clay">GridOccupancy</span> <span class="chip c-plain">worse — debris in a vacant cell raises it toward pass</span></td>
         </tr>
         <tr>
@@ -1403,7 +1403,13 @@ footer p{max-width:80ch;margin-bottom:8px}
     <h4>Reading the matrix above in your setting</h4>
     <p>Two rows deserve attention on arrayed plates specifically. <strong>A missed colony</strong> is
     invisible to everything except the two layout-aware checks, and those need a metadata CSV declaring
-    the expected count — without one, a plate can lose colonies silently. <strong>A displaced
+    the expected count — without one, a plate can lose colonies silently. Worse than blind, twice over: a bin that loses a member drops below
+    <code>ICC</code>'s complete-pivot requirement and below <code>TukeyOutlierFraction</code>'s
+    <code>min_replicates = 4</code>, and a NaN metric is mapped to <em>pass</em>
+    (<code>_quality_check.py:245</code>) — so the missing colony is recorded as a clean bin. Debris does
+    the mirror image: landing in a vacant grid cell it <em>raises</em> <code>GridOccupancy</code> toward
+    pass while the plate got worse. Those are the only two places here where a check reports better than
+    the truth. <strong>A displaced
     boundary</strong> is caught by nothing but a weak shift in Contrast's histogram — and nothing raises
     a flag on it: area, shape and count all stay plausible while every measured size is biased. Those are the two gaps the recommended additions target — foreground
     coverage for the first, an edge-agreement term for the second.</p>
@@ -1455,7 +1461,7 @@ footer p{max-width:80ch;margin-bottom:8px}
         <div class="pbody">
           <a class="pname" href="#m-busy">Weszka–Rosenfeld busyness <span class="pr">A.2</span></a>
           <p class="pf">busyness = Σ off-diagonal GLCM entries — the object↔background adjacencies</p>
-          <p class="pm">Counts how often the image flips between object and background across adjacent pixels, in one cheap pass over the co-occurrence matrix. A clean rim crosses rarely; a speckled or shattered mask crosses constantly. It scores the mask's <em>compactness</em> and nothing else — no region statistics, no colour. Because it needs a threshold value, it can only evaluate segmentations a threshold already reduced to two levels. Lower is better; the catalogue also calls this a <em>fraction</em> of adjacencies but supplies no normalizer, so treat the scale as unbounded.</p>
+          <p class="pm">Counts how often the image flips between object and background across adjacent pixels, in one cheap pass over the co-occurrence matrix. A clean rim crosses rarely; a speckled or shattered mask crosses constantly. It scores the mask's <em>boundary roughness</em> and nothing else — no region statistics, no colour. Because it needs a threshold value, it can only evaluate segmentations a threshold already reduced to two levels. Lower is better; the catalogue also calls this a <em>fraction</em> of adjacencies but supplies no normalizer, so treat the scale as unbounded.</p>
         </div>
         <div class="pkey">
           <span class="pkey-t">Variable key</span>
@@ -1479,7 +1485,7 @@ footer p{max-width:80ch;margin-bottom:8px}
         <div class="pbody">
           <a class="pname" href="#m-q">Borsotti Q <span class="pr">A.5</span></a>
           <p class="pf">Q(I) = √N / (1000·S_I) · Σⱼ [ e²ⱼ/(1+log Sⱼ) + (N(Sⱼ)/Sⱼ)² ]</p>
-          <p class="pm">The consensus best of the F-family and, the catalogue judges, likely the single most directly reusable classic metric — unlike F and F′ it charges for <em>both</em> colony failure modes with one number. The first term inside the sum rises when a region is large and internally heterogeneous — a merged doublet. The second rises when many regions share the same area, which is the signature of noise shattering. Smaller is better. Its brittleness is that the same-area term depends on exact area coincidences, so it is sensitive to quantization, and it can misrank a plate whose colonies genuinely vary in size across a growth timecourse.</p>
+          <p class="pm">The consensus best of the F-family and — the catalogue judges — likely the single most directly reusable classic metric — unlike F and F′ it charges for <em>both</em> colony failure modes with one number. The first term inside the sum rises when a region is large and internally heterogeneous — a merged doublet. The second rises when many regions share the same area, which is the signature of noise shattering. Smaller is better. Its brittleness is that the same-area term depends on exact area coincidences, so it is sensitive to quantization, and it can misrank a plate whose colonies genuinely vary in size across a growth timecourse.</p>
         </div>
         <div class="pkey">
           <span class="pkey-t">Variable key</span>
@@ -2490,7 +2496,7 @@ footer p{max-width:80ch;margin-bottom:8px}
     {id:"uoa", n:"UOA — under/over-seg aware", w:"Per-segment diagnosis of which way each mask is wrong", r:"B.6", fit:"high", cost:"high", fail:"δ needs tuning; all six tested homogeneity indices correlate with segment size", s:"consider"},
     {id:"fgs", n:"FGS — WV + DTNP", w:"Interior homogeneity plus contrast to the bounding-box ring", r:"B.7", fit:"high", cost:"low, no RAG", fail:"Ring leaks onto the neighbouring colony under dense packing; still GS-style normalization, so the same Böck range caveat", s:"consider"},
     {id:"yu-evi", n:"EVI — edge validity index", w:"Whether the mask boundary sits on a real intensity edge", r:"B.8", fit:"med", cost:"low if an edge map exists", fail:"Yu's Gamma/speckle pipeline is SAR-specific; take the idea only", s:"consider"},
-    {id:"q-statistic", n:"q-statistic", w:"Fraction of pixel-intensity variance the partition explains", r:"B.9", fit:"high", cost:"low", fail:"No inter-region or edge term on its own — pair it", s:"consider"},
+    {id:"q-statistic", n:"q-statistic", w:"Fraction of pixel-intensity variance the partition explains", r:"B.5/B.9", fit:"high", cost:"low", fail:"No inter-region or edge term on its own — pair it", s:"consider"},
 
     {f:"Family C — bio-imaging"},
     {id:"cse-coverage", n:"CSE coverage subset", w:"FFC, NC, 1−FBC, FCF — do the masks cover the right amount?", r:"C.1", fit:"high", cost:"medium", fail:"NC needs a physical pixel size; its µm² scale is wrong for mm colonies", s:"recommended"},
