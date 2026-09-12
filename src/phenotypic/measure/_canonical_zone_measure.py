@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import weakref
+from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Literal, Union
 
 import numpy as np
@@ -249,12 +250,49 @@ class CanonicalZoneMeasure(MeasureFeatures):
         if cached_image is not image or self._center_cache_signature != signature:
             from phenotypic import ImagePipeline
 
+            # Run the detector on a PROVENANCE-DETACHED copy, never on `image`.
+            #
+            # `apply(inplace=False)` already copies, but `Image.copy()` carries
+            # the journal *contents* across -- including the application the
+            # enclosing measure still has open. What happens next depends on a
+            # contextvar, which is why this only bit in the CLI:
+            #
+            #   depth > 0 (programmatic)  `provenance_application` JOINS the
+            #       open application and mutates it. Works by accident.
+            #   depth == 0 (CLI stage 3)  it tries to APPEND, and
+            #       `_append_application` refuses while the last application is
+            #       unfinished:
+            #           ValueError: cannot start a new provenance application
+            #                       before the last ends
+            #
+            # That second path failed every MeasureOrientationZones call in
+            # stage 3 while reproducing cleanly outside it.
+            #
+            # So hand the detector a copy whose trailing application is CLOSED:
+            # an append is then legal, and a join still finds a non-empty
+            # `applications` list to mutate (`_current_application` checks only
+            # for emptiness, not status). Emptying the journal instead breaks
+            # the join path with "no application to mutate".
+            #
+            # The center detector is a read-only probe that locates inoculum
+            # centres; nothing it records belongs in the plate's provenance, and
+            # this copy's journal is discarded with the copy.
+            center_source = image.copy()
+            center_journal = deepcopy(image._metadata.provenance_journal)
+            for application in center_journal.get("applications", []):
+                if application.get("status") not in {"complete", "failed"}:
+                    application["status"] = "complete"
+            center_journal["status"] = "complete"
+            center_source._metadata.provenance_journal = center_journal
+
             if isinstance(self.center_detector, ImagePipeline):
                 center_image = self.center_detector.apply(
-                    image, inplace=False, reset=False
+                    center_source, inplace=False, reset=False
                 )
             else:
-                center_image = self.center_detector.apply(image, inplace=False)
+                center_image = self.center_detector.apply(
+                    center_source, inplace=False
+                )
             self._center_cache = detected_center_coordinates(
                 np.asarray(image.objmap[:]),
                 np.asarray(center_image.objmap[:]),
