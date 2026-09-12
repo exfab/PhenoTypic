@@ -49,7 +49,6 @@ Deterministic subprocess guards keep all of it that way.
   - Never edit `src/phenotypic/sdk_/reconnect/_tensor_voting.py`, `src/phenotypic/sdk_/branch_pathfinding/_dijkstra_kernels.py`, `src/phenotypic/sdk_/colourspace.py`, `src/phenotypic/sdk_/hdf_.py`, or anything under `docs/superpowers/**/refs/`.
   - Never change an algorithm, a constant's value, a public name or an `__all__` list.
 - **Unchanged modules** (spec Amendment A P3):
-  - `_core/_image_parts/plot_accessor/_diagnostics_plotter.py`
   - `correction/_color_correction/_color_correction_report.py`
   - `grid/_grid_fit_report.py`
   - `sdk_/viz/figures/_theme.py`
@@ -84,10 +83,11 @@ T0 baseline (orchestrator)
   - `HEAVY_STARTUP_MODULES` = bm3d, colour, cv2, dash, h5py, mahotas, matplotlib, numba, pandas, plotly, polars, pyarrow, scipy, skimage.
   - `DEFERRED_RUNTIME_MODULES` = bm3d, colour, cv2, h5py, mahotas, matplotlib.pyplot, numba, plotly.
 - **Probe helper.** Every entry-point guard runs through `tests._startup_probe.run_startup_probe(body)` in a fresh interpreter, because other tests in the same xdist worker have already filled `sys.modules`.
-- **Measured baseline (spec).** `import phenotypic` takes 1.44–1.97 s, the CLI help 1.65 s, the GUI help 1.85 s, and the hub to servable 2.24 s.
+- **Measured baseline (Task 0, `startup-before.json`).** `import phenotypic` 1.572 s; `from phenotypic import Image` 1.568 s; CLI help 1.612 s; GUI help 1.797 s; hub to servable 2.008 s; hub + first `/builder/` 2.051 s; bare interpreter 0.011 s.
+- **Do not trust `probes/post_change_closure.py` for new claims.** It is static: it cannot see `from phenotypic import Image` reaching the core through the lazy `__getattr__`, nor imports executed at class-creation time. Both blind spots produced wrong tier claims that the plan review caught (C1, C2, C5). Re-derive any new light/heavy claim with a runtime trace in a fresh interpreter.
 - **Point-of-use rule** (T3, T4). For each row of the task's deferral table:
   1. Delete the module-level import statement(s) in the **Remove** column. If an import statement also binds names not in the table, keep those names at module level.
-  2. For each name listed under **TYPE_CHECKING**, add it to the module's `if TYPE_CHECKING:` block. Create the block after the remaining imports if none exists, and add `TYPE_CHECKING` to the module's `from typing import …` line or add `from typing import TYPE_CHECKING`. These names appear only in annotations. Every edited module already has `from __future__ import annotations`, so they are strings at runtime.
+  2. For each name listed under **TYPE_CHECKING**, add it to the module's `if TYPE_CHECKING:` block. Create the block after the remaining imports if none exists, and add `TYPE_CHECKING` to the module's `from typing import …` line or add `from typing import TYPE_CHECKING`. These names appear only in annotations. Every module with a `TYPE_CHECKING` entry has `from __future__ import annotations`, so its annotations are strings at runtime. (Three edited modules lack that import — `_chromaticity_xy_accessor.py`, `_cielab_accessor.py`, `_xyz_d65_accessor.py` — and none of them has a `TYPE_CHECKING` entry.)
   3. For each function in **Import inside**, add the import statement for the names listed against it as the **first statement after the function's docstring**, using the same import form as the removed line.
   4. The function names come from an AST scan of the current tree. If a named function does not exist, stop and report `NEEDS_CONTEXT` with the file's function list.
   - Worked example — `src/phenotypic/_core/_image_parts/accessors/_objmask_accessor.py`. Delete line 8 `import matplotlib.pyplot as plt`. Add `import matplotlib.pyplot as plt` under `if TYPE_CHECKING:`, because `show`'s return annotation uses `plt`. Add `import matplotlib.pyplot as plt` as the first statement after the docstring of `show`.
@@ -354,7 +354,11 @@ IMPORT_FIRST_ENTRY_MODULES = (
 
 
 def _package_modules() -> list[str]:
-    """Every package under ``src/phenotypic`` except the root and vendored reference trees."""
+    """Every package under ``src/phenotypic`` except the root.
+
+    The ``refs`` guard is a no-op safeguard: the vendored reference trees live under
+    ``docs/superpowers/specs/*/refs``, not under ``src/``.
+    """
     modules = []
     for init in sorted((SRC_ROOT / "phenotypic").rglob("__init__.py")):
         parts = init.parent.relative_to(SRC_ROOT).parts
@@ -446,6 +450,9 @@ _LAZY_CLASSES: dict[str, str] = {
 _LAZY_SUBPACKAGES: frozenset[str] = frozenset(
     {
         "abc_", "analysis", "correction", "data", "detect", "enhance", "grid", "measure",
+        # ``plotting`` is not in ``__all__`` but is public in the docs
+        # (``phenotypic.plotting.PlotDiagnostics``), so it resolves here too.
+        "plotting",
         "prefab", "refine", "schema", "sdk_", "settings", "tune", "util",
     }
 )
@@ -518,7 +525,7 @@ __all__ = [
 
 - [ ] **Step 4: Run the tests again and record the cycles.** Same command as Step 2. Expected:
   - `test_import_phenotypic_loads_no_heavy_module` **passes**.
-  - Sweep cases **fail** for `phenotypic.grid`, `phenotypic.measure`, `phenotypic.analysis`, `phenotypic.analysis.abc_`, `phenotypic.analysis.edge`, `phenotypic.analysis.filter`, `phenotypic.analysis.qc` and `phenotypic.sdk_._qc_recipe`. Each raises `ImportError … partially initialized module` at `_core/_image_parts/_grid_image_handler.py:16`, `:17` or `_core/_pipeline_parts/_image_pipeline_core.py:34`.
+  - Sweep cases **fail** for `phenotypic.grid`, `phenotypic.measure`, `phenotypic.analysis`, `phenotypic.analysis._helper`, `phenotypic.analysis.abc_`, `phenotypic.analysis.edge`, `phenotypic.analysis.filter`, `phenotypic.analysis.qc` and `phenotypic.sdk_._qc_recipe` — nine in all. Each raises `ImportError … partially initialized module` at `_core/_image_parts/_grid_image_handler.py:16`, `:17` or `_core/_pipeline_parts/_image_pipeline_core.py:34`.
   - Every other case passes.
   - Paste the failure list into your report. If any other module fails, or any failure raises at a different site, apply the same rule (move the import to its point of use, or make the re-export lazy) and name every added site in your report.
 
@@ -569,6 +576,7 @@ if _TYPE_CHECKING:
 
 ```
 
+  - Append `  # noqa: E402` to the first line of every eager import statement that now follows this block. Ruff reports them as module-level imports not at the top of the file, and the lazy block must come first (Amendment A P8); without this the task's lint step fails with 20 findings here and 13 in `sdk_/__init__.py` (plan review I3).
   - Then delete `from ._prefab_pipeline import PrefabPipeline` (currently line 35).
   - Delete the four-line `from phenotypic._core._image_parts.detection_modes import (DetectionMode, register_detection_mode,)` block (currently lines 37–40).
   - Leave `__all__` unchanged.
@@ -588,6 +596,7 @@ if _TYPE_CHECKING:
 - [ ] **Step 8: Make `src/phenotypic/sdk_/__init__.py` lazy for its five heavy submodules.**
   - Keep the docstring (lines 1–14).
   - Replace the block `from . import (colourspace, constants_, exceptions_, napari_, slurm, slurm_,)` (lines 16–23) with the code below.
+  - Append `  # noqa: E402` to the first line of every eager import statement that follows the lazy block, for the same reason as `abc_/__init__.py`.
   - Then delete `from .hdf_ import HDF` (line 294) and the whole import blocks `from ._measurement_tables import (…)` (lines 309–322), `from ._metadata_migration import (…)` (lines 323–335) and `from .mixin import (…)` (lines 336–343).
   - Leave `__all__` unchanged.
 
@@ -715,7 +724,7 @@ from . import (
   Any failure: rerun that test alone on this commit and at `BASE_PRE` before attributing it, and report both results.
 
 - [ ] **Step 11: Lint and commit.**
-  - Run `uv run ruff check` on the five changed files. Their findings must not be worse than at `BASE_PRE`, so compare with `git stash`-free per-file runs at `/tmp/pht-lazy-base`.
+  - Run `uv run ruff check` on the five changed files. Expect zero findings: the `# noqa: E402` markers cover the eager imports that now follow each lazy block. Compare against the same per-file runs at `/tmp/pht-lazy-base`, which are also zero.
   - Commit subject: `feat(startup): lazy package entry points, and fix the three cycles the eager order hid`.
 
 ---
@@ -723,7 +732,7 @@ from . import (
 ### Task 3: Point-of-use imports in the image core
 
 **Files:**
-- Modify: the 13 files in the table below, plus `src/phenotypic/_startup_perf.py`.
+- Modify: the 14 files in the table below, plus `src/phenotypic/_startup_perf.py`.
 - Create: `tests/unit/ci/test_deferred_imports.py`
 - Modify: `tests/unit/ci/test_startup_imports.py`
 
@@ -748,6 +757,9 @@ Deferral table (paths relative to `src/phenotypic/`; apply the point-of-use rule
 | `_core/_image_parts/plot_accessor/_base_plotter.py` | L6 `import matplotlib.pyplot as plt` | `plt` | `_cleanup_figure`, `_create_colormap`, `_validate_cmap`: plt |
 | `_core/_image_parts/plot_accessor/_detect_modes_plotter.py` | L14 `import plotly.graph_objects as go`, L15 `from plotly.subplots import make_subplots` | `go` | `detect_modes`: make_subplots |
 | `_core/_image_parts/accessor_abstracts/_image_accessor_base_parents/_accessor_dash_handler.py` | see Step 4 | `go` (already present) | `_plotly_imshow`: `import plotly.express as px` |
+| `_core/_image_parts/plot_accessor/_diagnostics_plotter.py` | L7 `import matplotlib.pyplot as plt`, L9 `import plotly.graph_objects as go`, L17 `from phenotypic.sdk_.viz.figures._theme import NAVY, OKABE_ITO` | `plt`, `go` | `plt`: `_diagnostics_matplotlib`, `_plot_background_estimate`, `_plot_gradient_magnitude`, `_plot_local_contrast_map`, `_plot_local_variance_map`, `_plot_noise_autocorrelation`, `_plot_orientation_coherence`; `go`: `_empty_plotly_figure`, `fig_background_estimate`, `fig_contrast_metrics`, `fig_detection_matrix`, `fig_gradient_magnitude`, `fig_intensity_histogram`, `fig_local_contrast_map`, `fig_local_variance`, `fig_noise_autocorrelation`, `fig_orientation_coherence`, `fig_power_spectral_density`, `fig_quality_summary`, `fig_ridge_response`; `NAVY`: `_empty_plotly_figure`, `fig_intensity_histogram`, `fig_power_spectral_density`, `fig_quality_summary`, `fig_ridge_response`; `OKABE_ITO`: `fig_intensity_histogram`, `fig_power_spectral_density`, `fig_ridge_response` |
+
+`_diagnostics_plotter.py` is on the `Image` path even though no static import walker shows it: `plotting/_image_plots.py:52` applies `@_diagnostics_figure(...)`, whose body imports `DiagnosticsPlotter` while the class is being created (plan review C1). Leave its `GridSpec`, scipy, skimage and `phenotypic.util.image_metrics` imports alone — tier 4 watches `matplotlib.pyplot`, not matplotlib core, and polars is not a deferral target.
 
 `_xyz_conversion.rgb_to_xyz` assigns `sRGB_D50.whitepoint`. A function-scope `from phenotypic.sdk_.colourspace import sRGB_D50` binds the same module-level object, so that mutation is unchanged.
 
@@ -809,6 +821,40 @@ DEFERRED_SITES: dict[str, dict[str, tuple[str, ...]]] = {
     "_core/_image_parts/plot_accessor/_detect_modes_plotter.py": {
         "make_subplots": ("detect_modes",),
         "go": (),
+    },
+    "_core/_image_parts/plot_accessor/_diagnostics_plotter.py": {
+        "plt": (
+            "_diagnostics_matplotlib",
+            "_plot_background_estimate",
+            "_plot_gradient_magnitude",
+            "_plot_local_contrast_map",
+            "_plot_local_variance_map",
+            "_plot_noise_autocorrelation",
+            "_plot_orientation_coherence",
+        ),
+        "go": (
+            "_empty_plotly_figure",
+            "fig_background_estimate",
+            "fig_contrast_metrics",
+            "fig_detection_matrix",
+            "fig_gradient_magnitude",
+            "fig_intensity_histogram",
+            "fig_local_contrast_map",
+            "fig_local_variance",
+            "fig_noise_autocorrelation",
+            "fig_orientation_coherence",
+            "fig_power_spectral_density",
+            "fig_quality_summary",
+            "fig_ridge_response",
+        ),
+        "NAVY": (
+            "_empty_plotly_figure",
+            "fig_intensity_histogram",
+            "fig_power_spectral_density",
+            "fig_quality_summary",
+            "fig_ridge_response",
+        ),
+        "OKABE_ITO": ("fig_intensity_histogram", "fig_power_spectral_density", "fig_ridge_response"),
     },
 }
 
@@ -964,7 +1010,7 @@ def test_docs_build_still_selects_the_notebook_connected_renderer() -> None:
     configure_docs_build_plotly_renderer()
     ```
 
-- [ ] **Step 5: Apply the point-of-use rule** to the other 12 table rows.
+- [ ] **Step 5: Apply the point-of-use rule** to the other 13 table rows.
 - [ ] **Step 6: Run Step 3's command (GREEN).** Expected: all pass.
 - [ ] **Step 7: Test surface.** Expected: no failures. Attribute any failure by rerunning it alone here and at `/tmp/pht-lazy-base`.
 
@@ -1107,7 +1153,7 @@ Deferral table (paths relative to `src/phenotypic/`; apply the point-of-use rule
 - [ ] **Step 6: Test surface.** Expected: no failures beyond ones you have attributed as pre-existing by rerunning each alone here and at `/tmp/pht-lazy-base`.
 
   ```bash
-  QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg uv run pytest tests/unit/ci tests/unit/analysis tests/unit/qc tests/unit/correction tests/unit/enhance tests/unit/refine tests/unit/measure tests/unit/detect tests/unit/sdk_ -q -o addopts= -m "not slow" -p no:cacheprovider -n 8 -rfE
+  QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg uv run pytest tests/unit/ci tests/unit/analysis tests/unit/qc tests/unit/correction tests/unit/enhance tests/unit/refine tests/unit/measure tests/unit/detect tests/unit/sdk_ tests/unit/viz tests/unit/plotting -q -o addopts= -m "not slow" -p no:cacheprovider -n 8 -rfE
   ```
 
 - [ ] **Step 7: Lint and commit.**
@@ -1172,6 +1218,9 @@ def test_detect_mode_choices_match_the_detection_mode_registry() -> None:
     from phenotypic.phenotypicCLI import phenotypic_cli
     from phenotypic.sdk_.typing_ import DetectMode
 
+    # Both sides are read in-process: no test registers a custom detection mode today
+    # (a grep for ``register_detection_mode`` in tests/ is empty), so the global registry
+    # is stable here.
     option = next(param for param in phenotypic_cli.params if param.name == "detect_mode")
     assert list(option.type.choices) == sorted(available_modes())
     assert set(get_args(DetectMode)) == set(available_modes())
@@ -1263,7 +1312,8 @@ def test_a_patched_deferred_cli_name_stays_patched_through_the_loader() -> None:
      - lines 184–192 `_cli_state_management`;
      - lines 193–198 `_cli_staged_resume`;
      - line 208 `_cli_process_only`;
-     - lines 209–216 `_cli_recompile_slurm_scripts`.
+     - lines 209–216 `_cli_recompile_slurm_scripts`;
+     - lines 177–180 `_cli_interactive` and lines 219–222 `_cli_validation` — both look light, but `_cli_validation.py:17` does `from phenotypic import ImagePipeline`, which loads the image core through the lazy package (plan review C2).
   3. Add `DetectMode` to the `from phenotypic.sdk_.typing_ import (…)` block (line 252). Add `from phenotypic._startup_perf import load_runtime_dependencies` directly after it.
   4. Insert this block directly before `# Set up logger`:
 
@@ -1273,6 +1323,7 @@ if TYPE_CHECKING:
         create_execution_strategy,
         uses_staged_gpu_strategy,
     )
+    from phenotypic._cli._cli_interactive import execute_dry_run, get_sample_datasets
     from phenotypic._cli._cli_output_manager import OutputManager
     from phenotypic._cli._cli_process_only import resolve_process_format
     from phenotypic._cli._cli_recompile_slurm_scripts import (
@@ -1298,6 +1349,7 @@ if TYPE_CHECKING:
         update_state_from_events,
         validate_resume_compatibility,
     )
+    from phenotypic._cli._cli_validation import validate_execution_config, validate_pipeline
     from phenotypic._core._image_parts.detection_modes import available_modes
     from phenotypic._core._image_pipeline import ImagePipeline
     from phenotypic._core._provenance import pipeline_source_identity
@@ -1337,6 +1389,8 @@ _CLI_RUNTIME_IMPORTS: dict[str, tuple[str, ...]] = {
         "recompile_attempt_dir",
         "recompile_task_status_path",
     ),
+    "phenotypic._cli._cli_interactive": ("execute_dry_run", "get_sample_datasets"),
+    "phenotypic._cli._cli_validation": ("validate_execution_config", "validate_pipeline"),
 }
 
 _CLI_RUNTIME_MODULE_BY_NAME: dict[str, str] = {
@@ -1378,11 +1432,16 @@ def __getattr__(name: str) -> Any:
      _load_cli_runtime()
      ```
 
+     It is the **first** statement, before mode and option validation, so a broken install
+     fails before any parse-dependent work. The cost is that every mode pays the import,
+     including `migrate`, `recompile` and a usage error. That is deliberate: a run that
+     reaches an image has already paid it, and the abort test pins this placement.
+
   7. Add `_load_cli_runtime()` as the first statement after the docstring in `_migrate_legacy_success_evidence`, `_regenerate_missing_overlays` and `_handle_recompile_slurm`.
   8. Check that no other top-level function uses a `_CLI_RUNTIME_IMPORTS` name. Expected output: `ok`.
 
      ```bash
-     uv run --no-project python -c "import ast; from pathlib import Path; t=ast.parse(Path('src/phenotypic/phenotypicCLI.py').read_text(encoding='utf-8')); heavy={'ImagePipeline','available_modes','create_execution_strategy','uses_staged_gpu_strategy','pipeline_source_identity','OutputManager','create_initial_state','exclude_terminal_failures_for_datasets','get_remaining_images_for_datasets','load_processing_state','save_processing_state','update_state_from_events','validate_resume_compatibility','build_staged_resume_plan','migrate_legacy_stage3_markers','pipeline_content_digest','reconcile_stage3_publications','resolve_process_format','TASK_FINALIZE','TASK_MEASUREMENTS','build_recompile_tasks','generate_recompile_slurm_scripts','recompile_attempt_dir','recompile_task_status_path'}; ok={'phenotypic_cli','_migrate_legacy_success_evidence','_regenerate_missing_overlays','_handle_recompile_slurm','_load_cli_runtime','__getattr__'}; bad=[d.name for d in t.body if isinstance(d,(ast.FunctionDef,ast.ClassDef)) and d.name not in ok and any(isinstance(x,ast.Name) and x.id in heavy for x in ast.walk(d))]; print(bad or 'ok')"
+     uv run --no-project python -c "import ast; from pathlib import Path; t=ast.parse(Path('src/phenotypic/phenotypicCLI.py').read_text(encoding='utf-8')); heavy={'ImagePipeline','available_modes','create_execution_strategy','uses_staged_gpu_strategy','pipeline_source_identity','OutputManager','create_initial_state','exclude_terminal_failures_for_datasets','get_remaining_images_for_datasets','load_processing_state','save_processing_state','update_state_from_events','validate_resume_compatibility','build_staged_resume_plan','migrate_legacy_stage3_markers','pipeline_content_digest','reconcile_stage3_publications','resolve_process_format','TASK_FINALIZE','TASK_MEASUREMENTS','build_recompile_tasks','generate_recompile_slurm_scripts','recompile_attempt_dir','recompile_task_status_path','execute_dry_run','get_sample_datasets','validate_execution_config','validate_pipeline'}; ok={'phenotypic_cli','_migrate_legacy_success_evidence','_regenerate_missing_overlays','_handle_recompile_slurm','_load_cli_runtime','__getattr__'}; bad=[d.name for d in t.body if isinstance(d,(ast.FunctionDef,ast.ClassDef)) and d.name not in ok and any(isinstance(x,ast.Name) and x.id in heavy for x in ast.walk(d))]; print(bad or 'ok')"
      ```
 
 - [ ] **Step 5: Add the worker preloads.** In each file below, add `from phenotypic._startup_perf import load_runtime_dependencies` to the module-level imports and insert `load_runtime_dependencies()`:
@@ -1452,15 +1511,25 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from phenotypic._startup_perf import HEAVY_STARTUP_MODULES
 from tests._startup_probe import run_startup_probe
 
-#: Modules the composed hub may load before any request, each with the import chain that
-#: loads it and why the chain cannot be cut from phenotypic code. Empty unless the
-#: Task 6 measurement proves otherwise.
-HUB_ALLOWED_BEFORE_FIRST_REQUEST: dict[str, str] = {}
+#: What the composed hub loads before any request, with the chain that loads it. Measured
+#: during the plan review; a shell-side module-level chain may be listed here with its
+#: justification (spec, tier 3). None of these is a deferral target.
+HUB_ALLOWED_BEFORE_FIRST_REQUEST: dict[str, str] = {
+    "plotly": "dash -> plotly, dash's own import; third-party, cannot be cut",
+    "pandas": "_gui/analysis/_callbacks.py:25, via compose_hub's eager analysis import",
+    "polars": "_gui/analysis/_callbacks.py:26 and _gui/run_console/_request_safety.py:15",
+    "pyarrow": "the pandas/polars parquet stack",
+    "scipy": "_gui/_operation_registry.py:18 `from phenotypic import ImagePipeline` -> the image core",
+    "skimage": "the same chain as scipy",
+    "matplotlib": "matplotlib core, not pyplot; the same chain as scipy",
+}
 
-HUB_WATCHED_MODULES: tuple[str, ...] = tuple(sorted((set(HEAVY_STARTUP_MODULES) - {"dash"}) | {"matplotlib.pyplot"}))
+#: The spec's minimum: none of these may load before the first request.
+HUB_WATCHED_MODULES: tuple[str, ...] = (
+    "bm3d", "colour", "cv2", "h5py", "mahotas", "matplotlib.pyplot", "numba",
+)
 
 
 def test_composed_hub_builds_the_builder_on_its_first_request(tmp_path: Path) -> None:
@@ -1607,6 +1676,7 @@ __all__ = [
 
   - In the `DispatcherMiddleware` mount dict, change `MOUNT_BUILDER.rstrip("/"): builder_app.server,` to `MOUNT_BUILDER.rstrip("/"): _SessionProxy(builder_session),`.
   - Do **not** add `builder_session` to the `start_idle_release_thread([...])` list.
+  - `get_registry()` (`_gui/_operation_registry.py:814-824`) is an unlocked singleton. After this change a first `/builder/` request and a first `/analysis/` request can call `discover()` concurrently; the duplicate work is benign (last writer wins) and needs no lock, but say so in your report if you see it.
   - Confirm no other `builder_app` reference remains. Expected: no output.
 
     ```bash
@@ -1619,7 +1689,7 @@ __all__ = [
     1. Run `QT_QPA_PLATFORM=offscreen uv run python -X importtime -c "<the probe's first four lines>" 2> /tmp/lazy-hub-importtime.txt`.
     2. Walk the nesting up to the first `phenotypic` module.
   - If a `phenotypic` module imports it at module level, defer it at that module with the point-of-use rule, and add a `DEFERRED_SITES` entry.
-  - Only a purely third-party chain (for example `dash` → `plotly`) may be added to `HUB_ALLOWED_BEFORE_FIRST_REQUEST`, as `"module": "<chain> — <why it cannot be cut>"`.
+  - A shell-side module-level chain may instead be recorded in `HUB_ALLOWED_BEFORE_FIRST_REQUEST` as `"module": "<chain> — <why it stays>"`, which is the spec's rule. Deferring pandas, polars, scipy or skimage across `_gui/analysis`, the operation registry, the results viewer or the run console is out of scope (spec Non-goals and D5).
   - Report every addition.
 
 - [ ] **Step 8: Update the docs for this task.**
@@ -1637,6 +1707,7 @@ __all__ = [
 
 - [ ] **Step 9: Test surface.**
   - Expected: no failures beyond attributed pre-existing ones.
+  - Two tests resolve the builder mount as a Flask app and must go through the session instead: `tests/integration/gui/test_smoke_shell.py::test_dispatcher_threads_script_root` (line 222) and `::test_explicit_url_prefix_preserves_script_root_through_dispatcher` (line 403). Change `builder_flask = dispatcher.mounts["/builder"]` to `builder_flask = dispatcher.mounts["/builder"]._session.get().server`; registering their probe blueprint still works, because `ToolSession.get()` builds the app at that moment (plan review C4).
   - A test that pins the old three-stage launcher sequence ("Core library loaded" recorded by the launcher, or `_STARTUP_STEPS == 3`) is updated to the two-stage sequence and named in your report. `StartupReporter`'s own tests are unchanged.
 
   ```bash
@@ -1723,7 +1794,7 @@ heavy library goes into `_LAZY_ATTRS`, never into an eager import at the top of 
   | ID | File | Mutation | Guard that must fail |
   |---|---|---|---|
   | M1 | `src/phenotypic/sdk_/__init__.py` | add `from . import colourspace` after the eager `from . import (constants_, …)` block | `tests/unit/ci/test_startup_imports.py::test_cli_help_loads_no_heavy_module` and `::test_importing_image_loads_no_deferred_runtime_module` (tier 1 imports no `sdk_`, so it is not expected to fail) |
-  | M2 | `src/phenotypic/_core/_image_parts/_grid_image_handler.py` | move `from phenotypic.grid import CenteredAutoGridFinder` back to module level | `tests/unit/ci/test_startup_imports.py::test_module_imports_first_in_a_fresh_interpreter[phenotypic.grid]` and `tests/unit/ci/test_deferred_imports.py` |
+  | M2 | `src/phenotypic/_core/_image_parts/_grid_image_handler.py` | move `from phenotypic.grid import CenteredAutoGridFinder` back to module level | `tests/unit/ci/test_deferred_imports.py::test_deferred_names_are_not_imported_at_module_level[_core/_image_parts/_grid_image_handler.py]`. **Not** the sweep: once `abc_` stops importing the core, these imports are import-order-safe on their own, so the sweep stays green (plan review I1). |
   | M3 | `src/phenotypic/abc_/__init__.py` | add `from ._prefab_pipeline import PrefabPipeline` after the eager imports | `…::test_module_imports_first_in_a_fresh_interpreter[phenotypic.analysis]` |
   | M4 | `src/phenotypic/_gui/shell/_app.py` | replace `_SessionProxy(builder_session)` with `builder_session.get().server` | `tests/unit/gui/shell/test_hub_startup_imports.py` |
   | M5 | `src/phenotypic/phenotypicCLI.py` | delete the `load_runtime_dependencies()` call in `phenotypic_cli` | `tests/unit/cli/test_cli_runtime_preload.py::test_cli_aborts_before_any_output_when_a_runtime_dependency_is_broken` |
@@ -1760,7 +1831,7 @@ PY
 - [ ] **Step 3: Full regression**, once:
   1. The Phase 1 default-lanes command.
   2. `PLAYWRIGHT=1` builder e2e plus the six ci_flaky helper modules.
-  3. `sphinx-build -n` in both `/tmp/pht-lazy-base` and HEAD, compared with `compare_findings.py docs`.
+  3. `sphinx-build -n` in both `/tmp/pht-lazy-base` and HEAD, compared with `compare_findings.py docs`. Do not assume zero new warnings: `autodoc_typehints = "both"` resolves annotations, and names now bound only under `TYPE_CHECKING` (`plt`, `go`, `Figure`, `BM3DStages`, `ReconnectConfig`, `Axes`, `Colormap`, `Normalize`, `PathCollection`, `Quiver`) may resolve differently. Investigate every new warning (plan review M-e).
   4. mypy with a fresh cache and ruff, compared with `compare_findings.py mypy|ruff` against the Task 0 files.
   5. Attribute every failure by rerunning it alone on HEAD and at `/tmp/pht-lazy-base`.
 - [ ] **Step 4: Finish.** Run `git worktree remove /tmp/pht-lazy-base` and delete `/tmp/lazy-*` scratch. Then use `superpowers:finishing-a-development-branch`. The branch already backs PR #218, so pushing the new commits needs the user's go-ahead.
