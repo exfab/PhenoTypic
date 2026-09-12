@@ -23,6 +23,11 @@ def test_load_runtime_dependencies_imports_every_deferred_module() -> None:
         "load_runtime_dependencies()\n"
         "report = {'before': before, 'missing': [m for m in DEFERRED_RUNTIME_MODULES if m not in sys.modules]}\n"
     )
+    # The control is the half that makes this able to fail: with the deferrals in place,
+    # importing `_startup_perf` must load none of the eight, so `missing == []` can only
+    # come from the call under test. Before Task 2 made the package lazy, `before` was the
+    # full list and this assertion passed with the function deleted.
+    assert report["before"] == []
     assert report["missing"] == []
 
 

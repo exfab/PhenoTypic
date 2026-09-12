@@ -20,8 +20,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 #: Prefix of the one stdout line carrying the probe's JSON report.
 _REPORT_MARKER = "__PHENOTYPIC_STARTUP_PROBE__="
 
-#: Seconds before a probe is killed; a hang must fail, not stall the suite.
-PROBE_TIMEOUT_SECONDS = 60
+#: Seconds before a probe is killed; a hang must fail, not stall the suite. Generous
+#: because a cold import of numba, cv2, plotly and mahotas on shared storage is slow,
+#: and a timeout here is a hard failure rather than a retry.
+PROBE_TIMEOUT_SECONDS = 180
 
 
 def run_startup_probe(body: str) -> dict[str, Any]:
@@ -51,7 +53,9 @@ def run_startup_probe(body: str) -> dict[str, Any]:
         env=env,
         cwd=REPO_ROOT,
     )
-    reports = [line[len(_REPORT_MARKER):] for line in result.stdout.splitlines() if line.startswith(_REPORT_MARKER)]
+    # Match anywhere in the line: a C extension (cv2, numba, mahotas) can write to fd 1
+    # without a trailing newline, which would leave the marker mid-line.
+    reports = [line.split(_REPORT_MARKER, 1)[1] for line in result.stdout.splitlines() if _REPORT_MARKER in line]
     if result.returncode != 0 or not reports:
         raise AssertionError(
             f"startup probe failed with exit {result.returncode}\n"
