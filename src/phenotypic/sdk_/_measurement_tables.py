@@ -762,10 +762,12 @@ def replace_embedded_measurement_table(
     hard-linked where the platform permits.
 
     **Superseded by** :func:`replace_image_tables` on every forward path. It
-    survives only for the consumers that still read and rewrite
-    *pre-inversion* stores byte-exactly -- ``--mode migrate`` and ``--mode
-    recompile``, whose reclaim authority compares a store's bytes against a
-    joined payload. **Retire it** with the last of those call sites. It
+    survives for the one consumer that still reads and rewrites
+    *pre-inversion* stores byte-exactly -- ``--mode migrate``, whose reclaim
+    authority compares a store's bytes against a joined payload. (``--mode
+    recompile`` was the other, until its per-store rewrite was removed
+    outright on 2026-09-11; it now writes no store byte.) **Retire it** with
+    the last of those call sites. It
     deliberately leaves ``metadata_table`` and ``tables.metadata`` exactly as
     it found them: it has no metadata payload to describe, and clearing a
     block it knows nothing about would be a guess.

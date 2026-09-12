@@ -1173,21 +1173,30 @@ def _build_v1_tree(
     -- which is what the falsifier below used to do, and what made it unable
     to fail.
 
-    It is built through the producer the inversion replaced instead.
-    ``prepare_embedded_measurement_table`` still ships (``06809fbc`` retains
-    it for the consumers that read and rewrite pre-inversion stores), and
-    ``recompile_embedded_measurement_tables`` is the caller that drives it
-    over a whole tree: it projects each store's recorded baseline, re-joins
-    the snapshot into ``table.parquet``, and writes no
-    ``pht-metadata.parquet``. That is the v1 store shape -- the shape
-    ``--mode migrate`` leaves in every store it embeds a legacy Parquet into
-    -- so the master aggregated from those stores is a v1 master.
+    It is built through the producer the inversion replaced instead:
+    ``prepare_embedded_measurement_table`` + ``replace_embedded_measurement_
+    table``, projecting each store's recorded baseline, re-joining the
+    snapshot into ``table.parquet``, and writing no ``pht-metadata.parquet``.
+    That is the v1 store shape -- the shape ``--mode migrate`` leaves in every
+    store it embeds a legacy Parquet into -- so the master aggregated from
+    those stores is a v1 master.
+
+    **This used to drive ``recompile_embedded_measurement_tables``**, which
+    did exactly that over a whole tree. Recompile stopped rewriting stores on
+    2026-09-11 and the function is gone, so the two producers it composed are
+    called here directly. **The tree this builds is unchanged**, which is the
+    point: the v1/v2 falsifier below only means something if its v1 arm is
+    still a genuine pre-inversion tree.
 
     The stores are written WITHOUT a snapshot and the snapshot installed
-    afterwards, because a store built with ``--metadata`` is inverted and
-    ``_refuse_inverted_stores_before_any_write`` refuses the whole run. Absent
-    the snapshot at write time the tree is un-inverted, which is exactly the
-    pre-inversion shape this arm needs.
+    afterwards: a store built with ``--metadata`` is *inverted* -- a
+    measurements table plus its own ``pht-metadata.parquet`` -- which is the
+    v2 shape, not the one this arm needs.
+
+    The record is republished per store, because replacing the table
+    re-promotes the store and every artifact digest the record certifies
+    changes with it. Without that the tree is unauthorized and
+    ``finalize_run`` finds nothing to aggregate.
 
     Args:
         output_dir: Directory to build the run in.
@@ -1199,8 +1208,15 @@ def _build_v1_tree(
     Returns:
         The installed snapshot, or ``None`` for the metadata-free arm.
     """
-    from phenotypic._cli._cli_recompile_tables import (
-        recompile_embedded_measurement_tables,
+    import pyarrow.parquet as pq
+
+    from phenotypic._cli._embedded_measurement_tables import (
+        prepare_embedded_measurement_table,
+    )
+    from phenotypic.sdk_ import (
+        PhenotypicAttr,
+        read_phenotypic_attributes,
+        replace_embedded_measurement_table,
     )
 
     frames = measurements or {
@@ -1214,7 +1230,40 @@ def _build_v1_tree(
     metadata_csv = (
         _install_snapshot(output_dir, snapshot) if snapshot is not None else None
     )
-    rewritten = recompile_embedded_measurement_tables(output_dir, metadata_csv)
+    rewritten = 0
+    for stem in frames:
+        store = zarr_store_path(output_dir, DATASET, stem)
+        descriptor = read_phenotypic_attributes(store)[PhenotypicAttr.TABLES][
+            "measurements"
+        ]
+        baseline = list(descriptor["measurement_columns"])
+        payload = pq.read_table(
+            store / MEASUREMENT_TABLE_RELATIVE_PATH
+        ).to_pandas()
+        replace_embedded_measurement_table(
+            store,
+            prepare_embedded_measurement_table(
+                payload.loc[:, baseline], metadata_csv
+            ),
+        )
+        # The store was re-promoted, so the record's artifact digests are
+        # stale and `valid_image_success` would reject it. Republishing
+        # matches what `_publish_store` wrote, field for field.
+        publish_image_success(
+            output_dir,
+            work_id=f"work-{stem}",
+            dataset=DATASET,
+            relative_image_path=f"{stem}.tiff",
+            image_stem=stem,
+            mode="full",
+            attempt_id="attempt-1",
+            lifecycle_epoch="epoch-1",
+            artifacts={
+                "measurements": store / MEASUREMENT_TABLE_RELATIVE_PATH,
+                "store": store,
+            },
+        )
+        rewritten += 1
     assert rewritten == len(frames), (
         f"the pre-inversion producer rewrote {rewritten} of {len(frames)} "
         "stores; this arm is not a v1 tree and every comparison against it is "
@@ -1859,6 +1908,65 @@ def test_a_projection_that_raises_still_removes_its_scratch_staging(
     assert read_path.parent.parent == scratch
     assert not read_path.parent.exists(), (
         "the $SCRATCH staging directory leaked when the projection raised"
+    )
+
+
+
+def test_an_aggregation_that_raises_still_removes_its_scratch_staging(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """FU-2 (Task 4 review), on the LEGACY arm.
+
+    The sibling ``test_a_projection_that_raises_still_removes_its_scratch_
+    staging`` makes the same claim on the embedded arm. Both arms stage, so
+    both can leak, and the two failure points are different functions --
+    ``project_embedded_measurement_table`` there, ``aggregate_parquet_files``
+    here. The subject either way is the ``try/finally`` in
+    ``build_master_frame``.
+
+    The legacy arm is reached honestly -- external
+    ``results/<ds>/measurements/<stem>.parquet`` and no marker-requiring
+    state, so ``authorized_measurement_sources`` returns ``None`` -- rather
+    than by faking the arm selector, which would pin a path these inputs
+    could never take.
+    """
+    from phenotypic._cli import _cli_parquet_agg
+
+    run = tmp_path / "run"
+    measurements = run / DIR_RESULTS / DATASET / DIR_MEASUREMENTS
+    measurements.mkdir(parents=True)
+    for stem in ("a", "b"):
+        pl.DataFrame(
+            {"Object_Label": [1, 2], "Size_Area": [10, 11]}
+        ).write_parquet(measurements / f"{stem}.parquet")
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    monkeypatch.setenv("SCRATCH", str(scratch))
+
+    seen: list[tuple[list[Path], bool]] = []
+
+    def _raising_aggregate(*, file_paths, **kwargs):
+        paths = [Path(path) for path in file_paths]
+        seen.append((paths, all(path.is_file() for path in paths)))
+        raise RuntimeError("aggregation failed")
+
+    monkeypatch.setattr(
+        _cli_parquet_agg, "aggregate_parquet_files", _raising_aggregate
+    )
+    with pytest.raises(RuntimeError, match="aggregation failed"):
+        finalize_run(run, dataset_names=[DATASET])
+
+    # STANDING RULE: the staged copies existed while the aggregation ran,
+    # under $SCRATCH, or the directory's absence below proves nothing.
+    assert seen, "the aggregation step was never reached"
+    paths, existed = seen[0]
+    assert paths and existed, "nothing was staged to $SCRATCH; there is no leak to test"
+    staging_dir = paths[0].parent
+    assert staging_dir.parent == scratch, (
+        f"{staging_dir} is not under $SCRATCH; the legacy arm did not stage"
+    )
+    assert not staging_dir.exists(), (
+        "the $SCRATCH staging directory leaked when the aggregation raised"
     )
 
 

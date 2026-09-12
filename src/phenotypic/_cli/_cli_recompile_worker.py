@@ -124,17 +124,32 @@ def run_recompile_task(
         if task_generation != slurm_generation:
             raise ValueError("Recompile task generation does not match script")
         if task_type == TASK_MEASUREMENTS:
-            _run_measurement_task(
+            source_work_ids = _run_measurement_task(
                 output_dir,
                 task_manifest,
                 task,
                 slurm_generation=slurm_generation,
             )
+            # The merged set travels in the status file, exactly as the
+            # forward fan-out's `write_shard_status` records it: the
+            # finalizer unions these and publishes the aggregate proof
+            # against them, so a store this shard's projection excluded is
+            # never certified. Before this it was not reported at all, and
+            # the finalizer re-derived the set from the live markers.
+            #
+            # **The key is absent, not empty, when the shard cannot answer**
+            # (legacy external Parquets -- see `_run_measurement_task`).
+            # `[]` is a claim that the shard merged nothing; absence is a
+            # claim about nothing at all, and the finalizer distinguishes
+            # them.
+            fields: dict[str, Any] = {"status": "completed"}
+            if source_work_ids is not None:
+                fields["source_work_ids"] = source_work_ids
             _write_status(
                 task_manifest,
                 task_index,
                 task_type,
-                {"status": "completed"},
+                fields,
                 output_dir=output_dir,
                 slurm_generation=slurm_generation,
             )
@@ -308,15 +323,36 @@ def _run_measurement_task(
     task: dict[str, Any],
     *,
     slurm_generation: str,
-) -> None:
-    """Aggregate one measurement shard and write it under progress."""
+) -> list[str] | None:
+    """Aggregate one measurement shard and write it under progress.
+
+    **No store write.** This task used to call
+    ``recompile_embedded_measurement_table`` over every embedded table in its
+    shard before aggregating them; the rewrite is gone (user ruling,
+    2026-09-11) and recompile now reads the stores exactly as the forward
+    fan-out does. Only the co-located overlay repair still mutates the tree,
+    and it rewrites an overlay PNG and its record, never the store's table.
+
+    Returns:
+        The source work identities this shard merged, sorted -- the same
+        contract as
+        :func:`~phenotypic._cli._cli_finalize_fanout.write_measurement_shard`.
+        The finalizer unions these across shards and hands them to
+        ``finalize_run`` as ``planned_work_ids``, so a store the projection
+        excluded is absent from the set the aggregate proof certifies.
+
+        ``None`` when the shard's sources are **legacy external Parquets**
+        rather than embedded tables. Those have no store and so no per-image
+        authority to read a ``work_id`` out of, and inventing one would be
+        worse than saying nothing: a shard that reports ``None`` makes the
+        finalizer fall back to the set it selects itself, which is exactly
+        the pre-2026-09-11 behaviour and is correct for a shape that
+        ``refuse_mixed_measurement_authority`` is already retiring.
+    """
 
     from ._cli_parquet_agg import aggregate_measurement_sources
 
     files = [Path(path) for path in task.get("files", [])]
-    metadata_csv_raw = task.get(JobMetadataKey.METADATA_CSV)
-    metadata_csv = Path(str(metadata_csv_raw)) if metadata_csv_raw else None
-    from ._cli_recompile_tables import recompile_embedded_measurement_table
 
     raw_repairs = task.get("overlay_repairs", [])
     if not isinstance(raw_repairs, list):
@@ -341,35 +377,50 @@ def _run_measurement_task(
                     repair,
                     slurm_generation=slurm_generation,
                 )
-            dataset = _dataset_name_from_measurement_path(
-                output_dir, table_path
-            )
-            recompile_embedded_measurement_table(
-                output_dir,
-                table_path,
-                dataset,
-                metadata_csv,
-                commit_guard=lambda: generation_publication_guard(
-                    output_dir, slurm_generation
-                ),
-                lifecycle_epoch=slurm_generation,
-            )
 
     path_to_dataset = {
         path: _dataset_name_from_measurement_path(output_dir, path)
         for path in files
     }
-    # Projected like every other read path into the master (P7 Task 4): the
-    # tables above were just rewritten by the pre-inversion producer, so they
-    # are joined. KNOWN GAP: a store the projection excludes is not reported
-    # to the finalizer, whose aggregate proof is published against the
-    # sources it selects itself rather than what these shards merged.
-    shard_df, _merged = aggregate_measurement_sources(
+    # Projected like every other read path into the master (P7 Task 4): a
+    # migrated store's table is still joined, and reading it raw here would
+    # make recompile publish a different master than the forward fan-out.
+    shard_df, merged = aggregate_measurement_sources(
         path_to_dataset,
         include_dataset_column=bool(task.get("include_dataset_column", True)),
     )
+
+    shard_id = int(task["shard_id"])
+    shard_path = (
+        task_manifest.parent
+        / DIR_RECOMPILE_SHARDS
+        / shard_parquet_filename(shard_id)
+    )
+    if shard_df is None and merged:
+        # Sources existed and were merged, yet no frame came back: the shard
+        # cannot be written and the failure is real. Distinct from the branch
+        # below, where the projection legitimately excluded every store.
+        raise RuntimeError(
+            f"Shard {shard_id} found no readable measurements among "
+            f"{len(path_to_dataset)} source(s)"
+        )
     if shard_df is None:
-        raise RuntimeError("No valid measurements found for shard")
+        # An EMPTY shard is written, deliberately, rather than raising -- the
+        # same rule `write_measurement_shard` follows. A shard whose stores
+        # the projection excluded (each with its own advisory) has merged
+        # nothing legitimately, and raising here failed the whole recompile
+        # for a state the forward path treats as ordinary. The finalizer
+        # counts shard files, so a skipped file would read as a dead worker.
+        import polars as pl
+
+        with generation_publication_guard(output_dir, slurm_generation):
+            atomic_write_with_writer(
+                shard_path,
+                lambda p: pl.DataFrame().write_parquet(
+                    p, **PARQUET_WRITE_OPTIONS
+                ),
+            )
+        return []
 
     from ._measurement_sources import (
         add_metadata_image_name_from_filename,
@@ -378,17 +429,75 @@ def _run_measurement_task(
     shard_df = add_metadata_image_name_from_filename(shard_df)
     shard_df = _sort_measurement_shard(shard_df)
 
-    shard_id = int(task["shard_id"])
-    shard_path = (
-        task_manifest.parent
-        / DIR_RECOMPILE_SHARDS
-        / shard_parquet_filename(shard_id)
-    )
     with generation_publication_guard(output_dir, slurm_generation):
         atomic_write_with_writer(
             shard_path,
             lambda p: shard_df.write_parquet(p, **PARQUET_WRITE_OPTIONS),
         )
+
+    from ._cli_parquet_agg import is_embedded_measurement_table
+
+    if not all(is_embedded_measurement_table(path) for path in merged):
+        return None
+    return sorted(_merged_source_work_ids(output_dir, merged))
+
+
+def _merged_source_work_ids(
+    output_dir: Path, sources: dict[Path, str]
+) -> list[str]:
+    """Return the work identity backing each merged source.
+
+    The recompile analogue of
+    :func:`~phenotypic._cli._cli_finalize_fanout._work_ids_for_sources`, and
+    **deliberately not a call to it**: that one reads
+    ``progress/images/<ds>/<stem>.json`` and nothing else, because the forward
+    fan-out only ever runs on a tree this build wrote. Recompile still accepts
+    a pre-record tree whose authority is a legacy ``image_complete/`` marker
+    (:func:`~phenotypic._cli._cli_recompile_recovery._image_authority_shapes`
+    carries that arm and its retirement condition), and asking such a tree for
+    a record returns ``None`` for every image.
+
+    **A source with no authority raises rather than being skipped**, matching
+    the forward rule: a silently shortened planned set means the aggregate
+    proof certifies an image the master does not carry.
+
+    Args:
+        output_dir: Run output root.
+        sources: Merged measurement table -> dataset.
+
+    Returns:
+        One work identity per source, in *sources* iteration order.
+
+    Raises:
+        RuntimeError: A source has no readable authority payload, or the
+            payload carries no ``work_id``.
+    """
+    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+
+    from ._cli_recompile_recovery import image_authority_payload
+
+    depth = len(MEASUREMENT_TABLE_RELATIVE_PATH.parts)
+    work_ids: list[str] = []
+    for source, dataset in sources.items():
+        store = Path(source).parents[depth - 1]
+        stem = store_stem(store)
+        try:
+            _path, payload, _version = image_authority_payload(
+                Path(output_dir).resolve(), dataset, stem
+            )
+        except (FileNotFoundError, OSError, ValueError) as exc:
+            raise RuntimeError(
+                f"No per-image authority for {store}; its work identity "
+                "cannot be recorded, and a shard that dropped it would "
+                "publish a proof asserting an image the master does not carry"
+            ) from exc
+        work_id = payload.get("work_id")
+        if not isinstance(work_id, str) or not work_id:
+            raise RuntimeError(
+                f"The per-image authority for {store} carries no work_id"
+            )
+        work_ids.append(work_id)
+    return work_ids
 
 
 def _repair_measurement_overlay(
@@ -671,6 +780,7 @@ def _run_finalizer_task(
             task,
             attempt_dir=attempt_dir,
             slurm_generation=slurm_generation,
+            statuses=statuses,
         )
         from ._cli_completion import state_requires_success_markers
 
@@ -763,6 +873,7 @@ def _run_post_master_steps(
     *,
     attempt_dir: Path,
     slurm_generation: str | None = None,
+    statuses: list[dict[str, Any]] | None = None,
 ) -> Path | None:
     """Finalize recompile through the one aggregation + join + publish path.
 
@@ -793,6 +904,13 @@ def _run_post_master_steps(
             serialization boundary ``_cli_recompile_slurm_scripts`` writes.
         attempt_dir: This attempt's directory, holding ``measurement_shards/``.
         slurm_generation: Active lifecycle generation, or ``None`` locally.
+        statuses: The non-finalizer task statuses this finalizer waited for.
+            The union of their ``source_work_ids`` is the **planned** set the
+            aggregate proof is published against -- what the shards recorded
+            merging, rather than what ``authorized_measurement_sources``
+            answers now. ``None``, or a set carrying no measurement task,
+            leaves ``planned_work_ids`` unset and ``finalize_run`` falls back
+            to the sources it selected itself.
 
     Returns:
         Path to ``master_measurements.parquet``, or ``None`` when no
@@ -828,6 +946,27 @@ def _run_post_master_steps(
         "no_qc": bool(task.get(JobMetadataKey.NO_QC, False)),
         "shard_paths": _recompile_shard_paths(attempt_dir),
     }
+    # **Only when every measurement shard answered.** An empty union is a
+    # real answer from a shard that merged nothing; an absent one is not the
+    # same claim, and passing `[]` for it would publish a proof asserting no
+    # image over a master built from every authorized source. So the set is
+    # forwarded when there is at least one measurement status and **all** of
+    # them carry the key -- a partial union would understate the master just
+    # as badly as a live re-derivation overstates it.
+    measurement_statuses = [
+        status
+        for status in (statuses or [])
+        if status.get("task_type") == TASK_MEASUREMENTS
+    ]
+    if measurement_statuses and all(
+        isinstance(status.get("source_work_ids"), list)
+        for status in measurement_statuses
+    ):
+        from ._cli_finalize_fanout import planned_work_ids_from_statuses
+
+        kwargs["planned_work_ids"] = planned_work_ids_from_statuses(
+            measurement_statuses
+        )
     if slurm_generation is None:
         return finalize_run(output_dir, **kwargs)
     with generation_publication_guard(output_dir, slurm_generation):

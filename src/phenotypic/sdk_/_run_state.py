@@ -390,6 +390,33 @@ def assert_identity_current(output_dir: Path, identity: RunIdentity) -> None:
 _METADATA_TABLE_ATTR = _PhenotypicAttr.METADATA_TABLE
 _SNAPSHOT_SHA256_ATTR = _PhenotypicAttr.SNAPSHOT_SHA256
 
+#: The measurement-table descriptor's column list, inside
+#: ``attributes.phenotypic.tables.measurements``.
+#:
+#: Spelled here rather than bound to a member, because this key has **no**
+#: shared constant: its writer
+#: (``_measurement_tables.build_measurement_table_descriptor``) and its three
+#: readers there, plus ``_cli_parquet_agg``'s projection, all spell the
+#: literal. Adding the member belongs with those five sites, not with a sixth
+#: literal declared beside a comment claiming it is the home.
+_MEASUREMENT_COLUMNS_KEY = "measurement_columns"
+
+#: The artifact name a per-image record gives its embedded measurement table.
+#: ``authorized_measurement_sources`` selects a store as a master source by
+#: exactly this key, so a record carrying it is a record that promises the
+#: finalizer a table.
+_MEASUREMENTS_ARTIFACT = "measurements"
+
+#: Two projections this reader adds to the ``measured`` stage, for the
+#: advisory that names a store the master will exclude. They are a pair on
+#: purpose: **either alone is not a defect.** A record with no measurements
+#: artifact is a process run or a measure-less image and is never a master
+#: source; a store with no projectable descriptor that nothing selects is a
+#: store nothing asks to aggregate. The inconsistency FU-1 is about is the
+#: conjunction -- a record promising a table the store does not declare.
+_DECLARES_MEASUREMENTS = "declares_measurements"
+_PROJECTABLE_MEASUREMENTS = "projectable_measurements"
+
 #: U-10's marking. ``--mode migrate`` (P7) publishes per-image records
 #: carrying this, and such a record is accepted on **artifact validity alone**
 #: -- no ``work_id`` comparison, because a pre-markers tree never had one to
@@ -651,33 +678,92 @@ def staged_image_is_complete(
     return (store / MEASUREMENT_TABLE_RELATIVE_PATH).is_file()
 
 
-def _store_metadata_snapshot(
+def _store_phenotypic_block(
     output_dir: Path, dataset: str, image_stem: str
-) -> str | None:
-    """Return which metadata snapshot a store was built against, if it says.
+) -> Mapping[str, object] | None:
+    """Return one store's ``attributes.phenotypic`` block, or ``None``.
 
-    One plain read of the store's root ``zarr.json`` -- the same small
-    document the marker already digests, so it is warm in the page cache by
-    the time this is called. ``None`` means the store does not record the
-    fact, which is every store until P4 Task 2 starts writing the key.
+    **One read of the root ``zarr.json`` per image, for every fact the deep
+    pass projects out of a store.** Both projections below live in the same
+    document, and giving the second one its own reader would double a
+    per-image ``open`` on a tree of ~6,500 stores to learn nothing new --
+    which on GPFS is latency, not bytes. It is the same small document the
+    record already digests, so it is warm in the page cache by the time this
+    is called.
     """
     from .ngff_ import STORE_ROOT_JSON, PhenotypicAttr
 
     payload = _read_json_object(
         zarr_store_path(output_dir, dataset, image_stem) / STORE_ROOT_JSON
     )
-    if payload is None:
-        return None
-    attributes = payload.get("attributes")
+    attributes = None if payload is None else payload.get("attributes")
     if not isinstance(attributes, dict):
         return None
-    phenotypic = attributes.get(PhenotypicAttr.ROOT)
-    if not isinstance(phenotypic, dict):
-        return None
-    table = phenotypic.get(_METADATA_TABLE_ATTR)
-    if not isinstance(table, dict):
+    block = attributes.get(PhenotypicAttr.ROOT)
+    return block if isinstance(block, dict) else None
+
+
+def _store_metadata_snapshot(
+    block: Mapping[str, object] | None,
+) -> str | None:
+    """Return which metadata snapshot a store was built against, if it says.
+
+    ``None`` means the store does not record the fact, which is every store
+    until P4 Task 2 starts writing the key. A projection over the block
+    :func:`_store_phenotypic_block` already read, rather than a reader of its
+    own -- it opens nothing.
+    """
+    table = None if block is None else block.get(_METADATA_TABLE_ATTR)
+    if not isinstance(table, Mapping):
         return None
     return _optional_str(table.get(_SNAPSHOT_SHA256_ATTR))
+
+
+def _store_declares_projectable_table(
+    block: Mapping[str, object] | None,
+) -> bool:
+    """Return whether the store declares a table the master can project.
+
+    The **store's** half of FU-1's inconsistency. ``finalize_run`` projects
+    every authorized embedded table onto its own store's recorded
+    ``measurement_columns`` and excludes the store when there is no such
+    list to project onto -- an absent ``tables.measurements`` descriptor, or
+    one whose ``measurement_columns`` is not a list of strings. Those are
+    exactly the two refusals this predicate re-derives, from the one
+    document the deep pass already reads.
+
+    **Deliberately only two of the projection's four exclusions.** The other
+    two are properties of the Parquet payload -- a metadata-joined table that
+    repeats rows with no target column, and one whose same-label rows
+    disagree -- and answering them means opening a per-image Parquet from a
+    reader the GUI polls. Those stay visible through the count clause of the
+    advisory (which needs no per-image work at all) and through the
+    finalization log. A reader that opened every table to name them would
+    make ``resolve_run_state`` cost what finalization costs.
+
+    It is also **not** a call into
+    :func:`~phenotypic.sdk_._measurement_tables.read_embedded_measurement_descriptor`,
+    for two reasons: that reader re-opens the root, and it raises
+    ``ValueError`` on a store written by a newer build. A store this build
+    cannot decode is not an excluded store -- the projection raises on it and
+    fails the whole finalization -- so calling it here would both cost a read
+    and answer a different question, inside a function whose contract is that
+    it never raises.
+    """
+    from .ngff_ import MEASUREMENT_TABLE_GROUP, PhenotypicAttr
+
+    tables = None if block is None else block.get(PhenotypicAttr.TABLES)
+    descriptor = (
+        tables.get(MEASUREMENT_TABLE_GROUP)
+        if isinstance(tables, Mapping)
+        else None
+    )
+    if not isinstance(descriptor, Mapping):
+        return False
+    columns = descriptor.get(_MEASUREMENT_COLUMNS_KEY)
+    return isinstance(columns, list) and all(
+        isinstance(column, str) for column in columns
+    )
 
 
 def _verify_image(
@@ -778,9 +864,23 @@ def _verify_image(
         # is a projection over `images` rather than a second file to keep in
         # sync -- and it costs the shallow path nothing, because the value
         # rides in the cached ImageState.
-        snapshot = _store_metadata_snapshot(output_dir, dataset, image_stem)
+        #
+        # FU-1's two facts ride the same way, and out of the same single read
+        # of the root. Recording them HERE rather than computing them in
+        # `_advisories` is what makes the exclusion advisory depth-invariant:
+        # a warm shallow pass never opens a store, so an advisory that asked
+        # a store anything at advisory time would exist on the deep path and
+        # silently vanish on the one the GUI actually polls.
+        block = _store_phenotypic_block(output_dir, dataset, image_stem)
+        snapshot = _store_metadata_snapshot(block)
         if snapshot is not None:
             stage[_SNAPSHOT_SHA256_ATTR] = snapshot
+        stage[_DECLARES_MEASUREMENTS] = isinstance(
+            artifacts, Mapping
+        ) and isinstance(artifacts.get(_MEASUREMENTS_ARTIFACT), Mapping)
+        stage[_PROJECTABLE_MEASUREMENTS] = _store_declares_projectable_table(
+            block
+        )
         # Unconditional, and the guard it replaces was dead. This block is
         # only reachable with a non-`None` marker -- it dereferences one two
         # statements above -- and `record_provenance` returns FORWARD or
@@ -1402,6 +1502,14 @@ def _advisories(
     half-migrated tree reaches ``contradictory`` and flags the whole output
     read-only for a reason the user cannot act on, which is the behaviour
     this replaces.
+
+    **Depth-invariant, by construction.** Every per-image clause is a
+    projection over ``images`` with no I/O; the run-level clauses read small
+    sidecars, none of them per-image. A ``"shallow"`` call therefore emits
+    exactly the advisories a ``"deep"`` one does, which is the property that
+    makes them usable from the surfaces that only ever poll shallowly --
+    and it is why a clause that needs a per-image fact records that fact
+    during verification instead of asking for it here.
     """
     notes: list[str] = []
 
@@ -1451,6 +1559,51 @@ def _advisories(
             "current deliverables/metadata.csv. Advisory only."
         )
 
+    verified = sum(
+        1 for image in images.values() if image.verdict == "verified"
+    )
+    certified = _certified_source_count(output_dir)
+    if certified is not None and certified < verified:
+        # REPORTS THE GAP, NEVER DIAGNOSES IT. The same shortfall is
+        # produced by an excluded store and by the wholly ordinary case of
+        # an image finishing after the master was published -- a rolling
+        # input reaches that state on its own, with nothing wrong -- and
+        # this clause cannot tell them apart, because the proof records a
+        # digest and a count rather than the set. Wording it as an
+        # accusation would make the common, benign case read as a defect,
+        # and an advisory that cries wolf is how the one that matters stops
+        # being read. The clause below is what accuses, and only where a
+        # store is demonstrably inconsistent.
+        notes.append(
+            f"The published master certifies {certified} of this run's "
+            f"{verified} verified images, and completion requires the two "
+            "sets to agree. This note reports the gap, not its cause: an "
+            "image is missing from the master either because it was "
+            "verified after the master was published, which re-running "
+            "finalization resolves, or because the projection excluded its "
+            "store, which re-running finalization reaches again. Any "
+            "excluded store this reader can identify is named separately. "
+            "Advisory only."
+        )
+
+    excluded = sorted(
+        f"{image.dataset}/{image.image_stem}"
+        for image in images.values()
+        if image.verdict == "verified"
+        and _stage_value(image, _DECLARES_MEASUREMENTS) is True
+        and _stage_value(image, _PROJECTABLE_MEASUREMENTS) is False
+    )
+    if excluded:
+        notes.append(
+            "These images have a record that authorizes an embedded "
+            "measurement table, but a store that declares no column list to "
+            f"project it onto: {', '.join(excluded)}. Finalization excludes "
+            "such a store from the master and from the source set the "
+            "aggregate proof certifies, so re-running it reaches the same "
+            "verdict rather than repairing this; the store has to be "
+            "re-measured. Advisory only."
+        )
+
     migrated = sorted(
         f"{image.dataset}/{image.image_stem}"
         for image in images.values()
@@ -1468,13 +1621,55 @@ def _advisories(
     return tuple(notes)
 
 
+def _certified_source_count(output_dir: Path) -> int | None:
+    """Return how many images the published master's proof certifies.
+
+    FU-1's **detection** half, and the one that does not depend on knowing
+    *why* a store was left out. ``source_image_count`` is the arity of the
+    source set ``publish_aggregate_snapshot`` was given, so comparing it
+    against the live verified count is the same comparison rule 1 makes on
+    ``source_set_digest`` -- stated in a form a reader can be told.
+
+    **The set itself is not recoverable from the proof.** The proof records
+    the digest of the sorted work ids and their count, never the list, so
+    "which images" cannot be read back out of it and has to be derived from
+    the tree instead (see :func:`_store_declares_projectable_table`). The
+    count is what the proof does answer, and it answers it for all four of
+    the projection's exclusions rather than the two a store can be asked
+    about.
+
+    Read from the **aggregate** proof, which is the publisher of record for
+    the source set; the run proof carries a copy. Read **raw** rather than
+    through :func:`_valid_aggregate_proof`, and that is deliberate twice
+    over: validating hashes the master on every call, including the GUI's
+    shallow poll, and a proof whose deliverables no longer match is still
+    the proof that says how many images the master was built from. An
+    advisory suppressed by a *second*, unrelated problem is an advisory that
+    goes missing on exactly the trees with the most wrong with them.
+
+    Returns:
+        The certified image count, or ``None`` when there is no readable
+        aggregate proof of this version, or it records no plain integer
+        count -- every one of which means "no comparison to make" rather
+        than "zero".
+    """
+    payload = _read_json_object(aggregate_publication_marker_path(output_dir))
+    if payload is None or payload.get("version") != AGGREGATE_PROOF_VERSION:
+        return None
+    count = payload.get("source_image_count")
+    if not isinstance(count, int) or isinstance(count, bool):
+        return None
+    return count
+
+
 def _stage_value(image: ImageState, key: str) -> object | None:
     """Read one value out of an image's ``measured`` stage, if present.
 
-    Advisories are projections over ``images`` with **no I/O** -- which is
-    what lets the shallow path emit exactly the same advisories as the deep
-    path it reuses, instead of losing them or paying a per-image read to keep
-    them.
+    Every **per-image** advisory is a projection over ``images`` with **no
+    I/O** -- which is what lets the shallow path emit exactly the same
+    advisories as the deep path it reuses, instead of losing them or paying
+    a per-image read to keep them. The run-level clauses read a sidecar, but
+    O(1) of them rather than one per image; see :func:`_advisories`.
     """
     stage = image.stages.get(STAGE_MEASURED)
     if not isinstance(stage, Mapping):

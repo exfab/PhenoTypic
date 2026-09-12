@@ -619,19 +619,35 @@ def test_migrate_refinalizes_a_joined_legacy_tree_to_a_v2_shaped_master(
     The tree is a real completed run whose tables are re-joined with the
     retained pre-inversion producer on a key they really carry, and whose
     master is the unprojected concatenation a pre-projection build left.
+
+    **The joining used to go through ``recompile_embedded_measurement_tables``**,
+    which drove the same two producers over a whole tree. Recompile stopped
+    rewriting stores on 2026-09-11 and that function is gone, so
+    ``prepare_embedded_measurement_table`` + ``replace_embedded_measurement_
+    table`` are called here directly, per store, with the record republished
+    after each re-promote. **The tree is the same joined pre-inversion tree it
+    always was** -- which is what the assertions below depend on.
     """
     import shutil
 
+    import pyarrow.parquet as pq
+
+    from phenotypic._cli._cli_completion import publish_image_success
     from phenotypic._cli._cli_migrate import run_migrate
-    from phenotypic._cli._cli_recompile_tables import (
-        recompile_embedded_measurement_tables,
+    from phenotypic._cli._embedded_measurement_tables import (
+        prepare_embedded_measurement_table,
     )
     from phenotypic.schema import IMAGE
     from phenotypic.sdk_ import (
         PARQUET_WRITE_OPTIONS,
+        PhenotypicAttr,
         master_measurements_parquet_path,
         metadata_csv_deliverable_path,
+        read_phenotypic_attributes,
+        replace_embedded_measurement_table,
+        store_stem,
     )
+    from phenotypic.sdk_._image_record import read_image_record
     from phenotypic.sdk_._master_io import master_carries_user_metadata
 
     output_dir = tmp_path / "joined_legacy"
@@ -654,7 +670,42 @@ def test_migrate_refinalizes_a_joined_legacy_tree_to_a_v2_shaped_master(
         + "".join(f"{name},STRAIN-{i}\n" for i, name in enumerate(names)),
         encoding="utf-8",
     )
-    assert recompile_embedded_measurement_tables(output_dir, snapshot) == len(tables)
+    rejoined = 0
+    for table in tables:
+        store = table.parents[len(MEASUREMENT_TABLE_RELATIVE_PATH.parts) - 1]
+        dataset = store.parents[1].name
+        stem = store_stem(store)
+        descriptor = read_phenotypic_attributes(store)[PhenotypicAttr.TABLES][
+            "measurements"
+        ]
+        baseline = list(descriptor["measurement_columns"])
+        payload = pq.read_table(table).to_pandas()
+        replace_embedded_measurement_table(
+            store,
+            prepare_embedded_measurement_table(
+                payload.loc[:, baseline], snapshot
+            ),
+        )
+        # Re-promoting the store staled every artifact digest the record
+        # certifies; republish so the tree stays marker-authorized.
+        record = read_image_record(output_dir, dataset, stem)
+        assert record is not None, f"no per-image record for {store}"
+        publish_image_success(
+            output_dir,
+            work_id=str(record["work_id"]),
+            dataset=dataset,
+            relative_image_path=str(record["relative_image_path"]),
+            image_stem=stem,
+            mode=str(record["mode"]),
+            attempt_id=str(record["attempt_id"]),
+            lifecycle_epoch=str(record["lifecycle_epoch"]),
+            artifacts={
+                name: output_dir / str(descriptor_["path"])
+                for name, descriptor_ in record["artifacts"].items()
+            },
+        )
+        rejoined += 1
+    assert rejoined == len(tables)
 
     master = master_measurements_parquet_path(output_dir)
     legacy_master = pl.concat(

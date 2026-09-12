@@ -1,4 +1,16 @@
-"""Crash-recovery evidence and locking for per-store recompile mutation."""
+"""Crash-recovery evidence and locking for per-store measurement authority.
+
+**The writers are gone.** ``--mode recompile`` no longer rewrites per-store
+embedded measurement tables (user ruling, 2026-09-11), so
+``begin_``/``promote_``/``clear_recompile_table_transition`` and their staging
+helpers went with the rewrite. What remains is the **reading** half, and it is
+not dead: a tree that a previous release left mid-transition -- promoted bytes,
+a stale record, an uncleared receipt -- is still recoverable, and
+:func:`recoverable_recompile_measurement_sources` is what keeps
+:func:`assert_no_unrecoverable_measurement_authority` from aborting on it.
+Retire the transition readers once no supported release can have written a
+receipt.
+"""
 
 from __future__ import annotations
 
@@ -9,9 +21,7 @@ import re
 import stat
 from contextlib import contextmanager
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import Any, Iterator
-from uuid import uuid4
 
 
 from phenotypic.sdk_ import (
@@ -19,9 +29,6 @@ from phenotypic.sdk_ import (
     DIR_ZARR,
     MEASUREMENT_TABLE_RELATIVE_PATH,
     STORE_SUFFIX,
-    CommitGuard,
-    PreparedEmbeddedMeasurementTable,
-    atomic_write_bytes,
     dataset_measurements_dir,
     image_completion_marker_path,
     image_record_path,
@@ -30,7 +37,6 @@ from phenotypic.sdk_ import (
 )
 from phenotypic.sdk_._measurement_tables import (
     _valid_embedded_measurement_contract,
-    _write_validated_parquet,
 )
 
 from phenotypic.sdk_._image_record import RECORD_VERSION
@@ -41,7 +47,6 @@ from ._cli_completion import (
     SUCCESS_MARKER_VERSION,
     _sha256,
     _store_artifact_matches,
-    valid_image_success,
 )
 
 _TRANSITION_VERSION = 1
@@ -69,9 +74,11 @@ def _image_authority_shapes(
     LEGACY MARKER ARM -- DELETE WHEN: the schema gate is armed and refuses
     legacy trees before they reach recompile (P7 Task 5 Step 1d sets
     ``_schema_shape.SCHEMA_GATE_ARMED = True``). The same trigger retires
-    ``_standalone_marker_sources``' second arm and every other legacy arm this
-    phase adds, so they go together rather than one at a time. When it holds,
-    this returns the record shape alone and the pairing collapses.
+    every other legacy arm this phase adds, so they go together rather than
+    one at a time. When it holds, this returns the record shape alone and the
+    pairing collapses. (``_standalone_marker_sources``, which this note used
+    to name as the sibling arm, went with the recompile rewrite on
+    2026-09-11.)
     """
     return (
         (image_record_path(output_root, dataset_name, stem), RECORD_VERSION),
@@ -224,22 +231,6 @@ def _require_identity_bound_directory_operations() -> None:
         )
 
 
-def _fsync_recompile_directory(path: Path) -> None:
-    """Durably commit directory-entry changes without following the directory."""
-    _require_identity_bound_directory_operations()
-    directory_fd = os.open(
-        Path(path),
-        os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
-    )
-    try:
-        identity = os.fstat(directory_fd)
-        if not stat.S_ISDIR(identity.st_mode):
-            raise ValueError("Recompile transaction directory is invalid")
-        os.fsync(directory_fd)
-    finally:
-        os.close(directory_fd)
-
-
 def _validate_transition_component(component: str) -> None:
     """Reject non-canonical transition path components."""
     if component in {"", ".", ".."} or Path(component).name != component:
@@ -250,10 +241,14 @@ def _validate_transition_component(component: str) -> None:
 def _open_transition_directory(
     output_root: Path,
     dataset_name: str,
-    *,
-    create: bool,
 ) -> Iterator[tuple[Path, int]]:
-    """Hold an identity-bound descriptor for the transition directory."""
+    """Hold an identity-bound descriptor for the transition directory.
+
+    **Read-only.** It used to take ``create=`` and ``mkdir`` the directory
+    for ``begin_recompile_table_transition``; that writer is gone, so
+    every remaining caller is reading evidence a previous release left and a
+    missing directory is simply ``FileNotFoundError``.
+    """
     _require_identity_bound_directory_operations()
     canonical_output = Path(output_root).resolve(strict=True)
     root = _transition_root(canonical_output, dataset_name)
@@ -267,18 +262,7 @@ def _open_transition_directory(
         try:
             for component in relative.parts:
                 _validate_transition_component(component)
-                try:
-                    child_fd = os.open(component, flags, dir_fd=directory_fd)
-                except FileNotFoundError:
-                    if not create:
-                        raise
-                    try:
-                        os.mkdir(component, mode=0o700, dir_fd=directory_fd)
-                    except FileExistsError:
-                        pass
-                    else:
-                        os.fsync(directory_fd)
-                    child_fd = os.open(component, flags, dir_fd=directory_fd)
+                child_fd = os.open(component, flags, dir_fd=directory_fd)
                 os.close(directory_fd)
                 directory_fd = child_fd
             identity = os.fstat(directory_fd)
@@ -319,74 +303,6 @@ def _read_regular_file_at(directory_fd: int, name: str) -> bytes:
         os.close(file_fd)
 
 
-def _write_exclusive_file_at(
-    directory_fd: int,
-    name: str,
-    payload: bytes,
-) -> None:
-    """Create one private regular file relative to a held directory."""
-    if Path(name).name != name or name in {"", ".", ".."}:
-        raise ValueError("Transition file is not canonical")
-    file_fd = os.open(
-        name,
-        os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
-        0o600,
-        dir_fd=directory_fd,
-    )
-    try:
-        identity = os.fstat(file_fd)
-        if not stat.S_ISREG(identity.st_mode) or identity.st_nlink != 1:
-            raise ValueError("Transition file is not canonical")
-        remaining = memoryview(payload)
-        while remaining:
-            written = os.write(file_fd, remaining)
-            if written <= 0:
-                raise OSError("Unable to write recompile transition file")
-            remaining = remaining[written:]
-        os.fsync(file_fd)
-    except BaseException:
-        try:
-            os.unlink(name, dir_fd=directory_fd)
-        except OSError:
-            pass
-        raise
-    finally:
-        os.close(file_fd)
-
-
-def _write_json_at(
-    directory_fd: int,
-    receipt_name: str,
-    payload: dict[str, Any],
-) -> None:
-    """Atomically publish a receipt inside a held transition directory."""
-    try:
-        os.stat(receipt_name, dir_fd=directory_fd, follow_symlinks=False)
-    except FileNotFoundError:
-        pass
-    else:
-        _read_regular_file_at(directory_fd, receipt_name)
-    temporary_name = f".{receipt_name}.{uuid4().hex}.tmp"
-    encoded = (
-        json.dumps(payload, indent=2, sort_keys=True).encode("utf-8") + b"\n"
-    )
-    _write_exclusive_file_at(directory_fd, temporary_name, encoded)
-    try:
-        os.rename(
-            temporary_name,
-            receipt_name,
-            src_dir_fd=directory_fd,
-            dst_dir_fd=directory_fd,
-        )
-        os.fsync(directory_fd)
-    except BaseException:
-        try:
-            os.unlink(temporary_name, dir_fd=directory_fd)
-        except OSError:
-            pass
-        raise
-
-
 def _transition_staged_name(
     output_root: Path,
     root: Path,
@@ -418,26 +334,6 @@ def _transition_staged_name(
 def _fingerprint_bytes(payload: bytes) -> tuple[int, str]:
     """Return an exact size/SHA-256 fingerprint for immutable bytes."""
     return len(payload), hashlib.sha256(payload).hexdigest()
-
-
-def _cleanup_orphan_staging_payloads_at(
-    directory_fd: int,
-    stem: str,
-    *,
-    keep_name: str,
-) -> None:
-    """Remove canonical orphan entries relative to the held directory only."""
-    _read_regular_file_at(directory_fd, keep_name)
-    pattern = re.compile(rf"{re.escape(stem)}\.[0-9a-f]{{32}}\.parquet")
-    for name in os.listdir(directory_fd):
-        if name == keep_name or pattern.fullmatch(name) is None:
-            continue
-        try:
-            _read_regular_file_at(directory_fd, name)
-        except (OSError, ValueError):
-            continue
-        os.unlink(name, dir_fd=directory_fd)
-    os.fsync(directory_fd)
 
 
 def marker_claims_measurement_authority(marker_path: Path) -> bool:
@@ -473,249 +369,6 @@ def _marker_measurement_source(
     return source
 
 
-def begin_recompile_table_transition(
-    output_dir: Path,
-    dataset_name: str,
-    stem: str,
-    store_path: Path,
-    prepared: PreparedEmbeddedMeasurementTable,
-) -> Path:
-    """Publish exact intended-table evidence before replacing canonical bytes."""
-    output_root = Path(output_dir).resolve()
-    store = Path(store_path).resolve(strict=True)
-    if store != zarr_store_path(output_root, dataset_name, stem).resolve(
-        strict=True
-    ):
-        raise ValueError("Recompile transition store is not canonical")
-    marker_path, marker, _authority_version = image_authority_payload(
-        output_root, dataset_name, stem
-    )
-    prior_table_size, prior_table_sha256 = _marker_measurement_fingerprint(
-        output_root,
-        marker,
-        store / MEASUREMENT_TABLE_RELATIVE_PATH,
-    )
-    work_id = str(marker["work_id"])
-    marker_authorized = valid_image_success(
-        output_root,
-        dataset=dataset_name,
-        image_stem=stem,
-        work_id=work_id,
-    )
-    transition_authorized = recoverable_recompile_table_transition(
-        output_root, dataset_name, stem, store
-    )
-    if not marker_authorized and not transition_authorized:
-        raise RuntimeError(
-            "Cannot replace an embedded table without marker or transition authority"
-        )
-    receipt_name = _transition_receipt_name(stem)
-    staged_name = f"{stem}.{uuid4().hex}.parquet"
-    with _open_transition_directory(
-        output_root,
-        dataset_name,
-        create=True,
-    ) as (root, directory_fd):
-        with TemporaryDirectory(prefix="phenotypic-transition-") as temporary:
-            prepared_path = Path(temporary) / "table.parquet"
-            _write_validated_parquet(prepared_path, prepared)
-            prepared_bytes = prepared_path.read_bytes()
-        _write_exclusive_file_at(directory_fd, staged_name, prepared_bytes)
-        os.fsync(directory_fd)
-        prepared_size, prepared_sha256 = _fingerprint_bytes(prepared_bytes)
-        transition = {
-            "version": _TRANSITION_VERSION,
-            "dataset": dataset_name,
-            "image_stem": stem,
-            "work_id": work_id,
-            "store_path": store.relative_to(output_root).as_posix(),
-            "table_path": (store / MEASUREMENT_TABLE_RELATIVE_PATH)
-            .relative_to(output_root)
-            .as_posix(),
-            "marker_sha256": _sha256(marker_path),
-            "prior_table_size": prior_table_size,
-            "prior_table_sha256": prior_table_sha256,
-            "prepared_path": (root / staged_name)
-            .relative_to(output_root)
-            .as_posix(),
-            "prepared_size": prepared_size,
-            "prepared_sha256": prepared_sha256,
-        }
-        _write_json_at(directory_fd, receipt_name, transition)
-        _cleanup_orphan_staging_payloads_at(
-            directory_fd,
-            stem,
-            keep_name=staged_name,
-        )
-    return root / staged_name
-
-
-def promote_recompile_table_transition(
-    output_dir: Path,
-    dataset_name: str,
-    stem: str,
-    store_path: Path,
-    staged_path: Path,
-    *,
-    commit_guard: CommitGuard | None = None,
-) -> Path:
-    """Promote only the exact journaled staged bytes to the canonical table."""
-    output_root = Path(output_dir).resolve()
-    store = Path(store_path).resolve(strict=True)
-    canonical_store = zarr_store_path(output_root, dataset_name, stem).resolve(
-        strict=True
-    )
-    if store != canonical_store:
-        raise RuntimeError("Transition store is not canonical")
-    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
-    try:
-        with _open_transition_directory(
-            output_root,
-            dataset_name,
-            create=False,
-        ) as (root, directory_fd):
-            receipt_name = _transition_receipt_name(stem)
-            transition = json.loads(
-                _read_regular_file_at(directory_fd, receipt_name)
-            )
-            marker_path, marker, authority_version = image_authority_payload(
-                output_root, dataset_name, stem
-            )
-            prior_size, prior_sha256 = _marker_measurement_fingerprint(
-                output_root,
-                marker,
-                table,
-            )
-            staged_name = _transition_staged_name(
-                output_root,
-                root,
-                dataset_name,
-                stem,
-                transition,
-            )
-            staged_bytes = _read_regular_file_at(directory_fd, staged_name)
-            intended_size = transition.get("prepared_size")
-            intended_sha256 = transition.get("prepared_sha256")
-            if (
-                root / staged_name != Path(staged_path)
-                or transition.get("version") != _TRANSITION_VERSION
-                or transition.get("dataset") != dataset_name
-                or transition.get("image_stem") != stem
-                or transition.get("work_id") != marker.get("work_id")
-                or transition.get("store_path")
-                != store.relative_to(output_root).as_posix()
-                or transition.get("table_path")
-                != table.relative_to(output_root).as_posix()
-                or transition.get("marker_sha256") != _sha256(marker_path)
-                or transition.get("prior_table_size") != prior_size
-                or transition.get("prior_table_sha256") != prior_sha256
-                or not isinstance(intended_size, int)
-                or intended_size < 0
-                or not isinstance(intended_sha256, str)
-                or re.fullmatch(r"[0-9a-f]{64}", intended_sha256) is None
-                or _fingerprint_bytes(staged_bytes)
-                != (intended_size, intended_sha256)
-                or not _marker_allows_table_transition(
-                    output_root,
-                    dataset_name,
-                    stem,
-                    marker,
-                    table,
-                    expected_version=authority_version,
-                )
-                or not _valid_embedded_measurement_contract(store)
-            ):
-                raise RuntimeError("Recompile transition evidence is invalid")
-
-            def _fingerprint(path: Path) -> tuple[int, str]:
-                return path.stat().st_size, _sha256(path)
-
-            current = _fingerprint(table)
-            intended = (intended_size, intended_sha256)
-            prior = (prior_size, prior_sha256)
-            if current == intended:
-                _fsync_recompile_directory(table.parent)
-                return table
-            if current != prior:
-                raise RuntimeError(
-                    "Canonical table matches neither prior nor intended transition"
-                )
-
-            def _validate_immediately_before_replace() -> None:
-                staged_fingerprint = _fingerprint_bytes(
-                    _read_regular_file_at(directory_fd, staged_name)
-                )
-                if (
-                    staged_fingerprint != intended
-                    or _fingerprint(table) != prior
-                ):
-                    raise RuntimeError(
-                        "Recompile transition changed before table promotion"
-                    )
-
-            atomic_write_bytes(
-                table,
-                staged_bytes,
-                pre_replace=_validate_immediately_before_replace,
-                commit_guard=commit_guard,
-            )
-            _fsync_recompile_directory(table.parent)
-            if _fingerprint(
-                table
-            ) != intended or not _valid_embedded_measurement_contract(store):
-                raise RuntimeError("Promoted embedded table failed validation")
-            return table
-    except (
-        KeyError,
-        OSError,
-        TypeError,
-        ValueError,
-        json.JSONDecodeError,
-    ) as exc:
-        raise RuntimeError("Recompile transition evidence is invalid") from exc
-
-
-def clear_recompile_table_transition(
-    output_dir: Path, dataset_name: str, stem: str
-) -> None:
-    """Remove transition entries relative to their identity-bound directory."""
-    output_root = Path(output_dir).resolve()
-    mutation_started = False
-    try:
-        with _open_transition_directory(
-            output_root,
-            dataset_name,
-            create=False,
-        ) as (root, directory_fd):
-            receipt_name = _transition_receipt_name(stem)
-            try:
-                transition = json.loads(
-                    _read_regular_file_at(directory_fd, receipt_name)
-                )
-            except (OSError, ValueError, json.JSONDecodeError):
-                return
-            try:
-                staged_name = _transition_staged_name(
-                    output_root,
-                    root,
-                    dataset_name,
-                    stem,
-                    transition,
-                )
-                _read_regular_file_at(directory_fd, staged_name)
-                os.unlink(staged_name, dir_fd=directory_fd)
-            except (OSError, ValueError):
-                pass
-            else:
-                mutation_started = True
-            os.unlink(receipt_name, dir_fd=directory_fd)
-            mutation_started = True
-            os.fsync(directory_fd)
-    except (OSError, ValueError):
-        if mutation_started:
-            raise
-
-
 def recoverable_recompile_table_transition(
     output_dir: Path,
     dataset_name: str,
@@ -728,7 +381,6 @@ def recoverable_recompile_table_transition(
         with _open_transition_directory(
             output_root,
             dataset_name,
-            create=False,
         ) as (root, directory_fd):
             receipt_name = _transition_receipt_name(stem)
             transition = json.loads(
@@ -856,7 +508,6 @@ def recoverable_recompile_measurement_sources(
             with _open_transition_directory(
                 output_root,
                 dataset_name,
-                create=False,
             ) as (_root, directory_fd):
                 receipt_names = sorted(
                     name
@@ -947,10 +598,7 @@ def _marker_allows_table_transition(
 
 __all__ = [
     "assert_no_unrecoverable_measurement_authority",
-    "begin_recompile_table_transition",
-    "clear_recompile_table_transition",
     "marker_claims_measurement_authority",
-    "promote_recompile_table_transition",
     "recoverable_recompile_measurement_sources",
     "recoverable_recompile_table_transition",
     "recompile_store_lock_path",

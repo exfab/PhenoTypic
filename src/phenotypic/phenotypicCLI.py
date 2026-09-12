@@ -1310,10 +1310,8 @@ def _print_process_only_dry_run_plan(
     help=(
         "Execution mode: full applies the pipeline and measures images; "
         "measure reruns measurement from an existing output root; recompile "
-        "refreshes aggregate outputs from an existing output root (NOT "
-        "supported on a run built with --metadata: it refuses without "
-        "changing anything -- re-run the forward command with the new "
-        "--metadata and --force-local instead); process "
+        "refreshes aggregate outputs from an existing output root, writing "
+        "no image store; process "
         "exports a single layer selected with --layer; migrate explicitly "
         "upgrades a full legacy run, direct OME-Zarr store, or process-output "
         "tree. A full legacy run uses two passes: metadata headers in every "
@@ -3819,6 +3817,70 @@ def _raise_if_recompile_attempt_cannot_finish(
     )
 
 
+def _refuse_unrecoverable_recompile_authority(
+    output_dir: Path, dataset_names: list[str]
+) -> None:
+    """Abort a local recompile rather than omit a measured store from it.
+
+    **Reachability, not just presence.** This assertion used to live inside
+    ``recompile_embedded_measurement_tables``, which was deleted with the
+    per-store rewrite on 2026-09-11. Lifting the call out of a deleted
+    function is not the same as preserving it: the old caller reached the
+    assertion only on the arm where *some* authority exists, and returned 0
+    without asserting on a tree that had none. Calling it unconditionally
+    here would abort runs the previous release completed, which is a new
+    failure dressed as a restoration. So the old control flow is reproduced,
+    including the legacy-Parquet refusal that shared its other arm.
+
+    **One narrowing, stated rather than hidden.** The old code had a third
+    source of authority on the ``authorized is None`` arm --
+    ``_standalone_marker_sources``, which discovered valid legacy
+    ``image_complete/`` markers and, when it found any, made the assertion
+    run. That function went with the rewrite (it had no other caller), so a
+    marker-only legacy tree now takes the skip arm instead of the asserting
+    one. The direction is the safe one -- fewer aborts, never more -- and
+    such a tree is what ``SCHEMA_GATE_ARMED`` is due to refuse outright; but
+    it is a real loss of loudness on that one shape and it is not an
+    accident.
+
+    The SLURM path asserts the same thing in ``build_recompile_tasks``, where
+    it has its own ``accepted_sources``; this is the local half only.
+
+    Args:
+        output_dir: Existing run output root.
+        dataset_names: Datasets discovered under ``results/``.
+
+    Raises:
+        RuntimeError: A measured store has no recoverable authority, or the
+            tree still holds legacy external measurement Parquets.
+    """
+    from phenotypic._cli._cli_completion import authorized_measurement_sources
+    from phenotypic._cli._cli_recompile_recovery import (
+        assert_no_unrecoverable_measurement_authority,
+        recoverable_recompile_measurement_sources,
+    )
+
+    authorized = authorized_measurement_sources(output_dir)
+    recovery = recoverable_recompile_measurement_sources(
+        output_dir, dataset_names
+    )
+    if authorized is None and not recovery:
+        results = output_dir / DIR_RESULTS
+        legacy = sorted(results.glob("*/measurements/*.parquet"))
+        stores = sorted(results.glob(f"*/zarr/*{STORE_SUFFIX}"))
+        if legacy and stores:
+            raise RuntimeError(
+                "Legacy external measurement Parquets require --mode migrate "
+                "before recompile"
+            )
+        return
+    assert_no_unrecoverable_measurement_authority(
+        output_dir,
+        dataset_names,
+        set(authorized or {}) | set(recovery),
+    )
+
+
 def _handle_recompile(
     output_dir: Path,
     metadata_csv: Optional[Path],
@@ -3876,9 +3938,43 @@ def _handle_recompile(
     console.print("[cyan]Checking for missing overlays...")
     _regenerate_missing_overlays(output_dir, overlay_alpha, n_jobs)
 
-    from phenotypic._cli._cli_recompile_tables import (
-        recompile_embedded_measurement_tables,
-    )
+    # No per-store rewrite here any more (user ruling, 2026-09-11).
+    # `recompile_embedded_measurement_tables` re-joined the metadata snapshot
+    # into every store's `tables/measurements/table.parquet`; since P7 Task 4
+    # projects each table onto its own descriptor at read, that rewrite
+    # changed nothing the master or the mirror could see. Recompile is
+    # aggregate + finalize, and writes no store byte.
+    #
+    # **The authority abort stays, and it is called here rather than
+    # inherited.** It used to run inside the deleted rewrite, so removing the
+    # rewrite would have removed it from the local path as a side effect --
+    # leaving a measured store with no recoverable authority silently absent
+    # from the master instead of aborting the run by name. This is the local
+    # half, at the same point in the sequence the rewrite occupied: after the
+    # overlay pass, which can itself restore authority, and before anything
+    # is aggregated.
+    _refuse_unrecoverable_recompile_authority(output_dir, dataset_names)
+
+    # **The snapshot fallback, resolved here and fed to the FINALIZER.** An
+    # earlier draft of this change deleted it along with the rewrite, on the
+    # reasoning that it was only ever consumed by the per-store join. That
+    # was true and it was still a regression: pre-change the mirror carried
+    # user metadata because the rewrite joined the snapshot into every store
+    # table, so the master came out v1-shaped and the mirror inherited the
+    # columns. With the master correctly un-joined, the ONE join is
+    # `finalize_post_master_outputs` -> `join_metadata`, and that runs only
+    # `if metadata_csv is not None` (`_cli_output_manager.py:1151`) -- it
+    # resolves nothing itself. So a plain `--mode recompile` on a tree with a
+    # snapshot silently produced a mirror with no metadata at all.
+    #
+    # The fallback was computing the right value and handing it to the wrong
+    # consumer. `--metadata` still wins when given; otherwise the run's own
+    # `deliverables/metadata.csv` is what finalization joins, which is what
+    # makes a bare recompile reproduce the mirror the forward run published.
+    #
+    # The SLURM path already does exactly this, at `_handle_recompile_slurm`:
+    # it resolves `effective_metadata` the same way and stamps it onto the
+    # finalizer task, so that arm never had the hole.
     from phenotypic.sdk_ import metadata_csv_deliverable_path
 
     stable_metadata = metadata_csv_deliverable_path(output_dir)
@@ -3887,20 +3983,13 @@ def _handle_recompile(
         if metadata_csv is not None
         else (stable_metadata if stable_metadata.is_file() else None)
     )
-    rewritten = recompile_embedded_measurement_tables(
-        output_dir, effective_metadata
-    )
-    if rewritten:
-        console.print(
-            f"[green]Embedded measurement tables refreshed: {rewritten}"
-        )
 
     console.print("[cyan]Aggregating measurements...")
     master_path = aggregate_measurements(
         output_dir=output_dir,
         dataset_names=dataset_names,
         include_dataset_column=include_dataset_column,
-        metadata_csv=metadata_csv,
+        metadata_csv=effective_metadata,
         no_qc=no_qc,
     )
     if master_path:

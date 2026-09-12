@@ -725,7 +725,19 @@ RESTART_EPOCH_JSON: Final[str] = "restart_epoch.json"
 #: records what was checked, never how. A rules change shipped without a bump
 #: is a build silently honouring another build's verdicts, which is the one
 #: failure the in-process tier could not have.
-VERIFICATION_CACHE_VERSION: Final[int] = 1
+#:
+#: **2 since FU-1's exclusion advisory.** Deep verification now records two
+#: more facts into each image's ``measured`` stage -- whether its record
+#: authorizes a measurement table, and whether its store declares a
+#: projectable column list -- and ``resolve_run_state`` names an excluded
+#: store by projecting over them. A version-1 entry carries valid stat
+#: tuples and neither fact, so a warm shallow pass would reuse it and emit
+#: no advisory: the diagnostic would be silently switched off by a cache,
+#: which is exactly what the paragraph above forbids. This is the "rules
+#: changed, shape did not" case it describes, and the first bump to invoke
+#: it. Guard:
+#: ``test_run_state.py::test_a_cache_written_before_the_advisory_cannot_silence_it``.
+VERIFICATION_CACHE_VERSION: Final[int] = 2
 
 #: Per-image success-marker schema version. Bumped to 2 when artifact
 #: descriptors gained ``kind``: a v1 marker describes the per-image ``.h5``,

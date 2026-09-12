@@ -1770,6 +1770,39 @@ flag is not actually reaching the gate — check for a second copy.
 
 - [ ] **Step 1e: Repoint `--mode recompile` onto `prepare_image_tables`, and delete the guard**
 
+> ### ⛔ SUPERSEDED — 2026-09-11. Do not do the repoint.
+>
+> **User ruling: recompile stops rewriting per-store embedded measurement tables
+> altogether.** `--mode recompile` is now aggregate + finalize only and writes no store
+> byte.
+>
+> **Why the repoint is moot rather than merely deferred.** The step below assumes the
+> rewrite still produces something a consumer reads. It does not. P4 moved the metadata
+> join to finalization, and P7 Task 4 projects every embedded table onto its own
+> descriptor at read (`project_embedded_measurement_table`, `_cli_parquet_agg.py`), so
+> the re-joined bytes the rewrite wrote are projected straight back out again by
+> `build_master_frame`, by the P5 fan-out shards and by the recompile shards alike.
+> Repointing the producer would have changed *which* bytes a store holds while changing
+> nothing the master or the mirror can see — and it would have kept the hazards the
+> rewrite exists to create: the inverted-store refusals, the mixed-Parquet-generation
+> window, the table-transition recovery path, and the two known gaps in the SLURM shard
+> path. `_cli/CLAUDE.md` already describes recompile as *"call `finalize_run` again"*;
+> this makes the code say so.
+>
+> **What was done instead.** The rewrite and its guards were deleted
+> (`recompile_embedded_measurement_table(s)`, `_replace_and_republish_table`,
+> `_refuse_inverted_store`, `_refuse_inverted_stores_before_any_write`,
+> `_declares_metadata_table`, `_standalone_marker_sources`, and the table-transition
+> half of `_cli_recompile_recovery.py`), the three guard tests named in item 3 below
+> went with them, and both recompile gaps were closed: a shard now records its merged
+> work ids in its status file and the recompile finalizer passes their union to
+> `finalize_run(planned_work_ids=...)`, and a shard whose stores the projection excludes
+> writes an empty shard instead of raising. The `--metadata` refusal in item 5 is gone
+> because the reason for it is gone.
+>
+> **The history below is left as written.** It records what was planned and why, which
+> is what makes the ruling legible; it is not an instruction any more.
+
 **This step owns a mode that is refusing its ordinary case from P4 until now.** User
 ruling (2026-09-08): document the limitation during P4, schedule the repoint here.
 

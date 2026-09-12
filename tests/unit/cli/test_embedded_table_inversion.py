@@ -533,63 +533,6 @@ def test_the_metadata_table_is_written_not_a_joined_one(
     assert sorted(metadata["Metadata_Strain"]) == ["MUT", "WT"]
 
 
-def test_the_recompile_guard_refuses_an_inverted_store(
-    tmp_path: Path,
-) -> None:
-    """Recompile still builds its payload with the PRE-inversion producer, so
-    running it on an inverted store rejoins metadata into the measurement
-    table and drops ``pht-metadata.parquet`` -- silently.
-
-    P4 Task 1 expected ``_replace_and_republish_table``'s ``isinstance``
-    check to fail closed here. It does not: the producer still returns the
-    legacy type, so the check passes. This guard restores the loud failure.
-    """
-    from phenotypic._cli._cli_recompile_tables import _refuse_inverted_store
-    from phenotypic.sdk_.ngff_ import METADATA_TABLE_GROUP, PhenotypicAttr
-
-    store = _save_store(tmp_path, snapshot=_JOINABLE_SNAPSHOT)
-    # The store must actually BE inverted, or the raise below would be
-    # testing a guard that refuses everything.
-    assert METADATA_TABLE_GROUP in _phenotypic(store)[PhenotypicAttr.TABLES]
-
-    with pytest.raises(RuntimeError, match="inverted store"):
-        _refuse_inverted_store(store)
-
-
-def test_the_recompile_guard_still_accepts_a_pre_inversion_store(
-    tmp_path: Path,
-) -> None:
-    """The other half: a guard that refused every store would pass the test
-    above while breaking `--mode recompile` outright.
-
-    "Must not raise" is the plan's named vacuity trap, so the store is first
-    shown to be a real one the guard actually inspects -- it declares a
-    measurement table and no metadata table.
-    """
-    from phenotypic._cli._cli_recompile_tables import _refuse_inverted_store
-    from phenotypic.sdk_.ngff_ import (
-        MEASUREMENT_TABLE_GROUP,
-        METADATA_TABLE_GROUP,
-        PhenotypicAttr,
-    )
-
-    store = _save_store(tmp_path, snapshot=None)
-    tables = _phenotypic(store)[PhenotypicAttr.TABLES]
-    assert MEASUREMENT_TABLE_GROUP in tables, "the guard would read nothing"
-    assert METADATA_TABLE_GROUP not in tables
-
-    _refuse_inverted_store(store)
-
-
-# ``_refuse_inverted_store``'s CALL SITE is proved in
-# ``test_embedded_measurement_recompile.py`` by
-# ``test_the_inverted_store_guard_runs_before_the_rewrite_transaction``, which
-# drives the real single-store rewrite and asserts the store's bytes are
-# unchanged after the raise. It replaced a substring test that lived here and
-# was blind to where in the transaction the call sat. Delete the two tests
-# above and that one together with the recompile repoint (P7 Task 5 Step 1e).
-
-
 def test_re_measuring_without_metadata_clears_the_stores_metadata_block(
     tmp_path: Path,
 ) -> None:

@@ -694,6 +694,35 @@ def _publish_store(
     )
     return store
 
+def _install_overlays(output_dir: Path, stems: list[str]) -> None:
+    """Write the overlay PNG each store's record does NOT declare.
+
+    ``_publish_store`` publishes ``measurements`` + ``store`` and no overlay,
+    which is a legitimate forward shape (``--no-save-overlays``). But
+    ``_handle_recompile`` opens with ``_regenerate_missing_overlays``, and
+    that pass refuses -- ``Cannot safely restore marker authority for
+    <ds>/<stem>`` -- when an overlay is absent, the marker does not bind one,
+    and the store's table exists. It is right to refuse: it cannot re-render
+    an overlay and re-certify the image without authority binding the two.
+
+    So a fixture that wants to drive the real recompile has to look like a
+    run that HAS its overlays. Writing the file at the canonical path is
+    enough: ``discover_missing_overlays`` asks ``is_file()`` and nothing
+    else, so the pass reports "all overlays present" and returns before the
+    refusal. The bytes are never read.
+
+    Overlays live under ``deliverables/``, so this changes nothing under
+    ``results/`` and nothing the master is built from.
+    """
+    from phenotypic._cli._cli_overlay_rendering import overlay_output_manager
+
+    manager = overlay_output_manager(output_dir, overlay_alpha=0.3)
+    for stem in stems:
+        overlay = manager.get_output_path(DATASET, "overlays", stem)
+        overlay.parent.mkdir(parents=True, exist_ok=True)
+        overlay.write_bytes(b"\x89PNG\r\n\x1a\n")
+
+
 def _install_state(output_dir: Path, stems: list[str]) -> None:
     """Install the processing state that makes the records authoritative."""
     now = datetime.now()
@@ -781,31 +810,46 @@ def _run_mode(output_dir: Path, mode: str) -> Path:
     Every mode reaches finalization through ``aggregate_measurements``, which
     is ``finalize_run`` under the publication lock -- that is the property
     under test. What differs is what happened to the stores first: ``full``
-    promotes them, ``measure`` rewrites their tables in place, ``recompile``
-    re-derives each table from the store's own baseline.
+    promotes them and ``measure`` rewrites their tables in place.
+
+    **The ``recompile`` arm drives ``_handle_recompile``, not
+    ``aggregate_measurements``.** Until 2026-09-11 it re-derived each table
+    from the store's own baseline and this helper asserted every store was
+    rewritten; recompile stopped rewriting stores outright, and simply
+    deleting that line would have left the arm as `full`'s tree finalized a
+    second time by the same call -- an equality holding by construction, in
+    the one file whose subject is *"there is one FINAL master writer"*. So
+    the arm now runs the mode's own entry point end to end: overlay pass,
+    authority abort, aggregation, completion evidence, manifest, dashboard.
+    What the comparison then asserts is that the mode's whole path still
+    lands on the same master bytes as ``full``'s, which is the claim worth
+    making and the one a deleted assertion would have quietly stopped making.
+
+    Overlays are installed first because ``_handle_recompile`` begins with
+    ``_regenerate_missing_overlays`` -- see :func:`_install_overlays`. They
+    are installed for **every** mode, not just this one, so the tree the
+    three arms compare is identical; they live under ``deliverables/`` and
+    the master is not built from them.
 
     **No metadata snapshot**, deliberately. Post-D8 the master carries no user
     metadata at all, so a snapshot could only change the mirror; running
     without one keeps the comparison about the thing being compared.
     """
+    from phenotypic.phenotypicCLI import _handle_recompile
     from phenotypic._cli._cli_output_manager import aggregate_measurements
 
     stems = ["a", "b"]
     output_dir.mkdir(parents=True, exist_ok=True)
     _publish_successful_images(output_dir, stems=stems)
+    _install_overlays(output_dir, stems)
+
+    if mode == "recompile":
+        # The mode's own entry point, `--mode recompile`'s whole local path.
+        _handle_recompile(output_dir, None, True, 0.3, 1)
+        return output_dir
 
     if mode == "measure":
         _remeasure_every_store(output_dir, stems)
-    elif mode == "recompile":
-        from phenotypic._cli._cli_recompile_tables import (
-            recompile_embedded_measurement_tables,
-        )
-
-        rewritten = recompile_embedded_measurement_tables(output_dir, None)
-        assert rewritten == len(stems), (
-            f"recompile rewrote {rewritten} of {len(stems)} tables; the "
-            "comparison below would not be about recompile"
-        )
     elif mode != "full":  # pragma: no cover - guards a typo in a param id
         raise AssertionError(f"unknown mode {mode!r}")
 

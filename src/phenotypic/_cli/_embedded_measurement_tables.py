@@ -186,11 +186,13 @@ def prepare_embedded_measurement_table(
     duplicate metadata-key fan-out.
 
     **Superseded by** :func:`prepare_image_tables` on every forward path.
-    It survives only for the consumers that still read and rewrite
+    It survives for the one consumer that still reads and rewrites
     *pre-inversion* stores byte-exactly -- ``--mode migrate``
-    (``_cli_migrate.py``, ``_cli_migrate_image.py``) and ``--mode recompile``
-    (``_cli_recompile_tables.py``). **Retire it** with the last of those call
-    sites; nothing else may grow a new one.
+    (``_cli_migrate.py``, ``_cli_migrate_image.py``). ``--mode recompile``
+    was the other until 2026-09-11, when its per-store rewrite was removed
+    outright rather than repointed; recompile now writes no store byte.
+    **Retire it** with the last of those call sites; nothing else may grow a
+    new one.
     """
     inputs = _normalize_table_inputs(measurements, metadata_csv)
     if inputs.prepared is None:

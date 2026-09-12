@@ -178,10 +178,13 @@ def build_master_frame(
 
         **On the** ``shard_paths`` **branch it is the full selection**, not
         the merged set: the shards applied the projection, and which stores
-        they excluded is not visible here. The P5 fan-out hands the merged
-        set to ``finalize_run`` separately, as ``planned_work_ids``. Recompile's
-        SLURM finalizer passes none, so a store its shards excluded is still
-        certified -- the KNOWN GAP noted in ``_run_measurement_task``.
+        they excluded is not visible here. Both shard producers therefore
+        hand the merged set to ``finalize_run`` separately, as
+        ``planned_work_ids`` -- the P5 fan-out through
+        ``resolve_finalizer_shard_inputs``, and recompile's SLURM finalizer
+        through the ``source_work_ids`` its measurement statuses record. The
+        earlier KNOWN GAP -- recompile passing none, so a store its shards
+        excluded was still certified -- is closed.
     """
     import polars as pl
 
@@ -216,7 +219,28 @@ def build_master_frame(
         frames = [pl.read_parquet(path) for path in shard_paths]
         return _merge_measurement_shards(frames), authorized, path_to_dataset
 
-    # -- Stage to $SCRATCH ---------------------------------------------
+    # -- Stage to $SCRATCH: BOTH arms, including the embedded one ------
+    #
+    # It is worth staging on the embedded arm even though the copy looks
+    # redundant there, and this was **measured, not reasoned** -- the
+    # reasoning got it backwards. The argument for dropping it was that
+    # `project_embedded_measurement_table` reads each store's descriptor
+    # from the store regardless, so the copy cannot avoid the per-store GPFS
+    # round trip it exists to amortize, and every table is then read twice.
+    # All of that is true and the conclusion still does not follow: one bulk
+    # multithreaded copy of many small files beats reading them individually
+    # by far more than the second read costs.
+    #
+    # Cold, over this project's 6,529-store run (527 MB of tables), one
+    # configuration per freshly-allocated node, two independent node pairs:
+    #
+    #     staged    323.9 s (i07) / 325.1 s (i08)   [copy 156-161 s of that]
+    #     unstaged  397.3 s (i06) / 410.3 s (i09)
+    #
+    # ~20% faster cold, reproduced. WARM the two are a wash (~46 s either
+    # way), which is why an interleaved benchmark says "staging is overhead"
+    # -- its first run warms the page cache for every run after it. A
+    # finalizer reading a just-written run is the cold case.
     scratch_dir = _stage_to_scratch(list(path_to_dataset.keys()))
     # Original source -> its staged copy, or `None` when nothing was staged.
     staged = (

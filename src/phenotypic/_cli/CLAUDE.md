@@ -318,9 +318,11 @@ protocol, so a valid root implies a complete store. An absent `kind` reads as
 > writes into a store that is already published. *(P4 split the replacer in
 > two: that path now calls `replace_image_tables`, which moves the measurement
 > table, the metadata table and the root's `metadata_table` block together;
-> `replace_embedded_measurement_table` survives for `--mode migrate` and
-> `--mode recompile` until their producers are repointed. Both go through the
-> same root-last transaction.)*
+> `replace_embedded_measurement_table` survives for `--mode migrate` until its
+> producer is repointed. Both go through the same root-last transaction.
+> `--mode recompile` was the third writer until 2026-09-11; its per-store
+> rewrite was removed rather than repointed, so recompile is now aggregate +
+> finalize and writes no store byte.)*
 >
 > What actually holds is narrower and is what the fingerprint needs: **every
 > table replacement is a root-last store transaction**, so the root is rewritten
@@ -631,9 +633,11 @@ descriptor's `measurement_columns`, collapse join fan-out on `target.column`
 for a table recorded `joined`, and **exclude** a store with no descriptor or
 whose same-label rows disagree. An excluded store is logged and left out of the
 source set the aggregate proof certifies, so the run reads `incomplete` rather
-than certifying an image the master does not carry. Known gap: the recompile
-SLURM path does not hand its merged set to the finalizer, so an exclusion there
-is still counted.
+than certifying an image the master does not carry. Both shard producers report
+the set they merged to their finalizer as `planned_work_ids` — the P5 fan-out
+through `resolve_finalizer_shard_inputs`, and recompile through the
+`source_work_ids` its measurement statuses record — so an exclusion in a shard
+is not counted by the proof.
 
 **The join happens once, at finalization**, in `finalize_run`
 (`_cli_finalize_run.py`) → `finalize_post_master_outputs` →

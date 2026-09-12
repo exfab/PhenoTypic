@@ -179,13 +179,85 @@ contributor writing a counter.
 | `work_id` | schema version, dataset, input-relative path, input sha256, pipeline fingerprint, per-image config digest, mode | `work_id_for_image` (`_cli_failure_tracker.py:310`) |
 | per-dataset completed / failed counts | the per-image records | `RunState.diagnostics` — **and nothing branches on these** |
 | the master | the record-authorized embedded tables, each projected onto its own descriptor's `measurement_columns`, minus any store the projection excludes — and nothing else | `finalize_run` → `project_embedded_measurement_table` |
+| *how many verified images the published master does not carry* | the aggregate proof's `source_image_count` vs. the live verified count | `resolve_run_state` → `RunState.advisories` (count clause) |
+| *which store a re-finalization will exclude again* | each verified image's record (does it declare a `measurements` artifact?) and its store root (does it declare a projectable `measurement_columns`?) | `resolve_run_state` → `RunState.advisories` (naming clause) |
 
 **An excluded store makes a fully verified run read `incomplete`.** The
 projection (P7 Task 4) leaves out a store whose table it cannot project safely —
 no measurement descriptor, or same-label rows that disagree — and the aggregate
 proof certifies only the stores the master actually carries. `resolve_run_state`
-then finds a verified set larger than the proof's, and reports `incomplete`. The
-only record of *why* is the finalization log's warning naming the store.
+then finds a verified set larger than the proof's, and reports `incomplete`.
+
+**`resolve_run_state` says so, in two advisories, and neither is tracked state.**
+The verdict is unchanged — the run *is* incomplete — but the reason is now
+readable off the tree instead of surviving only as a `logger.warning` that is
+gone by the time anyone looks, and re-running finalization reaches the same
+verdict *and* re-derives the same advisory.
+
+- **The count clause** reads `source_image_count` from the aggregate proof and
+  compares it against the live verified count. It is the **backstop**: it fires
+  for all four of the projection's exclusions, including the two the naming
+  clause cannot see. It also fires for the wholly benign case of an image
+  verified after the master was published, which a rolling input reaches on its
+  own between finalizations — so it **reports the gap and refuses to diagnose
+  it**, naming both causes and the fact that re-running finalization resolves
+  one and reaches the other again. Do not reword it into an exclusion alert.
+  The benign case is the common one, and this page's own argument for gating
+  the schema advisory is that an advisory which is always on teaches people to
+  ignore the one that matters.
+- **The naming clause** names each verified image whose *record* authorizes a
+  `measurements` artifact while its *store root* declares no projectable
+  `measurement_columns`. That conjunction is the inconsistency: a record
+  promising the finalizer a table the store does not declare. This is the
+  clause that accuses, and it only accuses where the store itself is
+  demonstrably inconsistent.
+
+```{admonition} The naming clause is a SUBSET — two of the four causes
+:class: important
+
+`project_embedded_measurement_table` excludes a store for four reasons. The
+naming clause covers the two that are visible in the store's root document: no
+`tables.measurements` descriptor, and a descriptor whose `measurement_columns`
+is not a list of strings.
+
+The other two are properties of the Parquet payload — a metadata-joined table
+that repeats rows while declaring no `target.column`, and one whose same-label
+rows disagree across the projected columns — and **they are not named, by
+design**. Answering them means opening a per-image Parquet from a reader the
+GUI polls every few seconds, which would make reading a run's state cost what
+finalizing it costs. On those two, the count clause is the only signal in the
+run state and the finalization log names the store.
+
+So: a shortfall with no store named does **not** mean nothing was excluded. It
+means nothing was excluded *for a reason this reader can see*.
+```
+
+Both clauses are **depth-invariant**. The naming clause's two facts are
+recorded into each image's `measured` stage during verification, out of the
+same single read of the store root the metadata-snapshot advisory already pays
+for, so they ride the verification cache and a warm `shallow` pass emits them
+without opening a store. The count clause reads one small sidecar, O(1) in
+images.
+
+Because those facts ride the cache, **`VERIFICATION_CACHE_VERSION` went 1 → 2
+in the same change**. A version-1 entry has valid stat tuples and neither fact,
+so a warm shallow pass would have reused it and emitted no advisory — a
+diagnostic silently switched off by a cache. That constant's comment already
+required a bump when the *rules* of deep verification change rather than the
+JSON shape; this is the first bump to invoke it.
+
+```{admonition} The proof records the digest, not the set
+:class: note
+
+`source_set_digest` is `canonical_digest(sorted(work_ids))` and
+`source_image_count` its arity. **The list is not recoverable from the proof**,
+so "which images did the master leave out?" cannot be read back out of it and
+has to be re-derived from the tree — which is what the naming clause does, and
+why it answers for two of the four causes rather than all of them. Do not
+"fix" this by writing the list into the proof: that is a fifth tracked state
+wearing a proof's clothes, and the derivation above already answers the
+question the operator is asking.
+```
 
 `processing_generation` folds **only configuration values** — a pipeline hash, a
 per-image config digest, and a restart epoch. No paths, no timestamps, no
