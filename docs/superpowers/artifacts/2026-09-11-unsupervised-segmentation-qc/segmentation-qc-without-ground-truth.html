@@ -145,6 +145,43 @@ figure.mfig .miss b{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em
   color:var(--faint);margin-top:32px;padding-bottom:7px;border-bottom:1px solid var(--border)}
 .subhead + .mgrid{margin-top:14px}
 
+/* ---------- combined candidate plate ---------- */
+.plate{margin-top:20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:18px 20px 6px}
+.plate-head{padding-bottom:14px;border-bottom:1px solid var(--rule)}
+.plate-head h3{font-size:1.1rem;font-weight:600;letter-spacing:-.005em}
+.plate-head p{font-size:.9rem;color:var(--dim);margin-top:5px;max-width:76ch}
+.prow{display:grid;grid-template-columns:264px minmax(0,1fr) 282px;gap:20px;align-items:start;
+  padding-block:18px;border-bottom:1px solid var(--border)}
+.prow:last-child{border-bottom:0}
+figure.pdiag{margin:0;min-width:0}
+figure.pdiag svg{display:block;width:100%;height:auto;max-width:100%;color:var(--text);
+  background:var(--surface-2);border:1px solid var(--border);border-radius:9px}
+.pbody{min-width:0;display:flex;flex-direction:column;gap:9px}
+a.pname{font-family:var(--display);font-size:1.02rem;font-weight:600;color:var(--ink);
+  text-decoration:none;border-bottom:1px solid transparent;align-self:start}
+a.pname:hover{border-bottom-color:var(--teal)}
+.pr{font-family:var(--mono);font-size:.66rem;letter-spacing:.03em;color:var(--dim);
+  background:var(--inset);border:1px solid var(--border);border-radius:5px;padding:2px 6px;
+  margin-left:5px;white-space:nowrap;font-weight:400}
+.pf{font-family:var(--mono);font-size:.75rem;line-height:1.55;color:var(--ink);background:var(--inset);
+  border-radius:6px;padding:8px 10px;overflow-wrap:break-word}
+.pm{font-size:.9rem;color:var(--text);line-height:1.58}
+.pm em{color:var(--ink);font-style:italic}
+.pkey{min-width:0;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;
+  padding:11px 13px}
+.pkey-t{font-family:var(--mono);font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--faint);display:block;margin-bottom:8px}
+.pkey dl{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 11px}
+.pkey dt{font-family:var(--mono);font-size:.73rem;color:var(--ink);font-weight:500;
+  overflow-wrap:anywhere}
+.pkey dd{margin:0;font-size:.8rem;color:var(--dim);line-height:1.45;min-width:0}
+@media (max-width:900px){
+  .prow{grid-template-columns:1fr}
+  figure.pdiag{max-width:340px}
+  .pkey dl{grid-template-columns:auto minmax(0,1fr)}
+}
+
 /* ---------- chips ---------- */
 .chip{font-family:var(--mono);font-size:.68rem;letter-spacing:.03em;padding:2px 7px;border-radius:5px;
   border:1px solid transparent;white-space:nowrap;display:inline-block;line-height:1.5}
@@ -256,6 +293,7 @@ footer p{max-width:80ch;margin-bottom:8px}
       <li><span class="tn">03</span><a href="#gallery">What each candidate measures</a>
         <span class="td">twelve quantities, drawn</span>
         <ul>
+          <li><a href="#plate-h">All twelve in one place</a></li>
           <li><a href="#fam-a">Family A · classic region statistics</a></li>
           <li><a href="#fam-b">Family B · object and spatial statistics</a></li>
           <li><a href="#fam-cd">Families C and D · bio-imaging and learned</a></li>
@@ -1011,9 +1049,307 @@ footer p{max-width:80ch;margin-bottom:8px}
   when you have no correct mask to compare it against? Each figure shows the quantity being computed and,
   beside it, the failure that moves it. Nothing below is implemented — these are the options.</p>
 
+  <section class="plate" aria-labelledby="plate-h">
+    <div class="plate-head">
+      <h3 id="plate-h">All twelve unbuilt candidates, in one place</h3>
+      <p>One row each: the mechanism reduced to its essential mark, what the metric actually measures,
+      and a key to every symbol in its formula. Follow a name for the full figure and its caveats.</p>
+    </div>
+      <article class="prow">
+        <figure class="pdiag">
+          <svg viewBox="0 0 200 120" role="img" aria-label="A clean blob crossed by a scan row twice, above five fragments crossed by the same row ten times.">
+          <text class="lbl-s" x="12" y="26">clean · 2 crossings</text>
+          <line x1="14" y1="46" x2="186" y2="46" stroke="var(--rule)" stroke-width="1" fill="none"/>
+          <rect x="78" y="39" width="44" height="14" rx="7" fill="var(--moss-wash)" stroke="var(--moss)" stroke-width="1.3"/>
+          <line x1="78" y1="33" x2="78" y2="59" stroke="var(--clay)" stroke-width="1.6" fill="none"/>
+          <line x1="122" y1="33" x2="122" y2="59" stroke="var(--clay)" stroke-width="1.6" fill="none"/>
+          <text class="lbl-s" x="12" y="80">shattered · 10</text>
+          <line x1="14" y1="100" x2="186" y2="100" stroke="var(--rule)" stroke-width="1" fill="none"/>
+          <rect x="70" y="93" width="8" height="14" rx="3" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1.2"/>
+          <rect x="84" y="93" width="8" height="14" rx="3" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1.2"/>
+          <rect x="98" y="93" width="8" height="14" rx="3" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1.2"/>
+          <rect x="112" y="93" width="8" height="14" rx="3" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1.2"/>
+          <rect x="126" y="93" width="8" height="14" rx="3" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1.2"/>
+          </svg>
+        </figure>
+        <div class="pbody">
+          <a class="pname" href="#m-busy">Weszka–Rosenfeld busyness <span class="pr">A.2</span></a>
+          <p class="pf">busyness = Σ off-diagonal GLCM entries — the object↔background adjacencies</p>
+          <p class="pm">Counts how often the image flips between object and background across adjacent pixels, in one cheap pass over the co-occurrence matrix. A clean rim crosses rarely; a speckled or shattered mask crosses constantly. It scores the mask's <em>compactness</em> and nothing else — no region statistics, no colour. Because it needs a threshold value, it can only evaluate segmentations a threshold already reduced to two levels. Lower is better; the catalogue supplies no normalizer, so treat the scale as unbounded rather than as a fraction.</p>
+        </div>
+        <div class="pkey">
+          <span class="pkey-t">Variable key</span>
+          <dl><dt>C_gl(i,j)</dt><dd>gray level at pixel (i,j) in the original image</dd><dt>L(i,j)</dt><dd>the thresholded or segmented level at that pixel</dd><dt>off-diagonal</dt><dd>co-occurrence entries where object meets background</dd><dt>equivalently</dt><dd>the summed absolute 4-/8-neighbour Laplacian response</dd></dl>
+        </div>
+      </article>
+
+      <article class="prow">
+        <figure class="pdiag">
+          <svg viewBox="0 0 200 120" role="img" aria-label="Three bars: Q is high for a split segmentation, low for the correct one, and equally high for a merged one.">
+          <text class="lbl-s" x="12" y="24">penalises both directions</text>
+          <line x1="14" y1="96" x2="186" y2="96" stroke="var(--rule)" stroke-width="1" fill="none"/>
+          <rect x="32" y="46" width="26" height="50" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1.3"/>
+          <rect x="87" y="82" width="26" height="14" fill="var(--moss-wash)" stroke="var(--moss)" stroke-width="1.3"/>
+          <rect x="142" y="46" width="26" height="50" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1.3"/>
+          <text class="lbl-s" x="45" y="110" text-anchor="middle">split</text>
+          <text class="lbl-s" x="100" y="110" text-anchor="middle">correct</text>
+          <text class="lbl-s" x="155" y="110" text-anchor="middle">merged</text>
+          </svg>
+        </figure>
+        <div class="pbody">
+          <a class="pname" href="#m-q">Borsotti Q <span class="pr">A.5</span></a>
+          <p class="pf">Q(I) = √N / (1000·S_I) · Σⱼ [ e²ⱼ/(1+log Sⱼ) + (N(Sⱼ)/Sⱼ)² ]</p>
+          <p class="pm">The consensus best of the F-family, and the only classic here that charges for <em>both</em> colony failure modes with one number. The first term inside the sum rises when a region is large and internally heterogeneous — a merged doublet. The second rises when many regions share the same area, which is the signature of noise shattering. Smaller is better. Its brittleness is that the same-area term depends on exact area coincidences, so it is sensitive to quantization, and it can misrank a plate whose colonies genuinely vary in size across a growth timecourse.</p>
+        </div>
+        <div class="pkey">
+          <span class="pkey-t">Variable key</span>
+          <dl><dt>N</dt><dd>number of regions in the segmentation</dd><dt>S_I</dt><dd>total image area</dd><dt>Sⱼ</dt><dd>area of region j</dd><dt>e²ⱼ</dt><dd>squared colour error of region j</dd><dt>N(Sⱼ)</dt><dd>how many regions share region j's exact area</dd><dt>1000</dt><dd>arbitrary scaling constant, no effect on ranking</dd></dl>
+        </div>
+      </article>
+
+      <article class="prow">
+        <figure class="pdiag">
+          <svg viewBox="0 0 200 120" role="img" aria-label="A colony with a short interior contrast span and a much longer contrast span across its rim.">
+          <circle cx="96" cy="56" r="30" fill="var(--inset)" stroke="var(--rule)" stroke-width="1.3"/>
+          <line x1="74" y1="56" x2="90" y2="56" stroke="var(--moss)" stroke-width="2.4" fill="none"/>
+          <text class="lbl-s" x="82" y="46" text-anchor="middle">Iᵢ small</text>
+          <line x1="114" y1="56" x2="146" y2="56" stroke="var(--clay)" stroke-width="2.4" fill="none"/>
+          <text class="lbl-s" x="132" y="46" text-anchor="middle">Eᵢ large</text>
+          <text class="lbl" x="100" y="104" text-anchor="middle">C = 1 − Iᵢ/Eᵢ</text>
+          </svg>
+        </figure>
+        <div class="pbody">
+          <a class="pname" href="#m-zeb">Zeboudj contrast C(I) <span class="pr">A.6</span></a>
+          <p class="pf">C(Rᵢ) = 1 − Iᵢ/Eᵢ when 0 &lt; Iᵢ &lt; Eᵢ (= Eᵢ if Iᵢ = 0, else 0) ; C(I) = (1/A) Σᵢ Aᵢ·C(Rᵢ)</p>
+          <p class="pm">The best-balanced classic single score for colonies: it couples interior uniformity and boundary separation into one normalized number and, unlike Otsu, it is spatially aware. For every pixel it takes the maximum contrast to its neighbours — inside the region for Iᵢ, across the boundary for Eᵢ. A uniform colony with a crisp rim gives a small Iᵢ over a large Eᵢ, so C approaches 1. Regions are area-weighted, so real colonies dominate specks. Higher is better. The primary source is an untraceable 1988 PhD thesis, so every published form of this reaches us second-hand.</p>
+        </div>
+        <div class="pkey">
+          <span class="pkey-t">Variable key</span>
+          <dl><dt>c(s,t)</dt><dd>|I(s) − I(t)| / (L−1), the normalized contrast between two pixels</dd><dt>Iᵢ</dt><dd>mean over interior pixels of the max neighbour contrast — low = uniform</dd><dt>Eᵢ</dt><dd>mean over boundary pixels of the max across-boundary contrast — high = separated</dd><dt>Aᵢ, A</dt><dd>area of region i, and total area</dd><dt>L</dt><dd>number of gray levels</dd><dt>the case split</dt><dd>exists to stop negative scores when Eᵢ &lt; Iᵢ, and division by zero when Eᵢ = 0</dd></dl>
+        </div>
+      </article>
+
+      <article class="prow">
+        <figure class="pdiag">
+          <svg viewBox="0 0 200 120" role="img" aria-label="A shallow U-shaped curve against increasing region count, with its minimum marked.">
+          <text class="lbl-s" x="8" y="24">E</text>
+          <line x1="24" y1="20" x2="24" y2="94" stroke="var(--rule)" stroke-width="1" fill="none"/>
+          <line x1="24" y1="94" x2="186" y2="94" stroke="var(--rule)" stroke-width="1" fill="none"/>
+          <polyline points="34,32 58,52 82,66 102,72 122,66 150,50 178,30" fill="none" stroke="var(--ink)" stroke-width="1.8"/>
+          <circle cx="102" cy="72" r="3.5" fill="var(--moss)"/>
+          <text class="lbl-s" x="102" y="88" text-anchor="middle">min</text>
+          <text class="lbl-s" x="104" y="112" text-anchor="middle">region count →</text>
+          </svg>
+        </figure>
+        <div class="pbody">
+          <a class="pname" href="#m-ent">Entropy metric E <span class="pr">A.7</span></a>
+          <p class="pf">E = H_ℓ(I) + H_r(I) — smaller is better</p>
+          <p class="pm">The one genuinely parameter-free classic: no magic constant, no free weights. A coding-theory argument balances region uniformity against region count. Region entropy falls toward zero as you over-segment, because each tiny fragment is trivially uniform, while layout entropy rises with the number of regions. Their sum therefore has a minimum somewhere between merging and shattering, and no tuning constant is needed to find it. Its blind spot is spatial: layout entropy depends only on the <em>size distribution</em>, so two segmentations with identical size histograms and completely different arrangements score the same. Pair it with a contrast term.</p>
+        </div>
+        <div class="pkey">
+          <span class="pkey-t">Variable key</span>
+          <dl><dt>H(Rⱼ)</dt><dd>luminance entropy within region j</dd><dt>H_r</dt><dd>Σ (Sⱼ/S_I)·H(Rⱼ) — expected region entropy, the uniformity half</dd><dt>H_ℓ</dt><dd>−Σ (Sⱼ/S_I)·log(Sⱼ/S_I) — layout entropy, the count half</dd><dt>Sⱼ, S_I</dt><dd>area of region j, and total image area</dd></dl>
+        </div>
+      </article>
+
+      <article class="prow">
+        <figure class="pdiag">
+          <svg viewBox="0 0 200 120" role="img" aria-label="Two bars: when masks are the strata almost all variance is between them; when a mask cuts through agar most variance stays within.">
+          <text class="lbl-s" x="12" y="30">q high — strata fit</text>
+          <rect x="14" y="38" width="130" height="16" fill="var(--moss-wash)" stroke="var(--moss)" stroke-width="1.2"/>
+          <rect x="144" y="38" width="42" height="16" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1.2"/>
+          <text class="lbl-s" x="12" y="76">q low — variance inside</text>
+          <rect x="14" y="84" width="44" height="16" fill="var(--moss-wash)" stroke="var(--moss)" stroke-width="1.2"/>
+          <rect x="58" y="84" width="128" height="16" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1.2"/>
+          <rect x="14" y="110" width="8" height="8" fill="var(--moss-wash)" stroke="var(--moss)" stroke-width="1"/>
+          <text class="lbl-s" x="26" y="117">between</text>
+          <rect x="86" y="110" width="8" height="8" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1"/>
+          <text class="lbl-s" x="98" y="117">within</text>
+          </svg>
+        </figure>
+        <div class="pbody">
+          <a class="pname" href="#m-qstat">q-statistic <span class="pr">B.5/B.9</span></a>
+          <p class="pf">q = 1 − (within-strata SS / total SS) — bounded [0, 1], higher is better</p>
+          <p class="pm">The catalogue's pick for the cleanest single reference-free &ldquo;is this partition good?&rdquo; score for colonies. Treat each colony mask as a stratum: if the strata really capture the image's structure, almost all intensity variance lies between them and little remains within, so q approaches 1. A mask that cuts through uniform agar leaves large within-stratum variance and q falls. It reads exactly like R² in a one-way ANOVA with the partition as the sole predictor. The property that matters for a tuning engine is that it is bounded by construction — no min–max normalization over the swept set, so no Böck instability.</p>
+        </div>
+        <div class="pkey">
+          <span class="pkey-t">Variable key</span>
+          <dl><dt>h</dt><dd>stratum index — one colony mask is one stratum</dd><dt>k</dt><dd>pixel index within a stratum</dd><dt>Ā_h</dt><dd>mean intensity of stratum h</dd><dt>SS</dt><dd>sum of squares</dd><dt>d_M</dt><dd>Gao fuses q with |Moran's I| by Mahalanobis distance — that fusion re-estimates Σ from the tested set, so only q alone is grid-independent</dd></dl>
+        </div>
+      </article>
+
+      <article class="prow">
+        <figure class="pdiag">
+          <svg viewBox="0 0 200 120" role="img" aria-label="A colony inside its enlarged bounding box, with the ring between box and object shaded as the comparison region.">
+          <text class="lbl-s" x="100" y="20" text-anchor="middle">no adjacency graph</text>
+          <path d="M64 28 H136 V100 H64 Z M126,64 a26,26 0 1,0 -52,0 a26,26 0 1,0 52,0 Z" fill-rule="evenodd" fill="var(--slate-wash)" stroke="var(--slate)" stroke-width="1.2"/>
+          <circle cx="100" cy="64" r="26" fill="var(--moss-wash)" stroke="var(--moss)" stroke-width="1.3"/>
+          <text class="lbl-s" x="100" y="114" text-anchor="middle">ring = bbox(d) − object</text>
+          </svg>
+        </figure>
+        <div class="pbody">
+          <a class="pname" href="#m-fgs">FGS — WV + DTNP <span class="pr">B.7</span></a>
+          <p class="pf">WV = (Σ aᵢ·vᵢ) / (Σ aᵢ) ; DTNP = mean difference between each object's pixels and the ring Bᵢ(d) \ objectᵢ</p>
+          <p class="pm">Replaces Moran's-I-over-a-region-adjacency-graph with a far cheaper trick: enlarge each object's bounding box by d, remove the object, and compare the object's pixels against the surrounding ring. No adjacency graph is built at all, which is the whole point of the method. Sparse colonies on agar are the ideal case. In a dense array the ring reaches past the gap and catches the neighbouring colony, so d has to be sized to the colony spacing rather than left at the paper's value. The catalogue verified the ring mechanism from full text but never transcribed the DTNP closed form, so nothing here is its equation.</p>
+        </div>
+        <div class="pkey">
+          <span class="pkey-t">Variable key</span>
+          <dl><dt>aᵢ</dt><dd>area of object i</dd><dt>vᵢ</dt><dd>mean per-band variance inside object i</dd><dt>Bᵢ(d)</dt><dd>object i's bounding box, enlarged by d</dd><dt>Bᵢ(d) \ objectᵢ</dt><dd>the ring — the box minus the object, so it keeps the corner wedges</dd><dt>d</dt><dd>enlargement; 1 px in the paper, but size it to the colony gap</dd></dl>
+        </div>
+      </article>
+
+      <article class="prow">
+        <figure class="pdiag">
+          <svg viewBox="0 0 200 120" role="img" aria-label="A colony split by a spurious boundary diagnosed over-segmented, beside one mask swallowing two colonies diagnosed under-segmented.">
+          <ellipse cx="54" cy="50" rx="30" ry="20" fill="var(--teal-wash)" stroke="var(--teal)" stroke-width="1.3"/>
+          <line x1="54" y1="30" x2="54" y2="70" stroke="var(--clay)" stroke-width="1.8" stroke-dasharray="4 3" fill="none"/>
+          <text class="lbl clay-t" x="54" y="88" text-anchor="middle">OVER</text>
+          <ellipse cx="146" cy="50" rx="34" ry="20" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1.3"/>
+          <circle cx="134" cy="50" r="9" fill="var(--surface-2)" stroke="var(--rule)" stroke-width="1"/>
+          <circle cx="158" cy="50" r="9" fill="var(--surface-2)" stroke="var(--rule)" stroke-width="1"/>
+          <text class="lbl clay-t" x="146" y="88" text-anchor="middle">UNDER</text>
+          <text class="lbl-s" x="100" y="110" text-anchor="middle">per-segment, against δ</text>
+          </svg>
+        </figure>
+        <div class="pbody">
+          <a class="pname" href="#m-uoa">UOA — under/over-segmentation aware <span class="pr">B.6</span></a>
+          <p class="pf">per segment: H(Rᵢ ∪ Rⱼ) ≤ δ → over-segmented ; H(Rᵢ) &gt; δ → under-segmented</p>
+          <p class="pm">The only metric here that tells you <em>which way</em> a segmentation is wrong, and where. It asks two independent questions of every segment against the same threshold. If merging with a neighbour would still leave something homogeneous, the pair was split — over-segmented. If the segment is internally heterogeneous standing alone, it swallowed something — under-segmented. The two directions are never conflated per segment, so the output is a per-colony diagnosis rather than a score. That suits arrayed plates directly, because &ldquo;merged doublet&rdquo; and &ldquo;split colony&rdquo; are exactly the two failure modes, and the grid supplies an expected colony size from which to set δ.</p>
+        </div>
+        <div class="pkey">
+          <span class="pkey-t">Variable key</span>
+          <dl><dt>H</dt><dd>pluggable homogeneity — variance, entropy, contrast, Lab contrast, or GLCM texture</dd><dt>δ</dt><dd>the homogeneity threshold; the one tuned meta-parameter</dd><dt>Rᵢ, Rⱼ</dt><dd>a segment and a candidate neighbour to merge with</dd><dt>UOA_Σ, UOA_L2</dt><dd>global aggregations of the per-segment scores; the catalogue retrieved these equations only partially</dd><dt>caveat</dt><dd>all six homogeneity indices the authors tested correlate with segment size</dd></dl>
+        </div>
+      </article>
+
+      <article class="prow">
+        <figure class="pdiag">
+          <svg viewBox="0 0 200 120" role="img" aria-label="A mask contour lying on the intensity-edge band, beside the same contour eroded well inside it.">
+          <text class="lbl-s" x="100" y="20" text-anchor="middle">rim on a real edge?</text>
+          <circle cx="54" cy="56" r="26" fill="none" stroke="var(--dim)" stroke-width="6" stroke-opacity=".3"/>
+          <circle cx="54" cy="56" r="26" fill="none" stroke="var(--teal)" stroke-width="1.8" stroke-dasharray="5 3"/>
+          <text class="lbl-s moss-t" x="54" y="102" text-anchor="middle">on the edge</text>
+          <circle cx="146" cy="56" r="26" fill="none" stroke="var(--dim)" stroke-width="6" stroke-opacity=".3"/>
+          <circle cx="146" cy="56" r="15" fill="none" stroke="var(--teal)" stroke-width="1.8" stroke-dasharray="5 3"/>
+          <text class="lbl-s clay-t" x="146" y="102" text-anchor="middle">inside it</text>
+          </svg>
+        </figure>
+        <div class="pbody">
+          <a class="pname" href="#m-evi">EVI — edge validity index <span class="pr">B.8</span></a>
+          <p class="pf">EVI = agreement between segment boundaries and a multi-scale edge map</p>
+          <p class="pm">Asks a question the GS and FGS families never ask: does the mask boundary actually sit where the image has an intensity edge? Compute an edge response — Prewitt at several scales in the original — and measure how well the mask contours coincide with it. A contour eroded or dilated away from the true rim scores low even when the region it encloses is still round and internally uniform, so it catches a class of error that shape, size and homogeneity terms all pass. Higher is better. Yu's own pipeline fuses it with two other terms and wraps it in SAR-specific Gamma/speckle machinery that does not transfer; the idea does.</p>
+        </div>
+        <div class="pkey">
+          <span class="pkey-t">Variable key</span>
+          <dl><dt>segment boundary</dt><dd>the mask contour being tested</dd><dt>edge map</dt><dd>multi-scale Prewitt response in the original formulation</dd><dt>GHO + GHE + EVI → G</dt><dd>EVI is one of three fused terms in Yu's combined score</dd><dt>local hook</dt><dd>PhenoTypic already computes Sobel/Laplace/Frangi/Sato/Meijering/phase responses in enhance/_focus_edge_*</dd></dl>
+        </div>
+      </article>
+
+      <article class="prow">
+        <figure class="pdiag">
+          <svg viewBox="0 0 200 120" role="img" aria-label="Five foreground outlines of which four are claimed by masks and one is left unclaimed.">
+          <circle cx="30" cy="46" r="15" fill="var(--moss-wash)" stroke="var(--moss)" stroke-width="1.4"/>
+          <circle cx="66" cy="46" r="15" fill="var(--moss-wash)" stroke="var(--moss)" stroke-width="1.4"/>
+          <circle cx="102" cy="46" r="15" fill="var(--moss-wash)" stroke="var(--moss)" stroke-width="1.4"/>
+          <circle cx="138" cy="46" r="15" fill="var(--moss-wash)" stroke="var(--moss)" stroke-width="1.4"/>
+          <circle cx="174" cy="46" r="15" fill="none" stroke="var(--clay)" stroke-width="1.6" stroke-dasharray="4 3"/>
+          <text class="lbl-s" x="100" y="86" text-anchor="middle">one missed → FFC falls</text>
+          <text class="lbl-s" x="100" y="104" text-anchor="middle">spill cannot raise it</text>
+          </svg>
+        </figure>
+        <div class="pbody">
+          <a class="pname" href="#m-cse">CSE coverage metrics <span class="pr">C.1</span></a>
+          <p class="pf">FFC = |masks ∩ foreground| / |foreground|</p>
+          <p class="pm">The transferable half of the only peer-reviewed, fully reference-free cell-segmentation suite. FFC asks what share of the image's foreground the masks actually claim, which is the one question none of PhenoTypic's four built terms can answer — they all score the objects that exist, so a colony never detected produces no evidence anywhere. The asymmetry is the useful part: a missed colony removes numerator area and FFC falls, while a mask bleeding onto bare agar adds pixels that are in neither term. Read that precisely, though — a mask swallowing the whole plate scores 1.0, so FFC has to be paired with a term that charges for spill.</p>
+        </div>
+        <div class="pkey">
+          <span class="pkey-t">Variable key</span>
+          <dl><dt>foreground</dt><dd>image foreground, derived independently of the masks — a second thresholding decision inside the scorer</dd><dt>masks</dt><dd>the union of instance masks</dd><dt>NC</dt><dd>object density, objects per 100 µm² — needs a physical pixel size, and that scale is wrong for mm colonies</dd><dt>CSSD</dt><dd>standard deviation of object size, folded as 1/(ln CSSD + 1)</dd><dt>blocked</dt><dd>the suite's uniformity family needs a multichannel marker panel and fails silently on one channel</dd></dl>
+        </div>
+      </article>
+
+      <article class="prow">
+        <figure class="pdiag">
+          <svg viewBox="0 0 200 120" role="img" aria-label="Two vector fields pointing the same way for a kept mask, and opposite ways for a dropped one.">
+          <text class="lbl-s" x="100" y="20" text-anchor="middle">model's field vs. mask's</text>
+          <line x1="26" y1="44" x2="72" y2="44" stroke="var(--teal)" stroke-width="1.8" fill="none"/>
+          <polygon points="72,40 80,44 72,48" fill="var(--teal)"/>
+          <line x1="26" y1="60" x2="72" y2="60" stroke="var(--moss)" stroke-width="1.8" fill="none"/>
+          <polygon points="72,56 80,60 72,64" fill="var(--moss)"/>
+          <text class="lbl-s moss-t" x="53" y="84" text-anchor="middle">agree · keep</text>
+          <line x1="120" y1="44" x2="166" y2="44" stroke="var(--teal)" stroke-width="1.8" fill="none"/>
+          <polygon points="166,40 174,44 166,48" fill="var(--teal)"/>
+          <line x1="174" y1="60" x2="128" y2="60" stroke="var(--clay)" stroke-width="1.8" fill="none"/>
+          <polygon points="128,56 120,60 128,64" fill="var(--clay)"/>
+          <text class="lbl-s clay-t" x="147" y="84" text-anchor="middle">disagree · drop</text>
+          <text class="lbl-s" x="100" y="108" text-anchor="middle">needs a dense field</text>
+          </svg>
+        </figure>
+        <div class="pbody">
+          <a class="pname" href="#m-flow">Cellpose flow error <span class="pr">new · 08-28</span></a>
+          <p class="pf">err = mean[ (dP_masks − dP_net/5)² ] per label ; drop the mask when err &gt; flow_threshold = 0.4</p>
+          <p class="pm">The most conceptually transferable per-instance confidence in the survey: a model checking its own output for self-consistency, with no ground truth anywhere in the signature. Recompute the flow gradients that the predicted labels imply, then take the per-mask mean squared error against the flows the network itself predicted. Where the two disagree, the mask is not something the model actually believes in, and it is deleted outright. The prerequisite is the whole difficulty for us: it consumes a dense per-pixel field, and Otsu, watershed and hysteresis emit no field to disagree with.</p>
+        </div>
+        <div class="pkey">
+          <span class="pkey-t">Variable key</span>
+          <dl><dt>dP_net</dt><dd>the dense per-pixel flow field the network predicted</dd><dt>dP_masks</dt><dd>the flow field recomputed from the predicted label image</dd><dt>/5</dt><dd>the network's own flow scaling factor</dd><dt>flow_threshold</dt><dd>hard upper bound, default 0.4 — remove_bad_flow_masks deletes anything above it</dd><dt>scope</dt><dd>2D only; skipped in 3D. A separate cellprob_threshold is the probability-like gate</dd></dl>
+        </div>
+      </article>
+
+      <article class="prow">
+        <figure class="pdiag">
+          <svg viewBox="0 0 200 120" role="img" aria-label="A schematic plot in which predicted Dice tracks the identity line at low true Dice then flattens below it, with the inferred plate region shaded near one.">
+          <text class="lbl-s" x="8" y="24">pred</text>
+          <rect x="146" y="20" width="38" height="74" fill="var(--gold-wash)" stroke="none"/>
+          <text class="lbl-s" x="165" y="16" text-anchor="middle">inferred</text>
+          <line x1="26" y1="20" x2="26" y2="94" stroke="var(--rule)" stroke-width="1" fill="none"/>
+          <line x1="26" y1="94" x2="186" y2="94" stroke="var(--rule)" stroke-width="1" fill="none"/>
+          <line x1="26" y1="94" x2="184" y2="22" stroke="var(--rule)" stroke-width="1.3" stroke-dasharray="5 4" fill="none"/>
+          <polyline points="26,94 62,72 98,56 132,47 160,43 184,41" fill="none" stroke="var(--clay)" stroke-width="1.9"/>
+          <text class="lbl-s" x="104" y="112" text-anchor="middle">true Dice →</text>
+          </svg>
+        </figure>
+        <div class="pbody">
+          <a class="pname" href="#m-rca">Reverse Classification Accuracy <span class="pr">D.1–D.2</span></a>
+          <p class="pf">predicted DSC = max over the reference database of the reverse classifier's accuracy</p>
+          <p class="pm">A genuinely clever trick: treat the prediction as if it were ground truth, train a segmenter on it, and see how well that segmenter does on images you <em>do</em> have labels for. If the prediction was good, the classifier trained on it will also segment the reference images well. Reference-free at test time — but not annotation-free overall, because it needs an annotated reference database at inference, which is the thing this page exists to avoid. Its aggregate numbers are excellent and its behaviour on already-good masks is not: threshold accuracy collapses on exactly the near-perfect regime where well-imaged plates sit.</p>
+        </div>
+        <div class="pkey">
+          <span class="pkey-t">Variable key</span>
+          <dl><dt>reverse classifier</dt><dd>a segmenter trained on the candidate prediction as though it were ground truth</dd><dt>reference DB</dt><dd>the annotated images the reverse classifier is evaluated against</dd><dt>max</dt><dd>taken over the reference database</dd><dt>cost</dt><dd>~11 min/case — the one load-bearing figure the catalogue's audit could not confirm verbatim</dd><dt>collapse</dt><dd>threshold accuracy 0.454 (RF) / 0.051 (CNN), LV myocardium</dd></dl>
+        </div>
+      </article>
+
+      <article class="prow">
+        <figure class="pdiag">
+          <svg viewBox="0 0 200 120" role="img" aria-label="A stack of an image plus mask channels feeding a network that emits a single predicted Dice value.">
+          <text class="lbl-s" x="46" y="24" text-anchor="middle">image + masks</text>
+          <rect x="20" y="34" width="44" height="34" fill="var(--surface-2)" stroke="var(--rule)" stroke-width="1"/>
+          <rect x="26" y="40" width="44" height="34" fill="var(--surface-2)" stroke="var(--rule)" stroke-width="1"/>
+          <rect x="32" y="46" width="44" height="34" fill="var(--surface-2)" stroke="var(--rule)" stroke-width="1"/>
+          <line x1="84" y1="64" x2="104" y2="64" stroke="var(--dim)" stroke-width="1.6" fill="none"/>
+          <polygon points="104,60 112,64 104,68" fill="var(--dim)"/>
+          <rect x="116" y="44" width="64" height="40" rx="8" fill="var(--moss-wash)" stroke="var(--moss)" stroke-width="1.3"/>
+          <text class="lbl-s" x="148" y="62" text-anchor="middle">predicted</text>
+          <text class="lbl moss-t" x="148" y="76" text-anchor="middle">Dice</text>
+          <text class="lbl-s" x="100" y="108" text-anchor="middle">40 ms · needs labels</text>
+          </svg>
+        </figure>
+        <div class="pbody">
+          <a class="pname" href="#m-dice">Learned Dice regression <span class="pr">D.3</span></a>
+          <p class="pf">predicted DSC = f(image, candidate masks) — a 50-layer 3D residual network</p>
+          <p class="pm">Skip the reverse classifier entirely and regress quality directly: feed the image and its candidate masks to a CNN and have it output the predicted Dice. Four orders of magnitude faster than RCA, and reference-free at inference. The cost sits at training time, where the labels can come either from manual annotation or, more cheaply, from RCA — a substitution that multiplies the error four- to fivefold. For PhenoTypic the interesting variant is neither: corrupt clean synthetic masks in known ways and the true overlap is known exactly, so the training label is a by-product of the corruption rather than a human.</p>
+        </div>
+        <div class="pkey">
+          <span class="pkey-t">Variable key</span>
+          <dl><dt>f</dt><dd>50-layer 3D residual network</dd><dt>input</dt><dd>the image stacked with one-hot candidate mask channels</dd><dt>manual labels</dt><dd>MAE 0.031 from ~12,880 labelled (image, mask, Dice) samples</dd><dt>RCA labels</dt><dd>MAE 0.139 — no manual annotation, a 4–5× error increase</dd><dt>cost</dt><dd>40 ms on GPU at inference</dd><dt>limit</dt><dd>authors report it insensitive to small regional or boundary differences</dd></dl>
+        </div>
+      </article>
+  </section>
+
   <p class="subhead" id="fam-a">Family A · classic region statistics</p>
   <div class="mgrid">
-  <figure class="mfig">
+  <figure class="mfig" id="m-busy">
     <div class="mhead"><h3>Weszka–Rosenfeld busyness</h3><span class="chip c-plain">A.2</span></div>
     <p class="mq">busyness = Σ off-diagonal GLCM entries — the object↔background transitions. Lower is better.</p>
     <svg viewBox="0 0 400 200" role="img" aria-label="Two masks cut by the same horizontal scan row: a clean colony crosses the object–background boundary twice, while a shattered mask of five fragments crosses the same row ten times.">
@@ -1070,7 +1406,7 @@ footer p{max-width:80ch;margin-bottom:8px}
     <figcaption>Busyness never inspects region statistics at all — it counts how often the image flips between object and background across adjacent pixels — drawn here along one scan row, so a smooth rim and a shattered mask separate on transition density alone. That is also its bound: it can only score a segmentation that a threshold has already reduced to two levels.</figcaption>
   </figure>
 
-  <figure class="mfig">
+  <figure class="mfig" id="m-q">
     <div class="mhead"><h3>Borsotti Q</h3><span class="chip c-plain">A.5</span></div>
     <p class="mq">Q(I) = √N / (1000·S_I) · Σⱼ [ e²ⱼ/(1+log Sⱼ) + (N(Sⱼ)/Sⱼ)² ] — smaller is better.</p>
     <svg viewBox="0 0 400 220" role="img" aria-label="Three segmentations of the same two colonies — shattered, correct and merged — above a schematic bar chart in which Q is high for both failure cases and low only for the correct one.">
@@ -1112,7 +1448,7 @@ footer p{max-width:80ch;margin-bottom:8px}
     <figcaption>Q is the only family-A score that charges for both failure directions at once: merging colonies inflates the squared-error term e²ⱼ/(1+log Sⱼ), while shattering one inflates (N(Sⱼ)/Sⱼ)², because the fragments end up sharing an area. Both roads raise the same number, which is what lets one scalar rank a whole parameter sweep.</figcaption>
   </figure>
 
-  <figure class="mfig">
+  <figure class="mfig" id="m-zeb">
     <div class="mhead"><h3>Zeboudj contrast C(I)</h3><span class="chip c-plain">A.6</span></div>
     <p class="mq">C(Rᵢ) = 1 − Iᵢ/Eᵢ when 0 &lt; Iᵢ &lt; Eᵢ (= Eᵢ if Iᵢ = 0, else 0) ; C(I) = (1/A) Σᵢ Aᵢ·C(Rᵢ) — higher is better.</p>
     <svg viewBox="0 0 400 210" role="img" aria-label="A crisp-rimmed colony whose across-boundary contrast far exceeds its interior contrast, beside a smear-rimmed colony where the two contrasts converge, each shown with an intensity profile taken across the rim.">
@@ -1163,7 +1499,7 @@ footer p{max-width:80ch;margin-bottom:8px}
     <figcaption>Zeboudj scores a region by the contrast it sees inside itself against the contrast it sees across its own boundary, so a colony only scores well when a flat interior sits behind a sharp rim. Smearing the rim shrinks Eᵢ toward Iᵢ, the ratio approaches one, and C(Rᵢ) collapses even though not a single pixel has left the mask.</figcaption>
   </figure>
 
-  <figure class="mfig">
+  <figure class="mfig" id="m-ent">
     <div class="mhead"><h3>Entropy metric E</h3><span class="chip c-plain">A.7</span></div>
     <p class="mq">E = H_ℓ(I) + H_r(I) — smaller is better.</p>
     <svg viewBox="0 0 400 210" role="img" aria-label="A schematic plot against increasing region count showing region entropy falling toward zero, layout entropy rising, and their sum E forming a shallow U with a single marked minimum.">
@@ -1200,7 +1536,7 @@ footer p{max-width:80ch;margin-bottom:8px}
 
   <p class="subhead" id="fam-b">Family B · object and spatial statistics</p>
   <div class="mgrid">
-  <figure class="mfig">
+  <figure class="mfig" id="m-qstat">
     <div class="mhead"><h3>q-statistic</h3><span class="chip c-plain">B.5/B.9</span></div>
     <p class="mq">q = 1 − (within-strata SS / total SS), with each mask region taken as one stratum. q ∈ [0,1], higher is better.</p>
     <svg viewBox="0 0 400 236" role="img" aria-label="Three horizontal bars. The first is the total pixel-intensity variance, a fixed denominator. Below it, a partition whose strata are colony masks leaves only a small within-strata remainder so q is close to one; a partition whose strata cut through uniform agar leaves a large within-strata remainder so q is close to zero.">
@@ -1227,7 +1563,7 @@ footer p{max-width:80ch;margin-bottom:8px}
     <figcaption>q is the fraction of total pixel-intensity variance that the mask partition explains, and it reads exactly like R² in a one-way ANOVA. Because the denominator is the image's own total variance, q is bounded in [0,1] by construction and its value never depends on which other candidate segmentations happen to be in the sweep — that grid-independence is why the catalogue picks it. Gao pairs q with |Moran's I| through a Mahalanobis distance, but that combination estimates its covariance from the tested set and so only partly escapes the same dependence; q on its own escapes it entirely.</figcaption>
   </figure>
 
-  <figure class="mfig">
+  <figure class="mfig" id="m-fgs">
     <div class="mhead"><h3>FGS — WV + DTNP</h3><span class="chip c-plain">B.7</span></div>
     <p class="mq">WV = (Σ aᵢ·vᵢ) / (Σ aᵢ) (area-weighted per-band variance). DTNP = the area-weighted mean difference between each object's pixels and the ring Bᵢ(d) \ objectᵢ — the object's bounding box enlarged by d, with the object removed. No region-adjacency graph is built. FGS combines a normalized WV with a normalized DTNP. WV is lower-better; the catalogue does not record how DTNP is oriented in their Eq. 6, so the combined polarity is not established here.</p>
     <svg viewBox="0 0 400 228" role="img" aria-label="Two panels showing the same bounding-box ring around a colony. On a widely spaced plate the ring contains only agar. On a densely packed array the identical ring reaches past the gap and overlaps the neighbouring colony.">
@@ -1264,7 +1600,7 @@ footer p{max-width:80ch;margin-bottom:8px}
     <figcaption>FGS drops the region-adjacency graph entirely: each object's heterogeneity is measured against the ring left over when its own bounding box is enlarged by d. On a sparse plate that ring is pure agar and the contrast it reports is real, but on a densely arrayed plate the identical ring reaches across the gap into the neighbouring colony, and the term that was supposed to reward colony-versus-agar contrast instead compares colony against colony — which is why d must be sized to the colony gap rather than left at the paper's 1 px. Only this ring mechanism was verified from the paper's full text; DTNP's closed form (Eqs. 4–5) was never fully transcribed, so nothing drawn here should be read as its equation.</figcaption>
   </figure>
 
-  <figure class="mfig">
+  <figure class="mfig" id="m-uoa">
     <div class="mhead"><h3>UOA — under/over-segmentation aware</h3><span class="chip c-plain">B.6</span></div>
     <p class="mq">Per segment Rᵢ, two independent tests against one homogeneity threshold δ: if H(Rᵢ ∪ Rⱼ) ≤ δ for a neighbour Rⱼ, the pair is over-segmented; if H(Rᵢ) &gt; δ on its own, the segment is under-segmented. H is pluggable (variance, entropy, Lab contrast, GLCM texture).</p>
     <svg viewBox="0 0 400 224" role="img" aria-label="One row of a plate carrying three masks: a colony split in two by a spurious boundary, diagnosed over-segmented; a single mask swallowing two colonies, diagnosed under-segmented; and a correct one-colony mask that passes both tests.">
@@ -1305,7 +1641,7 @@ footer p{max-width:80ch;margin-bottom:8px}
     <figcaption>UOA asks two separate questions of every segment against the same threshold δ — would merging with a neighbour still leave something homogeneous (the segment is over-segmented), and is this segment heterogeneous standing alone (it is under-segmented) — and because the two answers stay separate per segment, what the drawing shows is a per-colony diagnosis. That matters here because a split colony and a merged doublet are precisely the two colony failure modes, and the grid supplies an expected size to set δ from. The catalogue verified the H/δ classification logic from full text but retrieved the UOA_Σ and UOA_L2 aggregation equations only partially, so the aggregation step is deliberately not drawn.</figcaption>
   </figure>
 
-  <figure class="mfig">
+  <figure class="mfig" id="m-evi">
     <div class="mhead"><h3>EVI — edge validity index</h3><span class="chip c-plain">B.8</span></div>
     <p class="mq">EVI = the agreement between the mask boundary and an independently computed intensity-edge map (a multi-scale Prewitt response in the original). Higher is better.</p>
     <svg viewBox="0 0 400 228" role="img" aria-label="Two panels. On the left a dashed mask contour lies directly on the grey band of the intensity-edge response, scoring high edge validity. On the right the same contour is eroded inward and sits well inside the edge band, scoring low, even though the region it encloses is still round and plausibly sized.">
@@ -1341,7 +1677,7 @@ footer p{max-width:80ch;margin-bottom:8px}
 
   <p class="subhead" id="fam-cd">Families C and D · bio-imaging and learned predictors</p>
   <div class="mgrid">
-  <figure class="mfig">
+  <figure class="mfig" id="m-cse">
     <div class="mhead"><h3>CSE coverage metrics</h3><span class="chip c-plain">C.1</span></div>
     <p class="mq">FFC = |masks &cap; foreground| / |foreground| &nbsp;&middot;&nbsp; alongside NC (object density), 1&minus;FBC, FCF, 1/(ln CSSD + 1) &mdash; term list from the 2026-08-28 pass; the catalogue's &sect;C.1 names NC, FFC and FMCN</p>
     <svg viewBox="0 0 400 214" role="img" aria-label="A row of colony foreground outlines inside a plate crop: four are filled by masks, one is left unclaimed, and one carries a mask that spills past its outline onto the agar. Only the unclaimed one changes the coverage fraction.">
@@ -1377,7 +1713,7 @@ footer p{max-width:80ch;margin-bottom:8px}
     <figcaption>FFC is the one coverage term orthogonal to everything PhenoTypic already scores, and the asymmetry is why: a colony the detector never found removes area from the numerator alone, so FFC falls, while a mask bleeding onto bare agar adds pixels that are in neither the numerator nor the denominator, so FFC cannot be inflated by over-claiming. Read that precisely, though: nothing stops a mask that swallows the whole plate from scoring FFC = 1, so FFC has to be paired with a term that charges for spill &mdash; the built Contrast does exactly that. The exact foreground definition is also one of the Chen &amp; Murphy closed forms the catalogue flags as summarized rather than quoted, and however it is computed it puts a second thresholding decision inside the scorer. NC, 1&minus;FBC and FCF ride along in the same transferable subset; 1/(ln CSSD + 1) is the same <em>family</em> of bounded fold the built SizeCV already applies &mdash; 1/(1+CV) over a within-group coefficient of variation, rather than 1/(ln SD + 1) over a size standard deviation &mdash; so it is close to redundant here. The suite's other half &mdash; the uniformity family &mdash; needs a multichannel marker panel and degrades silently on a single-channel plate, so it is deliberately not drawn. Chen &amp; Murphy validated the fused score on multiplexed tissue microscopy (r = 0.83 against F1), never on agar.</figcaption>
   </figure>
 
-  <figure class="mfig">
+  <figure class="mfig" id="m-flow">
     <div class="mhead"><h3>Cellpose flow error</h3><span class="chip c-plain">new &middot; 08-28</span></div>
     <p class="mq">err = mean[ (dP_masks &minus; dP_net / 5)&sup2; ] per label &nbsp;&middot;&nbsp; drop the mask when err &gt; flow_threshold = 0.4</p>
     <svg viewBox="0 0 400 240" role="img" aria-label="The same detector output twice. On the left the network's flow arrows and the arrows recomputed from the mask both point inward and agree, so the mask is kept. On the right the recomputed arrows still point inward while the network's point outward, so the mask is dropped. A footer notes that the check needs a model emitting a dense per-pixel field.">
@@ -1432,7 +1768,7 @@ footer p{max-width:80ch;margin-bottom:8px}
     <figcaption>This is the model auditing itself: recompute the flow field the predicted labels <em>imply</em>, then take the per-mask squared error against the field the network actually emitted. Where the two point the same way the mask is something the model would have drawn; where they point opposite ways it is an artefact, and <code>remove_bad_flow_masks</code> deletes it outright above 0.4. The prerequisite is the whole difficulty for us: the check consumes a dense per-pixel prediction, and a threshold, watershed or hysteresis detector emits no field to disagree with, so there is nothing to compare. The transferable idea is the shape of it, not the code &mdash; a per-instance confidence the detector already computes and then throws away. The 0.4 is Cellpose's own default on fluorescence cell images, never evaluated on agar, and the 0.1 drawn beside it is illustrative rather than measured.</figcaption>
   </figure>
 
-  <figure class="mfig">
+  <figure class="mfig" id="m-rca">
     <div class="mhead"><h3>Reverse Classification Accuracy</h3><span class="chip c-plain">D.1&ndash;D.2</span></div>
     <p class="mq">&rho;&#770;(S_I) = max_k &rho;( f_{I,S_I}(J_k), G_k ) &nbsp;&mdash;&nbsp; train a segmenter on the prediction, score it on a reference database that has ground truth</p>
     <svg viewBox="0 0 400 238" role="img" aria-label="A schematic plot of predicted Dice against true Dice. A dashed identity line runs corner to corner; the RCA curve follows it closely at low true Dice and then flattens, falling further and further below the line as true Dice approaches one. A shaded band marks the near-perfect region where well-imaged plates sit, and a vertical gap there shows RCA under-predicting.">
@@ -1482,7 +1818,7 @@ footer p{max-width:80ch;margin-bottom:8px}
     <figcaption>RCA's aggregate numbers are excellent &mdash; 99% binary accuracy on 400 degraded segmentations, ~95% across 4,805 UK Biobank scans, r between 0.95 and 0.99 against the real metric &mdash; but that accuracy is not spread evenly along the range. On complex-shaped and already-high-quality masks the reverse classifier systematically under-predicts Dice, and threshold accuracy collapses to 0.454 on the random-forest set and 0.051 on the CNN set for LV myocardium. Well-imaged agar plates <em>are</em> the near-perfect-mask regime, so RCA would be least informative exactly where our data lives &mdash; that alone rules it out as a sweep objective, whatever it costs. Separately and independently, it is reported at ~660 s (roughly eleven minutes) per case, the one load-bearing figure the catalogue's own citation audit could <em>not</em> confirm verbatim, so read it as an order of magnitude rather than a measurement. A third reason needs no numbers at all: RCA requires an annotated ground-truth reference database at inference. The curve is schematic: it draws the shape of the reported regime dependence, not measured points, and every quantity here comes from cardiac MR &mdash; none of it has been evaluated on colony masks.</figcaption>
   </figure>
 
-  <figure class="mfig">
+  <figure class="mfig" id="m-dice">
     <div class="mhead"><h3>Learned Dice regression</h3><span class="chip c-plain">D.3</span></div>
     <p class="mq">CNN( image, candidate masks ) &rarr; predicted DSC &nbsp;&mdash;&nbsp; one scalar per case, no reverse classifier</p>
     <svg viewBox="0 0 400 220" role="img" aria-label="A stack of one image plus four one-hot mask channels feeds a fifty-layer residual network that emits a single predicted Dice scalar in forty milliseconds, drawn above two alternative sources for the training labels and the error each one costs.">
