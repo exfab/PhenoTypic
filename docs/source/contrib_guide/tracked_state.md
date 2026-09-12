@@ -178,7 +178,14 @@ contributor writing a counter.
 | `processing_generation` | `sha256(pipeline_sha256 ‖ per_image_config_digest ‖ restart_epoch)` | `derive_processing_generation` (`_cli_identity.py:148`) |
 | `work_id` | schema version, dataset, input-relative path, input sha256, pipeline fingerprint, per-image config digest, mode | `work_id_for_image` (`_cli_failure_tracker.py:310`) |
 | per-dataset completed / failed counts | the per-image records | `RunState.diagnostics` — **and nothing branches on these** |
-| the master | the record-authorized embedded tables, and nothing else | `finalize_run` |
+| the master | the record-authorized embedded tables, each projected onto its own descriptor's `measurement_columns`, minus any store the projection excludes — and nothing else | `finalize_run` → `project_embedded_measurement_table` |
+
+**An excluded store makes a fully verified run read `incomplete`.** The
+projection (P7 Task 4) leaves out a store whose table it cannot project safely —
+no measurement descriptor, or same-label rows that disagree — and the aggregate
+proof certifies only the stores the master actually carries. `resolve_run_state`
+then finds a verified set larger than the proof's, and reports `incomplete`. The
+only record of *why* is the finalization log's warning naming the store.
 
 `processing_generation` folds **only configuration values** — a pipeline hash, a
 per-image config digest, and a restart epoch. No paths, no timestamps, no

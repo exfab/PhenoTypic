@@ -1238,13 +1238,29 @@ def test_measurement_worker_derives_embedded_image_names_from_store(
     initialize_slurm_lifecycle(
         output_dir, generation=generation, mode="recompile"
     )
-    tables = [
-        zarr_store_path(output_dir, "plate_a", stem)
-        / MEASUREMENT_TABLE_RELATIVE_PATH
-        for stem in ("img2", "img1")
-    ]
-    for value, table in zip((20, 10), tables, strict=True):
-        _write_parquet(table, [value])
+    # REAL stores, not a bare `table.parquet`. The shard worker reads each
+    # table's descriptor from its store root (P7 Task 4), and a real recompile
+    # input always has both: `recompile_embedded_measurement_table` -- patched
+    # out below -- runs on every table first, reads the store's attributes, and
+    # raises on a store without a measurement descriptor. A rootless table
+    # was never a reachable input, only a shortcut this fixture could take.
+    import pandas as pd
+
+    from .conftest import _image, _manager
+
+    tables = []
+    for stem, value in (("img2", 20), ("img1", 10)):
+        store = _manager(output_dir).save_image_store(
+            _image(stem),
+            "plate_a",
+            stem,
+            work_id=f"work-{stem}",
+            measurements=pd.DataFrame(
+                {"Object_Label": [1, 2], "Size_Area": [value, value + 1]}
+            ),
+        )
+        assert store is not None, f"the forward writer failed to promote {stem}"
+        tables.append(store / MEASUREMENT_TABLE_RELATIVE_PATH)
     manifest_path = (
         progress_dir(output_dir)
         / "recompile"
@@ -1295,6 +1311,8 @@ def test_measurement_worker_derives_embedded_image_names_from_store(
     )
     assert shard.sort("Size_Area")[str(IMAGE.IMAGE_NAME)].to_list() == [
         "img1",
+        "img1",
+        "img2",
         "img2",
     ]
 

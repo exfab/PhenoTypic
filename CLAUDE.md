@@ -464,9 +464,14 @@ enforces this for ruff, but the rule binds regardless of the tool.
   state lives in `results/<ds>/zarr/<stem>.ome.zarr/`, with authoritative
   object measurements at `tables/measurements/table.parquet` inside each
   store. Forward runs do not create external per-image measurement Parquets.
-  `master_measurements.parquet` is the exact pre-post concatenation of
-  authorized embedded tables: **un-joined**, carrying intrinsic identity only
-  and no user metadata at all. **Parquet only** — D8 deleted
+  `master_measurements.parquet` is the pre-post concatenation of authorized
+  embedded tables, each **projected onto its own store's recorded
+  `measurement_columns`** first: **un-joined**, carrying intrinsic identity
+  only and no user metadata at all. The projection is what stops a migrated
+  (pre-inversion) store — whose table still has metadata joined in — from
+  re-joining metadata at finalization; a store it cannot project safely is
+  excluded with a warning and left out of the aggregate proof (P7 Task 4,
+  `project_embedded_measurement_table`). **Parquet only** — D8 deleted
   `master_measurements.csv` along with its constant, its path helper and its
   reader, because the un-joined master is not the file a human opens.
   `measurements.{csv,parquet}` carries the metadata join, appends
