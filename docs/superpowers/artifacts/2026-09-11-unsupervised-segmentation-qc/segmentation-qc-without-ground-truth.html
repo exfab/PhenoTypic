@@ -64,6 +64,26 @@ a{color:var(--teal)}
 .rail .n.warn{color:var(--clay)}
 .rail .k{font-family:var(--mono);font-size:.68rem;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin-top:8px;display:block}
 
+/* ---------- contents ---------- */
+:where(section,.subhead){scroll-margin-block-start:18px}
+nav.toc{margin-top:26px;border:1px solid var(--border);border-radius:10px;background:var(--surface);
+  padding:16px 18px 18px}
+nav.toc .toc-title{font-family:var(--mono);font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--faint);margin-bottom:12px}
+nav.toc ol{list-style:none;margin:0;padding:0;display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(min(292px,100%),1fr));gap:11px 26px}
+nav.toc > ol > li{min-width:0;display:grid;grid-template-columns:auto 1fr;column-gap:10px;row-gap:2px}
+nav.toc .tn{font-family:var(--mono);font-size:.72rem;color:var(--teal);padding-top:.15em;
+  font-variant-numeric:tabular-nums}
+nav.toc a{color:var(--ink);text-decoration:none;font-weight:500;font-size:.95rem;
+  border-bottom:1px solid transparent}
+nav.toc a:hover{border-bottom-color:var(--teal)}
+nav.toc .td{grid-column:2;color:var(--dim);font-size:.85rem}
+nav.toc ul{grid-column:2;list-style:none;margin:5px 0 0;padding:0;display:flex;flex-direction:column;gap:3px}
+nav.toc ul a{font-weight:400;font-size:.84rem;color:var(--dim)}
+nav.toc ul a::before{content:"— ";color:var(--faint)}
+nav.toc ul a:hover{color:var(--teal)}
+
 /* ---------- sections ---------- */
 section{padding-block:clamp(34px,5vw,54px) 0}
 .seam{height:1px;background:var(--rule);opacity:.6;border:0;margin:0}
@@ -224,6 +244,30 @@ footer p{max-width:80ch;margin-bottom:8px}
     <div><span class="n">25</span><span class="k">candidates unbuilt</span></div>
     <div><span class="n">1</span><span class="k">route rejected</span></div>
   </div>
+
+  <nav class="toc" aria-label="Contents">
+    <p class="toc-title">Contents</p>
+    <ol>
+      <li><span class="tn">01</span><a href="#dormant">The state of the objective</a>
+        <span class="td">four terms built, none reachable through the CLI</span>
+        <ul><li><a href="#frame-qc">What those seven frame checks actually measure</a></li></ul></li>
+      <li><span class="tn">02</span><a href="#blindspot">The shared blind spot</a>
+        <span class="td">the failure none of the four can see</span></li>
+      <li><span class="tn">03</span><a href="#gallery">What each candidate measures</a>
+        <span class="td">twelve quantities, drawn</span>
+        <ul>
+          <li><a href="#fam-a">Family A · classic region statistics</a></li>
+          <li><a href="#fam-b">Family B · object and spatial statistics</a></li>
+          <li><a href="#fam-cd">Families C and D · bio-imaging and learned</a></li>
+        </ul></li>
+      <li><span class="tn">04</span><a href="#board">The candidate landscape</a>
+        <span class="td">25 rows, and the shared decision board</span></li>
+      <li><span class="tn">05</span><a href="#traps">How this goes wrong quietly</a>
+        <span class="td">four traps, one refuted claim</span></li>
+      <li><span class="tn">06</span><a href="#route">The unblock route</a>
+        <span class="td">one corpus, two consumers</span></li>
+    </ol>
+  </nav>
 </header>
 
 <hr class="seam">
@@ -541,7 +585,7 @@ footer p{max-width:80ch;margin-bottom:8px}
     </table>
   </div>
 
-  <p class="subhead">What those seven checks actually measure</p>
+  <p class="subhead" id="frame-qc">What those seven checks actually measure</p>
   <div class="mgrid">
   <figure class="mfig">
     <div class="mhead"><h3>ExpectedVsDetectedCount + GridOccupancy</h3><span class="chip c-moss">runs today</span></div>
@@ -967,7 +1011,7 @@ footer p{max-width:80ch;margin-bottom:8px}
   when you have no correct mask to compare it against? Each figure shows the quantity being computed and,
   beside it, the failure that moves it. Nothing below is implemented — these are the options.</p>
 
-  <p class="subhead">Family A · classic region statistics</p>
+  <p class="subhead" id="fam-a">Family A · classic region statistics</p>
   <div class="mgrid">
   <figure class="mfig">
     <div class="mhead"><h3>Weszka–Rosenfeld busyness</h3><span class="chip c-plain">A.2</span></div>
@@ -1154,7 +1198,7 @@ footer p{max-width:80ch;margin-bottom:8px}
   </figure>
   </div>
 
-  <p class="subhead">Family B · object and spatial statistics</p>
+  <p class="subhead" id="fam-b">Family B · object and spatial statistics</p>
   <div class="mgrid">
   <figure class="mfig">
     <div class="mhead"><h3>q-statistic</h3><span class="chip c-plain">B.5/B.9</span></div>
@@ -1295,7 +1339,7 @@ footer p{max-width:80ch;margin-bottom:8px}
   </figure>
   </div>
 
-  <p class="subhead">Families C and D · bio-imaging and learned predictors</p>
+  <p class="subhead" id="fam-cd">Families C and D · bio-imaging and learned predictors</p>
   <div class="mgrid">
   <figure class="mfig">
     <div class="mhead"><h3>CSE coverage metrics</h3><span class="chip c-plain">C.1</span></div>
