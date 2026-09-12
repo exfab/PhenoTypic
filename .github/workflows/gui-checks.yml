@@ -27,10 +27,11 @@ on:
   push:
     branches: [ main, dev ]
     paths:
-      - 'src/phenotypic/gui/**'
+      - 'src/phenotypic/_gui/**'
       - 'src/phenotypic/_cli/_dashboard/**'
       - 'tests/e2e/gui/**'
       - 'tests/integration/gui/**'
+      - 'tests/_output_layout.py'
       - 'scripts/capture_gui_tutorial_screenshots.py'
       - 'scripts/check_workflows_md.py'
       - 'scripts/check_features_md.py'
@@ -41,10 +42,11 @@ on:
   pull_request:
     branches: [ main, dev ]
     paths:
-      - 'src/phenotypic/gui/**'
+      - 'src/phenotypic/_gui/**'
       - 'src/phenotypic/_cli/_dashboard/**'
       - 'tests/e2e/gui/**'
       - 'tests/integration/gui/**'
+      - 'tests/_output_layout.py'
       - 'scripts/capture_gui_tutorial_screenshots.py'
       - 'scripts/check_workflows_md.py'
       - 'scripts/check_features_md.py'
@@ -93,14 +95,14 @@ jobs:
           # CLAUDE.md / FEATURES.md / WORKFLOWS.md are meta-docs, not GUI
           # features -- exclude them from the trigger so a docs-only PR is
           # not flagged. FEATURES.md is still diffed separately below.
-          TOUCHED_GUI=$(git diff --name-only "$BASE_SHA"..HEAD -- 'src/phenotypic/gui/' \
-            ':(exclude)src/phenotypic/gui/CLAUDE.md' \
-            ':(exclude)src/phenotypic/gui/FEATURES.md' \
-            ':(exclude)src/phenotypic/gui/WORKFLOWS.md')
-          TOUCHED_FEATURES=$(git diff --name-only "$BASE_SHA"..HEAD -- 'src/phenotypic/gui/FEATURES.md')
+          TOUCHED_GUI=$(git diff --name-only "$BASE_SHA"..HEAD -- 'src/phenotypic/_gui/' \
+            ':(exclude)src/phenotypic/_gui/CLAUDE.md' \
+            ':(exclude)src/phenotypic/_gui/FEATURES.md' \
+            ':(exclude)src/phenotypic/_gui/WORKFLOWS.md')
+          TOUCHED_FEATURES=$(git diff --name-only "$BASE_SHA"..HEAD -- 'src/phenotypic/_gui/FEATURES.md')
           if [ -n "$TOUCHED_GUI" ] && [ -z "$TOUCHED_FEATURES" ]; then
-            echo "::error::PR touches src/phenotypic/gui/ without modifying FEATURES.md"
-            echo "Touched files under src/phenotypic/gui/:"
+            echo "::error::PR touches src/phenotypic/_gui/ without modifying FEATURES.md"
+            echo "Touched files under src/phenotypic/_gui/:"
             echo "$TOUCHED_GUI"
             exit 1
           fi
@@ -143,7 +145,7 @@ jobs:
             exit 0
           fi
           BASE_SHA=$(git rev-parse HEAD^1)
-          TOUCHED_WORKFLOWS=$(git diff --name-only "$BASE_SHA"..HEAD -- 'src/phenotypic/gui/WORKFLOWS.md')
+          TOUCHED_WORKFLOWS=$(git diff --name-only "$BASE_SHA"..HEAD -- 'src/phenotypic/_gui/WORKFLOWS.md')
           TOUCHED_CAPTURE=$(git diff --name-only "$BASE_SHA"..HEAD -- 'scripts/capture_gui_tutorial_screenshots.py')
           if [ -n "$TOUCHED_WORKFLOWS" ] && [ -z "$TOUCHED_CAPTURE" ]; then
             echo "::warning::PR touches WORKFLOWS.md without modifying scripts/capture_gui_tutorial_screenshots.py."

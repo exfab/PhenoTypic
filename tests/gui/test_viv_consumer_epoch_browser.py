@@ -8,8 +8,8 @@ import pytest
 
 
 _ROOT = Path(__file__).parents[2]
-_RESULTS = _ROOT / "src/phenotypic/gui/results_viewer/_assets/results_viewer.js"
-_BUILDER = _ROOT / "src/phenotypic/gui/builder/assets/preview.js"
+_RESULTS = _ROOT / "src/phenotypic/_gui/results_viewer/_assets/results_viewer.js"
+_BUILDER = _ROOT / "src/phenotypic/_gui/builder/assets/preview.js"
 
 
 @pytest.fixture

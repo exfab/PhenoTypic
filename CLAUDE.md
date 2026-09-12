@@ -234,11 +234,13 @@ isolation before attributing it — most of them pass.
   path as `--url-prefix`, e.g.
   `--url-prefix /node/hz01/30099/`, then open the full OOD URL
   `https://ondemand.hpcc.ucr.edu/node/hz01/30099/`.
-- `uv run python -m phenotypic.gui --root ./images` — equivalent module entry.
-- Standalone tools still work: `python -m phenotypic.gui.builder`,
-  `python -m phenotypic.gui.results_viewer`, `python -m phenotypic.gui.run_console`.
+- `phenotypic-gui` is the hub's **only** entry point. The GUI is the private
+  package `phenotypic._gui` — no public import path, no `python -m` form of
+  the hub.
+- Sub-app debug launchers (contributors only, not in user docs):
+  `uv run python -m phenotypic._gui.{builder,results_viewer,run_console,browse,analysis}`.
 - Note: `phenotypic gui` (no hyphen, as a subcommand of the existing CLI) is NOT
-  supported. Use `phenotypic-gui` or `python -m phenotypic.gui`.
+  supported. Use `phenotypic-gui`.
 - **Two pixel paths, not one.** The results viewer's Plate and Colony surfaces
   and the builder's node preview read per-image OME-Zarr chunks in the browser
   through Viv/deck.gl (`/zarr/...`, `/preview-zarr/...`); Browse and the
@@ -246,7 +248,7 @@ isolation before attributing it — most of them pass.
   renders no server-side pyramid and caches no rendered PNG. Which surface uses
   which, and the two rules that go with it (never hard-code the series or label
   path, never recompute the pyramid), are in
-  [gui/CLAUDE.md](src/phenotypic/gui/CLAUDE.md).
+  [_gui/CLAUDE.md](src/phenotypic/_gui/CLAUDE.md).
 
 #### Adding GUI features
 
@@ -345,7 +347,7 @@ operations copy data; avoid unnecessary intermediate allocations.
   `MeasurementInfo` base + header enums)
 - [sdk_/CLAUDE.md](src/phenotypic/sdk_/CLAUDE.md) — mixins, utilities
 - [enhance/CLAUDE.md](src/phenotypic/enhance/CLAUDE.md) — enhancer conventions
-- [gui/CLAUDE.md](src/phenotypic/gui/CLAUDE.md) — GUI sub-apps, shared `_config.py`
+- [_gui/CLAUDE.md](src/phenotypic/_gui/CLAUDE.md) — GUI sub-apps, shared `_config.py`
   constants, `_design.py` tokens
 - [DESIGN.md](DESIGN.md) — dashboard & plot style guide
 - `src/phenotypic/post/`, `src/phenotypic/analysis/` — no sub-CLAUDE.md

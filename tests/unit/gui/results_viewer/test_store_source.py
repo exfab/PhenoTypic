@@ -16,8 +16,8 @@ import numpy as np
 import pytest
 
 from phenotypic import GridImage
-from phenotypic.gui._shared.tiles import StoreUnreadable
-from phenotypic.gui.results_viewer._store_source import build_source_spec
+from phenotypic._gui._shared.tiles import StoreUnreadable
+from phenotypic._gui.results_viewer._store_source import build_source_spec
 
 
 def test_series_come_from_the_store_in_primary_first_order(rgb_store):
@@ -108,7 +108,7 @@ def test_grid_capacity_bounds_the_label_color_domain(tmp_path):
 
 def test_the_token_identifies_this_generation_of_the_store(rgb_store):
     """Same value the byte route compares an incoming URL segment against."""
-    from phenotypic.gui.results_viewer._zarr_routes import (
+    from phenotypic._gui.results_viewer._zarr_routes import (
         store_generation_token,
     )
 

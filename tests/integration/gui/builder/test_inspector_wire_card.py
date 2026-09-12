@@ -1,9 +1,9 @@
 """Integration tests for the inspector wire card (spec §4.5).
 
 Exercises the new DAG branch of
-:func:`phenotypic.gui.builder._layout.build_inspector` for the
+:func:`phenotypic._gui.builder._layout.build_inspector` for the
 "wire-selected" state.  When ``state.selected_edge_id`` resolves to an
-:class:`~phenotypic.gui.builder._state.Edge` in the active scope, the
+:class:`~phenotypic._gui.builder._state.Edge` in the active scope, the
 inspector renders a wire card carrying:
 
 * Source-block label → ``target_block.port`` text.
@@ -21,12 +21,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from phenotypic.gui.builder import _ids as ids
-from phenotypic.gui.builder._layout import (
+from phenotypic._gui.builder import _ids as ids
+from phenotypic._gui.builder._layout import (
     _build_dag_inspector,
     _build_wire_card,
 )
-from phenotypic.gui.builder._state import (
+from phenotypic._gui.builder._state import (
     BlockNode,
     Edge,
     _DagBuilderScope,

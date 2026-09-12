@@ -21,18 +21,18 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from phenotypic.gui.run_console._callbacks import (
+from phenotypic._gui.run_console._callbacks import (
     _cancel_bound_generation,
     _complete_slurm_submission,
 )
-from phenotypic.gui.run_console._slurm import (
+from phenotypic._gui.run_console._slurm import (
     SlurmSubmitResult,
     SubmittedJobSet,
     submit_slurm,
 )
-from phenotypic.gui.run_console._slurm_observer import SlurmLifecycleObserver
-from phenotypic.gui.run_console._state import RunConsoleState
-from phenotypic.gui.shell._runs_registry import RunRecord, RunRegistry
+from phenotypic._gui.run_console._slurm_observer import SlurmLifecycleObserver
+from phenotypic._gui.run_console._state import RunConsoleState
+from phenotypic._gui.shell._runs_registry import RunRecord, RunRegistry
 from phenotypic.sdk_ import (
     job_metadata_path,
     resolve_manifest_json_path,

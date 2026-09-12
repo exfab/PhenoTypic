@@ -8,18 +8,18 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-from phenotypic.gui.results_viewer import (
+from phenotypic._gui.results_viewer import (
     OutputDiscoveryCancellation as PublicCancellation,
     OutputDiscoveryProgress as PublicProgress,
     OutputRoot as PublicOutputRoot,
 )
-from phenotypic.gui.results_viewer._discovery_contracts import (
+from phenotypic._gui.results_viewer._discovery_contracts import (
     OutputDiscoveryCancellation,
     OutputDiscoveryCancelledError,
     OutputDiscoveryProgress,
 )
-from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.gui.results_viewer._processing_inventory import (
+from phenotypic._gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.results_viewer._processing_inventory import (
     processing_inventory_cache_path,
 )
 from phenotypic.schema import IMAGE

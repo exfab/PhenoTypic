@@ -19,14 +19,14 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis.qc import MaxModifiedZScore
-from phenotypic.gui.results_viewer._error_tab._data import (
+from phenotypic._gui.results_viewer._error_tab._data import (
     build_good_error_frames,
     category_counts,
     classify_at_cutoff,
     default_category,
     verified_good_keys,
 )
-from phenotypic.gui.results_viewer._qc_tab.review._review_state import (
+from phenotypic._gui.results_viewer._qc_tab.review._review_state import (
     ReviewState,
     encode_group_key,
 )

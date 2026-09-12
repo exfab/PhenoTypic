@@ -1,4 +1,4 @@
-"""Integration tests for ``phenotypic.gui.shell._routes`` (sandbox JSON API).
+"""Integration tests for ``phenotypic._gui.shell._routes`` (sandbox JSON API).
 
 Drives the blueprint via :meth:`flask.Flask.test_client`. Verifies:
 
@@ -17,9 +17,9 @@ from pathlib import Path
 import pytest
 from flask import Flask
 
-from phenotypic.gui.shell._classifier import invalidate_cache
-from phenotypic.gui.shell._routes import register_sandbox_api
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.shell._classifier import invalidate_cache
+from phenotypic._gui.shell._routes import register_sandbox_api
+from phenotypic._gui.shell._sandbox import SandboxRoot
 
 
 @pytest.fixture(autouse=True)
@@ -186,7 +186,7 @@ def test_children_truncates_at_cap(sandbox: SandboxRoot) -> None:
     capabilities so the sidebar still renders without paying the
     classification cost.
     """
-    from phenotypic.gui.shell import _routes as routes_mod
+    from phenotypic._gui.shell import _routes as routes_mod
 
     for i in range(5):
         d = sandbox.root / f"d{i}"

@@ -41,11 +41,11 @@ from types import SimpleNamespace
 import polars as pl
 import pytest
 
-from phenotypic.gui._snapshot_status import (
+from phenotypic._gui._snapshot_status import (
     _UNFINISHED_BADGE,
     snapshot_refresh_status,
 )
-from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.results_viewer._output_root import OutputRoot
 from phenotypic.schema import IMAGE
 from phenotypic.sdk_._run_state import (
     Completion,
@@ -88,7 +88,7 @@ def _pin_completion(monkeypatch: pytest.MonkeyPatch, completion: str) -> None:
     test below about exactly one axis.
     """
     monkeypatch.setattr(
-        "phenotypic.gui._snapshot_status.resolve_run_state",
+        "phenotypic._gui._snapshot_status.resolve_run_state",
         lambda output_dir, *, depth: _run_state(completion),
     )
 
@@ -240,7 +240,7 @@ def test_a_curation_click_leaves_the_badge_current(
     ``refresh_state_is_current`` hashed. Reinstating that call in the badge
     turns this green into a ``danger`` / "Changed on disk".
     """
-    from phenotypic.gui.results_viewer._curation_labels import CurationLabels
+    from phenotypic._gui.results_viewer._curation_labels import CurationLabels
 
     _pin_completion(monkeypatch, "complete")
     labels = CurationLabels.load(
@@ -302,7 +302,7 @@ def test_a_standalone_bundle_skips_the_completion_question(
         )
 
     monkeypatch.setattr(
-        "phenotypic.gui._snapshot_status.resolve_run_state",
+        "phenotypic._gui._snapshot_status.resolve_run_state",
         _must_not_be_called,
     )
     label, color, disabled = snapshot_refresh_status(
@@ -457,7 +457,7 @@ def test_the_completion_question_is_asked_shallow_at_the_run_root(
         return _run_state("complete")
 
     monkeypatch.setattr(
-        "phenotypic.gui._snapshot_status.resolve_run_state",
+        "phenotypic._gui._snapshot_status.resolve_run_state",
         _capture,
     )
     root = Path("/nonexistent/run")

@@ -17,9 +17,9 @@ from pathlib import Path
 
 import pytest
 
-from phenotypic.gui.shell import SandboxRoot, ToolSession
-from phenotypic.gui.shell._app import create_app
-from phenotypic.gui.shell._classifier import (
+from phenotypic._gui.shell import SandboxRoot, ToolSession
+from phenotypic._gui.shell._app import create_app
+from phenotypic._gui.shell._classifier import (
     _classify_cached,
     classify,
     invalidate_cache,
@@ -117,7 +117,7 @@ def test_explicit_sidebar_reselection_repairs_same_path_payloads(
     sandbox: SandboxRoot,
 ) -> None:
     """A same-path click upgrades V1 and repairs a mismatched V2 payload."""
-    from phenotypic.gui.shell._source_context import sandbox_fingerprint
+    from phenotypic._gui.shell._source_context import sandbox_fingerprint
 
     plates = sandbox.root / "plates"
     plates.mkdir()

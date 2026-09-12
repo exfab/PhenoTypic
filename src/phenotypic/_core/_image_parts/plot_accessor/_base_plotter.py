@@ -3,12 +3,13 @@ from __future__ import annotations
 import weakref
 from typing import TYPE_CHECKING
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from phenotypic._core._image_parts.accessor_abstracts._image_accessor_base import ImageAccessorBase
 
 if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
+
     from phenotypic._core._image import Image
 
 
@@ -51,6 +52,8 @@ class BasePlotter(ImageAccessorBase):
         Args:
             fig: Matplotlib figure to close
         """
+        import matplotlib.pyplot as plt
+
         plt.close(fig)
 
     def _validate_objects_exist(self, use_binary: bool = False) -> None:
@@ -96,6 +99,8 @@ class BasePlotter(ImageAccessorBase):
         Returns:
             Array of RGBA colors
         """
+        import matplotlib.pyplot as plt
+
         cmap = plt.get_cmap(cmap_name)
         colors = []
         for i in range(n_colors):
@@ -148,6 +153,8 @@ class BasePlotter(ImageAccessorBase):
         Raises:
             ValueError: If colormap does not exist
         """
+        import matplotlib.pyplot as plt
+
         if cmap_name not in plt.colormaps():
             raise ValueError(
                 f"Unknown colormap: {cmap_name}. "

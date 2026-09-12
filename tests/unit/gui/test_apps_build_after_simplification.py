@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.shell._sandbox import SandboxRoot
 
 from tests._dash_layout import (
     DANGLING_OUTPUT_MESSAGE,
@@ -34,7 +34,7 @@ from tests._dash_layout import (
 
 def test_hub_app_constructs(tmp_path: Path) -> None:
     """The composed hub builds every eagerly-mounted sub-app."""
-    from phenotypic.gui.shell._app import create_app
+    from phenotypic._gui.shell._app import create_app
 
     app = create_app(SandboxRoot.from_path(tmp_path))
 
@@ -46,7 +46,7 @@ def test_browse_registers_no_callback_output_the_layout_dropped(
     tmp_path: Path,
 ) -> None:
     """No browse callback Output names an id the view-mode removal took away."""
-    from phenotypic.gui.browse._app import create_app
+    from phenotypic._gui.browse._app import create_app
 
     dangling = dangling_callback_outputs(create_app(SandboxRoot.from_path(tmp_path)))
 

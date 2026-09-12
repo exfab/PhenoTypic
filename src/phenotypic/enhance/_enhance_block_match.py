@@ -4,8 +4,6 @@ from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
-import bm3d
-from bm3d.profiles import BM3DStages
 from pydantic import Field
 
 from ..abc_ import ImageDenoiser
@@ -140,6 +138,8 @@ class EnhanceBlockMatch(NormalizedOutputMixin, _GATSupportMixin, ImageDenoiser):
         return image
 
     def _denoise_detect_mat(self, image: Image) -> None:
+        import bm3d
+
         profile = bm3d.BM3DProfile()
         profile.bs_ht = self.block_size
         profile.bs_wiener = self.block_size
@@ -155,6 +155,8 @@ class EnhanceBlockMatch(NormalizedOutputMixin, _GATSupportMixin, ImageDenoiser):
     def _convert_stage_arg(
             self, stage_arg: Literal["all_stages", "hard_thresholding"]
     ):
+        from bm3d.profiles import BM3DStages
+
         match stage_arg:
             case "hard_thresholding":
                 return BM3DStages.HARD_THRESHOLDING

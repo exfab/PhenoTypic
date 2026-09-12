@@ -24,10 +24,10 @@ import polars as pl
 import pytest
 
 from phenotypic import Image
-from phenotypic.gui.results_viewer._measurement_routes import (
+from phenotypic._gui.results_viewer._measurement_routes import (
     register_measurement_routes,
 )
-from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.results_viewer._output_root import OutputRoot
 from phenotypic.schema import IMAGE, OBJECT
 from phenotypic.sdk_ import (
     MEASUREMENT_TABLE_RELATIVE_PATH,
@@ -164,7 +164,7 @@ def test_non_finite_values_are_valid_json_nulls(
     route: RouteFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """NaN and infinities never leak as non-standard JSON tokens."""
-    from phenotypic.gui.results_viewer import _measurement_routes as routes
+    from phenotypic._gui.results_viewer import _measurement_routes as routes
 
     monkeypatch.setattr(
         routes,

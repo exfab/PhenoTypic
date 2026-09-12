@@ -5,15 +5,15 @@ from __future__ import annotations
 import numpy as np
 import polars as pl
 
-from phenotypic.gui._design import OI_GREY
-from phenotypic.gui.results_viewer._scatter_tab._facets import plan_facets
-from phenotypic.gui.results_viewer._scatter_tab._figure import (
+from phenotypic._gui._design import OI_GREY
+from phenotypic._gui.results_viewer._scatter_tab._facets import plan_facets
+from phenotypic._gui.results_viewer._scatter_tab._figure import (
     CUSTOMDATA_COL,
     REMOVED_COL,
     REMOVED_LABEL,
     build_scatter_figure,
 )
-from phenotypic.gui.results_viewer._scatter_tab._spec import FigureSpec
+from phenotypic._gui.results_viewer._scatter_tab._spec import FigureSpec
 
 
 def _frame(n: int = 40) -> pl.DataFrame:

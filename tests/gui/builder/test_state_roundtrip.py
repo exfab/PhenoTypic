@@ -1,4 +1,4 @@
-"""Round-trip tests for :mod:`phenotypic.gui.builder._state`.
+"""Round-trip tests for :mod:`phenotypic._gui.builder._state`.
 
 These tests exercise the pure-Python state model defined for the Dash
 pipeline builder.  They convert :class:`BuilderScope` instances to
@@ -16,8 +16,8 @@ from typing import Any, Dict, List, Optional
 import pytest
 
 from phenotypic import ImagePipeline
-from phenotypic.gui._operation_registry import get_registry
-from phenotypic.gui.builder._state import (
+from phenotypic._gui._operation_registry import get_registry
+from phenotypic._gui.builder._state import (
     _LegacyBuilderScope as BuilderScope,
     _LegacyBuilderState as BuilderState,
     StepNode,

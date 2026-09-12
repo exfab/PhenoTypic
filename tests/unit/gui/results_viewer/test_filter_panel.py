@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from phenotypic.gui.results_viewer._filter_panel import (
+from phenotypic._gui.results_viewer._filter_panel import (
     _blank_row,
     _normalise_spec,
     _render_filter_row,
@@ -12,7 +12,7 @@ from phenotypic.gui.results_viewer._filter_panel import (
     set_row_range,
     set_row_text,
 )
-from phenotypic.gui.results_viewer._filter_state import (
+from phenotypic._gui.results_viewer._filter_state import (
     METHOD_COMPARE,
     METHOD_CONTAINS,
     METHOD_IS_ANY_OF,
@@ -180,9 +180,9 @@ def test_register_callbacks_wires_method_controls(tmp_path) -> None:
     import dash
     import polars as pl
 
-    from phenotypic.gui.results_viewer._curation_labels import CurationLabels
-    from phenotypic.gui.results_viewer._output_root import OutputRoot
-    from phenotypic.gui.results_viewer import _filter_panel
+    from phenotypic._gui.results_viewer._curation_labels import CurationLabels
+    from phenotypic._gui.results_viewer._output_root import OutputRoot
+    from phenotypic._gui.results_viewer import _filter_panel
 
     (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True, exist_ok=True)
     overlay_dir = tmp_path / "deliverables" / "overlays" / "d1"

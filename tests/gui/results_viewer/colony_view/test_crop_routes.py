@@ -17,10 +17,10 @@ import polars as pl
 import pytest
 from PIL import Image as PILImage
 
-from phenotypic.gui._config import QC_CROPS_URL_SEGMENT
-from phenotypic.gui._shared import tiles
-from phenotypic.gui.results_viewer._app import create_app
-from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui._config import QC_CROPS_URL_SEGMENT
+from phenotypic._gui._shared import tiles
+from phenotypic._gui.results_viewer._app import create_app
+from phenotypic._gui.results_viewer._output_root import OutputRoot
 from phenotypic.sdk_ import zarr_store_path
 
 from tests._output_layout import write_master

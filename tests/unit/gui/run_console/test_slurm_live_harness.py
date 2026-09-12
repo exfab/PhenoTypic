@@ -16,7 +16,7 @@ from phenotypic._cli._cli_slurm_lifecycle import (
     initialize_slurm_lifecycle,
     lifecycle_state_path,
 )
-from phenotypic.gui.run_console._slurm_observer import SchedulerQueryResult
+from phenotypic._gui.run_console._slurm_observer import SchedulerQueryResult
 from phenotypic.sdk_ import (
     atomic_write_json,
     job_metadata_path,

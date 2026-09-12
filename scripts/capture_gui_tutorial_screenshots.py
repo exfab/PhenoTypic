@@ -36,6 +36,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import sysconfig
 import tempfile
 import time
 import urllib.error
@@ -356,8 +357,8 @@ def _seed_error_triage_labels() -> None:
     """
     import polars as pl
 
-    from phenotypic.gui.results_viewer._curation_labels import CurationLabels
-    from phenotypic.gui.results_viewer._qc_tab.review._review_state import ReviewState
+    from phenotypic._gui.results_viewer._curation_labels import CurationLabels
+    from phenotypic._gui.results_viewer._qc_tab.review._review_state import ReviewState
     from phenotypic import ImagePipeline
     from phenotypic.analysis.qc import MaxModifiedZScore
     from phenotypic.sdk_ import (
@@ -436,11 +437,26 @@ def _seed_error_triage_labels() -> None:
     # mutation path. Refresh both marker-last publications so the Results
     # viewer never observes a deliberately mixed tutorial snapshot.
     from phenotypic._cli._cli_completion import (
+        _current_success_work_ids,
         publish_aggregate_snapshot,
         publish_run_completion_evidence,
     )
+    from phenotypic._cli._cli_state_management import load_processing_state
 
-    publish_aggregate_snapshot(OUTPUT_DIR)
+    # The aggregate proof must be GIVEN the source set the master was built
+    # from (eadf0fdf5 made it a required argument). This tutorial output is one
+    # finished CLI run with no rolling input, so that set is the run's
+    # authorized success set -- the derivation sdk_/_hdf_to_zarr.py uses for a
+    # finished tree.
+    state = load_processing_state(OUTPUT_DIR)
+    if state is None:
+        raise RuntimeError(
+            f"no processing state under {OUTPUT_DIR}; run the CLI first"
+        )
+    source_work_ids = _current_success_work_ids(
+        OUTPUT_DIR, state.config.get("work_ids", {})
+    )
+    publish_aggregate_snapshot(OUTPUT_DIR, source_work_ids=source_work_ids)
     publish_run_completion_evidence(
         OUTPUT_DIR,
         execution_epoch="gui-tutorial-capture",
@@ -530,13 +546,29 @@ def _gui_log_sink(port: int) -> Path:
     return Path(tempfile.gettempdir()) / f"phenotypic-gui-capture-{port}.log"
 
 
+def _phenotypic_gui_executable() -> str:
+    """Return the ``phenotypic-gui`` console script of the running environment.
+
+    Looks only in this interpreter's scripts directory -- never ``PATH`` -- so
+    the hub boots the checkout under test rather than another environment's
+    install, and raises rather than skipping when the script is missing.
+    """
+    scripts_dir = sysconfig.get_path("scripts")
+    found = shutil.which("phenotypic-gui", path=scripts_dir)
+    if found is None:
+        raise RuntimeError(
+            f"phenotypic-gui console script not found in {scripts_dir}; run "
+            "`uv sync` with the groups and extras you already use (CI runs "
+            "`uv sync --group dev --group test-qt --all-extras`)"
+        )
+    return found
+
+
 def boot_gui(root: Path) -> tuple[subprocess.Popen[str], str]:
     """Boot ``phenotypic-gui`` on a free port. Returns (process, base_url)."""
     port = _free_port()
     cmd = [
-        sys.executable,
-        "-m",
-        "phenotypic.gui",
+        _phenotypic_gui_executable(),
         "--root",
         str(root),
         "--port",
@@ -868,8 +900,8 @@ def _browse_source_payload() -> dict | None:
     cannot resolve the path (e.g. the dataset was not built).
     """
     try:
-        from phenotypic.gui.shell._sandbox import SandboxRoot
-        from phenotypic.gui.shell._source_context import source_payload_from_path
+        from phenotypic._gui.shell._sandbox import SandboxRoot
+        from phenotypic._gui.shell._source_context import source_payload_from_path
     except Exception as exc:  # pragma: no cover - best-effort
         print(f"[shot]   browse: source payload import failed: {exc!r}")
         return None
@@ -1792,7 +1824,7 @@ def _capture_analysis(context, base_url: str) -> None:
 
 
 def capture_standalone_analysis_screenshots(headed: bool = False) -> None:
-    """Boot ``python -m phenotypic.gui.analysis --root <real>`` and capture.
+    """Boot ``python -m phenotypic._gui.analysis --root <real>`` and capture.
 
     Mirrors :func:`capture_standalone_viewer_screenshots`: spawns the
     standalone analysis launcher against the synthetic CLI output dir,
@@ -1812,7 +1844,7 @@ def capture_standalone_analysis_screenshots(headed: bool = False) -> None:
     cmd = [
         sys.executable,
         "-m",
-        "phenotypic.gui.analysis",
+        "phenotypic._gui.analysis",
         "--root",
         str(OUTPUT_DIR),
         "--port",
@@ -1883,7 +1915,7 @@ def capture_standalone_analysis_screenshots(headed: bool = False) -> None:
 
 
 def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
-    """Boot ``python -m phenotypic.gui.results_viewer --output-root <real>``
+    """Boot ``python -m phenotypic._gui.results_viewer --output-root <real>``
     on a fresh port and capture the populated viewer.
     """
     try:
@@ -1896,7 +1928,7 @@ def capture_standalone_viewer_screenshots(headed: bool = False) -> None:
     cmd = [
         sys.executable,
         "-m",
-        "phenotypic.gui.results_viewer",
+        "phenotypic._gui.results_viewer",
         "--output-root",
         str(OUTPUT_DIR),
         "--port",

@@ -23,7 +23,7 @@ import pytest
 
 from phenotypic import Image
 from phenotypic.data import load_synth_yeast_plate
-from phenotypic.gui._shared.tiles import StoreUnreadable, crop_store_rgb
+from phenotypic._gui._shared.tiles import StoreUnreadable, crop_store_rgb
 
 #: One real migrated store from the verification run. Read-only, and absent
 #: on any machine but the cluster -- every test that touches it skips when
@@ -84,7 +84,7 @@ def _decode_rgb(png_bytes: bytes) -> np.ndarray:
 
 def test_crop_matches_the_full_resolution_slice(store: Path) -> None:
     """A crop is a windowed read of LEVEL 0, not of a selected level."""
-    from phenotypic.gui.builder._image_renderer import _normalize_to_uint8
+    from phenotypic._gui.builder._image_renderer import _normalize_to_uint8
 
     full = Image.load_layer_zarr(store, "detect_mat", level=0)
     png = crop_store_rgb(
@@ -163,7 +163,7 @@ def test_a_uint16_ramp_renders_monotonically(tmp_path: Path) -> None:
     scaling is monotonic non-decreasing. Measured on a real store, the
     truncated path produced 75 descending steps where scaling produces 0.
     """
-    from phenotypic.gui._shared.tiles import scale_to_uint8
+    from phenotypic._gui._shared.tiles import scale_to_uint8
 
     ramp = np.arange(19061, 38171, dtype=np.uint16)
     out = scale_to_uint8(ramp, 20511, 44047).astype(np.int16)
@@ -174,7 +174,7 @@ def test_a_uint16_ramp_renders_monotonically(tmp_path: Path) -> None:
 
 def test_values_above_the_range_clip_rather_than_wrap() -> None:
     """Clipping is what makes a per-image range safe for a crop window."""
-    from phenotypic.gui._shared.tiles import scale_to_uint8
+    from phenotypic._gui._shared.tiles import scale_to_uint8
 
     over = np.array([44047 + 5000], dtype=np.uint16)
     under = np.array([20511 - 5000], dtype=np.uint16)
@@ -185,7 +185,7 @@ def test_values_above_the_range_clip_rather_than_wrap() -> None:
 
 def test_uint8_stores_are_passed_through_unchanged() -> None:
     """An 8-bit store must not be contrast-stretched by the new path."""
-    from phenotypic.gui._shared.tiles import scale_to_uint8
+    from phenotypic._gui._shared.tiles import scale_to_uint8
 
     arr = np.array([0, 7, 128, 255], dtype=np.uint8)
     assert np.array_equal(scale_to_uint8(arr, 0, 255), arr)
@@ -200,7 +200,7 @@ def test_the_display_range_works_for_every_layer_not_just_rgb() -> None:
     ``detect_mat`` and ``gray``. That asymmetry is why this asserts on
     every layer the store carries.
     """
-    from phenotypic.gui._shared.tiles import image_display_range
+    from phenotypic._gui._shared.tiles import image_display_range
 
     if not FIXTURE_STORE.exists():
         pytest.skip("migration-test fixture absent")
@@ -231,7 +231,7 @@ def test_a_brighter_window_renders_brighter_than_a_dim_one() -> None:
     centres scaled back up, so the search costs one 196x318 read instead of
     a 3132x5086 one.
     """
-    from phenotypic.gui._shared.tiles import _readable_block
+    from phenotypic._gui._shared.tiles import _readable_block
     from phenotypic.sdk_.ngff_ import PhenotypicAttr
 
     size = 256
@@ -337,7 +337,7 @@ def test_a_uint16_crop_still_resolves_the_display_range(monkeypatch) -> None:
     consult the range -- without it, the sibling test above is a
     one-directional guard that a regression can satisfy by doing nothing.
     """
-    from phenotypic.gui._shared import tiles
+    from phenotypic._gui._shared import tiles
 
     seen: list[tuple[int, int]] = []
     real = tiles.image_display_range
@@ -397,7 +397,7 @@ def test_a_real_colony_crop_is_smooth_not_noise() -> None:
 
 def test_contours_draw_a_boundary_around_the_focal_label() -> None:
     """Boundaries are drawn for the focal label and dimmed for neighbours."""
-    from phenotypic.gui._shared.tiles import composite_contours
+    from phenotypic._gui._shared.tiles import composite_contours
 
     rgb = np.zeros((32, 32, 3), dtype=np.uint8)
     labels = np.zeros((32, 32), dtype=np.uint16)
@@ -412,7 +412,7 @@ def test_contours_draw_a_boundary_around_the_focal_label() -> None:
 
 
 def test_contours_are_a_no_op_when_no_label_is_present() -> None:
-    from phenotypic.gui._shared.tiles import composite_contours
+    from phenotypic._gui._shared.tiles import composite_contours
 
     rgb = np.full((16, 16, 3), 40, dtype=np.uint8)
     labels = np.zeros((16, 16), dtype=np.uint16)
@@ -426,8 +426,8 @@ def test_the_focal_and_neighbour_contours_are_different_colours() -> None:
     leaving the focal colony indistinguishable from its neighbours, which
     is the whole reason the crop is drawn.
     """
-    from phenotypic.gui._design import OI_ORANGE, OI_SKY
-    from phenotypic.gui._shared.tiles import composite_contours
+    from phenotypic._gui._design import OI_ORANGE, OI_SKY
+    from phenotypic._gui._shared.tiles import composite_contours
 
     # Decoded HERE rather than with `_design.hex_to_rgb`, on purpose: the
     # code under test uses that function, so sharing it would let a bug in

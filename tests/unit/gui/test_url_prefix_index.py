@@ -1,7 +1,7 @@
 """Unit tests for Dash index-string URL-prefix injection."""
 from __future__ import annotations
 
-from phenotypic.gui._url_prefix import dash_index_string_with_app_prefix
+from phenotypic._gui._url_prefix import dash_index_string_with_app_prefix
 
 
 def test_dash_index_string_exposes_app_prefix() -> None:

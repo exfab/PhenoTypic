@@ -12,8 +12,8 @@ from pathlib import Path
 
 import pytest
 
-from phenotypic.gui.tune import create_app
-from phenotypic.gui.tune._run_root import TuneRunRoot
+from phenotypic._gui.tune import create_app
+from phenotypic._gui.tune._run_root import TuneRunRoot
 from phenotypic.tune._study_store import JournalStudyStore, Trial
 
 
@@ -72,7 +72,7 @@ def test_poll_interval_is_three_seconds(tmp_path: Path) -> None:
 
 def test_read_study_for_monitor_degrades_to_journal(tmp_path: Path) -> None:
     """With no live storage URL, the read falls back to the finished parquet."""
-    from phenotypic.gui.tune._callbacks import read_study_for_monitor
+    from phenotypic._gui.tune._callbacks import read_study_for_monitor
 
     root = _journal_run(tmp_path)
     store, note = read_study_for_monitor(root)
@@ -85,7 +85,7 @@ def test_read_study_for_monitor_degrades_to_journal(tmp_path: Path) -> None:
 @pytest.mark.parametrize("missing_path", ["/nonexistent/tune/run"])
 def test_read_study_for_monitor_missing_parquet_is_safe(missing_path: str) -> None:
     """A run whose parquet doesn't exist yet returns no store, no raise."""
-    from phenotypic.gui.tune._callbacks import read_study_for_monitor
+    from phenotypic._gui.tune._callbacks import read_study_for_monitor
 
     root = TuneRunRoot(
         path=Path(missing_path),
@@ -107,7 +107,7 @@ def test_read_study_for_monitor_missing_parquet_is_safe(missing_path: str) -> No
 def test_read_study_for_monitor_does_not_create_missing_live_study(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.tune._callbacks import read_study_for_monitor
+    from phenotypic._gui.tune._callbacks import read_study_for_monitor
 
     db = tmp_path / "missing.db"
     root = TuneRunRoot(

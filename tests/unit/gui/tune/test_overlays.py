@@ -13,7 +13,7 @@ from phenotypic import ImagePipeline
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import BlurGauss
-from phenotypic.gui.tune._overlays import render_candidate_overlay
+from phenotypic._gui.tune._overlays import render_candidate_overlay
 
 
 def test_render_candidate_overlay_returns_rgb() -> None:

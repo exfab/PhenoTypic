@@ -4,7 +4,7 @@ from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import BlurGauss
-from phenotypic.gui.tune._export import (
+from phenotypic._gui.tune._export import (
     export_best_from_run,
     export_pareto_pipeline,
     export_winning_pipeline,

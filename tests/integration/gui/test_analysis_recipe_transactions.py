@@ -19,10 +19,10 @@ from phenotypic.analysis import (
     LinearLagModel,
     TukeyOutlierRemover,
 )
-from phenotypic.gui._config import CFG_RECIPE_STATE
-from phenotypic.gui.analysis import _callbacks, _ids
-from phenotypic.gui.analysis._app import create_app
-from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui._config import CFG_RECIPE_STATE
+from phenotypic._gui.analysis import _callbacks, _ids
+from phenotypic._gui.analysis._app import create_app
+from phenotypic._gui.results_viewer._output_root import OutputRoot
 from phenotypic.post import AppendString
 from phenotypic.schema import IMAGE
 from tests._output_layout import build_complete_viewer_run, seed_output_dir

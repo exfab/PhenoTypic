@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from PIL import Image as PILImage
 
-from phenotypic.gui.browse._source_probe import SourceProbeError, probe_source
+from phenotypic._gui.browse._source_probe import SourceProbeError, probe_source
 
 
 def test_probe_reads_headers_and_builds_revision_identity(tmp_path):
@@ -75,7 +75,7 @@ def test_store_probe_computes_one_already_stable_revision(
     tmp_path, monkeypatch
 ) -> None:
     """The probe must not wrap a stable store identity in another full pass."""
-    from phenotypic.gui.browse import _source_probe as source_probe
+    from phenotypic._gui.browse import _source_probe as source_probe
 
     store = tmp_path / "plate.zarr"
     store.mkdir()

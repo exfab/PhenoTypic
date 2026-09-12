@@ -1,9 +1,9 @@
-from phenotypic.gui._config import (
+from phenotypic._gui._config import (
     BROWSE_TILES_PREFIX,
     MOUNT_BROWSE,
     TITLE_BROWSE,
 )
-from phenotypic.gui.shell._ids import SHELL_TAB_BROWSE
+from phenotypic._gui.shell._ids import SHELL_TAB_BROWSE
 
 
 def test_browse_mount_and_prefixes():

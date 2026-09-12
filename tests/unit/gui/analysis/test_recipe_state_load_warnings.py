@@ -26,9 +26,9 @@ from phenotypic._core._pipeline_parts._serializable_pipeline import (
     PipelineLoadWarning,
 )
 from phenotypic.detect import OtsuDetector
-from phenotypic.gui.analysis import _ids as analysis_ids
-from phenotypic.gui.analysis._layout import _build_load_warnings_banner
-from phenotypic.gui.analysis._recipe_state import (
+from phenotypic._gui.analysis import _ids as analysis_ids
+from phenotypic._gui.analysis._layout import _build_load_warnings_banner
+from phenotypic._gui.analysis._recipe_state import (
     RecipeState,
     _merge_opaque_pipeline_payload,
     _pipeline_validation_payload,

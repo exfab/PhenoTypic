@@ -22,12 +22,12 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-from phenotypic.gui.results_viewer._curation_labels import CurationLabels
-from phenotypic.gui.results_viewer._filtered_state import (
+from phenotypic._gui.results_viewer._curation_labels import CurationLabels
+from phenotypic._gui.results_viewer._filtered_state import (
     KEY_IMAGE_FILE,
     KEY_OBJECT_LABEL,
 )
-from phenotypic.gui.results_viewer._output_root import (
+from phenotypic._gui.results_viewer._output_root import (
     OutputRoot,
     core_readable,
 )

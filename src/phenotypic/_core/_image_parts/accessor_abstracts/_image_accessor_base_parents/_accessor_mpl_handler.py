@@ -2,10 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Tuple
 
-import matplotlib.pyplot as plt
 import numpy as np
 import skimage as ski
-from matplotlib.patches import Rectangle
 
 from phenotypic.schema import IMAGE
 from phenotypic.sdk_.funcs_ import normalize_rgb_bitdepth
@@ -13,7 +11,7 @@ from phenotypic.sdk_.funcs_ import normalize_rgb_bitdepth
 from ._accessor_io_handler import AccessorIOHandler
 
 if TYPE_CHECKING:
-    pass
+    import matplotlib.pyplot as plt
 
 
 class AccessorMplHandler(AccessorIOHandler):
@@ -174,6 +172,8 @@ class AccessorMplHandler(AccessorIOHandler):
             This method uses `skimage.exposure.histogram <https://scikit-image.org/docs/stable/api/skimage.exposure.html#skimage.exposure.histogram>`_
             for computing the histogram data.
         """
+        import matplotlib.pyplot as plt
+
         arr = self._subject_arr
         dtype = arr.dtype
 
@@ -272,6 +272,8 @@ class AccessorMplHandler(AccessorIOHandler):
             tuple[plt.Figure, plt.Axes]: A tuple containing the created or passed Matplotlib `Figure` and `Axes` objects.
 
         """
+        import matplotlib.pyplot as plt
+
         fig, ax = (ax.get_figure(), ax) if ax else plt.subplots(figsize=figsize)
 
         mpl_settings = mpl_settings if mpl_settings else {}
@@ -549,6 +551,9 @@ class AccessorMplHandler(AccessorIOHandler):
         Args:
             ax: Matplotlib axes to draw section boxes on.
         """
+        import matplotlib.pyplot as plt
+        from matplotlib.patches import Rectangle
+
         min_rr, max_rr, min_cc, max_cc = (
             self._root_image.grid._get_section_object_bounds_arrays()  # type: ignore[attr-defined]
         )

@@ -7,7 +7,6 @@ See docs/superpowers/specs/2026-06-10-robust-lab-color-measures-design.md.
 """
 from __future__ import annotations
 
-import colour
 import numpy as np
 
 from phenotypic.util._geometric_median import geometric_median as _geometric_median
@@ -75,6 +74,8 @@ def medoid_ciede2000(
         (center (3,), all_deltas (N,)). center is all-NaN and all_deltas empty
         when ``lab_points`` is empty.
     """
+    import colour
+
     lab = np.asarray(lab_points, dtype=np.float64)
     n = lab.shape[0]
     if n == 0:
@@ -143,6 +144,8 @@ def lab_to_srgb_hex(lab: np.ndarray) -> str:
 
     Returns ``""`` if any coordinate is NaN (e.g. an empty object).
     """
+    import colour
+
     lab = np.asarray(lab, dtype=np.float64)
     if np.isnan(lab).any():
         return ""

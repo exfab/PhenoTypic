@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from phenotypic.gui.shell._source_context import source_payload_from_path
-from phenotypic.gui.shell._sandbox import SandboxRoot
-from phenotypic.gui.tune._run_image_source import resolve_run_images
+from phenotypic._gui.shell._source_context import source_payload_from_path
+from phenotypic._gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.tune._run_image_source import resolve_run_images
 
 
 def test_override_wins_when_inside_sandbox(tmp_path: Path):

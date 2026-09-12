@@ -1,6 +1,6 @@
 """Image-producing node cards carry a preview action button; measure nodes don't."""
-from phenotypic.gui.builder import _ids as ids
-from phenotypic.gui.builder._linear_layout import _preview_button
+from phenotypic._gui.builder import _ids as ids
+from phenotypic._gui.builder._linear_layout import _preview_button
 
 
 def _walk(node):

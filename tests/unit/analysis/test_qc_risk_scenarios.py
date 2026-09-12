@@ -428,7 +428,7 @@ class TestDiscoverability:
 
     def test_all_checks_in_registry_category(self) -> None:
         try:
-            from phenotypic.gui._operation_registry import OperationRegistry
+            from phenotypic._gui._operation_registry import OperationRegistry
         except Exception as exc:  # pragma: no cover - GUI import guard
             pytest.skip(f"OperationRegistry unavailable: {exc}")
 

@@ -24,12 +24,12 @@ from dash import dcc, html
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis import EdgeCorrector, LogGrowthModel, TukeyOutlierRemover
-from phenotypic.gui.analysis import _ids as ids
-from phenotypic.gui.analysis._app import create_app
-from phenotypic.gui.analysis._callbacks import _resolve_preview_node
-from phenotypic.gui.analysis._plot_controls import collect_plot_kwargs
-from phenotypic.gui.analysis._render import render_plot
-from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.analysis import _ids as ids
+from phenotypic._gui.analysis._app import create_app
+from phenotypic._gui.analysis._callbacks import _resolve_preview_node
+from phenotypic._gui.analysis._plot_controls import collect_plot_kwargs
+from phenotypic._gui.analysis._render import render_plot
+from phenotypic._gui.results_viewer._output_root import OutputRoot
 from phenotypic.sdk_ import measurements_parquet_path
 
 from tests._output_layout import write_master, write_measurements_mirror, write_pipeline_json

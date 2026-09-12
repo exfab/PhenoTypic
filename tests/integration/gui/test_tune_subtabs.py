@@ -11,7 +11,7 @@ import pytest
 
 
 def test_active_view_maps_each_subtab() -> None:
-    from phenotypic.gui.tune._callbacks import active_view
+    from phenotypic._gui.tune._callbacks import active_view
 
     assert active_view("tune-subtab-monitor") == "monitor"
     assert active_view("tune-subtab-curate") == "curate"
@@ -21,6 +21,6 @@ def test_active_view_maps_each_subtab() -> None:
 
 @pytest.mark.parametrize("trigger", [None, "", "tune-subtab-bogus", "nonsense"])
 def test_active_view_unknown_falls_back_to_monitor(trigger: str | None) -> None:
-    from phenotypic.gui.tune._callbacks import active_view
+    from phenotypic._gui.tune._callbacks import active_view
 
     assert active_view(trigger) == "monitor"

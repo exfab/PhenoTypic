@@ -9,10 +9,10 @@ import polars as pl
 import pytest
 
 from phenotypic import ImagePipeline
-from phenotypic.gui._config import CFG_OUTPUT_ROOT, CFG_RECIPE_STATE
-from phenotypic.gui.analysis import _app as analysis_app
-from phenotypic.gui.results_viewer import _app as results_app
-from phenotypic.gui.results_viewer._output_root import (
+from phenotypic._gui._config import CFG_OUTPUT_ROOT, CFG_RECIPE_STATE
+from phenotypic._gui.analysis import _app as analysis_app
+from phenotypic._gui.results_viewer import _app as results_app
+from phenotypic._gui.results_viewer._output_root import (
     OutputRoot,
     OutputSnapshotChangedError,
 )

@@ -1,4 +1,4 @@
-"""Unit tests for ``phenotypic.gui.shell._classifier.classify``.
+"""Unit tests for ``phenotypic._gui.shell._classifier.classify``.
 
 Covers each branch of :class:`Capabilities`:
 
@@ -22,8 +22,8 @@ from pathlib import Path
 
 import pytest
 
-from phenotypic.gui._config import DELIVERABLES_DIRNAME
-from phenotypic.gui.shell._classifier import (
+from phenotypic._gui._config import DELIVERABLES_DIRNAME
+from phenotypic._gui.shell._classifier import (
     Capabilities,
     classify,
     invalidate_cache,
@@ -351,7 +351,7 @@ def test_cache_hits_on_repeat_call(tmp_path: Path) -> None:
     bypasses the cache layer (e.g. a future "always recompute") is caught
     at unit-test time, not under load.
     """
-    from phenotypic.gui.shell._classifier import _classify_cached
+    from phenotypic._gui.shell._classifier import _classify_cached
 
     info_before = _classify_cached.cache_info()
     classify(tmp_path)

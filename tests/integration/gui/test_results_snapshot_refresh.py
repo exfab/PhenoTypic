@@ -13,13 +13,13 @@ import polars as pl
 import pytest
 
 from phenotypic import ImagePipeline
-from phenotypic.gui import analysis, results_viewer
-from phenotypic.gui import analysis as analysis_module
-from phenotypic.gui import results_viewer as results_viewer_module
-from phenotypic.gui._binding_generation import (
+from phenotypic._gui import analysis, results_viewer
+from phenotypic._gui import analysis as analysis_module
+from phenotypic._gui import results_viewer as results_viewer_module
+from phenotypic._gui._binding_generation import (
     BINDING_GENERATION_PAYLOAD_KEY,
 )
-from phenotypic.gui._config import (
+from phenotypic._gui._config import (
     CFG_ANALYSIS_SESSION,
     CFG_FILTERED_STATE,
     CFG_OUTPUT_ROOT,
@@ -27,16 +27,16 @@ from phenotypic.gui._config import (
     CFG_RESULTS_BINDING_COORDINATOR,
     CFG_RESULTS_BINDING_STATE,
 )
-from phenotypic.gui._shared._radial import RADIAL_RESTORE_SENTINEL
-from phenotypic.gui.analysis import _ids as analysis_ids
-from phenotypic.gui.analysis._recipe_state import RecipeState
-from phenotypic.gui.results_viewer import _ids as results_ids
-from phenotypic.gui.results_viewer._curation_labels import CurationLabels
-from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.gui.shell import SandboxRoot
-from phenotypic.gui.shell._app import compose_hub
-from phenotypic.gui.shell._binding import BindingCoordinator
-from phenotypic.gui.shell._session import ToolSession
+from phenotypic._gui._shared._radial import RADIAL_RESTORE_SENTINEL
+from phenotypic._gui.analysis import _ids as analysis_ids
+from phenotypic._gui.analysis._recipe_state import RecipeState
+from phenotypic._gui.results_viewer import _ids as results_ids
+from phenotypic._gui.results_viewer._curation_labels import CurationLabels
+from phenotypic._gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.shell import SandboxRoot
+from phenotypic._gui.shell._app import compose_hub
+from phenotypic._gui.shell._binding import BindingCoordinator
+from phenotypic._gui.shell._session import ToolSession
 from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import (
     atomic_write_json,

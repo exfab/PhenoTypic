@@ -10,10 +10,9 @@ from __future__ import annotations
 
 from pathlib import Path
 import re
-from typing import Annotated, Any, Callable, ClassVar
+from typing import Annotated, Any, Callable, ClassVar, TYPE_CHECKING
 
 import pandas as pd
-import plotly.graph_objects as go
 from pydantic import (
     PrivateAttr,
     WithJsonSchema,
@@ -33,6 +32,9 @@ from phenotypic.sdk_ import (
 )
 from phenotypic.schema import MeasurementInfo, MetadataInfo, OBJECT, QUALITY_COUNT
 import phenotypic.schema as schema
+
+if TYPE_CHECKING:
+    import plotly.graph_objects as go
 
 # ``metadata`` is a single, unified field that accepts **either** an
 # in-memory layout :class:`pandas.DataFrame` (an "array") **or** a path
@@ -653,6 +655,8 @@ class ExpectedVsDetectedCount(QualityCheck, PlotQc):
         Raises:
             RuntimeError: If :meth:`analyze` has not been called yet.
         """
+        import plotly.graph_objects as go
+
         del subject, for_save
         df = self._latest_measurements
         if df.empty:

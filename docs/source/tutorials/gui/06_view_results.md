@@ -20,25 +20,14 @@ Analysis receive one coherent, read-only snapshot, so a failed, cancelled, or
 superseded bind keeps the previous output visible rather than mixing two runs.
 If the output-consistency report finds contradictory or incomplete terminal
 evidence, you may inspect it but mutation controls for QC, Error, curation,
-Analysis, rebuild, and publication stay disabled. Two other ways to get a
-populated viewer are:
+Analysis, rebuild, and publication stay disabled. You can also **open
+`deliverables/dashboard.html`** to monitor progress and inspect failures.
+Local dashboards render progress directly; SLURM dashboards add Progress and
+Download tabs. Use the Results Viewer or `/analysis/` app for result
+exploration.
 
-1. **Standalone launch** (recommended for now). Run
-   `phenotypic.gui.results_viewer` directly with `--output-root` pointing
-   at the CLI output:
-
-   ```bash
-   uv run python -m phenotypic.gui.results_viewer \
-       --output-root gui_tutorial_dataset/results --port 8051
-   ```
-
-2. **Open `deliverables/dashboard.html`** to monitor progress and inspect
-   failures. Local dashboards render progress directly; SLURM dashboards add
-   Progress and Download tabs. Use the Results Viewer or `/analysis/` app for
-   result exploration.
-
-The remaining screenshots come from the standalone launcher pointed at
-the output the [Run Locally](04_run_local.md) page produced.
+The remaining screenshots show the viewer loaded with the output the
+[Run Locally](04_run_local.md) page produced.
 
 ![Hub viewer after an asynchronous bind has atomically published the Results and Analysis snapshot.](../../_static/gui_images/view_results/05_hub_bound_snapshot.png)
 

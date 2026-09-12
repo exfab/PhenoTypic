@@ -24,9 +24,11 @@ to it — so this is an optimization, not a feature removal.
 from __future__ import annotations
 
 import importlib
+import os
 import sys
 import time
 import types
+import warnings
 
 #: ``perf_counter`` stamped the moment this module is first imported. Because
 #: :mod:`phenotypic` imports this module before anything else, it marks the
@@ -34,7 +36,28 @@ import types
 #: it, since the console-script import chain runs before any ``main()``.
 IMPORT_STARTED_AT: float = time.perf_counter()
 
-__all__ = ["IMPORT_STARTED_AT", "install_lazy_colour_plotting"]
+__all__ = [
+    "DEFERRED_RUNTIME_MODULES",
+    "HEAVY_STARTUP_MODULES",
+    "IMPORT_STARTED_AT",
+    "configure_docs_build_plotly_renderer",
+    "install_lazy_colour_plotting",
+    "load_runtime_dependencies",
+]
+
+#: Heavy third-party modules that no light entry point may load: ``import phenotypic``,
+#: ``phenotypic --help``, ``phenotypic-gui --help`` and the composed GUI hub before any
+#: page is visited. Guarded by ``tests/unit/ci/test_startup_imports.py``.
+HEAVY_STARTUP_MODULES: tuple[str, ...] = (
+    "bm3d", "colour", "cv2", "dash", "h5py", "mahotas", "matplotlib",
+    "numba", "pandas", "plotly", "polars", "pyarrow", "scipy", "skimage",
+)
+
+#: Libraries imported at their point of use rather than at module level, so
+#: ``from phenotypic import Image`` does not pay for them.
+DEFERRED_RUNTIME_MODULES: tuple[str, ...] = (
+    "bm3d", "colour", "cv2", "h5py", "mahotas", "matplotlib.pyplot", "numba", "plotly",
+)
 
 
 class _LazyColourPlotting(types.ModuleType):
@@ -85,7 +108,50 @@ def install_lazy_colour_plotting() -> bool:
     return True
 
 
+def load_runtime_dependencies() -> None:
+    """Import every library in :data:`DEFERRED_RUNTIME_MODULES` now.
+
+    Pipeline-running entry points call this before any image work. The libraries
+    are deferred to their point of use for light startup, so without this a broken
+    install (a numba/llvmlite mismatch, a binary that crashes on one node) would
+    surface in the middle of the first image and be recorded as a per-image
+    scientific failure rather than stopping the run at start. Any import error
+    propagates.
+    """
+    warnings.filterwarnings("ignore", category=SyntaxWarning, module="mahotas")
+    for module_name in DEFERRED_RUNTIME_MODULES:
+        importlib.import_module(module_name)
+
+
+def configure_docs_build_plotly_renderer() -> bool:
+    """Select Plotly's ``notebook_connected`` renderer when building the docs.
+
+    nbsphinx captures cell outputs from the kernel's HTML mimetype, but Plotly's
+    default ``plotly_mimetype+notebook`` renderer emits a JSON MIME bundle that
+    nbsphinx drops; ``notebook_connected`` swaps that for an HTML+CDN-script bundle,
+    so figures survive into the static site. This used to run as a side effect of
+    the image accessors importing plotly at ``import phenotypic``. It still runs at
+    ``import phenotypic``, but only under ``PHENOTYPIC_DOCS_BUILD``, so no other entry
+    point imports plotly.
+
+    Returns:
+        ``True`` if the renderer was set. ``False`` if this is not a docs build, or if
+        plotly cannot be imported -- the code this replaced degraded the same way, and
+        ``import phenotypic`` must not start failing on an optional-feature library.
+    """
+    if not os.environ.get("PHENOTYPIC_DOCS_BUILD"):
+        return False
+    try:
+        import plotly.io as pio
+    except ImportError:
+        return False
+
+    pio.renderers.default = "notebook_connected"
+    return True
+
+
 # Apply the optimization as an import side effect so :mod:`phenotypic` only
 # needs a single (E402-clean) ``from ._startup_perf import …`` line ahead of
 # its heavy submodule chain, rather than a bare function-call statement.
 install_lazy_colour_plotting()
+configure_docs_build_plotly_renderer()

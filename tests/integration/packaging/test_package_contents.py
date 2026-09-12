@@ -4,7 +4,7 @@ These build a wheel + sdist from the project and assert that the GUI
 sub-app static assets (CSS/JS + vendored OpenSeadragon control icons) are
 actually shipped. This is the regression guard for the ``pip install``
 deployment bug where the ``phenotypic-gui`` entry point crashed on import
-because ``gui/shell/_assets/shell.css`` — read at import time — was missing
+because ``_gui/shell/_assets/shell.css`` — read at import time — was missing
 from the wheel.
 
 Two design choices matter:
@@ -18,7 +18,7 @@ Two design choices matter:
   tmp dir, explicitly excluding ``*.egg-info``/``build``/``dist``, so the
   artifact reflects ``pyproject.toml`` alone.
 * **Derive the expected asset set from the source tree.** Walking
-  ``src/phenotypic/gui`` for ``*.css``/``*.js``/``*.png`` means any future
+  ``src/phenotypic/_gui`` for ``*.css``/``*.js``/``*.png`` means any future
   sub-app's assets are covered automatically — a newly added asset that
   isn't packaged fails this test without anyone editing it.
 
@@ -37,23 +37,23 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-GUI_DIR = REPO_ROOT / "src" / "phenotypic" / "gui"
+GUI_DIR = REPO_ROOT / "src" / "phenotypic" / "_gui"
 ASSET_SUFFIXES = (".css", ".js", ".png")
 
 # Representative assets that MUST ship — one per GUI sub-app surface, plus a
 # couple of pre-existing globbed assets so a regression in the original
 # ``data``/``_assets`` patterns is caught here too.
 REQUIRED_WHEEL_PATHS = [
-    "phenotypic/gui/shell/_assets/shell.css",
-    "phenotypic/gui/builder/assets/builder.css",
-    "phenotypic/gui/builder/assets/builder.js",
-    "phenotypic/gui/results_viewer/_assets/results_viewer.css",
-    "phenotypic/gui/results_viewer/_assets/openseadragon/images/zoomin_rest.png",
-    "phenotypic/gui/browse/_assets/browse.js",
-    "phenotypic/gui/browse/_assets/openseadragon/images/zoomin_rest.png",
-    "phenotypic/gui/run_console/_assets/run_console.css",
-    "phenotypic/gui/analysis/_assets/analysis.css",
-    "phenotypic/gui/tune/_assets/tune.css",
+    "phenotypic/_gui/shell/_assets/shell.css",
+    "phenotypic/_gui/builder/assets/builder.css",
+    "phenotypic/_gui/builder/assets/builder.js",
+    "phenotypic/_gui/results_viewer/_assets/results_viewer.css",
+    "phenotypic/_gui/results_viewer/_assets/openseadragon/images/zoomin_rest.png",
+    "phenotypic/_gui/browse/_assets/browse.js",
+    "phenotypic/_gui/browse/_assets/openseadragon/images/zoomin_rest.png",
+    "phenotypic/_gui/run_console/_assets/run_console.css",
+    "phenotypic/_gui/analysis/_assets/analysis.css",
+    "phenotypic/_gui/tune/_assets/tune.css",
     # Pre-existing globbed asset (regression guard for the original config).
     "phenotypic/data/early_colony.png",
 ]
@@ -75,7 +75,7 @@ RETIRED_DASHBOARD_BUNDLES = {
 
 
 def _expected_gui_asset_wheel_paths() -> list[str]:
-    """Every CSS/JS/PNG under ``src/phenotypic/gui`` as its in-wheel path."""
+    """Every CSS/JS/PNG under ``src/phenotypic/_gui`` as its in-wheel path."""
     paths = []
     for path in GUI_DIR.rglob("*"):
         if path.is_file() and path.suffix in ASSET_SUFFIXES:

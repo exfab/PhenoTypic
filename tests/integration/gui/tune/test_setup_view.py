@@ -3,11 +3,11 @@ from pathlib import Path
 
 from dash.development.base_component import Component
 
-from phenotypic.gui.shell._ids import TUNE_PIPELINE_PATH_STORE
-from phenotypic.gui.shell._sandbox import SandboxRoot
-from phenotypic.gui.tune import _ids as ids
-from phenotypic.gui.tune import create_app
-from phenotypic.gui.tune._callbacks import (
+from phenotypic._gui.shell._ids import TUNE_PIPELINE_PATH_STORE
+from phenotypic._gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.tune import _ids as ids
+from phenotypic._gui.tune import create_app
+from phenotypic._gui.tune._callbacks import (
     _build_command_from_controls,
     active_authored_spec_path,
     authored_spec_launch_defaults,
@@ -16,13 +16,13 @@ from phenotypic.gui.tune._callbacks import (
     setup_gate_state,
     setup_pipeline_path_from_sources,
 )
-from phenotypic.gui.tune._setup_authoring import (
+from phenotypic._gui.tune._setup_authoring import (
     SetupPathResolution,
     build_setup_draft,
     write_setup_draft_receipt,
 )
-from phenotypic.gui.tune._nav import destination_view_id
-from phenotypic.gui.tune._run_root import TuneRunRoot
+from phenotypic._gui.tune._nav import destination_view_id
+from phenotypic._gui.tune._run_root import TuneRunRoot
 from phenotypic.sdk_ import trials_parquet_path
 from phenotypic.tune._study_store import JournalStudyStore, Trial
 from phenotypic import ImagePipeline

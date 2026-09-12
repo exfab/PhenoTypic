@@ -3,11 +3,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
     import napari
     from phenotypic._core._grid_image import GridImage
 
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
 from skimage.color import label2rgb
 
@@ -778,6 +778,8 @@ class GridAccessor:
             >>> grid_image.grid.show_column_overlay(ax=axes[0])
             >>> grid_image.grid.show_row_overlay(ax=axes[1])
         """
+        import matplotlib.pyplot as plt
+
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
         else:
@@ -940,6 +942,8 @@ class GridAccessor:
             >>> plt.suptitle("Column vs Row Grid Visualization")
             >>> plt.show()
         """
+        import matplotlib.pyplot as plt
+
         if ax is None:
             fig, func_ax = plt.subplots(tight_layout=True, figsize=figsize)
         else:
@@ -1286,6 +1290,8 @@ class GridAccessor:
                 ``(rectangles, colors)`` where each rectangle is a 4x2 array
                 of corner vertices and each color is an RGBA array.
         """
+        import matplotlib.pyplot as plt
+
         row_edges = self.get_row_edges()
         col_edges = self.get_col_edges()
         cmap = plt.get_cmap("tab20")

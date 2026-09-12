@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`phenotypic.gui._shared.tiles`.
+"""Unit tests for :mod:`phenotypic._gui._shared.tiles`.
 
 The shared tile primitives back both the colony-view grid and the QC
 review gallery, so these tests pin the contract the colony view relied
@@ -29,12 +29,12 @@ from dash import html
 from dash.development.base_component import Component
 from PIL import Image as PILImage
 
-from phenotypic.gui._config import (
+from phenotypic._gui._config import (
     TILE_DIM_MAX,
     TILE_DIM_MIN,
     step_dim_alpha,
 )
-from phenotypic.gui._shared.tiles import (
+from phenotypic._gui._shared.tiles import (
     _dim_outside_bbox,
     build_tile_cell,
     build_tile_grid,
@@ -44,8 +44,8 @@ from phenotypic.gui._shared.tiles import (
     is_safe_path_component,
     register_crop_route,
 )
-from phenotypic.gui.results_viewer._app import create_app
-from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.results_viewer._app import create_app
+from phenotypic._gui.results_viewer._output_root import OutputRoot
 
 from tests._output_layout import write_master
 from phenotypic.schema import IMAGE
@@ -231,7 +231,7 @@ def test_crop_colony_prefers_store_falls_back_to_overlay(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Dispatch: store when present, overlay otherwise, ``None`` when neither."""
-    from phenotypic.gui._shared import tiles
+    from phenotypic._gui._shared import tiles
 
     # Sentinel bytes mark which source the dispatcher chose.
     monkeypatch.setattr(tiles, "crop_store_rgb", lambda *a, **k: b"S")
@@ -280,7 +280,7 @@ def test_crop_colony_missing_store_layer_falls_back_to_overlay(
     and fall back to the baked overlay PNG (404 only when no overlay exists
     either), never surfacing the ``KeyError`` as a 500.
     """
-    from phenotypic.gui._shared import tiles
+    from phenotypic._gui._shared import tiles
 
     def _raise_missing_layer(*_a: object, **_k: object) -> bytes:
         raise KeyError("store has no layer 'rgb'")
@@ -318,7 +318,7 @@ def test_crop_colony_does_not_hide_an_unreadable_store_behind_the_overlay(
     run-wide, actionable condition (``store_schema_version`` mismatch). The
     caller turns the exception into a 422 carrying the store's own message.
     """
-    from phenotypic.gui._shared import tiles
+    from phenotypic._gui._shared import tiles
 
     def _raise_unreadable(*_a: object, **_k: object) -> bytes:
         raise tiles.StoreUnreadable("store_schema_version is 999")

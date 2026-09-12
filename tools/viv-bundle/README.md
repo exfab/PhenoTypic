@@ -2,7 +2,7 @@
 
 Builds the vendored browser bundle the results viewer loads:
 
-    src/phenotypic/gui/results_viewer/_assets/viv/viv-bundle.min.js
+    src/phenotypic/_gui/results_viewer/_assets/viv/viv-bundle.min.js
 
 Built **outside** this repo — there is no npm in CI, by design (viewer-viv-rebuild
 spec §3, plan Global Constraints). Run this by hand when upgrading Viv, then commit
@@ -12,7 +12,7 @@ the artifact.
 
     cd tools/viv-bundle
     npm ci             # lockfile is pinned; never `npm install`
-    node build.mjs     # writes ../../src/phenotypic/gui/results_viewer/_assets/viv/viv-bundle.min.js
+    node build.mjs     # writes ../../src/phenotypic/_gui/results_viewer/_assets/viv/viv-bundle.min.js
 
 Then bump `VERSION` to match `package.json`'s pinned versions and commit both the
 artifact and `VERSION`. The GUI logs `VERSION` at startup; a mismatch between it and

@@ -20,7 +20,7 @@ from typing import Annotated, Any, List, Optional, Type, Union
 import pytest
 
 from phenotypic.abc_ import ImageOperation
-from phenotypic.gui._operation_registry import OperationInfo, ParamInfo
+from phenotypic._gui._operation_registry import OperationInfo, ParamInfo
 
 
 def _resolve_accepts(
@@ -49,7 +49,7 @@ def _resolve_accepts(
         Sorted list of accepted class names.
     """
 
-    from phenotypic.gui.builder import _layout
+    from phenotypic._gui.builder import _layout
 
     @dataclass
     class _StubRegistry:
@@ -63,7 +63,7 @@ def _resolve_accepts(
 
     stub = _StubRegistry(list(registry_ops))
     monkeypatch.setattr(
-        "phenotypic.gui._operation_registry.get_registry",
+        "phenotypic._gui._operation_registry.get_registry",
         lambda: stub,
     )
 

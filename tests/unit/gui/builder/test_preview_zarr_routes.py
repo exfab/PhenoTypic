@@ -5,7 +5,7 @@ restriction and Range negotiation all live. No browser is needed for any of
 it.
 
 **The path-escape guard is NOT re-tested here.** It is
-``gui/_shared/tiles.resolve_within_root``, exercised exhaustively in
+``_gui/_shared/tiles.resolve_within_root``, exercised exhaustively in
 ``tests/unit/gui/shared/test_resolve_within_root.py``; the plan's Global
 Constraints put it in one place precisely so two routes cannot test two
 copies. What this file pins is that the route *routes through* it.
@@ -27,13 +27,13 @@ import numpy as np
 import pytest
 
 from phenotypic import Image
-from phenotypic.gui.builder import _preview_cache as pc
-from phenotypic.gui.builder._preview_zarr_routes import (
+from phenotypic._gui.builder import _preview_cache as pc
+from phenotypic._gui.builder._preview_zarr_routes import (
     PREVIEW_ZARR_PREFIX,
     preview_zarr_url,
     register_preview_zarr_routes,
 )
-from phenotypic.gui.results_viewer._zarr_routes import store_generation_token
+from phenotypic._gui.results_viewer._zarr_routes import store_generation_token
 from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON
 
 SESSION = "previewsess0001"
@@ -354,7 +354,7 @@ def test_create_app_mounts_the_preview_byte_route(
     ``create_app`` runs ``init_preview_cache()``, which WIPES the cache root,
     so the scope is seeded afterwards.
     """
-    from phenotypic.gui.builder._app import create_app
+    from phenotypic._gui.builder._app import create_app
 
     monkeypatch.setattr(pc, "preview_cache_root", lambda: tmp_path / "cache")
     app = create_app(image_root=tmp_path)

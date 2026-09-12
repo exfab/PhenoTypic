@@ -18,19 +18,11 @@ from phenotypic.enhance import (
 from phenotypic.enhance._two_k_phase_kernel import two_k_phase
 from phenotypic.detect._inoculum_detector import InoculumDetector
 from phenotypic.refine import KeepSectionLargest
-from phenotypic.sdk_.reconnect import (
-    ReconnectConfig,
-    build_reconnect_cost,
-    filter_mask_by_overlap,
-    markers_from_centroids,
-    partition_by_grid_voronoi,
-    reconnect_fragments_tiled,
-    select_reconnect_fragments,
-)
 from phenotypic.sdk_.typing_ import OperationField, TuneSpec
 
 if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
+    from phenotypic.sdk_.reconnect import ReconnectConfig
 
 
 class TwoKFilamentousDetector(GridObjectDetector):
@@ -133,6 +125,8 @@ class TwoKFilamentousDetector(GridObjectDetector):
         return self
 
     def _reconnect_config(self) -> ReconnectConfig:
+        from phenotypic.sdk_.reconnect import ReconnectConfig
+
         return ReconnectConfig(
             beta=self.beta, gamma=self.gamma, delta=self.delta,
             coherence_window_radius=self.coherence_window_radius,
@@ -159,6 +153,15 @@ class TwoKFilamentousDetector(GridObjectDetector):
         return center_mask, center_img.objmap[:]
 
     def _operate(self, image: "GridImage") -> "GridImage":
+        from phenotypic.sdk_.reconnect import (
+            build_reconnect_cost,
+            filter_mask_by_overlap,
+            markers_from_centroids,
+            partition_by_grid_voronoi,
+            reconnect_fragments_tiled,
+            select_reconnect_fragments,
+        )
+
         # ── BRANCH: two-k hysteresis on the enhanced base ──
         enhanced = image.copy()
         self.branch_base.apply(enhanced, inplace=True)

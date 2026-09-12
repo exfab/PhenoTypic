@@ -17,7 +17,7 @@ def test_study_name_is_bumped():
 def test_gui_default_study_name_matches_cli_constant():
     # The GUI fallback constant must stay in lockstep with the CLI constant so a
     # spec-discovered run resolves the bumped study, not the inert legacy one.
-    from phenotypic.gui.tune._run_root import _DEFAULT_STUDY_NAME
+    from phenotypic._gui.tune._run_root import _DEFAULT_STUDY_NAME
     from phenotypic.tune._tune_cli._run import _STUDY_NAME
 
     assert _DEFAULT_STUDY_NAME == _STUDY_NAME

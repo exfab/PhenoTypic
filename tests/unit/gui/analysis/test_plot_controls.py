@@ -19,11 +19,11 @@ from phenotypic.analysis import (  # noqa: E402
     EdgeCorrector,
     LogGrowthModel,
 )
-from phenotypic.gui.analysis._plot_controls import (  # noqa: E402
+from phenotypic._gui.analysis._plot_controls import (  # noqa: E402
     collect_plot_kwargs,
     plotting_params,
 )
-from phenotypic.gui.analysis._render import render_plot  # noqa: E402
+from phenotypic._gui.analysis._render import render_plot  # noqa: E402
 from phenotypic.abc_.plotting import PlotOutput, PlotPage  # noqa: E402
 
 

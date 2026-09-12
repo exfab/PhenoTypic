@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import dash
 
-from phenotypic.gui.builder import _ids as ids
-from phenotypic.gui.builder._point_picker import register_point_picker_callbacks
+from phenotypic._gui.builder import _ids as ids
+from phenotypic._gui.builder._point_picker import register_point_picker_callbacks
 
 
 def test_point_picker_undo_only_owns_staged_modal_state() -> None:

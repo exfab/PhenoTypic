@@ -10,7 +10,7 @@ name: package-integrity
 # that the GUI sub-app static assets (CSS/JS + vendored OpenSeadragon icons)
 # are shipped in the wheel. Regression guard for the bug where a
 # ``pip install``ed ``phenotypic-gui`` crashed on import because
-# ``gui/shell/_assets/shell.css`` (read at import time) was missing.
+# ``_gui/shell/_assets/shell.css`` (read at import time) was missing.
 #
 # Deliberately NOT part of the fast PR lane: it shells out to ``uv build``
 # and installs the wheel into a clean venv, which is slow and
@@ -85,7 +85,7 @@ jobs:
           /tmp/install_env/bin/pip install --upgrade pip
           /tmp/install_env/bin/pip install "$(echo dist/*.whl)" pytest
           # The exact import that crashes on a broken wheel, plus the entry point.
-          /tmp/install_env/bin/python -c "import phenotypic.gui.shell._layout"
+          /tmp/install_env/bin/python -c "import phenotypic._gui.shell._layout"
           /tmp/install_env/bin/phenotypic-gui --help
           cp tests/integration/packaging/test_asset_access.py /tmp/test_asset_access.py
           cd /tmp && /tmp/install_env/bin/pytest /tmp/test_asset_access.py -v -p no:cacheprovider

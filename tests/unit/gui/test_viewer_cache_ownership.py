@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from phenotypic.gui.results_viewer import _output_root
+from phenotypic._gui.results_viewer import _output_root
 
 
 @pytest.mark.parametrize(
@@ -55,7 +55,7 @@ def test_results_launcher_passes_external_owner_and_reports_real_cache(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The standalone Results launcher neither infers nor reports source cache."""
-    from phenotypic.gui.results_viewer import __main__ as launcher
+    from phenotypic._gui.results_viewer import __main__ as launcher
 
     root = tmp_path / "output"
     cache_owner = tmp_path / "user-cache"
@@ -104,7 +104,7 @@ def test_analysis_launcher_passes_per_user_cache_owner(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Standalone Analysis uses the same explicit external owner contract."""
-    from phenotypic.gui.analysis import __main__ as launcher
+    from phenotypic._gui.analysis import __main__ as launcher
 
     root = tmp_path / "output"
     cache_owner = tmp_path / "user-cache"

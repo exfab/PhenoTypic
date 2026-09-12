@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from phenotypic.gui._shared._measurement_tint import (
+from phenotypic._gui._shared._measurement_tint import (
     MeasurementScale,
     format_measurement_value,
     sequential_tint,

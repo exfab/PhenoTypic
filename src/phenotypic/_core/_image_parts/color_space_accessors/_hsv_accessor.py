@@ -3,10 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Tuple, Optional
 
 if TYPE_CHECKING:
-    pass
+    from matplotlib import pyplot as plt
 
 import numpy as np
-from matplotlib import pyplot as plt
 from skimage.color import rgb2hsv
 from skimage.exposure import histogram
 
@@ -143,6 +142,7 @@ class HsvAccessor(ColorSpaceAccessor):
             show histogram bin counts.
         """
         import matplotlib.colors as mcolors
+        from matplotlib import pyplot as plt
 
         fig, axes = plt.subplots(
                 nrows=2, ncols=2, figsize=figsize, subplot_kw={"projection": None}
@@ -243,6 +243,8 @@ class HsvAccessor(ColorSpaceAccessor):
                 - np.ndarray: Array of three Axes objects for hue, saturation,
                   and brightness subplots respectively
         """
+        from matplotlib import pyplot as plt
+
         fig, axes = plt.subplots(nrows=3, figsize=figsize)
         ax = axes.ravel()
 
@@ -305,6 +307,8 @@ class HsvAccessor(ColorSpaceAccessor):
             Uses np.ma.array (masked arrays) to suppress visualization of background
             pixels. Only pixels where the object mask is non-zero are displayed.
         """
+        from matplotlib import pyplot as plt
+
         fig, axes = plt.subplots(nrows=3, figsize=figsize)
         ax = axes.ravel()
 

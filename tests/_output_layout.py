@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from collections import Counter
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
 
@@ -372,31 +373,22 @@ def bump_scientific_config_digest(
     return digest
 
 
-def _publish_one_image(
+def _publish_success_marker(
     output: Path,
     *,
+    dataset: str,
     stem: str,
+    work_id: str,
     mode: str,
-    with_overlay: bool = True,
-    dataset: str = FIXTURE_DATASET,
+    artifacts: dict[str, Path],
 ) -> None:
-    """Promote one image's artifacts and publish its success marker.
+    """Publish one image's success marker in the fixtures' single marker shape.
 
-    Marker-last, artifacts first -- the publication contract's own order.
-    Factored out so ``build_complete_run`` and :func:`extend_complete_run`
-    cannot drift into publishing two different shapes of image.
+    Every fixture publisher routes its marker through here, whatever artifacts it
+    certifies, so no two fixtures publish differently shaped images.
     """
     from phenotypic._cli._cli_completion import publish_image_success
 
-    work_id = f"work-{stem}"
-    store = _promote_minimal_store(
-        output, dataset=dataset, stem=stem, work_id=work_id
-    )
-    artifacts = {"store": store}
-    if with_overlay:
-        artifacts["overlay"] = _write_overlay(
-            output, dataset=dataset, stem=stem
-        )
     publish_image_success(
         output,
         work_id=work_id,
@@ -412,6 +404,34 @@ def _publish_one_image(
         # (`RunIdentity.scheduler_epoch`) -- see the drift register's entry 24.
         lifecycle_epoch="local",
         artifacts=artifacts,
+    )
+
+
+def _publish_one_image(
+    output: Path,
+    *,
+    stem: str,
+    mode: str,
+    with_overlay: bool = True,
+    dataset: str = FIXTURE_DATASET,
+) -> None:
+    """Promote one image's artifacts and publish its success marker.
+
+    Marker-last, artifacts first -- the publication contract's own order.
+    Factored out so ``build_complete_run`` and :func:`extend_complete_run`
+    cannot drift into publishing two different shapes of image.
+    """
+    work_id = f"work-{stem}"
+    store = _promote_minimal_store(
+        output, dataset=dataset, stem=stem, work_id=work_id
+    )
+    artifacts = {"store": store}
+    if with_overlay:
+        artifacts["overlay"] = _write_overlay(
+            output, dataset=dataset, stem=stem
+        )
+    _publish_success_marker(
+        output, dataset=dataset, stem=stem, work_id=work_id, mode=mode, artifacts=artifacts
     )
 
 
@@ -584,6 +604,102 @@ def build_complete_viewer_run(
     publish_run_completion_evidence(root, execution_epoch="local")
     if not complete:
         image_record_path(root, dataset, stems[-1]).unlink()
+    return root
+
+
+def publish_complete_run_over_outputs(root: Path, *, total_images: int) -> Path:
+    """Publish a complete run over the master and mirror a fixture already wrote.
+
+    :func:`build_complete_viewer_run` builds a run from nothing. Fixtures that
+    hand-craft their own master frame, overlays or stores need the opposite:
+    completion evidence for exactly what is on disk, without rewriting any of
+    it. The ``(dataset, image)`` inventory is read from the master, and each
+    image's success marker certifies the pixel source the fixture provided:
+
+    * a store the fixture wrote is certified as-is, so a real multiscale store
+      survives;
+    * otherwise an overlay the fixture wrote is certified and **no store is
+      created** -- the Results viewer crops from a store in preference to an
+      overlay, so promoting one would silently change what the fixture renders;
+    * only an image with neither gets a minimal promoted store.
+
+    Publication follows the contract's own order: per-image success markers,
+    then processing state, then the aggregate proof, then the run proof.
+
+    Args:
+        root: Run output root whose ``deliverables/`` already holds the master
+            parquet and the ``measurements.{csv,parquet}`` mirror.
+        total_images: The number of images the fixture meant to publish,
+            asserted against the master so a fixture cannot drift silently.
+
+    Returns:
+        ``root``.
+
+    Raises:
+        FileNotFoundError: If a core aggregate file is missing.
+        AssertionError: If the master's image count differs from ``total_images``,
+            or two of its images in one dataset share a stem.
+    """
+    import polars as pl
+
+    from phenotypic._cli._cli_completion import (
+        publish_aggregate_snapshot,
+        publish_run_completion_evidence,
+    )
+    from phenotypic.sdk_ import dataset_overlays_dir, zarr_store_path
+
+    core = {
+        "master parquet": master_measurements_parquet_path(root),
+        "measurements CSV": measurements_csv_path(root),
+        "measurements parquet": measurements_parquet_path(root),
+    }
+    missing = [name for name, path in core.items() if not path.is_file()]
+    if missing:
+        raise FileNotFoundError(
+            f"cannot publish a complete run over {root}: missing {missing}; write "
+            "the master with write_master and the mirror with write_measurements_mirror"
+        )
+    images = (
+        pl.read_parquet(core["master parquet"])
+        .select("Metadata_Dataset", "Metadata_ImageName")
+        .unique()
+        .sort(["Metadata_Dataset", "Metadata_ImageName"])
+    )
+    assert images.height == total_images, (
+        f"master lists {images.height} images, fixture declared {total_images}"
+    )
+    keys = [(dataset, Path(str(image)).stem) for dataset, image in images.iter_rows()]
+    shared = sorted(key for key, count in Counter(keys).items() if count > 1)
+    assert not shared, (
+        f"master images share a stem within a dataset {shared}; each image needs its own work id"
+    )
+    work_ids: dict[str, dict[str, str]] = {}
+    for dataset, stem in keys:
+        work_id = f"work-{dataset}-{stem}"
+        store = zarr_store_path(root, dataset, stem)
+        overlay = dataset_overlays_dir(root, dataset) / f"{stem}.png"
+        if (store / "zarr.json").is_file():
+            artifacts = {"store": store}
+        elif overlay.is_file():
+            artifacts = {"overlay": overlay}
+        else:
+            artifacts = {
+                "store": _promote_minimal_store(
+                    root, dataset=dataset, stem=stem, work_id=work_id
+                )
+            }
+        _publish_success_marker(
+            root, dataset=dataset, stem=stem, work_id=work_id, mode="full", artifacts=artifacts
+        )
+        work_ids.setdefault(dataset, {})[f"{stem}.tif"] = work_id
+    write_processing_state(root, work_ids=work_ids)
+    publish_aggregate_snapshot(
+        root,
+        source_work_ids=[
+            work_id for per_dataset in work_ids.values() for work_id in per_dataset.values()
+        ],
+    )
+    publish_run_completion_evidence(root, execution_epoch="local")
     return root
 
 

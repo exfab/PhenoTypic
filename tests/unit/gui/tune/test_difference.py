@@ -15,8 +15,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from phenotypic.gui._design import OI_GREY, OI_ORANGE, OI_SKY
-from phenotypic.gui.tune._overlays import (
+from phenotypic._gui._design import OI_GREY, OI_ORANGE, OI_SKY
+from phenotypic._gui.tune._overlays import (
     cell_disagreement,
     difference_objects,
     render_difference,

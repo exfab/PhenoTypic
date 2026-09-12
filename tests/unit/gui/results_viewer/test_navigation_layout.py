@@ -9,17 +9,17 @@ from typing import Iterator
 from dash import dcc
 import polars as pl
 
-from phenotypic.gui.results_viewer import _ids as ids
-from phenotypic.gui.results_viewer import _viewer_card
-from phenotypic.gui.results_viewer._curation_labels import CurationLabels
-from phenotypic.gui.results_viewer._heatmap_tab import _ids as heatmap_ids
-from phenotypic.gui.results_viewer._heatmap_tab import _layout as heatmap_layout
-from phenotypic.gui.results_viewer._layout import _build_header, build_app_layout
-from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.gui.results_viewer.colony_view import _layout as colony_layout
-from phenotypic.gui.shell import _sidebar
-from phenotypic.gui.shell._ids import sidebar_entry_id
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.results_viewer import _ids as ids
+from phenotypic._gui.results_viewer import _viewer_card
+from phenotypic._gui.results_viewer._curation_labels import CurationLabels
+from phenotypic._gui.results_viewer._heatmap_tab import _ids as heatmap_ids
+from phenotypic._gui.results_viewer._heatmap_tab import _layout as heatmap_layout
+from phenotypic._gui.results_viewer._layout import _build_header, build_app_layout
+from phenotypic._gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.results_viewer.colony_view import _layout as colony_layout
+from phenotypic._gui.shell import _sidebar
+from phenotypic._gui.shell._ids import sidebar_entry_id
+from phenotypic._gui.shell._sandbox import SandboxRoot
 from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import master_measurements_parquet_path
 
@@ -93,7 +93,7 @@ def test_plate_card_uses_browse_stepper_button_schema() -> None:
     assert "card-picker-nav-btn" in getattr(prev, "className", "")
     assert "card-picker-nav-btn" in getattr(next_, "className", "")
 
-    css = Path("src/phenotypic/gui/results_viewer/_assets/results_viewer.css")
+    css = Path("src/phenotypic/_gui/results_viewer/_assets/results_viewer.css")
     css_text = css.read_text(encoding="utf-8")
     assert ".browse-step-button" in css_text
     assert "min-width: 3rem;" in css_text

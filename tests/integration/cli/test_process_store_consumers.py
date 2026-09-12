@@ -8,9 +8,9 @@ from pathlib import Path
 import dash
 from click.testing import CliRunner
 
-from phenotypic.gui.browse import _source_render, _tile_routes
-from phenotypic.gui.browse._source_probe import probe_source
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.browse import _source_render, _tile_routes
+from phenotypic._gui.browse._source_probe import probe_source
+from phenotypic._gui.shell._sandbox import SandboxRoot
 from phenotypic.phenotypicCLI import phenotypic_cli
 
 

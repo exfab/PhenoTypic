@@ -22,13 +22,13 @@ from unittest import mock
 
 import pytest
 
-from phenotypic.gui._config import DELIVERABLES_DIRNAME
-from phenotypic.gui.run_console._recent_runs import (
+from phenotypic._gui._config import DELIVERABLES_DIRNAME
+from phenotypic._gui.run_console._recent_runs import (
     RecentRunRow,
     scan_recent_runs,
 )
-from phenotypic.gui.shell._runs_registry import RunRegistry
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.shell._runs_registry import RunRegistry
+from phenotypic._gui.shell._sandbox import SandboxRoot
 from phenotypic.sdk_ import job_metadata_path, terminal_failures_jsonl_path
 from tests._output_layout import build_incomplete_run
 
@@ -57,7 +57,7 @@ def _make_run(
 
     The manifest is not a discovery signal either: ``classify`` reads it only
     on the ``is_process_only_output`` branch, which requires **no** ``results/``
-    (`gui/shell/_classifier.py:286-294`), and this fixture creates one.
+    (`_gui/shell/_classifier.py:286-294`), and this fixture creates one.
     """
     out = root / name
     out.mkdir(parents=True, exist_ok=True)
@@ -241,7 +241,7 @@ def test_scan_skips_unreadable_dir(tmp_path: Path) -> None:
     sandbox = SandboxRoot.from_path(tmp_path)
     bad = tmp_path / "bad"
     bad.mkdir()
-    from phenotypic.gui.shell import _runs_registry
+    from phenotypic._gui.shell import _runs_registry
 
     real_classify = _runs_registry.classify
 

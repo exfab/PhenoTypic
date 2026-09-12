@@ -7,19 +7,19 @@ from typing import Any, Dict, List
 import pytest
 
 from phenotypic.abc_ import ImageOperation
-from phenotypic.gui._operation_registry import OperationInfo, ParamInfo
-from phenotypic.gui.builder._callbacks import (
+from phenotypic._gui._operation_registry import OperationInfo, ParamInfo
+from phenotypic._gui.builder._callbacks import (
     _dispatch_state_update,
     _linear_prefix_state_for_preview,
     _linear_state_with_preview_selection,
     _state_with_issue_focus,
 )
-from phenotypic.gui.builder._linear_model import (
+from phenotypic._gui.builder._linear_model import (
     ROOT_SCOPE_KEY,
     LinearTarget,
     scope_key,
 )
-from phenotypic.gui.builder._state import (
+from phenotypic._gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
     PIPELINE_CLASS_NAME,
     BlockNode,
@@ -113,7 +113,7 @@ def linear_registry(empty_registry, monkeypatch):
         }
     )
     monkeypatch.setattr(
-        "phenotypic.gui._operation_registry.get_registry",
+        "phenotypic._gui._operation_registry.get_registry",
         lambda: empty_registry,
     )
     return empty_registry

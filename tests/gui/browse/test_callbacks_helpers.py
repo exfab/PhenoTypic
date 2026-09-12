@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from phenotypic.gui.browse import _callbacks as cb
+from phenotypic._gui.browse import _callbacks as cb
 
 
 def _walk_components(node: object) -> list[object]:
@@ -50,7 +50,7 @@ def test_sandbox_rel_joins_src_dataset_filename():
 
 
 def test_current_image_payload_round_trips_token():
-    from phenotypic.gui.browse._source_render import decode_token
+    from phenotypic._gui.browse._source_render import decode_token
 
     payload = cb.current_image_payload("plates/b7", ".", "A1.png")
     assert decode_token(payload["token"]) == "plates/b7/A1.png"
@@ -58,7 +58,7 @@ def test_current_image_payload_round_trips_token():
 
 
 def test_current_image_payload_flat_source_round_trips():
-    from phenotypic.gui.browse._source_render import decode_token
+    from phenotypic._gui.browse._source_render import decode_token
 
     # All-"." flat case: no leading slashes/dots in the token's decoded path.
     payload = cb.current_image_payload(".", ".", "A1.png")
@@ -69,7 +69,7 @@ def test_current_image_payload_flat_source_round_trips():
 
 
 def test_current_image_payload_direct_store_does_not_double_join():
-    from phenotypic.gui.browse._source_render import decode_token
+    from phenotypic._gui.browse._source_render import decode_token
 
     payload = cb.current_image_payload(
         "inputs/p01.ome.zarr", ".", "p01.ome.zarr"
@@ -99,7 +99,7 @@ def test_real_store_asset_payload_is_the_canonical_viv_source_spec(tmp_path):
     import numpy as np
 
     from phenotypic import Image
-    from phenotypic.gui.results_viewer._store_source import build_source_spec
+    from phenotypic._gui.results_viewer._store_source import build_source_spec
 
     rgb = np.zeros((96, 128, 3), dtype=np.uint8)
     rgb[:, :, 0] = 64
@@ -142,7 +142,7 @@ def test_neighbor_filenames_three_each_side_clamped():
 
 
 def test_current_image_payload_prefetch_tokens_round_trip():
-    from phenotypic.gui.browse._source_render import decode_token
+    from phenotypic._gui.browse._source_render import decode_token
 
     payload = cb.current_image_payload(
         "plates/b7", "day3", "A2.png", neighbor_files=["A1.png", "A3.png"]
@@ -232,7 +232,7 @@ def test_csv_metadata_panel_table_is_bounded_and_horizontally_scrollable():
     assert "table table-sm mb-0 browse-csv-metadata-table" in classes
 
     css = (
-        Path(__file__).parents[3] / "src/phenotypic/gui/browse/_assets/browse.css"
+        Path(__file__).parents[3] / "src/phenotypic/_gui/browse/_assets/browse.css"
     ).read_text(encoding="utf-8")
     assert ".browse-csv-metadata-panel" in css
     assert ".browse-csv-metadata-scroll" in css

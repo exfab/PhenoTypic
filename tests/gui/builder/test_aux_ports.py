@@ -30,10 +30,10 @@ from typing import Any, Dict
 
 import pytest
 
-from phenotypic.gui._operation_registry import OperationRegistry
-from phenotypic.gui.builder._app import create_app
-from phenotypic.gui.builder._callbacks import _dispatch_state_update
-from phenotypic.gui.builder._state import (
+from phenotypic._gui._operation_registry import OperationRegistry
+from phenotypic._gui.builder._app import create_app
+from phenotypic._gui.builder._callbacks import _dispatch_state_update
+from phenotypic._gui.builder._state import (
     _LegacyBuilderScope as BuilderScope,
     _LegacyBuilderState as BuilderState,
     StepNode,

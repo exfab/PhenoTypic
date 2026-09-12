@@ -1,1 +1,1 @@
-"""Unit tests for phenotypic.gui module."""
+"""Unit tests for phenotypic._gui module."""

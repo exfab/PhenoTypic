@@ -17,12 +17,12 @@ from typing import Iterator
 import polars as pl
 import pytest
 
-from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.gui.results_viewer._scatter_tab import _ids as ids
-from phenotypic.gui.results_viewer._scatter_tab._facets import (
+from phenotypic._gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.results_viewer._scatter_tab import _ids as ids
+from phenotypic._gui.results_viewer._scatter_tab._facets import (
     COMPUTED_FRAME_INDEX,
 )
-from phenotypic.gui.results_viewer._scatter_tab._layout import (
+from phenotypic._gui.results_viewer._scatter_tab._layout import (
     CONFIG_POPOVER_WIDTH_PX,
     build_scatter_tab_body,
 )
@@ -266,12 +266,12 @@ def test_a_column_narrowed_to_one_value_still_plans_and_renders(
     which is only safe if one value is an ordinary figure rather than an
     edge case. This is the test that makes that claim checkable.
     """
-    from phenotypic.gui.results_viewer._scatter_tab._facets import plan_facets
-    from phenotypic.gui.results_viewer._scatter_tab._figure import (
+    from phenotypic._gui.results_viewer._scatter_tab._facets import plan_facets
+    from phenotypic._gui.results_viewer._scatter_tab._figure import (
         CUSTOMDATA_COL,
         build_scatter_figure,
     )
-    from phenotypic.gui.results_viewer._scatter_tab._spec import FigureSpec
+    from phenotypic._gui.results_viewer._scatter_tab._spec import FigureSpec
 
     one_strain = three_strain_frame.filter(
         pl.col("Metadata_Strain") == "BY4741"
@@ -289,8 +289,8 @@ def test_a_column_narrowed_to_one_value_still_plans_and_renders(
 
 def test_a_column_filtered_away_entirely_still_plans(three_strain_frame) -> None:
     """The degenerate end of the same case: zero rows, still one panel."""
-    from phenotypic.gui.results_viewer._scatter_tab._facets import plan_facets
-    from phenotypic.gui.results_viewer._scatter_tab._spec import FigureSpec
+    from phenotypic._gui.results_viewer._scatter_tab._facets import plan_facets
+    from phenotypic._gui.results_viewer._scatter_tab._spec import FigureSpec
 
     empty = three_strain_frame.filter(pl.col("Metadata_Strain") == "nonesuch")
     assert empty.height == 0

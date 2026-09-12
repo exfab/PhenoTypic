@@ -1,4 +1,4 @@
-"""Unit tests for ``phenotypic.gui.shell._sandbox.SandboxRoot``.
+"""Unit tests for ``phenotypic._gui.shell._sandbox.SandboxRoot``.
 
 The sandbox is the GUI's path-containment primitive: every untrusted path
 (URL fragment, JSON-API query string, ``/runs/<rel>/...`` route) is run
@@ -20,7 +20,7 @@ from pathlib import Path
 
 import pytest
 
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.shell._sandbox import SandboxRoot
 
 
 # ---------------------------------------------------------------------------

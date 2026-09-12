@@ -142,7 +142,7 @@ topology = [
 
 [project.scripts]
 phenotypic = "phenotypic.phenotypicCLI:phenotypic_cli"
-phenotypic-gui = "phenotypic.gui.shell._launcher:main"
+phenotypic-gui = "phenotypic._gui.shell._launcher:main"
 phenotypic-tune = "phenotypic.tune.__main__:main"
 
 [dependency-groups]
@@ -250,9 +250,9 @@ version = { attr = "phenotypic.__version__" }
     # icons. Without these the ``phenotypic-gui`` entry point fails to
     # import (shell/_layout.py reads shell.css at import time) and the Dash
     # sub-apps load unstyled with broken image-viewer controls.
-    "gui/**/*.css",
-    "gui/**/*.js",
-    "gui/**/*.png",
+    "_gui/**/*.css",
+    "_gui/**/*.js",
+    "_gui/**/*.png",
 ]
 
 [tool.uv]
@@ -335,7 +335,7 @@ ignore_missing_imports = true
 # Static figure renderer for the Scatter tab's PDF export. Its own block for
 # the same reason as zarr: it is a distinct package from `plotly.*` above,
 # with a distinct runtime prerequisite (a Chrome install -- see
-# `gui/results_viewer/_scatter_tab/_pdf.py`), and folding it into the long
+# `_gui/results_viewer/_scatter_tab/_pdf.py`), and folding it into the long
 # list would hide both facts.
 [[tool.mypy.overrides]]
 module = [

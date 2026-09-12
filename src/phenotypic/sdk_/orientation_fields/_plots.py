@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
-from matplotlib.axes import Axes
-from matplotlib.collections import PathCollection
-from matplotlib.colors import Colormap, Normalize
-from matplotlib.patches import Circle
-from matplotlib.quiver import Quiver
 from numpy.typing import NDArray
+
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from matplotlib.collections import PathCollection
+    from matplotlib.colors import Colormap, Normalize
+    from matplotlib.quiver import Quiver
 
 from ._literal_crossings import (
     LiteralCrossingRingProfile,
@@ -80,6 +82,9 @@ def plot_literal_crossing_map(
     Raises:
         ValueError: If image or plotting parameters are invalid.
     """
+    from matplotlib.colors import Normalize
+    from matplotlib.patches import Circle
+
     source = _validated_image(image, transform)
     if not np.isfinite(arrow_length) or arrow_length <= 0.0:
         raise ValueError("arrow_length must be finite and > 0")
@@ -239,6 +244,8 @@ def plot_literal_crossing_population(
     The ring profile is derived internally so raw crossings cannot be paired
     with a profile calculated from another transform.
     """
+    from matplotlib.colors import Normalize
+
     profile = literal_crossing_ring_profile(
         transform,
         minimum_points=minimum_points,
@@ -326,6 +333,8 @@ def plot_literal_crossing_outward_profile(
     Returns:
         Tuple of the change scatter artist and resultant axis.
     """
+    from matplotlib.colors import Normalize
+
     resolved_norm = (
         Normalize(vmin=-180.0, vmax=180.0) if norm is None else norm
     )

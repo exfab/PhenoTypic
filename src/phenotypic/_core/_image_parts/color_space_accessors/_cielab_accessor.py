@@ -1,4 +1,3 @@
-import colour
 import numpy as np
 
 from ..accessor_abstracts import ColorSpaceAccessor
@@ -68,6 +67,8 @@ class CieLabAccessor(ColorSpaceAccessor):
             access patterns, consider storing the result in a local variable.
             This design ensures consistency with the parent image's XYZ data.
         """
+        import colour
+
         return colour.XYZ_to_Lab(
             XYZ=self._root_image.color.XYZ[:],
             illuminant=colour.CCS_ILLUMINANTS[self._root_image._observer][

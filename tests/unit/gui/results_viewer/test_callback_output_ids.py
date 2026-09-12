@@ -33,8 +33,8 @@ import polars as pl
 import pytest
 from PIL import Image as PILImage
 
-from phenotypic.gui.results_viewer._app import create_app
-from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.results_viewer._app import create_app
+from phenotypic._gui.results_viewer._output_root import OutputRoot
 from phenotypic.schema import IMAGE
 
 from tests._dash_layout import (

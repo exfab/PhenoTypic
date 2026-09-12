@@ -6,10 +6,10 @@ from typing import Any
 
 import pytest
 
-from phenotypic.gui._operation_registry import OperationRegistry
-from phenotypic.gui.builder._app import create_app
-from phenotypic.gui.builder._callbacks import _dispatch_state_update
-from phenotypic.gui.builder._state import (
+from phenotypic._gui._operation_registry import OperationRegistry
+from phenotypic._gui.builder._app import create_app
+from phenotypic._gui.builder._callbacks import _dispatch_state_update
+from phenotypic._gui.builder._state import (
     _DagBuilderState,
     state_from_json,
     state_to_json,

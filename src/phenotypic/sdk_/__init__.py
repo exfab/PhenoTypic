@@ -13,16 +13,114 @@ artifact filenames, directory names, JSON contract keys, and path helpers
 (re-exported here at package level for convenience).
 """
 
-from . import (
-    colourspace,
+import importlib as _importlib
+from typing import TYPE_CHECKING as _TYPE_CHECKING
+from typing import Any as _Any
+
+#: Re-exports whose submodules import heavy third-party libraries -- colour-science
+#: (``colourspace``), h5py (``hdf_``), pandas (``_measurement_tables``,
+#: ``_metadata_migration``), scipy and scikit-image (``mixin``). Importing any
+#: ``phenotypic.sdk_.*`` module runs this ``__init__`` first, so these resolve on first
+#: access instead. Defined before the eager imports below, so an import that re-enters
+#: this package mid-initialisation still resolves them.
+_LAZY_ATTRS: dict[str, str] = {
+    "colourspace": ".colourspace",
+    "HDF": ".hdf_",
+    "PreparedEmbeddedMeasurementTable": "._measurement_tables",
+    "PreparedImageTables": "._measurement_tables",
+    "build_measurement_table_descriptor": "._measurement_tables",
+    "build_metadata_table_descriptor": "._measurement_tables",
+    "embedded_measurement_columns": "._measurement_tables",
+    "read_embedded_measurement_column": "._measurement_tables",
+    "read_embedded_measurement_descriptor": "._measurement_tables",
+    "replace_embedded_measurement_table": "._measurement_tables",
+    "replace_image_tables": "._measurement_tables",
+    "write_embedded_measurement_table": "._measurement_tables",
+    "write_image_tables": "._measurement_tables",
+    "write_metadata_table": "._measurement_tables",
+    "MetadataMigrationAuthority": "._metadata_migration",
+    "MetadataMigrationReport": "._metadata_migration",
+    "MetadataMigrationResult": "._metadata_migration",
+    "MetadataMigrationTarget": "._metadata_migration",
+    "metadata_migration_authority": "._metadata_migration",
+    "migrate_metadata_bundle": "._metadata_migration",
+    "migrate_metadata_file": "._metadata_migration",
+    "migrate_preflighted_metadata_bundle": "._metadata_migration",
+    "preflight_metadata_schema": "._metadata_migration",
+    "rollback_metadata_migration": "._metadata_migration",
+    "validated_published_metadata_migration_targets": "._metadata_migration",
+    "FootprintMixin": ".mixin",
+    "GridInferenceMixin": ".mixin",
+    "InputLayerMixin": ".mixin",
+    "LazyWidgetMixin": ".mixin",
+    "NormControlMixin": ".mixin",
+    "NormalizedOutputMixin": ".mixin",
+}
+
+
+def __getattr__(name: str) -> _Any:
+    """Resolve a heavy re-export on first access and cache it on the package."""
+    module_name = _LAZY_ATTRS.get(name)
+    if module_name is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    module = _importlib.import_module(module_name, __name__)
+    value = module if module_name == f".{name}" else getattr(module, name)
+    globals()[name] = value
+    return value
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(__all__))
+
+
+if _TYPE_CHECKING:
+    from . import colourspace
+    from ._measurement_tables import (
+        PreparedEmbeddedMeasurementTable,
+        PreparedImageTables,
+        build_measurement_table_descriptor,
+        build_metadata_table_descriptor,
+        embedded_measurement_columns,
+        read_embedded_measurement_column,
+        read_embedded_measurement_descriptor,
+        replace_embedded_measurement_table,
+        replace_image_tables,
+        write_embedded_measurement_table,
+        write_image_tables,
+        write_metadata_table,
+    )
+    from ._metadata_migration import (
+        MetadataMigrationAuthority,
+        MetadataMigrationReport,
+        MetadataMigrationResult,
+        MetadataMigrationTarget,
+        metadata_migration_authority,
+        migrate_metadata_bundle,
+        migrate_metadata_file,
+        migrate_preflighted_metadata_bundle,
+        preflight_metadata_schema,
+        rollback_metadata_migration,
+        validated_published_metadata_migration_targets,
+    )
+    from .hdf_ import HDF
+    from .mixin import (
+        FootprintMixin,
+        GridInferenceMixin,
+        InputLayerMixin,
+        LazyWidgetMixin,
+        NormControlMixin,
+        NormalizedOutputMixin,
+    )
+
+from . import (  # noqa: E402
     constants_,
     exceptions_,
     napari_,
     slurm,
     slurm_,
 )
-from . import _io_constants
-from ._atomic_io import (
+from . import _io_constants  # noqa: E402
+from ._atomic_io import (  # noqa: E402
     CommitGuard,
     PARQUET_WRITE_OPTIONS,
     atomic_write_bytes,
@@ -32,8 +130,8 @@ from ._atomic_io import (
     atomic_write_with_writer,
     publication_commit,
 )
-from ._column_ref import ColumnRef, ColumnRefList, ColumnSource
-from ._io_constants import (
+from ._column_ref import ColumnRef, ColumnRefList, ColumnSource  # noqa: E402
+from ._io_constants import (  # noqa: E402
     # Filenames (CLI artifacts)
     CURATION_LABELS_PARQUET,
     CUSTOM_CATEGORIES_JSON,
@@ -261,7 +359,7 @@ from ._io_constants import (
     validate_analysis_id,
     zarr_store_path,
 )
-from ._image_record import (
+from ._image_record import (  # noqa: E402
     PROVENANCE_FORWARD,
     PROVENANCE_MIGRATED,
     RECORD_VERSION,
@@ -273,12 +371,12 @@ from ._image_record import (
     record_provenance,
     record_rejection,
 )
-from ._master_io import (
+from ._master_io import (  # noqa: E402
     master_carries_user_metadata,
     user_metadata_headers,
 )
-from ._pipeline_publication import pipeline_publication_lock
-from ._run_state import (
+from ._pipeline_publication import pipeline_publication_lock  # noqa: E402
+from ._run_state import (  # noqa: E402
     ImageState,
     RunDiagnostics,
     RunIdentity,
@@ -290,9 +388,8 @@ from ._run_state import (
     resolve_run_state,
     run_identity,
 )
-from .funcs_ import is_binary_mask, timed_execution
-from .hdf_ import HDF
-from ._metadata_helpers import (
+from .funcs_ import is_binary_mask, timed_execution  # noqa: E402
+from ._metadata_helpers import (  # noqa: E402
     canonical_metadata_order,
     ensure_metadata_prefix,
     is_metadata_header,
@@ -306,42 +403,7 @@ from ._metadata_helpers import (
     normalize_metadata_columns,
     order_measurement_columns,
 )
-from ._measurement_tables import (
-    PreparedEmbeddedMeasurementTable,
-    PreparedImageTables,
-    build_measurement_table_descriptor,
-    build_metadata_table_descriptor,
-    embedded_measurement_columns,
-    read_embedded_measurement_column,
-    read_embedded_measurement_descriptor,
-    replace_embedded_measurement_table,
-    replace_image_tables,
-    write_embedded_measurement_table,
-    write_image_tables,
-    write_metadata_table,
-)
-from ._metadata_migration import (
-    MetadataMigrationAuthority,
-    MetadataMigrationReport,
-    MetadataMigrationResult,
-    MetadataMigrationTarget,
-    metadata_migration_authority,
-    migrate_metadata_bundle,
-    migrate_metadata_file,
-    migrate_preflighted_metadata_bundle,
-    preflight_metadata_schema,
-    rollback_metadata_migration,
-    validated_published_metadata_migration_targets,
-)
-from .mixin import (
-    FootprintMixin,
-    GridInferenceMixin,
-    InputLayerMixin,
-    LazyWidgetMixin,
-    NormControlMixin,
-    NormalizedOutputMixin,
-)
-from .ngff_ import (
+from .ngff_ import (  # noqa: E402
     EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS,
     MEASUREMENT_TABLE_RELATIVE_PATH,
     METADATA_TABLE_RELATIVE_PATH,
@@ -356,7 +418,7 @@ from .ngff_ import (
     sweep_orphan_parts,
     valid_staged_store,
 )
-from .typing_ import InputLayer, NormOut, ProcessOnlyLayer
+from .typing_ import InputLayer, NormOut, ProcessOnlyLayer  # noqa: E402
 
 __all__ = [
     "aggregate_publication_marker_path",

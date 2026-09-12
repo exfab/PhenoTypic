@@ -1,4 +1,4 @@
-"""Unit tests for ``phenotypic.gui.shell._session``.
+"""Unit tests for ``phenotypic._gui.shell._session``.
 
 Covers the lifecycle contract:
 
@@ -15,7 +15,7 @@ import threading
 import time
 from typing import List
 
-from phenotypic.gui.shell._session import (
+from phenotypic._gui.shell._session import (
     ToolSession,
     start_idle_release_thread,
 )

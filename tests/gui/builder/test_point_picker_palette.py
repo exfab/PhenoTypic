@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from phenotypic.gui._operation_registry import OperationRegistry
-from phenotypic.gui.builder._layout import _palette_for_categories
-from phenotypic.gui.builder import _ids as ids
+from phenotypic._gui._operation_registry import OperationRegistry
+from phenotypic._gui.builder._layout import _palette_for_categories
+from phenotypic._gui.builder import _ids as ids
 
 
 def _walk(node):

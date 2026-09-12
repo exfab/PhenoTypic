@@ -18,11 +18,11 @@ import polars as pl
 import pytest
 
 from phenotypic import Image
-from phenotypic.gui.results_viewer._measurement_source import (
+from phenotypic._gui.results_viewer._measurement_source import (
     displayable_measurement_columns,
     measurement_values_for,
 )
-from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.results_viewer._output_root import OutputRoot
 from phenotypic.schema import IMAGE, OBJECT
 from phenotypic.sdk_ import (
     MEASUREMENT_TABLE_RELATIVE_PATH,
@@ -150,7 +150,7 @@ def test_a_newer_store_schema_does_not_empty_the_picker(
     run: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """One unsupported store is skipped rather than failing the callback."""
-    from phenotypic.gui.results_viewer import _measurement_source as source
+    from phenotypic._gui.results_viewer import _measurement_source as source
 
     monkeypatch.setattr(
         source,
@@ -196,7 +196,7 @@ def test_duplicate_stems_in_two_datasets_keep_distinct_values(
     run: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Dataset identity prevents a later store overwriting an earlier one."""
-    from phenotypic.gui.results_viewer import _measurement_source as source
+    from phenotypic._gui.results_viewer import _measurement_source as source
 
     identity = (1, 2, 3, 4)
     monkeypatch.setattr(

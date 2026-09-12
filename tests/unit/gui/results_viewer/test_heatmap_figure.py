@@ -13,8 +13,8 @@ import plotly.graph_objects as go
 import polars as pl
 import pytest
 
-from phenotypic.gui._design import OI_VERMILION
-from phenotypic.gui.results_viewer._heatmap_tab._figure import build_heatmap_figure
+from phenotypic._gui._design import OI_VERMILION
+from phenotypic._gui.results_viewer._heatmap_tab._figure import build_heatmap_figure
 from phenotypic.schema import IMAGE
 
 

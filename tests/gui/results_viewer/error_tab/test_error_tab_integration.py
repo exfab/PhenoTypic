@@ -20,13 +20,13 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis.qc import MaxModifiedZScore
-from phenotypic.gui.results_viewer._curation_labels import CurationLabels
-from phenotypic.gui.results_viewer._error_tab import (
+from phenotypic._gui.results_viewer._curation_labels import CurationLabels
+from phenotypic._gui.results_viewer._error_tab import (
     build_error_tab_body,
     register_error_callbacks,
 )
-from phenotypic.gui.results_viewer._error_tab import _callbacks, _ids as ids
-from phenotypic.gui.results_viewer._qc_tab.review._review_state import (
+from phenotypic._gui.results_viewer._error_tab import _callbacks, _ids as ids
+from phenotypic._gui.results_viewer._qc_tab.review._review_state import (
     ReviewState,
 )
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
