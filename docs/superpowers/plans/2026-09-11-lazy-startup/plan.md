@@ -955,8 +955,10 @@ def test_docs_build_still_selects_the_notebook_connected_renderer() -> None:
 
 - [ ] **Step 3: Run the new tests (RED).** Expected:
   - tier 4 fails, with colour, h5py, matplotlib.pyplot and plotly loaded;
-  - the docs-renderer test passes, because today's dash handler still sets the renderer;
+  - the docs-renderer test **fails**: Task 2's lazy package means a bare `import phenotypic` no longer reaches the dash handler that used to set the renderer, which is exactly what Step 4 moves into `_startup_perf`;
   - the checker fails for every file in the table and passes for `_grid_image_handler.py`, which T2 already moved.
+
+  **Tier 4 does not go green in this task.** `_core/_pipeline_parts/_image_pipeline_core.py` eagerly imports `analysis/abc_/_model_fitter.py` (pyplot), `analysis/qc/_expected_vs_detected.py` (plotly) and `util/_robust_color_stats.py` (colour). All three are Task 4 rows, so Task 4 closes it; do not edit `_image_pipeline_core.py` to force it earlier. Leave the guard red at this commit and say so in your report.
 
   ```bash
   QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg uv run pytest tests/unit/ci/test_startup_imports.py tests/unit/ci/test_deferred_imports.py -q -o addopts= -p no:cacheprovider -n 8 -rfE
@@ -1150,6 +1152,13 @@ Deferral table (paths relative to `src/phenotypic/`; apply the point-of-use rule
 
 - [ ] **Step 4: Apply the point-of-use rule** to the other 18 rows.
 - [ ] **Step 5: Run Step 2's command (GREEN).** Expected: all pass.
+- [ ] **Step 5b: Close tier 4.** Task 3 left it red, because `_core/_pipeline_parts/_image_pipeline_core.py` eagerly imports three of your rows — `analysis/abc_/_model_fitter.py` (pyplot), `analysis/qc/_expected_vs_detected.py` (plotly) and `util/_robust_color_stats.py` (colour). Deferring their imports is what closes it:
+
+  ```bash
+  QT_QPA_PLATFORM=offscreen MPLBACKEND=Agg uv run pytest tests/unit/ci/test_startup_imports.py -q -o addopts= -p no:cacheprovider -n 8 -rfE
+  ```
+
+  Expected: all pass, tier 4 included. If tier 4 still names a module, trace it with `uv run python -X importtime -c "from phenotypic import Image"`, report the chain, and do **not** edit `_image_pipeline_core.py` to force it.
 - [ ] **Step 6: Test surface.** Expected: no failures beyond ones you have attributed as pre-existing by rerunning each alone here and at `/tmp/pht-lazy-base`.
 
   ```bash
