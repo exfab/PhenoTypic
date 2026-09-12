@@ -37,6 +37,43 @@ def test_every_deferred_module_is_watched_at_startup() -> None:
     assert set(DEFERRED_RUNTIME_MODULES) <= watched
 
 
+def test_the_watched_sets_are_the_ones_the_spec_names() -> None:
+    """Pin the contents, or every guard asserted against them can be retired silently.
+
+    Tiers 1 and 4 assert ``loaded == []`` over whatever these tuples happen to contain,
+    and the subset check above is satisfied by the empty set. Without this test the
+    cheapest way to green a failing tier is to delete the offending name from the tuple,
+    which passes everything and ships the regression. Changing either set now requires
+    changing the spec's own list in the same commit, which is the point.
+    """
+    assert set(HEAVY_STARTUP_MODULES) == {
+        "bm3d",
+        "colour",
+        "cv2",
+        "dash",
+        "h5py",
+        "mahotas",
+        "matplotlib",
+        "numba",
+        "pandas",
+        "plotly",
+        "polars",
+        "pyarrow",
+        "scipy",
+        "skimage",
+    }
+    assert set(DEFERRED_RUNTIME_MODULES) == {
+        "bm3d",
+        "colour",
+        "cv2",
+        "h5py",
+        "mahotas",
+        "matplotlib.pyplot",
+        "numba",
+        "plotly",
+    }
+
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
 
@@ -52,6 +89,10 @@ IMPORT_FIRST_ENTRY_MODULES = (
     "phenotypic._cli._cli_staged_slurm_worker",
     "phenotypic._cli._cli_recompile_worker",
     "phenotypic._cli._cli_checkpoint_handler",
+    # Plain modules, so package discovery below never finds them. `_startup_perf` is
+    # the first thing every entry point imports, and `settings` is in `_LAZY_SUBPACKAGES`.
+    "phenotypic._startup_perf",
+    "phenotypic.settings",
 )
 
 
@@ -126,6 +167,49 @@ def test_importing_image_loads_no_deferred_runtime_module() -> None:
     )
     assert report["control"] is True
     assert report["loaded"] == []
+
+
+#: Subpackages a user imports directly (``from phenotypic.detect import ...``). Deferring
+#: a library at its importer is only worth anything if importing the subpackage stays free
+#: of it -- that is the stated purpose of the detector rows, and nothing else asserts it:
+#: tiers 1 and 4 never import these at all, and the sweep only checks that they import.
+GUARDED_SUBPACKAGES = (
+    "phenotypic.abc_",
+    "phenotypic.analysis",
+    "phenotypic.correction",
+    "phenotypic.detect",
+    "phenotypic.enhance",
+    "phenotypic.grid",
+    "phenotypic.measure",
+    "phenotypic.plotting",
+    "phenotypic.post",
+    "phenotypic.refine",
+    "phenotypic.schema",
+    "phenotypic.sdk_",
+    "phenotypic.util",
+)
+
+#: Deliberate exceptions, asserted exactly rather than merely allowed, so an exception that
+#: stops being true fails as loudly as a new leak. ``correction`` keeps ``colour`` at module
+#: level because ``_color_checker_profile.py`` and ``_helpers.py`` are on the spec's
+#: unchanged list (spec Amendment A P3).
+SUBPACKAGE_EXPECTED_DEFERRALS: dict[str, tuple[str, ...]] = {
+    "phenotypic.correction": ("colour",),
+}
+
+
+@pytest.mark.parametrize("package", GUARDED_SUBPACKAGES)
+def test_operation_subpackage_loads_no_deferred_runtime_library(package: str) -> None:
+    """Tier 5: importing an operation subpackage pays for none of the deferred libraries."""
+    report = run_startup_probe(
+        "import importlib\n"
+        f"importlib.import_module({package!r})\n"
+        f"watched = {sorted(DEFERRED_RUNTIME_MODULES)!r}\n"
+        "report = {'loaded': sorted(m for m in watched if m in sys.modules),\n"
+        f"          'control': {package!r} in sys.modules}}\n"
+    )
+    assert report["control"] is True
+    assert report["loaded"] == sorted(SUBPACKAGE_EXPECTED_DEFERRALS.get(package, ()))
 
 
 def test_docs_build_still_selects_the_notebook_connected_renderer() -> None:

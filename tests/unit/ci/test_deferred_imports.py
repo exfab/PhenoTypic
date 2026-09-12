@@ -197,6 +197,98 @@ def test_deferred_names_are_not_imported_at_module_level(relative_path: str) -> 
     assert leaked == {}, f"{relative_path}: runtime module-level import of deferred names (name: line) {leaked}"
 
 
+def _has_future_annotations(tree: ast.Module) -> bool:
+    return any(
+        isinstance(node, ast.ImportFrom) and node.module == "__future__" and any(a.name == "annotations" for a in node.names)
+        for node in tree.body
+    )
+
+
+def _annotation_node_ids(tree: ast.Module) -> set[int]:
+    """``id()`` of every node inside an annotation.
+
+    Only sound when the module has ``from __future__ import annotations``: without it an
+    annotation is evaluated -- a function's at ``def`` time, i.e. at import -- so a deferred
+    name there is a real module-level use. The caller asserts the future import first.
+    """
+    marked: set[int] = set()
+    for node in ast.walk(tree):
+        annotations: list[ast.expr | None] = []
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            arguments = node.args
+            annotations.append(node.returns)
+            annotations.extend(
+                argument.annotation
+                for argument in (
+                    *arguments.posonlyargs,
+                    *arguments.args,
+                    *arguments.kwonlyargs,
+                    arguments.vararg,
+                    arguments.kwarg,
+                )
+                if argument is not None
+            )
+        elif isinstance(node, ast.AnnAssign):
+            annotations.append(node.annotation)
+        for annotation in annotations:
+            if annotation is not None:
+                marked.update(id(child) for child in ast.walk(annotation))
+    return marked
+
+
+def _locally_bound_names(function: ast.AST) -> set[str]:
+    """Names a function binds itself, by import **or** by assignment.
+
+    Assignment counts because the cached-loader pattern binds through one:
+    ``mh = _mahotas()`` in ``measure/_measure_texture.py`` imports mahotas once, behind a
+    ``functools.cache``, and every later ``mh.`` use is as safe as a local import.
+    """
+    names = _locally_imported_names(function)
+    names.update(
+        node.id for node in ast.walk(function) if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store)
+    )
+    return names
+
+
+def _parents(tree: ast.Module) -> dict[int, ast.AST]:
+    return {id(child): parent for parent in ast.walk(tree) for child in ast.iter_child_nodes(parent)}
+
+
+@pytest.mark.parametrize("relative_path", sorted(DEFERRED_SITES))
+def test_no_runtime_use_of_a_deferred_name_escapes_its_local_import(relative_path: str) -> None:
+    """The reverse of the test below: every *use* must sit under a function that binds it.
+
+    The table lists the functions known to need each name, so a use added to a function the
+    table does not list is invisible to every other guard here -- nothing leaked to module
+    level, and the listed functions still import it. The result is a ``NameError`` for the
+    first user who reaches that code path, which no test in this repo would have caught.
+    """
+    tree = _parse(relative_path)
+    if any(functions == () for functions in DEFERRED_SITES[relative_path].values()):
+        # A TYPE_CHECKING-only name is only safe to skip in annotations if annotations are
+        # strings. Pin the premise rather than assume it.
+        assert _has_future_annotations(tree), f"{relative_path}: TYPE_CHECKING-only name needs `from __future__ import annotations`"
+    annotated = _annotation_node_ids(tree) if _has_future_annotations(tree) else set()
+    parents = _parents(tree)
+    escaped = []
+    for name in DEFERRED_SITES[relative_path]:
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Name) and node.id == name and isinstance(node.ctx, ast.Load)):
+                continue
+            if id(node) in annotated:
+                continue
+            current: ast.AST | None = node
+            covered = False
+            while current is not None and id(current) in parents:
+                current = parents[id(current)]
+                if isinstance(current, (ast.FunctionDef, ast.AsyncFunctionDef)) and name in _locally_bound_names(current):
+                    covered = True
+                    break
+            if not covered:
+                escaped.append(f"{name} used at line {node.lineno} with no enclosing local import")
+    assert escaped == [], f"{relative_path}: {escaped}"
+
+
 @pytest.mark.parametrize("relative_path", sorted(DEFERRED_SITES))
 def test_each_user_of_a_deferred_name_imports_it_locally(relative_path: str) -> None:
     tree = _parse(relative_path)

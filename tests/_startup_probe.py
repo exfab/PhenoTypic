@@ -25,8 +25,31 @@ _REPORT_MARKER = "__PHENOTYPIC_STARTUP_PROBE__="
 #: and a timeout here is a hard failure rather than a retry.
 PROBE_TIMEOUT_SECONDS = 180
 
+#: Inherited variables that would put the package into a different mode and change what
+#: the probe measures. ``PYTHONPATH`` and ``PYTHONWARNINGS`` are deliberately **not** here:
+#: a shadowing ``PYTHONPATH`` fails the tier assertions and ``-W error`` makes the child
+#: exit non-zero, so both surface as a red guard rather than a silent pass.
+_STRIPPED_ENV = (
+    "PHENOTYPIC_DOCS_BUILD",
+    "PYTEST_CURRENT_TEST",
+)
 
-def run_startup_probe(body: str) -> dict[str, Any]:
+
+class ProbeReport(dict[str, Any]):
+    """The decoded report, carrying the child's stderr alongside it.
+
+    A ``dict`` subclass so every existing caller keeps indexing the report directly. The
+    child's stderr is kept because a probe can succeed and still have said something worth
+    asserting -- the mahotas ``SyntaxWarning`` filter, for instance, lives in
+    ``_mahotas()`` and ``load_runtime_dependencies()`` and is only exercised outside
+    pytest, where ``pyproject.toml``'s ``filterwarnings`` does not reach it. On failure the
+    stderr tail is in the ``AssertionError``; on success it would otherwise be discarded.
+    """
+
+    stderr: str = ""
+
+
+def run_startup_probe(body: str) -> ProbeReport:
     """Execute ``body`` in a fresh interpreter and return the ``report`` it binds.
 
     Args:
@@ -34,7 +57,8 @@ def run_startup_probe(body: str) -> dict[str, Any]:
             JSON-serialisable name ``report``.
 
     Returns:
-        The decoded ``report``.
+        The decoded ``report``, as a :class:`ProbeReport` whose ``stderr`` attribute holds
+        whatever the child wrote to stderr.
 
     Raises:
         AssertionError: If the interpreter exits non-zero or prints no report.
@@ -43,8 +67,8 @@ def run_startup_probe(body: str) -> dict[str, Any]:
     """
     program = f"import json, sys\n{body}\nprint({_REPORT_MARKER!r} + json.dumps(report))\n"
     env = {**os.environ, "QT_QPA_PLATFORM": "offscreen", "MPLBACKEND": "Agg"}
-    env.pop("PHENOTYPIC_DOCS_BUILD", None)
-    env.pop("PYTEST_CURRENT_TEST", None)
+    for name in _STRIPPED_ENV:
+        env.pop(name, None)
     result = subprocess.run(
         [sys.executable, "-c", program],
         capture_output=True,
@@ -62,4 +86,6 @@ def run_startup_probe(body: str) -> dict[str, Any]:
             f"--- stdout (tail) ---\n{result.stdout[-2000:]}\n"
             f"--- stderr (tail) ---\n{result.stderr[-4000:]}"
         )
-    return json.loads(reports[-1])
+    report = ProbeReport(json.loads(reports[-1]))
+    report.stderr = result.stderr
+    return report
