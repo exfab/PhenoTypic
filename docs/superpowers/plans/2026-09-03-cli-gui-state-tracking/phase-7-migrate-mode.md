@@ -1802,6 +1802,11 @@ flag is not actually reaching the gate — check for a second copy.
 >
 > **The history below is left as written.** It records what was planned and why, which
 > is what makes the ruling legible; it is not an instruction any more.
+>
+> **Where the rest of it went.** The full disposition of the Task 4 review — which
+> follow-ups closed, which remain, the `$SCRATCH` measurement that reversed FU-2, and
+> the two commits on `fix/migrate-project-legacy-tables` (PR #221) — is in
+> `docs/superpowers/reports/2026-09-03-cli-gui-state-tracking/task4-followup-disposition.md`.
 
 **This step owns a mode that is refusing its ordinary case from P4 until now.** User
 ruling (2026-09-08): document the limitation during P4, schedule the repoint here.

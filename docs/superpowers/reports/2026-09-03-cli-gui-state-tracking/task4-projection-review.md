@@ -1,5 +1,10 @@
 # P7 Task 4 review: projecting legacy embedded tables at read
 
+> **Disposition:** every item below has been actioned or explicitly deferred — see
+> [`task4-followup-disposition.md`](task4-followup-disposition.md) for what was done,
+> what remains, and the branch/PR it landed on. **One finding (FU-2) is wrong** and
+> carries a correction banner in place; read that before acting on it.
+
 Reviewer: implementation + test review. Analysis only; no source or test file was edited.
 Tree: `.worktrees/migrate-maresca`, branch `fix/migrate-project-legacy-tables`, base `2266fc5f`.
 The change under review is the uncommitted `git diff HEAD` (7 files, +1075/−77), read in full from
@@ -215,6 +220,25 @@ normal. The lead's reading is correct. To pin it on data:
   `resolve_run_state(tmp_path, depth="deep")` reports, so the contract is pinned either way.
 
 ### FU-2. `$SCRATCH` staging on the embedded arm is pure overhead, untested, and leaks on the new raising paths
+
+> ### ⛔ CORRECTED — 2026-09-11. Staging stays; do not remove it.
+>
+> **"Pure overhead" was measured and is false.** Cold, over the full 6,529-store
+> Maresca run, one configuration per freshly allocated node and two independent node
+> pairs: staged 323.9 s / 325.1 s against unstaged 397.3 s / 410.3 s — staging is
+> **~20% faster**. This finding's reasoning is correct (the descriptor is read from
+> the store regardless, and each table is read twice) and its conclusion does not
+> follow: one bulk copy of many small files beats reading them individually by far
+> more than the second read costs. Warm the two are a wash, which is what an
+> interleaved benchmark measures and how the wrong number was first obtained.
+>
+> An earlier revision of this branch acted on this finding and removed staging from
+> the embedded arm; it was reverted after measurement.
+>
+> **The leak half was real and is fixed** (cleanup is in a `try/finally`, with a leak
+> test on each arm). **The mis-keyed `read_paths` half is real and still open** — see
+> [`task4-followup-disposition.md`](task4-followup-disposition.md).
+
 
 - **Where:** `_cli_finalize_run.py:190` (stages every table), `:201-212` (`read_paths`), and
   `:243-244` (cleanup, not in a `finally`).
