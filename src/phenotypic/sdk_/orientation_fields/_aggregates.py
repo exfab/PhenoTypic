@@ -11,6 +11,9 @@ from numpy.typing import NDArray
 from ._literal_crossings import LiteralCrossingRingProfile
 
 
+_KENDALL_TIE_EPS_MULTIPLIER = 64.0
+
+
 @dataclass(frozen=True)
 class LiteralCrossingZoneMetrics:
     """Primary and diagnostic summaries for one radial zone.
@@ -104,15 +107,24 @@ def _median_pairwise_slope(radii: np.ndarray, values: np.ndarray) -> float:
 
 
 def _absolute_kendall_tau_b(values: np.ndarray) -> float:
-    """Return absolute Kendall tau-b against strictly increasing radius."""
+    """Return absolute Kendall tau-b against strictly increasing radius.
+
+    Pairwise differences within a small floating-point error bound are ties.
+    This keeps an effectively flat profile from acquiring a platform-specific
+    trend when upstream trigonometric operations differ by a few ulps.
+    """
     concordant = 0
     discordant = 0
     ties = 0
+    value_scale = max(1.0, float(np.max(np.abs(values))))
+    tie_tolerance = (
+        _KENDALL_TIE_EPS_MULTIPLIER * np.finfo(np.float64).eps * value_scale
+    )
     for left in range(values.size - 1):
         differences = values[left + 1 :] - values[left]
-        concordant += int(np.count_nonzero(differences > 0.0))
-        discordant += int(np.count_nonzero(differences < 0.0))
-        ties += int(np.count_nonzero(differences == 0.0))
+        concordant += int(np.count_nonzero(differences > tie_tolerance))
+        discordant += int(np.count_nonzero(differences < -tie_tolerance))
+        ties += int(np.count_nonzero(np.abs(differences) <= tie_tolerance))
     comparable = concordant + discordant
     denominator = math.sqrt((comparable + ties) * comparable)
     if denominator == 0.0:

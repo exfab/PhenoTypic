@@ -42,8 +42,10 @@
   `List[OperationField | None]` of enhancers/pipelines — same field name as
   `CompositeDetector.ops`) to the same input and reduces their
   `detect_mat` maps pixel-wise (`max`/`mean`/`min`/`median`, optional `[0,1]`
-  clip). Its produce-type depends on its children, so it has no single marker
-  ABC and is exempt from the `test_enhancer_taxonomy.py` roster.
+  clip). `include_gray=True` adds the immutable input `image.gray` layer as one
+  more map in that same reduction, enabling response-plus-grayscale inputs for
+  downstream detectors. Its produce-type depends on its children, so it has no
+  single marker ABC and is exempt from the `test_enhancer_taxonomy.py` roster.
 
 ## Phase congruency: `FocusEdgePhase` and `FocusEdgeMonogenicPhase`
 

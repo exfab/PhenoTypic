@@ -197,7 +197,7 @@ class TestMeasureSymmetricZones:
         )
         image = _make_image_with_objmap(gray, objmap)
         image_ref = weakref.ref(image)
-        op = MeasureSymZones()
+        op = MeasureSymZones(legacy_mode=True)
 
         op.measure(image)
         cache = op._MeasureSymZones__cache_intermediates
@@ -228,7 +228,7 @@ class TestMeasureSymmetricZones:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymZones()
+        op = MeasureSymZones(legacy_mode=True)
         df = op.measure(image)
 
         assert isinstance(df, pd.DataFrame)
@@ -278,7 +278,7 @@ class TestMeasureSymmetricZones:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymZones()
+        op = MeasureSymZones(legacy_mode=True)
         df = op.measure(image)
 
         assert len(df) == 1
@@ -317,7 +317,7 @@ class TestMeasureSymmetricZones:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymZones()
+        op = MeasureSymZones(legacy_mode=True)
         df = op.measure(image)
 
         assert len(df) == 1
@@ -367,7 +367,7 @@ class TestMeasureSymmetricZones:
 
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymZones()
+        op = MeasureSymZones(legacy_mode=True)
         df = op.measure(image)
 
         assert len(df) == 1
@@ -412,7 +412,7 @@ class TestMeasureSymmetricZones:
 
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymZones()
+        op = MeasureSymZones(legacy_mode=True)
         # Must not raise.
         df = op.measure(image)
 
@@ -481,7 +481,7 @@ class TestMeasureSymmetricZones:
 
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymZones()
+        op = MeasureSymZones(legacy_mode=True)
         df = op.measure(image)
 
         assert len(df) == 1
@@ -507,7 +507,7 @@ class TestMeasureSymmetricZones:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymZones()
+        op = MeasureSymZones(legacy_mode=True)
         df = op.measure(image)
 
         assert len(df) == 1
@@ -558,7 +558,7 @@ class TestMeasureSymmetricZones:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymZones()
+        op = MeasureSymZones(legacy_mode=True)
         df = op.measure(image)
 
         assert len(df) == 1
@@ -607,7 +607,7 @@ class TestMeasureSymmetricZones:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymZones()
+        op = MeasureSymZones(legacy_mode=True)
         df = op.measure(image)
 
         assert len(df) == 1
@@ -639,7 +639,7 @@ class TestMeasureSymmetricZones:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymZones()
+        op = MeasureSymZones(legacy_mode=True)
         df = op.measure(image)
 
         assert len(df) == 1
@@ -687,7 +687,7 @@ class TestMeasureSymmetricZones:
         )
         image = _make_image_with_objmap(gray, objmap)
 
-        op = MeasureSymZones()
+        op = MeasureSymZones(legacy_mode=True)
         op.measure(image)  # populates the diagnostic cache
 
         default_fig = op.inspect(image)

@@ -24,7 +24,7 @@ _CASES = {
 
 
 def _measure(loader) -> pd.DataFrame:
-    return MeasureSymZones().measure(loader())
+    return MeasureSymZones(legacy_mode=True).measure(loader())
 
 
 @pytest.mark.parametrize("name", sorted(_CASES))

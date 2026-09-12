@@ -1,0 +1,241 @@
+dataset,group,scene,crop,method,zone,solver_status,zone_geometry_available,finite_primary_metric_fraction,any_primary_metric_available,all_primary_metrics_available,primary_metric_count
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj1_d000439_300_029_2026-06-15_21-23-40,Legacy control,Overall,legacy,False,0.0,False,False,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj1_d000439_300_029_2026-06-15_21-23-40,Legacy control,Dense,legacy,False,0.0,False,False,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj1_d000439_300_029_2026-06-15_21-23-40,Legacy control,Sparse,legacy,False,0.0,False,False,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj1_d000439_300_029_2026-06-15_21-23-40,Corrected fixed P95,Overall,collapsed,True,0.0,False,False,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj1_d000439_300_029_2026-06-15_21-23-40,Corrected fixed P95,Dense,collapsed,False,0.0,False,False,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj1_d000439_300_029_2026-06-15_21-23-40,Corrected fixed P95,Sparse,collapsed,True,0.0,False,False,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj1_d000439_300_029_2026-06-15_21-23-40,Corrected fixed P100,Overall,collapsed,True,0.25,True,False,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj1_d000439_300_029_2026-06-15_21-23-40,Corrected fixed P100,Dense,collapsed,False,0.0,False,False,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj1_d000439_300_029_2026-06-15_21-23-40,Corrected fixed P100,Sparse,collapsed,True,0.25,True,False,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj1_d000439_300_029_2026-06-15_21-23-40,Retuned P95,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj1_d000439_300_029_2026-06-15_21-23-40,Retuned P95,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj1_d000439_300_029_2026-06-15_21-23-40,Retuned P95,Sparse,exact,True,0.0,False,False,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj1_d000439_300_029_2026-06-15_21-23-40,Retuned P100,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj1_d000439_300_029_2026-06-15_21-23-40,Retuned P100,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj1_d000439_300_029_2026-06-15_21-23-40,Retuned P100,Sparse,exact,True,0.25,True,False,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj2_d000439_300_029_2026-06-15_21-23-40,Legacy control,Overall,legacy,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj2_d000439_300_029_2026-06-15_21-23-40,Legacy control,Dense,legacy,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj2_d000439_300_029_2026-06-15_21-23-40,Legacy control,Sparse,legacy,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj2_d000439_300_029_2026-06-15_21-23-40,Corrected fixed P95,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj2_d000439_300_029_2026-06-15_21-23-40,Corrected fixed P95,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj2_d000439_300_029_2026-06-15_21-23-40,Corrected fixed P95,Sparse,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj2_d000439_300_029_2026-06-15_21-23-40,Corrected fixed P100,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj2_d000439_300_029_2026-06-15_21-23-40,Corrected fixed P100,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj2_d000439_300_029_2026-06-15_21-23-40,Corrected fixed P100,Sparse,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj2_d000439_300_029_2026-06-15_21-23-40,Retuned P95,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj2_d000439_300_029_2026-06-15_21-23-40,Retuned P95,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj2_d000439_300_029_2026-06-15_21-23-40,Retuned P95,Sparse,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj2_d000439_300_029_2026-06-15_21-23-40,Retuned P100,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj2_d000439_300_029_2026-06-15_21-23-40,Retuned P100,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image99,Image99_obj2_d000439_300_029_2026-06-15_21-23-40,Retuned P100,Sparse,exact,True,0.25,True,False,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj1_d000441_300_050_2026-06-15_21-41-45,Legacy control,Overall,legacy,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj1_d000441_300_050_2026-06-15_21-41-45,Legacy control,Dense,legacy,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj1_d000441_300_050_2026-06-15_21-41-45,Legacy control,Sparse,legacy,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj1_d000441_300_050_2026-06-15_21-41-45,Corrected fixed P95,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj1_d000441_300_050_2026-06-15_21-41-45,Corrected fixed P95,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj1_d000441_300_050_2026-06-15_21-41-45,Corrected fixed P95,Sparse,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj1_d000441_300_050_2026-06-15_21-41-45,Corrected fixed P100,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj1_d000441_300_050_2026-06-15_21-41-45,Corrected fixed P100,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj1_d000441_300_050_2026-06-15_21-41-45,Corrected fixed P100,Sparse,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj1_d000441_300_050_2026-06-15_21-41-45,Retuned P95,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj1_d000441_300_050_2026-06-15_21-41-45,Retuned P95,Dense,exact,True,0.25,True,False,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj1_d000441_300_050_2026-06-15_21-41-45,Retuned P95,Sparse,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj1_d000441_300_050_2026-06-15_21-41-45,Retuned P100,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj1_d000441_300_050_2026-06-15_21-41-45,Retuned P100,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj1_d000441_300_050_2026-06-15_21-41-45,Retuned P100,Sparse,exact,True,0.25,True,False,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj2_d000441_300_050_2026-06-15_21-41-45,Legacy control,Overall,legacy,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj2_d000441_300_050_2026-06-15_21-41-45,Legacy control,Dense,legacy,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj2_d000441_300_050_2026-06-15_21-41-45,Legacy control,Sparse,legacy,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj2_d000441_300_050_2026-06-15_21-41-45,Corrected fixed P95,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj2_d000441_300_050_2026-06-15_21-41-45,Corrected fixed P95,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj2_d000441_300_050_2026-06-15_21-41-45,Corrected fixed P95,Sparse,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj2_d000441_300_050_2026-06-15_21-41-45,Corrected fixed P100,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj2_d000441_300_050_2026-06-15_21-41-45,Corrected fixed P100,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj2_d000441_300_050_2026-06-15_21-41-45,Corrected fixed P100,Sparse,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj2_d000441_300_050_2026-06-15_21-41-45,Retuned P95,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj2_d000441_300_050_2026-06-15_21-41-45,Retuned P95,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj2_d000441_300_050_2026-06-15_21-41-45,Retuned P95,Sparse,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj2_d000441_300_050_2026-06-15_21-41-45,Retuned P100,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj2_d000441_300_050_2026-06-15_21-41-45,Retuned P100,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj2_d000441_300_050_2026-06-15_21-41-45,Retuned P100,Sparse,exact,True,0.25,True,False,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj3_d000441_300_050_2026-06-15_21-41-45,Legacy control,Overall,legacy,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj3_d000441_300_050_2026-06-15_21-41-45,Legacy control,Dense,legacy,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj3_d000441_300_050_2026-06-15_21-41-45,Legacy control,Sparse,legacy,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj3_d000441_300_050_2026-06-15_21-41-45,Corrected fixed P95,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj3_d000441_300_050_2026-06-15_21-41-45,Corrected fixed P95,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj3_d000441_300_050_2026-06-15_21-41-45,Corrected fixed P95,Sparse,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj3_d000441_300_050_2026-06-15_21-41-45,Corrected fixed P100,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj3_d000441_300_050_2026-06-15_21-41-45,Corrected fixed P100,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj3_d000441_300_050_2026-06-15_21-41-45,Corrected fixed P100,Sparse,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj3_d000441_300_050_2026-06-15_21-41-45,Retuned P95,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj3_d000441_300_050_2026-06-15_21-41-45,Retuned P95,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj3_d000441_300_050_2026-06-15_21-41-45,Retuned P95,Sparse,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj3_d000441_300_050_2026-06-15_21-41-45,Retuned P100,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj3_d000441_300_050_2026-06-15_21-41-45,Retuned P100,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image167,image167_obj3_d000441_300_050_2026-06-15_21-41-45,Retuned P100,Sparse,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj1_d000442_300_063_2026-06-16_01-53-04,Legacy control,Overall,legacy,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj1_d000442_300_063_2026-06-16_01-53-04,Legacy control,Dense,legacy,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj1_d000442_300_063_2026-06-16_01-53-04,Legacy control,Sparse,legacy,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj1_d000442_300_063_2026-06-16_01-53-04,Corrected fixed P95,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj1_d000442_300_063_2026-06-16_01-53-04,Corrected fixed P95,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj1_d000442_300_063_2026-06-16_01-53-04,Corrected fixed P95,Sparse,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj1_d000442_300_063_2026-06-16_01-53-04,Corrected fixed P100,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj1_d000442_300_063_2026-06-16_01-53-04,Corrected fixed P100,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj1_d000442_300_063_2026-06-16_01-53-04,Corrected fixed P100,Sparse,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj1_d000442_300_063_2026-06-16_01-53-04,Retuned P95,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj1_d000442_300_063_2026-06-16_01-53-04,Retuned P95,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj1_d000442_300_063_2026-06-16_01-53-04,Retuned P95,Sparse,exact,True,0.25,True,False,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj1_d000442_300_063_2026-06-16_01-53-04,Retuned P100,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj1_d000442_300_063_2026-06-16_01-53-04,Retuned P100,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj1_d000442_300_063_2026-06-16_01-53-04,Retuned P100,Sparse,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj2_d000442_300_063_2026-06-16_01-53-04,Legacy control,Overall,legacy,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj2_d000442_300_063_2026-06-16_01-53-04,Legacy control,Dense,legacy,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj2_d000442_300_063_2026-06-16_01-53-04,Legacy control,Sparse,legacy,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj2_d000442_300_063_2026-06-16_01-53-04,Corrected fixed P95,Overall,collapsed,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj2_d000442_300_063_2026-06-16_01-53-04,Corrected fixed P95,Dense,collapsed,False,0.0,False,False,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj2_d000442_300_063_2026-06-16_01-53-04,Corrected fixed P95,Sparse,collapsed,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj2_d000442_300_063_2026-06-16_01-53-04,Corrected fixed P100,Overall,collapsed,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj2_d000442_300_063_2026-06-16_01-53-04,Corrected fixed P100,Dense,collapsed,False,0.0,False,False,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj2_d000442_300_063_2026-06-16_01-53-04,Corrected fixed P100,Sparse,collapsed,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj2_d000442_300_063_2026-06-16_01-53-04,Retuned P95,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj2_d000442_300_063_2026-06-16_01-53-04,Retuned P95,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj2_d000442_300_063_2026-06-16_01-53-04,Retuned P95,Sparse,exact,True,0.25,True,False,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj2_d000442_300_063_2026-06-16_01-53-04,Retuned P100,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj2_d000442_300_063_2026-06-16_01-53-04,Retuned P100,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj2_d000442_300_063_2026-06-16_01-53-04,Retuned P100,Sparse,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj3_d000442_300_063_2026-06-16_01-53-04,Legacy control,Overall,legacy,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj3_d000442_300_063_2026-06-16_01-53-04,Legacy control,Dense,legacy,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj3_d000442_300_063_2026-06-16_01-53-04,Legacy control,Sparse,legacy,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj3_d000442_300_063_2026-06-16_01-53-04,Corrected fixed P95,Overall,collapsed,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj3_d000442_300_063_2026-06-16_01-53-04,Corrected fixed P95,Dense,collapsed,False,0.0,False,False,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj3_d000442_300_063_2026-06-16_01-53-04,Corrected fixed P95,Sparse,collapsed,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj3_d000442_300_063_2026-06-16_01-53-04,Corrected fixed P100,Overall,collapsed,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj3_d000442_300_063_2026-06-16_01-53-04,Corrected fixed P100,Dense,collapsed,False,0.0,False,False,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj3_d000442_300_063_2026-06-16_01-53-04,Corrected fixed P100,Sparse,collapsed,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj3_d000442_300_063_2026-06-16_01-53-04,Retuned P95,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj3_d000442_300_063_2026-06-16_01-53-04,Retuned P95,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj3_d000442_300_063_2026-06-16_01-53-04,Retuned P95,Sparse,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj3_d000442_300_063_2026-06-16_01-53-04,Retuned P100,Overall,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj3_d000442_300_063_2026-06-16_01-53-04,Retuned P100,Dense,exact,True,1.0,True,True,4
+GanodermaSubsetEven,Ganoderma × glucose/yeast extract,image211,image211_obj3_d000442_300_063_2026-06-16_01-53-04,Retuned P100,Sparse,exact,True,0.25,True,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj1_d000273_300_006_2025-12-12_03-05-12_rgb,Legacy control,Overall,legacy,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj1_d000273_300_006_2025-12-12_03-05-12_rgb,Legacy control,Dense,legacy,True,0.25,True,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj1_d000273_300_006_2025-12-12_03-05-12_rgb,Legacy control,Sparse,legacy,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj1_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P95,Overall,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj1_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P95,Dense,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj1_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P95,Sparse,exact,True,0.25,True,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj1_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P100,Overall,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj1_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P100,Dense,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj1_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P100,Sparse,exact,True,0.0,False,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj1_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P95,Overall,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj1_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P95,Dense,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj1_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P95,Sparse,exact,True,0.25,True,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj1_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P100,Overall,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj1_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P100,Dense,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj1_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P100,Sparse,exact,True,0.0,False,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj2_d000273_300_006_2025-12-12_03-05-12_rgb,Legacy control,Overall,legacy,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj2_d000273_300_006_2025-12-12_03-05-12_rgb,Legacy control,Dense,legacy,True,0.0,False,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj2_d000273_300_006_2025-12-12_03-05-12_rgb,Legacy control,Sparse,legacy,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj2_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P95,Overall,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj2_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P95,Dense,exact,True,0.25,True,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj2_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P95,Sparse,exact,True,0.25,True,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj2_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P100,Overall,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj2_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P100,Dense,exact,True,0.25,True,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj2_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P100,Sparse,exact,True,0.25,True,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj2_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P95,Overall,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj2_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P95,Dense,exact,True,0.25,True,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj2_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P95,Sparse,exact,True,0.25,True,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj2_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P100,Overall,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj2_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P100,Dense,exact,True,0.25,True,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj2_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P100,Sparse,exact,True,0.25,True,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj3_d000273_300_006_2025-12-12_03-05-12_rgb,Legacy control,Overall,legacy,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj3_d000273_300_006_2025-12-12_03-05-12_rgb,Legacy control,Dense,legacy,True,0.25,True,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj3_d000273_300_006_2025-12-12_03-05-12_rgb,Legacy control,Sparse,legacy,True,0.25,True,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj3_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P95,Overall,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj3_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P95,Dense,exact,True,0.25,True,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj3_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P95,Sparse,exact,True,0.25,True,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj3_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P100,Overall,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj3_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P100,Dense,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj3_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P100,Sparse,exact,True,0.0,False,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj3_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P95,Overall,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj3_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P95,Dense,exact,True,0.25,True,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj3_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P95,Sparse,exact,True,0.25,True,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj3_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P100,Overall,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj3_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P100,Dense,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj3_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P100,Sparse,exact,True,0.0,False,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj4_d000273_300_006_2025-12-12_03-05-12_rgb,Legacy control,Overall,legacy,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj4_d000273_300_006_2025-12-12_03-05-12_rgb,Legacy control,Dense,legacy,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj4_d000273_300_006_2025-12-12_03-05-12_rgb,Legacy control,Sparse,legacy,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj4_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P95,Overall,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj4_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P95,Dense,exact,True,0.25,True,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj4_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P95,Sparse,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj4_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P100,Overall,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj4_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P100,Dense,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj4_d000273_300_006_2025-12-12_03-05-12_rgb,Corrected fixed P100,Sparse,exact,True,0.25,True,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj4_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P95,Overall,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj4_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P95,Dense,exact,True,0.25,True,False,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj4_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P95,Sparse,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj4_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P100,Overall,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj4_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P100,Dense,exact,True,1.0,True,True,4
+NeurosporaMenadione,Neurospora crassa × menadione,image29,Image29_obj4_d000273_300_006_2025-12-12_03-05-12_rgb,Retuned P100,Sparse,exact,True,0.25,True,False,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj1_d000273_300_001_2025-12-12_03-00-49_rgb,Legacy control,Overall,legacy,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj1_d000273_300_001_2025-12-12_03-00-49_rgb,Legacy control,Dense,legacy,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj1_d000273_300_001_2025-12-12_03-00-49_rgb,Legacy control,Sparse,legacy,False,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj1_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P95,Overall,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj1_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P95,Dense,exact,True,0.25,True,False,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj1_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P95,Sparse,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj1_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P100,Overall,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj1_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P100,Dense,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj1_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P100,Sparse,exact,True,0.0,False,False,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj1_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P95,Overall,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj1_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P95,Dense,exact,True,0.0,False,False,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj1_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P95,Sparse,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj1_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P100,Overall,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj1_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P100,Dense,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj1_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P100,Sparse,exact,True,0.0,False,False,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj2_d000273_300_001_2025-12-12_03-00-49_rgb,Legacy control,Overall,legacy,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj2_d000273_300_001_2025-12-12_03-00-49_rgb,Legacy control,Dense,legacy,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj2_d000273_300_001_2025-12-12_03-00-49_rgb,Legacy control,Sparse,legacy,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj2_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P95,Overall,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj2_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P95,Dense,exact,True,0.25,True,False,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj2_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P95,Sparse,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj2_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P100,Overall,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj2_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P100,Dense,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj2_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P100,Sparse,exact,True,0.0,False,False,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj2_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P95,Overall,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj2_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P95,Dense,exact,True,0.25,True,False,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj2_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P95,Sparse,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj2_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P100,Overall,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj2_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P100,Dense,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj2_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P100,Sparse,exact,True,0.25,True,False,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj3_d000273_300_001_2025-12-12_03-00-49_rgb,Legacy control,Overall,legacy,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj3_d000273_300_001_2025-12-12_03-00-49_rgb,Legacy control,Dense,legacy,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj3_d000273_300_001_2025-12-12_03-00-49_rgb,Legacy control,Sparse,legacy,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj3_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P95,Overall,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj3_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P95,Dense,exact,True,0.25,True,False,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj3_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P95,Sparse,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj3_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P100,Overall,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj3_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P100,Dense,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj3_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P100,Sparse,exact,True,0.25,True,False,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj3_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P95,Overall,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj3_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P95,Dense,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj3_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P95,Sparse,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj3_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P100,Overall,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj3_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P100,Dense,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj3_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P100,Sparse,exact,True,0.25,True,False,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj4_d000273_300_001_2025-12-12_03-00-49_rgb,Legacy control,Overall,legacy,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj4_d000273_300_001_2025-12-12_03-00-49_rgb,Legacy control,Dense,legacy,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj4_d000273_300_001_2025-12-12_03-00-49_rgb,Legacy control,Sparse,legacy,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj4_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P95,Overall,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj4_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P95,Dense,exact,True,0.0,False,False,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj4_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P95,Sparse,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj4_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P100,Overall,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj4_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P100,Dense,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj4_d000273_300_001_2025-12-12_03-00-49_rgb,Corrected fixed P100,Sparse,exact,True,0.25,True,False,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj4_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P95,Overall,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj4_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P95,Dense,exact,True,0.25,True,False,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj4_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P95,Sparse,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj4_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P100,Overall,exact,True,1.0,True,True,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj4_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P100,Dense,exact,True,0.25,True,False,4
+NeurosporaXylan,Neurospora crassa × xylan,image29,Image29_obj4_d000273_300_001_2025-12-12_03-00-49_rgb,Retuned P100,Sparse,exact,True,1.0,True,True,4
