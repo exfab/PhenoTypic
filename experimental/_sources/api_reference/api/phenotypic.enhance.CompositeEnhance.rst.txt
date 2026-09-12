@@ -60,6 +60,7 @@ phenotypic.enhance.CompositeEnhance
       ~CompositeEnhance.model_fields_set
       ~CompositeEnhance.ops
       ~CompositeEnhance.mode
+      ~CompositeEnhance.include_gray
       ~CompositeEnhance.norm
    
    

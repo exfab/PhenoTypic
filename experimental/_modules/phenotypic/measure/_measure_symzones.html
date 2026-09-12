@@ -608,22 +608,25 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">weakref</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">fields</span><span class="p">,</span> <span class="n">replace</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">TypeAlias</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">TypeAlias</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+    <span class="c1"># The pydantic mypy plugin resolves the inherited runtime OperationField</span>
+    <span class="c1"># annotation in each concrete model&#39;s module. Runtime validation remains</span>
+    <span class="c1"># on CanonicalZoneMeasure; the checker needs only the erased carrier type.</span>
+    <span class="n">OperationField</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">Any</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">PrivateAttr</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">approximate_polygon</span><span class="p">,</span> <span class="n">find_contours</span><span class="p">,</span> <span class="n">regionprops</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureFeatures</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">Control</span><span class="p">,</span> <span class="n">PlotImage</span><span class="p">,</span> <span class="n">figure</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure._canonical_zone_measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">CanonicalZoneMeasure</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure._zone_segmentation</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">ZoneSegmentation</span><span class="p">,</span>
-    <span class="n">ZoneSegmentationParams</span><span class="p">,</span>
-    <span class="n">compute_zone_segmentation</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">SYMMETRIC_ZONES</span>
@@ -682,41 +685,53 @@
 
 <div class="viewcode-block" id="MeasureSymZones">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.measure.MeasureSymZones.html#phenotypic.measure.MeasureSymZones">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">MeasureSymZones</span><span class="p">(</span><span class="n">MeasureFeatures</span><span class="p">,</span> <span class="n">PlotImage</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure colony radial expansion and angular symmetry from the object mask alone.</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MeasureSymZones</span><span class="p">(</span><span class="n">CanonicalZoneMeasure</span><span class="p">,</span> <span class="n">PlotImage</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure colony radial expansion, symmetry, and canonical radial zones.</span>
 
-<span class="sd">    Quantifies each colony by four scalars derived directly from its binary</span>
-<span class="sd">    mask and distance-from-inoculum map — no skeletonization, no branch</span>
-<span class="sd">    tracing, no runner outlier flagging. The headline output is</span>
+<span class="sd">    Quantifies each colony by four mask-derived expansion and symmetry scalars</span>
+<span class="sd">    plus a shared CoreZone / DenseZone / SparseZone partition. The headline is</span>
 <span class="sd">    ``SymmetricRadius``, the first radius past the inoculum core at which the</span>
-<span class="sd">    per-annulus circular mean resultant length of mask-boundary pixels drops</span>
-<span class="sd">    below a tunable symmetry threshold. ``CoreRadius`` (PELT changepoint on</span>
+<span class="sd">    smoothed fraction of occupied angular sectors drops below a tunable</span>
+<span class="sd">    symmetry threshold. ``CoreRadius`` (PELT changepoint on</span>
 <span class="sd">    the radial density profile) anchors the measurement; ``MeanExpansion``</span>
 <span class="sd">    and ``MaxExpansion`` summarise how far growth reached past that core.</span>
 
-<span class="sd">    Zone segmentation (core / dense / sparse) uses a 1D per-annulus</span>
-<span class="sd">    **normalised colony-ness** signal ``c(r)`` computed from the ring-wide</span>
-<span class="sd">    mean intensity. After calibrating ``I_core`` and ``I_agar`` from</span>
-<span class="sd">    percentiles of the expanded crop, each ring&#39;s mean intensity is mapped</span>
-<span class="sd">    into ``[0, 1]`` where 1 = pure colony and 0 = pure agar. For a</span>
-<span class="sd">    roughly circular colony, ``c(r)`` decreases monotonically outward</span>
-<span class="sd">    (uniform dense core ≈ 1, mixed dense branching ≈ 0.5–0.8, sparse</span>
-<span class="sd">    branching ≈ 0.1–0.4, agar = 0), so zone boundaries follow directly</span>
-<span class="sd">    from threshold crossings — no peak-finding. Zones are emitted as</span>
-<span class="sd">    concentric circles at the three scalar radii. Variance and raw mean</span>
-<span class="sd">    per ring are retained in the intermediates for diagnostic access but</span>
-<span class="sd">    do not drive segmentation.</span>
-
-<span class="sd">    The mask&#39;s only role in this signal is to (1) isolate which colony is</span>
-<span class="sd">    being analysed, (2) seed the inoculum centre as the peak of the</span>
-<span class="sd">    in-mask Euclidean distance transform, and (3) detect the</span>
-<span class="sd">    colony-vs-agar intensity direction so the normalisation handles dark</span>
-<span class="sd">    colonies (gray convention) and bright colonies (detect_mat</span>
-<span class="sd">    convention) uniformly. The ring accumulation extends out to</span>
-<span class="sd">    ``r_max = max_mask_radius × (1 + extent_margin)`` regardless of mask</span>
-<span class="sd">    boundaries, so background pixels contribute truthfully to the signal.</span>
+<span class="sd">    Canonical Method B resolves those zones from center-origin Sholl-style</span>
+<span class="sd">    rings combining target-mask occupancy, ``detect_mat`` signal and edge</span>
+<span class="sd">    statistics, structure-tensor coherence, radial-tilt concentration, and</span>
+<span class="sd">    literal skeleton-crossing support. CoreZone is operational: it contains the</span>
+<span class="sd">    inoculum and any inner region where branch orientation is not sufficiently</span>
+<span class="sd">    resolved. ``legacy_mode=True`` restores the historical intensity-based</span>
+<span class="sd">    colony-ness thresholds without changing the independent mask-derived</span>
+<span class="sd">    expansion and symmetry measurements.</span>
 
 <span class="sd">    Args:</span>
+<span class="sd">        center_detector: ObjectDetector or ImagePipeline that produces compact</span>
+<span class="sd">            center regions. The default pipeline resets ``detect_mat`` to</span>
+<span class="sd">            grayscale and applies ``InoculumDetector(min_diameter=20,</span>
+<span class="sd">            max_diameter=140, thresh_method=&quot;otsu&quot;)``. In canonical mode, each</span>
+<span class="sd">            detected component is associated with the final colony it overlaps</span>
+<span class="sd">            and its overlap centroid becomes the shared radial origin. Set to</span>
+<span class="sd">            ``None`` to use the final-mask distance-transform estimator.</span>
+<span class="sd">            Ignored in legacy mode.</span>
+<span class="sd">        legacy_mode: Use the historical colony-ness zone partition instead of</span>
+<span class="sd">            canonical Method B. Defaults to ``False``.</span>
+<span class="sd">        outer_zone_percentile: Target-mask radial percentile used as the</span>
+<span class="sd">            canonical SparseZone outer boundary. ``100`` uses full extent.</span>
+<span class="sd">        sigma_d: Gaussian-derivative scale in pixels, approximately hypha width.</span>
+<span class="sd">        sigma_i: Structure-tensor integration scale in pixels.</span>
+<span class="sd">        radial_ring_width: Width in pixels of each center-origin Sholl-style</span>
+<span class="sd">            annular band.</span>
+<span class="sd">        zone_minimum_segment: Minimum ring count in every change-point segment.</span>
+<span class="sd">        zone_min_crossings: Minimum literal crossings for ring support.</span>
+<span class="sd">        zone_min_resultant: Minimum ring-level axial resultant for support.</span>
+<span class="sd">        zone_min_ring_coherence: Minimum reliable-pixel mean coherence for</span>
+<span class="sd">            ring support.</span>
+<span class="sd">        zone_support_weight: Weight of the Boolean orientation-support feature.</span>
+<span class="sd">        zone_outer_support_margin: Minimum outer-minus-inner support fraction</span>
+<span class="sd">            accepted at the first Method B boundary.</span>
+<span class="sd">        zone_maximum_gap: Largest interior unsupported ring run bridged before</span>
+<span class="sd">            change-point fitting.</span>
 <span class="sd">        n_annuli: Number of equal-area annuli used for the radial density</span>
 <span class="sd">            profile and angular analysis. Defaults to 100.</span>
 <span class="sd">        pelt_penalty: PELT penalty controlling changepoint sensitivity for</span>
@@ -757,7 +772,8 @@
 <span class="sd">        intensity_source: Image array used for the mean-intensity</span>
 <span class="sd">            calculation -- ``&quot;gray&quot;`` uses the grayscale (dark = colony),</span>
 <span class="sd">            ``&quot;detect_mat&quot;`` uses the detection matrix (bright = colony).</span>
-<span class="sd">            Direction is auto-detected. Defaults to ``&quot;gray&quot;``.</span>
+<span class="sd">            Direction is auto-detected. This applies only in legacy mode;</span>
+<span class="sd">            canonical Method B always uses ``detect_mat``.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        pd.DataFrame: Object-level radial symmetry measurements with</span>
@@ -766,20 +782,20 @@
 <span class="sd">            - Object_Label: unique object identifier.</span>
 <span class="sd">            - SymZones_CoreRadius: inoculum core radius (pixels).</span>
 <span class="sd">            - SymZones_SymmetricRadius: first radius past the core</span>
-<span class="sd">              where R̄ exceeds the symmetry threshold (pixels).</span>
+<span class="sd">              where smoothed angular-sector coverage drops below the</span>
+<span class="sd">              symmetry threshold (pixels).</span>
 <span class="sd">            - SymZones_MeanExpansion: mean boundary-pixel distance</span>
 <span class="sd">              beyond the core (pixels, clamped at 0).</span>
 <span class="sd">            - SymZones_MaxExpansion: maximum mask-pixel distance</span>
 <span class="sd">              beyond the core (pixels, clamped at 0).</span>
-<span class="sd">            - SymZones_CoreEndRadius: mean per-angle core boundary</span>
-<span class="sd">              radius from the bright-fraction outward walk (pixels).</span>
-<span class="sd">            - SymZones_DenseEndRadius: mean per-angle outer radius</span>
-<span class="sd">              of the dense branching zone (pixels).</span>
-<span class="sd">            - SymZones_SparseEndRadius: mean per-angle outer radius</span>
-<span class="sd">              of the sparse branching zone, capped at the symmetric</span>
-<span class="sd">              envelope (pixels).</span>
-<span class="sd">            - SymZones_CoreArea: pixel^2 area of the inoculum core</span>
-<span class="sd">              zone integrated across the 360-sector polar polygon.</span>
+<span class="sd">            - SymZones_CoreEndRadius: canonical operational CoreZone</span>
+<span class="sd">              boundary from Method B (pixels).</span>
+<span class="sd">            - SymZones_DenseEndRadius: canonical DenseZone outer</span>
+<span class="sd">              boundary from Method B (pixels).</span>
+<span class="sd">            - SymZones_SparseEndRadius: configured target-mask radial</span>
+<span class="sd">              percentile used as the canonical outer boundary (pixels).</span>
+<span class="sd">            - SymZones_CoreArea: pixel^2 area of the concentric</span>
+<span class="sd">              operational CoreZone.</span>
 <span class="sd">            - SymZones_DenseArea: pixel^2 area of the dense</span>
 <span class="sd">              branching zone (annular region between core and dense</span>
 <span class="sd">              boundaries).</span>
@@ -811,17 +827,6 @@
 
     <span class="n">_measurement_infoclass</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">type</span><span class="p">]</span> <span class="o">=</span> <span class="n">SYMMETRIC_ZONES</span>
 
-    <span class="n">n_annuli</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span>
-    <span class="n">pelt_penalty</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span>
-    <span class="n">symmetry_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">/</span> <span class="mi">6</span>
-    <span class="n">n_angular_bins</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span>
-    <span class="n">smoothing_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span>
-    <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;distance&quot;</span><span class="p">,</span> <span class="s2">&quot;intensity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;distance&quot;</span>
-    <span class="n">extent_margin</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span>
-    <span class="n">min_samples_per_ring</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
-    <span class="n">tau_core</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.9</span>
-    <span class="n">tau_dense</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
-    <span class="n">tau_sparse</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>
     <span class="n">intensity_source</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="s2">&quot;detect_mat&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;gray&quot;</span>
 
     <span class="c1"># Diagnostic cache populated by ``measure()`` so ``inspect()`` /</span>
@@ -835,23 +840,6 @@
     <span class="n">__cache_signature</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 
     <span class="c1"># ── shared pipeline for one object ───────────────────────────────</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_zone_params</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ZoneSegmentationParams</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Snapshot this operator&#39;s zone parameters for the shared pipeline.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">ZoneSegmentationParams</span><span class="p">(</span>
-                <span class="n">n_annuli</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_annuli</span><span class="p">,</span>
-                <span class="n">pelt_penalty</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pelt_penalty</span><span class="p">,</span>
-                <span class="n">symmetry_threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">symmetry_threshold</span><span class="p">,</span>
-                <span class="n">n_angular_bins</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_angular_bins</span><span class="p">,</span>
-                <span class="n">smoothing_window</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">smoothing_window</span><span class="p">,</span>
-                <span class="n">method</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">method</span><span class="p">,</span>
-                <span class="n">extent_margin</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">extent_margin</span><span class="p">,</span>
-                <span class="n">min_samples_per_ring</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_samples_per_ring</span><span class="p">,</span>
-                <span class="n">tau_core</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tau_core</span><span class="p">,</span>
-                <span class="n">tau_dense</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tau_dense</span><span class="p">,</span>
-                <span class="n">tau_sparse</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tau_sparse</span><span class="p">,</span>
-                <span class="n">intensity_source</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">intensity_source</span><span class="p">,</span>
-        <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_compute_intermediates</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>
@@ -875,7 +863,7 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            ZoneSegmentation with all computed fields populated.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">compute_zone_segmentation</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">prop</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_zone_params</span><span class="p">())</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_object_zones</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">prop</span><span class="p">)</span><span class="o">.</span><span class="n">segmentation</span>
 
     <span class="c1"># ── MeasureFeatures interface ────────────────────────────────────</span>
 
@@ -905,9 +893,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">__cache_image_ref</span> <span class="o">=</span> <span class="n">weakref</span><span class="o">.</span><span class="n">ref</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__cache_intermediates</span> <span class="o">=</span> <span class="p">{}</span>
 
-        <span class="c1"># Zone columns get 0.0 for tiny objects (no zones to resolve);</span>
-        <span class="c1"># the original four columns stay NaN to disambiguate &quot;not measurable&quot;</span>
-        <span class="c1"># from legitimately-zero values.</span>
+        <span class="c1"># Legacy zone columns retain their historical 0.0 tiny-object values.</span>
+        <span class="c1"># Canonical mode routes tiny objects through the shared resolver, which</span>
+        <span class="c1"># emits missing morphology and zone geometry consistently.</span>
         <span class="n">_zero_for_tiny</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">SYMMETRIC_ZONES</span><span class="o">.</span><span class="n">CORE_END_RADIUS</span><span class="p">,</span>
             <span class="n">SYMMETRIC_ZONES</span><span class="o">.</span><span class="n">DENSE_END_RADIUS</span><span class="p">,</span>
@@ -918,7 +906,7 @@
         <span class="p">)</span>
 
         <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">prop</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">props</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">prop</span><span class="o">.</span><span class="n">area</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">prop</span><span class="o">.</span><span class="n">area</span> <span class="o">&lt;</span> <span class="mi">10</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span><span class="p">:</span>
                 <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">_zero_for_tiny</span><span class="p">:</span>
                     <span class="n">measurements</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">feat</span><span class="p">)][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
                 <span class="k">continue</span>
@@ -1219,7 +1207,11 @@
 
         <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
                 <span class="n">title</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
-                        <span class="n">text</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Symmetric Radius -- </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">intermediates_cache</span><span class="p">)</span><span class="si">}</span><span class="s2"> objects&quot;</span><span class="p">,</span>
+                        <span class="n">text</span><span class="o">=</span><span class="p">(</span>
+                            <span class="s2">&quot;Symmetric radius and radial zones &quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;(P</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">outer_zone_percentile</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">) -- &quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">intermediates_cache</span><span class="p">)</span><span class="si">}</span><span class="s2"> objects&quot;</span>
+                        <span class="p">),</span>
                         <span class="n">font</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="n">_OI_NAVY</span><span class="p">),</span>
                         <span class="c1"># family from the phenotypic template</span>
                 <span class="p">),</span>
@@ -1288,8 +1280,9 @@
 <span class="sd">        - **Zones** — three legend entries grouped under the &quot;Zones&quot;</span>
 <span class="sd">          heading: **Sparse zone** (sky, annulus r_dense_end..r_outer),</span>
 <span class="sd">          **Dense zone** (navy, annulus r_core..r_dense_end), and</span>
-<span class="sd">          **Core zone** (vermilion, disk 0..r_core). ``r_outer`` is capped</span>
-<span class="sd">          at the symmetric envelope. The legend group is set to toggle</span>
+<span class="sd">          **CoreZone** (vermilion, disk 0..r_core). In canonical mode,</span>
+<span class="sd">          ``r_outer`` is the configured target-mask radial percentile. The</span>
+<span class="sd">          legend group is set to toggle</span>
 <span class="sd">          as a group, so clicking any entry hides/shows all three; the</span>
 <span class="sd">          entries can also be toggled individually.</span>
 <span class="sd">        - **Centroids** — inoculum centre markers for every object.</span>
@@ -1375,7 +1368,8 @@
 
         <span class="c1"># ── Zone polygons — nested annuli + core disk ───────────────</span>
         <span class="c1"># Core: solid disk 0..r_core. Dense: annulus r_core..r_dense_end.</span>
-        <span class="c1"># Sparse: annulus r_dense_end..r_outer (capped at symmetric radius).</span>
+        <span class="c1"># Sparse: annulus r_dense_end..r_outer. Canonical r_outer is the</span>
+        <span class="c1"># configured target-mask radial percentile; legacy retains its cap.</span>
         <span class="c1"># Drawn sparse → dense → core so narrower zones render on top of</span>
         <span class="c1"># wider ones and the legend-group toggle handles all three at once.</span>
         <span class="n">sparse_xs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>

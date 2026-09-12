@@ -601,14 +601,20 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">weakref</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Literal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">TypeAlias</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="c1"># See MeasureSymZones: this satisfies the pydantic mypy plugin&#39;s inherited</span>
+    <span class="c1"># field resolution without changing CanonicalZoneMeasure&#39;s runtime type.</span>
+    <span class="n">OperationField</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">Any</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">PrivateAttr</span><span class="p">,</span> <span class="n">field_validator</span><span class="p">,</span> <span class="n">model_validator</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureFeatures</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">Control</span><span class="p">,</span> <span class="n">PlotImage</span><span class="p">,</span> <span class="n">figure</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure._canonical_zone_measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">CanonicalZoneMeasure</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">MeasurementInfo</span><span class="p">,</span>
     <span class="n">OBJECT</span><span class="p">,</span>
@@ -627,9 +633,8 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.util._nematic_bend</span><span class="w"> </span><span class="kn">import</span> <span class="n">fiber_bend_field</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.util._orientation_field</span><span class="w"> </span><span class="kn">import</span> <span class="n">orientation_field</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure._zone_segmentation</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ZoneResolution</span><span class="p">,</span>
     <span class="n">ZoneSegmentation</span><span class="p">,</span>
-    <span class="n">ZoneSegmentationParams</span><span class="p">,</span>
-    <span class="n">compute_zone_segmentation</span><span class="p">,</span>
     <span class="n">distance_from_point</span><span class="p">,</span>
     <span class="n">expand_slice_around_center</span><span class="p">,</span>
 <span class="p">)</span>
@@ -706,6 +711,31 @@
 <span class="n">_CIRCLE_THETA</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">_N_CIRCLE_PTS</span><span class="p">,</span> <span class="n">endpoint</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">_ObjectZoneAnalysis</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Named results from one object&#39;s zone and orientation analysis.</span>
+
+<span class="sd">    The zone resolver owns the segmentation geometry. The remaining arrays are</span>
+<span class="sd">    the orientation evidence consumed by measurements and diagnostic figures.</span>
+<span class="sd">    Keeping these values named avoids positional tuple unpacking at every call</span>
+<span class="sd">    site and makes their shared origin explicit.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">prop</span><span class="p">:</span> <span class="nb">object</span>
+    <span class="n">resolution</span><span class="p">:</span> <span class="n">ZoneResolution</span>
+    <span class="n">object_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">orientation</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">coherence</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">gradient</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">distance_map</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">center</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">segmentation</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ZoneSegmentation</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the geometry owned by the shared resolver result.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolution</span><span class="o">.</span><span class="n">segmentation</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">_circle_xy</span><span class="p">(</span>
         <span class="n">cx</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">cy</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">r</span><span class="p">:</span> <span class="nb">float</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
@@ -722,16 +752,27 @@
     <span class="k">return</span> <span class="n">cx</span> <span class="o">+</span> <span class="n">r</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">_CIRCLE_THETA</span><span class="p">),</span> <span class="n">cy</span> <span class="o">+</span> <span class="n">r</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">_CIRCLE_THETA</span><span class="p">)</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">zone_selector</span><span class="p">(</span><span class="n">dist_map</span><span class="p">,</span> <span class="n">r_lo</span><span class="p">,</span> <span class="n">r_hi</span><span class="p">,</span> <span class="n">obj_mask</span><span class="p">,</span> <span class="n">variant</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">zone_selector</span><span class="p">(</span>
+    <span class="n">dist_map</span><span class="p">,</span>
+    <span class="n">r_lo</span><span class="p">,</span>
+    <span class="n">r_hi</span><span class="p">,</span>
+    <span class="n">obj_mask</span><span class="p">,</span>
+    <span class="n">variant</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">include_upper</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Boolean selector for a radial zone on a tile; ``Mask`` also ∩ obj_mask.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        dist_map: Per-pixel distance-from-centre map (tile shape).</span>
 <span class="sd">        r_lo: Inner radius (inclusive) of the zone in pixels.</span>
-<span class="sd">        r_hi: Outer radius (exclusive) of the zone in pixels.</span>
+<span class="sd">        r_hi: Outer radius of the zone in pixels.</span>
 <span class="sd">        obj_mask: Boolean object mask (tile shape) used by the ``Mask`` variant.</span>
 <span class="sd">        variant: ``&quot;Radial&quot;`` (all tile pixels in the ring) or ``&quot;Mask&quot;``</span>
 <span class="sd">            (the ring intersected with ``obj_mask``).</span>
+<span class="sd">        include_upper: Include pixels exactly on ``r_hi``. Internal zone</span>
+<span class="sd">            boundaries remain half-open; canonical global outer boundaries</span>
+<span class="sd">            use this option.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Boolean array (tile shape). All-False when the radius range is invalid</span>
@@ -739,7 +780,8 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">r_lo</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">r_hi</span><span class="p">)</span> <span class="ow">or</span> <span class="n">r_hi</span> <span class="o">&lt;=</span> <span class="n">r_lo</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">dist_map</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
-    <span class="n">radial</span> <span class="o">=</span> <span class="p">(</span><span class="n">dist_map</span> <span class="o">&gt;=</span> <span class="n">r_lo</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dist_map</span> <span class="o">&lt;</span> <span class="n">r_hi</span><span class="p">)</span>
+    <span class="n">upper</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nextafter</span><span class="p">(</span><span class="n">r_hi</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span> <span class="k">if</span> <span class="n">include_upper</span> <span class="k">else</span> <span class="n">r_hi</span>
+    <span class="n">radial</span> <span class="o">=</span> <span class="p">(</span><span class="n">dist_map</span> <span class="o">&gt;=</span> <span class="n">r_lo</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dist_map</span> <span class="o">&lt;</span> <span class="n">upper</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">variant</span> <span class="o">==</span> <span class="s2">&quot;Mask&quot;</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">radial</span> <span class="o">&amp;</span> <span class="n">obj_mask</span>
     <span class="k">return</span> <span class="n">radial</span>
@@ -1054,6 +1096,8 @@
         <span class="n">outer_radius</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
         <span class="n">ring_width</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
         <span class="n">n_angular_bins</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">_RADIAL_RELATIVE_N_SECTORS</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">include_outer</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate a sectorized Sholl-style orientation profile.</span>
 
@@ -1073,6 +1117,8 @@
 <span class="sd">        outer_radius: Exclusive outer profile radius in pixels.</span>
 <span class="sd">        ring_width: Radial averaging width in pixels.</span>
 <span class="sd">        n_angular_bins: Number of fixed polar sectors.</span>
+<span class="sd">        include_outer: Include pixels exactly on ``outer_radius`` when the</span>
+<span class="sd">            final complete ring ends on that global boundary.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        ``(ring_centres, sector_tilt, sector_resultant)``. The two matrices have</span>
@@ -1108,10 +1154,19 @@
     <span class="n">sector_tilt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">n_rings</span><span class="p">,</span> <span class="n">n_angular_bins</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
     <span class="n">sector_resultant</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full_like</span><span class="p">(</span><span class="n">sector_tilt</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">ring_index</span><span class="p">,</span> <span class="n">start</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">starts</span><span class="p">):</span>
+        <span class="n">ring_upper</span> <span class="o">=</span> <span class="n">start</span> <span class="o">+</span> <span class="n">ring_width</span>
+        <span class="k">if</span> <span class="p">(</span>
+                <span class="n">include_outer</span>
+                <span class="ow">and</span> <span class="n">ring_index</span> <span class="o">==</span> <span class="n">n_rings</span> <span class="o">-</span> <span class="mi">1</span>
+                <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span>
+                    <span class="n">ring_upper</span><span class="p">,</span> <span class="n">outer_radius</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="n">_EPS</span>
+                <span class="p">)</span>
+        <span class="p">):</span>
+            <span class="n">ring_upper</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nextafter</span><span class="p">(</span><span class="n">outer_radius</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
         <span class="n">ring_selector</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="n">structure_selector</span>
                 <span class="o">&amp;</span> <span class="p">(</span><span class="n">dist_map</span> <span class="o">&gt;=</span> <span class="n">start</span><span class="p">)</span>
-                <span class="o">&amp;</span> <span class="p">(</span><span class="n">dist_map</span> <span class="o">&lt;</span> <span class="n">start</span> <span class="o">+</span> <span class="n">ring_width</span><span class="p">)</span>
+                <span class="o">&amp;</span> <span class="p">(</span><span class="n">dist_map</span> <span class="o">&lt;</span> <span class="n">ring_upper</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="n">means</span><span class="p">,</span> <span class="n">resultants</span> <span class="o">=</span> <span class="n">_axial_sector_means</span><span class="p">(</span>
                 <span class="n">signed_tilt</span><span class="p">,</span>
@@ -1489,14 +1544,15 @@
 
 <div class="viewcode-block" id="MeasureOrientationZones">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.measure.MeasureOrientationZones.html#phenotypic.measure.MeasureOrientationZones">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">MeasureOrientationZones</span><span class="p">(</span><span class="n">MeasureFeatures</span><span class="p">,</span> <span class="n">PlotImage</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MeasureOrientationZones</span><span class="p">(</span><span class="n">CanonicalZoneMeasure</span><span class="p">,</span> <span class="n">PlotImage</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure absolute and radial-relative hyphal orientation by growth zone.</span>
 
-<span class="sd">    Computes the structure-tensor orientation field over a mask-free tile (grid</span>
-<span class="sd">    section when the image is a GridImage, else an expanded crop) and aggregates</span>
-<span class="sd">    coherence-weighted metrics over radially-defined zones bounded by the</span>
-<span class="sd">    symmetric radius. Absolute concentration, turning, and coherence retain both</span>
-<span class="sd">    ``Radial`` and raw ``Mask`` variants. Radial-relative tilt and outward</span>
+<span class="sd">    Canonical mode computes one P2/P98-scaled structure-tensor field over the</span>
+<span class="sd">    final detector signal and aggregates coherence-weighted metrics over the</span>
+<span class="sd">    shared Method B zones. Overall begins at the operational CoreZone boundary</span>
+<span class="sd">    and ends at the configured target-mask radial percentile; it is independent</span>
+<span class="sd">    of ``SymmetricRadius``. Absolute concentration, turning, and coherence retain</span>
+<span class="sd">    both ``Radial`` and raw ``Mask`` variants. Radial-relative tilt and outward</span>
 <span class="sd">    turning use detected structure and equal-weight reliable angular sectors.</span>
 <span class="sd">    Their point estimates are count-scale-invariant while reliable-sector</span>
 <span class="sd">    membership is unchanged; a separate support diagnostic exposes threshold</span>
@@ -1509,12 +1565,35 @@
 <span class="sd">    legacy :class:`~phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC` columns.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        intensity_source: Image array for the structure tensor and zone</span>
-<span class="sd">            segmentation (``&quot;detect_mat&quot;`` default, ``&quot;gray&quot;`` alternative).</span>
-<span class="sd">        sigma_d: Gaussian-derivative (gradient) scale in pixels, ~ hypha width.</span>
+<span class="sd">        center_detector: ObjectDetector or ImagePipeline that produces compact</span>
+<span class="sd">            center regions. The default pipeline resets ``detect_mat`` to</span>
+<span class="sd">            grayscale and applies ``InoculumDetector(min_diameter=20,</span>
+<span class="sd">            max_diameter=140, thresh_method=&quot;otsu&quot;)``. In canonical mode, each</span>
+<span class="sd">            detected component is associated with the final colony it overlaps</span>
+<span class="sd">            and its overlap centroid becomes the shared radial origin. Set to</span>
+<span class="sd">            ``None`` to use the final-mask distance-transform estimator.</span>
+<span class="sd">            Ignored in legacy mode.</span>
+<span class="sd">        legacy_mode: Use the historical colony-ness zone partition instead of</span>
+<span class="sd">            canonical Method B. Defaults to ``False``.</span>
+<span class="sd">        outer_zone_percentile: Target-mask radial percentile used as the</span>
+<span class="sd">            canonical SparseZone outer boundary. ``100`` uses full extent.</span>
+<span class="sd">        sigma_d: Gaussian-derivative scale in pixels, approximately hypha width.</span>
 <span class="sd">        sigma_i: Structure-tensor integration scale in pixels.</span>
-<span class="sd">        radial_ring_width: Width in pixels of each Sholl-style annular band</span>
-<span class="sd">            used for longer-range radial rotation.</span>
+<span class="sd">        radial_ring_width: Width in pixels of each center-origin Sholl-style</span>
+<span class="sd">            annular band.</span>
+<span class="sd">        zone_minimum_segment: Minimum ring count in every change-point segment.</span>
+<span class="sd">        zone_min_crossings: Minimum literal crossings for ring support.</span>
+<span class="sd">        zone_min_resultant: Minimum ring-level axial resultant for support.</span>
+<span class="sd">        zone_min_ring_coherence: Minimum reliable-pixel mean coherence for</span>
+<span class="sd">            ring support.</span>
+<span class="sd">        zone_support_weight: Weight of the Boolean orientation-support feature.</span>
+<span class="sd">        zone_outer_support_margin: Minimum outer-minus-inner support fraction</span>
+<span class="sd">            accepted at the first Method B boundary.</span>
+<span class="sd">        zone_maximum_gap: Largest interior unsupported ring run bridged before</span>
+<span class="sd">            change-point fitting.</span>
+<span class="sd">        intensity_source: Image array for the structure tensor and zone</span>
+<span class="sd">            segmentation in legacy mode. Canonical mode always uses</span>
+<span class="sd">            ``detect_mat``.</span>
 <span class="sd">        long_range_lag: Centre-to-centre radial comparison distance in pixels.</span>
 <span class="sd">            Must be an integer multiple of ``radial_ring_width``.</span>
 <span class="sd">        outward_peak_window_rings: Odd number of consecutive literal-crossing</span>
@@ -1552,26 +1631,10 @@
         <span class="n">ORIENTATION_ZONE_DIAGNOSTIC</span>
     <span class="p">]</span>
 
-    <span class="n">intensity_source</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="s2">&quot;detect_mat&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;detect_mat&quot;</span>
-    <span class="n">sigma_d</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.5</span>
-    <span class="n">sigma_i</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">4.0</span>
-    <span class="n">radial_ring_width</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">8.0</span>
     <span class="n">long_range_lag</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">16.0</span>
     <span class="n">outward_peak_window_rings</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span>
     <span class="n">outward_min_run_rings</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span>
     <span class="n">include_diagnostics</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="c1"># --- zone passthrough (defaults identical to MeasureSymZones) ---</span>
-    <span class="n">n_annuli</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span>
-    <span class="n">pelt_penalty</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span>
-    <span class="n">symmetry_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">/</span> <span class="mi">6</span>
-    <span class="n">n_angular_bins</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span>
-    <span class="n">smoothing_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span>
-    <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;distance&quot;</span><span class="p">,</span> <span class="s2">&quot;intensity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;distance&quot;</span>
-    <span class="n">extent_margin</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span>
-    <span class="n">min_samples_per_ring</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
-    <span class="n">tau_core</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.9</span>
-    <span class="n">tau_dense</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
-    <span class="n">tau_sparse</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>
     <span class="c1"># Plot-only fields stay after every measurement field so constructor,</span>
     <span class="c1"># schema, and GUI form order follow the operation&#39;s functional parameters.</span>
     <span class="n">quiver_block</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span>
@@ -1599,14 +1662,7 @@
         <span class="p">)</span></div>
 
 
-    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;sigma_d&quot;</span><span class="p">,</span> <span class="s2">&quot;sigma_i&quot;</span><span class="p">)</span>
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_positive_sigma</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;sigma_d and sigma_i must be &gt; 0&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">v</span>
-
-    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;radial_ring_width&quot;</span><span class="p">,</span> <span class="s2">&quot;long_range_lag&quot;</span><span class="p">)</span>
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;long_range_lag&quot;</span><span class="p">)</span>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_positive_radial_scale</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="ow">or</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
@@ -1654,22 +1710,6 @@
                     <span class="s2">&quot;radial_ring_width&quot;</span>
             <span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_zone_params</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ZoneSegmentationParams</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">ZoneSegmentationParams</span><span class="p">(</span>
-                <span class="n">n_annuli</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_annuli</span><span class="p">,</span>
-                <span class="n">pelt_penalty</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pelt_penalty</span><span class="p">,</span>
-                <span class="n">symmetry_threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">symmetry_threshold</span><span class="p">,</span>
-                <span class="n">n_angular_bins</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_angular_bins</span><span class="p">,</span>
-                <span class="n">smoothing_window</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">smoothing_window</span><span class="p">,</span>
-                <span class="n">method</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">method</span><span class="p">,</span>
-                <span class="n">extent_margin</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">extent_margin</span><span class="p">,</span>
-                <span class="n">min_samples_per_ring</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_samples_per_ring</span><span class="p">,</span>
-                <span class="n">tau_core</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tau_core</span><span class="p">,</span>
-                <span class="n">tau_dense</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tau_dense</span><span class="p">,</span>
-                <span class="n">tau_sparse</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tau_sparse</span><span class="p">,</span>
-                <span class="n">intensity_source</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">intensity_source</span><span class="p">,</span>
-        <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_tile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">seg</span><span class="p">:</span> <span class="n">ZoneSegmentation</span><span class="p">,</span> <span class="n">prop</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return (tile_intensity, obj_mask_tile, centre_rc) for one object.</span>
@@ -1747,11 +1787,23 @@
         <span class="k">return</span> <span class="n">tile</span><span class="p">,</span> <span class="n">obj_mask</span><span class="p">,</span> <span class="n">centre</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_zone_bounds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">seg</span><span class="p">:</span> <span class="n">ZoneSegmentation</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s2">&quot;Overall&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">core_end_radius</span><span class="p">,</span> <span class="n">seg</span><span class="o">.</span><span class="n">sparse_end_radius</span><span class="p">),</span>
+                <span class="s2">&quot;Dense&quot;</span>  <span class="p">:</span> <span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">core_end_radius</span><span class="p">,</span> <span class="n">seg</span><span class="o">.</span><span class="n">dense_end_radius</span><span class="p">),</span>
+                <span class="s2">&quot;Sparse&quot;</span> <span class="p">:</span> <span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">dense_end_radius</span><span class="p">,</span> <span class="n">seg</span><span class="o">.</span><span class="n">sparse_end_radius</span><span class="p">),</span>
+            <span class="p">}</span>
         <span class="k">return</span> <span class="p">{</span>
             <span class="s2">&quot;Overall&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">seg</span><span class="o">.</span><span class="n">symmetric_radius</span><span class="p">),</span>
             <span class="s2">&quot;Dense&quot;</span>  <span class="p">:</span> <span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">core_end_radius</span><span class="p">,</span> <span class="n">seg</span><span class="o">.</span><span class="n">dense_end_radius</span><span class="p">),</span>
             <span class="s2">&quot;Sparse&quot;</span> <span class="p">:</span> <span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">dense_end_radius</span><span class="p">,</span> <span class="n">seg</span><span class="o">.</span><span class="n">sparse_end_radius</span><span class="p">),</span>
         <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_orientation_outer_radius</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">seg</span><span class="p">:</span> <span class="n">ZoneSegmentation</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the shared outer selector while preserving legacy bounds.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">sparse_end_radius</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">sparse_end_radius</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">symmetric_radius</span><span class="p">))</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_prep</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Regionprops + label→grid-section map, computed ONCE per image.</span>
@@ -1776,29 +1828,61 @@
             <span class="p">)</span>
         <span class="k">return</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_iter_object_fields</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Yield (prop, seg, obj_mask, phi, coh, grad, dist_map, centre) per object.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_analyze_objects</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Yield named zone and orientation evidence for each object.</span>
 
-<span class="sd">        SINGLE source of truth for the heavy orientation compute — reused by</span>
+<span class="sd">        This is the single source of truth for the heavy orientation compute,</span>
+<span class="sd">        reused by</span>
 <span class="sd">        _operate() (which keeps only compact summaries) and by report()&#39;s</span>
 <span class="sd">        coherence panel (which recomputes on demand). The full-resolution arrays</span>
 <span class="sd">        yielded here are consumed and discarded by each caller; nothing full-res</span>
-<span class="sd">        is retained on the instance. Tiny objects (area&lt;10) are skipped.</span>
+<span class="sd">        is retained on the instance. Legacy mode skips tiny objects; canonical</span>
+<span class="sd">        mode yields their shared missing resolution so diagnostics report code 4.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">prop</span> <span class="ow">in</span> <span class="n">props</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">prop</span><span class="o">.</span><span class="n">area</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">prop</span><span class="o">.</span><span class="n">area</span> <span class="o">&lt;</span> <span class="mi">10</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span><span class="p">:</span>
                 <span class="k">continue</span>
-            <span class="n">seg</span> <span class="o">=</span> <span class="n">compute_zone_segmentation</span><span class="p">(</span>
-                    <span class="n">image</span><span class="p">,</span> <span class="n">prop</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_zone_params</span><span class="p">()</span>
+            <span class="n">resolution</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_object_zones</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">prop</span><span class="p">)</span>
+            <span class="n">seg</span> <span class="o">=</span> <span class="n">resolution</span><span class="o">.</span><span class="n">segmentation</span>
+            <span class="n">context</span> <span class="o">=</span> <span class="n">resolution</span><span class="o">.</span><span class="n">orientation_context</span>
+            <span class="k">if</span> <span class="n">context</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># Canonical failures have no orientation context. Preserve the</span>
+                <span class="c1"># object&#39;s geometry for diagnostics, but keep every field empty</span>
+                <span class="c1"># so no zone metric can be emitted accidentally.</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">seg</span><span class="o">.</span><span class="n">zones_computed</span><span class="p">:</span>
+                    <span class="n">obj_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">obj_mask</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+                    <span class="n">centre</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_rc</span><span class="p">)</span>
+                    <span class="n">dist_map</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">dist_map</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+                    <span class="n">phi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">obj_mask</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+                    <span class="n">coh</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">obj_mask</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+                    <span class="n">grad</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">obj_mask</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Legacy segmentation does not retain tensor evidence, so</span>
+                    <span class="c1"># compute the historical orientation field on its tile.</span>
+                    <span class="n">tile</span><span class="p">,</span> <span class="n">obj_mask</span><span class="p">,</span> <span class="n">centre</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_tile</span><span class="p">(</span>
+                            <span class="n">image</span><span class="p">,</span> <span class="n">seg</span><span class="p">,</span> <span class="n">prop</span><span class="p">,</span> <span class="n">label2section</span>
+                    <span class="p">)</span>
+                    <span class="n">phi</span><span class="p">,</span> <span class="n">coh</span><span class="p">,</span> <span class="n">grad</span> <span class="o">=</span> <span class="n">orientation_field</span><span class="p">(</span>
+                            <span class="n">tile</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_d</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_i</span>
+                    <span class="p">)</span>
+                    <span class="n">dist_map</span> <span class="o">=</span> <span class="n">distance_from_point</span><span class="p">(</span><span class="n">tile</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">centre</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">obj_mask</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">object_mask</span>
+                <span class="n">centre</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">center</span>
+                <span class="n">phi</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">phi</span>
+                <span class="n">coh</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">coherence</span>
+                <span class="n">grad</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">gradient</span>
+                <span class="n">dist_map</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">distance_map</span>
+            <span class="k">yield</span> <span class="n">_ObjectZoneAnalysis</span><span class="p">(</span>
+                <span class="n">prop</span><span class="o">=</span><span class="n">prop</span><span class="p">,</span>
+                <span class="n">resolution</span><span class="o">=</span><span class="n">resolution</span><span class="p">,</span>
+                <span class="n">object_mask</span><span class="o">=</span><span class="n">obj_mask</span><span class="p">,</span>
+                <span class="n">orientation</span><span class="o">=</span><span class="n">phi</span><span class="p">,</span>
+                <span class="n">coherence</span><span class="o">=</span><span class="n">coh</span><span class="p">,</span>
+                <span class="n">gradient</span><span class="o">=</span><span class="n">grad</span><span class="p">,</span>
+                <span class="n">distance_map</span><span class="o">=</span><span class="n">dist_map</span><span class="p">,</span>
+                <span class="n">center</span><span class="o">=</span><span class="n">centre</span><span class="p">,</span>
             <span class="p">)</span>
-            <span class="n">tile</span><span class="p">,</span> <span class="n">obj_mask</span><span class="p">,</span> <span class="n">centre</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_tile</span><span class="p">(</span>
-                    <span class="n">image</span><span class="p">,</span> <span class="n">seg</span><span class="p">,</span> <span class="n">prop</span><span class="p">,</span> <span class="n">label2section</span>
-            <span class="p">)</span>
-            <span class="n">phi</span><span class="p">,</span> <span class="n">coh</span><span class="p">,</span> <span class="n">grad</span> <span class="o">=</span> <span class="n">orientation_field</span><span class="p">(</span>
-                    <span class="n">tile</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_d</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_i</span>
-            <span class="p">)</span>
-            <span class="n">dist_map</span> <span class="o">=</span> <span class="n">distance_from_point</span><span class="p">(</span><span class="n">tile</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">centre</span><span class="p">)</span>
-            <span class="k">yield</span> <span class="n">prop</span><span class="p">,</span> <span class="n">seg</span><span class="p">,</span> <span class="n">obj_mask</span><span class="p">,</span> <span class="n">phi</span><span class="p">,</span> <span class="n">coh</span><span class="p">,</span> <span class="n">grad</span><span class="p">,</span> <span class="n">dist_map</span><span class="p">,</span> <span class="n">centre</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>  <span class="c1"># type: ignore[override]</span>
         <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prep</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
@@ -1817,16 +1901,13 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>  <span class="c1"># compact per-object figure records only</span>
         <span class="c1"># Preserve no-argument notebook figures without retaining a full Image.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cache_image_ref</span> <span class="o">=</span> <span class="n">weakref</span><span class="o">.</span><span class="n">ref</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
-        <span class="k">for</span> <span class="p">(</span>
-                <span class="n">prop</span><span class="p">,</span>
-                <span class="n">seg</span><span class="p">,</span>
-                <span class="n">obj_mask</span><span class="p">,</span>
-                <span class="n">phi</span><span class="p">,</span>
-                <span class="n">coh</span><span class="p">,</span>
-                <span class="n">grad</span><span class="p">,</span>
-                <span class="n">dist_map</span><span class="p">,</span>
-                <span class="n">centre</span><span class="p">,</span>
-        <span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iter_object_fields</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">analysis</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_analyze_objects</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
+            <span class="n">prop</span> <span class="o">=</span> <span class="n">analysis</span><span class="o">.</span><span class="n">prop</span>
+            <span class="n">seg</span> <span class="o">=</span> <span class="n">analysis</span><span class="o">.</span><span class="n">segmentation</span>
+            <span class="n">resolution</span> <span class="o">=</span> <span class="n">analysis</span><span class="o">.</span><span class="n">resolution</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_write_zone_resolution_diagnostics</span><span class="p">(</span>
+                <span class="n">base</span><span class="p">[</span><span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">],</span> <span class="n">resolution</span>
+            <span class="p">)</span>
             <span class="p">(</span>
                 <span class="n">outward_rotation</span><span class="p">,</span>
                 <span class="n">per_zone</span><span class="p">,</span>
@@ -1836,18 +1917,19 @@
             <span class="p">)</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fill_metrics</span><span class="p">(</span>
                     <span class="n">base</span><span class="p">[</span><span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">],</span>
                     <span class="n">seg</span><span class="p">,</span>
-                    <span class="n">obj_mask</span><span class="p">,</span>
-                    <span class="n">phi</span><span class="p">,</span>
-                    <span class="n">coh</span><span class="p">,</span>
-                    <span class="n">grad</span><span class="p">,</span>
-                    <span class="n">dist_map</span><span class="p">,</span>
-                    <span class="n">centre</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">object_mask</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">orientation</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">coherence</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">gradient</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">distance_map</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">center</span><span class="p">,</span>
+                    <span class="n">resolution</span><span class="o">=</span><span class="n">resolution</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="c1"># LEAN CACHE: store compact summaries only — NO full-res tile/phi/coh/</span>
             <span class="c1"># grad/dist_map and NO seg dataclass. Bounds memory to O(objects*blocks).</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">prop</span><span class="o">.</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
                 <span class="s2">&quot;centroid_global&quot;</span> <span class="p">:</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">),</span>
-                <span class="s2">&quot;centre&quot;</span>          <span class="p">:</span> <span class="n">centre</span><span class="p">,</span>
+                <span class="s2">&quot;centre&quot;</span>          <span class="p">:</span> <span class="n">analysis</span><span class="o">.</span><span class="n">center</span><span class="p">,</span>
                 <span class="s2">&quot;radii&quot;</span>           <span class="p">:</span> <span class="p">{</span>
                     <span class="s2">&quot;core&quot;</span>      <span class="p">:</span> <span class="n">seg</span><span class="o">.</span><span class="n">core_radius</span><span class="p">,</span>
                     <span class="s2">&quot;symmetric&quot;</span> <span class="p">:</span> <span class="n">seg</span><span class="o">.</span><span class="n">symmetric_radius</span><span class="p">,</span>
@@ -1856,9 +1938,22 @@
                     <span class="s2">&quot;sparse_end&quot;</span><span class="p">:</span> <span class="n">seg</span><span class="o">.</span><span class="n">sparse_end_radius</span><span class="p">,</span>
                 <span class="p">},</span>
                 <span class="s2">&quot;zones_computed&quot;</span>  <span class="p">:</span> <span class="n">seg</span><span class="o">.</span><span class="n">zones_computed</span><span class="p">,</span>
+                <span class="s2">&quot;zone_resolution&quot;</span> <span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;method_code&quot;</span><span class="p">:</span> <span class="n">resolution</span><span class="o">.</span><span class="n">method_code</span><span class="p">,</span>
+                    <span class="s2">&quot;method_used&quot;</span><span class="p">:</span> <span class="n">resolution</span><span class="o">.</span><span class="n">method_used</span><span class="p">,</span>
+                    <span class="s2">&quot;failure_reason&quot;</span><span class="p">:</span> <span class="n">resolution</span><span class="o">.</span><span class="n">failure_reason</span><span class="p">,</span>
+                    <span class="s2">&quot;outer_zone_percentile&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">outer_zone_percentile</span><span class="p">,</span>
+                    <span class="s2">&quot;full_extent_radius&quot;</span><span class="p">:</span> <span class="p">(</span>
+                        <span class="n">resolution</span><span class="o">.</span><span class="n">canonical_result</span><span class="o">.</span><span class="n">full_extent_radius</span>
+                        <span class="k">if</span> <span class="n">resolution</span><span class="o">.</span><span class="n">canonical_result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                        <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                    <span class="p">),</span>
+                <span class="p">},</span>
                 <span class="s2">&quot;outward_rotation&quot;</span><span class="p">:</span> <span class="n">outward_rotation</span><span class="p">,</span>
                 <span class="s2">&quot;quiver&quot;</span>          <span class="p">:</span> <span class="n">_downsample_quiver</span><span class="p">(</span>
-                        <span class="n">phi</span><span class="p">,</span> <span class="n">coh</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">quiver_block</span>
+                        <span class="n">analysis</span><span class="o">.</span><span class="n">orientation</span><span class="p">,</span>
+                        <span class="n">analysis</span><span class="o">.</span><span class="n">coherence</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">quiver_block</span><span class="p">,</span>
                 <span class="p">),</span>  <span class="c1"># block-res</span>
                 <span class="s2">&quot;per_zone&quot;</span>        <span class="p">:</span> <span class="n">per_zone</span><span class="p">,</span>
                 <span class="s2">&quot;radial_relative&quot;</span> <span class="p">:</span> <span class="n">radial_relative</span><span class="p">,</span>
@@ -1875,6 +1970,48 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">include_diagnostics</span><span class="p">:</span>
             <span class="n">row</span><span class="p">[</span><span class="n">header</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_write_zone_resolution_diagnostics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">resolution</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Write compact provenance for the shared zone resolver.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">include_diagnostics</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">row</span><span class="p">[</span><span class="s2">&quot;OrientZones_ZoneSegmentationMethodCode&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span>
+            <span class="n">resolution</span><span class="o">.</span><span class="n">method_code</span>
+        <span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">resolution</span><span class="o">.</span><span class="n">canonical_result</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;CoreZoneEndRadius&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="s2">&quot;DenseRadius&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="s2">&quot;OuterRadius&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="s2">&quot;FullExtentRadius&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="s2">&quot;OuterZonePercentile&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="s2">&quot;OuterZoneRetainedMaskFraction&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="s2">&quot;ZoneSupportedRingFraction&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="s2">&quot;ZoneChangePointObjective&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="s2">&quot;ZoneChangePointRingCount&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="s2">&quot;ZoneChangePointMinimumSegment&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;CoreZoneEndRadius&quot;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">core_zone_radius</span><span class="p">,</span>
+                    <span class="s2">&quot;DenseRadius&quot;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">dense_radius</span><span class="p">,</span>
+                    <span class="s2">&quot;OuterRadius&quot;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">outer_radius</span><span class="p">,</span>
+                    <span class="s2">&quot;FullExtentRadius&quot;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">full_extent_radius</span><span class="p">,</span>
+                    <span class="s2">&quot;OuterZonePercentile&quot;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">requested_percentile</span><span class="p">,</span>
+                    <span class="s2">&quot;OuterZoneRetainedMaskFraction&quot;</span><span class="p">:</span> <span class="p">(</span>
+                        <span class="n">result</span><span class="o">.</span><span class="n">retained_mask_fraction</span>
+                    <span class="p">),</span>
+                    <span class="s2">&quot;ZoneSupportedRingFraction&quot;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">supported_fraction</span><span class="p">,</span>
+                    <span class="s2">&quot;ZoneChangePointObjective&quot;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">objective</span><span class="p">,</span>
+                    <span class="s2">&quot;ZoneChangePointRingCount&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">ring_count</span><span class="p">),</span>
+                    <span class="s2">&quot;ZoneChangePointMinimumSegment&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">zone_minimum_segment</span>
+                    <span class="p">),</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+        <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">values</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">row</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;OrientZones_</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_fill_literal_crossing_metrics</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>
             <span class="n">row</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
@@ -1884,6 +2021,8 @@
             <span class="n">coherence</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
             <span class="n">dist_map</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
             <span class="n">centre</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
+            <span class="o">*</span><span class="p">,</span>
+            <span class="n">resolution</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Write full-length literal-crossing primary and diagnostic metrics.</span>
 
@@ -1912,59 +2051,75 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="n">seg</span><span class="o">.</span><span class="n">zones_computed</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">_write_missing</span><span class="p">()</span>
         <span class="n">inner_radius</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">core_end_radius</span><span class="p">)</span>
-        <span class="n">outside_core</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="n">obj_mask</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">dist_map</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dist_map</span> <span class="o">&gt;=</span> <span class="n">inner_radius</span><span class="p">)</span>
+        <span class="n">context</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">resolution</span><span class="o">.</span><span class="n">orientation_context</span>
+            <span class="k">if</span> <span class="n">resolution</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="kc">None</span>
         <span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">outside_core</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
-            <span class="k">return</span> <span class="n">_write_missing</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">context</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">outer_radius</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">sparse_end_radius</span><span class="p">)</span>
+            <span class="n">profile</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">measurement_profile</span>
+            <span class="n">inclusive_outer</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nextafter</span><span class="p">(</span><span class="n">outer_radius</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
+            <span class="n">bounds</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;Overall&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">inner_radius</span><span class="p">,</span> <span class="n">inclusive_outer</span><span class="p">),</span>
+                <span class="s2">&quot;Dense&quot;</span>  <span class="p">:</span> <span class="p">(</span><span class="n">inner_radius</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">dense_end_radius</span><span class="p">)),</span>
+                <span class="s2">&quot;Sparse&quot;</span> <span class="p">:</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">dense_end_radius</span><span class="p">),</span> <span class="n">inclusive_outer</span><span class="p">),</span>
+            <span class="p">}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">outside_core</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">obj_mask</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">dist_map</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dist_map</span> <span class="o">&gt;=</span> <span class="n">inner_radius</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">outside_core</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                <span class="k">return</span> <span class="n">_write_missing</span><span class="p">()</span>
 
-        <span class="n">object_extent_radius</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">dist_map</span><span class="p">[</span><span class="n">outside_core</span><span class="p">]))</span>
-        <span class="n">radial_span</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nextafter</span><span class="p">(</span><span class="n">object_extent_radius</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span> <span class="o">-</span> <span class="n">inner_radius</span>
-        <span class="n">n_rings</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
-                <span class="mi">1</span><span class="p">,</span>
-                <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">radial_span</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">radial_ring_width</span><span class="p">)),</span>
-        <span class="p">)</span>
-        <span class="n">outer_radius</span> <span class="o">=</span> <span class="n">inner_radius</span> <span class="o">+</span> <span class="n">n_rings</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">radial_ring_width</span>
-        <span class="n">radii</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="n">inner_radius</span>
-                <span class="o">+</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_rings</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span>
-                <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">radial_ring_width</span>
-        <span class="p">)</span>
-        <span class="n">selector</span> <span class="o">=</span> <span class="n">zone_selector</span><span class="p">(</span>
-                <span class="n">dist_map</span><span class="p">,</span>
-                <span class="n">inner_radius</span><span class="p">,</span>
-                <span class="n">outer_radius</span><span class="p">,</span>
-                <span class="n">obj_mask</span><span class="p">,</span>
-                <span class="s2">&quot;Mask&quot;</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="n">transform</span> <span class="o">=</span> <span class="n">literal_skeleton_ring_crossings</span><span class="p">(</span>
-                <span class="n">obj_mask</span><span class="p">,</span>
-                <span class="n">phi</span> <span class="o">+</span> <span class="n">_FIBER_AXIS_OFFSET</span><span class="p">,</span>
-                <span class="n">coherence</span><span class="p">,</span>
-                <span class="n">dist_map</span><span class="p">,</span>
-                <span class="n">centre</span><span class="p">,</span>
-                <span class="n">radii</span><span class="p">,</span>
-                <span class="n">selector</span><span class="o">=</span><span class="n">selector</span><span class="p">,</span>
-                <span class="n">minimum_coherence</span><span class="o">=</span><span class="n">_RADIAL_RELATIVE_MIN_COHERENCE</span><span class="p">,</span>
-                <span class="n">crossing_half_width</span><span class="o">=</span><span class="n">_LITERAL_CROSSING_HALF_WIDTH</span><span class="p">,</span>
-                <span class="n">minimum_crossing_resultant</span><span class="o">=</span><span class="n">_RADIAL_RING_MIN_RESULTANT</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="n">profile</span> <span class="o">=</span> <span class="n">literal_crossing_ring_profile</span><span class="p">(</span>
-                <span class="n">transform</span><span class="p">,</span>
-                <span class="n">minimum_points</span><span class="o">=</span><span class="n">_LITERAL_CROSSING_MIN_POINTS</span><span class="p">,</span>
-                <span class="n">minimum_resultant</span><span class="o">=</span><span class="n">_RADIAL_RING_MIN_RESULTANT</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="n">bounds</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;Overall&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">inner_radius</span><span class="p">,</span> <span class="n">outer_radius</span><span class="p">),</span>
-            <span class="s2">&quot;Dense&quot;</span>  <span class="p">:</span> <span class="p">(</span>
-                <span class="n">inner_radius</span><span class="p">,</span>
-                <span class="nb">min</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">dense_end_radius</span><span class="p">),</span> <span class="n">outer_radius</span><span class="p">),</span>
-            <span class="p">),</span>
-            <span class="s2">&quot;Sparse&quot;</span> <span class="p">:</span> <span class="p">(</span>
-                <span class="nb">max</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">dense_end_radius</span><span class="p">),</span> <span class="n">inner_radius</span><span class="p">),</span>
-                <span class="n">outer_radius</span><span class="p">,</span>
-            <span class="p">),</span>
-        <span class="p">}</span>
+            <span class="n">object_extent_radius</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">dist_map</span><span class="p">[</span><span class="n">outside_core</span><span class="p">]))</span>
+            <span class="n">radial_span</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nextafter</span><span class="p">(</span><span class="n">object_extent_radius</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span> <span class="o">-</span> <span class="n">inner_radius</span>
+            <span class="n">n_rings</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
+                    <span class="mi">1</span><span class="p">,</span>
+                    <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">radial_span</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">radial_ring_width</span><span class="p">)),</span>
+            <span class="p">)</span>
+            <span class="n">outer_radius</span> <span class="o">=</span> <span class="n">inner_radius</span> <span class="o">+</span> <span class="n">n_rings</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">radial_ring_width</span>
+            <span class="n">radii</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">inner_radius</span>
+                    <span class="o">+</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_rings</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span>
+                    <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">radial_ring_width</span>
+            <span class="p">)</span>
+            <span class="n">selector</span> <span class="o">=</span> <span class="n">zone_selector</span><span class="p">(</span>
+                    <span class="n">dist_map</span><span class="p">,</span>
+                    <span class="n">inner_radius</span><span class="p">,</span>
+                    <span class="n">outer_radius</span><span class="p">,</span>
+                    <span class="n">obj_mask</span><span class="p">,</span>
+                    <span class="s2">&quot;Mask&quot;</span><span class="p">,</span>
+                    <span class="n">include_upper</span><span class="o">=</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">transform</span> <span class="o">=</span> <span class="n">literal_skeleton_ring_crossings</span><span class="p">(</span>
+                    <span class="n">obj_mask</span><span class="p">,</span>
+                    <span class="n">phi</span> <span class="o">+</span> <span class="n">_FIBER_AXIS_OFFSET</span><span class="p">,</span>
+                    <span class="n">coherence</span><span class="p">,</span>
+                    <span class="n">dist_map</span><span class="p">,</span>
+                    <span class="n">centre</span><span class="p">,</span>
+                    <span class="n">radii</span><span class="p">,</span>
+                    <span class="n">selector</span><span class="o">=</span><span class="n">selector</span><span class="p">,</span>
+                    <span class="n">minimum_coherence</span><span class="o">=</span><span class="n">_RADIAL_RELATIVE_MIN_COHERENCE</span><span class="p">,</span>
+                    <span class="n">crossing_half_width</span><span class="o">=</span><span class="n">_LITERAL_CROSSING_HALF_WIDTH</span><span class="p">,</span>
+                    <span class="n">minimum_crossing_resultant</span><span class="o">=</span><span class="n">_RADIAL_RING_MIN_RESULTANT</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">profile</span> <span class="o">=</span> <span class="n">literal_crossing_ring_profile</span><span class="p">(</span>
+                    <span class="n">transform</span><span class="p">,</span>
+                    <span class="n">minimum_points</span><span class="o">=</span><span class="n">_LITERAL_CROSSING_MIN_POINTS</span><span class="p">,</span>
+                    <span class="n">minimum_resultant</span><span class="o">=</span><span class="n">_RADIAL_RING_MIN_RESULTANT</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">bounds</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;Overall&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">inner_radius</span><span class="p">,</span> <span class="n">outer_radius</span><span class="p">),</span>
+                <span class="s2">&quot;Dense&quot;</span>  <span class="p">:</span> <span class="p">(</span>
+                    <span class="n">inner_radius</span><span class="p">,</span>
+                    <span class="nb">min</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">dense_end_radius</span><span class="p">),</span> <span class="n">outer_radius</span><span class="p">),</span>
+                <span class="p">),</span>
+                <span class="s2">&quot;Sparse&quot;</span> <span class="p">:</span> <span class="p">(</span>
+                    <span class="nb">max</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">dense_end_radius</span><span class="p">),</span> <span class="n">inner_radius</span><span class="p">),</span>
+                    <span class="n">outer_radius</span><span class="p">,</span>
+                <span class="p">),</span>
+            <span class="p">}</span>
         <span class="k">for</span> <span class="n">zone</span><span class="p">,</span> <span class="p">(</span><span class="n">lower</span><span class="p">,</span> <span class="n">upper</span><span class="p">)</span> <span class="ow">in</span> <span class="n">bounds</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="n">metrics</span> <span class="o">=</span> <span class="n">aggregate_literal_crossing_zone</span><span class="p">(</span>
                     <span class="n">profile</span><span class="p">,</span>
@@ -2027,6 +2182,8 @@
             <span class="n">grad</span><span class="p">,</span>
             <span class="n">dist_map</span><span class="p">,</span>
             <span class="n">centre</span><span class="p">,</span>
+            <span class="o">*</span><span class="p">,</span>
+            <span class="n">resolution</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Write public degree-based zone columns for one object.</span>
 
@@ -2044,19 +2201,35 @@
                 <span class="n">coh</span><span class="p">,</span>
                 <span class="n">dist_map</span><span class="p">,</span>
                 <span class="n">centre</span><span class="p">,</span>
+                <span class="n">resolution</span><span class="o">=</span><span class="n">resolution</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="n">signed_tilt</span><span class="p">,</span> <span class="n">_signed_turning</span><span class="p">,</span> <span class="n">outward_turning</span><span class="p">,</span> <span class="n">polar_angle</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">signed_radial_relative_field</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">centre</span><span class="p">,</span> <span class="n">dist_map</span><span class="p">)</span>
-        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">seg</span><span class="o">.</span><span class="n">zones_computed</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span><span class="p">:</span>
+            <span class="n">signed_tilt</span><span class="p">,</span> <span class="n">_signed_turning</span><span class="p">,</span> <span class="n">outward_turning</span><span class="p">,</span> <span class="n">polar_angle</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">signed_radial_relative_field</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">centre</span><span class="p">,</span> <span class="n">dist_map</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">signed_tilt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">phi</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="n">outward_turning</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">phi</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="n">polar_angle</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">phi</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
         <span class="n">absolute_tilt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">signed_tilt</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">zone</span><span class="p">,</span> <span class="p">(</span><span class="n">r_lo</span><span class="p">,</span> <span class="n">r_hi</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_zone_bounds</span><span class="p">(</span><span class="n">seg</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">zone_ok</span> <span class="o">=</span> <span class="n">seg</span><span class="o">.</span><span class="n">zones_computed</span> <span class="ow">or</span> <span class="n">zone</span> <span class="o">==</span> <span class="s2">&quot;Overall&quot;</span>
+            <span class="n">zone_ok</span> <span class="o">=</span> <span class="n">seg</span><span class="o">.</span><span class="n">zones_computed</span> <span class="ow">or</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span> <span class="ow">and</span> <span class="n">zone</span> <span class="o">==</span> <span class="s2">&quot;Overall&quot;</span>
+            <span class="p">)</span>
             <span class="k">for</span> <span class="n">variant</span> <span class="ow">in</span> <span class="n">_VARIANTS</span><span class="p">:</span>
                 <span class="k">if</span> <span class="ow">not</span> <span class="n">zone_ok</span><span class="p">:</span>
                     <span class="n">R</span> <span class="o">=</span> <span class="n">t</span> <span class="o">=</span> <span class="n">cm</span> <span class="o">=</span> <span class="n">direction</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">sel</span> <span class="o">=</span> <span class="n">zone_selector</span><span class="p">(</span>
-                            <span class="n">dist_map</span><span class="p">,</span> <span class="n">r_lo</span><span class="p">,</span> <span class="n">r_hi</span><span class="p">,</span> <span class="n">obj_mask</span><span class="p">,</span> <span class="n">variant</span>
+                            <span class="n">dist_map</span><span class="p">,</span>
+                            <span class="n">r_lo</span><span class="p">,</span>
+                            <span class="n">r_hi</span><span class="p">,</span>
+                            <span class="n">obj_mask</span><span class="p">,</span>
+                            <span class="n">variant</span><span class="p">,</span>
+                            <span class="n">include_upper</span><span class="o">=</span><span class="p">(</span>
+                                <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span>
+                                <span class="ow">and</span> <span class="n">zone</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;Overall&quot;</span><span class="p">,</span> <span class="s2">&quot;Sparse&quot;</span><span class="p">}</span>
+                            <span class="p">),</span>
                     <span class="p">)</span>
                     <span class="n">R</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">cm</span> <span class="o">=</span> <span class="n">aggregate_orientation</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">coh</span><span class="p">,</span> <span class="n">grad</span><span class="p">,</span> <span class="n">sel</span><span class="p">)</span>
                     <span class="n">direction</span> <span class="o">=</span> <span class="n">_resultant_direction</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">coh</span><span class="p">,</span> <span class="n">sel</span><span class="p">)</span>
@@ -2094,6 +2267,10 @@
                         <span class="n">r_hi</span><span class="p">,</span>
                         <span class="n">obj_mask</span><span class="p">,</span>
                         <span class="s2">&quot;Mask&quot;</span><span class="p">,</span>
+                        <span class="n">include_upper</span><span class="o">=</span><span class="p">(</span>
+                            <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span>
+                            <span class="ow">and</span> <span class="n">zone</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;Overall&quot;</span><span class="p">,</span> <span class="s2">&quot;Sparse&quot;</span><span class="p">}</span>
+                        <span class="p">),</span>
                 <span class="p">)</span>
                 <span class="n">radial_tilt</span><span class="p">,</span> <span class="n">radial_turning</span><span class="p">,</span> <span class="n">radial_support</span> <span class="o">=</span> <span class="p">(</span>
                     <span class="n">aggregate_radial_relative</span><span class="p">(</span>
@@ -2207,16 +2384,14 @@
             <span class="k">return</span> <span class="n">long_range</span><span class="p">,</span> <span class="n">ring_profile</span>
 
         <span class="n">inner_radius</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">core_end_radius</span><span class="p">)</span>
-        <span class="n">outer_radius</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span>
-                <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">sparse_end_radius</span><span class="p">),</span>
-                <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">symmetric_radius</span><span class="p">),</span>
-        <span class="p">)</span>
+        <span class="n">outer_radius</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_orientation_outer_radius</span><span class="p">(</span><span class="n">seg</span><span class="p">)</span>
         <span class="n">structure_selector</span> <span class="o">=</span> <span class="n">zone_selector</span><span class="p">(</span>
                 <span class="n">dist_map</span><span class="p">,</span>
                 <span class="n">inner_radius</span><span class="p">,</span>
                 <span class="n">outer_radius</span><span class="p">,</span>
                 <span class="n">obj_mask</span><span class="p">,</span>
                 <span class="s2">&quot;Mask&quot;</span><span class="p">,</span>
+                <span class="n">include_upper</span><span class="o">=</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">ring_centres</span><span class="p">,</span> <span class="n">ring_sector_tilt</span><span class="p">,</span> <span class="n">_ring_resultant</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">radial_ring_orientation_profile</span><span class="p">(</span>
@@ -2229,6 +2404,7 @@
                     <span class="n">outer_radius</span><span class="p">,</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">radial_ring_width</span><span class="p">,</span>
                     <span class="n">_RADIAL_RELATIVE_N_SECTORS</span><span class="p">,</span>
+                    <span class="n">include_outer</span><span class="o">=</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="p">)</span>
         <span class="n">pair_midpoints</span><span class="p">,</span> <span class="n">signed_rotation</span> <span class="o">=</span> <span class="n">long_range_ring_rotation_profile</span><span class="p">(</span>
@@ -2237,14 +2413,21 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">long_range_lag</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">long_range_bounds</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;Overall&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">inner_radius</span><span class="p">,</span> <span class="n">outer_radius</span><span class="p">),</span>
+            <span class="s2">&quot;Overall&quot;</span><span class="p">:</span> <span class="p">(</span>
+                <span class="n">inner_radius</span><span class="p">,</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">nextafter</span><span class="p">(</span><span class="n">outer_radius</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span>
+                <span class="k">else</span> <span class="n">outer_radius</span><span class="p">,</span>
+            <span class="p">),</span>
             <span class="s2">&quot;Dense&quot;</span>  <span class="p">:</span> <span class="p">(</span>
                 <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">core_end_radius</span><span class="p">),</span>
                 <span class="nb">min</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">dense_end_radius</span><span class="p">),</span> <span class="n">outer_radius</span><span class="p">),</span>
             <span class="p">),</span>
             <span class="s2">&quot;Sparse&quot;</span> <span class="p">:</span> <span class="p">(</span>
                 <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">dense_end_radius</span><span class="p">),</span>
-                <span class="n">outer_radius</span><span class="p">,</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">nextafter</span><span class="p">(</span><span class="n">outer_radius</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span>
+                <span class="k">else</span> <span class="n">outer_radius</span><span class="p">,</span>
             <span class="p">),</span>
         <span class="p">}</span>
         <span class="k">for</span> <span class="n">zone</span><span class="p">,</span> <span class="p">(</span><span class="n">lower</span><span class="p">,</span> <span class="n">upper</span><span class="p">)</span> <span class="ow">in</span> <span class="n">long_range_bounds</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
@@ -2269,6 +2452,7 @@
                 <span class="n">outer_radius</span><span class="p">,</span>
                 <span class="n">obj_mask</span><span class="p">,</span>
                 <span class="s2">&quot;Mask&quot;</span><span class="p">,</span>
+                <span class="n">include_upper</span><span class="o">=</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">dense_sector_tilt</span><span class="p">,</span> <span class="n">_dense_resultant</span> <span class="o">=</span> <span class="n">_axial_sector_means</span><span class="p">(</span>
                 <span class="n">signed_tilt</span><span class="p">,</span>
@@ -2326,26 +2510,18 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Recompute per-object coherence and composite onto a plate canvas.</span>
 
 <span class="sd">        Used only by report()&#39;s heatmap. Full-res fields are recomputed via</span>
-<span class="sd">        _iter_object_fields and discarded here — the heatmap costs compute, not</span>
+<span class="sd">        _analyze_objects and discarded here — the heatmap costs compute, not</span>
 <span class="sd">        persistent memory. Returned canvas is downsampled for a light figure.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_prep</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
         <span class="n">canvas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">gray</span><span class="p">[:]</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
-        <span class="k">for</span> <span class="p">(</span>
-                <span class="n">_prop</span><span class="p">,</span>
-                <span class="n">seg</span><span class="p">,</span>
-                <span class="n">_mask</span><span class="p">,</span>
-                <span class="n">_phi</span><span class="p">,</span>
-                <span class="n">coh</span><span class="p">,</span>
-                <span class="n">_grad</span><span class="p">,</span>
-                <span class="n">_dist</span><span class="p">,</span>
-                <span class="n">centre</span><span class="p">,</span>
-        <span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iter_object_fields</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
-            <span class="n">r0</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">centre</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
-            <span class="n">c0</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">centre</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
-            <span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">coh</span><span class="o">.</span><span class="n">shape</span>
+        <span class="k">for</span> <span class="n">analysis</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_analyze_objects</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
+            <span class="n">seg</span> <span class="o">=</span> <span class="n">analysis</span><span class="o">.</span><span class="n">segmentation</span>
+            <span class="n">r0</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">analysis</span><span class="o">.</span><span class="n">center</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+            <span class="n">c0</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">analysis</span><span class="o">.</span><span class="n">center</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+            <span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">analysis</span><span class="o">.</span><span class="n">coherence</span><span class="o">.</span><span class="n">shape</span>
             <span class="n">r1</span><span class="p">,</span> <span class="n">c1</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">r0</span> <span class="o">+</span> <span class="n">h</span><span class="p">,</span> <span class="n">canvas</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">min</span><span class="p">(</span><span class="n">c0</span> <span class="o">+</span> <span class="n">w</span><span class="p">,</span> <span class="n">canvas</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-            <span class="n">canvas</span><span class="p">[</span><span class="nb">max</span><span class="p">(</span><span class="n">r0</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span> <span class="n">r1</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="n">c0</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span> <span class="n">c1</span><span class="p">]</span> <span class="o">=</span> <span class="n">coh</span><span class="p">[</span>
+            <span class="n">canvas</span><span class="p">[</span><span class="nb">max</span><span class="p">(</span><span class="n">r0</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span> <span class="n">r1</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="n">c0</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span> <span class="n">c1</span><span class="p">]</span> <span class="o">=</span> <span class="n">analysis</span><span class="o">.</span><span class="n">coherence</span><span class="p">[</span>
                 <span class="p">:</span> <span class="n">r1</span> <span class="o">-</span> <span class="nb">max</span><span class="p">(</span><span class="n">r0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">:</span> <span class="n">c1</span> <span class="o">-</span> <span class="nb">max</span><span class="p">(</span><span class="n">c0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
             <span class="p">]</span>
         <span class="k">return</span> <span class="n">canvas</span><span class="p">[::</span><span class="n">downsample</span><span class="p">,</span> <span class="p">::</span><span class="n">downsample</span><span class="p">]</span>
@@ -2977,45 +3153,42 @@
             <span class="k">for</span> <span class="n">_scale</span> <span class="ow">in</span> <span class="n">scales</span>
         <span class="p">]</span>
         <span class="n">raw_peaks</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span> <span class="k">for</span> <span class="n">_scale</span> <span class="ow">in</span> <span class="n">scales</span><span class="p">]</span>
-        <span class="k">for</span> <span class="p">(</span>
-                <span class="n">_prop</span><span class="p">,</span>
-                <span class="n">seg</span><span class="p">,</span>
-                <span class="n">obj_mask</span><span class="p">,</span>
-                <span class="n">phi</span><span class="p">,</span>
-                <span class="n">coherence</span><span class="p">,</span>
-                <span class="n">_gradient</span><span class="p">,</span>
-                <span class="n">dist_map</span><span class="p">,</span>
-                <span class="n">centre</span><span class="p">,</span>
-        <span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iter_object_fields</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">analysis</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_analyze_objects</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
+            <span class="n">seg</span> <span class="o">=</span> <span class="n">analysis</span><span class="o">.</span><span class="n">segmentation</span>
             <span class="n">inner_radius</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">core_end_radius</span><span class="p">)</span>
-            <span class="n">outer_radius</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span>
-                    <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">sparse_end_radius</span><span class="p">),</span>
-                    <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">symmetric_radius</span><span class="p">),</span>
-            <span class="p">)</span>
+            <span class="n">outer_radius</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_orientation_outer_radius</span><span class="p">(</span><span class="n">seg</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">inner_radius</span> <span class="o">&lt;=</span> <span class="n">_EPS</span> <span class="ow">or</span> <span class="n">outer_radius</span> <span class="o">&lt;=</span> <span class="n">inner_radius</span><span class="p">:</span>
                 <span class="k">continue</span>
             <span class="n">selector</span> <span class="o">=</span> <span class="n">zone_selector</span><span class="p">(</span>
-                    <span class="n">dist_map</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">distance_map</span><span class="p">,</span>
                     <span class="n">inner_radius</span><span class="p">,</span>
                     <span class="n">outer_radius</span><span class="p">,</span>
-                    <span class="n">obj_mask</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">object_mask</span><span class="p">,</span>
                     <span class="s2">&quot;Mask&quot;</span><span class="p">,</span>
+                    <span class="n">include_upper</span><span class="o">=</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span><span class="p">,</span>
             <span class="p">)</span>
-            <span class="n">origin_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">centre</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
-            <span class="n">origin_col</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">centre</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+            <span class="n">origin_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
+                <span class="nb">round</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">analysis</span><span class="o">.</span><span class="n">center</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="p">)</span>
+            <span class="n">origin_col</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
+                <span class="nb">round</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">analysis</span><span class="o">.</span><span class="n">center</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="p">)</span>
             <span class="k">for</span> <span class="n">scale_index</span><span class="p">,</span> <span class="n">scale</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">scales</span><span class="p">):</span>
                 <span class="n">bend</span><span class="p">,</span> <span class="n">scale_resultant</span> <span class="o">=</span> <span class="n">fiber_bend_field</span><span class="p">(</span>
-                        <span class="n">phi</span><span class="p">,</span>
-                        <span class="n">coherence</span><span class="p">,</span>
+                        <span class="n">analysis</span><span class="o">.</span><span class="n">orientation</span><span class="p">,</span>
+                        <span class="n">analysis</span><span class="o">.</span><span class="n">coherence</span><span class="p">,</span>
                         <span class="n">selector</span><span class="p">,</span>
                         <span class="n">scale</span><span class="p">,</span>
                 <span class="p">)</span>
                 <span class="n">valid</span> <span class="o">=</span> <span class="p">(</span>
                         <span class="n">selector</span>
                         <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">bend</span><span class="p">)</span>
-                        <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">coherence</span><span class="p">)</span>
+                        <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">analysis</span><span class="o">.</span><span class="n">coherence</span><span class="p">)</span>
                         <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">scale_resultant</span><span class="p">)</span>
-                        <span class="o">&amp;</span> <span class="p">(</span><span class="n">coherence</span> <span class="o">&gt;=</span> <span class="n">_RADIAL_RELATIVE_MIN_COHERENCE</span><span class="p">)</span>
+                        <span class="o">&amp;</span> <span class="p">(</span>
+                            <span class="n">analysis</span><span class="o">.</span><span class="n">coherence</span>
+                            <span class="o">&gt;=</span> <span class="n">_RADIAL_RELATIVE_MIN_COHERENCE</span>
+                        <span class="p">)</span>
                         <span class="o">&amp;</span> <span class="p">(</span><span class="n">scale_resultant</span> <span class="o">&gt;=</span> <span class="n">_RADIAL_RING_MIN_RESULTANT</span><span class="p">)</span>
                 <span class="p">)</span>
                 <span class="k">if</span> <span class="ow">not</span> <span class="n">valid</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
@@ -3234,46 +3407,47 @@
         <span class="n">positive_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">raster</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
         <span class="n">negative_abs_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">raster</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
         <span class="n">full_range</span> <span class="o">=</span> <span class="mf">0.0</span>
-        <span class="k">for</span> <span class="p">(</span>
-                <span class="n">_prop</span><span class="p">,</span>
-                <span class="n">seg</span><span class="p">,</span>
-                <span class="n">obj_mask</span><span class="p">,</span>
-                <span class="n">phi</span><span class="p">,</span>
-                <span class="n">coherence</span><span class="p">,</span>
-                <span class="n">_gradient</span><span class="p">,</span>
-                <span class="n">dist_map</span><span class="p">,</span>
-                <span class="n">centre</span><span class="p">,</span>
-        <span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iter_object_fields</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">analysis</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_analyze_objects</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
+            <span class="n">seg</span> <span class="o">=</span> <span class="n">analysis</span><span class="o">.</span><span class="n">segmentation</span>
             <span class="n">_tilt</span><span class="p">,</span> <span class="n">signed_turning</span><span class="p">,</span> <span class="n">_magnitude</span><span class="p">,</span> <span class="n">_polar</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="n">signed_radial_relative_field</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">centre</span><span class="p">,</span> <span class="n">dist_map</span><span class="p">)</span>
+                <span class="n">signed_radial_relative_field</span><span class="p">(</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">orientation</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">center</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">distance_map</span><span class="p">,</span>
+                <span class="p">)</span>
             <span class="p">)</span>
             <span class="c1"># Match the Dense zone&#39;s actual inner boundary. The separate PELT</span>
             <span class="c1"># ``core_radius`` can equal the full symmetric radius when no early</span>
             <span class="c1"># density changepoint is found, which would erase the entire view.</span>
             <span class="n">core_exclusion_radius</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">core_end_radius</span><span class="p">)</span>
-            <span class="n">outer_radius</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span>
-                    <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">sparse_end_radius</span><span class="p">),</span>
-                    <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">symmetric_radius</span><span class="p">),</span>
-            <span class="p">)</span>
+            <span class="n">outer_radius</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_orientation_outer_radius</span><span class="p">(</span><span class="n">seg</span><span class="p">)</span>
             <span class="n">selector</span> <span class="o">=</span> <span class="n">zone_selector</span><span class="p">(</span>
-                    <span class="n">dist_map</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">distance_map</span><span class="p">,</span>
                     <span class="n">core_exclusion_radius</span><span class="p">,</span>
                     <span class="n">outer_radius</span><span class="p">,</span>
-                    <span class="n">obj_mask</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">object_mask</span><span class="p">,</span>
                     <span class="s2">&quot;Mask&quot;</span><span class="p">,</span>
+                    <span class="n">include_upper</span><span class="o">=</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">valid</span> <span class="o">=</span> <span class="p">(</span>
                     <span class="n">selector</span>
-                    <span class="o">&amp;</span> <span class="p">(</span><span class="n">dist_map</span> <span class="o">&gt;</span> <span class="n">_EPS</span><span class="p">)</span>
+                    <span class="o">&amp;</span> <span class="p">(</span><span class="n">analysis</span><span class="o">.</span><span class="n">distance_map</span> <span class="o">&gt;</span> <span class="n">_EPS</span><span class="p">)</span>
                     <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">signed_turning</span><span class="p">)</span>
-                    <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">coherence</span><span class="p">)</span>
-                    <span class="o">&amp;</span> <span class="p">(</span><span class="n">coherence</span> <span class="o">&gt;=</span> <span class="n">_RADIAL_RELATIVE_MIN_COHERENCE</span><span class="p">)</span>
+                    <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">analysis</span><span class="o">.</span><span class="n">coherence</span><span class="p">)</span>
+                    <span class="o">&amp;</span> <span class="p">(</span>
+                        <span class="n">analysis</span><span class="o">.</span><span class="n">coherence</span>
+                        <span class="o">&gt;=</span> <span class="n">_RADIAL_RELATIVE_MIN_COHERENCE</span>
+                    <span class="p">)</span>
             <span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">valid</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
                 <span class="k">continue</span>
             <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span>
-            <span class="n">origin_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">centre</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
-            <span class="n">origin_col</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">centre</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+            <span class="n">origin_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
+                <span class="nb">round</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">analysis</span><span class="o">.</span><span class="n">center</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="p">)</span>
+            <span class="n">origin_col</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
+                <span class="nb">round</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">analysis</span><span class="o">.</span><span class="n">center</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="p">)</span>
             <span class="n">global_rows</span> <span class="o">=</span> <span class="n">rows</span> <span class="o">+</span> <span class="n">origin_row</span>
             <span class="n">global_cols</span> <span class="o">=</span> <span class="n">cols</span> <span class="o">+</span> <span class="n">origin_col</span>
             <span class="n">inside</span> <span class="o">=</span> <span class="p">(</span>
@@ -3371,52 +3545,50 @@
         <span class="n">strongest</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">raster</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
         <span class="n">signed_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">raster</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
         <span class="n">full_range</span> <span class="o">=</span> <span class="mf">0.0</span>
-        <span class="k">for</span> <span class="p">(</span>
-                <span class="n">_prop</span><span class="p">,</span>
-                <span class="n">seg</span><span class="p">,</span>
-                <span class="n">obj_mask</span><span class="p">,</span>
-                <span class="n">phi</span><span class="p">,</span>
-                <span class="n">coherence</span><span class="p">,</span>
-                <span class="n">_gradient</span><span class="p">,</span>
-                <span class="n">dist_map</span><span class="p">,</span>
-                <span class="n">centre</span><span class="p">,</span>
-        <span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iter_object_fields</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">analysis</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_analyze_objects</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
+            <span class="n">seg</span> <span class="o">=</span> <span class="n">analysis</span><span class="o">.</span><span class="n">segmentation</span>
             <span class="n">signed_tilt</span><span class="p">,</span> <span class="n">_turning</span><span class="p">,</span> <span class="n">_magnitude</span><span class="p">,</span> <span class="n">polar_angle</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="n">signed_radial_relative_field</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">centre</span><span class="p">,</span> <span class="n">dist_map</span><span class="p">)</span>
+                <span class="n">signed_radial_relative_field</span><span class="p">(</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">orientation</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">center</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">distance_map</span><span class="p">,</span>
+                <span class="p">)</span>
             <span class="p">)</span>
             <span class="n">inner_radius</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">core_end_radius</span><span class="p">)</span>
-            <span class="n">outer_radius</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span>
-                    <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">sparse_end_radius</span><span class="p">),</span>
-                    <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">symmetric_radius</span><span class="p">),</span>
-            <span class="p">)</span>
+            <span class="n">outer_radius</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_orientation_outer_radius</span><span class="p">(</span><span class="n">seg</span><span class="p">)</span>
             <span class="n">structure_selector</span> <span class="o">=</span> <span class="n">zone_selector</span><span class="p">(</span>
-                    <span class="n">dist_map</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">distance_map</span><span class="p">,</span>
                     <span class="n">inner_radius</span><span class="p">,</span>
                     <span class="n">outer_radius</span><span class="p">,</span>
-                    <span class="n">obj_mask</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">object_mask</span><span class="p">,</span>
                     <span class="s2">&quot;Mask&quot;</span><span class="p">,</span>
+                    <span class="n">include_upper</span><span class="o">=</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">_radii</span><span class="p">,</span> <span class="n">sector_tilt</span><span class="p">,</span> <span class="n">_resultant</span> <span class="o">=</span> <span class="n">radial_ring_orientation_profile</span><span class="p">(</span>
                     <span class="n">signed_tilt</span><span class="p">,</span>
                     <span class="n">polar_angle</span><span class="p">,</span>
-                    <span class="n">coherence</span><span class="p">,</span>
-                    <span class="n">dist_map</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">coherence</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">distance_map</span><span class="p">,</span>
                     <span class="n">structure_selector</span><span class="p">,</span>
                     <span class="n">inner_radius</span><span class="p">,</span>
                     <span class="n">outer_radius</span><span class="p">,</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">radial_ring_width</span><span class="p">,</span>
                     <span class="n">_RADIAL_RELATIVE_N_SECTORS</span><span class="p">,</span>
+                    <span class="n">include_outer</span><span class="o">=</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">cumulative</span> <span class="o">=</span> <span class="n">cumulative_ring_rotation_profile</span><span class="p">(</span><span class="n">sector_tilt</span><span class="p">)</span>
             <span class="n">reliable_structure</span> <span class="o">=</span> <span class="p">(</span>
                     <span class="n">structure_selector</span>
-                    <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">coherence</span><span class="p">)</span>
-                    <span class="o">&amp;</span> <span class="p">(</span><span class="n">coherence</span> <span class="o">&gt;=</span> <span class="n">_RADIAL_RELATIVE_MIN_COHERENCE</span><span class="p">)</span>
+                    <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">analysis</span><span class="o">.</span><span class="n">coherence</span><span class="p">)</span>
+                    <span class="o">&amp;</span> <span class="p">(</span>
+                        <span class="n">analysis</span><span class="o">.</span><span class="n">coherence</span>
+                        <span class="o">&gt;=</span> <span class="n">_RADIAL_RELATIVE_MIN_COHERENCE</span>
+                    <span class="p">)</span>
             <span class="p">)</span>
             <span class="n">local_field</span> <span class="o">=</span> <span class="n">radial_ring_sector_field</span><span class="p">(</span>
                     <span class="n">cumulative</span><span class="p">,</span>
                     <span class="n">polar_angle</span><span class="p">,</span>
-                    <span class="n">dist_map</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">distance_map</span><span class="p">,</span>
                     <span class="n">reliable_structure</span><span class="p">,</span>
                     <span class="n">inner_radius</span><span class="p">,</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">radial_ring_width</span><span class="p">,</span>
@@ -3425,8 +3597,12 @@
             <span class="k">if</span> <span class="ow">not</span> <span class="n">valid</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
                 <span class="k">continue</span>
             <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span>
-            <span class="n">origin_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">centre</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
-            <span class="n">origin_col</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">centre</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+            <span class="n">origin_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
+                <span class="nb">round</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">analysis</span><span class="o">.</span><span class="n">center</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="p">)</span>
+            <span class="n">origin_col</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
+                <span class="nb">round</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">analysis</span><span class="o">.</span><span class="n">center</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="p">)</span>
             <span class="n">global_rows</span> <span class="o">=</span> <span class="n">rows</span> <span class="o">+</span> <span class="n">origin_row</span>
             <span class="n">global_cols</span> <span class="o">=</span> <span class="n">cols</span> <span class="o">+</span> <span class="n">origin_col</span>
             <span class="n">inside</span> <span class="o">=</span> <span class="p">(</span>
@@ -3524,43 +3700,38 @@
         <span class="n">path_y</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">bridge_x</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">bridge_y</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="p">(</span>
-                <span class="n">_prop</span><span class="p">,</span>
-                <span class="n">seg</span><span class="p">,</span>
-                <span class="n">obj_mask</span><span class="p">,</span>
-                <span class="n">phi</span><span class="p">,</span>
-                <span class="n">coherence</span><span class="p">,</span>
-                <span class="n">_gradient</span><span class="p">,</span>
-                <span class="n">dist_map</span><span class="p">,</span>
-                <span class="n">centre</span><span class="p">,</span>
-        <span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iter_object_fields</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">analysis</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_analyze_objects</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
+            <span class="n">seg</span> <span class="o">=</span> <span class="n">analysis</span><span class="o">.</span><span class="n">segmentation</span>
             <span class="n">_signed_tilt</span><span class="p">,</span> <span class="n">_turning</span><span class="p">,</span> <span class="n">_magnitude</span><span class="p">,</span> <span class="n">polar_angle</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="n">signed_radial_relative_field</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">centre</span><span class="p">,</span> <span class="n">dist_map</span><span class="p">)</span>
+                <span class="n">signed_radial_relative_field</span><span class="p">(</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">orientation</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">center</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">distance_map</span><span class="p">,</span>
+                <span class="p">)</span>
             <span class="p">)</span>
-            <span class="n">fiber_axis</span> <span class="o">=</span> <span class="n">phi</span> <span class="o">+</span> <span class="n">_FIBER_AXIS_OFFSET</span>
+            <span class="n">fiber_axis</span> <span class="o">=</span> <span class="n">analysis</span><span class="o">.</span><span class="n">orientation</span> <span class="o">+</span> <span class="n">_FIBER_AXIS_OFFSET</span>
             <span class="n">inner_radius</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">core_end_radius</span><span class="p">)</span>
-            <span class="n">outer_radius</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span>
-                    <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">sparse_end_radius</span><span class="p">),</span>
-                    <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">symmetric_radius</span><span class="p">),</span>
-            <span class="p">)</span>
+            <span class="n">outer_radius</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_orientation_outer_radius</span><span class="p">(</span><span class="n">seg</span><span class="p">)</span>
             <span class="n">structure_selector</span> <span class="o">=</span> <span class="n">zone_selector</span><span class="p">(</span>
-                    <span class="n">dist_map</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">distance_map</span><span class="p">,</span>
                     <span class="n">inner_radius</span><span class="p">,</span>
                     <span class="n">outer_radius</span><span class="p">,</span>
-                    <span class="n">obj_mask</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">object_mask</span><span class="p">,</span>
                     <span class="s2">&quot;Mask&quot;</span><span class="p">,</span>
+                    <span class="n">include_upper</span><span class="o">=</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">radii</span><span class="p">,</span> <span class="n">sector_orientation</span><span class="p">,</span> <span class="n">sector_resultant</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="n">radial_ring_orientation_profile</span><span class="p">(</span>
                         <span class="n">fiber_axis</span><span class="p">,</span>
                         <span class="n">polar_angle</span><span class="p">,</span>
-                        <span class="n">coherence</span><span class="p">,</span>
-                        <span class="n">dist_map</span><span class="p">,</span>
+                        <span class="n">analysis</span><span class="o">.</span><span class="n">coherence</span><span class="p">,</span>
+                        <span class="n">analysis</span><span class="o">.</span><span class="n">distance_map</span><span class="p">,</span>
                         <span class="n">structure_selector</span><span class="p">,</span>
                         <span class="n">inner_radius</span><span class="p">,</span>
                         <span class="n">outer_radius</span><span class="p">,</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">radial_ring_width</span><span class="p">,</span>
                         <span class="n">_RADIAL_RELATIVE_N_SECTORS</span><span class="p">,</span>
+                        <span class="n">include_outer</span><span class="o">=</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="p">)</span>
             <span class="n">cumulative</span><span class="p">,</span> <span class="n">path_sectors</span> <span class="o">=</span> <span class="p">(</span>
@@ -3579,20 +3750,27 @@
             <span class="p">)</span>
             <span class="n">reliable_structure</span> <span class="o">=</span> <span class="p">(</span>
                     <span class="n">structure_selector</span>
-                    <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">coherence</span><span class="p">)</span>
-                    <span class="o">&amp;</span> <span class="p">(</span><span class="n">coherence</span> <span class="o">&gt;=</span> <span class="n">_RADIAL_RELATIVE_MIN_COHERENCE</span><span class="p">)</span>
+                    <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">analysis</span><span class="o">.</span><span class="n">coherence</span><span class="p">)</span>
+                    <span class="o">&amp;</span> <span class="p">(</span>
+                        <span class="n">analysis</span><span class="o">.</span><span class="n">coherence</span>
+                        <span class="o">&gt;=</span> <span class="n">_RADIAL_RELATIVE_MIN_COHERENCE</span>
+                    <span class="p">)</span>
             <span class="p">)</span>
             <span class="n">local_field</span> <span class="o">=</span> <span class="n">radial_ring_sector_field</span><span class="p">(</span>
                     <span class="n">ring_sector_values</span><span class="p">,</span>
                     <span class="n">polar_angle</span><span class="p">,</span>
-                    <span class="n">dist_map</span><span class="p">,</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">distance_map</span><span class="p">,</span>
                     <span class="n">reliable_structure</span><span class="p">,</span>
                     <span class="n">inner_radius</span><span class="p">,</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">radial_ring_width</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">valid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">local_field</span><span class="p">)</span>
-            <span class="n">origin_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">centre</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
-            <span class="n">origin_col</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">centre</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+            <span class="n">origin_row</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
+                <span class="nb">round</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">analysis</span><span class="o">.</span><span class="n">center</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="p">)</span>
+            <span class="n">origin_col</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
+                <span class="nb">round</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">centroid_global</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">analysis</span><span class="o">.</span><span class="n">center</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="p">)</span>
             <span class="k">if</span> <span class="n">valid</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
                 <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span>
                 <span class="n">global_rows</span> <span class="o">=</span> <span class="n">rows</span> <span class="o">+</span> <span class="n">origin_row</span>
@@ -3640,8 +3818,12 @@
                     <span class="k">continue</span>
                 <span class="n">matched_sectors</span> <span class="o">=</span> <span class="n">path_sectors</span><span class="p">[</span><span class="n">supported</span><span class="p">,</span> <span class="n">seed_sector</span><span class="p">]</span>
                 <span class="n">angles</span> <span class="o">=</span> <span class="n">sector_angles</span><span class="p">[</span><span class="n">matched_sectors</span><span class="p">]</span>
-                <span class="n">local_rows</span> <span class="o">=</span> <span class="n">centre</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">radii</span><span class="p">[</span><span class="n">supported</span><span class="p">]</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">angles</span><span class="p">)</span>
-                <span class="n">local_cols</span> <span class="o">=</span> <span class="n">centre</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">radii</span><span class="p">[</span><span class="n">supported</span><span class="p">]</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">angles</span><span class="p">)</span>
+                <span class="n">local_rows</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">center</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">radii</span><span class="p">[</span><span class="n">supported</span><span class="p">]</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">angles</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="n">local_cols</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">analysis</span><span class="o">.</span><span class="n">center</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">radii</span><span class="p">[</span><span class="n">supported</span><span class="p">]</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">angles</span><span class="p">)</span>
+                <span class="p">)</span>
                 <span class="n">global_rows</span> <span class="o">=</span> <span class="n">local_rows</span> <span class="o">+</span> <span class="n">origin_row</span>
                 <span class="n">global_cols</span> <span class="o">=</span> <span class="n">local_cols</span> <span class="o">+</span> <span class="n">origin_col</span>
                 <span class="n">inside</span> <span class="o">=</span> <span class="p">(</span>
@@ -3794,11 +3976,12 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Draw confidence-coded local fiber axes inside the overall selector.</span>
 
 <span class="sd">        Reads only the pre-downsampled block quiver ``(rows, cols, phi_block,</span>
-<span class="sd">        coh_block)`` from each cached record. Blocks outside</span>
-<span class="sd">        ``symmetric_radius`` are excluded because those pixels do not contribute</span>
-<span class="sd">        to the Overall metric. The stored gradient-normal axis is rotated 90°</span>
-<span class="sd">        to show the local fiber axis. Segment half-length scales with coherence;</span>
-<span class="sd">        three traces provide low/medium/high confidence opacity levels.</span>
+<span class="sd">        coh_block)`` from each cached record. Canonical blocks are clipped to</span>
+<span class="sd">        ``[CoreEndRadius, SparseEndRadius]``, including the exact global outer</span>
+<span class="sd">        boundary. Legacy blocks retain their historical symmetric-radius domain.</span>
+<span class="sd">        The stored gradient-normal axis is rotated 90° to show the local fiber</span>
+<span class="sd">        axis. Segment half-length scales with coherence; three traces provide</span>
+<span class="sd">        low/medium/high confidence opacity levels.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
 
@@ -3810,8 +3993,19 @@
             <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">,</span> <span class="n">phi_block</span><span class="p">,</span> <span class="n">coh_block</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;quiver&quot;</span><span class="p">]</span>
             <span class="n">origin_r</span><span class="p">,</span> <span class="n">origin_c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tile_origin</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
             <span class="n">centre_r</span><span class="p">,</span> <span class="n">centre_c</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;centre&quot;</span><span class="p">]</span>
-            <span class="n">symmetric_radius</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;radii&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;symmetric&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">symmetric_radius</span><span class="p">)</span> <span class="ow">or</span> <span class="n">symmetric_radius</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">inner_radius</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="mf">0.0</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span>
+                <span class="k">else</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;radii&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;core_end&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">outer_radius</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;radii&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">&quot;symmetric&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span> <span class="k">else</span> <span class="s2">&quot;sparse_end&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">inner_radius</span><span class="p">)</span>
+                <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">outer_radius</span><span class="p">)</span>
+                <span class="ow">or</span> <span class="n">outer_radius</span> <span class="o">&lt;=</span> <span class="n">inner_radius</span>
+            <span class="p">):</span>
                 <span class="k">continue</span>
             <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">phi_block</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
                 <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">phi_block</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
@@ -3819,13 +4013,16 @@
                     <span class="n">coh</span> <span class="o">=</span> <span class="n">coh_block</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span>
                     <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">phi</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">coh</span><span class="p">):</span>
                         <span class="k">continue</span>
-                    <span class="k">if</span> <span class="p">(</span>
-                            <span class="n">np</span><span class="o">.</span><span class="n">hypot</span><span class="p">(</span>
-                                    <span class="n">rows</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">-</span> <span class="n">centre_r</span><span class="p">,</span>
-                                    <span class="n">cols</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">-</span> <span class="n">centre_c</span><span class="p">,</span>
-                            <span class="p">)</span>
-                            <span class="o">&gt;=</span> <span class="n">symmetric_radius</span>
-                    <span class="p">):</span>
+                    <span class="n">radius</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hypot</span><span class="p">(</span>
+                        <span class="n">rows</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">-</span> <span class="n">centre_r</span><span class="p">,</span>
+                        <span class="n">cols</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">-</span> <span class="n">centre_c</span><span class="p">,</span>
+                    <span class="p">)</span>
+                    <span class="n">selector_outer</span> <span class="o">=</span> <span class="p">(</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">nextafter</span><span class="p">(</span><span class="n">outer_radius</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span>
+                        <span class="k">else</span> <span class="n">outer_radius</span>
+                    <span class="p">)</span>
+                    <span class="k">if</span> <span class="n">radius</span> <span class="o">&lt;</span> <span class="n">inner_radius</span> <span class="ow">or</span> <span class="n">radius</span> <span class="o">&gt;=</span> <span class="n">selector_outer</span><span class="p">:</span>
                         <span class="k">continue</span>
                     <span class="n">bin_idx</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
                             <span class="p">(</span>
@@ -3879,10 +4076,15 @@
         <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
 
         <span class="n">ring_styles</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="p">(</span><span class="s2">&quot;symmetric&quot;</span><span class="p">,</span> <span class="s2">&quot;Overall selector limit&quot;</span><span class="p">,</span> <span class="s2">&quot;#785EF0&quot;</span><span class="p">,</span> <span class="s2">&quot;solid&quot;</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;core_end&quot;</span><span class="p">,</span> <span class="s2">&quot;Dense zone inner boundary&quot;</span><span class="p">,</span> <span class="s2">&quot;#DC267F&quot;</span><span class="p">,</span> <span class="s2">&quot;dot&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;symmetric&quot;</span><span class="p">,</span> <span class="s2">&quot;Independent symmetry radius&quot;</span><span class="p">,</span> <span class="s2">&quot;#785EF0&quot;</span><span class="p">,</span> <span class="s2">&quot;solid&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">&quot;core_end&quot;</span><span class="p">,</span> <span class="s2">&quot;CoreZone / resolved boundary&quot;</span><span class="p">,</span> <span class="s2">&quot;#DC267F&quot;</span><span class="p">,</span> <span class="s2">&quot;dot&quot;</span><span class="p">),</span>
             <span class="p">(</span><span class="s2">&quot;dense_end&quot;</span><span class="p">,</span> <span class="s2">&quot;Dense / sparse boundary&quot;</span><span class="p">,</span> <span class="n">_OI_NAVY</span><span class="p">,</span> <span class="s2">&quot;dash&quot;</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;sparse_end&quot;</span><span class="p">,</span> <span class="s2">&quot;Sparse zone outer boundary&quot;</span><span class="p">,</span> <span class="n">_OI_SKY</span><span class="p">,</span> <span class="s2">&quot;dash&quot;</span><span class="p">),</span>
+            <span class="p">(</span>
+                <span class="s2">&quot;sparse_end&quot;</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;Sparse outer boundary (P</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">outer_zone_percentile</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span>
+                <span class="n">_OI_SKY</span><span class="p">,</span>
+                <span class="s2">&quot;dash&quot;</span><span class="p">,</span>
+            <span class="p">),</span>
         <span class="p">)</span>
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">color</span><span class="p">,</span> <span class="n">dash</span> <span class="ow">in</span> <span class="n">ring_styles</span><span class="p">:</span>
             <span class="n">xs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
@@ -3930,10 +4132,14 @@
             <span class="n">axis_y</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
                 <span class="n">cy</span><span class="p">,</span> <span class="n">cx</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;centroid_global&quot;</span><span class="p">]</span>
-                <span class="n">sym</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;radii&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;symmetric&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+                <span class="n">scale_radius</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;radii&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                    <span class="s2">&quot;symmetric&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span> <span class="k">else</span> <span class="s2">&quot;sparse_end&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                <span class="p">)</span>
                 <span class="n">scale</span> <span class="o">=</span> <span class="p">(</span>
-                    <span class="nb">float</span><span class="p">(</span><span class="n">sym</span><span class="p">)</span>
-                    <span class="k">if</span> <span class="n">sym</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">sym</span><span class="p">)</span> <span class="ow">and</span> <span class="n">sym</span> <span class="o">&gt;</span> <span class="mi">0</span>
+                    <span class="nb">float</span><span class="p">(</span><span class="n">scale_radius</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">scale_radius</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                    <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">scale_radius</span><span class="p">)</span>
+                    <span class="ow">and</span> <span class="n">scale_radius</span> <span class="o">&gt;</span> <span class="mi">0</span>
                     <span class="k">else</span> <span class="mf">20.0</span>
                 <span class="p">)</span>
                 <span class="n">R</span><span class="p">,</span> <span class="n">_turning</span><span class="p">,</span> <span class="n">_coh</span><span class="p">,</span> <span class="n">direction</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;per_zone&quot;</span><span class="p">][</span>

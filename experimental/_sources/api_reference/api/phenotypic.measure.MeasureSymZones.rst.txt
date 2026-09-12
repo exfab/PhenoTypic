@@ -62,6 +62,20 @@ phenotypic.measure.MeasureSymZones
       ~MeasureSymZones.model_extra
       ~MeasureSymZones.model_fields
       ~MeasureSymZones.model_fields_set
+      ~MeasureSymZones.intensity_source
+      ~MeasureSymZones.center_detector
+      ~MeasureSymZones.legacy_mode
+      ~MeasureSymZones.outer_zone_percentile
+      ~MeasureSymZones.sigma_d
+      ~MeasureSymZones.sigma_i
+      ~MeasureSymZones.radial_ring_width
+      ~MeasureSymZones.zone_minimum_segment
+      ~MeasureSymZones.zone_min_crossings
+      ~MeasureSymZones.zone_min_resultant
+      ~MeasureSymZones.zone_min_ring_coherence
+      ~MeasureSymZones.zone_support_weight
+      ~MeasureSymZones.zone_outer_support_margin
+      ~MeasureSymZones.zone_maximum_gap
       ~MeasureSymZones.n_annuli
       ~MeasureSymZones.pelt_penalty
       ~MeasureSymZones.symmetry_threshold
@@ -73,6 +87,5 @@ phenotypic.measure.MeasureSymZones
       ~MeasureSymZones.tau_core
       ~MeasureSymZones.tau_dense
       ~MeasureSymZones.tau_sparse
-      ~MeasureSymZones.intensity_source
    
    

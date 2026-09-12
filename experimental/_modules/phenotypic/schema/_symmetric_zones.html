@@ -599,7 +599,7 @@
                 <article class="bd-article">
                   
   <h1>Source code for phenotypic.schema._symmetric_zones</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Mask-based radial expansion measurements for colonies on solid media.&quot;&quot;&quot;</span>
+<span></span><span class="sd">&quot;&quot;&quot;Radial expansion, symmetry, and orientation-zone measurements.&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_info</span><span class="w"> </span><span class="kn">import</span> <span class="n">Entry</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._tiers</span><span class="w"> </span><span class="kn">import</span> <span class="n">DescriptiveTrait</span>
@@ -608,18 +608,15 @@
 <div class="viewcode-block" id="SYMMETRIC_ZONES">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.SYMMETRIC_ZONES.html#phenotypic.schema.SYMMETRIC_ZONES">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">SYMMETRIC_ZONES</span><span class="p">(</span><span class="n">DescriptiveTrait</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Mask-based radial expansion measurements for colonies on solid media.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Radial expansion, symmetry, and branch-orientation zone geometry.</span>
 
-<span class="sd">    Summarises each colony&#39;s radial growth through four scalars derived</span>
-<span class="sd">    directly from the binary object mask: the inoculum core radius (shared</span>
-<span class="sd">    with :class:`RADIAL_EXPANSION`), the radius at which growth stops being</span>
-<span class="sd">    angularly symmetric, and mean / maximum radial extent beyond the core.</span>
-
-<span class="sd">    Unlike :class:`RADIAL_EXPANSION`, no skeletonization, branch tracing, or</span>
-<span class="sd">    runner-outlier statistics are involved — all values are computed from</span>
-<span class="sd">    per-annulus mask geometry and a circular-statistics angular resultant</span>
-<span class="sd">    length. Intended for users who care about colony-level expansion and the</span>
-<span class="sd">    symmetry of that expansion, not individual hyphae.</span>
+<span class="sd">    The first four measurements are independent summaries derived directly</span>
+<span class="sd">    from the binary object mask: PELT core radius, angular symmetry radius,</span>
+<span class="sd">    and mean and maximum expansion. Canonical CoreZone, DenseZone, and</span>
+<span class="sd">    SparseZone geometry is resolved by Method B from the target mask,</span>
+<span class="sd">    detection matrix, structure-tensor field, and literal skeleton crossings.</span>
+<span class="sd">    Historical colony-ness geometry remains available through</span>
+<span class="sd">    ``legacy_mode=True``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="SYMMETRIC_ZONES.category">
@@ -639,8 +636,8 @@
         <span class="s2">&quot;SymmetricRadius&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Radial distance from the inoculum centroid at which colony growth &quot;</span>
         <span class="s2">&quot;ceases to be angularly uniform. Computed as the first radius past &quot;</span>
-        <span class="s2">&quot;the core where the smoothed per-annulus circular mean resultant &quot;</span>
-        <span class="s2">&quot;length of mask-boundary pixels exceeds the symmetry threshold. &quot;</span>
+        <span class="s2">&quot;the core where the smoothed fraction of occupied angular sectors &quot;</span>
+        <span class="s2">&quot;drops below the symmetry threshold. &quot;</span>
         <span class="s2">&quot;Equals the colony outer envelope when growth remains symmetric &quot;</span>
         <span class="s2">&quot;throughout.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
@@ -659,38 +656,37 @@
     <span class="p">)</span>
     <span class="n">CORE_END_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;CoreEndRadius&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Mean radius of the inoculum core boundary derived from the per-angle &quot;</span>
-        <span class="s2">&quot;bright/background ratio walk. Each of 360 1° angular sectors finds the &quot;</span>
-        <span class="s2">&quot;outer edge of the contiguous core run (bright fraction &gt;= tau_core); the &quot;</span>
-        <span class="s2">&quot;reported value is the mean across sectors. Compare with CoreRadius (the &quot;</span>
-        <span class="s2">&quot;global PELT changepoint) — close agreement indicates a well-formed core.&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Outer radius in pixels of CoreZone. Canonical Method B defines CoreZone &quot;</span>
+        <span class="s2">&quot;as the inoculum plus any inner region without resolvable branch &quot;</span>
+        <span class="s2">&quot;orientation. With legacy_mode=True, the historical colony-ness &quot;</span>
+        <span class="s2">&quot;threshold defines this boundary. CoreRadius remains the independent &quot;</span>
+        <span class="s2">&quot;mask-density PELT estimate.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">DENSE_END_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;DenseEndRadius&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Mean outer radius of the dense branching zone, where mask-bright pixels &quot;</span>
-        <span class="s2">&quot;dominate (bright fraction &gt;= tau_sparse). Per-angle radii are capped at &quot;</span>
-        <span class="s2">&quot;the SymmetricRadius and angularly median-smoothed before averaging.&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Outer radius in pixels of DenseZone. Canonical Method B uses its second &quot;</span>
+        <span class="s2">&quot;change point; a collapsed one-change solution makes this equal to &quot;</span>
+        <span class="s2">&quot;CoreEndRadius. Legacy mode uses the historical colony-ness threshold.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">SPARSE_END_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;SparseEndRadius&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Mean outer radius of the sparse branching zone (= colony envelope inside &quot;</span>
-        <span class="s2">&quot;the symmetric growth front). Equals min(objmask outer envelope, &quot;</span>
-        <span class="s2">&quot;SymmetricRadius) per angle, averaged across 360 sectors.&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Outer radius in pixels of SparseZone. Canonical Method B uses the exact &quot;</span>
+        <span class="s2">&quot;target-mask radius selected by outer_zone_percentile; legacy mode uses &quot;</span>
+        <span class="s2">&quot;the historical colony-ness and symmetric-envelope boundary.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">CORE_AREA</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;CoreArea&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Pixel^2 area of the inoculum core zone, integrated across the 360-sector &quot;</span>
-        <span class="s2">&quot;polar polygon defined by the per-angle core radii.&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Pixel-squared area of CoreZone using the concentric CoreEndRadius circle.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">DENSE_AREA</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;DenseArea&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Pixel^2 area of the dense branching zone, the annular region between the &quot;</span>
-        <span class="s2">&quot;per-angle core boundary and dense-branching boundary.&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Pixel-squared area of DenseZone between CoreEndRadius and &quot;</span>
+        <span class="s2">&quot;DenseEndRadius. It is zero for a collapsed canonical solution.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">SPARSE_AREA</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;SparseArea&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Pixel^2 area of the sparse branching zone, the annular region between the &quot;</span>
-        <span class="s2">&quot;per-angle dense boundary and the symmetric-envelope outer boundary.&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Pixel-squared area of SparseZone between DenseEndRadius and &quot;</span>
+        <span class="s2">&quot;SparseEndRadius.&quot;</span><span class="p">,</span>
     <span class="p">)</span></div>
 
 </pre></div>

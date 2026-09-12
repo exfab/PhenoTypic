@@ -1467,10 +1467,10 @@ that standardize <code class="docutils literal notranslate"><span class="pre">Me
 <td><p>Opt-in validation, comparator, and legacy orientation-zone columns.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.schema.ORIENTATION_ZONE_PRIMARY.html#phenotypic.schema.ORIENTATION_ZONE_PRIMARY" title="phenotypic.schema.ORIENTATION_ZONE_PRIMARY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ORIENTATION_ZONE_PRIMARY</span></code></a></p></td>
-<td><p>Primary full-length outward-rotation traits by radial zone.</p></td>
+<td><p>Primary outward-rotation traits over resolved branch zones.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="phenotypic.schema.SYMMETRIC_ZONES.html#phenotypic.schema.SYMMETRIC_ZONES" title="phenotypic.schema.SYMMETRIC_ZONES"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SYMMETRIC_ZONES</span></code></a></p></td>
-<td><p>Mask-based radial expansion measurements for colonies on solid media.</p></td>
+<td><p>Radial expansion, symmetry, and branch-orientation zone geometry.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.schema.TEXTURE.html#phenotypic.schema.TEXTURE" title="phenotypic.schema.TEXTURE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TEXTURE</span></code></a></p></td>
 <td><p>Second-order texture features derived from the gray-level co-occurrence matrix (GLCM).</p></td>
@@ -24428,10 +24428,10 @@ do not classify (e.g. enums that subclass <code class="docutils literal notransl
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.schema.</span></span><span class="sig-name descname"><span class="pre">ORIENTATION_ZONE_DIAGNOSTIC</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/schema/_orientation_zones.html#ORIENTATION_ZONE_DIAGNOSTIC"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">QualityInfo</span></code></p>
 <p>Opt-in validation, comparator, and legacy orientation-zone columns.</p>
-<p>The literal skeleton-ring diagnostics use the detected-object mask from the
-inferred inoculum boundary through the full object extent. The retained
-legacy field diagnostics use the structure-tensor field in symmetric-radius
-zones and include <code class="docutils literal notranslate"><span class="pre">Radial</span></code> (all tile pixels) and <code class="docutils literal notranslate"><span class="pre">Mask</span></code> variants. See
+<p>Canonical diagnostics use the shared CoreZone / DenseZone / SparseZone
+geometry. <code class="docutils literal notranslate"><span class="pre">Radial</span></code> variants use all tile pixels in the corresponding
+annulus; <code class="docutils literal notranslate"><span class="pre">Mask</span></code> variants use target-object pixels. Explicit legacy mode
+retains the historical symmetric-radius selectors. See
 <code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureOrientationZones</span></code> for parameters and method.</p>
 <dl class="py method">
 <dt class="sig sig-object py">
@@ -25172,6 +25172,21 @@ which category it belongs to without explicitly referencing the class.</p>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">CORE_ZONE_END_RADIUS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'OrientZones_CoreZoneEndRadius'</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">DENSE_RADIUS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'OrientZones_DenseRadius'</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">FULL_EXTENT_RADIUS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'OrientZones_FullExtentRadius'</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">LONG_RANGE_ROTATION_MASK_DENSE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'OrientZones_LongRangeRotation-Mask-Dense'</span></em></dt>
 <dd></dd></dl>
 
@@ -25208,6 +25223,21 @@ which category it belongs to without explicitly referencing the class.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">LONG_RANGE_ROTATION_SUPPORT_MASK_SPARSE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'OrientZones_LongRangeRotationSupport-Mask-Sparse'</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">OUTER_RADIUS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'OrientZones_OuterRadius'</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">OUTER_ZONE_PERCENTILE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'OrientZones_OuterZonePercentile'</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">OUTER_ZONE_RETAINED_MASK_FRACTION</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'OrientZones_OuterZoneRetainedMaskFraction'</span></em></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -25457,6 +25487,31 @@ which category it belongs to without explicitly referencing the class.</p>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">ZONE_CHANGE_POINT_MINIMUM_SEGMENT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'OrientZones_ZoneChangePointMinimumSegment'</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">ZONE_CHANGE_POINT_OBJECTIVE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'OrientZones_ZoneChangePointObjective'</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">ZONE_CHANGE_POINT_RING_COUNT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'OrientZones_ZoneChangePointRingCount'</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">ZONE_SEGMENTATION_METHOD_CODE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'OrientZones_ZoneSegmentationMethodCode'</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">ZONE_SUPPORTED_RING_FRACTION</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'OrientZones_ZoneSupportedRingFraction'</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">bio_desc</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em></dt>
 <dd></dd></dl>
 
@@ -25547,7 +25602,7 @@ do not classify (e.g. enums that subclass <code class="docutils literal notransl
 <dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.schema.</span></span><span class="sig-name descname"><span class="pre">ORIENTATION_ZONE_PRIMARY</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/schema/_orientation_zones.html#ORIENTATION_ZONE_PRIMARY"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">DescriptiveTrait</span></code></p>
-<p>Primary full-length outward-rotation traits by radial zone.</p>
+<p>Primary outward-rotation traits over resolved branch zones.</p>
 <dl class="py method">
 <dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span></dt>
@@ -38083,16 +38138,14 @@ do not classify (e.g. enums that subclass <code class="docutils literal notransl
 <dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.schema.</span></span><span class="sig-name descname"><span class="pre">SYMMETRIC_ZONES</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/schema/_symmetric_zones.html#SYMMETRIC_ZONES"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">DescriptiveTrait</span></code></p>
-<p>Mask-based radial expansion measurements for colonies on solid media.</p>
-<p>Summarises each colony’s radial growth through four scalars derived
-directly from the binary object mask: the inoculum core radius (shared
-with <a class="reference internal" href="phenotypic.schema.RADIAL_EXPANSION.html#phenotypic.schema.RADIAL_EXPANSION" title="phenotypic.schema.RADIAL_EXPANSION"><code class="xref py py-class docutils literal notranslate"><span class="pre">RADIAL_EXPANSION</span></code></a>), the radius at which growth stops being
-angularly symmetric, and mean / maximum radial extent beyond the core.</p>
-<p>Unlike <a class="reference internal" href="phenotypic.schema.RADIAL_EXPANSION.html#phenotypic.schema.RADIAL_EXPANSION" title="phenotypic.schema.RADIAL_EXPANSION"><code class="xref py py-class docutils literal notranslate"><span class="pre">RADIAL_EXPANSION</span></code></a>, no skeletonization, branch tracing, or
-runner-outlier statistics are involved — all values are computed from
-per-annulus mask geometry and a circular-statistics angular resultant
-length. Intended for users who care about colony-level expansion and the
-symmetry of that expansion, not individual hyphae.</p>
+<p>Radial expansion, symmetry, and branch-orientation zone geometry.</p>
+<p>The first four measurements are independent summaries derived directly
+from the binary object mask: PELT core radius, angular symmetry radius,
+and mean and maximum expansion. Canonical CoreZone, DenseZone, and
+SparseZone geometry is resolved by Method B from the target mask,
+detection matrix, structure-tensor field, and literal skeleton crossings.
+Historical colony-ness geometry remains available through
+<code class="docutils literal notranslate"><span class="pre">legacy_mode=True</span></code>.</p>
 <dl class="py method">
 <dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span></dt>

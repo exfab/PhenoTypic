@@ -620,17 +620,19 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">CompositeEnhance</span><span class="p">(</span><span class="n">NormalizedOutputMixin</span><span class="p">,</span> <span class="n">ImageEnhancer</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Enhance ``detect_mat`` by combining several enhancers&#39; response maps pixel-wise.</span>
 
-<span class="sd">    Apply two or more enhancers (or preprocessing pipelines ending in an</span>
+<span class="sd">    Apply one or more enhancers (or preprocessing pipelines ending in an</span>
 <span class="sd">    enhancer) to the same plate image and reduce their ``detect_mat`` outputs</span>
-<span class="sd">    into a single response map. This ensembles complementary preprocessing</span>
-<span class="sd">    strategies: where one enhancer responds strongly to faint colonies and</span>
-<span class="sd">    another to sharp edges, ``&#39;max&#39;`` keeps the strongest signal from either.</span>
-<span class="sd">    It is the enhancer-side analogue of :class:`CompositeDetector`, which</span>
-<span class="sd">    combines binary masks rather than continuous response maps.</span>
+<span class="sd">    into a single response map. The immutable grayscale input can optionally</span>
+<span class="sd">    participate as another response source. This ensembles complementary</span>
+<span class="sd">    preprocessing strategies: where one enhancer responds strongly to faint</span>
+<span class="sd">    colonies and another to sharp edges, ``&#39;max&#39;`` keeps the strongest signal</span>
+<span class="sd">    from either. It is the enhancer-side analogue of</span>
+<span class="sd">    :class:`CompositeDetector`, which combines binary masks rather than</span>
+<span class="sd">    continuous response maps.</span>
 
-<span class="sd">    Each branch reads the *same* input ``detect_mat`` independently (branches</span>
-<span class="sd">    do not chain into one another), so the order of ``ops`` does not affect</span>
-<span class="sd">    the result for the commutative reductions used here.</span>
+<span class="sd">    Each enhancer branch reads the *same* input ``detect_mat`` independently</span>
+<span class="sd">    (branches do not chain into one another), so the order of ``ops`` does not</span>
+<span class="sd">    affect the result for the commutative reductions used here.</span>
 
 <span class="sd">    Best For:</span>
 <span class="sd">        - Fusing complementary focus maps (e.g. an edge response and a blob</span>
@@ -661,6 +663,11 @@
 <span class="sd">            ``&#39;mean&#39;`` averages all branches. ``&#39;median&#39;`` takes the per-pixel</span>
 <span class="sd">            median (robust to a single outlier branch; most useful with three</span>
 <span class="sd">            or more enhancers). Default: ``&#39;max&#39;``.</span>
+<span class="sd">        include_gray: Include the immutable input ``image.gray`` layer as one</span>
+<span class="sd">            additional response map in the selected reduction. This allows a</span>
+<span class="sd">            branch response such as phase congruency to be fused with the</span>
+<span class="sd">            original grayscale signal before a downstream detector. Defaults</span>
+<span class="sd">            to ``False``.</span>
 <span class="sd">        norm: Output range policy applied after reduction. ``None`` (default)</span>
 <span class="sd">            passes values through untouched, which is what an arbitrarily-scaled</span>
 <span class="sd">            (non unit-normalised) response map needs. ``&quot;clip&quot;`` saturates</span>
@@ -672,7 +679,8 @@
 <span class="sd">        map. ``rgb`` and ``gray`` are unchanged.</span>
 
 <span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If ``ops`` is empty or contains only ``None`` slots.</span>
+<span class="sd">        ValueError: If ``ops`` is empty or contains only ``None`` slots while</span>
+<span class="sd">            ``include_gray`` is ``False``.</span>
 
 <span class="sd">    Examples:</span>
 <span class="sd">        Combine two enhancers, keeping the strongest response per pixel:</span>
@@ -714,6 +722,7 @@
         <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="n">BlurGauss</span><span class="p">(),</span> <span class="n">MedianFilter</span><span class="p">()]</span>
     <span class="p">)</span>
     <span class="n">mode</span><span class="p">:</span> <span class="n">CombineMode</span> <span class="o">=</span> <span class="s2">&quot;max&quot;</span>
+    <span class="n">include_gray</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">norm</span><span class="p">:</span> <span class="n">NormOut</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;ops&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
@@ -730,12 +739,14 @@
         <span class="k">return</span> <span class="n">value</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply each branch and reduce their ``detect_mat`` maps pixel-wise.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reduce enhancer responses and optional grayscale pixel-wise.&quot;&quot;&quot;</span>
 
         <span class="c1"># Import here to avoid a circular dependency at module load.</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
 
         <span class="n">response_maps</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">include_gray</span><span class="p">:</span>
+            <span class="n">response_maps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">gray</span><span class="p">[:],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">))</span>
         <span class="k">for</span> <span class="n">enhancer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ops</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">enhancer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="c1"># An unfilled GUI-builder slot; nothing to apply -- skip it.</span>
@@ -748,7 +759,8 @@
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">response_maps</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;At least one enhancer must be provided to CompositeEnhance&quot;</span>
+                <span class="s2">&quot;At least one enhancer or include_gray=True must be provided &quot;</span>
+                <span class="s2">&quot;to CompositeEnhance&quot;</span>
             <span class="p">)</span>
 
         <span class="n">combined</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_norm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_combine</span><span class="p">(</span><span class="n">response_maps</span><span class="p">))</span>

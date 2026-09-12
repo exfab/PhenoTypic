@@ -1303,16 +1303,14 @@
 <dt class="sig sig-object py" id="phenotypic.schema.SYMMETRIC_ZONES">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.schema.</span></span><span class="sig-name descname"><span class="pre">SYMMETRIC_ZONES</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/schema/_symmetric_zones.html#SYMMETRIC_ZONES"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.SYMMETRIC_ZONES" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">DescriptiveTrait</span></code></p>
-<p>Mask-based radial expansion measurements for colonies on solid media.</p>
-<p>Summarises each colony’s radial growth through four scalars derived
-directly from the binary object mask: the inoculum core radius (shared
-with <a class="reference internal" href="phenotypic.schema.RADIAL_EXPANSION.html#phenotypic.schema.RADIAL_EXPANSION" title="phenotypic.schema.RADIAL_EXPANSION"><code class="xref py py-class docutils literal notranslate"><span class="pre">RADIAL_EXPANSION</span></code></a>), the radius at which growth stops being
-angularly symmetric, and mean / maximum radial extent beyond the core.</p>
-<p>Unlike <a class="reference internal" href="phenotypic.schema.RADIAL_EXPANSION.html#phenotypic.schema.RADIAL_EXPANSION" title="phenotypic.schema.RADIAL_EXPANSION"><code class="xref py py-class docutils literal notranslate"><span class="pre">RADIAL_EXPANSION</span></code></a>, no skeletonization, branch tracing, or
-runner-outlier statistics are involved — all values are computed from
-per-annulus mask geometry and a circular-statistics angular resultant
-length. Intended for users who care about colony-level expansion and the
-symmetry of that expansion, not individual hyphae.</p>
+<p>Radial expansion, symmetry, and branch-orientation zone geometry.</p>
+<p>The first four measurements are independent summaries derived directly
+from the binary object mask: PELT core radius, angular symmetry radius,
+and mean and maximum expansion. Canonical CoreZone, DenseZone, and
+SparseZone geometry is resolved by Method B from the target mask,
+detection matrix, structure-tensor field, and literal skeleton crossings.
+Historical colony-ness geometry remains available through
+<code class="docutils literal notranslate"><span class="pre">legacy_mode=True</span></code>.</p>
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>

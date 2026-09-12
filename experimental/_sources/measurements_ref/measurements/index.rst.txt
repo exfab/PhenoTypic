@@ -1038,97 +1038,97 @@ Measurements
      - Description
      - Type
    * - ``OrientZones_OutwardRotationRawPeak-Mask-Overall``
-     - Largest absolute cumulative literal skeleton-ring rotation from the inferred inoculum boundary through the full detected object extent. Reported in degrees, nonnegative with no fixed upper bound. This raw maximum is outlier-sensitive and should be compared with the primary sustained peak.
+     - Largest absolute cumulative literal skeleton-ring rotation from the CoreZone boundary through the configured SparseZone outer boundary. Reported in degrees, nonnegative with no fixed upper bound. This raw maximum is outlier-sensitive and should be compared with the primary sustained peak.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationRawPeak-Mask-Dense``
-     - Largest absolute cumulative literal skeleton-ring rotation from the inferred inoculum boundary to dense_end. Reported in degrees, nonnegative with no fixed upper bound. This raw maximum is outlier-sensitive and should be compared with the primary sustained peak.
+     - Largest absolute cumulative literal skeleton-ring rotation from the CoreZone boundary to dense_end. Reported in degrees, nonnegative with no fixed upper bound. This raw maximum is outlier-sensitive and should be compared with the primary sustained peak.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationRawPeak-Mask-Sparse``
-     - Largest absolute cumulative literal skeleton-ring rotation from dense_end through the full detected object extent. Reported in degrees, nonnegative with no fixed upper bound. This raw maximum is outlier-sensitive. Cumulative rotation is not rebased at dense_end, so this Sparse magnitude may include rotation accumulated while the profile was in Dense.
+     - Largest absolute cumulative literal skeleton-ring rotation from dense_end through the configured SparseZone outer boundary. Reported in degrees, nonnegative with no fixed upper bound. This raw maximum is outlier-sensitive. Cumulative rotation is not rebased at dense_end, so this Sparse magnitude may include rotation accumulated while the profile was in Dense.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationP90-Mask-Overall``
-     - 90th percentile of absolute cumulative literal skeleton-ring rotation over supported rings from the inferred inoculum boundary through the full detected object extent. Reported in degrees, nonnegative with no fixed upper bound. This validation comparator ignores radial order.
+     - 90th percentile of absolute cumulative literal skeleton-ring rotation over supported rings from the CoreZone boundary through the configured SparseZone outer boundary. Reported in degrees, nonnegative with no fixed upper bound. This validation comparator ignores radial order.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationP90-Mask-Dense``
-     - 90th percentile of absolute cumulative literal skeleton-ring rotation over supported rings from the inferred inoculum boundary to dense_end. Reported in degrees, nonnegative with no fixed upper bound. This validation comparator ignores radial order.
+     - 90th percentile of absolute cumulative literal skeleton-ring rotation over supported rings from the CoreZone boundary to dense_end. Reported in degrees, nonnegative with no fixed upper bound. This validation comparator ignores radial order.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationP90-Mask-Sparse``
-     - 90th percentile of absolute cumulative literal skeleton-ring rotation over supported rings from dense_end through the full detected object extent. Reported in degrees, nonnegative with no fixed upper bound. This comparator ignores radial order. Cumulative rotation is not rebased at dense_end, so this Sparse magnitude may include rotation accumulated while the profile was in Dense.
+     - 90th percentile of absolute cumulative literal skeleton-ring rotation over supported rings from dense_end through the configured SparseZone outer boundary. Reported in degrees, nonnegative with no fixed upper bound. This comparator ignores radial order. Cumulative rotation is not rebased at dense_end, so this Sparse magnitude may include rotation accumulated while the profile was in Dense.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationP95-Mask-Overall``
-     - 95th percentile of absolute cumulative literal skeleton-ring rotation over supported rings from the inferred inoculum boundary through the full detected object extent. Reported in degrees, nonnegative with no fixed upper bound. With few supported rings it remains close to the raw maximum and is not the primary robust metric.
+     - 95th percentile of absolute cumulative literal skeleton-ring rotation over supported rings from the CoreZone boundary through the configured SparseZone outer boundary. Reported in degrees, nonnegative with no fixed upper bound. With few supported rings it remains close to the raw maximum and is not the primary robust metric.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationP95-Mask-Dense``
-     - 95th percentile of absolute cumulative literal skeleton-ring rotation over supported rings from the inferred inoculum boundary to dense_end. Reported in degrees, nonnegative with no fixed upper bound. With few supported rings it remains close to the raw maximum.
+     - 95th percentile of absolute cumulative literal skeleton-ring rotation over supported rings from the CoreZone boundary to dense_end. Reported in degrees, nonnegative with no fixed upper bound. With few supported rings it remains close to the raw maximum.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationP95-Mask-Sparse``
-     - 95th percentile of absolute cumulative literal skeleton-ring rotation over supported rings from dense_end through the full detected object extent. Reported in degrees, nonnegative with no fixed upper bound. Cumulative rotation is not rebased at dense_end, so this Sparse magnitude may include rotation accumulated while the profile was in Dense.
+     - 95th percentile of absolute cumulative literal skeleton-ring rotation over supported rings from dense_end through the configured SparseZone outer boundary. Reported in degrees, nonnegative with no fixed upper bound. Cumulative rotation is not rebased at dense_end, so this Sparse magnitude may include rotation accumulated while the profile was in Dense.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationMedianMagnitude-Mask-Overall``
-     - Median absolute cumulative literal skeleton-ring rotation over supported rings from the inferred inoculum boundary through the full detected object extent. Reported in degrees, nonnegative with no fixed upper bound. This validation comparator describes typical magnitude but ignores radial order and localized outer turns.
+     - Median absolute cumulative literal skeleton-ring rotation over supported rings from the CoreZone boundary through the configured SparseZone outer outer boundary. Reported in degrees, nonnegative with no fixed upper bound. This validation comparator describes typical magnitude but ignores radial order and localized outer turns.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationMedianMagnitude-Mask-Dense``
-     - Median absolute cumulative literal skeleton-ring rotation over supported rings from the inferred inoculum boundary to dense_end. Reported in degrees, nonnegative with no fixed upper bound. This validation comparator describes typical magnitude but ignores radial order.
+     - Median absolute cumulative literal skeleton-ring rotation over supported rings from the CoreZone boundary to dense_end. Reported in degrees, nonnegative with no fixed upper bound. This validation comparator describes typical magnitude but ignores radial order.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationMedianMagnitude-Mask-Sparse``
-     - Median absolute cumulative literal skeleton-ring rotation over supported rings from dense_end through the full detected object extent. Reported in degrees, nonnegative with no fixed upper bound. Cumulative rotation is not rebased at dense_end, so this Sparse magnitude may include rotation accumulated while the profile was in Dense.
+     - Median absolute cumulative literal skeleton-ring rotation over supported rings from dense_end through the configured SparseZone outer boundary. Reported in degrees, nonnegative with no fixed upper bound. Cumulative rotation is not rebased at dense_end, so this Sparse magnitude may include rotation accumulated while the profile was in Dense.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationAbsoluteArea-Mask-Overall``
-     - Trapezoidal area under absolute cumulative rotation within supported runs from the inferred inoculum boundary through the full detected object extent, divided by their total supported radial span. Reported in degrees, nonnegative with no fixed upper bound. It describes radially persistent rotation but can remain high after one early step.
+     - Trapezoidal area under absolute cumulative rotation within supported runs from the CoreZone boundary through the configured SparseZone outer outer boundary, divided by their total supported radial span. Reported in degrees, nonnegative with no fixed upper bound. It describes radially persistent rotation but can remain high after one early step.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationAbsoluteArea-Mask-Dense``
-     - Trapezoidal area under absolute cumulative rotation within supported runs from the inferred inoculum boundary to dense_end, divided by their total supported radial span. Reported in degrees, nonnegative with no fixed upper bound. It describes radially persistent rotation but can remain high after one early step.
+     - Trapezoidal area under absolute cumulative rotation within supported runs from the CoreZone boundary to dense_end, divided by their total supported radial span. Reported in degrees, nonnegative with no fixed upper bound. It describes radially persistent rotation but can remain high after one early step.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationAbsoluteArea-Mask-Sparse``
-     - Trapezoidal area under absolute cumulative rotation within supported runs from dense_end through the full detected object extent, divided by their total supported radial span. Reported in degrees, nonnegative with no fixed upper bound. Cumulative rotation is not rebased at dense_end, so this Sparse magnitude may include rotation accumulated while the profile was in Dense.
+     - Trapezoidal area under absolute cumulative rotation within supported runs from dense_end through the configured SparseZone outer boundary, divided by their total supported radial span. Reported in degrees, nonnegative with no fixed upper bound. Cumulative rotation is not rebased at dense_end, so this Sparse magnitude may include rotation accumulated while the profile was in Dense.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationTotalVariation-Mask-Overall``
-     - Sum of absolute adjacent cumulative-rotation changes within supported runs from the inferred inoculum boundary through the full detected object extent, without bridging gaps. Reported in degrees, nonnegative with no fixed upper bound. It is sensitive to oscillation, profile length, and noise and is diagnostic only.
+     - Sum of absolute adjacent cumulative-rotation changes within supported runs from the CoreZone boundary through the configured SparseZone outer outer boundary, without bridging gaps. Reported in degrees, nonnegative with no fixed upper bound. It is sensitive to oscillation, profile length, and noise and is diagnostic only.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationTotalVariation-Mask-Dense``
-     - Sum of absolute adjacent cumulative-rotation changes within supported runs from the inferred inoculum boundary to dense_end, without bridging gaps. Reported in degrees, nonnegative with no fixed upper bound. It is sensitive to oscillation, profile length, and noise and is diagnostic only.
+     - Sum of absolute adjacent cumulative-rotation changes within supported runs from the CoreZone boundary to dense_end, without bridging gaps. Reported in degrees, nonnegative with no fixed upper bound. It is sensitive to oscillation, profile length, and noise and is diagnostic only.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationTotalVariation-Mask-Sparse``
-     - Sum of absolute adjacent cumulative-rotation changes within supported runs from dense_end through the full detected object extent, without bridging gaps. Reported in degrees, nonnegative with no fixed upper bound. It is sensitive to oscillation, profile length, and noise and is diagnostic only.
+     - Sum of absolute adjacent cumulative-rotation changes within supported runs from dense_end through the configured SparseZone outer boundary, without bridging gaps. Reported in degrees, nonnegative with no fixed upper bound. It is sensitive to oscillation, profile length, and noise and is diagnostic only.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationRateGradient-Mask-Overall``
-     - Outer-half robust rotation rate minus inner-half robust rotation rate, divided by the separation of their median radii, along the longest supported run from the inferred inoculum boundary through the full detected object extent. Reported in signed degrees per pixel squared. This is a spatial rate gradient, not temporal acceleration, and is NaN unless the run meets both the configured minimum and eight rings.
+     - Outer-half robust rotation rate minus inner-half robust rotation rate, divided by the separation of their median radii, along the longest supported run from the CoreZone boundary through the full detected outer boundary. Reported in signed degrees per pixel squared. This is a spatial rate gradient, not temporal acceleration, and is NaN unless the run meets both the configured minimum and eight rings.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationRateGradient-Mask-Dense``
-     - Outer-half robust rotation rate minus inner-half robust rotation rate, divided by the separation of their median radii, along the longest supported run from the inferred inoculum boundary to dense_end. Reported in signed degrees per pixel squared. This is a spatial rate gradient, not temporal acceleration, and is NaN unless the run meets both the configured minimum and eight rings.
+     - Outer-half robust rotation rate minus inner-half robust rotation rate, divided by the separation of their median radii, along the longest supported run from the CoreZone boundary to dense_end. Reported in signed degrees per pixel squared. This is a spatial rate gradient, not temporal acceleration, and is NaN unless the run meets both the configured minimum and eight rings.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationRateGradient-Mask-Sparse``
-     - Outer-half robust rotation rate minus inner-half robust rotation rate, divided by the separation of their median radii, along the longest supported run from dense_end through the full detected object extent. Reported in signed degrees per pixel squared. This is a spatial rate gradient, not temporal acceleration, and is NaN for runs shorter than the larger of eight rings and the configured minimum.
+     - Outer-half robust rotation rate minus inner-half robust rotation rate, divided by the separation of their median radii, along the longest supported run from dense_end through the configured SparseZone outer boundary. Reported in signed degrees per pixel squared. This is a spatial rate gradient, not temporal acceleration, and is NaN for runs shorter than the larger of eight rings and the configured minimum.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationRingSupport-Mask-Overall``
-     - Fraction of candidate literal sampling rings from the inferred inoculum boundary through the full detected object extent with a finite cumulative-rotation state. Dimensionless in [0, 1]. This is a density-sensitive quality diagnostic, not an orientation phenotype.
+     - Fraction of candidate literal sampling rings from the CoreZone boundary through the configured SparseZone outer boundary with a finite cumulative-rotation state. Dimensionless in [0, 1]. This is a density-sensitive quality diagnostic, not an orientation phenotype.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationRingSupport-Mask-Dense``
-     - Fraction of candidate literal sampling rings from the inferred inoculum boundary to dense_end with a finite cumulative-rotation state. Dimensionless in [0, 1]. This is a density-sensitive quality diagnostic, not an orientation phenotype.
+     - Fraction of candidate literal sampling rings from the CoreZone boundary to dense_end with a finite cumulative-rotation state. Dimensionless in [0, 1]. This is a density-sensitive quality diagnostic, not an orientation phenotype.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationRingSupport-Mask-Sparse``
-     - Fraction of candidate literal sampling rings from dense_end through the full detected object extent with a finite cumulative-rotation state. Dimensionless in [0, 1]. This is a density-sensitive quality diagnostic, not an orientation phenotype.
+     - Fraction of candidate literal sampling rings from dense_end through the configured SparseZone outer boundary with a finite cumulative-rotation state. Dimensionless in [0, 1]. This is a density-sensitive quality diagnostic, not an orientation phenotype.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationRunSpanSupport-Mask-Overall``
-     - Radial span of the longest contiguous supported literal-crossing run divided by the full candidate span from the inferred inoculum boundary through the full detected object extent. Dimensionless in [0, 1]. This reports continuity of usable evidence, not orientation.
+     - Radial span of the longest contiguous supported literal-crossing run divided by the full candidate span from the CoreZone boundary through the configured SparseZone outer boundary. Dimensionless in [0, 1]. This reports continuity of usable evidence, not orientation.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationRunSpanSupport-Mask-Dense``
-     - Radial span of the longest contiguous supported literal-crossing run divided by the full candidate span from the inferred inoculum boundary to dense_end. Dimensionless in [0, 1]. This reports continuity of usable evidence, not orientation.
+     - Radial span of the longest contiguous supported literal-crossing run divided by the full candidate span from the CoreZone boundary to dense_end. Dimensionless in [0, 1]. This reports continuity of usable evidence, not orientation.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationRunSpanSupport-Mask-Sparse``
-     - Radial span of the longest contiguous supported literal-crossing run divided by the full candidate span from dense_end through the full detected object extent. Dimensionless in [0, 1]. This reports continuity of usable evidence, not orientation.
+     - Radial span of the longest contiguous supported literal-crossing run divided by the full candidate span from dense_end through the full detected outer boundary. Dimensionless in [0, 1]. This reports continuity of usable evidence, not orientation.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationMedianResultant-Mask-Overall``
-     - Median doubled-angle resultant of crossing orientations among eligible literal rings from the inferred inoculum boundary through the full detected object extent. Dimensionless in [0, 1]; larger values mean stronger within-ring axial agreement. This is an orientation-reliability diagnostic, not a rotation phenotype.
+     - Median doubled-angle resultant of crossing orientations among eligible literal rings from the CoreZone boundary through the full detected outer boundary. Dimensionless in [0, 1]; larger values mean stronger within-ring axial agreement. This is an orientation-reliability diagnostic, not a rotation phenotype.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationMedianResultant-Mask-Dense``
-     - Median doubled-angle resultant of crossing orientations among eligible literal rings from the inferred inoculum boundary to dense_end. Dimensionless in [0, 1]; larger values mean stronger within-ring axial agreement. This is an orientation-reliability diagnostic, not a rotation phenotype.
+     - Median doubled-angle resultant of crossing orientations among eligible literal rings from the CoreZone boundary to dense_end. Dimensionless in [0, 1]; larger values mean stronger within-ring axial agreement. This is an orientation-reliability diagnostic, not a rotation phenotype.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardRotationMedianResultant-Mask-Sparse``
-     - Median doubled-angle resultant of crossing orientations among eligible literal rings from dense_end through the full detected object extent. Dimensionless in [0, 1]; larger values mean stronger within-ring axial agreement. This is an orientation-reliability diagnostic, not a rotation phenotype.
+     - Median doubled-angle resultant of crossing orientations among eligible literal rings from dense_end through the configured SparseZone outer boundary. Dimensionless in [0, 1]; larger values mean stronger within-ring axial agreement. This is an orientation-reliability diagnostic, not a rotation phenotype.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_Concentration-Radial-Overall``
-     - Coherence-weighted resultant length R of the doubled-angle orientation field over all tile pixels in the full symmetric disk (0 .. symmetric_radius) region. Dimensionless in [0, 1]; 1 = perfectly aligned hyphae, 0 = isotropic. NaN when the summed coherence over the selector is ~0 or the zone has zero width.
+     - Coherence-weighted resultant length R of the doubled-angle orientation field over all tile pixels in the canonical Overall annulus (core_end .. sparse_end) region. Dimensionless in [0, 1]; 1 = perfectly aligned hyphae, 0 = isotropic. NaN when the summed coherence over the selector is ~0 or the zone has zero width.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_Concentration-Radial-Dense``
      - Coherence-weighted resultant length R of the doubled-angle orientation field over all tile pixels in the dense ring (core_end .. dense_end radii) region. Dimensionless in [0, 1]; 1 = perfectly aligned hyphae, 0 = isotropic. NaN when the summed coherence over the selector is ~0 or the zone has zero width.
@@ -1137,7 +1137,7 @@ Measurements
      - Coherence-weighted resultant length R of the doubled-angle orientation field over all tile pixels in the sparse ring (dense_end .. sparse_end radii) region. Dimensionless in [0, 1]; 1 = perfectly aligned hyphae, 0 = isotropic. NaN when the summed coherence over the selector is ~0 or the zone has zero width.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_Concentration-Mask-Overall``
-     - Coherence-weighted resultant length R of the doubled-angle orientation field over detected-object pixels in the full symmetric disk (0 .. symmetric_radius) region. Dimensionless in [0, 1]; 1 = perfectly aligned hyphae, 0 = isotropic. NaN when the summed coherence over the selector is ~0 or the zone has zero width.
+     - Coherence-weighted resultant length R of the doubled-angle orientation field over detected-object pixels in the canonical Overall annulus (core_end .. sparse_end) region. Dimensionless in [0, 1]; 1 = perfectly aligned hyphae, 0 = isotropic. NaN when the summed coherence over the selector is ~0 or the zone has zero width.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_Concentration-Mask-Dense``
      - Coherence-weighted resultant length R of the doubled-angle orientation field over detected-object pixels in the dense ring (core_end .. dense_end radii) region. Dimensionless in [0, 1]; 1 = perfectly aligned hyphae, 0 = isotropic. NaN when the summed coherence over the selector is ~0 or the zone has zero width.
@@ -1146,7 +1146,7 @@ Measurements
      - Coherence-weighted resultant length R of the doubled-angle orientation field over detected-object pixels in the sparse ring (dense_end .. sparse_end radii) region. Dimensionless in [0, 1]; 1 = perfectly aligned hyphae, 0 = isotropic. NaN when the summed coherence over the selector is ~0 or the zone has zero width.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_Turning-Radial-Overall``
-     - Coherence-weighted mean orientation-gradient magnitude <\|grad phi\|> over all tile pixels in the full symmetric disk (0 .. symmetric_radius) region, in degrees per pixel. Higher values indicate curving/fanning hyphae; ~0 indicates straight parallel growth.
+     - Coherence-weighted mean orientation-gradient magnitude <\|grad phi\|> over all tile pixels in the canonical Overall annulus (core_end .. sparse_end), in degrees per pixel. Higher values indicate curving/fanning hyphae; ~0 indicates straight parallel growth.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_Turning-Radial-Dense``
      - Coherence-weighted mean orientation-gradient magnitude <\|grad phi\|> over all tile pixels in the dense ring (core_end .. dense_end radii) region, in degrees per pixel. Higher values indicate curving/fanning hyphae; ~0 indicates straight parallel growth.
@@ -1155,7 +1155,7 @@ Measurements
      - Coherence-weighted mean orientation-gradient magnitude <\|grad phi\|> over all tile pixels in the sparse ring (dense_end .. sparse_end radii) region, in degrees per pixel. Higher values indicate curving/fanning hyphae; ~0 indicates straight parallel growth.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_Turning-Mask-Overall``
-     - Coherence-weighted mean orientation-gradient magnitude <\|grad phi\|> over detected-object pixels in the full symmetric disk (0 .. symmetric_radius) region, in degrees per pixel. Higher values indicate curving/fanning hyphae; ~0 indicates straight parallel growth.
+     - Coherence-weighted mean orientation-gradient magnitude <\|grad phi\|> over detected-object pixels in the canonical Overall annulus (core_end .. sparse_end) region, in degrees per pixel. Higher values indicate curving/fanning hyphae; ~0 indicates straight parallel growth.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_Turning-Mask-Dense``
      - Coherence-weighted mean orientation-gradient magnitude <\|grad phi\|> over detected-object pixels in the dense ring (core_end .. dense_end radii) region, in degrees per pixel. Higher values indicate curving/fanning hyphae; ~0 indicates straight parallel growth.
@@ -1164,7 +1164,7 @@ Measurements
      - Coherence-weighted mean orientation-gradient magnitude <\|grad phi\|> over detected-object pixels in the sparse ring (dense_end .. sparse_end radii) region, in degrees per pixel. Higher values indicate curving/fanning hyphae; ~0 indicates straight parallel growth.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_Coherence-Radial-Overall``
-     - Mean structure-tensor coherence C over all tile pixels in the full symmetric disk (0 .. symmetric_radius) region. Dimensionless in [0, 1]; a confidence/QC readout for how well orientation is defined there (low where texture is isotropic).
+     - Mean structure-tensor coherence C over all tile pixels in the canonical Overall annulus (core_end .. sparse_end). Dimensionless in [0, 1]; a confidence/QC readout for how well orientation is defined there (low where texture is isotropic).
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_Coherence-Radial-Dense``
      - Mean structure-tensor coherence C over all tile pixels in the dense ring (core_end .. dense_end radii) region. Dimensionless in [0, 1]; a confidence/QC readout for how well orientation is defined there (low where texture is isotropic).
@@ -1173,7 +1173,7 @@ Measurements
      - Mean structure-tensor coherence C over all tile pixels in the sparse ring (dense_end .. sparse_end radii) region. Dimensionless in [0, 1]; a confidence/QC readout for how well orientation is defined there (low where texture is isotropic).
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_Coherence-Mask-Overall``
-     - Mean structure-tensor coherence C over detected-object pixels in the full symmetric disk (0 .. symmetric_radius) region. Dimensionless in [0, 1]; a confidence/QC readout for how well orientation is defined there (low where texture is isotropic).
+     - Mean structure-tensor coherence C over detected-object pixels in the canonical Overall annulus (core_end .. sparse_end). Dimensionless in [0, 1]; a confidence/QC readout for how well orientation is defined there (low where texture is isotropic).
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_Coherence-Mask-Dense``
      - Mean structure-tensor coherence C over detected-object pixels in the dense ring (core_end .. dense_end radii) region. Dimensionless in [0, 1]; a confidence/QC readout for how well orientation is defined there (low where texture is isotropic).
@@ -1182,7 +1182,7 @@ Measurements
      - Mean structure-tensor coherence C over detected-object pixels in the sparse ring (dense_end .. sparse_end radii) region. Dimensionless in [0, 1]; a confidence/QC readout for how well orientation is defined there (low where texture is isotropic).
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_RadialTilt-Mask-Overall``
-     - Equal-angular-sector mean of the coherence-weighted absolute axial difference between the local fiber axis and the outward radial spoke at the same pixel, over detected-object pixels in the full symmetric disk (0 .. symmetric_radius) region. Reported in degrees in [0, 90]; 0 = locally radial and 90 = locally tangential. Each occupied 10-degree angular sector contributes equally. For a fixed set of reliable sectors, multiplying branch evidence without changing within-sector tilt distributions leaves the result unchanged. A support-threshold crossing can add a newly reliable sector and change the estimate; mixed orientations within one sector remain pixel-weighted.
+     - Equal-angular-sector mean of the coherence-weighted absolute axial difference between the local fiber axis and the outward radial spoke at the same pixel, over detected-object pixels in the canonical Overall annulus (core_end .. sparse_end). Reported in degrees in [0, 90]; 0 = locally radial and 90 = locally tangential. Each occupied 10-degree angular sector contributes equally. For a fixed set of reliable sectors, multiplying branch evidence without changing within-sector tilt distributions leaves the result unchanged. A support-threshold crossing can add a newly reliable sector and change the estimate; mixed orientations within one sector remain pixel-weighted.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_RadialTilt-Mask-Dense``
      - Equal-angular-sector mean of the coherence-weighted absolute axial difference between the local fiber axis and the outward radial spoke at the same pixel, over detected-object pixels in the dense ring (core_end .. dense_end radii) region. Reported in degrees in [0, 90]; 0 = locally radial and 90 = locally tangential. Each occupied 10-degree angular sector contributes equally. For a fixed set of reliable sectors, multiplying branch evidence without changing within-sector tilt distributions leaves the result unchanged. A support-threshold crossing can add a newly reliable sector and change the estimate; mixed orientations within one sector remain pixel-weighted.
@@ -1191,7 +1191,7 @@ Measurements
      - Equal-angular-sector mean of the coherence-weighted absolute axial difference between the local fiber axis and the outward radial spoke at the same pixel, over detected-object pixels in the sparse ring (dense_end .. sparse_end radii) region. Reported in degrees in [0, 90]; 0 = locally radial and 90 = locally tangential. Each occupied 10-degree angular sector contributes equally. For a fixed set of reliable sectors, multiplying branch evidence without changing within-sector tilt distributions leaves the result unchanged. A support-threshold crossing can add a newly reliable sector and change the estimate; mixed orientations within one sector remain pixel-weighted.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardTurning-Mask-Overall``
-     - Equal-angular-sector mean radial derivative magnitude of the radial-relative fiber tilt, over detected-object pixels in the full symmetric disk (0 .. symmetric_radius) region. Reported in degrees per pixel. 0 means the tilt stays constant while moving outward; larger values mean the local fiber field rotates relative to its radial spoke. The aggregation gives each occupied 10-degree angular sector equal weight. This is a field-level curvature measure, not parent-to-daughter branch tracking.
+     - Equal-angular-sector mean radial derivative magnitude of the radial-relative fiber tilt, over detected-object pixels in the canonical Overall annulus (core_end .. sparse_end). Reported in degrees per pixel. 0 means the tilt stays constant while moving outward; larger values mean the local fiber field rotates relative to its radial spoke. The aggregation gives each occupied 10-degree angular sector equal weight. This is a field-level curvature measure, not parent-to-daughter branch tracking.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_OutwardTurning-Mask-Dense``
      - Equal-angular-sector mean radial derivative magnitude of the radial-relative fiber tilt, over detected-object pixels in the dense ring (core_end .. dense_end radii) region. Reported in degrees per pixel. 0 means the tilt stays constant while moving outward; larger values mean the local fiber field rotates relative to its radial spoke. The aggregation gives each occupied 10-degree angular sector equal weight. This is a field-level curvature measure, not parent-to-daughter branch tracking.
@@ -1200,7 +1200,7 @@ Measurements
      - Equal-angular-sector mean radial derivative magnitude of the radial-relative fiber tilt, over detected-object pixels in the sparse ring (dense_end .. sparse_end radii) region. Reported in degrees per pixel. 0 means the tilt stays constant while moving outward; larger values mean the local fiber field rotates relative to its radial spoke. The aggregation gives each occupied 10-degree angular sector equal weight. This is a field-level curvature measure, not parent-to-daughter branch tracking.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_RadialSectorSupport-Mask-Overall``
-     - Fraction of the 36 fixed 10-degree sectors in the full symmetric disk (0 .. symmetric_radius) region that contain at least three detected-structure pixels with structure-tensor coherence C >= 0.15. Dimensionless in [0, 1]. This is a density-sensitive quality diagnostic for interpreting radial tilt and outward turning, not an orientation phenotype.
+     - Fraction of the 36 fixed 10-degree sectors in the canonical Overall annulus (core_end .. sparse_end) that contain at least three detected-structure pixels with structure-tensor coherence C >= 0.15. Dimensionless in [0, 1]. This is a density-sensitive quality diagnostic for interpreting radial tilt and outward turning, not an orientation phenotype.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_RadialSectorSupport-Mask-Dense``
      - Fraction of the 36 fixed 10-degree sectors in the dense ring (core_end .. dense_end radii) region that contain at least three detected-structure pixels with structure-tensor coherence C >= 0.15. Dimensionless in [0, 1]. This is a density-sensitive quality diagnostic for interpreting radial tilt and outward turning, not an orientation phenotype.
@@ -1209,16 +1209,16 @@ Measurements
      - Fraction of the 36 fixed 10-degree sectors in the sparse ring (dense_end .. sparse_end radii) region that contain at least three detected-structure pixels with structure-tensor coherence C >= 0.15. Dimensionless in [0, 1]. This is a density-sensitive quality diagnostic for interpreting radial tilt and outward turning, not an orientation phenotype.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_LongRangeRotation-Mask-Overall``
-     - Equal-cell mean absolute seam-safe axial change between matching 10-degree sectors in configured-width Sholl-style annular bands (8 pixels by default) whose centres are separated by the configured long-range lag (16 pixels by default). Ring pairs are assigned to the core-excluded symmetric region (core_end .. min(sparse_end, symmetric_radius)) region by their midpoint. Reported in degrees in [0, 90]. Annular bands begin outside the inferred inoculum core. Each reliable ring-sector comparison contributes equally, so multiplying same-orientation branch evidence within an already reliable cell does not change its contribution.
+     - Equal-cell mean absolute seam-safe axial change between matching 10-degree sectors in configured-width Sholl-style annular bands (8 pixels by default) whose centres are separated by the configured long-range lag (16 pixels by default). Ring pairs are assigned to the canonical Overall annulus (core_end .. sparse_end) region by their midpoint. Reported in degrees in [0, 90]. Annular bands begin outside the operational CoreZone. Each reliable ring-sector comparison contributes equally, so multiplying same-orientation branch evidence within an already reliable cell does not change its contribution.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_LongRangeRotation-Mask-Dense``
-     - Equal-cell mean absolute seam-safe axial change between matching 10-degree sectors in configured-width Sholl-style annular bands (8 pixels by default) whose centres are separated by the configured long-range lag (16 pixels by default). Ring pairs are assigned to the dense ring (core_end .. dense_end radii) region by their midpoint. Reported in degrees in [0, 90]. Annular bands begin outside the inferred inoculum core. Each reliable ring-sector comparison contributes equally, so multiplying same-orientation branch evidence within an already reliable cell does not change its contribution.
+     - Equal-cell mean absolute seam-safe axial change between matching 10-degree sectors in configured-width Sholl-style annular bands (8 pixels by default) whose centres are separated by the configured long-range lag (16 pixels by default). Ring pairs are assigned to the dense ring (core_end .. dense_end radii) region by their midpoint. Reported in degrees in [0, 90]. Annular bands begin outside the operational CoreZone. Each reliable ring-sector comparison contributes equally, so multiplying same-orientation branch evidence within an already reliable cell does not change its contribution.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_LongRangeRotation-Mask-Sparse``
-     - Equal-cell mean absolute seam-safe axial change between matching 10-degree sectors in configured-width Sholl-style annular bands (8 pixels by default) whose centres are separated by the configured long-range lag (16 pixels by default). Ring pairs are assigned to the sparse ring (dense_end .. sparse_end radii) region by their midpoint. Reported in degrees in [0, 90]. Annular bands begin outside the inferred inoculum core. Each reliable ring-sector comparison contributes equally, so multiplying same-orientation branch evidence within an already reliable cell does not change its contribution.
+     - Equal-cell mean absolute seam-safe axial change between matching 10-degree sectors in configured-width Sholl-style annular bands (8 pixels by default) whose centres are separated by the configured long-range lag (16 pixels by default). Ring pairs are assigned to the sparse ring (dense_end .. sparse_end radii) region by their midpoint. Reported in degrees in [0, 90]. Annular bands begin outside the operational CoreZone. Each reliable ring-sector comparison contributes equally, so multiplying same-orientation branch evidence within an already reliable cell does not change its contribution.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_SignedLongRangeRotation-Mask-Overall``
-     - Signed counterpart of LongRangeRotation over the core-excluded symmetric region (core_end .. min(sparse_end, symmetric_radius)) region, in degrees in [-90, 90]. Positive means the radial-relative fiber axis rotates clockwise and negative means counterclockwise while moving outward in image coordinates. Opposing reliable ring-sector changes cancel in this directional summary; inspect the absolute metric and support alongside it.
+     - Signed counterpart of LongRangeRotation over the canonical Overall annulus (core_end .. sparse_end), in degrees in [-90, 90]. Positive means the radial-relative fiber axis rotates clockwise and negative means counterclockwise while moving outward in image coordinates. Opposing reliable ring-sector changes cancel in this directional summary; inspect the absolute metric and support alongside it.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_SignedLongRangeRotation-Mask-Dense``
      - Signed counterpart of LongRangeRotation over the dense ring (core_end .. dense_end radii) region, in degrees in [-90, 90]. Positive means the radial-relative fiber axis rotates clockwise and negative means counterclockwise while moving outward in image coordinates. Opposing reliable ring-sector changes cancel in this directional summary; inspect the absolute metric and support alongside it.
@@ -1227,7 +1227,7 @@ Measurements
      - Signed counterpart of LongRangeRotation over the sparse ring (dense_end .. sparse_end radii) region, in degrees in [-90, 90]. Positive means the radial-relative fiber axis rotates clockwise and negative means counterclockwise while moving outward in image coordinates. Opposing reliable ring-sector changes cancel in this directional summary; inspect the absolute metric and support alongside it.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_LongRangeRotationSupport-Mask-Overall``
-     - Fraction of fixed-lag ring-sector comparison cells assigned to the core-excluded symmetric region (core_end .. min(sparse_end, symmetric_radius)) region that have reliable orientation estimates at both radii. Dimensionless in [0, 1]. This is a density-sensitive quality diagnostic, not an orientation phenotype.
+     - Fraction of fixed-lag ring-sector comparison cells assigned to the canonical Overall annulus (core_end .. sparse_end) that has reliable orientation estimates at both radii. Dimensionless in [0, 1]. This is a density-sensitive quality diagnostic, not an orientation phenotype.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
    * - ``OrientZones_LongRangeRotationSupport-Mask-Dense``
      - Fraction of fixed-lag ring-sector comparison cells assigned to the dense ring (core_end .. dense_end radii) region that have reliable orientation estimates at both radii. Dimensionless in [0, 1]. This is a density-sensitive quality diagnostic, not an orientation phenotype.
@@ -1244,6 +1244,39 @@ Measurements
    * - ``OrientZones_LongRangeRotationSupport-Mask-DenseToSparse``
      - Fraction of the 36 fixed 10-degree sectors with reliable radial-relative orientation estimates in both the Dense and Sparse zones. Dimensionless in [0, 1]. This is a density-sensitive quality diagnostic, not an orientation phenotype.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``OrientZones_ZoneSegmentationMethodCode``
+     - Zone resolver provenance: 0 is legacy colony-ness, 1 is exact two-change Method B, 2 is collapsed one-change Method B, and 4 is canonical failure with missing zone measurements. This is a dimensionless categorical code.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``OrientZones_CoreZoneEndRadius``
+     - Outer radius in pixels of the operational CoreZone, which includes the inoculum and any inner region without resolvable branch orientation.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``OrientZones_DenseRadius``
+     - Outer radius in pixels of the Method B DenseZone. It equals CoreZoneEndRadius for a collapsed one-change solution.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``OrientZones_OuterRadius``
+     - Exact outer measurement radius in pixels selected by outer_zone_percentile.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``OrientZones_FullExtentRadius``
+     - Maximum target-mask radius in pixels before percentile clipping.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``OrientZones_OuterZonePercentile``
+     - Configured target-mask radial percentile used as the canonical outer measurement boundary. This is a dimensionless percentage.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``OrientZones_OuterZoneRetainedMaskFraction``
+     - Fraction of target-mask pixels at or inside the configured outer measurement boundary. This is a dimensionless fraction in [0, 1].
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``OrientZones_ZoneSupportedRingFraction``
+     - Fraction of center-origin rings satisfying the bridged Method B crossing, resultant, and coherence support gate.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``OrientZones_ZoneChangePointObjective``
+     - Within-segment sum of squared error for the selected exact or collapsed Method B partition in dimensionless standardized-feature units.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``OrientZones_ZoneChangePointRingCount``
+     - Number of center-origin Sholl-style rings fitted by Method B.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``OrientZones_ZoneChangePointMinimumSegment``
+     - Configured minimum number of rings in each Method B segment.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
 
 .. _measurement-info-orientation-zone-primary:
 
@@ -1257,40 +1290,40 @@ Measurements
      - Description
      - Type
    * - ``OrientZones_OutwardRotationSustainedPeak-Mask-Overall``
-     - Largest rolling-median absolute cumulative rotation across consecutive supported literal skeleton-ring crossings from the inferred inoculum boundary through the full detected object extent. Reported in degrees, nonnegative with no fixed upper bound. The default three-ring window rejects a one-ring spike; NaN means no complete supported window.
+     - Largest rolling-median absolute cumulative rotation across consecutive supported literal skeleton-ring crossings from the CoreZone boundary through the configured SparseZone outer boundary. Reported in degrees, nonnegative with no fixed upper bound. The default three-ring window rejects a one-ring spike; NaN means no complete supported window.
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``OrientZones_OutwardRotationSustainedPeak-Mask-Dense``
-     - Largest rolling-median absolute cumulative rotation across consecutive supported literal skeleton-ring crossings from the inferred inoculum boundary to dense_end. Reported in degrees, nonnegative with no fixed upper bound. The default three-ring window rejects a one-ring spike; NaN means no complete supported window.
+     - Largest rolling-median absolute cumulative rotation across consecutive supported literal skeleton-ring crossings from the CoreZone boundary to dense_end. Reported in degrees, nonnegative with no fixed upper bound. The default three-ring window rejects a one-ring spike; NaN means no complete supported window.
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``OrientZones_OutwardRotationSustainedPeak-Mask-Sparse``
-     - Largest rolling-median absolute cumulative rotation across consecutive supported literal skeleton-ring crossings from dense_end through the full detected object extent. Reported in degrees, nonnegative with no fixed upper bound. The default three-ring window rejects a one-ring spike; NaN means no complete supported window. Cumulative rotation is not rebased at dense_end, so this Sparse magnitude may include rotation accumulated while the profile was in Dense.
+     - Largest rolling-median absolute cumulative rotation across consecutive supported literal skeleton-ring crossings from dense_end through the configured SparseZone outer boundary. Reported in degrees, nonnegative with no fixed upper bound. The default three-ring window rejects a one-ring spike; NaN means no complete supported window. Cumulative rotation is not rebased at dense_end, so this Sparse magnitude may include rotation accumulated while the profile was in Dense.
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``OrientZones_OutwardRotationNet-Mask-Overall``
-     - Outer endpoint median minus inner endpoint median of cumulative literal skeleton-ring rotation along the longest supported run from the inferred inoculum boundary through the full detected object extent. Reported in signed degrees with no fixed bounds; positive is clockwise and negative is counterclockwise while moving outward in image coordinates. NaN means the run is shorter than the configured minimum.
+     - Outer endpoint median minus inner endpoint median of cumulative literal skeleton-ring rotation along the longest supported run from the inferred inoculum boundary through the configured SparseZone outer boundary. Reported in signed degrees with no fixed bounds; positive is clockwise and negative is counterclockwise while moving outward in image coordinates. NaN means the run is shorter than the configured minimum.
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``OrientZones_OutwardRotationNet-Mask-Dense``
      - Outer endpoint median minus inner endpoint median of cumulative literal skeleton-ring rotation along the longest supported run from the inferred inoculum boundary to dense_end. Reported in signed degrees with no fixed bounds; positive is clockwise and negative is counterclockwise while moving outward in image coordinates. NaN means the run is shorter than the configured minimum.
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``OrientZones_OutwardRotationNet-Mask-Sparse``
-     - Outer endpoint median minus inner endpoint median of cumulative literal skeleton-ring rotation along the longest supported run from dense_end through the full detected object extent. Reported in signed degrees with no fixed bounds; positive is clockwise and negative is counterclockwise while moving outward in image coordinates. NaN means the run is shorter than the configured minimum. Because this is a difference, cumulative rotation carried into Sparse cancels from the result.
+     - Outer endpoint median minus inner endpoint median of cumulative literal skeleton-ring rotation along the longest supported run from dense_end through the configured SparseZone outer boundary. Reported in signed degrees with no fixed bounds; positive is clockwise and negative is counterclockwise while moving outward in image coordinates. NaN means the run is shorter than the configured minimum. Because this is a difference, cumulative rotation carried into Sparse cancels from the result.
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``OrientZones_OutwardRotationRate-Mask-Overall``
-     - Median of all pairwise cumulative-rotation slopes along the longest supported literal skeleton-ring run from the inferred inoculum boundary through the full detected object extent. Reported in signed degrees per pixel; positive is clockwise and negative is counterclockwise while moving outward in image coordinates. NaN means the run is shorter than the configured minimum.
+     - Median of all pairwise cumulative-rotation slopes along the longest supported literal skeleton-ring run from the CoreZone boundary through the configured SparseZone outer boundary. Reported in signed degrees per pixel; positive is clockwise and negative is counterclockwise while moving outward in image coordinates. NaN means the run is shorter than the configured minimum.
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``OrientZones_OutwardRotationRate-Mask-Dense``
-     - Median of all pairwise cumulative-rotation slopes along the longest supported literal skeleton-ring run from the inferred inoculum boundary to dense_end. Reported in signed degrees per pixel; positive is clockwise and negative is counterclockwise while moving outward in image coordinates. NaN means the run is shorter than the configured minimum.
+     - Median of all pairwise cumulative-rotation slopes along the longest supported literal skeleton-ring run from the CoreZone boundary to dense_end. Reported in signed degrees per pixel; positive is clockwise and negative is counterclockwise while moving outward in image coordinates. NaN means the run is shorter than the configured minimum.
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``OrientZones_OutwardRotationRate-Mask-Sparse``
-     - Median of all pairwise cumulative-rotation slopes along the longest supported literal skeleton-ring run from dense_end through the full detected object extent. Reported in signed degrees per pixel; positive is clockwise and negative is counterclockwise while moving outward in image coordinates. NaN means the run is shorter than the configured minimum. The slope is unchanged by cumulative rotation carried into Sparse.
+     - Median of all pairwise cumulative-rotation slopes along the longest supported literal skeleton-ring run from dense_end through the full detected outer boundary. Reported in signed degrees per pixel; positive is clockwise and negative is counterclockwise while moving outward in image coordinates. NaN means the run is shorter than the configured minimum. The slope is unchanged by cumulative rotation carried into Sparse.
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``OrientZones_OutwardRotationConsistency-Mask-Overall``
-     - Absolute Kendall tau-b association between radius and cumulative literal skeleton-ring rotation along the longest supported run from the inferred inoculum boundary through the full detected object extent. Dimensionless in [0, 1]; 1 is fully monotonic and values near 0 indicate reversals, plateaus, or no ordered trend. Direction is carried by the rotation rate. NaN means the run is shorter than the configured minimum.
+     - Absolute Kendall tau-b association between radius and cumulative literal skeleton-ring rotation along the longest supported run from the inferred inoculum boundary through the configured SparseZone outer boundary. Dimensionless in [0, 1]; 1 is fully monotonic and values near 0 indicate reversals, plateaus, or no ordered trend. Direction is carried by the rotation rate. NaN means the run is shorter than the configured minimum.
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``OrientZones_OutwardRotationConsistency-Mask-Dense``
      - Absolute Kendall tau-b association between radius and cumulative literal skeleton-ring rotation along the longest supported run from the inferred inoculum boundary to dense_end. Dimensionless in [0, 1]; 1 is fully monotonic and values near 0 indicate reversals, plateaus, or no ordered trend. Direction is carried by the rotation rate. NaN means the run is shorter than the configured minimum.
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``OrientZones_OutwardRotationConsistency-Mask-Sparse``
-     - Absolute Kendall tau-b association between radius and cumulative literal skeleton-ring rotation along the longest supported run from dense_end through the full detected object extent. Dimensionless in [0, 1]; 1 is fully monotonic and values near 0 indicate reversals, plateaus, or no ordered trend. Direction is carried by the rotation rate, and the rank association is unchanged by rotation carried into Sparse. NaN means the run is shorter than the configured minimum.
+     - Absolute Kendall tau-b association between radius and cumulative literal skeleton-ring rotation along the longest supported run from dense_end through the configured SparseZone outer boundary. Dimensionless in [0, 1]; 1 is fully monotonic and values near 0 indicate reversals, plateaus, or no ordered trend. Direction is carried by the rotation rate, and the rank association is unchanged by rotation carried into Sparse. NaN means the run is shorter than the configured minimum.
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
 
 .. _measurement-info-symmetric-zones:
@@ -1308,7 +1341,7 @@ Measurements
      - Radius of the dense inoculum core, determined by PELT changepoint detection on the radial mask-density profile centered on the inoculum. Growth measurements are reported relative to this boundary.
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``SymZones_SymmetricRadius``
-     - Radial distance from the inoculum centroid at which colony growth ceases to be angularly uniform. Computed as the first radius past the core where the smoothed per-annulus circular mean resultant length of mask-boundary pixels exceeds the symmetry threshold. Equals the colony outer envelope when growth remains symmetric throughout.
+     - Radial distance from the inoculum centroid at which colony growth ceases to be angularly uniform. Computed as the first radius past the core where the smoothed fraction of occupied angular sectors drops below the symmetry threshold. Equals the colony outer envelope when growth remains symmetric throughout.
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``SymZones_MeanExpansion``
      - Mean distance of mask-boundary pixels from the inoculum centroid, measured from the core boundary outward. Captures the typical radial extent of growth past the inoculum, averaged over all angular directions.
@@ -1317,22 +1350,22 @@ Measurements
      - Maximum distance of any mask pixel from the inoculum centroid, measured from the core boundary outward. Captures the farthest extent of growth past the inoculum.
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``SymZones_CoreEndRadius``
-     - Mean radius of the inoculum core boundary derived from the per-angle bright/background ratio walk. Each of 360 1° angular sectors finds the outer edge of the contiguous core run (bright fraction >= tau_core); the reported value is the mean across sectors. Compare with CoreRadius (the global PELT changepoint) — close agreement indicates a well-formed core.
+     - Outer radius in pixels of CoreZone. Canonical Method B defines CoreZone as the inoculum plus any inner region without resolvable branch orientation. With legacy_mode=True, the historical colony-ness threshold defines this boundary. CoreRadius remains the independent mask-density PELT estimate.
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``SymZones_DenseEndRadius``
-     - Mean outer radius of the dense branching zone, where mask-bright pixels dominate (bright fraction >= tau_sparse). Per-angle radii are capped at the SymmetricRadius and angularly median-smoothed before averaging.
+     - Outer radius in pixels of DenseZone. Canonical Method B uses its second change point; a collapsed one-change solution makes this equal to CoreEndRadius. Legacy mode uses the historical colony-ness threshold.
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``SymZones_SparseEndRadius``
-     - Mean outer radius of the sparse branching zone (= colony envelope inside the symmetric growth front). Equals min(objmask outer envelope, SymmetricRadius) per angle, averaged across 360 sectors.
+     - Outer radius in pixels of SparseZone. Canonical Method B uses the exact target-mask radius selected by outer_zone_percentile; legacy mode uses the historical colony-ness and symmetric-envelope boundary.
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``SymZones_CoreArea``
-     - Pixel^2 area of the inoculum core zone, integrated across the 360-sector polar polygon defined by the per-angle core radii.
+     - Pixel-squared area of CoreZone using the concentric CoreEndRadius circle.
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``SymZones_DenseArea``
-     - Pixel^2 area of the dense branching zone, the annular region between the per-angle core boundary and dense-branching boundary.
+     - Pixel-squared area of DenseZone between CoreEndRadius and DenseEndRadius. It is zero for a collapsed canonical solution.
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``SymZones_SparseArea``
-     - Pixel^2 area of the sparse branching zone, the annular region between the per-angle dense boundary and the symmetric-envelope outer boundary.
+     - Pixel-squared area of SparseZone between DenseEndRadius and SparseEndRadius.
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
 
 .. _measurement-info-texture:

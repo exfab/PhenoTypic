@@ -607,6 +607,12 @@
 <span class="sd">``OrientZones_&lt;Metric&gt;-Mask-&lt;Region&gt;``. Region is usually one of</span>
 <span class="sd">{Overall, Dense, Sparse}; longer-range rotation also includes the paired</span>
 <span class="sd">DenseToSparse transition.</span>
+
+<span class="sd">Canonical geometry excludes CoreZone from every orientation estimate:</span>
+<span class="sd">Overall is ``CoreZoneEndRadius .. OuterRadius``, Dense is</span>
+<span class="sd">``CoreZoneEndRadius .. DenseRadius``, and Sparse is</span>
+<span class="sd">``DenseRadius .. OuterRadius``. Descriptions below use those domains.</span>
+<span class="sd">``legacy_mode=True`` retains the historical selectors.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
@@ -618,7 +624,7 @@
 <div class="viewcode-block" id="ORIENTATION_ZONE_PRIMARY">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.ORIENTATION_ZONE_PRIMARY.html#phenotypic.schema.ORIENTATION_ZONE_PRIMARY">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ORIENTATION_ZONE_PRIMARY</span><span class="p">(</span><span class="n">DescriptiveTrait</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Primary full-length outward-rotation traits by radial zone.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Primary outward-rotation traits over resolved branch zones.&quot;&quot;&quot;</span>
 
 <div class="viewcode-block" id="ORIENTATION_ZONE_PRIMARY.category">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.schema.ORIENTATION_ZONE_PRIMARY.html#phenotypic.schema.ORIENTATION_ZONE_PRIMARY.category">[docs]</a>
@@ -630,15 +636,15 @@
     <span class="n">OUTWARD_ROTATION_SUSTAINED_PEAK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationSustainedPeak-Mask-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Largest rolling-median absolute cumulative rotation across consecutive &quot;</span>
-        <span class="s2">&quot;supported literal skeleton-ring crossings from the inferred inoculum &quot;</span>
-        <span class="s2">&quot;boundary through the full detected object extent. Reported in degrees, &quot;</span>
+        <span class="s2">&quot;supported literal skeleton-ring crossings from the CoreZone &quot;</span>
+        <span class="s2">&quot;boundary through the configured SparseZone outer boundary. Reported in degrees, &quot;</span>
         <span class="s2">&quot;nonnegative with no fixed upper bound. The default three-ring window &quot;</span>
         <span class="s2">&quot;rejects a one-ring spike; NaN means no complete supported window.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_SUSTAINED_PEAK_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationSustainedPeak-Mask-Dense&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Largest rolling-median absolute cumulative rotation across consecutive &quot;</span>
-        <span class="s2">&quot;supported literal skeleton-ring crossings from the inferred inoculum &quot;</span>
+        <span class="s2">&quot;supported literal skeleton-ring crossings from the CoreZone &quot;</span>
         <span class="s2">&quot;boundary to dense_end. Reported in degrees, nonnegative with no fixed &quot;</span>
         <span class="s2">&quot;upper bound. The default three-ring window rejects a one-ring spike; &quot;</span>
         <span class="s2">&quot;NaN means no complete supported window.&quot;</span><span class="p">,</span>
@@ -647,7 +653,7 @@
         <span class="s2">&quot;OutwardRotationSustainedPeak-Mask-Sparse&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Largest rolling-median absolute cumulative rotation across consecutive &quot;</span>
         <span class="s2">&quot;supported literal skeleton-ring crossings from dense_end through the &quot;</span>
-        <span class="s2">&quot;full detected object extent. Reported in degrees, nonnegative with no &quot;</span>
+        <span class="s2">&quot;configured SparseZone outer boundary. Reported in degrees, nonnegative with no &quot;</span>
         <span class="s2">&quot;fixed upper bound. The default three-ring window rejects a one-ring &quot;</span>
         <span class="s2">&quot;spike; NaN means no complete supported window. Cumulative rotation is &quot;</span>
         <span class="s2">&quot;not rebased at dense_end, so this Sparse magnitude may include rotation &quot;</span>
@@ -657,7 +663,7 @@
         <span class="s2">&quot;OutwardRotationNet-Mask-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Outer endpoint median minus inner endpoint median of cumulative literal &quot;</span>
         <span class="s2">&quot;skeleton-ring rotation along the longest supported run from the inferred &quot;</span>
-        <span class="s2">&quot;inoculum boundary through the full detected object extent. Reported in &quot;</span>
+        <span class="s2">&quot;inoculum boundary through the configured SparseZone outer boundary. Reported in &quot;</span>
         <span class="s2">&quot;signed degrees with no fixed bounds; positive is clockwise and negative &quot;</span>
         <span class="s2">&quot;is counterclockwise while moving outward in image coordinates. NaN means &quot;</span>
         <span class="s2">&quot;the run is shorter than the configured minimum.&quot;</span><span class="p">,</span>
@@ -675,7 +681,7 @@
         <span class="s2">&quot;OutwardRotationNet-Mask-Sparse&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Outer endpoint median minus inner endpoint median of cumulative literal &quot;</span>
         <span class="s2">&quot;skeleton-ring rotation along the longest supported run from dense_end &quot;</span>
-        <span class="s2">&quot;through the full detected object extent. Reported in signed degrees with &quot;</span>
+        <span class="s2">&quot;through the configured SparseZone outer boundary. Reported in signed degrees with &quot;</span>
         <span class="s2">&quot;no fixed bounds; positive is clockwise and negative is counterclockwise &quot;</span>
         <span class="s2">&quot;while moving outward in image coordinates. NaN means the run is shorter &quot;</span>
         <span class="s2">&quot;than the configured minimum. Because this is a difference, cumulative &quot;</span>
@@ -684,8 +690,8 @@
     <span class="n">OUTWARD_ROTATION_RATE_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationRate-Mask-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Median of all pairwise cumulative-rotation slopes along the longest &quot;</span>
-        <span class="s2">&quot;supported literal skeleton-ring run from the inferred inoculum boundary &quot;</span>
-        <span class="s2">&quot;through the full detected object extent. Reported in signed degrees per &quot;</span>
+        <span class="s2">&quot;supported literal skeleton-ring run from the CoreZone boundary &quot;</span>
+        <span class="s2">&quot;through the configured SparseZone outer boundary. Reported in signed degrees per &quot;</span>
         <span class="s2">&quot;pixel; positive is clockwise and negative is counterclockwise while &quot;</span>
         <span class="s2">&quot;moving outward in image coordinates. NaN means the run is shorter than &quot;</span>
         <span class="s2">&quot;the configured minimum.&quot;</span><span class="p">,</span>
@@ -693,7 +699,7 @@
     <span class="n">OUTWARD_ROTATION_RATE_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationRate-Mask-Dense&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Median of all pairwise cumulative-rotation slopes along the longest &quot;</span>
-        <span class="s2">&quot;supported literal skeleton-ring run from the inferred inoculum boundary &quot;</span>
+        <span class="s2">&quot;supported literal skeleton-ring run from the CoreZone boundary &quot;</span>
         <span class="s2">&quot;to dense_end. Reported in signed degrees per pixel; positive is clockwise &quot;</span>
         <span class="s2">&quot;and negative is counterclockwise while moving outward in image &quot;</span>
         <span class="s2">&quot;coordinates. NaN means the run is shorter than the configured minimum.&quot;</span><span class="p">,</span>
@@ -702,7 +708,7 @@
         <span class="s2">&quot;OutwardRotationRate-Mask-Sparse&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Median of all pairwise cumulative-rotation slopes along the longest &quot;</span>
         <span class="s2">&quot;supported literal skeleton-ring run from dense_end through the full &quot;</span>
-        <span class="s2">&quot;detected object extent. Reported in signed degrees per pixel; positive &quot;</span>
+        <span class="s2">&quot;detected outer boundary. Reported in signed degrees per pixel; positive &quot;</span>
         <span class="s2">&quot;is clockwise and negative is counterclockwise while moving outward in &quot;</span>
         <span class="s2">&quot;image coordinates. NaN means the run is shorter than the configured &quot;</span>
         <span class="s2">&quot;minimum. The slope is unchanged by cumulative rotation carried into &quot;</span>
@@ -712,7 +718,7 @@
         <span class="s2">&quot;OutwardRotationConsistency-Mask-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Absolute Kendall tau-b association between radius and cumulative literal &quot;</span>
         <span class="s2">&quot;skeleton-ring rotation along the longest supported run from the inferred &quot;</span>
-        <span class="s2">&quot;inoculum boundary through the full detected object extent. Dimensionless &quot;</span>
+        <span class="s2">&quot;inoculum boundary through the configured SparseZone outer boundary. Dimensionless &quot;</span>
         <span class="s2">&quot;in [0, 1]; 1 is fully monotonic and values near 0 indicate reversals, &quot;</span>
         <span class="s2">&quot;plateaus, or no ordered trend. Direction is carried by the rotation &quot;</span>
         <span class="s2">&quot;rate. NaN means the run is shorter than the configured minimum.&quot;</span><span class="p">,</span>
@@ -730,7 +736,7 @@
         <span class="s2">&quot;OutwardRotationConsistency-Mask-Sparse&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Absolute Kendall tau-b association between radius and cumulative literal &quot;</span>
         <span class="s2">&quot;skeleton-ring rotation along the longest supported run from dense_end &quot;</span>
-        <span class="s2">&quot;through the full detected object extent. Dimensionless in [0, 1]; 1 is &quot;</span>
+        <span class="s2">&quot;through the configured SparseZone outer boundary. Dimensionless in [0, 1]; 1 is &quot;</span>
         <span class="s2">&quot;fully monotonic and values near 0 indicate reversals, plateaus, or no &quot;</span>
         <span class="s2">&quot;ordered trend. Direction is carried by the rotation rate, and the rank &quot;</span>
         <span class="s2">&quot;association is unchanged by rotation carried into Sparse. NaN means the &quot;</span>
@@ -744,10 +750,10 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">ORIENTATION_ZONE_DIAGNOSTIC</span><span class="p">(</span><span class="n">QualityInfo</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Opt-in validation, comparator, and legacy orientation-zone columns.</span>
 
-<span class="sd">    The literal skeleton-ring diagnostics use the detected-object mask from the</span>
-<span class="sd">    inferred inoculum boundary through the full object extent. The retained</span>
-<span class="sd">    legacy field diagnostics use the structure-tensor field in symmetric-radius</span>
-<span class="sd">    zones and include ``Radial`` (all tile pixels) and ``Mask`` variants. See</span>
+<span class="sd">    Canonical diagnostics use the shared CoreZone / DenseZone / SparseZone</span>
+<span class="sd">    geometry. ``Radial`` variants use all tile pixels in the corresponding</span>
+<span class="sd">    annulus; ``Mask`` variants use target-object pixels. Explicit legacy mode</span>
+<span class="sd">    retains the historical symmetric-radius selectors. See</span>
 <span class="sd">    :class:`MeasureOrientationZones` for parameters and method.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
@@ -761,7 +767,7 @@
     <span class="n">OUTWARD_ROTATION_RAW_PEAK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationRawPeak-Mask-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Largest absolute cumulative literal skeleton-ring rotation from the &quot;</span>
-        <span class="s2">&quot;inferred inoculum boundary through the full detected object extent. &quot;</span>
+        <span class="s2">&quot;CoreZone boundary through the configured SparseZone outer boundary. &quot;</span>
         <span class="s2">&quot;Reported in degrees, nonnegative with no fixed upper bound. This raw &quot;</span>
         <span class="s2">&quot;maximum is outlier-sensitive and should be compared with the primary &quot;</span>
         <span class="s2">&quot;sustained peak.&quot;</span><span class="p">,</span>
@@ -769,7 +775,7 @@
     <span class="n">OUTWARD_ROTATION_RAW_PEAK_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationRawPeak-Mask-Dense&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Largest absolute cumulative literal skeleton-ring rotation from the &quot;</span>
-        <span class="s2">&quot;inferred inoculum boundary to dense_end. Reported in degrees, &quot;</span>
+        <span class="s2">&quot;CoreZone boundary to dense_end. Reported in degrees, &quot;</span>
         <span class="s2">&quot;nonnegative with no fixed upper bound. This raw maximum is &quot;</span>
         <span class="s2">&quot;outlier-sensitive and should be compared with the primary sustained &quot;</span>
         <span class="s2">&quot;peak.&quot;</span><span class="p">,</span>
@@ -777,7 +783,7 @@
     <span class="n">OUTWARD_ROTATION_RAW_PEAK_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationRawPeak-Mask-Sparse&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Largest absolute cumulative literal skeleton-ring rotation from &quot;</span>
-        <span class="s2">&quot;dense_end through the full detected object extent. Reported in degrees, &quot;</span>
+        <span class="s2">&quot;dense_end through the configured SparseZone outer boundary. Reported in degrees, &quot;</span>
         <span class="s2">&quot;nonnegative with no fixed upper bound. This raw maximum is &quot;</span>
         <span class="s2">&quot;outlier-sensitive. Cumulative rotation is not rebased at dense_end, so &quot;</span>
         <span class="s2">&quot;this Sparse magnitude may include rotation accumulated while the profile &quot;</span>
@@ -786,22 +792,22 @@
     <span class="n">OUTWARD_ROTATION_P90_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationP90-Mask-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;90th percentile of absolute cumulative literal skeleton-ring rotation &quot;</span>
-        <span class="s2">&quot;over supported rings from the inferred inoculum boundary through the &quot;</span>
-        <span class="s2">&quot;full detected object extent. Reported in degrees, nonnegative with no &quot;</span>
+        <span class="s2">&quot;over supported rings from the CoreZone boundary through the &quot;</span>
+        <span class="s2">&quot;configured SparseZone outer boundary. Reported in degrees, nonnegative with no &quot;</span>
         <span class="s2">&quot;fixed upper bound. This validation comparator ignores radial order.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_P90_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationP90-Mask-Dense&quot;</span><span class="p">,</span>
         <span class="s2">&quot;90th percentile of absolute cumulative literal skeleton-ring rotation &quot;</span>
-        <span class="s2">&quot;over supported rings from the inferred inoculum boundary to dense_end. &quot;</span>
+        <span class="s2">&quot;over supported rings from the CoreZone boundary to dense_end. &quot;</span>
         <span class="s2">&quot;Reported in degrees, nonnegative with no fixed upper bound. This &quot;</span>
         <span class="s2">&quot;validation comparator ignores radial order.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_P90_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationP90-Mask-Sparse&quot;</span><span class="p">,</span>
         <span class="s2">&quot;90th percentile of absolute cumulative literal skeleton-ring rotation &quot;</span>
-        <span class="s2">&quot;over supported rings from dense_end through the full detected object &quot;</span>
-        <span class="s2">&quot;extent. Reported in degrees, nonnegative with no fixed upper bound. This &quot;</span>
+        <span class="s2">&quot;over supported rings from dense_end through the configured SparseZone &quot;</span>
+        <span class="s2">&quot;outer boundary. Reported in degrees, nonnegative with no fixed upper bound. This &quot;</span>
         <span class="s2">&quot;comparator ignores radial order. Cumulative rotation is not rebased at &quot;</span>
         <span class="s2">&quot;dense_end, so this Sparse magnitude may include rotation accumulated &quot;</span>
         <span class="s2">&quot;while the profile was in Dense.&quot;</span><span class="p">,</span>
@@ -809,23 +815,23 @@
     <span class="n">OUTWARD_ROTATION_P95_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationP95-Mask-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;95th percentile of absolute cumulative literal skeleton-ring rotation &quot;</span>
-        <span class="s2">&quot;over supported rings from the inferred inoculum boundary through the &quot;</span>
-        <span class="s2">&quot;full detected object extent. Reported in degrees, nonnegative with no &quot;</span>
+        <span class="s2">&quot;over supported rings from the CoreZone boundary through the &quot;</span>
+        <span class="s2">&quot;configured SparseZone outer boundary. Reported in degrees, nonnegative with no &quot;</span>
         <span class="s2">&quot;fixed upper bound. With few supported rings it remains close to the raw &quot;</span>
         <span class="s2">&quot;maximum and is not the primary robust metric.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_P95_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationP95-Mask-Dense&quot;</span><span class="p">,</span>
         <span class="s2">&quot;95th percentile of absolute cumulative literal skeleton-ring rotation &quot;</span>
-        <span class="s2">&quot;over supported rings from the inferred inoculum boundary to dense_end. &quot;</span>
+        <span class="s2">&quot;over supported rings from the CoreZone boundary to dense_end. &quot;</span>
         <span class="s2">&quot;Reported in degrees, nonnegative with no fixed upper bound. With few &quot;</span>
         <span class="s2">&quot;supported rings it remains close to the raw maximum.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_P95_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationP95-Mask-Sparse&quot;</span><span class="p">,</span>
         <span class="s2">&quot;95th percentile of absolute cumulative literal skeleton-ring rotation &quot;</span>
-        <span class="s2">&quot;over supported rings from dense_end through the full detected object &quot;</span>
-        <span class="s2">&quot;extent. Reported in degrees, nonnegative with no fixed upper bound. &quot;</span>
+        <span class="s2">&quot;over supported rings from dense_end through the configured SparseZone &quot;</span>
+        <span class="s2">&quot;outer boundary. Reported in degrees, nonnegative with no fixed upper bound. &quot;</span>
         <span class="s2">&quot;Cumulative rotation is not rebased at dense_end, so this Sparse &quot;</span>
         <span class="s2">&quot;magnitude may include rotation accumulated while the profile was in &quot;</span>
         <span class="s2">&quot;Dense.&quot;</span><span class="p">,</span>
@@ -833,22 +839,22 @@
     <span class="n">OUTWARD_ROTATION_MEDIAN_MAGNITUDE_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationMedianMagnitude-Mask-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Median absolute cumulative literal skeleton-ring rotation over supported &quot;</span>
-        <span class="s2">&quot;rings from the inferred inoculum boundary through the full detected &quot;</span>
-        <span class="s2">&quot;object extent. Reported in degrees, nonnegative with no fixed upper &quot;</span>
+        <span class="s2">&quot;rings from the CoreZone boundary through the configured SparseZone outer &quot;</span>
+        <span class="s2">&quot;outer boundary. Reported in degrees, nonnegative with no fixed upper &quot;</span>
         <span class="s2">&quot;bound. This validation comparator describes typical magnitude but &quot;</span>
         <span class="s2">&quot;ignores radial order and localized outer turns.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_MEDIAN_MAGNITUDE_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationMedianMagnitude-Mask-Dense&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Median absolute cumulative literal skeleton-ring rotation over supported &quot;</span>
-        <span class="s2">&quot;rings from the inferred inoculum boundary to dense_end. Reported in &quot;</span>
+        <span class="s2">&quot;rings from the CoreZone boundary to dense_end. Reported in &quot;</span>
         <span class="s2">&quot;degrees, nonnegative with no fixed upper bound. This validation &quot;</span>
         <span class="s2">&quot;comparator describes typical magnitude but ignores radial order.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_MEDIAN_MAGNITUDE_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationMedianMagnitude-Mask-Sparse&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Median absolute cumulative literal skeleton-ring rotation over supported &quot;</span>
-        <span class="s2">&quot;rings from dense_end through the full detected object extent. Reported &quot;</span>
+        <span class="s2">&quot;rings from dense_end through the configured SparseZone outer boundary. Reported &quot;</span>
         <span class="s2">&quot;in degrees, nonnegative with no fixed upper bound. Cumulative rotation &quot;</span>
         <span class="s2">&quot;is not rebased at dense_end, so this Sparse magnitude may include &quot;</span>
         <span class="s2">&quot;rotation accumulated while the profile was in Dense.&quot;</span><span class="p">,</span>
@@ -856,15 +862,15 @@
     <span class="n">OUTWARD_ROTATION_ABSOLUTE_AREA_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationAbsoluteArea-Mask-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Trapezoidal area under absolute cumulative rotation within supported &quot;</span>
-        <span class="s2">&quot;runs from the inferred inoculum boundary through the full detected &quot;</span>
-        <span class="s2">&quot;object extent, divided by their total supported radial span. Reported &quot;</span>
+        <span class="s2">&quot;runs from the CoreZone boundary through the configured SparseZone outer &quot;</span>
+        <span class="s2">&quot;outer boundary, divided by their total supported radial span. Reported &quot;</span>
         <span class="s2">&quot;in degrees, nonnegative with no fixed upper bound. It describes &quot;</span>
         <span class="s2">&quot;radially persistent rotation but can remain high after one early step.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_ABSOLUTE_AREA_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationAbsoluteArea-Mask-Dense&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Trapezoidal area under absolute cumulative rotation within supported &quot;</span>
-        <span class="s2">&quot;runs from the inferred inoculum boundary to dense_end, divided by their &quot;</span>
+        <span class="s2">&quot;runs from the CoreZone boundary to dense_end, divided by their &quot;</span>
         <span class="s2">&quot;total supported radial span. Reported in degrees, nonnegative with no &quot;</span>
         <span class="s2">&quot;fixed upper bound. It describes radially persistent rotation but can &quot;</span>
         <span class="s2">&quot;remain high after one early step.&quot;</span><span class="p">,</span>
@@ -872,7 +878,7 @@
     <span class="n">OUTWARD_ROTATION_ABSOLUTE_AREA_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationAbsoluteArea-Mask-Sparse&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Trapezoidal area under absolute cumulative rotation within supported &quot;</span>
-        <span class="s2">&quot;runs from dense_end through the full detected object extent, divided by &quot;</span>
+        <span class="s2">&quot;runs from dense_end through the configured SparseZone outer boundary, divided by &quot;</span>
         <span class="s2">&quot;their total supported radial span. Reported in degrees, nonnegative with &quot;</span>
         <span class="s2">&quot;no fixed upper bound. Cumulative rotation is not rebased at dense_end, &quot;</span>
         <span class="s2">&quot;so this Sparse magnitude may include rotation accumulated while the &quot;</span>
@@ -881,15 +887,15 @@
     <span class="n">OUTWARD_ROTATION_TOTAL_VARIATION_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationTotalVariation-Mask-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Sum of absolute adjacent cumulative-rotation changes within supported &quot;</span>
-        <span class="s2">&quot;runs from the inferred inoculum boundary through the full detected &quot;</span>
-        <span class="s2">&quot;object extent, without bridging gaps. Reported in degrees, nonnegative &quot;</span>
+        <span class="s2">&quot;runs from the CoreZone boundary through the configured SparseZone outer &quot;</span>
+        <span class="s2">&quot;outer boundary, without bridging gaps. Reported in degrees, nonnegative &quot;</span>
         <span class="s2">&quot;with no fixed upper bound. It is sensitive to oscillation, profile &quot;</span>
         <span class="s2">&quot;length, and noise and is diagnostic only.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_TOTAL_VARIATION_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationTotalVariation-Mask-Dense&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Sum of absolute adjacent cumulative-rotation changes within supported &quot;</span>
-        <span class="s2">&quot;runs from the inferred inoculum boundary to dense_end, without bridging &quot;</span>
+        <span class="s2">&quot;runs from the CoreZone boundary to dense_end, without bridging &quot;</span>
         <span class="s2">&quot;gaps. Reported in degrees, nonnegative with no fixed upper bound. It is &quot;</span>
         <span class="s2">&quot;sensitive to oscillation, profile length, and noise and is diagnostic &quot;</span>
         <span class="s2">&quot;only.&quot;</span><span class="p">,</span>
@@ -897,7 +903,7 @@
     <span class="n">OUTWARD_ROTATION_TOTAL_VARIATION_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationTotalVariation-Mask-Sparse&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Sum of absolute adjacent cumulative-rotation changes within supported &quot;</span>
-        <span class="s2">&quot;runs from dense_end through the full detected object extent, without &quot;</span>
+        <span class="s2">&quot;runs from dense_end through the configured SparseZone outer boundary, without &quot;</span>
         <span class="s2">&quot;bridging gaps. Reported in degrees, nonnegative with no fixed upper &quot;</span>
         <span class="s2">&quot;bound. It is sensitive to oscillation, profile length, and noise and is &quot;</span>
         <span class="s2">&quot;diagnostic only.&quot;</span><span class="p">,</span>
@@ -906,8 +912,8 @@
         <span class="s2">&quot;OutwardRotationRateGradient-Mask-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Outer-half robust rotation rate minus inner-half robust rotation rate, &quot;</span>
         <span class="s2">&quot;divided by the separation of their median radii, along the longest &quot;</span>
-        <span class="s2">&quot;supported run from the inferred inoculum boundary through the full &quot;</span>
-        <span class="s2">&quot;detected object extent. Reported in signed degrees per pixel squared. &quot;</span>
+        <span class="s2">&quot;supported run from the CoreZone boundary through the full &quot;</span>
+        <span class="s2">&quot;detected outer boundary. Reported in signed degrees per pixel squared. &quot;</span>
         <span class="s2">&quot;This is a spatial rate gradient, not temporal acceleration, and is NaN &quot;</span>
         <span class="s2">&quot;unless the run meets both the configured minimum and eight rings.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
@@ -915,7 +921,7 @@
         <span class="s2">&quot;OutwardRotationRateGradient-Mask-Dense&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Outer-half robust rotation rate minus inner-half robust rotation rate, &quot;</span>
         <span class="s2">&quot;divided by the separation of their median radii, along the longest &quot;</span>
-        <span class="s2">&quot;supported run from the inferred inoculum boundary to dense_end. Reported &quot;</span>
+        <span class="s2">&quot;supported run from the CoreZone boundary to dense_end. Reported &quot;</span>
         <span class="s2">&quot;in signed degrees per pixel squared. This is a spatial rate gradient, &quot;</span>
         <span class="s2">&quot;not temporal acceleration, and is NaN unless the run meets both the &quot;</span>
         <span class="s2">&quot;configured minimum and eight rings.&quot;</span><span class="p">,</span>
@@ -924,21 +930,21 @@
         <span class="s2">&quot;OutwardRotationRateGradient-Mask-Sparse&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Outer-half robust rotation rate minus inner-half robust rotation rate, &quot;</span>
         <span class="s2">&quot;divided by the separation of their median radii, along the longest &quot;</span>
-        <span class="s2">&quot;supported run from dense_end through the full detected object extent. &quot;</span>
+        <span class="s2">&quot;supported run from dense_end through the configured SparseZone outer boundary. &quot;</span>
         <span class="s2">&quot;Reported in signed degrees per pixel squared. This is a spatial rate &quot;</span>
         <span class="s2">&quot;gradient, not temporal acceleration, and is NaN for runs shorter than &quot;</span>
         <span class="s2">&quot;the larger of eight rings and the configured minimum.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_RING_SUPPORT_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationRingSupport-Mask-Overall&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Fraction of candidate literal sampling rings from the inferred inoculum &quot;</span>
-        <span class="s2">&quot;boundary through the full detected object extent with a finite &quot;</span>
+        <span class="s2">&quot;Fraction of candidate literal sampling rings from the CoreZone &quot;</span>
+        <span class="s2">&quot;boundary through the configured SparseZone outer boundary with a finite &quot;</span>
         <span class="s2">&quot;cumulative-rotation state. Dimensionless in [0, 1]. This is a &quot;</span>
         <span class="s2">&quot;density-sensitive quality diagnostic, not an orientation phenotype.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_RING_SUPPORT_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationRingSupport-Mask-Dense&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Fraction of candidate literal sampling rings from the inferred inoculum &quot;</span>
+        <span class="s2">&quot;Fraction of candidate literal sampling rings from the CoreZone &quot;</span>
         <span class="s2">&quot;boundary to dense_end with a finite cumulative-rotation state. &quot;</span>
         <span class="s2">&quot;Dimensionless in [0, 1]. This is a density-sensitive quality diagnostic, &quot;</span>
         <span class="s2">&quot;not an orientation phenotype.&quot;</span><span class="p">,</span>
@@ -946,21 +952,21 @@
     <span class="n">OUTWARD_ROTATION_RING_SUPPORT_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationRingSupport-Mask-Sparse&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Fraction of candidate literal sampling rings from dense_end through the &quot;</span>
-        <span class="s2">&quot;full detected object extent with a finite cumulative-rotation state. &quot;</span>
+        <span class="s2">&quot;configured SparseZone outer boundary with a finite cumulative-rotation state. &quot;</span>
         <span class="s2">&quot;Dimensionless in [0, 1]. This is a density-sensitive quality diagnostic, &quot;</span>
         <span class="s2">&quot;not an orientation phenotype.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_RUN_SPAN_SUPPORT_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationRunSpanSupport-Mask-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Radial span of the longest contiguous supported literal-crossing run &quot;</span>
-        <span class="s2">&quot;divided by the full candidate span from the inferred inoculum boundary &quot;</span>
-        <span class="s2">&quot;through the full detected object extent. Dimensionless in [0, 1]. This &quot;</span>
+        <span class="s2">&quot;divided by the full candidate span from the CoreZone boundary &quot;</span>
+        <span class="s2">&quot;through the configured SparseZone outer boundary. Dimensionless in [0, 1]. This &quot;</span>
         <span class="s2">&quot;reports continuity of usable evidence, not orientation.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_RUN_SPAN_SUPPORT_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationRunSpanSupport-Mask-Dense&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Radial span of the longest contiguous supported literal-crossing run &quot;</span>
-        <span class="s2">&quot;divided by the full candidate span from the inferred inoculum boundary &quot;</span>
+        <span class="s2">&quot;divided by the full candidate span from the CoreZone boundary &quot;</span>
         <span class="s2">&quot;to dense_end. Dimensionless in [0, 1]. This reports continuity of usable &quot;</span>
         <span class="s2">&quot;evidence, not orientation.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
@@ -968,21 +974,21 @@
         <span class="s2">&quot;OutwardRotationRunSpanSupport-Mask-Sparse&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Radial span of the longest contiguous supported literal-crossing run &quot;</span>
         <span class="s2">&quot;divided by the full candidate span from dense_end through the full &quot;</span>
-        <span class="s2">&quot;detected object extent. Dimensionless in [0, 1]. This reports continuity &quot;</span>
+        <span class="s2">&quot;detected outer boundary. Dimensionless in [0, 1]. This reports continuity &quot;</span>
         <span class="s2">&quot;of usable evidence, not orientation.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_MEDIAN_RESULTANT_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationMedianResultant-Mask-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Median doubled-angle resultant of crossing orientations among eligible &quot;</span>
-        <span class="s2">&quot;literal rings from the inferred inoculum boundary through the full &quot;</span>
-        <span class="s2">&quot;detected object extent. Dimensionless in [0, 1]; larger values mean &quot;</span>
+        <span class="s2">&quot;literal rings from the CoreZone boundary through the full &quot;</span>
+        <span class="s2">&quot;detected outer boundary. Dimensionless in [0, 1]; larger values mean &quot;</span>
         <span class="s2">&quot;stronger within-ring axial agreement. This is an orientation-reliability &quot;</span>
         <span class="s2">&quot;diagnostic, not a rotation phenotype.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">OUTWARD_ROTATION_MEDIAN_RESULTANT_DENSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationMedianResultant-Mask-Dense&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Median doubled-angle resultant of crossing orientations among eligible &quot;</span>
-        <span class="s2">&quot;literal rings from the inferred inoculum boundary to dense_end. &quot;</span>
+        <span class="s2">&quot;literal rings from the CoreZone boundary to dense_end. &quot;</span>
         <span class="s2">&quot;Dimensionless in [0, 1]; larger values mean stronger within-ring axial &quot;</span>
         <span class="s2">&quot;agreement. This is an orientation-reliability diagnostic, not a rotation &quot;</span>
         <span class="s2">&quot;phenotype.&quot;</span><span class="p">,</span>
@@ -990,7 +996,7 @@
     <span class="n">OUTWARD_ROTATION_MEDIAN_RESULTANT_SPARSE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardRotationMedianResultant-Mask-Sparse&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Median doubled-angle resultant of crossing orientations among eligible &quot;</span>
-        <span class="s2">&quot;literal rings from dense_end through the full detected object extent. &quot;</span>
+        <span class="s2">&quot;literal rings from dense_end through the configured SparseZone outer boundary. &quot;</span>
         <span class="s2">&quot;Dimensionless in [0, 1]; larger values mean stronger within-ring axial &quot;</span>
         <span class="s2">&quot;agreement. This is an orientation-reliability diagnostic, not a rotation &quot;</span>
         <span class="s2">&quot;phenotype.&quot;</span><span class="p">,</span>
@@ -999,7 +1005,7 @@
     <span class="n">CONCENTRATION_RADIAL_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Concentration-Radial-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Coherence-weighted resultant length R of the doubled-angle orientation field &quot;</span>
-        <span class="s2">&quot;over all tile pixels in the full symmetric disk (0 .. symmetric_radius) &quot;</span>
+        <span class="s2">&quot;over all tile pixels in the canonical Overall annulus (core_end .. sparse_end) &quot;</span>
         <span class="s2">&quot;region. Dimensionless in [0, 1]; 1 = perfectly aligned hyphae, 0 = &quot;</span>
         <span class="s2">&quot;isotropic. NaN when the summed coherence over the selector is ~0 or the zone &quot;</span>
         <span class="s2">&quot;has zero width.&quot;</span><span class="p">,</span>
@@ -1023,8 +1029,8 @@
     <span class="n">CONCENTRATION_MASK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Concentration-Mask-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Coherence-weighted resultant length R of the doubled-angle orientation field &quot;</span>
-        <span class="s2">&quot;over detected-object pixels in the full symmetric disk (0 .. &quot;</span>
-        <span class="s2">&quot;symmetric_radius) region. Dimensionless in [0, 1]; 1 = perfectly aligned &quot;</span>
+        <span class="s2">&quot;over detected-object pixels in the canonical Overall annulus (core_end .. &quot;</span>
+        <span class="s2">&quot;sparse_end) region. Dimensionless in [0, 1]; 1 = perfectly aligned &quot;</span>
         <span class="s2">&quot;hyphae, 0 = isotropic. NaN when the summed coherence over the selector is ~0 &quot;</span>
         <span class="s2">&quot;or the zone has zero width.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
@@ -1047,7 +1053,7 @@
     <span class="n">TURNING_RADIAL_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Turning-Radial-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Coherence-weighted mean orientation-gradient magnitude &lt;|grad phi|&gt; over all &quot;</span>
-        <span class="s2">&quot;tile pixels in the full symmetric disk (0 .. symmetric_radius) region, in &quot;</span>
+        <span class="s2">&quot;tile pixels in the canonical Overall annulus (core_end .. sparse_end), in &quot;</span>
         <span class="s2">&quot;degrees per pixel. Higher values indicate curving/fanning hyphae; ~0 &quot;</span>
         <span class="s2">&quot;indicates straight parallel growth.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
@@ -1068,7 +1074,7 @@
     <span class="n">TURNING_MASK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Turning-Mask-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Coherence-weighted mean orientation-gradient magnitude &lt;|grad phi|&gt; over &quot;</span>
-        <span class="s2">&quot;detected-object pixels in the full symmetric disk (0 .. symmetric_radius) &quot;</span>
+        <span class="s2">&quot;detected-object pixels in the canonical Overall annulus (core_end .. sparse_end) &quot;</span>
         <span class="s2">&quot;region, in degrees per pixel. Higher values indicate curving/fanning hyphae; &quot;</span>
         <span class="s2">&quot;~0 indicates straight parallel growth.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
@@ -1088,8 +1094,8 @@
     <span class="p">)</span>
     <span class="n">COHERENCE_RADIAL_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Coherence-Radial-Overall&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Mean structure-tensor coherence C over all tile pixels in the full symmetric &quot;</span>
-        <span class="s2">&quot;disk (0 .. symmetric_radius) region. Dimensionless in [0, 1]; a &quot;</span>
+        <span class="s2">&quot;Mean structure-tensor coherence C over all tile pixels in the canonical Overall &quot;</span>
+        <span class="s2">&quot;annulus (core_end .. sparse_end). Dimensionless in [0, 1]; a &quot;</span>
         <span class="s2">&quot;confidence/QC readout for how well orientation is defined there (low where &quot;</span>
         <span class="s2">&quot;texture is isotropic).&quot;</span><span class="p">,</span>
     <span class="p">)</span>
@@ -1109,8 +1115,8 @@
     <span class="p">)</span>
     <span class="n">COHERENCE_MASK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;Coherence-Mask-Overall&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Mean structure-tensor coherence C over detected-object pixels in the full &quot;</span>
-        <span class="s2">&quot;symmetric disk (0 .. symmetric_radius) region. Dimensionless in [0, 1]; a &quot;</span>
+        <span class="s2">&quot;Mean structure-tensor coherence C over detected-object pixels in the canonical &quot;</span>
+        <span class="s2">&quot;Overall annulus (core_end .. sparse_end). Dimensionless in [0, 1]; a &quot;</span>
         <span class="s2">&quot;confidence/QC readout for how well orientation is defined there (low where &quot;</span>
         <span class="s2">&quot;texture is isotropic).&quot;</span><span class="p">,</span>
     <span class="p">)</span>
@@ -1132,8 +1138,8 @@
         <span class="s2">&quot;RadialTilt-Mask-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Equal-angular-sector mean of the coherence-weighted absolute axial &quot;</span>
         <span class="s2">&quot;difference between the local fiber axis and the outward radial spoke at the &quot;</span>
-        <span class="s2">&quot;same pixel, over detected-object pixels in the full symmetric disk (0 .. &quot;</span>
-        <span class="s2">&quot;symmetric_radius) region. Reported in degrees in [0, 90]; 0 = locally radial &quot;</span>
+        <span class="s2">&quot;same pixel, over detected-object pixels in the canonical Overall annulus &quot;</span>
+        <span class="s2">&quot;(core_end .. sparse_end). Reported in degrees in [0, 90]; 0 = locally radial &quot;</span>
         <span class="s2">&quot;and 90 = locally tangential. Each occupied 10-degree angular sector &quot;</span>
         <span class="s2">&quot;contributes equally. For a fixed set of reliable sectors, multiplying branch &quot;</span>
         <span class="s2">&quot;evidence without changing within-sector tilt distributions leaves the result &quot;</span>
@@ -1170,8 +1176,8 @@
     <span class="n">OUTWARD_TURNING_MASK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;OutwardTurning-Mask-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Equal-angular-sector mean radial derivative magnitude of the radial-relative &quot;</span>
-        <span class="s2">&quot;fiber tilt, over detected-object pixels in the full symmetric disk (0 .. &quot;</span>
-        <span class="s2">&quot;symmetric_radius) region. Reported in degrees per pixel. 0 means the tilt &quot;</span>
+        <span class="s2">&quot;fiber tilt, over detected-object pixels in the canonical Overall annulus &quot;</span>
+        <span class="s2">&quot;(core_end .. sparse_end). Reported in degrees per pixel. 0 means the tilt &quot;</span>
         <span class="s2">&quot;stays constant while moving outward; larger values mean the local fiber &quot;</span>
         <span class="s2">&quot;field rotates relative to its radial spoke. The aggregation gives each &quot;</span>
         <span class="s2">&quot;occupied 10-degree angular sector equal weight. This is a field-level &quot;</span>
@@ -1199,8 +1205,8 @@
     <span class="p">)</span>
     <span class="n">RADIAL_SECTOR_SUPPORT_MASK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;RadialSectorSupport-Mask-Overall&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Fraction of the 36 fixed 10-degree sectors in the full symmetric disk (0 .. &quot;</span>
-        <span class="s2">&quot;symmetric_radius) region that contain at least three detected-structure &quot;</span>
+        <span class="s2">&quot;Fraction of the 36 fixed 10-degree sectors in the canonical Overall annulus &quot;</span>
+        <span class="s2">&quot;(core_end .. sparse_end) that contain at least three detected-structure &quot;</span>
         <span class="s2">&quot;pixels with structure-tensor coherence C &gt;= 0.15. Dimensionless in [0, 1]. &quot;</span>
         <span class="s2">&quot;This is a density-sensitive quality diagnostic for interpreting radial tilt &quot;</span>
         <span class="s2">&quot;and outward turning, not an orientation phenotype.&quot;</span><span class="p">,</span>
@@ -1226,10 +1232,10 @@
         <span class="s2">&quot;Equal-cell mean absolute seam-safe axial change between matching 10-degree &quot;</span>
         <span class="s2">&quot;sectors in configured-width Sholl-style annular bands (8 pixels by default) &quot;</span>
         <span class="s2">&quot;whose centres are separated by the configured long-range lag (16 pixels by &quot;</span>
-        <span class="s2">&quot;default). Ring pairs are assigned to the core-excluded symmetric region &quot;</span>
-        <span class="s2">&quot;(core_end .. min(sparse_end, symmetric_radius)) region by their midpoint. &quot;</span>
-        <span class="s2">&quot;Reported in degrees in [0, 90]. Annular bands begin outside the inferred &quot;</span>
-        <span class="s2">&quot;inoculum core. Each reliable ring-sector comparison contributes equally, so &quot;</span>
+        <span class="s2">&quot;default). Ring pairs are assigned to the canonical Overall annulus &quot;</span>
+        <span class="s2">&quot;(core_end .. sparse_end) region by their midpoint. &quot;</span>
+        <span class="s2">&quot;Reported in degrees in [0, 90]. Annular bands begin outside the operational &quot;</span>
+        <span class="s2">&quot;CoreZone. Each reliable ring-sector comparison contributes equally, so &quot;</span>
         <span class="s2">&quot;multiplying same-orientation branch evidence within an already reliable cell &quot;</span>
         <span class="s2">&quot;does not change its contribution.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
@@ -1240,7 +1246,7 @@
         <span class="s2">&quot;whose centres are separated by the configured long-range lag (16 pixels by &quot;</span>
         <span class="s2">&quot;default). Ring pairs are assigned to the dense ring (core_end .. dense_end &quot;</span>
         <span class="s2">&quot;radii) region by their midpoint. Reported in degrees in [0, 90]. Annular &quot;</span>
-        <span class="s2">&quot;bands begin outside the inferred inoculum core. Each reliable ring-sector &quot;</span>
+        <span class="s2">&quot;bands begin outside the operational CoreZone. Each reliable ring-sector &quot;</span>
         <span class="s2">&quot;comparison contributes equally, so multiplying same-orientation branch &quot;</span>
         <span class="s2">&quot;evidence within an already reliable cell does not change its contribution.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
@@ -1251,15 +1257,15 @@
         <span class="s2">&quot;whose centres are separated by the configured long-range lag (16 pixels by &quot;</span>
         <span class="s2">&quot;default). Ring pairs are assigned to the sparse ring (dense_end .. &quot;</span>
         <span class="s2">&quot;sparse_end radii) region by their midpoint. Reported in degrees in [0, 90]. &quot;</span>
-        <span class="s2">&quot;Annular bands begin outside the inferred inoculum core. Each reliable &quot;</span>
+        <span class="s2">&quot;Annular bands begin outside the operational CoreZone. Each reliable &quot;</span>
         <span class="s2">&quot;ring-sector comparison contributes equally, so multiplying same-orientation &quot;</span>
         <span class="s2">&quot;branch evidence within an already reliable cell does not change its &quot;</span>
         <span class="s2">&quot;contribution.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">SIGNED_LONG_RANGE_ROTATION_MASK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;SignedLongRangeRotation-Mask-Overall&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Signed counterpart of LongRangeRotation over the core-excluded symmetric &quot;</span>
-        <span class="s2">&quot;region (core_end .. min(sparse_end, symmetric_radius)) region, in degrees in &quot;</span>
+        <span class="s2">&quot;Signed counterpart of LongRangeRotation over the canonical Overall &quot;</span>
+        <span class="s2">&quot;annulus (core_end .. sparse_end), in degrees in &quot;</span>
         <span class="s2">&quot;[-90, 90]. Positive means the radial-relative fiber axis rotates clockwise &quot;</span>
         <span class="s2">&quot;and negative means counterclockwise while moving outward in image &quot;</span>
         <span class="s2">&quot;coordinates. Opposing reliable ring-sector changes cancel in this &quot;</span>
@@ -1286,8 +1292,8 @@
     <span class="n">LONG_RANGE_ROTATION_SUPPORT_MASK_OVERALL</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
         <span class="s2">&quot;LongRangeRotationSupport-Mask-Overall&quot;</span><span class="p">,</span>
         <span class="s2">&quot;Fraction of fixed-lag ring-sector comparison cells assigned to the &quot;</span>
-        <span class="s2">&quot;core-excluded symmetric region (core_end .. min(sparse_end, &quot;</span>
-        <span class="s2">&quot;symmetric_radius)) region that have reliable orientation estimates at both &quot;</span>
+        <span class="s2">&quot;canonical Overall annulus (core_end .. sparse_end) that has reliable &quot;</span>
+        <span class="s2">&quot;orientation estimates at both &quot;</span>
         <span class="s2">&quot;radii. Dimensionless in [0, 1]. This is a density-sensitive quality &quot;</span>
         <span class="s2">&quot;diagnostic, not an orientation phenotype.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
@@ -1326,6 +1332,61 @@
         <span class="s2">&quot;orientation estimates in both the Dense and Sparse zones. Dimensionless in &quot;</span>
         <span class="s2">&quot;[0, 1]. This is a density-sensitive quality diagnostic, not an orientation &quot;</span>
         <span class="s2">&quot;phenotype.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">ZONE_SEGMENTATION_METHOD_CODE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;ZoneSegmentationMethodCode&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Zone resolver provenance: 0 is legacy colony-ness, 1 is exact &quot;</span>
+        <span class="s2">&quot;two-change Method B, 2 is collapsed one-change Method B, and 4 is &quot;</span>
+        <span class="s2">&quot;canonical failure with missing zone measurements. This is a &quot;</span>
+        <span class="s2">&quot;dimensionless categorical code.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">CORE_ZONE_END_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;CoreZoneEndRadius&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Outer radius in pixels of the operational CoreZone, which includes &quot;</span>
+        <span class="s2">&quot;the inoculum and any inner region without resolvable branch orientation.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">DENSE_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;DenseRadius&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Outer radius in pixels of the Method B DenseZone. It equals &quot;</span>
+        <span class="s2">&quot;CoreZoneEndRadius for a collapsed one-change solution.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTER_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OuterRadius&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Exact outer measurement radius in pixels selected by &quot;</span>
+        <span class="s2">&quot;outer_zone_percentile.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">FULL_EXTENT_RADIUS</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;FullExtentRadius&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Maximum target-mask radius in pixels before percentile clipping.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTER_ZONE_PERCENTILE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OuterZonePercentile&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Configured target-mask radial percentile used as the canonical outer &quot;</span>
+        <span class="s2">&quot;measurement boundary. This is a dimensionless percentage.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">OUTER_ZONE_RETAINED_MASK_FRACTION</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;OuterZoneRetainedMaskFraction&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Fraction of target-mask pixels at or inside the configured outer &quot;</span>
+        <span class="s2">&quot;measurement boundary. This is a dimensionless fraction in [0, 1].&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">ZONE_SUPPORTED_RING_FRACTION</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;ZoneSupportedRingFraction&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Fraction of center-origin rings satisfying the bridged Method B &quot;</span>
+        <span class="s2">&quot;crossing, resultant, and coherence support gate.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">ZONE_CHANGE_POINT_OBJECTIVE</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;ZoneChangePointObjective&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Within-segment sum of squared error for the selected exact or &quot;</span>
+        <span class="s2">&quot;collapsed Method B partition in dimensionless standardized-feature &quot;</span>
+        <span class="s2">&quot;units.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">ZONE_CHANGE_POINT_RING_COUNT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;ZoneChangePointRingCount&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Number of center-origin Sholl-style rings fitted by Method B.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">ZONE_CHANGE_POINT_MINIMUM_SEGMENT</span> <span class="o">=</span> <span class="n">Entry</span><span class="p">(</span>
+        <span class="s2">&quot;ZoneChangePointMinimumSegment&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Configured minimum number of rings in each Method B segment.&quot;</span><span class="p">,</span>
     <span class="p">)</span></div>
 
 
