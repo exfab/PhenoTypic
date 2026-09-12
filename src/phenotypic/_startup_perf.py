@@ -23,7 +23,7 @@ to it — so this is an optimization, not a feature removal.
 """
 from __future__ import annotations
 
-import importlib
+import importlib.util
 import os
 import sys
 import time
@@ -37,6 +37,7 @@ import warnings
 IMPORT_STARTED_AT: float = time.perf_counter()
 
 __all__ = [
+    "DEFERRED_OPTIONAL_MODULES",
     "DEFERRED_RUNTIME_MODULES",
     "HEAVY_STARTUP_MODULES",
     "IMPORT_STARTED_AT",
@@ -58,6 +59,13 @@ HEAVY_STARTUP_MODULES: tuple[str, ...] = (
 DEFERRED_RUNTIME_MODULES: tuple[str, ...] = (
     "bm3d", "colour", "cv2", "h5py", "mahotas", "matplotlib.pyplot", "numba", "plotly",
 )
+
+#: Deferred libraries that ship as optional extras. They are imported only when
+#: installed, so a CPU-only or GUI-less environment does not fail at startup for a
+#: library it never uses. Empty today: every name in DEFERRED_RUNTIME_MODULES is a
+#: hard ``[project.dependencies]`` entry, which
+#: ``test_every_deferred_runtime_module_is_a_hard_dependency`` pins.
+DEFERRED_OPTIONAL_MODULES: tuple[str, ...] = ()
 
 
 class _LazyColourPlotting(types.ModuleType):
@@ -116,11 +124,15 @@ def load_runtime_dependencies() -> None:
     install (a numba/llvmlite mismatch, a binary that crashes on one node) would
     surface in the middle of the first image and be recorded as a per-image
     scientific failure rather than stopping the run at start. Any import error
-    propagates.
+    propagates. :data:`DEFERRED_OPTIONAL_MODULES` is imported only where it is
+    installed, so a missing extra is skipped rather than raising.
     """
     warnings.filterwarnings("ignore", category=SyntaxWarning, module="mahotas")
     for module_name in DEFERRED_RUNTIME_MODULES:
         importlib.import_module(module_name)
+    for module_name in DEFERRED_OPTIONAL_MODULES:
+        if importlib.util.find_spec(module_name) is not None:
+            importlib.import_module(module_name)
 
 
 def configure_docs_build_plotly_renderer() -> bool:

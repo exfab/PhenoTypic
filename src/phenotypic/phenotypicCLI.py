@@ -141,21 +141,20 @@ SLURM Execution (Autonomous HPC Cluster Processing):
             --dry-run
 """
 
+import importlib
 import json
 import logging
 import os
 import shutil
 import sys
 from pathlib import Path
-from typing import Any, List, Optional, Sequence, cast
+from typing import TYPE_CHECKING, Any, List, Optional, Sequence, cast, get_args
 from uuid import UUID
 
 import click
 import yaml  # type: ignore[import-untyped]
 from click.core import ParameterSource
 
-from phenotypic import ImagePipeline
-from phenotypic._core._image_parts.detection_modes import available_modes
 from phenotypic._cli._cli_directory_scanner import (
     ImageManifestError,
     apply_image_manifest,
@@ -164,38 +163,13 @@ from phenotypic._cli._cli_directory_scanner import (
     scan_directory_structure,
     scan_store_outputs,
 )
-from phenotypic._cli._cli_execution_strategies import (
-    create_execution_strategy,
-    uses_staged_gpu_strategy,
-)
 from phenotypic._cli._cli_failure_tracker import (
     file_sha256,
     migrate_legacy_terminal_failures,
     work_id_for_image,
 )
-from phenotypic._core._provenance import pipeline_source_identity
-from phenotypic._cli._cli_interactive import (
-    execute_dry_run,
-    get_sample_datasets,
-)
 from phenotypic._cli._cli_identity import mint_run_identity
-from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_report_generator import HTMLReportGenerator
-from phenotypic._cli._cli_state_management import (
-    create_initial_state,
-    exclude_terminal_failures_for_datasets,
-    get_remaining_images_for_datasets,
-    load_processing_state,
-    save_processing_state,
-    update_state_from_events,
-    validate_resume_compatibility,
-)
-from phenotypic._cli._cli_staged_resume import (
-    build_staged_resume_plan,
-    migrate_legacy_stage3_markers,
-    pipeline_content_digest,
-    reconcile_stage3_publications,
-)
 from phenotypic._cli._cli_types import Dataset, DatasetState, ExecutionConfig
 from phenotypic._cli._cli_update_state import (
     PROCESSING_GENERATION_ENV_VAR,
@@ -205,21 +179,8 @@ from phenotypic._cli._cli_utils import (
     parse_slurm_args,
     resolve_local_worker_count,
 )
-from phenotypic._cli._cli_process_only import resolve_process_format
-from phenotypic._cli._cli_recompile_slurm_scripts import (
-    TASK_FINALIZE,
-    TASK_MEASUREMENTS,
-    build_recompile_tasks,
-    generate_recompile_slurm_scripts,
-    recompile_attempt_dir,
-    recompile_task_status_path,
-)
 from phenotypic._cli._cli_slurm_config import get_slurm_array_limit
 from phenotypic._cli._cli_slurm_submission import submit_slurm_script_chain
-from phenotypic._cli._cli_validation import (
-    validate_execution_config,
-    validate_pipeline,
-)
 from phenotypic._cli._cli_constants import MAX_SLURM_TIME_MINUTES
 from phenotypic.schema import EXPERIMENT
 from phenotypic.sdk_ import (
@@ -251,10 +212,116 @@ from phenotypic.sdk_ import (
 from phenotypic.sdk_.slurm import parse_slurm_time
 from phenotypic.sdk_.typing_ import (
     CliMode,
+    DetectMode,
     ImageTypeName,
     ProcessFormat,
     ProcessOnlyLayer,
 )
+from phenotypic._startup_perf import load_runtime_dependencies
+
+if TYPE_CHECKING:
+    from phenotypic._cli._cli_execution_strategies import (
+        create_execution_strategy,
+        uses_staged_gpu_strategy,
+    )
+    from phenotypic._cli._cli_interactive import execute_dry_run, get_sample_datasets
+    from phenotypic._cli._cli_output_manager import OutputManager
+    from phenotypic._cli._cli_process_only import resolve_process_format
+    from phenotypic._cli._cli_recompile_slurm_scripts import (
+        TASK_FINALIZE,
+        TASK_MEASUREMENTS,
+        build_recompile_tasks,
+        generate_recompile_slurm_scripts,
+        recompile_attempt_dir,
+        recompile_task_status_path,
+    )
+    from phenotypic._cli._cli_staged_resume import (
+        build_staged_resume_plan,
+        migrate_legacy_stage3_markers,
+        pipeline_content_digest,
+        reconcile_stage3_publications,
+    )
+    from phenotypic._cli._cli_state_management import (
+        create_initial_state,
+        exclude_terminal_failures_for_datasets,
+        get_remaining_images_for_datasets,
+        load_processing_state,
+        save_processing_state,
+        update_state_from_events,
+        validate_resume_compatibility,
+    )
+    from phenotypic._cli._cli_validation import validate_execution_config, validate_pipeline
+    from phenotypic._core._image_parts.detection_modes import available_modes  # noqa: F401
+    from phenotypic._core._image_pipeline import ImagePipeline
+    from phenotypic._core._provenance import pipeline_source_identity
+
+#: Heavy names this module binds on first use. Each of these import statements reaches
+#: the image core, pandas or polars, so importing them at module level would make
+#: ``phenotypic --help`` pay for the whole library. They are bound into module globals
+#: rather than imported locally so that ``mock.patch("phenotypic.phenotypicCLI.<name>")``
+#: -- 27 sites in the test suite -- keeps patching what the command body calls.
+_CLI_RUNTIME_IMPORTS: dict[str, tuple[str, ...]] = {
+    "phenotypic._core._image_pipeline": ("ImagePipeline",),
+    "phenotypic._core._image_parts.detection_modes": ("available_modes",),
+    "phenotypic._cli._cli_execution_strategies": ("create_execution_strategy", "uses_staged_gpu_strategy"),
+    "phenotypic._core._provenance": ("pipeline_source_identity",),
+    "phenotypic._cli._cli_output_manager": ("OutputManager",),
+    "phenotypic._cli._cli_state_management": (
+        "create_initial_state",
+        "exclude_terminal_failures_for_datasets",
+        "get_remaining_images_for_datasets",
+        "load_processing_state",
+        "save_processing_state",
+        "update_state_from_events",
+        "validate_resume_compatibility",
+    ),
+    "phenotypic._cli._cli_staged_resume": (
+        "build_staged_resume_plan",
+        "migrate_legacy_stage3_markers",
+        "pipeline_content_digest",
+        "reconcile_stage3_publications",
+    ),
+    "phenotypic._cli._cli_process_only": ("resolve_process_format",),
+    "phenotypic._cli._cli_recompile_slurm_scripts": (
+        "TASK_FINALIZE",
+        "TASK_MEASUREMENTS",
+        "build_recompile_tasks",
+        "generate_recompile_slurm_scripts",
+        "recompile_attempt_dir",
+        "recompile_task_status_path",
+    ),
+    "phenotypic._cli._cli_interactive": ("execute_dry_run", "get_sample_datasets"),
+    "phenotypic._cli._cli_validation": ("validate_execution_config", "validate_pipeline"),
+}
+
+_CLI_RUNTIME_MODULE_BY_NAME: dict[str, str] = {
+    name: module_name for module_name, names in _CLI_RUNTIME_IMPORTS.items() for name in names
+}
+
+
+def _load_cli_runtime() -> None:
+    """Bind the heavy runtime names into this module's globals.
+
+    ``setdefault`` keeps any value already bound, so an active
+    ``mock.patch("phenotypic.phenotypicCLI.<name>")`` stays in force. Cheap after the
+    first call: a module whose names are all bound is skipped.
+    """
+    module_globals = globals()
+    for module_name, names in _CLI_RUNTIME_IMPORTS.items():
+        if all(name in module_globals for name in names):
+            continue
+        module = importlib.import_module(module_name)
+        for name in names:
+            module_globals.setdefault(name, getattr(module, name))
+
+
+def __getattr__(name: str) -> Any:
+    """Serve a heavy runtime name to code outside this module (imports, ``mock.patch``)."""
+    if name in _CLI_RUNTIME_MODULE_BY_NAME:
+        _load_cli_runtime()
+        return globals()[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -575,6 +642,7 @@ def _migrate_legacy_success_evidence(
     output_dir: Path,
 ) -> int:
     """Promote only validated legacy per-image outputs to general markers."""
+    _load_cli_runtime()
     if state.config.get("success_markers_required", False):
         return 0
     from phenotypic._cli._cli_completion import (
@@ -1387,7 +1455,7 @@ def _print_process_only_dry_run_plan(
 )
 @click.option(
     "--detect-mode",
-    type=click.Choice(list(available_modes())),
+    type=click.Choice(sorted(get_args(DetectMode))),
     default="gray",
     show_default=True,
     help="Source channel for the detection matrix",
@@ -1644,6 +1712,13 @@ def phenotypic_cli(
         uv run python -m phenotypic --mode process --pipeline pipe.json \\
             --input ./plates --output ./out --layer detect_mat --force-local
     """
+    # First statement of the body, ahead of mode and option validation: a broken
+    # install must fail before any parse-dependent work, and outside the ``try``
+    # below so the ImportError propagates instead of being reshaped into a CLI
+    # error. Every mode pays the import, usage errors included -- deliberate,
+    # because a run that reaches an image has already paid it (spec A/P13).
+    load_runtime_dependencies()
+    _load_cli_runtime()
     try:
         _reject_unexpected_positional_args(ctx.args)
 
@@ -3260,6 +3335,7 @@ def _regenerate_missing_overlays(
             under SLURM, otherwise host CPUs.  ``1`` runs in-thread.
             Mirrors the ``--njobs`` flag used by forward runs.
     """
+    _load_cli_runtime()
     from rich.console import Console
     from phenotypic._cli._cli_overlay_rendering import (
         OverlayWork,
@@ -3403,6 +3479,7 @@ def _handle_recompile_slurm(
             finalizer task (stashed on the finalizer task metadata so the
             recompile worker reads it).
     """
+    _load_cli_runtime()
     import json
     from datetime import datetime
 

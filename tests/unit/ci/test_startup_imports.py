@@ -7,6 +7,8 @@ imported nothing cannot pass.
 
 from __future__ import annotations
 
+import re
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -222,3 +224,82 @@ def test_docs_build_still_selects_the_notebook_connected_renderer() -> None:
         "report = {'renderer': plotly.io.renderers.default}\n"
     )
     assert report["renderer"] == "notebook_connected"
+
+
+def test_cli_help_loads_no_heavy_module() -> None:
+    """Tier 2: ``python -m phenotypic --help`` prints help without the library behind it."""
+    report = run_startup_probe(
+        "import contextlib, io, runpy\n"
+        "sys.argv = ['phenotypic', '--help']\n"
+        "buffer = io.StringIO()\n"
+        "code = None\n"
+        "with contextlib.redirect_stdout(buffer):\n"
+        "    try:\n"
+        "        runpy.run_module('phenotypic', run_name='__main__')\n"
+        "    except SystemExit as exc:\n"
+        "        code = exc.code\n"
+        f"watched = {sorted(HEAVY_STARTUP_MODULES)!r}\n"
+        "report = {'exit': code, 'help': buffer.getvalue(),\n"
+        "          'loaded': [m for m in watched if m in sys.modules],\n"
+        "          'control': 'click' in sys.modules}\n"
+    )
+    assert report["exit"] in (0, None)
+    assert "Usage:" in report["help"]
+    assert "--detect-mode" in report["help"]
+    assert report["control"] is True
+    assert report["loaded"] == []
+
+
+def test_detect_mode_choices_match_the_detection_mode_registry() -> None:
+    """The CLI's light choice list and the registry name the same modes, in the order help shows."""
+    from typing import get_args
+
+    from phenotypic._core._image_parts.detection_modes import available_modes
+    from phenotypic.phenotypicCLI import phenotypic_cli
+    from phenotypic.sdk_.typing_ import DetectMode
+
+    # Both sides are read in-process: no test registers a custom detection mode today
+    # (a grep for ``register_detection_mode`` in tests/ is empty), so the global registry
+    # is stable here.
+    option = next(param for param in phenotypic_cli.params if param.name == "detect_mode")
+    assert list(option.type.choices) == sorted(available_modes())
+    assert set(get_args(DetectMode)) == set(available_modes())
+
+
+def test_every_deferred_runtime_module_is_a_hard_dependency() -> None:
+    """The required preload set must hold only libraries every install has.
+
+    An extras-only library here would make `phenotypic --help`'s sibling — an actual
+    run — fail at startup on any environment without that extra. Such a library
+    belongs in ``DEFERRED_OPTIONAL_MODULES``, which is skipped when absent.
+    """
+    from importlib.metadata import packages_distributions
+
+    project = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    # Only dependencies with no environment marker: a marker means the dependency is
+    # legitimately absent somewhere (the repo already ships `rawpy;sys_platform!='win32'`),
+    # and preloading it unconditionally would fail on exactly that platform.
+    unconditional = {
+        re.split(r"[<>=!\[;]", specifier, maxsplit=1)[0].strip().lower().replace("_", "-")
+        for specifier in project.get("dependencies", [])
+        if ";" not in specifier
+    }
+    installed = packages_distributions()
+
+    unresolved, optional_only = [], []
+    for module_name in DEFERRED_RUNTIME_MODULES:
+        distributions = {
+            name.lower().replace("_", "-")
+            for name in installed.get(module_name.split(".")[0], ())
+        }
+        if not distributions:
+            unresolved.append(module_name)
+        elif not distributions & unconditional:
+            optional_only.append(f"{module_name} -> {sorted(distributions)}")
+
+    assert unresolved == [], f"not installed, so this check cannot run: {unresolved}"
+    assert optional_only == [], (
+        f"conditionally-installed libraries in the required preload set: {optional_only}; "
+        "an extra, or a dependency carrying an environment marker, belongs in "
+        "DEFERRED_OPTIONAL_MODULES"
+    )

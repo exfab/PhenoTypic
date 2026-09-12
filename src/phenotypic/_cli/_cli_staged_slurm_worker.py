@@ -16,6 +16,7 @@ from typing import Iterator, Mapping, Sequence
 from uuid import uuid4
 
 from phenotypic import ImagePipeline
+from phenotypic._startup_perf import load_runtime_dependencies
 from phenotypic.sdk_ import (
     CommitGuard,
     MEASUREMENT_TABLE_RELATIVE_PATH,
@@ -571,6 +572,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=None,
     )
     args = parser.parse_args(argv)
+    load_runtime_dependencies()
     provenance_identity_values = (
         args.provenance_pipeline_source_path,
         args.provenance_pipeline_sha256,
