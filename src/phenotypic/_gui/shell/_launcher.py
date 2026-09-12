@@ -36,7 +36,6 @@ from phenotypic._gui._config import (
     configure_launcher_logging,
     print_launcher_banner,
 )
-from phenotypic._gui.shell._app import create_app
 from phenotypic._gui.shell._sandbox import SandboxRoot
 from phenotypic._gui.shell._startup import StartupReporter, should_use_rich
 
@@ -44,28 +43,10 @@ logger = logging.getLogger(__name__)
 
 __all__ = ["launch_gui", "main"]
 
-#: Number of bar segments the launcher advances: core import (already done),
-#: sandbox resolution, hub composition. See :class:`StartupReporter`.
-_STARTUP_STEPS = 3
-
-
-def _core_import_elapsed() -> float | None:
-    """Seconds spent importing the ``phenotypic`` library before ``main()``.
-
-    Measured against :data:`phenotypic._startup_perf.IMPORT_STARTED_AT`,
-    which is stamped the moment the (heavy) package import begins — the only
-    point early enough to capture it, since the console-script import chain
-    runs before any launcher code. Returns ``None`` if the stamp is absent
-    (e.g. a stubbed import in tests).
-    """
-    import time
-
-    try:
-        import phenotypic
-
-        return time.perf_counter() - phenotypic._IMPORT_STARTED_AT
-    except Exception:  # pragma: no cover - defensive
-        return None
+#: Number of bar segments the launcher advances: sandbox resolution, hub composition.
+#: The library is no longer imported before ``main()`` (it loads inside composition),
+#: so there is no separate core-load segment. See :class:`StartupReporter`.
+_STARTUP_STEPS = 2
 
 
 def launch_gui(
@@ -104,15 +85,19 @@ def launch_gui(
     """
     if reporter is None:
         sandbox = SandboxRoot.from_path(root)
+        from phenotypic._gui.shell._app import create_app
+
         app = create_app(sandbox, url_prefix=url_prefix)
     else:
         with reporter:
-            reporter.record_done(
-                "Core library loaded", reporter.import_elapsed
-            )
             with reporter.stage("Resolving sandbox root"):
                 sandbox = SandboxRoot.from_path(root)
             with reporter.stage("Composing GUI hub"):
+                # Imported here rather than at module level, so ``phenotypic-gui --help``
+                # loads neither Dash nor the library; the import is part of what this
+                # stage reports.
+                from phenotypic._gui.shell._app import create_app
+
                 app = create_app(
                     sandbox,
                     url_prefix=url_prefix,
@@ -163,7 +148,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     reporter = StartupReporter(
         total_steps=_STARTUP_STEPS,
         use_rich=should_use_rich(debug=args.debug),
-        import_elapsed=_core_import_elapsed(),
     )
     try:
         launch_gui(

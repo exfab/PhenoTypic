@@ -219,7 +219,7 @@ def test_dispatcher_threads_script_root(sandbox: SandboxRoot) -> None:
     # builder's Flask server we have to look it up through the dispatcher's
     # mounts dict.
     dispatcher = app.server.wsgi_app
-    builder_flask = dispatcher.mounts["/builder"]
+    builder_flask = dispatcher.mounts["/builder"]._session.get().server
 
     bp = Blueprint("probe", __name__)
 
@@ -400,7 +400,7 @@ def test_explicit_url_prefix_preserves_script_root_through_dispatcher(
 
     app = create_app(sandbox, url_prefix=OOD_NODE_PREFIX)
     dispatcher = app.server.wsgi_app
-    builder_flask = dispatcher.mounts["/builder"]
+    builder_flask = dispatcher.mounts["/builder"]._session.get().server
 
     bp = Blueprint("prefixed_probe", __name__)
 

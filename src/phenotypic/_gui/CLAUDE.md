@@ -583,6 +583,12 @@ travels with the field annotation.
 
 ## Common gotchas
 
+- **The builder is built on its first request.** `compose_hub` mounts it through
+  `_SessionProxy` over a never-released `ToolSession`, because `builder.create_app`
+  discovers every operation, which imports the whole operation library. Do not reach
+  for a builder app object at composition time, and do not import `_app` at module level
+  from `phenotypic._gui.shell` or its launcher — `tests/unit/gui/shell/test_hub_startup_imports.py`
+  and `tests/unit/ci/test_startup_imports.py` fail if either creeps back.
 - **`requests_pathname_prefix=url_prefix, routes_pathname_prefix=MOUNT_HOME`** — sub-apps
   mounted under `DispatcherMiddleware` see their mount prefix stripped
   before Dash routes. Standalone launches collapse to identical prefixes

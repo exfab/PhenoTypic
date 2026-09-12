@@ -536,18 +536,24 @@ def compose_hub(
     )
     shell_app.server.config[CFG_RESULTS_BINDING_JOBS] = binding_jobs
 
-    # 3. Builder Dash (eager — single-process registry build).
-    _tick("builder")
-    builder_app = builder.create_app(
-        image_root=sandbox.root,
-        url_prefix=join_url_prefix(base_url_prefix, MOUNT_BUILDER),
-    )
-    wrap_in_chrome(
-        builder_app,
-        active_tab=SHELL_TAB_BUILDER,
-        sandbox=sandbox,
-        url_prefix=base_url_prefix,
-    )
+    # 3. Builder Dash (lazy). ``builder.create_app`` discovers every operation, which
+    #    imports the whole operation library, so it is built on the first /builder/
+    #    request instead of at startup. Never released: unlike the viewer it holds no
+    #    heavy per-output state, and a rebuild would only repeat that import cost.
+    def _build_builder() -> dash.Dash:
+        builder_app = builder.create_app(
+            image_root=sandbox.root,
+            url_prefix=join_url_prefix(base_url_prefix, MOUNT_BUILDER),
+        )
+        wrap_in_chrome(
+            builder_app,
+            active_tab=SHELL_TAB_BUILDER,
+            sandbox=sandbox,
+            url_prefix=base_url_prefix,
+        )
+        return builder_app
+
+    builder_session: ToolSession[dash.Dash] = ToolSession("builder", build=_build_builder)
 
     # 4. Run console Dash (eager). Build the process-wide runner +
     #    registry HERE so the shell's ``/runs/`` blueprint, the Recent
@@ -632,7 +638,7 @@ def compose_hub(
     shell_app.server.wsgi_app = DispatcherMiddleware(  # type: ignore[method-assign]
         shell_app.server.wsgi_app,
         {
-            MOUNT_BUILDER.rstrip("/"): builder_app.server,
+            MOUNT_BUILDER.rstrip("/"): _SessionProxy(builder_session),
             MOUNT_VIEWER.rstrip("/"): viewer_proxy,
             MOUNT_RUN.rstrip("/"): run_app.server,
             MOUNT_ANALYSIS.rstrip("/"): analysis_proxy,

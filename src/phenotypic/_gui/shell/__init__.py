@@ -14,10 +14,41 @@ Public API:
 """
 from __future__ import annotations
 
-from phenotypic._gui.shell._app import create_app
-from phenotypic._gui.shell._launcher import launch_gui, main
-from phenotypic._gui.shell._sandbox import SandboxRoot
-from phenotypic._gui.shell._session import ToolSession
+import importlib as _importlib
+from typing import TYPE_CHECKING as _TYPE_CHECKING
+from typing import Any as _Any
+
+#: Public shell names by defining module. The console script imports this package before
+#: ``_launcher``, so an eager ``_app`` import here would load Dash -- and through it the
+#: sub-apps -- just to print ``phenotypic-gui --help``.
+_LAZY_ATTRS: dict[str, str] = {
+    "SandboxRoot": "phenotypic._gui.shell._sandbox",
+    "ToolSession": "phenotypic._gui.shell._session",
+    "create_app": "phenotypic._gui.shell._app",
+    "launch_gui": "phenotypic._gui.shell._launcher",
+    "main": "phenotypic._gui.shell._launcher",
+}
+
+
+def __getattr__(name: str) -> _Any:
+    """Resolve a public shell name on first access and cache it on the package."""
+    module_name = _LAZY_ATTRS.get(name)
+    if module_name is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    value = getattr(_importlib.import_module(module_name), name)
+    globals()[name] = value
+    return value
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(__all__))
+
+
+if _TYPE_CHECKING:
+    from phenotypic._gui.shell._app import create_app
+    from phenotypic._gui.shell._launcher import launch_gui, main
+    from phenotypic._gui.shell._sandbox import SandboxRoot
+    from phenotypic._gui.shell._session import ToolSession
 
 __all__ = [
     "SandboxRoot",

@@ -20,7 +20,11 @@ import matplotlib
 
 matplotlib.use("Agg")  # safe in dash worker threads; must precede pyplot import
 
-import matplotlib.pyplot as plt
+# ``pyplot`` itself is imported inside :func:`render_plot` -- it is ~270ms the composed
+# hub would otherwise pay before serving its first request, and this module is reached
+# eagerly from ``compose_hub`` through ``analysis/_app.py``. Selecting the backend here
+# rather than there keeps the ordering the comment above describes: ``use("Agg")`` runs
+# at import, so every later ``import matplotlib.pyplot`` already has its backend.
 from dash import dcc, html
 
 from phenotypic.plotting._pipeline import FigureAdapter
@@ -54,6 +58,8 @@ def render_plot(node: "SetAnalyzer | Any", **plot_kwargs: Any) -> Any:
         fast path, ``html.Img`` (data-URI PNG) on the matplotlib fallback,
         or an inline error card on any unexpected failure.
     """
+    import matplotlib.pyplot as plt
+
     report = getattr(node, "report", None)
     if callable(report):
         try:

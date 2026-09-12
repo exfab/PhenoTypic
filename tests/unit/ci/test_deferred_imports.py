@@ -88,6 +88,7 @@ DEFERRED_SITES: dict[str, dict[str, tuple[str, ...]]] = {
         ),
         "OKABE_ITO": ("fig_intensity_histogram", "fig_power_spectral_density", "fig_ridge_response"),
     },
+    "_gui/analysis/_render.py": {"plt": ("render_plot",)},
     "analysis/abc_/_model_fitter.py": {"matplotlib": ("_build_plotly_figure", "show"), "plt": ("show",)},
     "analysis/edge/_edge_correction.py": {"plt": ("_show_collapsed", "_show_individual"), "Figure": ()},
     "analysis/filter/_mad_outlier.py": {"plt": ("_show_collapsed", "_show_individual")},

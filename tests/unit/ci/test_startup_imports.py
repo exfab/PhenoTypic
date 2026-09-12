@@ -303,3 +303,27 @@ def test_every_deferred_runtime_module_is_a_hard_dependency() -> None:
         "an extra, or a dependency carrying an environment marker, belongs in "
         "DEFERRED_OPTIONAL_MODULES"
     )
+
+
+def test_gui_help_loads_no_heavy_module() -> None:
+    """Tier 2: ``phenotypic-gui --help`` prints help without Dash or the library."""
+    report = run_startup_probe(
+        "import contextlib, io\n"
+        "from phenotypic._gui.shell._launcher import main\n"
+        "buffer = io.StringIO()\n"
+        "code = None\n"
+        "with contextlib.redirect_stdout(buffer):\n"
+        "    try:\n"
+        "        main(['--help'])\n"
+        "    except SystemExit as exc:\n"
+        "        code = exc.code\n"
+        f"watched = {sorted(HEAVY_STARTUP_MODULES)!r}\n"
+        "report = {'exit': code, 'help': buffer.getvalue(),\n"
+        "          'loaded': [m for m in watched if m in sys.modules],\n"
+        "          'control': 'argparse' in sys.modules}\n"
+    )
+    assert report["exit"] == 0
+    assert "phenotypic-gui" in report["help"]
+    assert "--url-prefix" in report["help"]
+    assert report["control"] is True
+    assert report["loaded"] == []
