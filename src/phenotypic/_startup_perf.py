@@ -24,9 +24,11 @@ to it — so this is an optimization, not a feature removal.
 from __future__ import annotations
 
 import importlib
+import os
 import sys
 import time
 import types
+import warnings
 
 #: ``perf_counter`` stamped the moment this module is first imported. Because
 #: :mod:`phenotypic` imports this module before anything else, it marks the
@@ -34,7 +36,27 @@ import types
 #: it, since the console-script import chain runs before any ``main()``.
 IMPORT_STARTED_AT: float = time.perf_counter()
 
-__all__ = ["IMPORT_STARTED_AT", "install_lazy_colour_plotting"]
+__all__ = [
+    "DEFERRED_RUNTIME_MODULES",
+    "HEAVY_STARTUP_MODULES",
+    "IMPORT_STARTED_AT",
+    "install_lazy_colour_plotting",
+    "load_runtime_dependencies",
+]
+
+#: Heavy third-party modules that no light entry point may load: ``import phenotypic``,
+#: ``phenotypic --help``, ``phenotypic-gui --help`` and the composed GUI hub before any
+#: page is visited. Guarded by ``tests/unit/ci/test_startup_imports.py``.
+HEAVY_STARTUP_MODULES: tuple[str, ...] = (
+    "bm3d", "colour", "cv2", "dash", "h5py", "mahotas", "matplotlib",
+    "numba", "pandas", "plotly", "polars", "pyarrow", "scipy", "skimage",
+)
+
+#: Libraries imported at their point of use rather than at module level, so
+#: ``from phenotypic import Image`` does not pay for them.
+DEFERRED_RUNTIME_MODULES: tuple[str, ...] = (
+    "bm3d", "colour", "cv2", "h5py", "mahotas", "matplotlib.pyplot", "numba", "plotly",
+)
 
 
 class _LazyColourPlotting(types.ModuleType):
@@ -83,6 +105,21 @@ def install_lazy_colour_plotting() -> bool:
         return False
     sys.modules["colour.plotting"] = _LazyColourPlotting("colour.plotting")
     return True
+
+
+def load_runtime_dependencies() -> None:
+    """Import every library in :data:`DEFERRED_RUNTIME_MODULES` now.
+
+    Pipeline-running entry points call this before any image work. The libraries
+    are deferred to their point of use for light startup, so without this a broken
+    install (a numba/llvmlite mismatch, a binary that crashes on one node) would
+    surface in the middle of the first image and be recorded as a per-image
+    scientific failure rather than stopping the run at start. Any import error
+    propagates.
+    """
+    warnings.filterwarnings("ignore", category=SyntaxWarning, module="mahotas")
+    for module_name in DEFERRED_RUNTIME_MODULES:
+        importlib.import_module(module_name)
 
 
 # Apply the optimization as an import side effect so :mod:`phenotypic` only
