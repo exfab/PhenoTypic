@@ -24,6 +24,7 @@ to it — so this is an optimization, not a feature removal.
 from __future__ import annotations
 
 import importlib
+import os
 import sys
 import time
 import types
@@ -39,6 +40,7 @@ __all__ = [
     "DEFERRED_RUNTIME_MODULES",
     "HEAVY_STARTUP_MODULES",
     "IMPORT_STARTED_AT",
+    "configure_docs_build_plotly_renderer",
     "install_lazy_colour_plotting",
     "load_runtime_dependencies",
 ]
@@ -121,7 +123,30 @@ def load_runtime_dependencies() -> None:
         importlib.import_module(module_name)
 
 
+def configure_docs_build_plotly_renderer() -> bool:
+    """Select Plotly's ``notebook_connected`` renderer when building the docs.
+
+    nbsphinx captures cell outputs from the kernel's HTML mimetype, but Plotly's
+    default ``plotly_mimetype+notebook`` renderer emits a JSON MIME bundle that
+    nbsphinx drops; ``notebook_connected`` swaps that for an HTML+CDN-script bundle,
+    so figures survive into the static site. This used to run as a side effect of
+    the image accessors importing plotly at ``import phenotypic``. It still runs at
+    ``import phenotypic``, but only under ``PHENOTYPIC_DOCS_BUILD``, so no other entry
+    point imports plotly.
+
+    Returns:
+        ``True`` if the renderer was set.
+    """
+    if not os.environ.get("PHENOTYPIC_DOCS_BUILD"):
+        return False
+    import plotly.io as pio
+
+    pio.renderers.default = "notebook_connected"
+    return True
+
+
 # Apply the optimization as an import side effect so :mod:`phenotypic` only
 # needs a single (E402-clean) ``from ._startup_perf import …`` line ahead of
 # its heavy submodule chain, rather than a bare function-call statement.
 install_lazy_colour_plotting()
+configure_docs_build_plotly_renderer()

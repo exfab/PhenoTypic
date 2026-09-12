@@ -4,12 +4,11 @@ from pathlib import Path
 from typing import Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    pass
+    import matplotlib.pyplot as plt
 
 import numpy as np
 
 from scipy.sparse import csc_matrix, coo_matrix, issparse
-import matplotlib.pyplot as plt
 from skimage.measure import label
 from skimage.color import label2rgb
 
@@ -387,6 +386,8 @@ class ObjectMap(NapariLabelsMixin, SingleChannelAccessor):
             >>> # Use a different colormap
             >>> fig = image.objmap.show(cmap='tab20')
         """
+        import matplotlib.pyplot as plt
+
         cmap = plt.get_cmap(cmap)
         cmap.set_bad(color="black")
         return self._mpl_plot(

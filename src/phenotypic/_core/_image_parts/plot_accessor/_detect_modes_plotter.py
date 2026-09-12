@@ -9,15 +9,15 @@ can be eyeballed side by side.
 from __future__ import annotations
 
 import math
-from typing import Any
-
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+from typing import TYPE_CHECKING, Any
 
 from phenotypic.abc_.plotting import PhtPlot, figure
 from phenotypic.sdk_._plotly_helpers import plotly_imshow
 
 from ._base_plotter import BasePlotter
+
+if TYPE_CHECKING:
+    import plotly.graph_objects as go
 
 
 class DetectModesPlotter(BasePlotter, PhtPlot):
@@ -100,6 +100,8 @@ class DetectModesPlotter(BasePlotter, PhtPlot):
             A faceted ``go.Figure`` with one subplot per mode (and a final
             ``detect_mat`` panel), each holding a grayscale image trace.
         """
+        from plotly.subplots import make_subplots
+
         matrices = self._compute_mode_matrices()
         labels = list(matrices.keys())
         n_panels = len(labels)

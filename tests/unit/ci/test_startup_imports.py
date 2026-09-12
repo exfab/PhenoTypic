@@ -114,3 +114,27 @@ def test_module_imports_first_in_a_fresh_interpreter(module_name: str) -> None:
         "report = {'imported': True}\n"
     )
     assert report["imported"] is True
+
+
+def test_importing_image_loads_no_deferred_runtime_module() -> None:
+    """Tier 4: an Image carries every accessor, and none of them may pay for a plotting or colour library."""
+    report = run_startup_probe(
+        "from phenotypic import Image\n"
+        f"watched = {sorted(DEFERRED_RUNTIME_MODULES)!r}\n"
+        "report = {'loaded': [m for m in watched if m in sys.modules],\n"
+        "          'control': 'phenotypic._core._image' in sys.modules}\n"
+    )
+    assert report["control"] is True
+    assert report["loaded"] == []
+
+
+def test_docs_build_still_selects_the_notebook_connected_renderer() -> None:
+    """Under PHENOTYPIC_DOCS_BUILD the renderer is still chosen at ``import phenotypic``."""
+    report = run_startup_probe(
+        "import os\n"
+        "os.environ['PHENOTYPIC_DOCS_BUILD'] = '1'\n"
+        "import phenotypic\n"
+        "import plotly.io\n"
+        "report = {'renderer': plotly.io.renderers.default}\n"
+    )
+    assert report["renderer"] == "notebook_connected"

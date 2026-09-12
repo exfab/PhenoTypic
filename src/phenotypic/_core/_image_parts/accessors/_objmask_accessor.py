@@ -2,10 +2,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    pass
+    import matplotlib.pyplot as plt
 
 from skimage.measure import label
-import matplotlib.pyplot as plt
 import numpy as np
 
 from phenotypic._core._image_parts.accessor_abstracts import SingleChannelAccessor
@@ -301,6 +300,8 @@ class ObjectMask(NapariLabelsMixin, SingleChannelAccessor):
             >>> # Display with custom size and title
             >>> fig = objmask.show(figsize=(8, 8), title='Object Mask')
         """
+        import matplotlib.pyplot as plt
+
         cmap = plt.get_cmap(cmap)
         cmap.set_bad(color="black")
         return self._mpl_plot(
