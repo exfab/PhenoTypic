@@ -65,7 +65,7 @@ a{color:var(--teal)}
 .rail .k{font-family:var(--mono);font-size:.68rem;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin-top:8px;display:block}
 
 /* ---------- contents ---------- */
-:where(section,.subhead){scroll-margin-block-start:18px}
+:where(section,.subhead,figure.mfig,.plate){scroll-margin-block-start:18px}
 nav.toc{margin-top:26px;border:1px solid var(--border);border-radius:10px;background:var(--surface);
   padding:16px 18px 18px}
 nav.toc .toc-title{font-family:var(--mono);font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;
@@ -83,6 +83,34 @@ nav.toc ul{grid-column:2;list-style:none;margin:5px 0 0;padding:0;display:flex;f
 nav.toc ul a{font-weight:400;font-size:.84rem;color:var(--dim)}
 nav.toc ul a::before{content:"— ";color:var(--faint)}
 nav.toc ul a:hover{color:var(--teal)}
+
+/* ---------- persistent side navigation ---------- */
+.sidenav{display:none}
+@media (min-width:1280px){
+  .page{max-width:1380px;display:grid;grid-template-columns:238px minmax(0,1fr);column-gap:40px;
+    align-items:start}
+  .page > *{grid-column:2}
+  .page > .sidenav{display:block;grid-column:1;grid-row:1/-1;position:sticky;top:14px;align-self:start;
+    max-height:calc(100vh - 28px);overflow-y:auto;overscroll-behavior:contain;
+    border-right:1px solid var(--border);padding:18px 14px 24px 0}
+  nav.toc{display:none}
+}
+.sidenav .sn-title{font-family:var(--mono);font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--faint);margin:0 0 12px}
+.sidenav ol,.sidenav ul{list-style:none;margin:0;padding:0}
+.sidenav > ol > li{margin-bottom:13px}
+.sidenav .sn-sec{display:block;font-size:.82rem;font-weight:600;color:var(--ink);text-decoration:none;
+  line-height:1.34;padding:2px 0;border-bottom:1px solid transparent}
+.sidenav .sn-sec:hover{border-bottom-color:var(--teal)}
+.sidenav .sn-sec .n{font-family:var(--mono);font-size:.65rem;color:var(--teal);margin-right:6px;
+  font-variant-numeric:tabular-nums}
+.sidenav ul{margin-top:4px;border-left:1px solid var(--border)}
+.sidenav ul a{display:block;font-size:.775rem;color:var(--dim);text-decoration:none;line-height:1.32;
+  padding:3px 0 3px 10px;border-left:2px solid transparent;margin-left:-1px;overflow-wrap:break-word}
+.sidenav ul a:hover{color:var(--teal)}
+.sidenav ul a.on,.sidenav .sn-sec.on{color:var(--ink);font-weight:600}
+.sidenav ul a.on{border-left-color:var(--teal)}
+.sidenav a:focus-visible{outline:2px solid var(--teal);outline-offset:1px;border-radius:3px}
 
 /* ---------- sections ---------- */
 section{padding-block:clamp(34px,5vw,54px) 0}
@@ -191,6 +219,7 @@ a.pname:hover{border-bottom-color:var(--teal)}
 .c-moss{background:var(--moss-wash);color:var(--moss);border-color:var(--moss)}
 .c-gold{background:var(--gold-wash);color:var(--gold);border-color:var(--gold)}
 .c-plain{background:var(--inset);color:var(--dim);border-color:var(--border)}
+.chip.st{font-style:italic}
 
 /* ---------- split note ---------- */
 .note{margin-top:22px;background:var(--surface);border:1px solid var(--border);
@@ -255,6 +284,10 @@ footer .paths span{font-family:var(--mono);font-size:.73rem;background:var(--ins
   border-radius:5px;padding:3px 7px;overflow-wrap:anywhere}
 footer p{max-width:80ch;margin-bottom:8px}
 
+@media (max-width:900px){
+  figure.fig{overflow-x:auto}
+  figure.fig svg{min-width:780px}
+}
 @media (max-width:600px){
   html{font-size:16px}
   .card .fx{font-size:.74rem}
@@ -265,6 +298,45 @@ footer p{max-width:80ch;margin-bottom:8px}
 </style>
 
 <div class="page">
+
+  <nav class="sidenav" aria-label="Measurements and sections">
+    <p class="sn-title">Jump to</p>
+    <ol>
+      <li><a class="sn-sec" href="#dormant"><span class="n">01</span>The state of the objective</a>
+        <ul>
+          <li><a href="#b-shape">ShapeRegularity</a></li>
+          <li><a href="#b-contrast">Contrast — Otsu η</a></li>
+          <li><a href="#b-sizecv">SizeCV</a></li>
+          <li><a href="#b-count">Count — expected vs. detected</a></li>
+          <li><a href="#q-count">ExpVsDet + GridOccupancy</a></li>
+          <li><a href="#q-icc">ICC(2,1)</a></li>
+          <li><a href="#q-spread">ReplicateAgreement + RelativeMAD</a></li>
+          <li><a href="#q-zmax">MaxModifiedZScore</a></li>
+          <li><a href="#q-tukey">TukeyOutlierFraction</a></li>
+        </ul></li>
+      <li><a class="sn-sec" href="#blindspot"><span class="n">02</span>The shared blind spot</a></li>
+      <li><a class="sn-sec" href="#pixels"><span class="n">03</span>From pixels to a number</a></li>
+      <li><a class="sn-sec" href="#gallery"><span class="n">04</span>What each candidate measures</a>
+        <ul>
+          <li><a href="#plate-h">All twelve in one place</a></li>
+          <li><a href="#m-busy">Weszka–Rosenfeld busyness</a></li>
+          <li><a href="#m-q">Borsotti Q</a></li>
+          <li><a href="#m-zeb">Zeboudj contrast C(I)</a></li>
+          <li><a href="#m-ent">Entropy metric E</a></li>
+          <li><a href="#m-qstat">q-statistic</a></li>
+          <li><a href="#m-fgs">FGS — WV + DTNP</a></li>
+          <li><a href="#m-uoa">UOA — over / under</a></li>
+          <li><a href="#m-evi">EVI — edge validity</a></li>
+          <li><a href="#m-cse">CSE coverage — FFC</a></li>
+          <li><a href="#m-flow">Cellpose flow error</a></li>
+          <li><a href="#m-rca">Reverse Classification Accuracy</a></li>
+          <li><a href="#m-dice">Learned Dice regression</a></li>
+        </ul></li>
+      <li><a class="sn-sec" href="#board"><span class="n">05</span>The candidate landscape</a></li>
+      <li><a class="sn-sec" href="#traps"><span class="n">06</span>How this goes wrong quietly</a></li>
+      <li><a class="sn-sec" href="#route"><span class="n">07</span>The unblock route</a></li>
+    </ol>
+  </nav>
 
 <header class="masthead">
   <span class="eyebrow">PhenoTypic · reference-free segmentation quality · 11 Sep 2026</span>
@@ -290,7 +362,9 @@ footer p{max-width:80ch;margin-bottom:8px}
         <ul><li><a href="#frame-qc">What those seven frame checks actually measure</a></li></ul></li>
       <li><span class="tn">02</span><a href="#blindspot">The shared blind spot</a>
         <span class="td">the failure none of the four can see</span></li>
-      <li><span class="tn">03</span><a href="#gallery">What each candidate measures</a>
+      <li><span class="tn">03</span><a href="#pixels">From pixels to a number</a>
+        <span class="td">the chain, the bounds, and what each catches</span></li>
+      <li><span class="tn">04</span><a href="#gallery">What each candidate measures</a>
         <span class="td">twelve quantities, drawn</span>
         <ul>
           <li><a href="#plate-h">All twelve in one place</a></li>
@@ -298,11 +372,11 @@ footer p{max-width:80ch;margin-bottom:8px}
           <li><a href="#fam-b">Family B · object and spatial statistics</a></li>
           <li><a href="#fam-cd">Families C and D · bio-imaging and learned</a></li>
         </ul></li>
-      <li><span class="tn">04</span><a href="#board">The candidate landscape</a>
+      <li><span class="tn">05</span><a href="#board">The candidate landscape</a>
         <span class="td">25 rows, and the shared decision board</span></li>
-      <li><span class="tn">05</span><a href="#traps">How this goes wrong quietly</a>
+      <li><span class="tn">06</span><a href="#traps">How this goes wrong quietly</a>
         <span class="td">four traps, one refuted claim</span></li>
-      <li><span class="tn">06</span><a href="#route">The unblock route</a>
+      <li><span class="tn">07</span><a href="#route">The unblock route</a>
         <span class="td">one corpus, two consumers</span></li>
     </ol>
   </nav>
@@ -397,7 +471,7 @@ footer p{max-width:80ch;margin-bottom:8px}
   </figure>
 
   <div class="mgrid">
-  <figure class="mfig">
+  <figure class="mfig" id="b-shape">
     <div class="mhead"><h3>ShapeRegularity</h3><span class="chip c-moss">built</span></div>
     <p class="mq">mean( clamp(Solidity), clamp(Circularity), clamp(1 − Eccentricity) ) &nbsp;·&nbsp; colonies below min_area dropped first, but only when Size_Area was measured</p>
     <svg viewBox="0 0 400 216" role="img" aria-label="Two colonies side by side: a single round colony whose convex hull hugs its outline, and a merged pair whose hull cuts straight across the waist leaving a gap; beneath each, bars for solidity, circularity and one minus eccentricity, all three shorter for the merged pair, dropping the mean from 0.95 to 0.54.">
@@ -457,7 +531,7 @@ footer p{max-width:80ch;margin-bottom:8px}
     <div class="miss"><b>blind to</b>genuinely non-round colonies; collinear with solidity</div>
   </figure>
 
-  <figure class="mfig">
+  <figure class="mfig" id="b-contrast">
     <div class="mhead"><h3>Contrast — Otsu separation η</h3><span class="chip c-moss">built</span></div>
     <p class="mq">η = σ²_B / σ²_T &nbsp;·&nbsp; σ²_B = w(1−w)(μ_fg − μ_bg)² &nbsp;·&nbsp; w = fraction of pixels inside the mask</p>
     <svg viewBox="0 0 400 212" role="img" aria-label="Two grayscale histograms. On the left a background mode and a mask mode sit far apart with a wide gap between their means and eta equals 0.71; on the right agar has leaked into the mask so the two modes overlap, the gap between the means is small, and eta falls to 0.18.">
@@ -500,7 +574,7 @@ footer p{max-width:80ch;margin-bottom:8px}
     <div class="miss"><b>blind to</b>spatial layout entirely — a salt-and-pepper mask ties a clean one at the same gray split</div>
   </figure>
 
-  <figure class="mfig">
+  <figure class="mfig" id="b-sizecv">
     <div class="mhead"><h3>SizeCV</h3><span class="chip c-moss">built</span></div>
     <p class="mq">1 / (1 + mean over groups of σ/μ) &nbsp;on Size_Area&nbsp; · &nbsp;σ is the sample sd (ddof = 1)</p>
     <svg viewBox="0 0 400 186" role="img" aria-label="Two replicate groups plotted on a Size_Area axis. Group A is a tight cluster of six colonies with a narrow spread and a CV of 0.04; in group B one colony has split into two half-area fragments far to the left, pulling the mean down and widening the spread to a CV of 0.28, and the averaged CV of 0.16 folds to a score of 0.86.">
@@ -551,7 +625,7 @@ footer p{max-width:80ch;margin-bottom:8px}
     <div class="miss"><b>blind to</b>nothing, when the biology itself varies — real size spread reads as bad segmentation</div>
   </figure>
 
-  <figure class="mfig">
+  <figure class="mfig" id="b-count">
     <div class="mhead"><h3>Count — expected vs. detected</h3><span class="chip c-moss">built</span></div>
     <p class="mq">t = exp(−ln2 · m / fail_threshold) &nbsp;·&nbsp; m = |detected − expected| / expected</p>
     <svg viewBox="0 0 400 190" role="img" aria-label="On the left, an expected bar of 96 colonies above a detected bar of 88, the missing 8 drawn as a dashed gap, giving m equal to 8 over 96. On the right, the decay curve of t against m: it starts at 1, passes through exactly one half where m equals the fail threshold of 0.10, and tails toward zero, with the 88-of-96 case marked just above the half-way point at 0.56.">
@@ -625,7 +699,7 @@ footer p{max-width:80ch;margin-bottom:8px}
 
   <p class="subhead" id="frame-qc">What those seven checks actually measure</p>
   <div class="mgrid">
-  <figure class="mfig">
+  <figure class="mfig" id="q-count">
     <div class="mhead"><h3>ExpectedVsDetectedCount + GridOccupancy</h3><span class="chip c-moss">runs today</span></div>
     <p class="mq">QC_Count_Metric = |detected − expected| / expected&nbsp; ·&nbsp; QC_Occupancy_Metric = distinct filled cells / expected&nbsp; — both read expected as the number of layout rows carrying this group's key</p>
     <svg viewBox="0 0 400 212" role="img" aria-label="A twenty-four cell plate grid with three vacant cells and one cell holding two colonies; the same plate yields twenty-two detected measurement rows but only twenty-one distinct filled cells, so the count check warns while the occupancy check fails.">
@@ -711,7 +785,7 @@ footer p{max-width:80ch;margin-bottom:8px}
     <figcaption>Both checks divide by the same expected count — the number of layout rows carrying this plate's key — but they count different numerators, and the doublet is where they part. The parent counts measurement rows with a non-null <code>Object_Label</code>, so two colonies sharing one grid cell read as two detections; the subclass counts <code>nunique(Grid_RowMajorIdx)</code>, so that same pair collapses to one filled cell. Here that one difference is enough to land the plate in different bands: 0.083 divergence warns, 0.875 occupancy fails.</figcaption>
   </figure>
 
-  <figure class="mfig">
+  <figure class="mfig" id="q-icc">
     <div class="mhead"><h3>ICC</h3><span class="chip c-moss">runs today</span></div>
     <p class="mq">QC_ICC_Metric = (MSR − MSE) / (MSR + (k−1)·MSE + (k/n)·(MSC − MSE))&nbsp; — subjects are <code>Metadata_Time</code>, raters are <code>Metadata_BioReplicate</code></p>
     <svg viewBox="0 0 400 238" role="img" aria-label="Two panels showing the same three timepoints measured by three replicates: on the left the replicates cluster tightly at each timepoint so between-subject spread dwarfs within-subject spread and the coefficient approaches one, while on the right the same timepoint means carry wide replicate scatter and the coefficient collapses toward zero.">
@@ -785,7 +859,7 @@ footer p{max-width:80ch;margin-bottom:8px}
     <figcaption>The two panels carry identical timepoint means (the grey ticks); only the replicate scatter differs, and that alone drives the coefficient. ICC(2,1) is the ratio of between-subject variance to total variance, so growth across timepoints supplies the signal and replicate disagreement supplies the noise — a check that reads high whenever the plate-to-plate story is louder than the replicate-to-replicate story. Every guard path (a missing axis column, a duplicated or missing subject-by-rater cell, fewer than two of either, zero total variance) returns NaN, which the base class maps to <code>pass</code> — so a NaN here means "could not be estimated", never "agreement is fine".</figcaption>
   </figure>
 
-  <figure class="mfig">
+  <figure class="mfig" id="q-spread">
     <div class="mhead"><h3>ReplicateAgreement + RelativeMAD</h3><span class="chip c-moss">runs today</span></div>
     <p class="mq">QC_SE_Metric = |SE| / |mean|, SE = stddev(ddof=1) / √n&nbsp; ·&nbsp; QC_MAD_Metric = MAD / |median|, MAD = median(|x − median|)</p>
     <svg viewBox="0 0 400 230" role="img" aria-label="The same seven replicate values shown twice on a value axis: with a mean-plus-standard-error band and a median-plus-median-absolute-deviation band drawn over them, then again with one far outlier added, which drags the mean rightward and widens the standard-error band while the median-absolute-deviation band barely moves.">
@@ -841,7 +915,7 @@ footer p{max-width:80ch;margin-bottom:8px}
     <figcaption>Two estimators of the same thing — how tight is this replicate bin — drawn over the same points, which is the only way to see why the project ships both. Adding one distant member drags the mean toward it and inflates the standard error, because every value enters the sum; the median moves by a fraction of that and the median absolute deviation does not move at all, because more than half the members would have to shift before it did. The parametric check is therefore the sensitive one and the robust check is the trustworthy one, and disagreement between the two is itself the signal that a single colony — a split, a merge, a contaminant — is doing the damage.</figcaption>
   </figure>
 
-  <figure class="mfig">
+  <figure class="mfig" id="q-zmax">
     <div class="mhead"><h3>MaxModifiedZScore</h3><span class="chip c-moss">runs today</span></div>
     <p class="mq">QC_ZMax_Metric = max over the bin of&nbsp; 0.6745 · |x − median| / MAD&nbsp; — the worst single member, not the average one</p>
     <svg viewBox="0 0 400 224" role="img" aria-label="A bin of eight member values with its median and median-absolute-deviation marked on the left, and on the right the per-member modified z-score as bars: seven bars barely leave the baseline while the eighth towers past the warn line at three point five and the fail line at five, and only that tallest bar becomes the metric.">
@@ -888,7 +962,7 @@ footer p{max-width:80ch;margin-bottom:8px}
     <figcaption>This is a maximum, not an average, and that is the whole design: a bin where every member but one is fine still fails, because the seven quiet bars contribute nothing to the reported number. The scale is robust in both directions — deviations are taken from the median and divided by the MAD, so the outlier does not get to inflate the yardstick it is measured against, and 0.6745 (the reciprocal of 1.4826) rescales the result to read like an ordinary z-score. Note that the default warn threshold of 3.5 is the classic Iglewicz–Hoaglin cutoff; PhenoTypic only calls fail at 5.0.</figcaption>
   </figure>
 
-  <figure class="mfig">
+  <figure class="mfig" id="q-tukey">
     <div class="mhead"><h3>TukeyOutlierFraction</h3><span class="chip c-moss">runs today</span></div>
     <p class="mq">QC_Tukey_Metric = count(x &lt; Q1 − k·IQR&nbsp; or&nbsp; x &gt; Q3 + k·IQR) / n,&nbsp; k = 1.5, n ≥ 4</p>
     <svg viewBox="0 0 400 228" role="img" aria-label="Two bins of twelve members each drawn as dot strips above their own box plots with Tukey fences: the tight bin has a narrow interquartile box whose fences still enclose every member, while the noisy bin has three members beyond the upper fence, giving an outlier fraction of one quarter.">
@@ -1042,8 +1116,304 @@ footer p{max-width:80ch;margin-bottom:8px}
 
 <hr class="seam">
 
+<section id="pixels">
+  <div class="sechead"><span class="eyebrow">03 · from pixels to a number</span></div>
+  <h2>How an image and a mask become the numbers you read</h2>
+  <p class="lede">Every quantity PhenoTypic computes today is downstream of the same two objects — the image and the
+  label mask the detector produced from it. This section is the chain between them and the numbers, what
+  each of those numbers is actually capturing, the range it lives in, and which colony failure it will
+  and will not notice.</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 900 362" role="img" aria-label="The pixel chain on the left runs from the RGB image through gray, the enhanced detection matrix, the binary mask and the label image; a measure step turns the label image into a table of one row per colony, which feeds replicate groups and ten of the eleven quality numbers. A single term, Contrast, reaches back to read gray and the binary mask directly.">
+      <defs>
+        <marker id="px-a" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,4 L0,8 z" fill="currentColor"/>
+        </marker>
+        <marker id="px-c" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="8" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,4 L0,8 z" fill="var(--clay)"/>
+        </marker>
+      </defs>
+
+      <text class="lbl-s" x="24" y="22">PIXELS</text>
+      <text class="lbl-s" x="450" y="22">THE TABLE</text>
+      <line class="ln-ghost" x1="418" y1="30" x2="418" y2="340"/>
+
+      <rect class="box" x="24" y="40" width="150" height="40" rx="7"/>
+      <text class="nm" x="99" y="65" text-anchor="middle">image.rgb</text>
+      <line class="ln" x1="99" y1="80" x2="99" y2="94" marker-end="url(#px-a)"/>
+      <text class="lbl-s" x="106" y="92">luminance</text>
+
+      <rect class="box" x="24" y="96" width="150" height="40" rx="7"/>
+      <text class="nm" x="99" y="121" text-anchor="middle">image.gray</text>
+      <line class="ln" x1="99" y1="136" x2="99" y2="150" marker-end="url(#px-a)"/>
+      <text class="lbl-s" x="106" y="148">enhance</text>
+
+      <rect class="box" x="24" y="152" width="150" height="40" rx="7"/>
+      <text class="nm" x="99" y="177" text-anchor="middle">detect_mat</text>
+      <line class="ln" x1="99" y1="192" x2="99" y2="206" marker-end="url(#px-a)"/>
+      <text class="lbl-s" x="106" y="204">detect</text>
+
+      <rect class="box" x="24" y="208" width="150" height="40" rx="7"/>
+      <text class="nm" x="99" y="233" text-anchor="middle">image.objmask</text>
+      <line class="ln" x1="99" y1="248" x2="99" y2="262" marker-end="url(#px-a)"/>
+      <text class="lbl-s" x="106" y="260">label</text>
+
+      <rect class="box-moss" x="24" y="264" width="150" height="40" rx="7"/>
+      <text class="nm" x="99" y="283" text-anchor="middle">image.objmap</text>
+      <text class="lbl-s" x="99" y="298" text-anchor="middle">0 = agar, 1..N</text>
+
+      <line class="ln" x1="174" y1="284" x2="208" y2="284" marker-end="url(#px-a)"/>
+      <rect class="box" x="214" y="256" width="180" height="56" rx="7"/>
+      <text class="nm-b" x="304" y="278" text-anchor="middle">the measure step</text>
+      <text class="lbl-s" x="304" y="296" text-anchor="middle">9 of 11 measurers read objmap</text>
+
+      <line class="ln" x1="394" y1="284" x2="438" y2="284" marker-end="url(#px-a)"/>
+      <text class="lbl-s" x="416" y="242" text-anchor="middle">one row per object</text>
+
+      <rect class="box" x="444" y="250" width="210" height="76" rx="7"/>
+      <text class="nm-b" x="549" y="272" text-anchor="middle">measurement frame</text>
+      <text class="lbl-s" x="549" y="290" text-anchor="middle">one row per colony</text>
+      <text class="lbl-s" x="549" y="308" text-anchor="middle">Size_* Shape_* Intensity_*</text>
+
+      <line class="ln" x1="654" y1="288" x2="684" y2="288" marker-end="url(#px-a)"/>
+      <rect class="box" x="690" y="250" width="190" height="76" rx="7"/>
+      <text class="nm-b" x="785" y="278" text-anchor="middle">replicate groups</text>
+      <text class="lbl-s" x="785" y="296" text-anchor="middle">groupby × Metadata_Time</text>
+
+      <line class="ln" x1="549" y1="250" x2="549" y2="196" marker-end="url(#px-a)"/>
+      <rect class="box" x="444" y="76" width="436" height="118" rx="8"/>
+      <text class="lbl-s" x="464" y="98">WHAT READS THE TABLE, NEVER THE IMAGE</text>
+      <text class="nm" x="464" y="122">ShapeRegularity · SizeCV · Count</text>
+      <text class="lbl" x="464" y="142">ICC · ReplicateAgreement · RelativeMAD · MaxModifiedZScore</text>
+      <text class="lbl" x="464" y="158">TukeyOutlierFraction · ExpVsDet · GridOccupancy</text>
+      <text class="lbl moss-t" x="464" y="180">ten of the eleven quality numbers computed today</text>
+
+      <rect class="box-clay" x="214" y="76" width="180" height="66" rx="7"/>
+      <text class="nm-b" x="304" y="100" text-anchor="middle">Contrast η</text>
+      <text class="lbl-s" x="304" y="118" text-anchor="middle">the one term that</text>
+      <text class="lbl-s" x="304" y="132" text-anchor="middle">reaches back to pixels</text>
+      <path class="ln-clay" d="M214,98 L178,112" marker-end="url(#px-c)"/>
+      <path class="ln-clay" d="M214,126 L178,222" marker-end="url(#px-c)"/>
+
+      <text class="lbl-s" x="418" y="352" text-anchor="middle">everything right of this line is a table, not an image</text>
+    </svg>
+    <figcaption><b>The measure step is a one-way door, and almost nothing reaches back through it.</b>
+    Every pixel-reading measurer takes <code>image.objmap</code> — the integer label image where 0 is agar
+    and 1…N are colonies — and most take <code>image.gray</code> with it. Nine of the eleven exported
+    measurers read <code>objmap</code>; the two that do not (<code>MeasureGridSpread</code>,
+    <code>MeasureGridLinRegStats</code>) read the grid instead. <strong>No measurer reads
+    <code>image.rgb</code> at all</strong> — all three references to it under <code>measure/</code>
+    are plotting code, so the colour image is displayed but never measured. What comes out is a frame with one row per colony, and from that point
+    on the quality machinery is doing statistics on a table. Of the eleven quality numbers PhenoTypic
+    computes today, exactly one — the Otsu separation η — goes back to the pixels the mask came from.
+    That is the structural reason a colony the detector never found is nearly invisible: it produces no
+    row, and ten of the eleven only ever see rows. Only the two layout-aware checks notice, and only by
+    counting the rows that are there against a layout you supplied.</figcaption>
+  </figure>
+
+  <figure class="fig">
+    <svg viewBox="0 0 900 416" role="img" aria-label="A rail per measurement showing its range, the direction that counts as better, and where its warn and fail thresholds sit along that range.">
+      <text class="lbl-s" x="14" y="26">MEASUREMENT</text>
+      <text class="lbl-s" x="268" y="26">RANGE, AND WHERE THE THRESHOLDS SIT</text>
+      <text class="lbl-s" x="742" y="26">BETTER</text>
+      <text class="nm" x="14" y="66">ShapeRegularity</text>
+      <text class="lbl-s" x="196" y="66">[0, 1]</text>
+      <line x1="268" y1="62" x2="700" y2="62" stroke="var(--rule)" stroke-width="2" fill="none"/>
+      <line x1="700" y1="57" x2="700" y2="67" stroke="var(--rule)" stroke-width="1" fill="none"/>
+      <line x1="268" y1="57" x2="268" y2="67" stroke="var(--rule)" stroke-width="1" fill="none"/>
+      <line x1="268" y1="54" x2="268" y2="70" stroke="var(--clay)" stroke-width="2.4" fill="none"/>
+      <text class="lbl-s" x="268" y="50" text-anchor="middle" style="fill:var(--clay)">no shape cols → 0</text>
+      <line x1="742" y1="62" x2="768" y2="62" stroke="var(--moss)" stroke-width="1.8" fill="none"/>
+      <polygon points="768,58 776,62 768,66" fill="var(--moss)"/>
+      <text class="nm" x="14" y="100">Contrast η</text>
+      <text class="lbl-s" x="196" y="100">[0, 1]</text>
+      <line x1="268" y1="96" x2="700" y2="96" stroke="var(--rule)" stroke-width="2" fill="none"/>
+      <line x1="700" y1="91" x2="700" y2="101" stroke="var(--rule)" stroke-width="1" fill="none"/>
+      <line x1="268" y1="91" x2="268" y2="101" stroke="var(--rule)" stroke-width="1" fill="none"/>
+      <line x1="268" y1="88" x2="268" y2="104" stroke="var(--clay)" stroke-width="2.4" fill="none"/>
+      <text class="lbl-s" x="268" y="84" text-anchor="middle" style="fill:var(--clay)">all-fg / all-bg → 0</text>
+      <line x1="742" y1="96" x2="768" y2="96" stroke="var(--moss)" stroke-width="1.8" fill="none"/>
+      <polygon points="768,92 776,96 768,100" fill="var(--moss)"/>
+      <text class="nm" x="14" y="134">SizeCV</text>
+      <text class="lbl-s" x="196" y="134">[0, 1]</text>
+      <line x1="268" y1="130" x2="700" y2="130" stroke="var(--rule)" stroke-width="2" fill="none"/>
+      <line x1="700" y1="125" x2="700" y2="135" stroke="var(--rule)" stroke-width="1" fill="none"/>
+      <line x1="268" y1="125" x2="268" y2="135" stroke="var(--rule)" stroke-width="1" fill="none"/>
+      <line x1="700" y1="122" x2="700" y2="138" stroke="var(--moss)" stroke-width="2.4" fill="none"/>
+      <text class="lbl-s" x="700" y="118" text-anchor="middle" style="fill:var(--moss)">zero dispersion → 1</text>
+      <line x1="742" y1="130" x2="768" y2="130" stroke="var(--moss)" stroke-width="1.8" fill="none"/>
+      <polygon points="768,126 776,130 768,134" fill="var(--moss)"/>
+      <text class="nm" x="14" y="168">Count</text>
+      <text class="lbl-s" x="196" y="168">[0, 1]</text>
+      <line x1="268" y1="164" x2="700" y2="164" stroke="var(--rule)" stroke-width="2" fill="none"/>
+      <line x1="700" y1="159" x2="700" y2="169" stroke="var(--rule)" stroke-width="1" fill="none"/>
+      <line x1="268" y1="159" x2="268" y2="169" stroke="var(--rule)" stroke-width="1" fill="none"/>
+      <line x1="484" y1="156" x2="484" y2="172" stroke="var(--gold)" stroke-width="2.4" fill="none"/>
+      <text class="lbl-s" x="484" y="152" text-anchor="middle" style="fill:var(--gold)">at fail_threshold → 0.5</text>
+      <line x1="742" y1="164" x2="768" y2="164" stroke="var(--moss)" stroke-width="1.8" fill="none"/>
+      <polygon points="768,160 776,164 768,168" fill="var(--moss)"/>
+      <text class="nm" x="14" y="202">ExpectedVsDetected</text>
+      <text class="lbl-s" x="196" y="202">[0, ∞)</text>
+      <line x1="268" y1="198" x2="666" y2="198" stroke="var(--rule)" stroke-width="2" fill="none"/>
+      <line x1="666" y1="198" x2="700" y2="198" stroke="var(--rule)" stroke-width="2" stroke-dasharray="3 4" fill="none"/>
+      <text class="lbl-s" x="706" y="202">∞</text>
+      <line x1="268" y1="193" x2="268" y2="203" stroke="var(--rule)" stroke-width="1" fill="none"/>
+      <line x1="354.4" y1="190" x2="354.4" y2="206" stroke="var(--gold)" stroke-width="2.4" fill="none"/>
+      <text class="lbl-s" x="354.4" y="186" text-anchor="middle" style="fill:var(--gold)">warn</text>
+      <line x1="440.8" y1="190" x2="440.8" y2="206" stroke="var(--clay)" stroke-width="2.4" fill="none"/>
+      <text class="lbl-s" x="440.8" y="186" text-anchor="middle" style="fill:var(--clay)">fail</text>
+      <line x1="776" y1="198" x2="750" y2="198" stroke="var(--slate)" stroke-width="1.8" fill="none"/>
+      <polygon points="750,194 742,198 750,202" fill="var(--slate)"/>
+      <text class="nm" x="14" y="236">GridOccupancy</text>
+      <text class="lbl-s" x="196" y="236">[0, 1]</text>
+      <line x1="268" y1="232" x2="700" y2="232" stroke="var(--rule)" stroke-width="2" fill="none"/>
+      <line x1="700" y1="227" x2="700" y2="237" stroke="var(--rule)" stroke-width="1" fill="none"/>
+      <line x1="268" y1="227" x2="268" y2="237" stroke="var(--rule)" stroke-width="1" fill="none"/>
+      <line x1="656.8" y1="224" x2="656.8" y2="240" stroke="var(--clay)" stroke-width="2.4" fill="none"/>
+      <text class="lbl-s" x="656.8" y="220" text-anchor="middle" style="fill:var(--clay)">fail</text>
+      <line x1="678.4" y1="224" x2="678.4" y2="240" stroke="var(--gold)" stroke-width="2.4" fill="none"/>
+      <text class="lbl-s" x="678.4" y="248" text-anchor="middle" style="fill:var(--gold)">warn</text>
+      <line x1="742" y1="232" x2="768" y2="232" stroke="var(--moss)" stroke-width="1.8" fill="none"/>
+      <polygon points="768,228 776,232 768,236" fill="var(--moss)"/>
+      <text class="nm" x="14" y="270">ICC(2,1)</text>
+      <text class="lbl-s" x="196" y="270">(−∞, 1]</text>
+      <line x1="268" y1="266" x2="302" y2="266" stroke="var(--rule)" stroke-width="2" stroke-dasharray="3 4" fill="none"/>
+      <line x1="302" y1="266" x2="700" y2="266" stroke="var(--rule)" stroke-width="2" fill="none"/>
+      <line x1="700" y1="261" x2="700" y2="271" stroke="var(--rule)" stroke-width="1" fill="none"/>
+      <text class="lbl-s" x="262" y="270" text-anchor="end">−∞</text>
+      <line x1="484" y1="258" x2="484" y2="274" stroke="var(--clay)" stroke-width="2.4" fill="none"/>
+      <text class="lbl-s" x="484" y="254" text-anchor="middle" style="fill:var(--clay)">fail</text>
+      <line x1="592" y1="258" x2="592" y2="274" stroke="var(--gold)" stroke-width="2.4" fill="none"/>
+      <text class="lbl-s" x="592" y="254" text-anchor="middle" style="fill:var(--gold)">warn</text>
+      <line x1="742" y1="266" x2="768" y2="266" stroke="var(--moss)" stroke-width="1.8" fill="none"/>
+      <polygon points="768,262 776,266 768,270" fill="var(--moss)"/>
+      <text class="nm" x="14" y="304">ReplicateAgreement</text>
+      <text class="lbl-s" x="196" y="304">[0, ∞)</text>
+      <line x1="268" y1="300" x2="666" y2="300" stroke="var(--rule)" stroke-width="2" fill="none"/>
+      <line x1="666" y1="300" x2="700" y2="300" stroke="var(--rule)" stroke-width="2" stroke-dasharray="3 4" fill="none"/>
+      <text class="lbl-s" x="706" y="304">∞</text>
+      <line x1="268" y1="295" x2="268" y2="305" stroke="var(--rule)" stroke-width="1" fill="none"/>
+      <line x1="354.4" y1="292" x2="354.4" y2="308" stroke="var(--gold)" stroke-width="2.4" fill="none"/>
+      <text class="lbl-s" x="354.4" y="288" text-anchor="middle" style="fill:var(--gold)">warn</text>
+      <line x1="440.8" y1="292" x2="440.8" y2="308" stroke="var(--clay)" stroke-width="2.4" fill="none"/>
+      <text class="lbl-s" x="440.8" y="288" text-anchor="middle" style="fill:var(--clay)">fail</text>
+      <line x1="776" y1="300" x2="750" y2="300" stroke="var(--slate)" stroke-width="1.8" fill="none"/>
+      <polygon points="750,296 742,300 750,304" fill="var(--slate)"/>
+      <text class="nm" x="14" y="338">RelativeMAD</text>
+      <text class="lbl-s" x="196" y="338">[0, ∞)</text>
+      <line x1="268" y1="334" x2="666" y2="334" stroke="var(--rule)" stroke-width="2" fill="none"/>
+      <line x1="666" y1="334" x2="700" y2="334" stroke="var(--rule)" stroke-width="2" stroke-dasharray="3 4" fill="none"/>
+      <text class="lbl-s" x="706" y="338">∞</text>
+      <line x1="268" y1="329" x2="268" y2="339" stroke="var(--rule)" stroke-width="1" fill="none"/>
+      <line x1="354.4" y1="326" x2="354.4" y2="342" stroke="var(--gold)" stroke-width="2.4" fill="none"/>
+      <text class="lbl-s" x="354.4" y="322" text-anchor="middle" style="fill:var(--gold)">warn</text>
+      <line x1="440.8" y1="326" x2="440.8" y2="342" stroke="var(--clay)" stroke-width="2.4" fill="none"/>
+      <text class="lbl-s" x="440.8" y="322" text-anchor="middle" style="fill:var(--clay)">fail</text>
+      <line x1="776" y1="334" x2="750" y2="334" stroke="var(--slate)" stroke-width="1.8" fill="none"/>
+      <polygon points="750,330 742,334 750,338" fill="var(--slate)"/>
+      <text class="nm" x="14" y="372">MaxModifiedZScore</text>
+      <text class="lbl-s" x="196" y="372">[0, ∞)</text>
+      <line x1="268" y1="368" x2="666" y2="368" stroke="var(--rule)" stroke-width="2" fill="none"/>
+      <line x1="666" y1="368" x2="700" y2="368" stroke="var(--rule)" stroke-width="2" stroke-dasharray="3 4" fill="none"/>
+      <text class="lbl-s" x="706" y="372">∞</text>
+      <line x1="268" y1="363" x2="268" y2="373" stroke="var(--rule)" stroke-width="1" fill="none"/>
+      <line x1="457" y1="360" x2="457" y2="376" stroke="var(--gold)" stroke-width="2.4" fill="none"/>
+      <text class="lbl-s" x="457" y="356" text-anchor="middle" style="fill:var(--gold)">warn</text>
+      <line x1="538" y1="360" x2="538" y2="376" stroke="var(--clay)" stroke-width="2.4" fill="none"/>
+      <text class="lbl-s" x="538" y="356" text-anchor="middle" style="fill:var(--clay)">fail</text>
+      <line x1="776" y1="368" x2="750" y2="368" stroke="var(--slate)" stroke-width="1.8" fill="none"/>
+      <polygon points="750,364 742,368 750,372" fill="var(--slate)"/>
+      <text class="nm" x="14" y="406">TukeyOutlierFraction</text>
+      <text class="lbl-s" x="196" y="406">[0, 1]</text>
+      <line x1="268" y1="402" x2="700" y2="402" stroke="var(--rule)" stroke-width="2" fill="none"/>
+      <line x1="700" y1="397" x2="700" y2="407" stroke="var(--rule)" stroke-width="1" fill="none"/>
+      <line x1="268" y1="397" x2="268" y2="407" stroke="var(--rule)" stroke-width="1" fill="none"/>
+      <line x1="311.2" y1="394" x2="311.2" y2="410" stroke="var(--gold)" stroke-width="2.4" fill="none"/>
+      <text class="lbl-s" x="311.2" y="390" text-anchor="middle" style="fill:var(--gold)">warn</text>
+      <line x1="376" y1="394" x2="376" y2="410" stroke="var(--clay)" stroke-width="2.4" fill="none"/>
+      <text class="lbl-s" x="376" y="390" text-anchor="middle" style="fill:var(--clay)">fail</text>
+      <line x1="776" y1="402" x2="750" y2="402" stroke="var(--slate)" stroke-width="1.8" fill="none"/>
+      <polygon points="750,398 742,402 750,406" fill="var(--slate)"/>
+    </svg>
+    <figcaption><b>Bounds, and where a verdict flips.</b> Four of these are scorer terms, fixed-normalized
+    to [0,1] higher-is-better so that no pass/warn/fail verdict applies — they are ranked against each
+    other, not judged, though Count still borrows the count check's <code>fail_threshold</code> as its
+    half-score anchor. The seven QC checks are judged, and each carries its own warn and fail bar from its module.
+    Four of those bars are ratios with no upper bound, so the rail runs off the end: a count can diverge
+    from its layout without limit, and a replicate bin can always get worse. Read the direction arrow before the number — <code>GridOccupancy</code> and
+    <code>ICC</code> fail by falling, the rest of the checks fail by rising. ICC has no floor: a negative
+    value means the replicates agree <em>worse</em> than chance, and it fails for exactly that reason.</figcaption>
+  </figure>
+
+  <p class="lede">Chips in <em>italic</em> are scorer terms: they move when the plate is bad, but no run
+  raises a flag on them — only the seven QC checks emit a pass/warn/fail. And the two layout-aware
+  checks need an expected count supplied (an in-memory frame or a CSV/Parquet path); GridOccupancy
+  additionally needs a fitted grid.</p>
+  <div class="scroll">
+    <table>
+      <thead><tr>
+        <th scope="col">What went wrong on the plate</th>
+        <th scope="col">Caught by, today</th>
+        <th scope="col">Only partly</th>
+        <th scope="col">Nothing sees it</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <th scope="row">Two colonies merged into one mask</th>
+          <td><span class="chip c-moss st">ShapeRegularity</span> <span class="chip c-moss st">SizeCV</span> <span class="chip c-moss">Count</span> <span class="chip c-moss">GridOccupancy</span> <span class="chip c-plain">only when the pair spanned two cells</span></td>
+          <td><span class="chip c-gold">Tukey</span> <span class="chip c-gold">MaxModZ</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <th scope="row">One colony split into fragments</th>
+          <td><span class="chip c-moss st">SizeCV</span> <span class="chip c-moss">Count</span></td>
+          <td><span class="chip c-gold st">ShapeRegularity</span> <span class="chip c-gold">RelativeMAD</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <th scope="row">Colony missed entirely</th>
+          <td><span class="chip c-moss">Count</span> <span class="chip c-moss">GridOccupancy</span></td>
+          <td>—</td>
+          <td><span class="chip c-clay st">ShapeRegularity</span> <span class="chip c-clay st">SizeCV</span> <span class="chip c-clay st">Contrast</span> <span class="chip c-clay">all spread checks</span></td>
+        </tr>
+        <tr>
+          <th scope="row">Debris scored as a colony</th>
+          <td><span class="chip c-moss">Count</span></td>
+          <td><span class="chip c-gold st">ShapeRegularity</span> <span class="chip c-gold st">SizeCV</span></td>
+          <td><span class="chip c-clay">GridOccupancy</span> <span class="chip c-plain">worse — debris in a vacant cell raises it toward pass</span></td>
+        </tr>
+        <tr>
+          <th scope="row">Boundary eroded or dilated off the true rim</th>
+          <td>—</td>
+          <td><span class="chip c-gold st">Contrast</span> <span class="chip c-plain">only via the histogram</span></td>
+          <td><span class="chip c-clay">every frame check</span> <span class="chip c-plain">shape and count both stay plausible</span></td>
+        </tr>
+        <tr>
+          <th scope="row">Whole plate mis-thresholded</th>
+          <td><span class="chip c-moss st">Contrast</span></td>
+          <td><span class="chip c-gold">Count</span> <span class="chip c-plain">only when the count changes</span> <span class="chip c-gold">ICC</span> <span class="chip c-gold">the spread checks</span> <span class="chip c-plain">only when a bin spans plates</span></td>
+          <td>—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <h4>Reading the matrix above in your setting</h4>
+    <p>Two rows deserve attention on arrayed plates specifically. <strong>A missed colony</strong> is
+    invisible to everything except the two layout-aware checks, and those need a metadata CSV declaring
+    the expected count — without one, a plate can lose colonies silently. <strong>A displaced
+    boundary</strong> is caught by nothing but a weak shift in Contrast's histogram — and nothing raises
+    a flag on it: area, shape and count all stay plausible while every measured size is biased. Those are the two gaps the recommended additions target — foreground
+    coverage for the first, an edge-agreement term for the second.</p>
+  </div>
+</section>
+
+<hr class="seam">
+
 <section id="gallery">
-  <div class="sechead"><span class="eyebrow">03 · what each candidate measures</span></div>
+  <div class="sechead"><span class="eyebrow">04 · what each candidate measures</span></div>
   <h2>Twelve quantities, drawn</h2>
   <p class="lede">Every metric here is a different answer to one question: what can you measure about a mask
   when you have no correct mask to compare it against? Each figure shows the quantity being computed and,
@@ -1065,21 +1435,31 @@ footer p{max-width:80ch;margin-bottom:8px}
           <line x1="122" y1="33" x2="122" y2="59" stroke="var(--clay)" stroke-width="1.6" fill="none"/>
           <text class="lbl-s" x="12" y="80">shattered · 10</text>
           <line x1="14" y1="100" x2="186" y2="100" stroke="var(--rule)" stroke-width="1" fill="none"/>
-          <rect x="70" y="93" width="8" height="14" rx="3" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1.2"/>
-          <rect x="84" y="93" width="8" height="14" rx="3" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1.2"/>
-          <rect x="98" y="93" width="8" height="14" rx="3" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1.2"/>
+          <rect x="76" y="93" width="8" height="14" rx="3" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1.2"/>
+          <rect x="88" y="93" width="8" height="14" rx="3" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1.2"/>
+          <rect x="100" y="93" width="8" height="14" rx="3" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1.2"/>
           <rect x="112" y="93" width="8" height="14" rx="3" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1.2"/>
-          <rect x="126" y="93" width="8" height="14" rx="3" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1.2"/>
+          <rect x="124" y="93" width="8" height="14" rx="3" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1.2"/>
+          <line x1="76" y1="88" x2="76" y2="112" stroke="var(--clay)" stroke-width="1.2" fill="none"/>
+          <line x1="84" y1="88" x2="84" y2="112" stroke="var(--clay)" stroke-width="1.2" fill="none"/>
+          <line x1="88" y1="88" x2="88" y2="112" stroke="var(--clay)" stroke-width="1.2" fill="none"/>
+          <line x1="96" y1="88" x2="96" y2="112" stroke="var(--clay)" stroke-width="1.2" fill="none"/>
+          <line x1="100" y1="88" x2="100" y2="112" stroke="var(--clay)" stroke-width="1.2" fill="none"/>
+          <line x1="108" y1="88" x2="108" y2="112" stroke="var(--clay)" stroke-width="1.2" fill="none"/>
+          <line x1="112" y1="88" x2="112" y2="112" stroke="var(--clay)" stroke-width="1.2" fill="none"/>
+          <line x1="120" y1="88" x2="120" y2="112" stroke="var(--clay)" stroke-width="1.2" fill="none"/>
+          <line x1="124" y1="88" x2="124" y2="112" stroke="var(--clay)" stroke-width="1.2" fill="none"/>
+          <line x1="132" y1="88" x2="132" y2="112" stroke="var(--clay)" stroke-width="1.2" fill="none"/>
           </svg>
         </figure>
         <div class="pbody">
           <a class="pname" href="#m-busy">Weszka–Rosenfeld busyness <span class="pr">A.2</span></a>
           <p class="pf">busyness = Σ off-diagonal GLCM entries — the object↔background adjacencies</p>
-          <p class="pm">Counts how often the image flips between object and background across adjacent pixels, in one cheap pass over the co-occurrence matrix. A clean rim crosses rarely; a speckled or shattered mask crosses constantly. It scores the mask's <em>compactness</em> and nothing else — no region statistics, no colour. Because it needs a threshold value, it can only evaluate segmentations a threshold already reduced to two levels. Lower is better; the catalogue supplies no normalizer, so treat the scale as unbounded rather than as a fraction.</p>
+          <p class="pm">Counts how often the image flips between object and background across adjacent pixels, in one cheap pass over the co-occurrence matrix. A clean rim crosses rarely; a speckled or shattered mask crosses constantly. It scores the mask's <em>compactness</em> and nothing else — no region statistics, no colour. Because it needs a threshold value, it can only evaluate segmentations a threshold already reduced to two levels. Lower is better; the catalogue also calls this a <em>fraction</em> of adjacencies but supplies no normalizer, so treat the scale as unbounded.</p>
         </div>
         <div class="pkey">
           <span class="pkey-t">Variable key</span>
-          <dl><dt>C_gl(i,j)</dt><dd>gray level at pixel (i,j) in the original image</dd><dt>L(i,j)</dt><dd>the thresholded or segmented level at that pixel</dd><dt>off-diagonal</dt><dd>co-occurrence entries where object meets background</dd><dt>equivalently</dt><dd>the summed absolute 4-/8-neighbour Laplacian response</dd></dl>
+          <dl><dt>off-diagonal</dt><dd>co-occurrence entries where object meets background</dd><dt>equivalently</dt><dd>the summed absolute 4-/8-neighbour Laplacian response</dd></dl>
         </div>
       </article>
 
@@ -1099,7 +1479,7 @@ footer p{max-width:80ch;margin-bottom:8px}
         <div class="pbody">
           <a class="pname" href="#m-q">Borsotti Q <span class="pr">A.5</span></a>
           <p class="pf">Q(I) = √N / (1000·S_I) · Σⱼ [ e²ⱼ/(1+log Sⱼ) + (N(Sⱼ)/Sⱼ)² ]</p>
-          <p class="pm">The consensus best of the F-family, and the only classic here that charges for <em>both</em> colony failure modes with one number. The first term inside the sum rises when a region is large and internally heterogeneous — a merged doublet. The second rises when many regions share the same area, which is the signature of noise shattering. Smaller is better. Its brittleness is that the same-area term depends on exact area coincidences, so it is sensitive to quantization, and it can misrank a plate whose colonies genuinely vary in size across a growth timecourse.</p>
+          <p class="pm">The consensus best of the F-family and, the catalogue judges, likely the single most directly reusable classic metric — unlike F and F′ it charges for <em>both</em> colony failure modes with one number. The first term inside the sum rises when a region is large and internally heterogeneous — a merged doublet. The second rises when many regions share the same area, which is the signature of noise shattering. Smaller is better. Its brittleness is that the same-area term depends on exact area coincidences, so it is sensitive to quantization, and it can misrank a plate whose colonies genuinely vary in size across a growth timecourse.</p>
         </div>
         <div class="pkey">
           <span class="pkey-t">Variable key</span>
@@ -1110,22 +1490,22 @@ footer p{max-width:80ch;margin-bottom:8px}
       <article class="prow">
         <figure class="pdiag">
           <svg viewBox="0 0 200 120" role="img" aria-label="A colony with a short interior contrast span and a much longer contrast span across its rim.">
-          <circle cx="96" cy="56" r="30" fill="var(--inset)" stroke="var(--rule)" stroke-width="1.3"/>
-          <line x1="74" y1="56" x2="90" y2="56" stroke="var(--moss)" stroke-width="2.4" fill="none"/>
-          <text class="lbl-s" x="82" y="46" text-anchor="middle">Iᵢ small</text>
-          <line x1="114" y1="56" x2="146" y2="56" stroke="var(--clay)" stroke-width="2.4" fill="none"/>
-          <text class="lbl-s" x="132" y="46" text-anchor="middle">Eᵢ large</text>
-          <text class="lbl" x="100" y="104" text-anchor="middle">C = 1 − Iᵢ/Eᵢ</text>
+          <circle cx="96" cy="52" r="24" fill="var(--inset)" stroke="var(--rule)" stroke-width="1.3"/>
+          <line x1="80" y1="52" x2="90" y2="52" stroke="var(--moss)" stroke-width="2.4" fill="none"/>
+          <text class="lbl-s" x="85" y="90" text-anchor="middle">Iᵢ small</text>
+          <line x1="108" y1="52" x2="146" y2="52" stroke="var(--clay)" stroke-width="2.4" fill="none"/>
+          <text class="lbl-s" x="150" y="42" text-anchor="middle">Eᵢ large</text>
+          <text class="lbl" x="100" y="108" text-anchor="middle">C = 1 − Iᵢ/Eᵢ</text>
           </svg>
         </figure>
         <div class="pbody">
           <a class="pname" href="#m-zeb">Zeboudj contrast C(I) <span class="pr">A.6</span></a>
           <p class="pf">C(Rᵢ) = 1 − Iᵢ/Eᵢ when 0 &lt; Iᵢ &lt; Eᵢ (= Eᵢ if Iᵢ = 0, else 0) ; C(I) = (1/A) Σᵢ Aᵢ·C(Rᵢ)</p>
-          <p class="pm">The best-balanced classic single score for colonies: it couples interior uniformity and boundary separation into one normalized number and, unlike Otsu, it is spatially aware. For every pixel it takes the maximum contrast to its neighbours — inside the region for Iᵢ, across the boundary for Eᵢ. A uniform colony with a crisp rim gives a small Iᵢ over a large Eᵢ, so C approaches 1. Regions are area-weighted, so real colonies dominate specks. Higher is better. The primary source is an untraceable 1988 PhD thesis, so every published form of this reaches us second-hand.</p>
+          <p class="pm">Arguably the best-balanced classic single score for colonies: it couples interior uniformity and boundary separation into one normalized number and, unlike Otsu, it is spatially aware. It takes each pixel's maximum contrast to its neighbours, then averages that over the interior pixels for Iᵢ and over the boundary pixels for Eᵢ — different pixel sets, not the same ones. A uniform colony with a crisp rim gives a small Iᵢ against a large Eᵢ, so C(Rᵢ) runs high. Regions are area-weighted, so real colonies dominate specks. Higher is better. The primary source is an untraceable 1988 PhD thesis, so every published form of this reaches us second-hand.</p>
         </div>
         <div class="pkey">
           <span class="pkey-t">Variable key</span>
-          <dl><dt>c(s,t)</dt><dd>|I(s) − I(t)| / (L−1), the normalized contrast between two pixels</dd><dt>Iᵢ</dt><dd>mean over interior pixels of the max neighbour contrast — low = uniform</dd><dt>Eᵢ</dt><dd>mean over boundary pixels of the max across-boundary contrast — high = separated</dd><dt>Aᵢ, A</dt><dd>area of region i, and total area</dd><dt>L</dt><dd>number of gray levels</dd><dt>the case split</dt><dd>exists to stop negative scores when Eᵢ &lt; Iᵢ, and division by zero when Eᵢ = 0</dd></dl>
+          <dl><dt>c(s,t)</dt><dd>|I(s) − I(t)| / (L−1), the normalized contrast between two pixels</dd><dt>Iᵢ</dt><dd>mean over interior pixels of the max neighbour contrast — low = uniform</dd><dt>Eᵢ</dt><dd>mean over boundary pixels of the max across-boundary contrast — high = separated</dd><dt>Aᵢ, A</dt><dd>area of region i, and total area</dd><dt>L</dt><dd>the image's intensity range, max(I) − min(I) — the contrast normalizer</dd><dt>the case split</dt><dd>exists to stop negative scores when Eᵢ &lt; Iᵢ, and division by zero when Eᵢ = 0</dd></dl>
         </div>
       </article>
 
@@ -1144,7 +1524,7 @@ footer p{max-width:80ch;margin-bottom:8px}
         <div class="pbody">
           <a class="pname" href="#m-ent">Entropy metric E <span class="pr">A.7</span></a>
           <p class="pf">E = H_ℓ(I) + H_r(I) — smaller is better</p>
-          <p class="pm">The one genuinely parameter-free classic: no magic constant, no free weights. A coding-theory argument balances region uniformity against region count. Region entropy falls toward zero as you over-segment, because each tiny fragment is trivially uniform, while layout entropy rises with the number of regions. Their sum therefore has a minimum somewhere between merging and shattering, and no tuning constant is needed to find it. Its blind spot is spatial: layout entropy depends only on the <em>size distribution</em>, so two segmentations with identical size histograms and completely different arrangements score the same. Pair it with a contrast term.</p>
+          <p class="pm">The classic with the least tuning surface: no magic constant like Q's 1000, no free weights. A coding-theory argument balances region uniformity against region count. Region entropy falls toward zero as you over-segment, because each tiny fragment is trivially uniform, while layout entropy rises with the number of regions. Their sum therefore has a minimum somewhere between merging and shattering, and no tuning constant is needed to find it. Its blind spot is spatial: layout entropy depends only on the <em>size distribution</em>, so two segmentations with identical size histograms and completely different arrangements score the same. Pair it with a contrast term.</p>
         </div>
         <div class="pkey">
           <span class="pkey-t">Variable key</span>
@@ -1162,19 +1542,19 @@ footer p{max-width:80ch;margin-bottom:8px}
           <rect x="14" y="84" width="44" height="16" fill="var(--moss-wash)" stroke="var(--moss)" stroke-width="1.2"/>
           <rect x="58" y="84" width="128" height="16" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1.2"/>
           <rect x="14" y="110" width="8" height="8" fill="var(--moss-wash)" stroke="var(--moss)" stroke-width="1"/>
-          <text class="lbl-s" x="26" y="117">between</text>
+          <text class="lbl-s" x="26" y="115">between</text>
           <rect x="86" y="110" width="8" height="8" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1"/>
-          <text class="lbl-s" x="98" y="117">within</text>
+          <text class="lbl-s" x="98" y="115">within</text>
           </svg>
         </figure>
         <div class="pbody">
           <a class="pname" href="#m-qstat">q-statistic <span class="pr">B.5/B.9</span></a>
-          <p class="pf">q = 1 − (within-strata SS / total SS) — bounded [0, 1], higher is better</p>
-          <p class="pm">The catalogue's pick for the cleanest single reference-free &ldquo;is this partition good?&rdquo; score for colonies. Treat each colony mask as a stratum: if the strata really capture the image's structure, almost all intensity variance lies between them and little remains within, so q approaches 1. A mask that cuts through uniform agar leaves large within-stratum variance and q falls. It reads exactly like R² in a one-way ANOVA with the partition as the sole predictor. The property that matters for a tuning engine is that it is bounded by construction — no min–max normalization over the swept set, so no Böck instability.</p>
+          <p class="pf">q = 1 − ( Σ_h Σ_k (Y_hk − Ȳ_h)² ) / ( Σ_i (Y_i − Ȳ)² ) — bounded [0, 1], higher is better</p>
+          <p class="pm">Arguably the cleanest single reference-free &ldquo;is this partition good?&rdquo; score for colonies — the catalogue's own word is <em>arguably</em>, and its practical recommendation names a Zeboudj-or-DTNP contrast term rather than this one. Treat each colony mask as a stratum: if the strata really capture the image's structure, almost all intensity variance lies between them and little remains within, so q approaches 1. A mask that cuts through uniform agar leaves large within-stratum variance and q falls. It reads exactly like R² in a one-way ANOVA with the partition as the sole predictor. The property that matters for a tuning engine is that it is bounded by construction — no min–max normalization over the swept set, so no Böck instability.</p>
         </div>
         <div class="pkey">
           <span class="pkey-t">Variable key</span>
-          <dl><dt>h</dt><dd>stratum index — one colony mask is one stratum</dd><dt>k</dt><dd>pixel index within a stratum</dd><dt>Ā_h</dt><dd>mean intensity of stratum h</dd><dt>SS</dt><dd>sum of squares</dd><dt>d_M</dt><dd>Gao fuses q with |Moran's I| by Mahalanobis distance — that fusion re-estimates Σ from the tested set, so only q alone is grid-independent</dd></dl>
+          <dl><dt>h</dt><dd>stratum index — one colony mask is one stratum</dd><dt>k</dt><dd>pixel index within stratum h</dd><dt>Y_hk</dt><dd>intensity of pixel k in stratum h</dd><dt>Ȳ_h</dt><dd>mean intensity of stratum h</dd><dt>Y_i, Ȳ</dt><dd>every pixel in the image, and the grand mean — the denominator is the image's own total variance</dd><dt>d_M</dt><dd>Gao fuses q with |Moran's I| by Mahalanobis distance — that fusion re-estimates Σ from the tested set, so only q alone is grid-independent</dd></dl>
         </div>
       </article>
 
@@ -1184,13 +1564,13 @@ footer p{max-width:80ch;margin-bottom:8px}
           <text class="lbl-s" x="100" y="20" text-anchor="middle">no adjacency graph</text>
           <path d="M64 28 H136 V100 H64 Z M126,64 a26,26 0 1,0 -52,0 a26,26 0 1,0 52,0 Z" fill-rule="evenodd" fill="var(--slate-wash)" stroke="var(--slate)" stroke-width="1.2"/>
           <circle cx="100" cy="64" r="26" fill="var(--moss-wash)" stroke="var(--moss)" stroke-width="1.3"/>
-          <text class="lbl-s" x="100" y="114" text-anchor="middle">ring = bbox(d) − object</text>
+          <text class="lbl-s" x="100" y="112" text-anchor="middle">ring = bbox(d) − object</text>
           </svg>
         </figure>
         <div class="pbody">
           <a class="pname" href="#m-fgs">FGS — WV + DTNP <span class="pr">B.7</span></a>
-          <p class="pf">WV = (Σ aᵢ·vᵢ) / (Σ aᵢ) ; DTNP = mean difference between each object's pixels and the ring Bᵢ(d) \ objectᵢ</p>
-          <p class="pm">Replaces Moran's-I-over-a-region-adjacency-graph with a far cheaper trick: enlarge each object's bounding box by d, remove the object, and compare the object's pixels against the surrounding ring. No adjacency graph is built at all, which is the whole point of the method. Sparse colonies on agar are the ideal case. In a dense array the ring reaches past the gap and catches the neighbouring colony, so d has to be sized to the colony spacing rather than left at the paper's value. The catalogue verified the ring mechanism from full text but never transcribed the DTNP closed form, so nothing here is its equation.</p>
+          <p class="pf">WV = (Σ aᵢ·vᵢ) / (Σ aᵢ) ; DTNP = area-weighted mean difference between each object's pixels and the ring Bᵢ(d) \ objectᵢ</p>
+          <p class="pm">Replaces Moran's-I-over-a-region-adjacency-graph with a far cheaper trick: enlarge each object's bounding box by d, remove the object, and compare the object's pixels against the surrounding ring. No adjacency graph is built at all, which is the whole point of the method. Sparse colonies on agar are the ideal case. In a dense array the ring reaches past the gap and catches the neighbouring colony, so d has to be sized to the colony spacing rather than left at the paper's value. It also normalizes GS-style, so it inherits the same Böck range caveat the board marks GS down for. The catalogue verified the ring mechanism from full text but never transcribed the DTNP closed form, so nothing here is its equation.</p>
         </div>
         <div class="pkey">
           <span class="pkey-t">Variable key</span>
@@ -1201,20 +1581,20 @@ footer p{max-width:80ch;margin-bottom:8px}
       <article class="prow">
         <figure class="pdiag">
           <svg viewBox="0 0 200 120" role="img" aria-label="A colony split by a spurious boundary diagnosed over-segmented, beside one mask swallowing two colonies diagnosed under-segmented.">
-          <ellipse cx="54" cy="50" rx="30" ry="20" fill="var(--teal-wash)" stroke="var(--teal)" stroke-width="1.3"/>
-          <line x1="54" y1="30" x2="54" y2="70" stroke="var(--clay)" stroke-width="1.8" stroke-dasharray="4 3" fill="none"/>
-          <text class="lbl clay-t" x="54" y="88" text-anchor="middle">OVER</text>
-          <ellipse cx="146" cy="50" rx="34" ry="20" fill="var(--clay-wash)" stroke="var(--clay)" stroke-width="1.3"/>
-          <circle cx="134" cy="50" r="9" fill="var(--surface-2)" stroke="var(--rule)" stroke-width="1"/>
-          <circle cx="158" cy="50" r="9" fill="var(--surface-2)" stroke="var(--rule)" stroke-width="1"/>
-          <text class="lbl clay-t" x="146" y="88" text-anchor="middle">UNDER</text>
+          <ellipse cx="48" cy="50" rx="25" ry="20" fill="var(--teal-wash)" stroke="var(--teal)" stroke-width="1.3"/>
+          <line x1="48" y1="30" x2="48" y2="70" stroke="var(--clay)" stroke-width="1.8" stroke-dasharray="4 3" fill="none"/>
+          <text class="lbl clay-t" x="48" y="88" text-anchor="middle">OVER</text>
+          <ellipse cx="142" cy="50" rx="50" ry="20" fill="var(--teal-wash)" stroke="var(--teal)" stroke-width="1.3"/>
+          <circle cx="125" cy="50" r="17" fill="var(--surface-2)" stroke="var(--rule)" stroke-width="1"/>
+          <circle cx="159" cy="50" r="17" fill="var(--surface-2)" stroke="var(--rule)" stroke-width="1"/>
+          <text class="lbl clay-t" x="142" y="88" text-anchor="middle">UNDER</text>
           <text class="lbl-s" x="100" y="110" text-anchor="middle">per-segment, against δ</text>
           </svg>
         </figure>
         <div class="pbody">
           <a class="pname" href="#m-uoa">UOA — under/over-segmentation aware <span class="pr">B.6</span></a>
           <p class="pf">per segment: H(Rᵢ ∪ Rⱼ) ≤ δ → over-segmented ; H(Rᵢ) &gt; δ → under-segmented</p>
-          <p class="pm">The only metric here that tells you <em>which way</em> a segmentation is wrong, and where. It asks two independent questions of every segment against the same threshold. If merging with a neighbour would still leave something homogeneous, the pair was split — over-segmented. If the segment is internally heterogeneous standing alone, it swallowed something — under-segmented. The two directions are never conflated per segment, so the output is a per-colony diagnosis rather than a score. That suits arrayed plates directly, because &ldquo;merged doublet&rdquo; and &ldquo;split colony&rdquo; are exactly the two failure modes, and the grid supplies an expected colony size from which to set δ.</p>
+          <p class="pm">The only metric here that tells you <em>which way</em> a segmentation is wrong, and where. It asks two independent questions of every segment against the same threshold. If merging with a neighbour would still leave something homogeneous, the pair was split — over-segmented. If the segment is internally heterogeneous standing alone, it swallowed something — under-segmented. The two directions are never conflated per segment, so per segment the output is a diagnosis, not a single number. Global aggregations do exist (UOA_Σ, UOA_L2), but the catalogue retrieved their equations only partially, so nothing here draws that step. That suits arrayed plates directly, because &ldquo;merged doublet&rdquo; and &ldquo;split colony&rdquo; are exactly the two failure modes, and the grid supplies an expected colony size from which to set δ.</p>
         </div>
         <div class="pkey">
           <span class="pkey-t">Variable key</span>
@@ -1230,14 +1610,14 @@ footer p{max-width:80ch;margin-bottom:8px}
           <circle cx="54" cy="56" r="26" fill="none" stroke="var(--teal)" stroke-width="1.8" stroke-dasharray="5 3"/>
           <text class="lbl-s moss-t" x="54" y="102" text-anchor="middle">on the edge</text>
           <circle cx="146" cy="56" r="26" fill="none" stroke="var(--dim)" stroke-width="6" stroke-opacity=".3"/>
-          <circle cx="146" cy="56" r="15" fill="none" stroke="var(--teal)" stroke-width="1.8" stroke-dasharray="5 3"/>
+          <circle cx="146" cy="56" r="19" fill="none" stroke="var(--teal)" stroke-width="1.8" stroke-dasharray="5 3"/>
           <text class="lbl-s clay-t" x="146" y="102" text-anchor="middle">inside it</text>
           </svg>
         </figure>
         <div class="pbody">
           <a class="pname" href="#m-evi">EVI — edge validity index <span class="pr">B.8</span></a>
           <p class="pf">EVI = agreement between segment boundaries and a multi-scale edge map</p>
-          <p class="pm">Asks a question the GS and FGS families never ask: does the mask boundary actually sit where the image has an intensity edge? Compute an edge response — Prewitt at several scales in the original — and measure how well the mask contours coincide with it. A contour eroded or dilated away from the true rim scores low even when the region it encloses is still round and internally uniform, so it catches a class of error that shape, size and homogeneity terms all pass. Higher is better. Yu's own pipeline fuses it with two other terms and wraps it in SAR-specific Gamma/speckle machinery that does not transfer; the idea does.</p>
+          <p class="pm">Asks a question the GS and FGS families never ask: does the mask boundary actually sit where the image has an intensity edge? Compute an edge response — Prewitt at several scales in the original — and measure how well the mask contours coincide with it. A contour eroded or dilated away from the true rim scores low even when the region it encloses is still round and internally uniform, so it catches a class of error that circularity and homogeneity terms both pass. The catalogue records that EVI's symbol-level equations were never transcribed. Higher is better. Yu's own pipeline fuses it with two other terms and wraps it in SAR-specific Gamma/speckle machinery that does not transfer; the idea does.</p>
         </div>
         <div class="pkey">
           <span class="pkey-t">Variable key</span>
@@ -1252,9 +1632,9 @@ footer p{max-width:80ch;margin-bottom:8px}
           <circle cx="66" cy="46" r="15" fill="var(--moss-wash)" stroke="var(--moss)" stroke-width="1.4"/>
           <circle cx="102" cy="46" r="15" fill="var(--moss-wash)" stroke="var(--moss)" stroke-width="1.4"/>
           <circle cx="138" cy="46" r="15" fill="var(--moss-wash)" stroke="var(--moss)" stroke-width="1.4"/>
-          <circle cx="174" cy="46" r="15" fill="none" stroke="var(--clay)" stroke-width="1.6" stroke-dasharray="4 3"/>
+          <circle cx="174" cy="46" r="15" fill="none" stroke="var(--teal)" stroke-width="1.6" stroke-dasharray="4 3"/>
           <text class="lbl-s" x="100" y="86" text-anchor="middle">one missed → FFC falls</text>
-          <text class="lbl-s" x="100" y="104" text-anchor="middle">spill cannot raise it</text>
+          
           </svg>
         </figure>
         <div class="pbody">
@@ -1264,7 +1644,7 @@ footer p{max-width:80ch;margin-bottom:8px}
         </div>
         <div class="pkey">
           <span class="pkey-t">Variable key</span>
-          <dl><dt>foreground</dt><dd>image foreground, derived independently of the masks — a second thresholding decision inside the scorer</dd><dt>masks</dt><dd>the union of instance masks</dd><dt>NC</dt><dd>object density, objects per 100 µm² — needs a physical pixel size, and that scale is wrong for mm colonies</dd><dt>CSSD</dt><dd>standard deviation of object size, folded as 1/(ln CSSD + 1)</dd><dt>blocked</dt><dd>the suite's uniformity family needs a multichannel marker panel and fails silently on one channel</dd></dl>
+          <dl><dt>foreground</dt><dd>image foreground, derived independently of the masks — a second thresholding decision inside the scorer</dd><dt>masks</dt><dd>the union of instance masks</dd><dt>NC</dt><dd>object density, objects per 100 µm² — needs a physical pixel size, and that scale is wrong for mm colonies</dd><dt>CSSD</dt><dd>standard deviation of object size, folded as 1/(ln CSSD + 1) — from the 2026-08-28 pass, not §C.1</dd><dt>blocked</dt><dd>the suite's uniformity family needs a multichannel marker panel and fails silently on one channel</dd></dl>
         </div>
       </article>
 
@@ -1292,7 +1672,7 @@ footer p{max-width:80ch;margin-bottom:8px}
         </div>
         <div class="pkey">
           <span class="pkey-t">Variable key</span>
-          <dl><dt>dP_net</dt><dd>the dense per-pixel flow field the network predicted</dd><dt>dP_masks</dt><dd>the flow field recomputed from the predicted label image</dd><dt>/5</dt><dd>the network's own flow scaling factor</dd><dt>flow_threshold</dt><dd>hard upper bound, default 0.4 — remove_bad_flow_masks deletes anything above it</dd><dt>scope</dt><dd>2D only; skipped in 3D. A separate cellprob_threshold is the probability-like gate</dd></dl>
+          <dl><dt>dP_net</dt><dd>the dense per-pixel flow field the network predicted</dd><dt>dP_masks</dt><dd>the flow field recomputed from the predicted label image</dd><dt>/5</dt><dd>the divisor Cellpose applies to the network's flow output; the 2026-08-28 pass reproduced it without explaining it</dd><dt>flow_threshold</dt><dd>hard upper bound, default 0.4 — remove_bad_flow_masks deletes anything above it</dd><dt>scope</dt><dd>2D only; skipped in 3D. A separate cellprob_threshold is the probability-like gate</dd></dl>
         </div>
       </article>
 
@@ -1300,19 +1680,19 @@ footer p{max-width:80ch;margin-bottom:8px}
         <figure class="pdiag">
           <svg viewBox="0 0 200 120" role="img" aria-label="A schematic plot in which predicted Dice tracks the identity line at low true Dice then flattens below it, with the inferred plate region shaded near one.">
           <text class="lbl-s" x="8" y="24">pred</text>
-          <rect x="146" y="20" width="38" height="74" fill="var(--gold-wash)" stroke="none"/>
-          <text class="lbl-s" x="165" y="16" text-anchor="middle">inferred</text>
+          <rect x="158" y="20" width="26" height="74" fill="var(--gold-wash)" stroke="none"/>
+          <text class="lbl-s" x="171" y="16" text-anchor="middle">inferred</text>
           <line x1="26" y1="20" x2="26" y2="94" stroke="var(--rule)" stroke-width="1" fill="none"/>
           <line x1="26" y1="94" x2="186" y2="94" stroke="var(--rule)" stroke-width="1" fill="none"/>
           <line x1="26" y1="94" x2="184" y2="22" stroke="var(--rule)" stroke-width="1.3" stroke-dasharray="5 4" fill="none"/>
-          <polyline points="26,94 62,72 98,56 132,47 160,43 184,41" fill="none" stroke="var(--clay)" stroke-width="1.9"/>
+          <polyline points="26,94 62,78 98,63 132,52 160,45 184,41" fill="none" stroke="var(--clay)" stroke-width="1.9"/>
           <text class="lbl-s" x="104" y="112" text-anchor="middle">true Dice →</text>
           </svg>
         </figure>
         <div class="pbody">
           <a class="pname" href="#m-rca">Reverse Classification Accuracy <span class="pr">D.1–D.2</span></a>
-          <p class="pf">predicted DSC = max over the reference database of the reverse classifier's accuracy</p>
-          <p class="pm">A genuinely clever trick: treat the prediction as if it were ground truth, train a segmenter on it, and see how well that segmenter does on images you <em>do</em> have labels for. If the prediction was good, the classifier trained on it will also segment the reference images well. Reference-free at test time — but not annotation-free overall, because it needs an annotated reference database at inference, which is the thing this page exists to avoid. Its aggregate numbers are excellent and its behaviour on already-good masks is not: threshold accuracy collapses on exactly the near-perfect regime where well-imaged plates sit.</p>
+          <p class="pf">predicted DSC = max over the reference database of the reverse classifier's Dice against the reference ground truth</p>
+          <p class="pm">A genuinely clever trick: treat the prediction as if it were ground truth, train a segmenter on it, and see how well that segmenter does on images you <em>do</em> have labels for. If the prediction was good, the classifier trained on it will also segment the reference images well. Reference-free at test time — but not annotation-free overall, because it needs an annotated reference database at inference, which is the thing this page exists to avoid. Its aggregate numbers are excellent and its behaviour on already-good masks is not: threshold accuracy collapses on exactly the near-perfect regime where well-imaged plates would sit — which is itself an inference, since none of RCA's numbers has been measured on colony masks.</p>
         </div>
         <div class="pkey">
           <span class="pkey-t">Variable key</span>
@@ -1338,7 +1718,7 @@ footer p{max-width:80ch;margin-bottom:8px}
         <div class="pbody">
           <a class="pname" href="#m-dice">Learned Dice regression <span class="pr">D.3</span></a>
           <p class="pf">predicted DSC = f(image, candidate masks) — a 50-layer 3D residual network</p>
-          <p class="pm">Skip the reverse classifier entirely and regress quality directly: feed the image and its candidate masks to a CNN and have it output the predicted Dice. Four orders of magnitude faster than RCA, and reference-free at inference. The cost sits at training time, where the labels can come either from manual annotation or, more cheaply, from RCA — a substitution that multiplies the error four- to fivefold. For PhenoTypic the interesting variant is neither: corrupt clean synthetic masks in known ways and the true overlap is known exactly, so the training label is a by-product of the corruption rather than a human.</p>
+          <p class="pm">Skip the reverse classifier entirely and regress quality directly: feed the image and its candidate masks to a CNN and have it output the predicted Dice. Four orders of magnitude faster than RCA — a ratio anchored on RCA's per-case cost, the one load-bearing figure the catalogue's audit could not confirm verbatim — and reference-free at inference. Both error figures below are cardiac MR. The cost sits at training time, where the labels can come either from manual annotation or, more cheaply, from RCA — a substitution that multiplies the error four- to fivefold. For PhenoTypic the interesting variant is neither: corrupt clean synthetic masks in known ways and the true overlap is known exactly, so the training label is a by-product of the corruption rather than a human.</p>
         </div>
         <div class="pkey">
           <span class="pkey-t">Variable key</span>
@@ -1538,7 +1918,7 @@ footer p{max-width:80ch;margin-bottom:8px}
   <div class="mgrid">
   <figure class="mfig" id="m-qstat">
     <div class="mhead"><h3>q-statistic</h3><span class="chip c-plain">B.5/B.9</span></div>
-    <p class="mq">q = 1 − (within-strata SS / total SS), with each mask region taken as one stratum. q ∈ [0,1], higher is better.</p>
+    <p class="mq">q = 1 − ( Σ_h Σ_k (Y_hk − Ȳ_h)² ) / ( Σ_i (Y_i − Ȳ)² ), with each mask region taken as one stratum. q ∈ [0,1], higher is better.</p>
     <svg viewBox="0 0 400 236" role="img" aria-label="Three horizontal bars. The first is the total pixel-intensity variance, a fixed denominator. Below it, a partition whose strata are colony masks leaves only a small within-strata remainder so q is close to one; a partition whose strata cut through uniform agar leaves a large within-strata remainder so q is close to zero.">
       <text class="lbl" x="14" y="18">total SS = Σ(Yᵢ − Ȳ)²</text>
       <rect x="14" y="26" width="372" height="20" rx="4" fill="var(--inset)" stroke="var(--rule)" stroke-width="1.25"/>
@@ -1565,7 +1945,7 @@ footer p{max-width:80ch;margin-bottom:8px}
 
   <figure class="mfig" id="m-fgs">
     <div class="mhead"><h3>FGS — WV + DTNP</h3><span class="chip c-plain">B.7</span></div>
-    <p class="mq">WV = (Σ aᵢ·vᵢ) / (Σ aᵢ) (area-weighted per-band variance). DTNP = the area-weighted mean difference between each object's pixels and the ring Bᵢ(d) \ objectᵢ — the object's bounding box enlarged by d, with the object removed. No region-adjacency graph is built. FGS combines a normalized WV with a normalized DTNP. WV is lower-better; the catalogue does not record how DTNP is oriented in their Eq. 6, so the combined polarity is not established here.</p>
+    <p class="mq">WV = (Σ aᵢ·vᵢ) / (Σ aᵢ) (area-weighted per-band variance). DTNP = area-weighted mean difference between each object's pixels and the ring Bᵢ(d) \ objectᵢ — the object's bounding box enlarged by d, with the object removed. No region-adjacency graph is built. FGS combines a normalized WV with a normalized DTNP. WV is lower-better; the catalogue does not record how DTNP is oriented in their Eq. 6, so the combined polarity is not established here.</p>
     <svg viewBox="0 0 400 228" role="img" aria-label="Two panels showing the same bounding-box ring around a colony. On a widely spaced plate the ring contains only agar. On a densely packed array the identical ring reaches past the gap and overlaps the neighbouring colony.">
       <defs>
         <marker id="c2-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -1867,7 +2247,7 @@ footer p{max-width:80ch;margin-bottom:8px}
 <hr class="seam">
 
 <section id="board">
-  <div class="sechead"><span class="eyebrow">04 · the candidate landscape</span></div>
+  <div class="sechead"><span class="eyebrow">05 · the candidate landscape</span></div>
   <h2>Twenty-five unbuilt candidates, and what we decide about each</h2>
   <p class="lede">Families A–E from the in-repo catalogue (<code>reference-free-segmentation-metrics.md</code>,
   1,459 lines, commit <code>ef10d2694</code>) merged with the 2026-08-28 research pass. The
@@ -1894,7 +2274,7 @@ footer p{max-width:80ch;margin-bottom:8px}
 <hr class="seam">
 
 <section id="traps">
-  <div class="sechead"><span class="eyebrow">05 · how this goes wrong quietly</span></div>
+  <div class="sechead"><span class="eyebrow">06 · how this goes wrong quietly</span></div>
   <h2>Four traps, one refuted claim</h2>
   <p class="lede">Each of these produces plausible output rather than an error. The first is the one that
   bites a tuning engine specifically, because a tuning engine <em>is</em> a grid sweep.</p>
@@ -2004,7 +2384,7 @@ footer p{max-width:80ch;margin-bottom:8px}
 <hr class="seam">
 
 <section id="route">
-  <div class="sechead"><span class="eyebrow">06 · the unblock route</span></div>
+  <div class="sechead"><span class="eyebrow">07 · the unblock route</span></div>
   <h2>One corpus opens the gate and trains the regressor</h2>
   <p class="lede">Ordered by value per unit of work. The first item is a precondition for everything else:
   no amount of new metric work matters while <code>availability()</code> returns False.</p>
@@ -2273,5 +2653,47 @@ footer p{max-width:80ch;margin-bottom:8px}
   } else {
     say("off", "shared board unavailable — decisions here are not saved");
   }
+})();
+</script>
+
+<script>
+(function () {
+  "use strict";
+  var nav = document.querySelector(".sidenav");
+  if (!nav) return;
+  var links = {};
+  Array.prototype.forEach.call(nav.querySelectorAll('a[href^="#"]'), function (a) {
+    links[a.getAttribute("href").slice(1)] = a;
+  });
+  var targets = Object.keys(links)
+    .map(function (id) { return document.getElementById(id); })
+    .filter(Boolean)
+    .sort(function (a, b) {
+      return (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
+    });
+  if (!targets.length) return;
+
+  var current = null, ticking = false;
+  function update() {
+    ticking = false;
+    var found = null;
+    for (var i = 0; i < targets.length; i++) {
+      if (targets[i].getBoundingClientRect().top <= 140) found = targets[i].id; else break;
+    }
+    if (found === current) return;
+    if (current && links[current]) links[current].classList.remove("on");
+    current = found;
+    if (current && links[current]) {
+      links[current].classList.add("on");
+      if (nav.scrollHeight > nav.clientHeight) {
+        links[current].scrollIntoView({ block: "nearest" });
+      }
+    }
+  }
+  window.addEventListener("scroll", function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(update); }
+  }, { passive: true });
+  window.addEventListener("resize", update, { passive: true });
+  update();
 })();
 </script>
