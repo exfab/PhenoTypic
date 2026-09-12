@@ -1485,9 +1485,13 @@ def __getattr__(name: str) -> Any:
          from importlib.metadata import packages_distributions
 
          project = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
-         required = {
+         # Only dependencies with no environment marker: a marker means the dependency is
+         # legitimately absent somewhere (the repo already ships `rawpy;sys_platform!='win32'`),
+         # and preloading it unconditionally would fail on exactly that platform.
+         unconditional = {
              re.split(r"[<>=!\[;]", specifier, maxsplit=1)[0].strip().lower().replace("_", "-")
              for specifier in project.get("dependencies", [])
+             if ";" not in specifier
          }
          installed = packages_distributions()
 
@@ -1499,17 +1503,19 @@ def __getattr__(name: str) -> Any:
              }
              if not distributions:
                  unresolved.append(module_name)
-             elif not distributions & required:
+             elif not distributions & unconditional:
                  optional_only.append(f"{module_name} -> {sorted(distributions)}")
 
          assert unresolved == [], f"not installed, so this check cannot run: {unresolved}"
          assert optional_only == [], (
-             f"extras-only libraries in the required preload set: {optional_only}; "
-             "move them to DEFERRED_OPTIONAL_MODULES"
+             f"conditionally-installed libraries in the required preload set: {optional_only}; "
+             "an extra, or a dependency carrying an environment marker, belongs in "
+             "DEFERRED_OPTIONAL_MODULES"
          )
      ```
 
-  5. Prove it can fail: temporarily append `"optuna"` (a `tune` extra) to `DEFERRED_RUNTIME_MODULES`, run the test and confirm it fails naming optuna, then restore. Record both runs.
+  5. Prove it can fail: temporarily append `"optuna"` (a `tune` extra) to `DEFERRED_RUNTIME_MODULES`, run the test and confirm it fails naming optuna, then restore. Record both runs. `"rawpy"` is the other shape the test rejects — a dependency carrying `;sys_platform!='win32'` — but it needs no separate run, since both land in the same branch.
+  6. Why this matters beyond the repo: under a plain `pip install phenotypic` the preload still imports the eight because they are unconditional dependencies, and `find_spec` works the same for a wheel, an editable install or a checkout. The test itself never ships — packaging is `packages.find where=["src"]`, so `tests/` is not in the wheel — which is why it compares *this repo's* `pyproject.toml` against the *installed* environment.
 
 - [ ] **Step 6: Run Step 3's command (GREEN).** Expected: all pass.
 - [ ] **Step 7: Test surface.** Expected: no failures beyond attributed pre-existing ones.
