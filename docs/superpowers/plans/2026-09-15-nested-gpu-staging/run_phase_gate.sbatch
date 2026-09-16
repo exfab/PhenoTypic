@@ -11,18 +11,24 @@ set -uo pipefail
 # committed full-suite runner at
 # docs/superpowers/plans/2026-08-18-ome-zarr-image-store/run_unit_suite.sbatch
 #
-# Usage:
+# Usage (see make_gate_tree.sh, which is what you should normally call):
+#   PHENO_GATE_TREE=/bigdata/exfab/anguy344/gate-trees/<sha> \
 #   PHENO_GATE_PATHS="tests/unit/cli tests/integration/cli" \
 #   sbatch --array=0-3%4 run_phase_gate.sbatch
-#
-#   PHENO_GATE_PATHS="tests/unit/tune" sbatch --array=0-0 run_phase_gate.sbatch
 #
 # --output MUST be shared storage and the directory MUST already exist.
 # Pointing it at /scratch/<user>/<jobid> -- including a Claude scratchpad --
 # gives FAILED, ExitCode 0:53 and NO LOG AT ALL, intermittently, because that
 # path is node-local to a different job.
 
-WORKTREE=/bigdata/exfab/anguy344/PhenoTypic/.claude/worktrees/nested-gpu-staging
+# A PARALLEL GATE MEASURES ONE TREE. Earlier revisions of this script hardcoded
+# the live worktree, which is wrong whenever anyone is editing: a file changed
+# midway through an array's shard spread does not give a stale result, it gives
+# a UNION ACROSS TWO TREES that no single tree ever produced. Void, not old.
+# PHENO_GATE_TREE must therefore be a checkout detached at a commit -- built by
+# make_gate_tree.sh, which also proves the tree resolves its own source before
+# submitting anything.
+: "${PHENO_GATE_TREE:?set PHENO_GATE_TREE to a detached checkout (see make_gate_tree.sh)}"
 : "${PHENO_GATE_PATHS:?set PHENO_GATE_PATHS to the test paths this gate covers}"
 GROUP_COUNT=${SLURM_ARRAY_TASK_COUNT:-1}
 GROUP_ID=${SLURM_ARRAY_TASK_ID:-0}
@@ -34,13 +40,16 @@ export QT_QPA_PLATFORM=offscreen
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
 export MKL_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
 
-cd "$WORKTREE"
+cd "$PHENO_GATE_TREE" || exit 1
 echo "Date:   $(date -Is)"
 echo "Node:   $(hostname -s)"
 echo "Job:    ${SLURM_JOB_ID}"
 echo "Group:  ${GROUP_ID}/${GROUP_COUNT}"
 echo "CPUs:   ${SLURM_CPUS_PER_TASK}"
+echo "Tree:   ${PHENO_GATE_TREE}"
 echo "Commit: $(git rev-parse --short HEAD) $(git log -1 --format=%s)"
+echo "Dirty:  $(git status --porcelain | wc -l) file(s) -- MUST be 0"
+echo "Source: $(uv run python -c 'import phenotypic; print(phenotypic.__file__)' 2>/dev/null | tail -1)"
 echo "Paths:  ${PHENO_GATE_PATHS}"
 echo
 

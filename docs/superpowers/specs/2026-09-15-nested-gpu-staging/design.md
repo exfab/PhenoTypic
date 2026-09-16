@@ -173,7 +173,7 @@ classes, and nothing else — ever, by rule rather than by survey:
 | Contract | Meaning | Prefix contribution | Class |
 |---|---|---|---|
 | `"sequence"` | each child receives the previous child's output | the ops preceding the branch | `ImagePipeline` |
-| `"same"` | every child receives the container's own input | **nothing** — branches are parallel, none runs "before" another | `CompositeDetector`, `CompositeEnhance` |
+| `"parallel"` | every child receives the container's own input | **nothing** — branches are parallel, none runs "before" another | `CompositeDetector`, `CompositeEnhance` |
 
 Every other `OperationField`-bearing class is **refused**, naming the class.
 
@@ -188,7 +188,7 @@ drift-prone.
 A **domain detector** is on the other side of that line even when its current
 code would classify cleanly. `FilamentousFungiDetector` passes
 `inoculum_detector` the container's own image today (`:395,398`), so it *reads*
-as `"same"` — but that is incidental to an algorithm whose `_operate` also runs
+as `"parallel"` — but that is incidental to an algorithm whose `_operate` also runs
 an inline `ContrastStretching()` (`:413`), a destructive `_subtract_background`,
 and a `del enhanced_work`. Nothing about being a fungus detector constrains it to
 keep feeding its child the raw image. Admitting it would mean the table's safety
@@ -196,13 +196,13 @@ argument no longer holds uniformly, for one class nobody has asked to stage.
 
 An earlier draft admitted it, and separately argued that
 `TwoKFilamentousDetector` was *inexpressible*. Drawing its call flow showed that
-was too strong — a `"same"` / `"after(<field>)"` vocabulary describes all three
-of its fields exactly (`branch_base` is `"same"`, `background_subtractor` is
+was too strong — a `"parallel"` / `"after(<field>)"` vocabulary describes all three
+of its fields exactly (`branch_base` is `"parallel"`, `background_subtractor` is
 `"after(branch_base)"`). The refusal is therefore a **scope** decision, not an
 impossibility, and scoping it by *kind of class* rather than by *expressibility*
 is both simpler and more stable.
 
-**The contract is tested, not merely asserted.** Each `"same"` entry carries a
+**The contract is tested, not merely asserted.** Each `"parallel"` entry carries a
 behavioural test that puts two recording probe operations in the container's
 children and asserts the second did **not** observe the first's output. A
 declaration can lie and still pass; a probe cannot. This is the reason a

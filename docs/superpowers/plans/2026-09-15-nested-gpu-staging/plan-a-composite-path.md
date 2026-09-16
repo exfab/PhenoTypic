@@ -67,12 +67,29 @@ stage** — the full suite is the *last* check, never a step-level one.
 | 5 Process mode | 11, 12 | `tests/integration/cli` + the process/format unit files | **Slurm**, 2 shards | `gui` |
 | 6 Regression | 14, 15 | all 734 files in `testpaths` | **Slurm array**, 24 shards | nothing |
 
-Dispatch phase gates with the committed `run_phase_gate.sbatch` beside this plan:
+**Every phase gate runs against a frozen checkout, never the live worktree.**
+A parallel gate measures ONE tree: a file edited while an array's shards are
+spread across nodes yields a union across two trees that no single tree ever
+produced — void, not stale, with nothing in the output saying so. This is not
+hypothetical here; three clusters ran concurrently in one worktree during
+Phase 0-2 and every focused check taken in that window had to be labelled
+"mixed tree" and re-taken.
+
+`make_gate_tree.sh` builds the checkout and refuses to return a path unless the
+tree is clean AND `import phenotypic` resolves to that tree — the editable
+install is a bare `.pth` path entry, so a mis-synced gate tree silently imports
+the live worktree's source and attributes every number to the wrong commit.
+A `uv sync` there costs ~50s.
 
 ```bash
-PHENO_GATE_PATHS="tests/unit/cli tests/integration/cli" \
+TREE=$(docs/superpowers/plans/2026-09-15-nested-gpu-staging/make_gate_tree.sh HEAD)
+PHENO_GATE_TREE=$TREE PHENO_GATE_PATHS="tests/unit/cli tests/integration/cli" \
   sbatch --array=0-3%4 docs/superpowers/plans/2026-09-15-nested-gpu-staging/run_phase_gate.sbatch
 ```
+
+The array prints its commit, its dirty-file count and its resolved
+`phenotypic.__file__` in every task's log, so a contaminated run is visible in
+the artifact rather than only in the submitter's intent.
 
 **Two corrections to an earlier draft of this table, made at execution time:**
 
@@ -91,9 +108,16 @@ PHENO_GATE_PATHS="tests/unit/cli tests/integration/cli" \
 one path narrows the run — which is why every row above carries an *Excludes*
 column. Phase 3 being green says nothing about `tests/gui`.
 
-**`mypy` and `ruff` are already red at baseline** — 417 errors across 124 files
-and 25 respectively. A gate that runs them compares against those counts; it
-never reports "passes".
+**`mypy` and `ruff` are already red at baseline.** Measured on a frozen
+checkout at `5aaeeb77` (Task 1 landed, nothing else), `uv run mypy
+src/phenotypic` reports **435 errors in 127 files** and `uv run ruff check
+src/phenotypic` reports **25**. A gate that runs them compares against those
+counts; it never reports "passes".
+
+An earlier draft of this line said 417 / 124. That figure was stale and is
+retracted — it was carried forward from an older measurement rather than
+re-taken, which is exactly the mistake the frozen-tree rule below exists to
+prevent.
 
 **Never `-x` for a number you intend to record.** It stops at the first failure
 and `tests/unit/cli` sorts early, so a run that looks like a clean sweep may have
@@ -1350,7 +1374,7 @@ if ref.key in pre_ops or (len(gpu_path) == 1 and ref.key == gpu_path[0]):
 Narrow in practice — it needs a `GpuDetector` that also subclasses `PlotImage` —
 but pin it with a test for the top-level case, not only the nested one.
 
-- [ ] **Step 3a: Verify each `"same"` contract behaviourally, not by assertion**
+- [ ] **Step 3a: Verify each `"parallel"` contract behaviourally, not by assertion**
 
 Create `tests/unit/detect/test_container_child_contracts.py`. For **each** class
 in `_CHILD_CONTRACT`, put two recording probes in its children and assert the
@@ -1396,7 +1420,7 @@ def test_the_contract_table_holds_only_composition_primitives():
 
 def test_a_domain_detector_is_refused_even_though_it_would_classify():
     """FilamentousFungiDetector passes its child the container's own image
-    today, so it would read as "same". It is still refused: that behaviour is
+    today, so it would read as "parallel". It is still refused: that behaviour is
     incidental to its algorithm, not part of what the class IS."""
     pipe = ImagePipeline(ops={"Fungi": FilamentousFungiDetector(
         inoculum_detector=FakeGpuDetector())})
