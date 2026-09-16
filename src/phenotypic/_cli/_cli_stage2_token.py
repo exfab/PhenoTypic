@@ -100,14 +100,28 @@ def staged_detector_slot(pipeline_path: Path | str) -> str:
 
     The adapter for the handful of sites that hold a **pipeline path** but no
     :class:`~phenotypic._cli._cli_pipeline_split.StagePlan` -- the SLURM
-    script generator, the checkpoint handler's reconciliation, and the CLI's
-    continuation preflight. Everywhere a ``StagePlan`` is already in scope,
-    call ``detector_slot(plan.gpu_path)`` directly rather than re-loading the
-    pipeline.
+    strategy's submission preflight, the checkpoint handler's reconciliation,
+    and the CLI's continuation preflight. Everywhere a ``StagePlan`` is already
+    in scope, call ``detector_slot(plan.gpu_path)`` directly rather than
+    re-loading the pipeline.
 
     The splitter is imported lazily: ``_cli_pipeline_split`` imports
     ``_cli_validation``, and this module is imported by the resume layer that
     both of those sit above.
+
+    **The file is read here rather than handed to ``from_json`` as a path**,
+    and both reasons are failure modes seen in this tree:
+
+    * ``from_json`` only reads a path when ``len(str(json_data)) < 256 and
+      path.exists() and path.is_file()``
+      (``_serializable_pipeline.py:262-266``). Otherwise it falls through and
+      passes the ``Path`` object to ``json.loads``, which raises ``TypeError:
+      the JSON object must be str, bytes or bytearray, not PosixPath`` -- an
+      error naming neither the pipeline, the path, nor staging. An explicit
+      read turns a missing file into a message that names the file.
+    * That guard is also a **length** test, so a perfectly valid pipeline at a
+      path 256 characters or longer silently takes the same branch. Deep GPFS
+      output trees reach that length.
 
     Args:
         pipeline_path: Path to the serialized pipeline JSON.
@@ -116,6 +130,7 @@ def staged_detector_slot(pipeline_path: Path | str) -> str:
         The slot id for its ``GpuDetector``.
 
     Raises:
+        FileNotFoundError: No readable pipeline JSON at *pipeline_path*.
         ValueError: The pipeline has no ``GpuDetector``, or has one the staged
             engine cannot drive.
     """
@@ -123,7 +138,19 @@ def staged_detector_slot(pipeline_path: Path | str) -> str:
 
     from ._cli_pipeline_split import split_pipeline_at_gpu
 
-    plan = split_pipeline_at_gpu(ImagePipeline.from_json(Path(pipeline_path)))
+    path = Path(pipeline_path)
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"cannot derive the staged detector slot: no pipeline JSON at "
+            f"{path}"
+        )
+    try:
+        payload = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise OSError(
+            f"cannot read the pipeline JSON at {path}: {exc}"
+        ) from exc
+    plan = split_pipeline_at_gpu(ImagePipeline.from_json(payload))
     return detector_slot(plan.gpu_path)
 
 

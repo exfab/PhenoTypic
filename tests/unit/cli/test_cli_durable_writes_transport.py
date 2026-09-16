@@ -311,6 +311,9 @@ def test_staged_submitter_hands_the_flag_to_the_script_generator(
             "durable_writes": value,
         },
     )()
+    from tests.unit.cli.conftest import write_stageable_pipeline
+
+    write_stageable_pipeline(config.pipeline_json)
     strategy = object.__new__(staged.StagedSlurmStrategy)
     strategy.config = config
 

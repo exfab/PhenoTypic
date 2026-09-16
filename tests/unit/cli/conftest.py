@@ -69,6 +69,43 @@ from tests._legacy_staged_resume import (
 STAGE2_SLOT = detector_slot(("FakeGpuDetector",))
 
 
+def write_stageable_pipeline(path: Path) -> Path:
+    """Write a minimal pipeline the staged SLURM submitter will accept.
+
+    ``StagedSlurmStrategy.execute`` parses and splits its configured pipeline
+    before generating scripts, so a test that calls ``execute`` with a
+    ``pipeline_json`` pointing at a file that was never written is testing a
+    configuration production cannot reach: ``create_execution_strategy`` has
+    already read that file to decide the run is a GPU run at all.
+
+    The import registers ``FakeGpuDetector`` into the ``phenotypic`` namespace,
+    which is how ``ImagePipeline.from_json`` resolves an op class defined
+    outside it.
+
+    **Writes the serialized text to the exact path given.** Do NOT use
+    ``to_json(path)`` here: that routes through
+    ``ensure_typed_json_suffix(filepath, CONFIG_SUFFIX_PIPELINE)``
+    (``_serializable_pipeline.py:105``), so ``to_json(tmp/"pipeline.json")``
+    writes ``tmp/"pipeline.json.pht-pipe"`` and leaves the requested path
+    absent -- a fixture that reports success while the caller's path is still
+    empty. ``tests/integration/cli/test_staged_slurm_live.py:154`` already used
+    the correct idiom. The post-condition below is what turns a repeat of that
+    mistake into a failure here rather than a confusing one in the test.
+    """
+    import tests._fakes.register_fake_gpu  # noqa: F401  (import side effect)
+    from tests._fakes.fake_gpu_detector import FakeGpuDetector
+
+    from phenotypic import ImagePipeline
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        ImagePipeline(ops=[FakeGpuDetector(threshold=0.3)]).to_json(),
+        encoding="utf-8",
+    )
+    assert path.is_file(), f"fixture wrote no pipeline at {path}"
+    return path
+
+
 @pytest.fixture
 def synth_one_level_input(tmp_path: Path) -> Path:
     """One-level input tree: ``<tmp>/in/day1/plateA.tif`` (one synth plate).

@@ -256,6 +256,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                         source_image_stem(img),
                         slot,
                         cfg.image_type,
+                        stage2_prefix=plan.stage2_prefix,
                     )
             except Exception as exc:
                 _record_local_terminal_failure(

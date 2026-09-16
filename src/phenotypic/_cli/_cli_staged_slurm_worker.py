@@ -328,6 +328,7 @@ def run_stage2_shard(
                     image_type,
                     active_check=check,
                     commit_guard=commit_guard,
+                    stage2_prefix=plan.stage2_prefix,
                 )
         except Exception as exc:
             inactive = slurm_generation_inactive_cause(exc)

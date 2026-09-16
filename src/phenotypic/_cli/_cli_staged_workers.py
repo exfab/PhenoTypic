@@ -20,6 +20,7 @@ Three content-defined stages, each a pure per-image function:
 from __future__ import annotations
 
 from contextlib import contextmanager
+from copy import deepcopy
 import json
 import logging
 from pathlib import Path
@@ -28,7 +29,6 @@ from typing import Any, Callable, Dict, Iterator, Mapping, Optional
 
 from phenotypic import GridImage, Image
 from phenotypic._core._provenance import (
-    append_operation_provenance,
     continuing_provenance_application,
     current_application_operations,
     initialize_cli_provenance,
@@ -41,11 +41,13 @@ from phenotypic._core._provenance import (
 )
 from phenotypic.abc_ import GpuDetector
 from phenotypic.sdk_ import CommitGuard, zarr_store_path
+from phenotypic.sdk_._operation_tree import substitute_at_path
 from phenotypic.sdk_.ngff_ import valid_staged_store
 from phenotypic.sdk_.typing_ import ImageTypeName
 
 from ._cli_output_manager import OutputManager
 from ._cli_pipeline_split import StagePlan
+from ._cli_replay_detector import ReplayDetector
 from ._cli_stage2_token import (
     delete_stage2_raw,
     delete_stage2_token,
@@ -142,21 +144,54 @@ def _mark_failed_checkpoint(
         logger.exception("Failed to mark staged provenance failed: %s", store)
 
 
-def _checkpoint_successful_operation(
-    store: Path,
-    image: Image,
-    active_check: ActiveCheck | None,
-    commit_guard: CommitGuard | None = None,
-) -> None:
-    """Publish an appended staged operation or roll it back on sink failure."""
-    operations = current_application_operations(image)
-    prior_length = len(operations) - 1
-    try:
-        _check_active(active_check)
-        write_provenance_checkpoint(store, image, commit_guard=commit_guard)
-    except BaseException:
-        del operations[prior_length:]
-        raise
+def _apply_stage2_prefix(image: Image, stage2_prefix: list[Any]) -> Image:
+    """Run the GPU branch's CPU prefix on a PROVENANCE-DETACHED copy.
+
+    The returned image is discarded once the detector has read its input layer:
+    Stage 2 writes nothing, and Stage 3 re-runs these same operations inside the
+    enclosing operation and records them for real. So the prefix's provenance
+    must reach **nothing**, which is what the detached copy buys.
+
+    A bare ``image.copy()`` does not work. ``copy()`` carries the journal,
+    Stage 1 left the trailing application ``"staged"``, ``stage2_detect_core``
+    runs at ``_application_owner_depth == 0``, and ``_append_application``
+    raises unless the last application is ``"complete"``/``"failed"``
+    (``_provenance.py:362-364``). The first prefix operation would raise
+    ``ValueError: cannot start a new provenance application before the last
+    ends``. Closing the copy's applications makes the append legal and keeps a
+    non-empty ``applications`` list for the join path to mutate -- emptying the
+    journal instead breaks that path with "no application to mutate". Pattern
+    copied from ``measure/_canonical_zone_measure.py:279-295``.
+
+    Args:
+        image: The Stage-1 store's image, left untouched.
+        stage2_prefix: Operations to apply in order -- ``ImageOperation``s or
+            nested ``ImagePipeline``s, anything with ``.apply()``.
+
+    Returns:
+        Image: The prefixed copy the detector reads its input layer from.
+    """
+    from phenotypic._core._pipeline_parts._image_pipeline_core import (
+        ImagePipelineCore,
+    )
+
+    probe = image.copy()
+    probe_journal = deepcopy(image._metadata.provenance_journal)
+    for application in probe_journal.get("applications", []):
+        if application.get("status") not in {"complete", "failed"}:
+            application["status"] = "complete"
+    probe_journal["status"] = "complete"
+    probe._metadata.provenance_journal = probe_journal
+
+    for operation in stage2_prefix:
+        kwargs: dict[str, Any] = {"inplace": True}
+        if isinstance(operation, ImagePipelineCore):
+            # Mirrors _run_operations (:886-889) and apply_child. Without it a
+            # nested pipeline configured with reset=True would call
+            # image.reset() and discard Stage 1's preprocessing.
+            kwargs["reset"] = False
+        operation.apply(probe, **kwargs)
+    return probe
 
 
 @contextmanager
@@ -375,6 +410,7 @@ def stage2_detect_core(
     image_type: ImageTypeName = "Image",
     active_check: ActiveCheck | None = None,
     commit_guard: CommitGuard | None = None,
+    stage2_prefix: list[Any] | None = None,
 ) -> None:
     """Load the input layer (store read-only), infer, retain the raw + token.
 
@@ -384,10 +420,17 @@ def stage2_detect_core(
     the *detector*, not the ``StagePlan`` the slot is a property of -- and
     re-loading the pipeline per image to recover one would be a per-image cost
     inside the resident-model sweep.
+
+    ``stage2_prefix`` (``StagePlan.stage2_prefix``) carries the CPU operations
+    that sit ahead of the detector *inside its own branch*. Stage 1 never ran
+    them -- it stopped at the detector's top-level ancestor -- so the store
+    holds pre-branch pixels and the detector must see the branch-prefixed ones.
     """
     image_cls = _image_class(image_type)
     store = zarr_store_path(output_dir, dataset_name, image_stem)
     image = image_cls.load_zarr(store)  # read-only use; never re-promoted here
+    if stage2_prefix:
+        image = _apply_stage2_prefix(image, stage2_prefix)
     array = getattr(image, detector.input_layer)[:]
     try:
         compute_started = perf_counter()
@@ -493,23 +536,29 @@ def stage3_merge_measure_core(
         result = load_stage2_raw(output_dir, dataset_name, image_stem, slot)
         token = read_stage2_token(output_dir, dataset_name, image_stem, slot)
         _check_active(active_check)
-        merge_started = perf_counter()
-        plan.gpu_detector._write_object_output(image, result)
-        merge_duration = perf_counter() - merge_started
-        append_operation_provenance(
-            image,
-            plan.gpu_detector,
-            duration_seconds=(
-                float(token.get("detector_duration_seconds", 0.0))
-                + merge_duration
+
+        # Substitute the replay stub AT THE DETECTOR'S PATH rather than writing
+        # the objmap here and then applying post_pipeline. post_pipeline is cut
+        # at the detector's TOP-LEVEL ANCESTOR, so it now CONTAINS the real
+        # detector: applying it as-is would re-run live GPU inference on a CPU
+        # node. Substituting also removes the hand-rolled provenance append --
+        # the stub is a leaf of the pipeline, so its journal entry is written by
+        # the same machinery a single-pass run uses, at the same
+        # `pipeline_step_path`, and the entry names the WRAPPED detector via
+        # ReplayDetector's four provenance hooks.
+        stub = ReplayDetector(
+            detector=plan.gpu_detector,
+            result=result,
+            detector_duration_seconds=float(
+                token.get("detector_duration_seconds", 0.0)
             ),
-            pipeline_step_path=[plan.gpu_key],
         )
-        _checkpoint_successful_operation(
-            store, image, active_check, commit_guard=commit_guard
+        replay_pipeline = substitute_at_path(
+            plan.post_pipeline, plan.gpu_path, stub
         )
 
-        # post-detector ops (refiners incl. watershed) then measurement.
+        # the enclosing operation, the replayed detector, post-detector ops
+        # (refiners incl. watershed), then measurement.
         with continuing_provenance_application(image), provenance_success_sink(
             lambda updated: _write_provenance_checkpoint_fenced(
                 store,
@@ -518,8 +567,8 @@ def stage3_merge_measure_core(
                 commit_guard=commit_guard,
             )
         ):
-            plan.post_pipeline.apply(image, inplace=True)
-        measurements = plan.post_pipeline.measure(image, apply_post=False)
+            replay_pipeline.apply(image, inplace=True)
+        measurements = replay_pipeline.measure(image, apply_post=False)
 
         if output_manager.save_overlays:
             _check_active(active_check)
