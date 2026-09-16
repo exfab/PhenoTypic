@@ -178,9 +178,9 @@ def _populate_child_contract() -> None:
     ``_child_contract`` refuses a ``CompositeEnhance`` -- a placement the
     design permits. Populating key-by-key made that window reachable. It
     matters because the GUI reaches here on threaded Werkzeug
-    (``gui/run_console/_callbacks.py:_pipeline_uses_staged_gpu``) and swallows
-    ``ValueError``, so the symptom there is not an error: the run console
-    hides its staged-GPU form section for a pipeline the design permits. (The
+    (``gui/run_console/_callbacks.py:_staged_gpu_capability``), which turns
+    this refusal into a red alert and a disabled Run button -- so the symptom
+    there would be a spurious refusal of a pipeline the design permits. (The
     run itself is a separate ``python -m phenotypic`` process with its own
     table, so it does not inherit a wrong answer from this race.)
 
@@ -350,7 +350,7 @@ def find_gpu_detectors(
     Args:
         pipeline: The pipeline to scan.
         strict: When True, additionally raise for MORE THAN ONE detector. The
-            GUI (``gui/run_console/_callbacks.py:_pipeline_uses_staged_gpu``)
+            GUI (``gui/run_console/_callbacks.py:_staged_gpu_capability``)
             calls the non-strict path, where a multi-detector pipeline should
             report True rather than raise.
 
@@ -412,18 +412,26 @@ def pipeline_requires_gpu(pipeline_path: Path) -> bool:
     nested inside a ``CompositeDetector`` is still a GPU pipeline, and missing
     it means the run silently completes on CPU with different numbers.
 
-    NOTE the callers handle the refusal differently, and neither was designed:
-    ``gui/run_console/_callbacks.py:_pipeline_uses_staged_gpu`` wraps this in
-    ``except (OSError, ValueError, TypeError): return False``, and
-    ``UnstageableGpuDetectorError`` IS a ``ValueError``. That does **not**
-    route a refused run to CPU: the helper's one consumer,
-    ``show_staged_gpu_controls``, only toggles the staged-GPU form section's
-    ``display``. The GUI launches runs as ``python -m phenotypic``
-    subprocesses, where ``create_execution_strategy`` ->
-    ``uses_staged_gpu_strategy`` -> this function raises. So a refused
-    pipeline shows a hidden GPU form section, then a traceback in the run
-    log. The CLI paths (``_cli_execution_strategies.py``) do not catch it
-    either, so a CLI user also gets a raw traceback.
+    How the two front ends surface the refusal:
+
+    - **GUI** -- ``gui/run_console/_callbacks.py:_staged_gpu_capability``
+      catches ``UnstageableGpuDetectorError`` *before* its generic
+      ``(OSError, ValueError, TypeError)`` handler; the refusal IS a
+      ``ValueError``, so that clause order is load-bearing. It shows the
+      message in a red alert, disables Run, and refuses Validate/Run at the
+      launch seam before any generation is allocated. An unreadable pipeline
+      still takes the generic path and shows no refusal.
+    - **CLI** -- ``phenotypicCLI.py`` calls ``uses_staged_gpu_strategy``
+      immediately after building ``ExecutionConfig`` and raises
+      ``click.UsageError``. That preflight sits above ``--overwrite``
+      clearing, run-identity minting and the ``--dry-run`` exit, so a refused
+      pipeline can no longer delete a previous run's output, and Validate
+      refuses what Run would refuse.
+
+    An earlier version of this note said the GUI's swallow made a refused run
+    "route to CPU". It never did: the swallowing helper's one consumer only
+    toggled a form section, and the GUI launches runs as ``python -m
+    phenotypic`` subprocesses whose routing call raised.
 
     Args:
         pipeline_path: Path to pipeline JSON file.
