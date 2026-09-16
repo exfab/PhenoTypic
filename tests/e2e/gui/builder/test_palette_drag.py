@@ -13,12 +13,12 @@ Run gates:
 
 Coordination:
 * The clientside HTML5 drag glue lives in
-  ``src/phenotypic/gui/builder/assets/palette_dnd.js`` (owned by Agent
+  ``src/phenotypic/_gui/builder/assets/palette_dnd.js`` (owned by Agent
   3A).  These tests do **not** mock that JS — they drive real
   ``page.mouse.down() / move() / up()`` gestures against the rendered
   palette + cytoscape DOM.
 * The server-side dispatch handler lives in
-  ``src/phenotypic/gui/builder/_callbacks.py`` (``_dispatch_state_update``
+  ``src/phenotypic/_gui/builder/_callbacks.py`` (``_dispatch_state_update``
   ``block_create`` branch + the ``STORE_PALETTE_DROP`` input wired into
   the existing fan-in callback).
 """

@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 from werkzeug.exceptions import BadRequest, NotFound
 
-from phenotypic.gui._shared.tiles import resolve_within_root
+from phenotypic._gui._shared.tiles import resolve_within_root
 
 ROOTS = frozenset({"OME", "rgb", "gray", "detect_mat"})
 

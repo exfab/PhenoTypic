@@ -11,8 +11,8 @@ import pytest
 
 from phenotypic._core._image_pipeline import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount, ReplicateAgreement
-from phenotypic.gui.results_viewer._qc_tab import _rebuild
-from phenotypic.gui.results_viewer._qc_tab._rebuild import (
+from phenotypic._gui.results_viewer._qc_tab import _rebuild
+from phenotypic._gui.results_viewer._qc_tab._rebuild import (
     QcRebuildError,
     preflight_qc_rebuild,
     rebuild_qc_database,

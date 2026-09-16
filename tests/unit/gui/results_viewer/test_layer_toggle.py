@@ -17,12 +17,12 @@ from __future__ import annotations
 
 from typing import Iterator
 
-from phenotypic.gui.results_viewer import _ids as ids
-from phenotypic.gui.results_viewer.colony_view._callbacks import (
+from phenotypic._gui.results_viewer import _ids as ids
+from phenotypic._gui.results_viewer.colony_view._callbacks import (
     _normalize_layer_value,
 )
-from phenotypic.gui.results_viewer.colony_view._grid import _colony_crop_url
-from phenotypic.gui.results_viewer.colony_view._layout import build_layer_toggle
+from phenotypic._gui.results_viewer.colony_view._grid import _colony_crop_url
+from phenotypic._gui.results_viewer.colony_view._layout import build_layer_toggle
 
 
 class _FakeRoot:

@@ -1,8 +1,8 @@
 """Preview modal mounts in the layout with the expected sub-components."""
 from pathlib import Path
 
-from phenotypic.gui.builder import _ids as ids
-from phenotypic.gui.builder._layout import build_node_preview_modal
+from phenotypic._gui.builder import _ids as ids
+from phenotypic._gui.builder._layout import build_node_preview_modal
 
 
 def _walk(node):
@@ -29,7 +29,7 @@ def test_modal_has_blocking_props_and_children():
 
 
 def test_preview_js_asset_exists():
-    js = Path("src/phenotypic/gui/builder/assets/preview.js")
+    js = Path("src/phenotypic/_gui/builder/assets/preview.js")
     assert js.exists()
     text = js.read_text()
     assert "__phenotypicNodePreview" in text
@@ -47,7 +47,7 @@ def test_preview_js_drives_the_shared_facade_not_openseadragon():
     "OpenSeadragon", which the file still names in prose -- to say the point
     picker keeps it.
     """
-    text = Path("src/phenotypic/gui/builder/assets/preview.js").read_text()
+    text = Path("src/phenotypic/_gui/builder/assets/preview.js").read_text()
     assert "window.phenotypicViv" in text
     assert "setSource" in text
     assert "window.OpenSeadragon" not in text

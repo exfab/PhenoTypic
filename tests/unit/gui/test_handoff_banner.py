@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import pytest
 
-from phenotypic.gui.analysis._app import (
+from phenotypic._gui.analysis._app import (
     _handoff_banner_state as analysis_banner_state,
 )
-from phenotypic.gui.results_viewer._app import (
+from phenotypic._gui.results_viewer._app import (
     _handoff_banner_state as viewer_banner_state,
 )
 

@@ -1,6 +1,6 @@
 """Smoke tests for the Phase 5 composed hub.
 
-Boots the unified hub via :func:`phenotypic.gui.shell.create_app` and
+Boots the unified hub via :func:`phenotypic._gui.shell.create_app` and
 exercises each mount point through the test client. Confirms:
 
 * ``/`` (shell home) returns 200.
@@ -24,8 +24,8 @@ from typing import Any
 
 import pytest
 
-from phenotypic.gui.run_console._callbacks import _dashboard_url
-from phenotypic.gui.shell import SandboxRoot, create_app
+from phenotypic._gui.run_console._callbacks import _dashboard_url
+from phenotypic._gui.shell import SandboxRoot, create_app
 
 
 @pytest.fixture()
@@ -219,7 +219,7 @@ def test_dispatcher_threads_script_root(sandbox: SandboxRoot) -> None:
     # builder's Flask server we have to look it up through the dispatcher's
     # mounts dict.
     dispatcher = app.server.wsgi_app
-    builder_flask = dispatcher.mounts["/builder"]
+    builder_flask = dispatcher.mounts["/builder"]._session.get().server
 
     bp = Blueprint("probe", __name__)
 
@@ -400,7 +400,7 @@ def test_explicit_url_prefix_preserves_script_root_through_dispatcher(
 
     app = create_app(sandbox, url_prefix=OOD_NODE_PREFIX)
     dispatcher = app.server.wsgi_app
-    builder_flask = dispatcher.mounts["/builder"]
+    builder_flask = dispatcher.mounts["/builder"]._session.get().server
 
     bp = Blueprint("prefixed_probe", __name__)
 

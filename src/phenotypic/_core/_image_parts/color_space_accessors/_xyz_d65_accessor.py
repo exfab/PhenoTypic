@@ -1,6 +1,5 @@
 from functools import partial
 
-import colour
 import numpy as np
 
 from ..accessor_abstracts import ColorSpaceAccessor
@@ -88,6 +87,8 @@ class XyzD65Accessor(ColorSpaceAccessor):
             >>> print(xyz_arr.shape)  # e.g., (480, 640, 3)
             >>> print(xyz_arr.dtype)  # float64
         """
+        import colour
+
         wp = colour.CCS_ILLUMINANTS[self._root_image._observer]
 
         # Creates a partial function so only the new XYZ whitepoint needs to be supplied

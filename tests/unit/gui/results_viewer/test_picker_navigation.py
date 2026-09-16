@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from phenotypic.gui.results_viewer._picker_navigation import (
+from phenotypic._gui.results_viewer._picker_navigation import (
     enabled_picker_values,
     picker_button_disabled_states,
     step_picker_value,

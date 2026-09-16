@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import re
 
-from phenotypic.gui._url_prefix import dash_index_string_with_app_prefix
+from phenotypic._gui._url_prefix import dash_index_string_with_app_prefix
 
 
 def _extract_prefix_literal(index_string: str) -> str:

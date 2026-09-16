@@ -1,6 +1,6 @@
 """Unit tests for the results-viewer header mode badge.
 
-:func:`phenotypic.gui.results_viewer._layout.build_mode_badge` reads only
+:func:`phenotypic._gui.results_viewer._layout.build_mode_badge` reads only
 ``output_root.has_results`` and renders a pill reading **Full run** (per-image
 ``results/`` present) or **Standalone bundle** (deliverables-only). The badge
 distinguishes a portable bundle — where the per-image pixel-layer toggle is
@@ -8,8 +8,8 @@ unavailable — from a full ``python -m phenotypic`` run.
 """
 from __future__ import annotations
 
-from phenotypic.gui.results_viewer import _ids as ids
-from phenotypic.gui.results_viewer._layout import build_mode_badge
+from phenotypic._gui.results_viewer import _ids as ids
+from phenotypic._gui.results_viewer._layout import build_mode_badge
 
 
 class _Full:

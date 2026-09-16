@@ -14,15 +14,15 @@ import dash
 import dash_bootstrap_components as dbc
 from dash import dcc, html
 
-from phenotypic.gui.results_viewer import _ids as viewer_ids
-from phenotypic.gui.results_viewer._curation_labels import CurationLabels
-from phenotypic.gui.results_viewer._error_tab import (
+from phenotypic._gui.results_viewer import _ids as viewer_ids
+from phenotypic._gui.results_viewer._curation_labels import CurationLabels
+from phenotypic._gui.results_viewer._error_tab import (
     build_error_tab_body,
     register_error_callbacks,
 )
-from phenotypic.gui.results_viewer._error_tab import _ids as error_ids
-from phenotypic.gui.results_viewer._error_tab import _publication
-from phenotypic.gui.results_viewer._error_tab._publication import (
+from phenotypic._gui.results_viewer._error_tab import _ids as error_ids
+from phenotypic._gui.results_viewer._error_tab import _publication
+from phenotypic._gui.results_viewer._error_tab._publication import (
     ErrorPublicationConflict,
     capture_error_source_fingerprints,
     compute_all_category_analysis,
@@ -31,7 +31,7 @@ from phenotypic.gui.results_viewer._error_tab._publication import (
     publish_error_analysis,
     recover_error_publication,
 )
-from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.results_viewer._output_root import OutputRoot
 from phenotypic.schema import ErrorCategory, IMAGE
 from phenotypic.sdk_ import (
     atomic_write_json,

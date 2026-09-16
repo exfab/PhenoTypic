@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`phenotypic.gui.results_viewer._filter_state`.
+"""Unit tests for :mod:`phenotypic._gui.results_viewer._filter_state`.
 
 Exercises the pure-data layer between Dash ``dcc.Store`` payloads and
 polars filter expressions: ``FilterRow``, ``FilterSpec.from_store``,
@@ -13,7 +13,7 @@ import logging
 
 import polars as pl
 
-from phenotypic.gui.results_viewer._filter_state import (
+from phenotypic._gui.results_viewer._filter_state import (
     COMPARE_OPS,
     METHOD_COMPARE,
     METHOD_CONTAINS,
@@ -171,7 +171,7 @@ def test_missing_column_logs_warning_and_skips(caplog) -> None:
         rows=[FilterRow(column="ColumnDoesNotExist", values=["x"])]
     )
     with caplog.at_level(
-        logging.WARNING, logger="phenotypic.gui.results_viewer._filter_state"
+        logging.WARNING, logger="phenotypic._gui.results_viewer._filter_state"
     ):
         out = spec.apply_to(df)
     assert out.height == df.height

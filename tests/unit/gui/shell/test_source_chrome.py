@@ -8,8 +8,8 @@ from urllib.parse import unquote
 
 from dash import dcc
 
-from phenotypic.gui.shell._layout import build_top_bar, wrap_in_chrome
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.shell._layout import build_top_bar, wrap_in_chrome
+from phenotypic._gui.shell._sandbox import SandboxRoot
 
 
 def _walk_components(node: object) -> list[object]:
@@ -33,7 +33,7 @@ def _component_with_id(node: object, component_id: str) -> object | None:
 def test_top_bar_renders_settings_button_not_inline_source_controls(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._ids import (
+    from phenotypic._gui.shell._ids import (
         SHELL_SETTINGS_BUTTON,
         SHELL_SOURCE_IMAGE_ROOT_CLEAR,
         SHELL_SOURCE_IMAGE_ROOT_LABEL,
@@ -59,7 +59,7 @@ def test_top_bar_renders_settings_button_not_inline_source_controls(
 def test_wrap_in_chrome_mounts_local_settings_stores(tmp_path: Path) -> None:
     import dash
 
-    from phenotypic.gui.shell._ids import (
+    from phenotypic._gui.shell._ids import (
         SHELL_METADATA_CSV_STORE,
         SHELL_SOURCE_IMAGE_ROOT_STORE,
         SHELL_TAB_HOME,
@@ -91,7 +91,7 @@ def test_wrap_in_chrome_mounts_local_settings_stores(tmp_path: Path) -> None:
 def test_clear_action_registers_source_store_writer(tmp_path: Path) -> None:
     import dash
 
-    from phenotypic.gui.shell._ids import (
+    from phenotypic._gui.shell._ids import (
         SHELL_SETTINGS_INPUT_FOLDER_CLEAR,
         SHELL_SOURCE_IMAGE_ROOT_STORE,
         SHELL_TAB_HOME,
@@ -117,7 +117,7 @@ def test_clear_action_registers_source_store_writer(tmp_path: Path) -> None:
 def test_wrap_in_chrome_mounts_source_picker_modal(tmp_path: Path) -> None:
     import dash
 
-    from phenotypic.gui.shell._ids import (
+    from phenotypic._gui.shell._ids import (
         SHELL_SOURCE_IMAGE_ROOT_BROWSE_STORE,
         SHELL_SOURCE_IMAGE_ROOT_CONFIRM,
         SHELL_SOURCE_IMAGE_ROOT_MODAL,
@@ -150,8 +150,8 @@ def test_wrap_in_chrome_mounts_settings_popover_and_metadata_picker(
 ) -> None:
     import dash
 
-    from phenotypic.gui.shell import _layout as shell_layout
-    from phenotypic.gui.shell._ids import (
+    from phenotypic._gui.shell import _layout as shell_layout
+    from phenotypic._gui.shell._ids import (
         SHELL_METADATA_CSV_BROWSE_STORE,
         SHELL_METADATA_CSV_CONFIRM,
         SHELL_METADATA_CSV_MODAL,
@@ -187,7 +187,7 @@ def test_wrap_in_chrome_mounts_settings_popover_and_metadata_picker(
 def test_source_picker_registers_store_writer(tmp_path: Path) -> None:
     import dash
 
-    from phenotypic.gui.shell._ids import (
+    from phenotypic._gui.shell._ids import (
         SHELL_SOURCE_IMAGE_ROOT_CONFIRM,
         SHELL_SOURCE_IMAGE_ROOT_STORE,
         SHELL_TAB_HOME,
@@ -213,7 +213,7 @@ def test_source_picker_registers_store_writer(tmp_path: Path) -> None:
 def test_metadata_picker_registers_store_writer(tmp_path: Path) -> None:
     import dash
 
-    from phenotypic.gui.shell._ids import (
+    from phenotypic._gui.shell._ids import (
         SHELL_METADATA_CSV_CONFIRM,
         SHELL_METADATA_CSV_STORE,
         SHELL_TAB_HOME,
@@ -241,7 +241,7 @@ def test_shell_callback_map_shared_store_writers_are_explicit_actions_only(
 ) -> None:
     import dash
 
-    from phenotypic.gui.shell._ids import (
+    from phenotypic._gui.shell._ids import (
         SHELL_METADATA_CSV_CONFIRM,
         SHELL_METADATA_CSV_STORE,
         SHELL_SETTINGS_INPUT_FOLDER_CLEAR,
@@ -283,7 +283,7 @@ def test_repository_shared_store_writer_inventory_is_explicit() -> None:
     allowed to mutate shared Shell authority. Tune retains its explicit
     image-source selection hand-off.
     """
-    source_root = Path(__file__).parents[4] / "src" / "phenotypic" / "gui"
+    source_root = Path(__file__).parents[4] / "src" / "phenotypic" / "_gui"
     target_names = {
         "SHELL_SOURCE_IMAGE_ROOT_STORE",
         "SHELL_METADATA_CSV_STORE",
@@ -363,7 +363,7 @@ def test_shared_refresh_revision_invalidates_labels_and_open_pickers(
 ) -> None:
     import dash
 
-    from phenotypic.gui.shell._ids import (
+    from phenotypic._gui.shell._ids import (
         SHELL_CLASSIFIER_CACHE_STORE,
         SHELL_METADATA_CSV_MODAL_BODY,
         SHELL_SETTINGS_METADATA_CSV_LABEL,

@@ -28,12 +28,12 @@ import pytest
 from phenotypic import ImagePipeline
 from phenotypic.detect import CompositeDetector, FilamentousFungiDetector, OtsuDetector
 from phenotypic.enhance import BlurGauss
-from phenotypic.gui._operation_registry import ParamInfo, get_registry
-from phenotypic.gui.builder._conversion_dag import (
+from phenotypic._gui._operation_registry import ParamInfo, get_registry
+from phenotypic._gui.builder._conversion_dag import (
     from_pipeline_dag,
     to_pipeline_dag,
 )
-from phenotypic.gui.builder._state import (
+from phenotypic._gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
     PIPELINE_CLASS_NAME,
     BlockNode,
@@ -586,7 +586,7 @@ class TestFromPipelineDagLegacyJson:
         state = from_pipeline_dag(pipe)
 
         # Validation should pass on the loaded state (no errors).
-        from phenotypic.gui.builder._validation import validate
+        from phenotypic._gui.builder._validation import validate
 
         issues = validate(state)
         errors = [iss for iss in issues if iss.severity == "error"]

@@ -3,7 +3,7 @@
 The hub mounts ``/tune/`` in its empty (run-unbound) state; the user binds a
 tune output directory from the page itself. These tests close the gap the
 headless unit tests miss: the bind callback can be correctly *implemented* (its
-pure :func:`~phenotypic.gui.tune._run_picker.discover_run_payload` helper passes)
+pure :func:`~phenotypic._gui.tune._run_picker.discover_run_payload` helper passes)
 yet *mis-wired* — a wrong-arity confirm closure, a store-write that 500s, or a
 body-swap that fails to render the loaded views. Those only surface on the real
 ``/_dash-update-component`` round trip, so each test POSTs the confirm trigger
@@ -30,7 +30,7 @@ from pathlib import Path
 import pandas as pd
 from dash.development.base_component import Component
 
-from phenotypic.gui.shell import SandboxRoot
+from phenotypic._gui.shell import SandboxRoot
 
 
 # ---------------------------------------------------------------------------
@@ -115,7 +115,7 @@ def _make_tune_run(run_dir: Path) -> None:
 
 def _empty_state_app(sandbox_root: Path):  # type: ignore[no-untyped-def]
     """A tune app mounted empty-state (``root=None``) with a bound sandbox."""
-    from phenotypic.gui.tune import create_app
+    from phenotypic._gui.tune import create_app
 
     sandbox = SandboxRoot.from_path(sandbox_root)
     return create_app(root=None, url_prefix="/tune/", sandbox=sandbox)

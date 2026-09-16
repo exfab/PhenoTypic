@@ -22,8 +22,8 @@ from typing import Any, Iterable
 
 import pytest
 
-from phenotypic.gui.builder import _ids as ids
-from phenotypic.gui.builder._layout import _doc_section_widgets
+from phenotypic._gui.builder import _ids as ids
+from phenotypic._gui.builder._layout import _doc_section_widgets
 
 
 def _walk_components(tree: Any) -> Iterable[Any]:
@@ -125,7 +125,7 @@ class TestInspectorRenderPathsEmitDocIds:
 
     @pytest.fixture(scope="class")
     def registry(self):
-        from phenotypic.gui._operation_registry import OperationRegistry
+        from phenotypic._gui._operation_registry import OperationRegistry
 
         reg = OperationRegistry()
         reg.discover()
@@ -144,8 +144,8 @@ class TestInspectorRenderPathsEmitDocIds:
         return counts
 
     def test_empty_inspector_branch_emits_doc_ids_once(self, registry):
-        from phenotypic.gui.builder._layout import build_inspector
-        from phenotypic.gui.builder._state import _LegacyBuilderScope as BuilderScope, _LegacyBuilderState as BuilderState
+        from phenotypic._gui.builder._layout import build_inspector
+        from phenotypic._gui.builder._state import _LegacyBuilderScope as BuilderScope, _LegacyBuilderState as BuilderState
 
         state = BuilderState(
             root=BuilderScope(nodes=[]),
@@ -157,8 +157,8 @@ class TestInspectorRenderPathsEmitDocIds:
         assert counts[ids.INSPECTOR_DOC_COLLAPSE] == 1
 
     def test_pipeline_node_branch_emits_doc_ids_once(self, registry):
-        from phenotypic.gui.builder._layout import build_inspector
-        from phenotypic.gui.builder._state import (
+        from phenotypic._gui.builder._layout import build_inspector
+        from phenotypic._gui.builder._state import (
             _LegacyBuilderScope as BuilderScope,
             _LegacyBuilderState as BuilderState,
             _LegacyStepNode as StepNode,
@@ -181,8 +181,8 @@ class TestInspectorRenderPathsEmitDocIds:
         assert counts[ids.INSPECTOR_DOC_COLLAPSE] == 1
 
     def test_operation_node_with_docstring_emits_doc_ids_once(self, registry):
-        from phenotypic.gui.builder._layout import build_inspector
-        from phenotypic.gui.builder._state import (
+        from phenotypic._gui.builder._layout import build_inspector
+        from phenotypic._gui.builder._state import (
             _LegacyBuilderScope as BuilderScope,
             _LegacyBuilderState as BuilderState,
             _LegacyStepNode as StepNode,

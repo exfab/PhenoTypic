@@ -3,7 +3,7 @@
 Registers a single ``plotly.io`` template named ``"phenotypic"`` carrying
 the brand palette, Okabe-Ito data series order, and the IBM Plex Sans
 typography defined in ``DESIGN.md`` (and mirrored by
-``phenotypic.gui._design``). The ``@figure`` decorator applies this
+``phenotypic._gui._design``). The ``@figure`` decorator applies this
 theme to every figure via :func:`apply_theme`, so individual call sites
 never re-spell hex codes, fonts, or axis styling.
 
@@ -124,7 +124,7 @@ FAILED_FILL: str = "rgba(213,94,0,0.7)"
 # Typography (DESIGN.md "02 -- Typography")
 # ---------------------------------------------------------------------------
 
-#: Body font stack (IBM Plex Sans) matching ``phenotypic.gui._design``'s
+#: Body font stack (IBM Plex Sans) matching ``phenotypic._gui._design``'s
 #: ``FONT_FAMILY_BODY``. The ``test_font_family_does_not_drift_from_gui_design``
 #: guard keeps the two in sync. Used for chart titles, axis titles, and legend
 #: series names.
@@ -133,7 +133,7 @@ FONT_FAMILY: str = (
     '"Segoe UI", "Helvetica Neue", Arial, sans-serif'
 )
 
-#: Mono font stack (JetBrains Mono) matching ``phenotypic.gui._design``'s
+#: Mono font stack (JetBrains Mono) matching ``phenotypic._gui._design``'s
 #: ``FONT_FAMILY_MONO``. Per DESIGN.md "02", all numeric data -- axis tick
 #: labels, hover values, colorbar ticks, annotations -- render in mono. Kept in
 #: sync with the GUI by ``test_mono_font_does_not_drift_from_gui_design``.

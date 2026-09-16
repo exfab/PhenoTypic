@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import polars as pl
 
-from phenotypic.gui.results_viewer.colony_view._grid import selectable_axis_columns
+from phenotypic._gui.results_viewer.colony_view._grid import selectable_axis_columns
 from phenotypic.schema import EXPERIMENT
 
 

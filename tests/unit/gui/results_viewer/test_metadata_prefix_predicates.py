@@ -5,7 +5,7 @@ import polars as pl
 import pytest
 
 from phenotypic.schema import GENETIC
-from phenotypic.gui.results_viewer.colony_view._grid import selectable_axis_columns
+from phenotypic._gui.results_viewer.colony_view._grid import selectable_axis_columns
 
 
 @pytest.mark.parametrize(

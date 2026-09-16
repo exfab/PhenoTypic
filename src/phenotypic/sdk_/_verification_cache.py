@@ -101,7 +101,7 @@ marker descriptor already digests, and it is the right thing to stat.
 
 **Bounded by the fence, not by a policy** (CAN-28). ``LocalRunner._instances``,
 ``_terminal_job_cache`` (``_cli/_dashboard/_manifest_builder.py:73``) and
-``_LAST_DUMPED`` (``gui/builder/_point_picker.py:549``) are three unbounded
+``_LAST_DUMPED`` (``_gui/builder/_point_picker.py:549``) are three unbounded
 module globals this codebase already carries as audit findings (§5, S22, S23),
 so a fourth is not acceptable. But an LRU would be a *second* mechanism on top
 of one that already bounds this: entries are identity-fenced, so only those

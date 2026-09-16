@@ -170,7 +170,7 @@ def test_process_store_into_full_cli_preserves_both_applications(
     assert Image.imread(process_store)._metadata.provenance_journal[
         "applications"
     ][0]["kind"] == "process"
-    from phenotypic.gui.results_viewer._store_source import build_source_spec
+    from phenotypic._gui.results_viewer._store_source import build_source_spec
 
     source_spec = build_source_spec(process_store, "/browse/process.ome.zarr")
     assert source_spec["seriesPath"] == "rgb"

@@ -16,9 +16,9 @@ import pytest
 from flask import Flask
 
 from phenotypic import ImagePipeline
-from phenotypic.gui.shell._routes import register_sandbox_api
-from phenotypic.gui.shell._sandbox import SandboxRoot
-from phenotypic.gui.shell._session import ToolSession
+from phenotypic._gui.shell._routes import register_sandbox_api
+from phenotypic._gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.shell._session import ToolSession
 
 from tests._output_layout import seed_output_dir
 from phenotypic.schema import IMAGE

@@ -1,8 +1,8 @@
 """The filter/edge GUI partition over the shared pipeline _filters dict."""
 from phenotypic.analysis import EdgeCorrector, TukeyOutlierRemover
 from phenotypic import ImagePipeline
-from phenotypic.gui.analysis import _ids as ids
-from phenotypic.gui.analysis._layout import filter_items_for_kind
+from phenotypic._gui.analysis import _ids as ids
+from phenotypic._gui.analysis._layout import filter_items_for_kind
 
 
 def _pipeline_with_both():
@@ -36,7 +36,7 @@ class _Recipe:
 
 
 def test_build_section_stack_edge_vs_filter():
-    from phenotypic.gui.analysis._layout import build_section_stack
+    from phenotypic._gui.analysis._layout import build_section_stack
 
     recipe = _Recipe(_pipeline_with_both())
     edge_cards = build_section_stack(ids.ANALYSIS_EDGE_STACK, "edge", recipe)

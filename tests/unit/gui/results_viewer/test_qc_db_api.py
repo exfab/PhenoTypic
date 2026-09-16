@@ -56,7 +56,7 @@ def _seed_db(tmp_path):
 
 
 def test_list_modules_reads_catalog(tmp_path):
-    from phenotypic.gui.results_viewer._qc_tab.review import _db
+    from phenotypic._gui.results_viewer._qc_tab.review import _db
 
     root = _seed_db(tmp_path)
     mods = _db.list_modules(root)
@@ -68,7 +68,7 @@ def test_list_modules_reads_catalog(tmp_path):
 
 
 def test_module_summary_and_members(tmp_path):
-    from phenotypic.gui.results_viewer._qc_tab.review import _db
+    from phenotypic._gui.results_viewer._qc_tab.review import _db
 
     root = _seed_db(tmp_path)
     summ = _db.module_summary(root, "qc-ZMax-00000001")
@@ -79,7 +79,7 @@ def test_module_summary_and_members(tmp_path):
 
 def test_module_members_empty_group_returns_all(tmp_path):
     """An empty group-key tuple applies no filter → the full data table."""
-    from phenotypic.gui.results_viewer._qc_tab.review import _db
+    from phenotypic._gui.results_viewer._qc_tab.review import _db
 
     root = _seed_db(tmp_path)
     members = _db.module_members(root, "qc-ZMax-00000001", ())
@@ -87,7 +87,7 @@ def test_module_members_empty_group_returns_all(tmp_path):
 
 
 def test_qc_catalog_and_members_normalize_metadata_keys_read_only(tmp_path):
-    from phenotypic.gui.results_viewer._qc_tab.review import _db
+    from phenotypic._gui.results_viewer._qc_tab.review import _db
 
     root = _seed_db(tmp_path)
     path = root.layout.qc_duckdb
@@ -118,7 +118,7 @@ def test_qc_catalog_and_members_normalize_metadata_keys_read_only(tmp_path):
 
 
 def test_summary_stats_from_module_summary(tmp_path):
-    from phenotypic.gui.results_viewer._qc_tab.review import _db
+    from phenotypic._gui.results_viewer._qc_tab.review import _db
 
     root = _seed_db(tmp_path)
     stats = _db.summary_stats(_db.module_summary(root, "qc-ZMax-00000001"))
@@ -127,19 +127,19 @@ def test_summary_stats_from_module_summary(tmp_path):
 
 
 def test_open_qc_db_missing_returns_none(tmp_path):
-    from phenotypic.gui.results_viewer._qc_tab.review import _db
+    from phenotypic._gui.results_viewer._qc_tab.review import _db
 
     assert _db.open_qc_db(_Root(_layout(tmp_path))) is None
 
 
 def test_list_modules_missing_db_is_empty(tmp_path):
-    from phenotypic.gui.results_viewer._qc_tab.review import _db
+    from phenotypic._gui.results_viewer._qc_tab.review import _db
 
     assert _db.list_modules(_Root(_layout(tmp_path))) == []
 
 
 def test_legacy_qc_parquet_cutover_message_when_duckdb_absent(tmp_path):
-    from phenotypic.gui.results_viewer._qc_tab.review import _db
+    from phenotypic._gui.results_viewer._qc_tab.review import _db
 
     root = _Root(_layout(tmp_path))
     qc_dir = root.layout.qc_dir
@@ -157,7 +157,7 @@ def test_legacy_qc_parquet_cutover_message_when_duckdb_absent(tmp_path):
 def test_legacy_qc_parquet_cutover_message_suppressed_when_duckdb_exists(
     tmp_path,
 ):
-    from phenotypic.gui.results_viewer._qc_tab.review import _db
+    from phenotypic._gui.results_viewer._qc_tab.review import _db
 
     root = _seed_db(tmp_path)
     qc_dir = root.layout.qc_dir

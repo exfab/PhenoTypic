@@ -14,8 +14,8 @@ import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
 
 from phenotypic.analysis import ReplicateAgreement
 from phenotypic.sdk_._qc_recipe import QcRecipeEntry
-from phenotypic.gui.results_viewer._qc_tab import _ids as ids
-from phenotypic.gui.results_viewer._qc_tab._check_card import build_check_card
+from phenotypic._gui.results_viewer._qc_tab import _ids as ids
+from phenotypic._gui.results_viewer._qc_tab._check_card import build_check_card
 
 
 def _make_entry(instance_id: str = "qc-SE-deadbeef") -> QcRecipeEntry:

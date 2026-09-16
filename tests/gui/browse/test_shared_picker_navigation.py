@@ -1,11 +1,11 @@
-from phenotypic.gui._shared._picker_navigation import (
+from phenotypic._gui._shared._picker_navigation import (
     enabled_picker_values,
     offset_picker_value,
     picker_button_disabled_states,
     picker_position,
     step_picker_value,
 )
-from phenotypic.gui.results_viewer import _picker_navigation as rv_nav
+from phenotypic._gui.results_viewer import _picker_navigation as rv_nav
 
 
 def _opts(*values):

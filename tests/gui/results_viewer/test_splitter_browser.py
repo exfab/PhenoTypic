@@ -23,7 +23,7 @@ import pytest
 
 _LIFECYCLE = (
     Path(__file__).parents[3]
-    / "src/phenotypic/gui/results_viewer/_assets/results_viewer.js"
+    / "src/phenotypic/_gui/results_viewer/_assets/results_viewer.js"
 )
 _SOURCE = _LIFECYCLE.read_text(encoding="utf-8")
 

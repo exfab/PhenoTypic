@@ -16,7 +16,7 @@ Coordination:
   ``block_collapsed_toggle``, ``drill_into_container``, ``drill_out``,
   ``drill_to_scope``, ``block_delete_request``,
   ``block_delete_confirm``) live in
-  ``src/phenotypic/gui/builder/_callbacks.py`` and are exhaustively
+  ``src/phenotypic/_gui/builder/_callbacks.py`` and are exhaustively
   unit-tested in ``tests/unit/gui/builder/test_dispatch.py``.  These
   e2e tests verify the **browser-side** integration.
 

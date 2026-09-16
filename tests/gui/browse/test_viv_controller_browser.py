@@ -9,11 +9,11 @@ import pytest
 
 _CONTROLLER = (
     Path(__file__).parents[3]
-    / "src/phenotypic/gui/browse/_assets/browse.js"
+    / "src/phenotypic/_gui/browse/_assets/browse.js"
 )
 _FACADE = (
     Path(__file__).parents[3]
-    / "src/phenotypic/gui/results_viewer/_assets/viv_viewer.js"
+    / "src/phenotypic/_gui/results_viewer/_assets/viv_viewer.js"
 )
 
 

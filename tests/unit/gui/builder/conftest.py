@@ -10,7 +10,7 @@ directory need:
 * :func:`_make_op_info` — a :class:`OperationInfo` builder with a stub
   class object, used by every test module that seeds a fake registry.
 * :func:`empty_registry` (pytest fixture) — monkeypatches
-  ``phenotypic.gui.builder._validation.get_registry`` so registry-driven
+  ``phenotypic._gui.builder._validation.get_registry`` so registry-driven
   rules (Rule 3 / Rule 7) test against a stable, isolated surface.
 
 Defined here (not in individual test modules) so the validation suite
@@ -27,7 +27,7 @@ import pytest
 
 from phenotypic.abc_ import ImageOperation
 from phenotypic import ImagePipeline
-from phenotypic.gui._operation_registry import OperationInfo, ParamInfo
+from phenotypic._gui._operation_registry import OperationInfo, ParamInfo
 
 
 @dataclass
@@ -143,6 +143,6 @@ def empty_registry(monkeypatch):
 
     reg = _FakeRegistry()
     monkeypatch.setattr(
-        "phenotypic.gui.builder._validation.get_registry", lambda: reg
+        "phenotypic._gui.builder._validation.get_registry", lambda: reg
     )
     return reg

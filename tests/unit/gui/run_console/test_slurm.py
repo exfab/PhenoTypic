@@ -1,4 +1,4 @@
-"""Unit tests for ``phenotypic.gui.run_console._slurm``.
+"""Unit tests for ``phenotypic._gui.run_console._slurm``.
 
 The SLURM submitter is a thin shell-out around the CLI, so the
 "interesting" behaviour is everything that happens around the streamed
@@ -31,7 +31,7 @@ from phenotypic._cli._cli_slurm_lifecycle import (
     initialize_slurm_lifecycle,
     lifecycle_state_path,
 )
-from phenotypic.gui.run_console._slurm import (
+from phenotypic._gui.run_console._slurm import (
     SlurmSubmitError,
     SlurmSubmitPending,
     SlurmSubmitResult,
@@ -42,11 +42,11 @@ from phenotypic.gui.run_console._slurm import (
     submit_slurm,
     wait_for_job_id,
 )
-from phenotypic.gui.run_console._state import RunConsoleState
+from phenotypic._gui.run_console._state import RunConsoleState
 from phenotypic.sdk_ import atomic_write_json, job_metadata_path
 
 _STREAM_TARGET = (
-    "phenotypic.gui.run_console._slurm._run_submitter_streamed"
+    "phenotypic._gui.run_console._slurm._run_submitter_streamed"
 )
 
 
@@ -830,7 +830,7 @@ def test_abnormal_exit_cancels_recovered_inactive_generation(
             return_value=_streamed(returncode=2),
         ),
         mock.patch(
-            "phenotypic.gui.run_console._slurm.cancel_generation"
+            "phenotypic._gui.run_console._slurm.cancel_generation"
         ) as cancel,
     ):
         with pytest.raises(SlurmSubmitError, match="exited with code 2"):

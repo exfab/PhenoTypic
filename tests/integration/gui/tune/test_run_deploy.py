@@ -2,10 +2,10 @@ from pathlib import Path, PureWindowsPath
 
 import pytest
 
-from phenotypic.gui.shell._runs_registry import RunRegistry
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.shell._runs_registry import RunRegistry
+from phenotypic._gui.shell._sandbox import SandboxRoot
 
-from phenotypic.gui.tune._deploy import _relative_run_path, deploy_tune_run
+from phenotypic._gui.tune._deploy import _relative_run_path, deploy_tune_run
 
 
 class _Process:

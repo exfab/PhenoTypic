@@ -1,24 +1,24 @@
 ---
 name: gui-tutorial-capture
-description: How to keep PhenoTypic's GUI feature ledgers and tutorial screenshots in sync when changing GUI chrome. Use when adding or modifying any user-visible GUI affordance under src/phenotypic/gui/, or when a CI gui-checks job (features-md-gate, workflows-md-gate, smoke-capture) fails.
+description: How to keep PhenoTypic's GUI feature ledgers and tutorial screenshots in sync when changing GUI chrome. Use when adding or modifying any user-visible GUI affordance under src/phenotypic/_gui/, or when a CI gui-checks job (features-md-gate, workflows-md-gate, smoke-capture) fails.
 ---
 
 # GUI feature ledgers & tutorial capture
 
-Two CI-gated ledgers track the GUI surface; touching `src/phenotypic/gui/`
+Two CI-gated ledgers track the GUI surface; touching `src/phenotypic/_gui/`
 requires keeping them current.
 
 ## `FEATURES.md` — every affordance
 
-`src/phenotypic/gui/FEATURES.md` lists every individual user-visible affordance
+`src/phenotypic/_gui/FEATURES.md` lists every individual user-visible affordance
 (button, badge, store, callback, route). The `gui-checks` workflow's
-**`features-md-gate`** job rejects any PR that touches `src/phenotypic/gui/`
+**`features-md-gate`** job rejects any PR that touches `src/phenotypic/_gui/`
 without modifying `FEATURES.md`. Pre-commit also validates the `Test ref` column
 on `✅ shipping` rows.
 
 ## `WORKFLOWS.md` — every end-to-end flow
 
-`src/phenotypic/gui/WORKFLOWS.md` lists every end-to-end user flow worth a
+`src/phenotypic/_gui/WORKFLOWS.md` lists every end-to-end user flow worth a
 tutorial page. Adding a row **requires** a matching `_capture_<id>` function in
 `scripts/capture_gui_tutorial_screenshots.py` **and** a walkthrough page under
 `docs/source/tutorials/gui/`. The **`workflows-md-gate`** job runs

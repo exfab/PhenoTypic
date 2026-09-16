@@ -17,11 +17,11 @@ from typing import Any, List
 
 import pytest
 
-from phenotypic.gui.builder._conversion_dag import (
+from phenotypic._gui.builder._conversion_dag import (
     from_pipeline_dag,
     to_pipeline_dag,
 )
-from phenotypic.gui.builder._state import (
+from phenotypic._gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
 )
 
