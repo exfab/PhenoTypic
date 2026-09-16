@@ -262,7 +262,11 @@ def test_detect_mode_choices_match_the_detection_mode_registry() -> None:
     # (a grep for ``register_detection_mode`` in tests/ is empty), so the global registry
     # is stable here.
     option = next(param for param in phenotypic_cli.params if param.name == "detect_mode")
-    assert list(option.type.choices) == sorted(available_modes())
+    # Not ``sorted(available_modes())``: the claim is that the help text is byte-identical
+    # to what the registry call produced, and wrapping the right-hand side in ``sorted()``
+    # makes the assertion blind to ``available_modes()``'s own ordering -- which is the
+    # property doing the work (``_detection_mode.py`` returns ``tuple(sorted(...))``).
+    assert list(option.type.choices) == list(available_modes())
     assert set(get_args(DetectMode)) == set(available_modes())
 
 

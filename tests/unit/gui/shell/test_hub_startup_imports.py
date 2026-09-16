@@ -9,6 +9,11 @@ from tests._startup_probe import run_startup_probe
 #: What the composed hub loads before any request, with the chain that loads it. Measured
 #: during the plan review; a shell-side module-level chain may be listed here with its
 #: justification (spec, tier 3). None of these is a deferral target.
+#:
+#: This is documentation, not an escape hatch: the guard below asserts
+#: ``loaded_before == []`` directly and asserts this dict is disjoint from
+#: ``HUB_WATCHED_MODULES``. Adding a watched module here would once have cancelled its own
+#: watch while leaving the test green -- the Phase 1 I3 defect. It cannot now.
 HUB_ALLOWED_BEFORE_FIRST_REQUEST: dict[str, str] = {
     "plotly": "dash -> plotly, dash's own import; third-party, cannot be cut",
     "pandas": "_gui/analysis/_callbacks.py:25, via compose_hub's eager analysis import",
@@ -23,6 +28,29 @@ HUB_ALLOWED_BEFORE_FIRST_REQUEST: dict[str, str] = {
 HUB_WATCHED_MODULES: tuple[str, ...] = (
     "bm3d", "colour", "cv2", "h5py", "mahotas", "matplotlib.pyplot", "numba",
 )
+
+
+def test_the_hub_watched_set_is_the_one_the_spec_names() -> None:
+    """Pin the contents, or the tier-3 guard can be retired without a diff that says so.
+
+    The guard asserts ``loaded_before == []`` over whatever this tuple happens to hold, so
+    the cheapest way to green a failing hub is to delete the offending name from it.
+    Changing the set now requires changing this list in the same commit. The disjointness
+    assertion is the second half: the allow-list dict documents what the hub legitimately
+    loads, and a name may never appear in both -- an allow-list entry for a watched module
+    would silently cancel the watch. Same rule as
+    ``tests/unit/ci/test_startup_imports.py::test_the_watched_sets_are_the_ones_the_spec_names``.
+    """
+    assert set(HUB_WATCHED_MODULES) == {
+        "bm3d",
+        "colour",
+        "cv2",
+        "h5py",
+        "mahotas",
+        "matplotlib.pyplot",
+        "numba",
+    }
+    assert set(HUB_WATCHED_MODULES).isdisjoint(HUB_ALLOWED_BEFORE_FIRST_REQUEST)
 
 
 def test_composed_hub_builds_the_builder_on_its_first_request(tmp_path: Path) -> None:
@@ -40,7 +68,7 @@ def test_composed_hub_builds_the_builder_on_its_first_request(tmp_path: Path) ->
         "          'detect_after': 'phenotypic.detect' in sys.modules}\n"
     )
     assert report["dash"] is True
-    assert sorted(set(report["loaded_before"]) - set(HUB_ALLOWED_BEFORE_FIRST_REQUEST)) == []
+    assert report["loaded_before"] == []
     assert report["detect_before"] is False
     assert report["status"] == 200
     assert report["detect_after"] is True

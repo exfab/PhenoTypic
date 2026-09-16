@@ -254,7 +254,7 @@ The plan resolves these against the code; they refine the design without changin
 
 | # | Spec text | Finding | Change |
 |---|---|---|---|
-| P1 | Design §3: the CLI's phenotypic imports "move into the command body or into the helpers that use them" | 36 test files import from `phenotypic.phenotypicCLI`. 27 `mock.patch` sites target names on it, 5 of them imported names such as `create_execution_strategy`, and a function-local import would silently bypass those patches. A post-change static closure (`probes/post_change_closure.py`) shows only 9 of the 25 phenotypic import statements stay heavy (24 names). | Those 24 names plus `available_modes` are bound into module globals by `_load_cli_runtime()` using `globals().setdefault`, so an active patch wins. It is called first in `phenotypic_cli`, `_migrate_legacy_success_evidence`, `_regenerate_missing_overlays` and `_handle_recompile_slurm`. A module `__getattr__` serves external access, and a `TYPE_CHECKING` block serves mypy. The 16 light import statements stay at module level. |
+| P1 | Design §3: the CLI's phenotypic imports "move into the command body or into the helpers that use them" | 36 test files import from `phenotypic.phenotypicCLI`. 27 `mock.patch` sites target names on it, 5 of them imported names such as `create_execution_strategy`, and a function-local import would silently bypass those patches. A post-change static closure (`probes/post_change_closure.py`) shows only 9 of the 25 phenotypic import statements stay heavy (24 names). | Those 24 names plus `available_modes` are bound into module globals by `_load_cli_runtime()`, which **skips any module whose names are all bound** — that skip is what keeps an active patch in force. **Amended 2026-09-15: see Amendment B/B1**, which removes the `globals().setdefault` this row originally specified. It is called first in `phenotypic_cli`, `_migrate_legacy_success_evidence`, `_regenerate_missing_overlays` and `_handle_recompile_slurm`. A module `__getattr__` serves external access, and a `TYPE_CHECKING` block serves mypy. The 16 light import statements stay at module level. |
 | P2 | Design §4 changes only the launcher module | `phenotypic._gui.shell/__init__.py` eagerly imports `_app` (dash) and `_launcher`, and the console script imports that package first. | `shell/__init__.py` gets PEP 562 re-exports. |
 | P3 | Appendix A lists `correction/_color_correction/_color_correction_report.py` and `grid/_grid_fit_report.py` as simple moves | Both import `sdk_.viz.figures._theme`, which imports plotly by contract, so moving their own imports would not keep plotly out, and neither is on a guarded path. | Left unchanged. |
 | P4 | Design §2: the dash handler's docs-build renderer switch moves into a first-plot helper | Under `PHENOTYPIC_DOCS_BUILD`, today's switch runs at `import phenotypic` and affects every plotly figure the notebook kernel renders, not only accessor figures. | The switch moves to `_startup_perf`. It still runs at `import phenotypic`, and only when the variable is set. |
@@ -268,6 +268,27 @@ The plan resolves these against the code; they refine the design without changin
 | P12 | B1 calls all three sites cycle fixes | With the `abc_` re-exports lazy, the two `_grid_image_handler` imports are import-order-safe on their own: restoring both leaves the sweep green (85/85). | The `abc_` lazy re-export is the cycle fix; the two `_grid_image_handler` moves are weight moves that keep `phenotypic.grid` and `phenotypic.measure` off the `Image` path. Mutation M2 targets the deferral checker, not the sweep. Evidence: plan review I1. |
 | P13 | D4 says the preload runs after options are parsed and validated | It is the first statement of the command body, so it runs before mode validation and before a usage error. | Deliberate and documented in the plan: a broken install fails before any parse-dependent work, and every mode pays the import. Evidence: plan review I4. |
 | P14 | Design §1 and the plan place each `__getattr__` before the eager imports (P8) | Ruff then reports those eager imports as E402: 20 in `abc_/__init__.py`, 13 in `sdk_/__init__.py`, plus one F401 in the CLI's `TYPE_CHECKING` block. | The eager blocks carry `# noqa: E402`, and the CLI's `TYPE_CHECKING` imports carry `# noqa: F401`, so the ruff finding set stays at its baseline. Evidence: plan review I3. |
+
+## Amendment B — Phase 2 gate (2026-09-15)
+
+Raised by the Phase 2 gate review
+(`docs/superpowers/reports/2026-09-11-lazy-startup/phase2-review.md`, finding I1) and **decided by
+the user**, because it overrides Amendment A/P1 rather than refining it.
+
+| # | Supersedes | Finding | Change |
+|---|---|---|---|
+| B1 | A/P1's `globals().setdefault` | `_load_cli_runtime()` guarded the patch-safety property **twice**, and the two guards are redundant: `globals().setdefault` (A) keeps an already-bound value, and the `all(name in module_globals) -> continue` short-circuit (B) skips the module entirely. Either alone delivers the property. In practice **A never executes**: `mock.patch.__enter__` calls `getattr` to save the original, which fires the module `__getattr__`, which calls `_load_cli_runtime()` and binds every name of all 11 modules *before* the patch body runs — measured, `11 of 11` short-circuited. So B is what protects the 27 `mock.patch("phenotypic.phenotypicCLI.<name>")` sites, and A is unreachable through that idiom. The redundancy is also why **no single-line mutation could redden** `test_a_patched_deferred_cli_name_stays_patched_through_the_loader`: remove either guard and the other still holds, so the test passed without exercising the mechanism it is named for. | `setdefault` is removed; the loop binds with `module_globals[name] = getattr(module, name)`, leaving the `continue` skip as the single mechanism. The docstring names the skip as the patch-safety guarantee rather than as a performance note. The **existing** test then becomes genuinely falsifiable with no new test: deleting the `continue` makes it red. One mechanism, one claim, one test, one mutation. |
+
+**Why this needed a decision rather than a fix.** The honest alternative was to keep `setdefault` and
+add a test that manufactures the partial-binding state it guards. That state is **not reachable via
+`mock.patch` at all** — under `with`/decorator nesting it is impossible (LIFO restore), and it
+requires out-of-order `.start()`/`.stop()` on two names of one module, which appears nowhere in the
+test surface. Testing a state that cannot occur is weaker than removing the guarantee that claims
+it, so the user chose removal.
+
+**Production behaviour was correct throughout.** I1 is a vacuous *test* over correct code, not a
+latent bug: the patches were always protected, by B. Verified by probe (patch in force, real
+function restored on exit) and by tracing CPython's `_patch.__exit__` non-local branch.
 
 ## Known risks
 

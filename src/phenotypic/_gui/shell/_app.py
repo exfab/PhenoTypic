@@ -5,7 +5,9 @@ Phase 5 ships the unified hub: ``create_app(sandbox)`` returns a
 :class:`werkzeug.middleware.dispatcher.DispatcherMiddleware`. The
 dispatcher routes:
 
-    * ``/builder/...``  → builder Dash factory (eager — small).
+    * ``/builder/...``  → :class:`_SessionProxy` over a builder
+      :class:`ToolSession` (lazy — discovery imports the whole
+      operation library).
     * ``/results/...``  → :class:`_ViewerProxy` over a viewer
       :class:`ToolSession` (lazy — viewer is heavy).
     * ``/run/...``      → run-console Dash factory (eager — small,
@@ -250,8 +252,10 @@ def compose_hub(
         binding_drain_timeout_seconds: Maximum time an output Refresh waits
             for callbacks admitted by the previous binding to finish.
         progress: Optional callback invoked with a short label before each
-            eager sub-app is built (``"sub-app modules"``, ``"shell"``,
-            ``"builder"``, …). The launcher passes
+            eager sub-app is built (``"custom operations"``,
+            ``"sub-app modules"``, ``"shell"``, ``"run console"``,
+            ``"browse"``). The session-backed sub-apps (builder, viewer,
+            analysis) build on first request and tick nothing. The launcher passes
             :meth:`StartupReporter.detail` so the startup bar reflects which
             sub-app is currently being composed. ``None`` (default) is a
             no-op for non-interactive / test callers.

@@ -58,8 +58,6 @@ def render_plot(node: "SetAnalyzer | Any", **plot_kwargs: Any) -> Any:
         fast path, ``html.Img`` (data-URI PNG) on the matplotlib fallback,
         or an inline error card on any unexpected failure.
     """
-    import matplotlib.pyplot as plt
-
     report = getattr(node, "report", None)
     if callable(report):
         try:
@@ -76,6 +74,12 @@ def render_plot(node: "SetAnalyzer | Any", **plot_kwargs: Any) -> Any:
         return _render_output(figure, producer=type(node).__name__)
 
     try:
+        # Imported here, past the plotly early return above: ``plt`` is used only on this
+        # matplotlib fallback, and it is ~270ms a plotly-rendering node would otherwise
+        # pay on its first call. ``matplotlib.use("Agg")`` already ran at module import,
+        # so the backend is settled before this line.
+        import matplotlib.pyplot as plt
+
         # Apply the matplotlib rcParams mirror (DESIGN.md "07") for the duration
         # of figure construction + raster so filter previews carry the brand
         # palette, fonts, and spine rules.

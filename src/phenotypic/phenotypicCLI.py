@@ -302,9 +302,20 @@ _CLI_RUNTIME_MODULE_BY_NAME: dict[str, str] = {
 def _load_cli_runtime() -> None:
     """Bind the heavy runtime names into this module's globals.
 
-    ``setdefault`` keeps any value already bound, so an active
-    ``mock.patch("phenotypic.phenotypicCLI.<name>")`` stays in force. Cheap after the
-    first call: a module whose names are all bound is skipped.
+    **The ``all(...) -> continue`` skip is what keeps an active
+    ``mock.patch("phenotypic.phenotypicCLI.<name>")`` in force.** It reads as a
+    performance shortcut and is not one: ``mock.patch.__enter__`` reads the original
+    through ``__getattr__`` below, which runs this loader and binds every name of every
+    module *before* the patch body executes. Every later call -- ``phenotypic_cli``,
+    ``_migrate_legacy_success_evidence``, ``_regenerate_missing_overlays``,
+    ``_handle_recompile_slurm``, all of which run while a test's patch is live -- then
+    finds each module fully bound and skips it, so the Mock is never overwritten.
+    Delete the skip and every ``mock.patch`` on a deferred CLI name is silently
+    un-mocked mid-command, with the real implementation running in its place.
+
+    There is deliberately only one such mechanism: spec Amendment A/P1 (as amended)
+    removed a redundant ``setdefault`` here, because two independent protections meant
+    no single-line mutation could redden the guard that names this behaviour.
     """
     module_globals = globals()
     for module_name, names in _CLI_RUNTIME_IMPORTS.items():
@@ -312,7 +323,7 @@ def _load_cli_runtime() -> None:
             continue
         module = importlib.import_module(module_name)
         for name in names:
-            module_globals.setdefault(name, getattr(module, name))
+            module_globals[name] = getattr(module, name)
 
 
 def __getattr__(name: str) -> Any:
@@ -321,6 +332,15 @@ def __getattr__(name: str) -> Any:
         _load_cli_runtime()
         return globals()[name]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    """Keep ``dir()`` / ``inspect.getmembers`` showing the full surface before the load.
+
+    Same shape as the lazy package ``__init__``s; the deferred-name table stands in for
+    their ``__all__``.
+    """
+    return sorted(set(globals()) | set(_CLI_RUNTIME_MODULE_BY_NAME))
 
 
 # Set up logger
