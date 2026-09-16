@@ -218,6 +218,7 @@ from phenotypic._cli._cli_recompile_slurm_scripts import (
 from phenotypic._cli._cli_slurm_config import get_slurm_array_limit
 from phenotypic._cli._cli_slurm_submission import submit_slurm_script_chain
 from phenotypic._cli._cli_validation import (
+    UnstageableGpuDetectorError,
     validate_execution_config,
     validate_pipeline,
 )
@@ -2061,6 +2062,17 @@ def phenotypic_cli(
             gpu_shards=gpu_shards,
             gpu_slurm_args=_parse_slurm_args(gpu_slurm_args),
         )
+        # Refuse an unstageable GpuDetector HERE, before anything touches
+        # --output: every later step (overwrite clearing, run identity,
+        # --dry-run, strategy selection) sits below this line. Anything else
+        # the probe raises is left to the pipeline validation further down,
+        # which reports it as a clean "Pipeline loading failed" line.
+        try:
+            uses_staged_gpu_strategy(config)
+        except UnstageableGpuDetectorError as exc:
+            raise click.UsageError(str(exc)) from exc
+        except Exception:  # noqa: BLE001
+            pass
         manifest_snapshot = None
         if image_manifest is not None:
             try:
@@ -3231,6 +3243,10 @@ def phenotypic_cli(
     except click.ClickException as exc:
         exc.show()
         sys.exit(exc.exit_code)
+    except UnstageableGpuDetectorError as exc:
+        # Backstop for a refusal raised after the preflight (e.g. the staged
+        # splitter): still a usage problem, never a traceback.
+        raise click.UsageError(str(exc)) from exc
     except Exception as e:
         click.echo(f"\nUnexpected error: {e}", err=True)
         import traceback
