@@ -91,6 +91,19 @@ The array prints its commit, its dirty-file count and its resolved
 `phenotypic.__file__` in every task's log, so a contaminated run is visible in
 the artifact rather than only in the submitter's intent.
 
+`relocation_evidence.py`, beside this plan, is the executable record for Task
+6a's legacy-signal relocation: four scenarios, each printing all four paths with
+EXISTS/absent on **both** sides of the call plus `stage2_result_replayable`,
+exiting non-zero on any failed check. It prints paths rather than the function's
+return value, so "moved" is shown as on-disk state rather than asserted as a
+boolean — including the interrupted case, where the token move is forced to fail
+and the destinations attempted are printed in order.
+
+It lives here rather than under `docs/superpowers/logic_validation_scripts/`
+because it **imports `phenotypic`**, which that directory's contract forbids: a
+script there is meant to be an independent witness, and one that drives the
+shipped code is not.
+
 **Two corrections to an earlier draft of this table, made at execution time:**
 
 - **Task 9 moved from Phase 2 to Phase 4.** Its Interfaces block consumes Tasks
@@ -2306,6 +2319,18 @@ git commit -m "test(cli): every recorded pipeline_step_path must resolve"
 > `list(plan.gpu_path)`. A measurements-only equivalence check **passes a
 > one-element path against a three-element one**, so it would certify the parity
 > while the parity is broken.
+>
+> **And the fixture must be NESTED, or the corrected assertion is no better.**
+> With a top-level detector, `[plan.gpu_key]` and `list(plan.gpu_path)` are both
+> one-element lists holding the same key, so a `pipeline_step_path` comparison
+> passes on the broken code. The parity check needs
+> `("CompositeDetector", "ops[0]")` or deeper, or it certifies exactly what the
+> measurements-only version did, one level of detail further down.
+>
+> That is the third time on this change that a check has been adjacent to the
+> question rather than on it — "did the anchor match", "is the arity legal", and
+> now "do the paths agree, on a fixture where they agree either way". Whatever
+> the assertion, ask what shape of input would make it pass on broken code.
 
 **Files:**
 - Test: `tests/unit/cli/test_staged_nested_equivalence.py` (create)
