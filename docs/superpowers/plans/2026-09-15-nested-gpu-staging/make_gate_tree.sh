@@ -1,12 +1,30 @@
 #!/bin/bash
 # Build a frozen checkout for a phase gate, and prove it is frozen.
 #
-#   ./make_gate_tree.sh <sha-ish>      # default: HEAD
+#   ./make_gate_tree.sh <sha-ish> [purpose]     # defaults: HEAD, "gate"
 #
 # Prints the tree path on success. Submit the array against it with:
 #
 #   PHENO_GATE_TREE=<path> PHENO_GATE_PATHS="tests/unit/cli" \
 #     sbatch --array=0-3%4 run_phase_gate.sbatch
+#
+# ONE TREE PER MEASUREMENT, and that is what `purpose` is for. A gate array and
+# a mutation harness pointed at the SAME frozen tree collide exactly as badly as
+# either colliding with the live worktree: the harness rewrites a source file,
+# the array reads it mid-mutation, and the array reports a failure that belongs
+# to the harness. That happened here -- a 16-shard gate reported one novel
+# failure which was the harness's M1 mutant, and the whole array had to be
+# cancelled.
+#
+# "Frozen" is a property of a tree WITH RESPECT TO ITS READERS, not an intrinsic
+# one. A detached checkout that something is actively writing to is not frozen;
+# it is just not the live worktree. Passing a distinct `purpose` gives each
+# measurement its own directory, which makes the collision impossible rather
+# than merely forbidden -- the same reason the checkout is detached in the first
+# place.
+#
+#   TREE=$(./make_gate_tree.sh HEAD gate)        # for the array
+#   TREE=$(./make_gate_tree.sh HEAD mutation)    # for a mutation harness
 #
 # WHY THIS EXISTS. A parallel gate measures ONE tree. If a file changes while
 # an array's shards are spread across nodes, the result is a union across two
@@ -26,9 +44,10 @@ set -uo pipefail
 SRC=/bigdata/exfab/anguy344/PhenoTypic/.claude/worktrees/nested-gpu-staging
 BASE=/bigdata/exfab/anguy344/gate-trees
 REF=${1:-HEAD}
+PURPOSE=${2:-gate}
 
 SHA=$(git -C "$SRC" rev-parse --short "$REF") || exit 1
-TREE="$BASE/$SHA"
+TREE="$BASE/$SHA-$PURPOSE"
 
 if [[ ! -d $TREE ]]; then
     git -C "$SRC" worktree add --detach "$TREE" "$SHA" >/dev/null 2>&1 || exit 1
