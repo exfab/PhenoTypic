@@ -1,4 +1,28 @@
-# Nested `GpuDetector` Staging Implementation Plan
+# Plan A — Nested `GpuDetector` Staging via the Composite Path
+
+> **First of two plans, in sequence — this one lands first.** See `README.md`.
+> Plan A repairs the composite path with no changes to the operation interface,
+> and is the shortest route to a working run. Plan B
+> (`plan-b-phase-protocol.md`) follows it and supersedes parts of it; nothing
+> here needs undoing to start B.
+>
+> **Plan A is the reviewed one.** It has been through an independent plan review
+> (`docs/superpowers/reports/2026-09-15-nested-gpu-staging/plan-review.md`, 20
+> findings, all applied). Plan B has not.
+
+## Scope, and what it deliberately excludes
+
+**In:** a single `GpuDetector` nested inside `ImagePipeline`, `CompositeDetector`
+or `CompositeEnhance`, at any depth.
+
+**Out, by decision:**
+
+| Excluded | Why |
+|---|---|
+| `FilamentousFungiDetector`, `TwoKFilamentousDetector`, any domain detector | Only composition primitives may carry a staged detector (spec §4.3). `FilamentousFungiDetector` *would* classify as `"parallel"` today, and is still refused — that behaviour is incidental to its algorithm, not part of what the class is |
+| More than one `GpuDetector` | Deferred; spec §13 records the intended `N > 1` model, and Task 6a lands the slot-keyed signal now so it stays additive |
+| Sub-phase decomposition of an operation | That is Plan B |
+
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
