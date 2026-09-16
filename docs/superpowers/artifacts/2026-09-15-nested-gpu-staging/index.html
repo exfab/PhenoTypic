@@ -368,7 +368,38 @@ corrupted objects=9 vs ref=9   <i>&lt;- an object-count check would NOT have cau
   <li><strong>Refused, loudly:</strong> more than one GPU detector anywhere in the tree; a GPU detector in <code>meas</code>/<code>post</code>/<code>filters</code>/<code>model</code>, which Stage 3 runs on a CPU node; a GPU detector inside an enhancer container, whose branch must produce a layer rather than an objmap.</li>
   <li><strong>The branch prefix runs twice</strong> — once in Stage 2, once in Stage 3 — so it must be deterministic. Zero cost for the production pipeline, whose prefix is empty; it only bites if <code>DenoiseBlockMatch</code> or <code>FocusEdgePhase</code> later moves inside the composite branch.</li>
   <li><strong>Known gap, recorded not papered over:</strong> a nested pipeline's own <code>meas</code> slot is never walked, so a GPU detector hidden there is neither staged nor refused. Not reachable from the builder, no known user.</li>
+  <li><strong>One GPU detector per pipeline</strong> — deferred, not a limit of the design. See below.</li>
 </ul>
+
+<h2>Designing for two detectors</h2>
+
+<p>This ships <code>N = 1</code>, but "more than one GPU detector" is two different problems with very different costs, and only one of them is expensive.</p>
+
+<div class="tw"><table>
+  <thead><tr><th>Axis</th><th>Shape</th><th>Lands on</th></tr></thead>
+  <tbody>
+    <tr><td><strong>N</strong> — detectors per round</td><td><code>CompositeDetector(ops=[Sam2, Dino, Manual])</code> — branches read the same upstream state, so none depends on another</td><td>worker + storage layer</td></tr>
+    <tr><td><strong>R</strong> — rounds</td><td><code>CompositeA(Sam2) → MaskDilation → CompositeB(Dino)</code> — B reads what A produced</td><td>epoch-fenced controller</td></tr>
+  </tbody>
+</table></div>
+
+<p>Generalised, a pipeline is segments — <code>CPU(S0) → GPU(round 1) → CPU(S1) → GPU(round 2) → … → measure</code> — and this design is the <code>R=1, N=1</code> corner. An ensemble of two foundation models merged in one composite is <code>N=2, R=1</code>: no controller change, ever.</p>
+
+<h3>The execution model for N &gt; 1</h3>
+
+<p><strong>One detector at a time across the whole dataset, parallel across images within each sweep.</strong> Stage 2 becomes N sub-sweeps:</p>
+
+<pre class="good">Stage 2a   load Sam2 once per worker  → sweep every image → stage2_raw/&lt;sam2-slot&gt;/…
+Stage 2b   load Dino once per worker  → sweep every image → stage2_raw/&lt;dino-slot&gt;/…
+Stage 3    replay both slots, composite merges, both raws consumed and deleted</pre>
+
+<p>Deliberately <em>not</em> "hold N resident models per worker". Two foundation models on one ada6000 is a memory gamble that fails late — after all the CPU preprocessing, exactly the way a Pascal placement does. One model per worker keeps the existing residency invariant and buys parallelism from array width instead of GPU memory.</p>
+
+<div class="note win">
+  <h4>What landed now, at N = 1</h4>
+  <p>The Stage-2 signal was keyed by <em>image alone</em> — <code>stage2_raw/&lt;ds&gt;/&lt;stem&gt;.npy</code> — so exactly one array can exist per image. That single fact is what makes N&gt;1 structural rather than additive, so it is re-keyed by detector slot now, while the change is invisible: one extra directory level, no behavioural difference.</p>
+  <p>Deferred, it would have become a layout migration of a signal a 33,923-image run depends on, forcing every in-flight run to recompute Stage 2 — GPU time, on the scarcest resource in the system. The slot id is readable and collision-proof: sanitised path segments plus eight hex of a hash of the exact path, so <code>ops[0]</code> and <code>ops-0</code> cannot collide after sanitisation.</p>
+</div>
 
 <h2>The plan</h2>
 
@@ -381,6 +412,7 @@ corrupted objects=9 vs ref=9   <i>&lt;- an object-count check would NOT have cau
   <li><b>Container ops push a per-branch step</b><span>Four classes, one shared helper. Measurement probes stay excluded, by design and by test.</span></li>
   <li><b>Path-shaped StagePlan + branch prefix</b><span>Cut at the ancestor; the detector's own slot survives so the stub can land in it.</span></li>
   <li><b>ReplayDetector</b><span>Delegates the write to the real detector, and its identity — all four provenance fields — to the wrapped op.</span></li>
+  <li><b>Key the Stage-2 signal by detector slot</b><span>Added after the 2+ question. Invisible at N=1; the one thing that makes multi-detector support additive instead of a layout migration.</span></li>
   <li><b>Stage 2 applies the branch prefix</b><span>On a provenance-detached copy; a bare <code>copy()</code> carries the journal and raises.</span></li>
   <li><b>Stage 3 substitutes the stub</b><span>Replaces the explicit write and hand-rolled journal append.</span></li>
   <li><b>Pin the addressing invariant</b><span><code>gpu_path == pipeline_step_path</code>, asserted rather than assumed.</span></li>
