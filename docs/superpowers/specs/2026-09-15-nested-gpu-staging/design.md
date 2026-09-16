@@ -164,12 +164,40 @@ If the GPU op sits behind CPU operations *inside its own branch* (a nested
 `ImagePipeline` such as `[ContrastStretching, Sam2]`), Stage 2 cannot read the
 store layer directly. It must apply that prefix first.
 
-The rule, derived from how each container drives its children:
+The rule walks the ancestor chain and asks one question of each container:
+**what image does it hand its children?** Two answers, and a closed table:
 
-> Walk the ancestor chain. A nested **`ImagePipeline`** contributes the ops that
-> precede the branch. A **`CompositeDetector`** contributes **nothing** — its
-> `ops` are parallel branches, each applied to the same input image via
-> `inplace=False` (`_composite_detector.py:131-138`).
+| Contract | Meaning | Prefix contribution | Classes |
+|---|---|---|---|
+| `"same"` | every child receives the container's own input | **nothing** — siblings are parallel, none runs "before" another | `CompositeDetector`, `CompositeEnhance`, `FilamentousFungiDetector` |
+| `"sequence"` | each child receives the previous child's output | the ops preceding the branch | `ImagePipeline` |
+| *(absent)* | no single answer is true for all children | **refuse**, naming the class | `TwoKFilamentousDetector` |
+
+**The table lives in the splitter, keyed by class — it is not a declaration on
+the operations.** That is safe because for these types the semantics is
+**definitional, not incidental**: a `CompositeDetector` whose branches chained
+would not be a composite, it would be an `ImagePipeline`, which already exists
+for exactly that. The table restates a type contract rather than caching an
+observation about today's `_operate`.
+
+**The contract is tested, not merely asserted.** Each `"same"` entry carries a
+behavioural test that puts two recording probe operations in the container's
+children and asserts the second did **not** observe the first's output. A
+declaration can lie and still pass; a probe cannot. This is the reason a
+lookup table beats a `_child_input` ClassVar on each operation — the ClassVar
+would add API surface *and* still need the probe test to be trustworthy.
+
+**Coverage is enforced.** A guard test enumerates every
+`OperationField`-bearing class (7 today) and requires each to be in the table or
+on an explicit unsupported list with a reason. Adding a container fails the
+suite until someone decides, so the failure lands at authoring time rather than
+in a 33,923-image run.
+
+`TwoKFilamentousDetector` is the worked unsupported case: `center_detector`
+receives the original image (`:149`), `background_subtractor` a derived
+`enhanced.copy()` (`:154`), and `branch_base` **mutates** `enhanced` in place
+(`:164`). No per-class answer is true for all three, and no per-field vocabulary
+helps either — `enhanced` is a local with no identity in the operation graph.
 
 The prefix is applied to an **in-memory copy** inside Stage 2 and is never
 written to the store, preserving the existing "Stage 2 does NOT write into the

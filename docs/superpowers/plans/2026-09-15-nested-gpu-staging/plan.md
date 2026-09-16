@@ -326,7 +326,16 @@ def substitute_at_path(root: Any, path: Sequence[str], replacement: Any) -> Any:
         rebuilt._provenance_pipeline = root._provenance_pipeline
         return rebuilt
 
-    node = root.model_copy(deep=True)
+    # SHALLOW, deliberately. model_copy(deep=True) would copy the entire
+    # subtree -- including the real GpuDetector and whatever its PrivateAttr
+    # holds -- only to overwrite one child of it. Measured: a deep copy does
+    # carry PrivateAttr through and allocates a new child object, so a loaded
+    # torch model in that subtree would be deep-copied and discarded. Latent
+    # today (Stage 3 never loads a model) and free to avoid.
+    #
+    # Untouched siblings stay shared by reference, which is exactly what the
+    # original pipeline does with them.
+    node = root.model_copy(deep=False)
     matched = _INDEXED.match(head)
     if matched is not None:
         field = matched.group("field")
@@ -1064,14 +1073,53 @@ class StagePlan:
     post_pipeline: ImagePipeline      # ancestor onward + meas/post/filters/model/qc
 
 
+#: What each container hands its children. Keyed by class, and NOT a
+#: declaration on the operations themselves: for these types the semantics is
+#: definitional rather than incidental. A CompositeDetector whose branches
+#: chained would not be a composite -- it would be an ImagePipeline, which
+#: already exists for that. So this table restates a type contract; it does not
+#: cache an observation about today's `_operate`.
+#:
+#: Every entry is backed by a behavioural probe test (see the plan's Task 5
+#: step 3a), and coverage of this table is enforced by a guard test over every
+#: OperationField-bearing class.
+_CHILD_CONTRACT: dict[type, str] = {
+    CompositeDetector: "same",
+    CompositeEnhance: "same",
+    FilamentousFungiDetector: "same",
+}
+
+#: Containers that cannot be described by a single answer, with the reason the
+#: refusal message quotes back to the user.
+_UNSUPPORTED_CONTAINERS: dict[type, str] = {
+    TwoKFilamentousDetector: (
+        "its children read internal intermediates "
+        "(_two_k_filamentous_detector.py:154,164)"
+    ),
+}
+
+
+def _child_contract(container) -> str:
+    """``"same"`` or ``"sequence"``; raise for a container with no contract."""
+    if isinstance(container, ImagePipeline):
+        return "sequence"
+    cls = type(container)
+    if cls in _CHILD_CONTRACT:
+        return _CHILD_CONTRACT[cls]
+    reason = _UNSUPPORTED_CONTAINERS.get(cls, "it has no declared child-input contract")
+    raise UnstageableGpuDetectorError(
+        f"{cls.__name__} cannot carry a staged GpuDetector: {reason}"
+    )
+
+
 def _branch_prefix(pipeline: ImagePipeline, path: tuple[str, ...]) -> list:
     """Ops between the Stage-1 store and the GPU op's model input.
 
-    A nested ``ImagePipeline`` contributes the ops preceding the branch. A
-    ``CompositeDetector`` contributes **nothing**: its ``ops`` are parallel
-    branches, each applied to the same input image with ``inplace=False``
-    (``_composite_detector.py``), so a sibling never runs "before" the
-    detector.
+    Walks the ancestor chain, asking ``_child_contract`` what each container
+    hands its children. A ``"sequence"`` container contributes the ops
+    preceding the branch; a ``"same"`` container contributes nothing, because
+    its children are parallel branches and none runs "before" another. A
+    container with no entry raises -- see ``_child_contract``.
     """
     from phenotypic.sdk_._operation_tree import get_at_path
 
@@ -1141,10 +1189,82 @@ def split_pipeline_at_gpu(pipeline: ImagePipeline) -> StagePlan:
 
 **Note on the plot guard:** the ancestor key now lives in `post_ops`, so the old `ref.key == gpu_key or ref.key in pre_ops` check reduces to `ref.key in pre_ops`. A plot referencing the ancestor is now legal, because the ancestor runs in Stage 3.
 
+- [ ] **Step 3a: Verify each `"same"` contract behaviourally, not by assertion**
+
+Create `tests/unit/detect/test_container_child_contracts.py`. For **each** class
+in `_CHILD_CONTRACT`, put two recording probes in its children and assert the
+second did not observe the first's output. A table entry that is merely stated
+can be wrong and still pass everything; a probe cannot.
+
+```python
+def test_composite_branches_each_receive_the_composites_own_input():
+    seen = []
+
+    class _Probe(ObjectDetector):
+        tag: str
+
+        def _operate(self, image):
+            seen.append((self.tag, int(image.objmap[:].max())))
+            image.objmask[:] = image.gray[:] > image.gray[:].mean()
+            return image
+
+    CompositeDetector(ops=[_Probe(tag="a"), _Probe(tag="b")],
+                      mode="union").apply(load_synth_yeast_plate())
+
+    # Sequential branches would have "b" observing "a"'s objmap.
+    assert seen == [("a", 0), ("b", 0)]
+```
+
+Write the equivalent for `CompositeEnhance` (probe `detect_mat` rather than
+`objmap`) and `FilamentousFungiDetector`.
+
+- [ ] **Step 3b: Enforce coverage of the table**
+
+```python
+def test_every_operation_field_bearing_class_has_a_verdict():
+    """Adding a container must fail the suite until someone decides.
+
+    Without this, a new container silently falls through to a wrong Stage-2
+    prefix rather than a refusal.
+    """
+    classes = _operation_field_bearing_classes()   # walk phenotypic, 7 today
+    undecided = [
+        c for c in classes
+        if c not in _CHILD_CONTRACT
+        and c not in _UNSUPPORTED_CONTAINERS
+        and not _is_measurement_container(c)       # meas slots are refused earlier
+    ]
+    assert not undecided, (
+        f"containers with no child-input verdict: {undecided}. Add each to "
+        "_CHILD_CONTRACT or to _UNSUPPORTED_CONTAINERS with a reason."
+    )
+
+
+def test_a_declaring_class_has_exactly_one_operation_field():
+    """One per-class answer stops being valid the moment a second field with
+    different semantics appears -- TwoKFilamentousDetector is why."""
+    for cls in _CHILD_CONTRACT:
+        assert len(_operation_fields(cls)) == 1, cls
+```
+
+- [ ] **Step 3c: Refusal test**
+
+```python
+def test_a_gpu_detector_inside_an_unsupported_container_is_refused():
+    pipe = ImagePipeline(ops={"TwoK": TwoKFilamentousDetector(
+        branch_base=FakeGpuDetector())})
+    with pytest.raises(UnstageableGpuDetectorError,
+                       match="internal intermediates"):
+        split_pipeline_at_gpu(pipe)
+```
+
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `uv run pytest tests/unit/cli/test_pipeline_split_nested.py -v`
-Expected: PASS (5 tests)
+```bash
+uv run pytest tests/unit/cli/test_pipeline_split_nested.py -v
+uv run pytest tests/unit/detect/test_container_child_contracts.py -v
+```
+Expected: PASS
 
 - [ ] **Step 5: Update the existing split test — it WILL fail, and that is correct**
 
@@ -2171,17 +2291,31 @@ git commit -m "fix(cli): forward stage2_prefix at both Stage-2 call sites"
 **Files:**
 - Modify: root `CLAUDE.md` (the `--mode process` bullet and the staged-GPU bullet)
 - Modify: `src/phenotypic/_cli/CLAUDE.md`
+- Verify: `docs/source/contrib_guide/gpu_detectors.md` (written on this branch; check against the implementation as landed)
 - Modify: `docs/source/how_to/` pages describing the objmap export
 
 - [ ] **Step 1: Fix the now-false sentence in root `CLAUDE.md`**
 
 "`--mode process --layer objmap` exports objmaps after Stages 1–2" is wrong. Replace with wording that says the export applies the post-detector op chain and therefore yields the pipeline's objmap.
 
-- [ ] **Step 2: Document nested support in `src/phenotypic/_cli/CLAUDE.md`**
+- [ ] **Step 2: Land the contributor guide**
+
+`docs/source/contrib_guide/gpu_detectors.md` is written and registered in the
+toctree on this branch. Re-read it against the implementation as landed and fix
+any drift — in particular the container-contract section, whose refusal message
+and class list must match `_CHILD_CONTRACT` / `_UNSUPPORTED_CONTAINERS` exactly.
+
+Build the docs to confirm the page renders and the toctree resolves:
+
+```bash
+uv run sphinx-build -b html docs/source docs/_build/html -q
+```
+
+- [ ] **Step 3: Document nested support in `src/phenotypic/_cli/CLAUDE.md`**
 
 Record: GPU detectors are found tree-wide; the split cuts at the top-level ancestor; the Stage-2 branch prefix runs twice and must be deterministic; unstageable placements are refused.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add CLAUDE.md src/phenotypic/_cli/CLAUDE.md docs/source
