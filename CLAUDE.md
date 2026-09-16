@@ -394,6 +394,17 @@ enforces this for ruff, but the rule binds regardless of the tool.
 
 ## Gotchas
 
+- **Entry points are lazy — keep them that way.** `import phenotypic`, `phenotypic --help`,
+  `phenotypic-gui --help` and the composed GUI hub load none of
+  `phenotypic._startup_perf.HEAVY_STARTUP_MODULES`, and `from phenotypic import Image` loads
+  none of `DEFERRED_RUNTIME_MODULES`. `phenotypic`, `phenotypic.sdk_`, `phenotypic.abc_` and
+  `phenotypic._gui.shell` resolve some re-exports through a module `__getattr__`; import
+  colour, numba, h5py, mahotas, cv2, bm3d, plotly or `matplotlib.pyplot` inside the function
+  that uses it; and keep every package importable as the first import of a fresh process.
+  Pipeline-running entry points call `load_runtime_dependencies()`, so a broken install still
+  fails before the first image. Guards: `tests/unit/ci/test_startup_imports.py`,
+  `tests/unit/ci/test_deferred_imports.py`, `tests/unit/gui/shell/test_hub_startup_imports.py`.
+
 - **`imread` vs `load_zarr` on an OME-Zarr store:** the verb decides, never the
   file. `Image.imread(store)` always reads plain pixels — PhenoTypic's own
   output, or a napari/QuPath/`bioformats2raw` export — and refuses rather than

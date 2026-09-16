@@ -1,0 +1,79 @@
+{
+  "label": "after",
+  "python": "3.12.10",
+  "platform": "Linux-4.18.0-553.144.1.el8_10.x86_64-x86_64-with-glibc2.28",
+  "cwd": "/bigdata/exfab/anguy344/PhenoTypic/.worktrees/private-gui",
+  "repeats": 5,
+  "paths": {
+    "bare interpreter": {
+      "best_seconds": 0.03,
+      "samples_seconds": [
+        0.03,
+        0.03,
+        0.03,
+        0.03,
+        0.03
+      ]
+    },
+    "import phenotypic": {
+      "best_seconds": 0.047,
+      "samples_seconds": [
+        0.047,
+        0.048,
+        0.048,
+        0.05,
+        0.048
+      ]
+    },
+    "from phenotypic import Image": {
+      "best_seconds": 2.549,
+      "samples_seconds": [
+        2.592,
+        2.591,
+        2.549,
+        2.693,
+        2.743
+      ]
+    },
+    "python -m phenotypic --help": {
+      "best_seconds": 0.437,
+      "samples_seconds": [
+        0.463,
+        0.454,
+        0.437,
+        0.517,
+        0.53
+      ]
+    },
+    "phenotypic-gui --help": {
+      "best_seconds": 0.46,
+      "samples_seconds": [
+        0.472,
+        0.469,
+        0.465,
+        0.482,
+        0.46
+      ]
+    },
+    "hub to servable (no request)": {
+      "best_seconds": 3.971,
+      "samples_seconds": [
+        4.112,
+        4.397,
+        3.971,
+        4.054,
+        4.392
+      ]
+    },
+    "hub + first /builder/ request": {
+      "best_seconds": 5.082,
+      "samples_seconds": [
+        5.638,
+        5.082,
+        5.482,
+        5.097,
+        5.404
+      ]
+    }
+  }
+}
