@@ -2881,6 +2881,16 @@ and never a weaker model than the implementer.
     `_cli/CLAUDE.md`'s "derive the surface from importers, mechanically" catches
     changed signatures and does not catch this. The wide gate is what closed it.
 
+    **The two sweeps have complementary blind spots, and neither is sufficient
+    alone:**
+
+    - A sweep derived from **callers of what I changed** cannot see a function
+      that newly *acquires* a dependency — it calls nothing that changed.
+    - A sweep derived from **the failure list** cannot see a call that still
+      *passes* — instance 2 above never failed, so nothing put it on the list.
+
+    Both were needed here and each found what the other structurally could not.
+
 13. **A contaminated mutation run fails in the reassuring direction.** An
     ordinary suite run against a moving tree looks wrong; a *mutation* run looks
     good, because mutants get scored as killed by the unrelated breakage rather
