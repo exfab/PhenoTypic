@@ -2676,6 +2676,52 @@ and never a weaker model than the implementer.
 
 ## Revision history
 
+**Amended 2026-09-16 during execution of Phase 0-2.** Findings that came out of
+running the plan rather than reading it. Recorded here because a plan whose
+history is flattering is worse than one that is accurate.
+
+1. **The prescribed TDD red step was not performed, in either task.** Tasks 3
+   and 4 each specify "run the test, observe it fail, then implement". Both
+   implementers wrote the test and the implementation together, so the observed
+   failure never happened. Task 1 *did* observe it
+   (`ModuleNotFoundError: No module named 'phenotypic.sdk_._operation_tree'`).
+   The refusals and the journal change are proven by execution instead, which
+   is stronger evidence than a red-then-green transition — but the step is
+   recorded as done and was not done, and later tasks should not copy that.
+2. **`reset=None` -> `reset=False` on `branch_base` is NOT a behaviour change,**
+   and the claim that it was is retracted. `ImagePipelineCore.reset` is a
+   pydantic field defaulting to `False` (`_image_pipeline_core.py:193`) and
+   `apply()` resolves `reset=None` to `self._reset` (`:966`), so a
+   default-constructed `branch_base` already ran with `effective_reset=False`.
+3. **Task 3's code called `validate_ancestor_contracts` without defining it** —
+   the definition sat under Task 5. Taken literally, Task 3 shipped a
+   `NameError`, and the narrowing would once again have landed *after* routing.
+   All three symbols now live in `_cli_validation.py`. **Task 5 must import
+   them, not redefine them:** a second `_CHILD_CONTRACT` in the splitter gives
+   the coverage assertion something to pass against while the production path
+   reads the other one.
+4. **The "Expected: PASS (N tests)" counts are unreliable.** Task 3's said 5,
+   its own code block defined 6, and the delivered file has 15. Report what the
+   run produces; do not reconcile to the plan's number.
+5. **`_CHILD_CONTRACT` carries a comment promising probe tests that do not yet
+   exist** ("Every entry is backed by a behavioural probe test"). The coverage
+   assertion landed in Task 3; the behavioural probes are Task 5 step 3a and
+   are outstanding. Until they land the table's `"parallel"` claim is asserted,
+   not demonstrated.
+6. **Two gaps were recorded rather than closed,** deliberately: `strict=True`
+   has no production caller until Task 5 repoints `split_pipeline_at_gpu`; and
+   a `GpuDetector` in a *nested* pipeline's `meas`/`post`/`filters`/`model` is
+   invisible to the walker and routes silently to the CPU strategy (measured:
+   `[]`, `False`, `False`). The second is pinned by an xfail asserting the
+   desired refusal rather than today's silence.
+7. **The refusal is swallowed by the GUI.** `gui/run_console/_callbacks.py:246`
+   catches `ValueError` and `UnstageableGpuDetectorError` is one, so
+   `_pipeline_uses_staged_gpu` returns `False` for a refused pipeline and the
+   run routes to CPU — the silent failure this plan removes, relocated. The CLI
+   does not catch it and shows a raw traceback. Neither is in any task's file
+   scope; both are open.
+
+
 **Revised 2026-09-15 after an independent plan review**
 (`docs/superpowers/reports/2026-09-15-nested-gpu-staging/plan-review.md`).
 Twenty findings; all applied. The five that would have stopped execution:
