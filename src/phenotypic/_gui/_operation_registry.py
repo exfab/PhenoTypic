@@ -9,6 +9,7 @@ No Panel/GUI dependencies - uses only stdlib and existing phenotypic dependencie
 from __future__ import annotations
 
 import inspect
+import threading
 import types
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Type, Union, get_args, get_origin
@@ -810,15 +811,72 @@ def _column_ref_from_annotated(hint: Any) -> Optional[ColumnRefSpec]:
 # Global registry instance (lazy initialization)
 _REGISTRY: Optional[OperationRegistry] = None
 
+#: Guards *publication* of :data:`_REGISTRY` -- not its construction.
+#:
+#: The builder and analysis sub-apps both build lazily on their first request,
+#: so two Flask worker threads can be inside :func:`get_registry` at once, and
+#: :meth:`OperationRegistry.discover` imports the entire operation library, so
+#: the construction window is roughly a second wide.
+_REGISTRY_LOCK = threading.Lock()
+
 
 def get_registry() -> OperationRegistry:
     """Get global OperationRegistry instance.
+
+    Thread-safe, with three properties that are each load-bearing:
+
+    1. **Always complete.** The registry is populated into a local and
+       published only once :meth:`OperationRegistry.discover` has returned, so
+       no caller can ever receive a half-built registry. Publishing first and
+       discovering afterwards let a concurrent caller render its layout from a
+       registry with zero operations -- empty dropdowns, no exception, no log
+       line.
+    2. **Exactly one instance, for the life of the process.** The first writer
+       wins and a late builder discards its own copy, so ``id(get_registry())``
+       never changes. :func:`~phenotypic._gui.builder._layout.
+       _resolve_dag_accepts_for_class_port` is an ``lru_cache`` keyed on
+       ``id(registry)`` that degrades to an uncached per-port walk on every
+       render when the live instance no longer matches the cached one; a
+       publish without this check would make that a permanent production
+       regression rather than the test-only curiosity its docstring assumes.
+    3. **No lock is held across imports.** ``discover()`` runs outside the
+       lock, so the registry lock can never be held while Python's per-module
+       import locks are being taken.
+
+       Holding it across ``discover()`` would in fact be safe *today*: no
+       module ``discover()`` imports calls :func:`get_registry`, and no caller
+       of :func:`get_registry` calls it at module level, so neither a direct
+       re-entry nor an import-lock inversion is reachable. But that safety is a
+       property of eight operation packages, not of this function, and **no
+       test would fail if one of them grew an import that reached
+       ``phenotypic._gui``** -- a real risk, since ``phenotypic._core`` already
+       has two function-local ``_gui`` imports. Building outside the lock
+       removes the dependency rather than documenting it. An ``RLock`` was
+       considered and rejected for the same reason: it would hide a re-entry as
+       silent recursion instead of surfacing it as a hang, and there is nothing
+       here worth hiding.
+
+    The worst case is one duplicate ``discover()`` whose registry is discarded
+    and garbage-collected -- genuinely benign, unlike publishing early.
 
     Returns:
         Singleton OperationRegistry with operations discovered
     """
     global _REGISTRY
-    if _REGISTRY is None:
-        _REGISTRY = OperationRegistry()
-        _REGISTRY.discover()
-    return _REGISTRY
+    # Fast path: a fully published singleton needs no lock. This is safe
+    # because publication below is a single atomic store of an already-complete
+    # object, which the GIL makes visible-or-not with nothing in between. On a
+    # free-threaded (``--disable-gil``) build that argument weakens to "almost
+    # certainly fine" and the lock would have to be taken unconditionally;
+    # the project pins ``>=3.11, <3.13``, so that is out of scope today.
+    if _REGISTRY is not None:
+        return _REGISTRY
+    # Build outside the lock (property 3): discover() imports eight packages.
+    registry = OperationRegistry()
+    registry.discover()
+    with _REGISTRY_LOCK:
+        if _REGISTRY is None:
+            # Publish a complete registry (property 1); first writer wins, so
+            # a slower builder drops its own copy here (property 2).
+            _REGISTRY = registry
+        return _REGISTRY
