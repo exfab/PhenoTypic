@@ -21,6 +21,7 @@ import pytest
 
 from phenotypic._cli._cli_staged_resume import classify_staged_image
 from phenotypic.sdk_ import image_record_path
+from tests.unit.cli.conftest import STAGE2_SLOT
 
 PROCESS_ONLY_LAYERS = [None, "objmap", "gray"]
 MARKERS_REQUIRED = [True, False]
@@ -71,9 +72,13 @@ def test_zarr_classifier_matches_the_hdf_classifier(
         markers_required=markers,
         expected_work_id=work_id,
     )
-    assert classify_staged_image(output_dir=zarr_root, **common) == (
-        hdf_world.classify(output_dir=hdf_root, **common)
-    )
+    # `slot` goes only to the zarr-world classifier. The frozen HDF classifier
+    # predates slot keying by two ports and must keep its original signature --
+    # it is the fixed reference the port is compared against, so widening it
+    # would be comparing the port to itself.
+    assert classify_staged_image(
+        output_dir=zarr_root, slot=STAGE2_SLOT, **common
+    ) == (hdf_world.classify(output_dir=hdf_root, **common))
 
 
 def test_the_stale_record_is_rejected_only_for_its_missing_artifact(zarr_world):

@@ -40,6 +40,7 @@ from ._cli_failure_tracker import PerImageScientificError, work_id_for_image
 from ._cli_stage2_token import (
     delete_stage2_raw,
     delete_stage2_token,
+    detector_slot,
     stage2_result_replayable,
 )
 from ._cli_staged_resume import (
@@ -75,6 +76,11 @@ class StagedGpuStrategy(ExecutionStrategy):
         plan = split_pipeline_at_gpu(
             ImagePipeline.from_json(cfg.pipeline_json)
         )
+        # One slot for the whole run: the pipeline is fixed, so the Stage-2
+        # signal's key is too. Derived once here rather than per image, so no
+        # probe in the three stages below can drift onto a different slot than
+        # the one Stage 2 wrote.
+        slot = detector_slot(plan.gpu_path)
         event_log = event_log_path(output_dir)
         tasks = [(ds, img) for ds in datasets for img in ds.images]
 
@@ -169,7 +175,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                 return
             if cfg.resume:
                 clear_downstream_artifacts_for_stage1(
-                    output_dir, ds.name, source_image_stem(img)
+                    output_dir, ds.name, source_image_stem(img), slot
                 )
             attempt_id = uuid4().hex
             try:  # isolate one bad image from the batch (failed event logged)
@@ -214,7 +220,7 @@ class StagedGpuStrategy(ExecutionStrategy):
             # BOTH halves: a token whose raw array is gone is not a Stage-2
             # result, and re-running Stage 2 is the only thing that recovers it.
             if not stage2_result_replayable(
-                output_dir, ds.name, source_image_stem(img)
+                output_dir, ds.name, source_image_stem(img), slot
             )
             and not _terminal_output_exists(ds.name, img)
         ]
@@ -248,6 +254,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                         output_dir,
                         ds.name,
                         source_image_stem(img),
+                        slot,
                         cfg.image_type,
                     )
             except Exception as exc:
@@ -271,7 +278,7 @@ class StagedGpuStrategy(ExecutionStrategy):
             if cfg.resume and _terminal_output_exists(ds.name, img):
                 return ds.name, True
             if not stage2_result_replayable(
-                output_dir, ds.name, source_image_stem(img)
+                output_dir, ds.name, source_image_stem(img), slot
             ):
                 # Stage 2 failed/absent for this image (S6): skip + record.
                 emit_missing_prereq(
@@ -314,10 +321,10 @@ class StagedGpuStrategy(ExecutionStrategy):
                     # "no token, orphan raw" (inert), never "token present,
                     # raw missing" (Stage 3 replays into FileNotFoundError).
                     delete_stage2_token(
-                        output_dir, ds.name, source_image_stem(img)
+                        output_dir, ds.name, source_image_stem(img), slot
                     )
                     delete_stage2_raw(
-                        output_dir, ds.name, source_image_stem(img)
+                        output_dir, ds.name, source_image_stem(img), slot
                     )
                 return ds.name, True
             except Exception as exc:
@@ -426,6 +433,9 @@ class StagedGpuStrategy(ExecutionStrategy):
 
         cfg = self.config
         image_cls = _image_class(cfg.image_type)
+        # Same derivation as the staged run above, from this method's own
+        # ``plan`` parameter -- the export must read the slot Stage 2 wrote.
+        slot = detector_slot(plan.gpu_path)
         for ds, img in tasks:
             out_path = process_only_output_path(
                 output_dir, img, cfg.input_path, "objmap", fmt="tiff"
@@ -440,7 +450,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                 results[ds.name]["completed"] += 1
                 continue
             if not stage2_result_replayable(
-                output_dir, ds.name, source_image_stem(img)
+                output_dir, ds.name, source_image_stem(img), slot
             ):
                 emit_missing_prereq(
                     event_log,
@@ -459,7 +469,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                     )
                     image = image_cls.load_zarr(store)
                     raw = load_stage2_raw(
-                        output_dir, ds.name, source_image_stem(img)
+                        output_dir, ds.name, source_image_stem(img), slot
                     )
                     try:
                         plan.gpu_detector._write_object_output(image, raw)
@@ -480,10 +490,10 @@ class StagedGpuStrategy(ExecutionStrategy):
                     )
                     # Ordering (ledger FLOW-6): publish, then token, then raw.
                     delete_stage2_token(
-                        output_dir, ds.name, source_image_stem(img)
+                        output_dir, ds.name, source_image_stem(img), slot
                     )
                     delete_stage2_raw(
-                        output_dir, ds.name, source_image_stem(img)
+                        output_dir, ds.name, source_image_stem(img), slot
                     )
                 results[ds.name]["completed"] += 1
             except Exception as exc:

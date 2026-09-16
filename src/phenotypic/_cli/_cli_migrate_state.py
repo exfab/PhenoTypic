@@ -61,7 +61,6 @@ from phenotypic.sdk_ import (
     deliverables_dir,
     dataset_zarr_dir,
     results_dir,
-    DIR_STAGE2_DONE,
     ProcessingStateKey,
     atomic_write_json,
     image_record_path,
@@ -71,6 +70,7 @@ from phenotypic.sdk_ import (
     source_image_stem,
 )
 from ._cli_identity import derive_processing_generation
+from ._cli_stage2_token import find_stage2_token
 from phenotypic.sdk_.ngff_ import STORE_SUFFIX, TRASH_SUFFIX
 from phenotypic.sdk_._image_record import (
     PROVENANCE_MIGRATED,
@@ -181,7 +181,14 @@ def _stage2_entry(
     A staged run live across the migrate would lose every un-consumed Stage-2
     result, silently, with migrate reporting success.
     """
-    token = progress_dir(output_dir) / DIR_STAGE2_DONE / dataset / f"{image_stem}.json"
+    # Slot-keyed since the Stage-2 signal gained a ``<slot>`` level: migrate
+    # has no pipeline and therefore no ``StagePlan``, so it *discovers* the
+    # token rather than addressing it. Hand-building
+    # ``<ds>/<stem>.json`` here returned ``None`` for every modern token, and
+    # migrate silently stopped recording interrupted Stage-2 state.
+    token = find_stage2_token(output_dir, dataset, image_stem)
+    if token is None:
+        return None
     payload = _read_json(token)
     if payload is None:
         return None

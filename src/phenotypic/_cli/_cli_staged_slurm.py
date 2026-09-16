@@ -33,6 +33,7 @@ from phenotypic.sdk_.typing_ import ImageTypeName
 
 from ._cli_execution_strategies import ExecutionStrategy
 from ._cli_failure_tracker import work_id_for_image
+from ._cli_stage2_token import staged_detector_slot
 from ._cli_staged_orchestration import (
     StagedManifestEntry,
     completed_inventory_images,
@@ -410,6 +411,11 @@ def generate_staged_scripts(
             "output_dir": str(output_dir.absolute()),
             "resume": resume,
             "stage3_markers_required": markers_required,
+            # The recovery controller probes the Stage-2 signal but never
+            # loads the pipeline, so the slot is recorded here, by the one
+            # process that has the plan. Without it the controller cannot
+            # find a finished Stage 2 and resubmits the whole GPU round.
+            "detector_slot": staged_detector_slot(pipeline_path),
             "manifest_path": str(manifest_path.absolute()),
             "stage1_scripts": [str(path.absolute()) for path in stage1],
             "stage2_script": str(stage2.absolute()),

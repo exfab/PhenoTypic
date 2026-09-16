@@ -18,7 +18,11 @@ from pathlib import Path
 import pytest
 
 from phenotypic._cli._cli_identity import derive_processing_generation
-from phenotypic._cli._cli_stage2_token import write_stage2_token
+from phenotypic._cli._cli_stage2_token import (
+    detector_slot,
+    find_stage2_token,
+    write_stage2_token,
+)
 from phenotypic._cli._cli_migrate_state import (
     LEGACY_MARKER_SEGMENTS,
     apply_per_image_records,
@@ -106,8 +110,17 @@ def _plant_stage2_token(root: Path, dataset: str, stem: str) -> Path:
     token shape no run produces, and ``stages.stage2.at`` read ``None`` on
     every real tree while every test here stayed green.
     """
-    token = write_stage2_token(root, dataset, stem, objmap_shape=(4, 4))
-    assert token == progress_dir(root) / DIR_STAGE2_DONE / dataset / f"{stem}.json"
+    slot = detector_slot(("FakeGpuDetector",))
+    token = write_stage2_token(root, dataset, stem, slot, objmap_shape=(4, 4))
+    # Slot-keyed. Migrate has no pipeline and so no slot of its own, which is
+    # exactly why `_stage2_entry` discovers the token via `find_stage2_token`
+    # instead of rebuilding this path by hand; a hand-built flat path returns
+    # None for every modern token and migrate stops recording Stage-2 state.
+    assert (
+        token
+        == progress_dir(root) / DIR_STAGE2_DONE / dataset / slot / f"{stem}.json"
+    )
+    assert find_stage2_token(root, dataset, stem) == token
     return token
 
 

@@ -2623,9 +2623,17 @@ def phenotypic_cli(
                 marker_contract = bool(
                     resume_state.config.get("staged_stage3_markers", False)
                 )
+                from phenotypic._cli._cli_stage2_token import (
+                    staged_detector_slot,
+                )
+
+                # This block runs only under `staged_gpu_resume`, so the
+                # pipeline is known to hold a stageable GpuDetector.
+                staged_slot = staged_detector_slot(config.pipeline_json)
                 resume_plan = build_staged_resume_plan(
                     datasets=datasets,
                     output_dir=output_dir,
+                    slot=staged_slot,
                     input_root=config.input_path,
                     process_only_layer=config.process_only_layer,
                     markers_required=marker_contract,
@@ -2665,6 +2673,7 @@ def phenotypic_cli(
                 reconcile_stage3_publications(
                     output_dir,
                     config.full_dataset_inventory,
+                    staged_slot,
                     namespace="continuation-preflight",
                 )
                 config.staged_stage3_markers = True
@@ -3069,9 +3078,16 @@ def phenotypic_cli(
         )
         if should_finalize_measurements:
             if local_staged_publication and config.staged_stage3_markers:
+                from phenotypic._cli._cli_stage2_token import (
+                    staged_detector_slot,
+                )
+
+                # Guarded by `local_staged_publication`, which is only true
+                # for a staged GPU run, so the pipeline has a GpuDetector.
                 reconcile_stage3_publications(
                     output_dir,
                     config.full_dataset_inventory,
+                    staged_detector_slot(config.pipeline_json),
                     namespace="local-finalization",
                 )
             click.echo("\nAggregating measurements...")

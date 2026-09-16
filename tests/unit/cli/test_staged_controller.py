@@ -18,6 +18,7 @@ from phenotypic._cli._cli_stage2_token import (
     write_stage2_token,
 )
 from phenotypic._cli._cli_staged_controller import run_staged_controller
+from tests.unit.cli.conftest import STAGE2_SLOT
 from phenotypic._cli._cli_slurm_lifecycle import generation_is_active
 from phenotypic._cli._cli_staged_orchestration import (
     StagedManifestEntry,
@@ -77,6 +78,9 @@ def _controller_fixture(tmp_path: Path, epoch: str = "epoch-1") -> Path:
                 "epoch": epoch,
                 "output_dir": str(tmp_path),
                 "resume": False,
+                # Written by the submitter, which holds the StagePlan; the
+                # controller never loads a pipeline and reads it from here.
+                "detector_slot": STAGE2_SLOT,
                 "manifest_path": str(manifest_path),
                 "stage1_scripts": [str(tmp_path / "stage1.sh")],
                 "stage2_script": str(tmp_path / "stage2.sh"),
@@ -452,8 +456,12 @@ def test_duplicate_controller_launches_finalizer_once(
     config_path.write_text(json.dumps(config), encoding="utf-8")
     # A finished Stage 2 is the raw array AND the token, together: the
     # controller skips the entry only when Stage 3 can actually replay it.
-    write_stage2_raw(tmp_path, "plate", "image", np.zeros((4, 4), np.uint16))
-    write_stage2_token(tmp_path, "plate", "image", objmap_shape=(4, 4))
+    write_stage2_raw(
+        tmp_path, "plate", "image", np.zeros((4, 4), np.uint16), STAGE2_SLOT
+    )
+    write_stage2_token(
+        tmp_path, "plate", "image", STAGE2_SLOT, objmap_shape=(4, 4)
+    )
     submitted_roles: list[str] = []
 
     def fake_submit(*args, **kwargs):
@@ -844,11 +852,15 @@ def test_a_token_without_its_raw_array_is_retryable_not_done(
         StagedManifestEntry("plate", "image.tif", "image", "/in/image.tif")
     ]
 
-    write_stage2_raw(tmp_path, "plate", "image", np.zeros((4, 4), np.uint16))
-    write_stage2_token(tmp_path, "plate", "image", objmap_shape=(4, 4))
+    write_stage2_raw(
+        tmp_path, "plate", "image", np.zeros((4, 4), np.uint16), STAGE2_SLOT
+    )
+    write_stage2_token(
+        tmp_path, "plate", "image", STAGE2_SLOT, objmap_shape=(4, 4)
+    )
     assert _classify_stage2(config, entries, 0) == ([], [])
 
-    stage2_raw_path(tmp_path, "plate", "image").unlink()
+    stage2_raw_path(tmp_path, "plate", "image", STAGE2_SLOT).unlink()
     retryable, terminal = _classify_stage2(config, entries, 0)
 
     assert [entry.stem for entry in retryable] == ["image"]
@@ -866,13 +878,21 @@ def test_restart_cleanup_removes_only_transient_stage2_state(
     on the same ``--restart`` branch -- wipes wholesale. This test is what
     keeps that from being an assumption.
     """
-    write_stage2_raw(tmp_path, "plate", "image", np.zeros((4, 4), np.uint16))
-    write_stage2_token(tmp_path, "plate", "image", objmap_shape=(4, 4))
+    write_stage2_raw(
+        tmp_path, "plate", "image", np.zeros((4, 4), np.uint16), STAGE2_SLOT
+    )
+    write_stage2_token(
+        tmp_path, "plate", "image", STAGE2_SLOT, objmap_shape=(4, 4)
+    )
     parquet = tmp_path / "results" / "plate" / "measurements" / "image.parquet"
     parquet.parent.mkdir(parents=True)
     parquet.touch()
 
     assert clear_machine_state(tmp_path) is True
-    assert not stage2_token_path(tmp_path, "plate", "image").exists()
-    assert not stage2_raw_path(tmp_path, "plate", "image").exists()
+    assert not stage2_token_path(
+        tmp_path, "plate", "image", STAGE2_SLOT
+    ).exists()
+    assert not stage2_raw_path(
+        tmp_path, "plate", "image", STAGE2_SLOT
+    ).exists()
     assert parquet.exists()

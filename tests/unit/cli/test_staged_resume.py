@@ -26,14 +26,17 @@ from phenotypic.sdk_ import (
     dataset_measurements_dir,
     zarr_store_path,
 )
+from tests.unit.cli.conftest import STAGE2_SLOT
 
 
 def _write_stage2_signal(output_dir: Path, stem: str) -> None:
     """The sidecar's replacement is the raw array AND the token, together."""
     write_stage2_raw(
-        output_dir, "plate", stem, np.zeros((4, 4), dtype=np.uint16)
+        output_dir, "plate", stem, np.zeros((4, 4), dtype=np.uint16), STAGE2_SLOT
     )
-    write_stage2_token(output_dir, "plate", stem, objmap_shape=(4, 4))
+    write_stage2_token(
+        output_dir, "plate", stem, STAGE2_SLOT, objmap_shape=(4, 4)
+    )
 
 
 def _dataset(tmp_path: Path, names: list[str]) -> Dataset:
@@ -68,6 +71,7 @@ def test_resume_plan_classifies_each_durable_stage(tmp_path: Path) -> None:
     plan = build_staged_resume_plan(
         datasets=[dataset],
         output_dir=output_dir,
+        slot=STAGE2_SLOT,
         input_root=tmp_path,
         process_only_layer=None,
         markers_required=True,
@@ -100,16 +104,21 @@ def test_direct_store_source_resumes_from_canonical_stage2_signal(
     plan = build_staged_resume_plan(
         datasets=[dataset],
         output_dir=output_dir,
+        slot=STAGE2_SLOT,
         input_root=source,
         process_only_layer=None,
         markers_required=True,
     )
 
     assert plan.initial_stage == "stage3"
-    assert stage2_token_path(output_dir, "plate", "p01").is_file()
-    assert stage2_raw_path(output_dir, "plate", "p01").is_file()
-    assert not stage2_token_path(output_dir, "plate", "p01.ome").exists()
-    assert not stage2_raw_path(output_dir, "plate", "p01.ome").exists()
+    assert stage2_token_path(output_dir, "plate", "p01", STAGE2_SLOT).is_file()
+    assert stage2_raw_path(output_dir, "plate", "p01", STAGE2_SLOT).is_file()
+    assert not stage2_token_path(
+        output_dir, "plate", "p01.ome", STAGE2_SLOT
+    ).exists()
+    assert not stage2_raw_path(
+        output_dir, "plate", "p01.ome", STAGE2_SLOT
+    ).exists()
 
 
 def test_invalid_store_requires_stage1(tmp_path: Path) -> None:
@@ -122,6 +131,7 @@ def test_invalid_store_requires_stage1(tmp_path: Path) -> None:
     plan = build_staged_resume_plan(
         datasets=[dataset],
         output_dir=output_dir,
+        slot=STAGE2_SLOT,
         input_root=tmp_path,
         process_only_layer=None,
         markers_required=True,
@@ -142,6 +152,7 @@ def test_changed_work_id_restarts_from_stage1(tmp_path: Path) -> None:
     plan = build_staged_resume_plan(
         datasets=[dataset],
         output_dir=output_dir,
+        slot=STAGE2_SLOT,
         input_root=tmp_path,
         process_only_layer=None,
         markers_required=True,
@@ -167,6 +178,7 @@ def test_store_without_phenotypic_block_requires_stage1(
     plan = build_staged_resume_plan(
         datasets=[dataset],
         output_dir=output_dir,
+        slot=STAGE2_SLOT,
         input_root=tmp_path,
         process_only_layer=None,
         markers_required=True,
@@ -183,6 +195,7 @@ def test_terminal_marker_does_not_mask_a_missing_store(tmp_path: Path) -> None:
     plan = build_staged_resume_plan(
         datasets=[dataset],
         output_dir=output_dir,
+        slot=STAGE2_SLOT,
         input_root=tmp_path,
         process_only_layer=None,
         markers_required=True,
@@ -207,6 +220,7 @@ def test_markerless_embedded_table_is_backfilled_with_terminal_marker(
     legacy_plan = build_staged_resume_plan(
         datasets=[dataset],
         output_dir=output_dir,
+        slot=STAGE2_SLOT,
         input_root=tmp_path,
         process_only_layer=None,
         markers_required=False,
@@ -218,6 +232,7 @@ def test_markerless_embedded_table_is_backfilled_with_terminal_marker(
     current_plan = build_staged_resume_plan(
         datasets=[dataset],
         output_dir=output_dir,
+        slot=STAGE2_SLOT,
         input_root=tmp_path,
         process_only_layer=None,
         markers_required=True,
@@ -236,6 +251,7 @@ def test_unmarked_current_parquet_is_not_terminal(tmp_path: Path) -> None:
     plan = build_staged_resume_plan(
         datasets=[dataset],
         output_dir=output_dir,
+        slot=STAGE2_SLOT,
         input_root=tmp_path,
         process_only_layer=None,
         markers_required=True,
@@ -257,12 +273,15 @@ def test_token_without_its_raw_array_routes_back_to_stage2(
     dataset = _dataset(tmp_path, ["partial.tif"])
     _valid_store(output_dir, "partial")
     _write_stage2_signal(output_dir, "partial")
-    delete_stage2_raw(output_dir, "plate", "partial")
-    assert stage2_token_path(output_dir, "plate", "partial").is_file()
+    delete_stage2_raw(output_dir, "plate", "partial", STAGE2_SLOT)
+    assert stage2_token_path(
+        output_dir, "plate", "partial", STAGE2_SLOT
+    ).is_file()
 
     plan = build_staged_resume_plan(
         datasets=[dataset],
         output_dir=output_dir,
+        slot=STAGE2_SLOT,
         input_root=tmp_path,
         process_only_layer=None,
         markers_required=True,
@@ -285,7 +304,7 @@ def test_token_without_raw_and_with_a_parquet_is_still_stage2(
     dataset = _dataset(tmp_path, ["halfway.tif"])
     _valid_store(output_dir, "halfway")
     _write_stage2_signal(output_dir, "halfway")
-    delete_stage2_raw(output_dir, "plate", "halfway")
+    delete_stage2_raw(output_dir, "plate", "halfway", STAGE2_SLOT)
     parquet = dataset_measurements_dir(output_dir, "plate") / "halfway.parquet"
     parquet.parent.mkdir(parents=True, exist_ok=True)
     parquet.write_bytes(b"partial publication")
@@ -293,6 +312,7 @@ def test_token_without_raw_and_with_a_parquet_is_still_stage2(
     plan = build_staged_resume_plan(
         datasets=[dataset],
         output_dir=output_dir,
+        slot=STAGE2_SLOT,
         input_root=tmp_path,
         process_only_layer=None,
         markers_required=False,
@@ -310,12 +330,17 @@ def test_raw_array_without_a_token_is_stage2(tmp_path: Path) -> None:
     dataset = _dataset(tmp_path, ["crashed.tif"])
     _valid_store(output_dir, "crashed")
     write_stage2_raw(
-        output_dir, "plate", "crashed", np.zeros((4, 4), dtype=np.uint16)
+        output_dir,
+        "plate",
+        "crashed",
+        np.zeros((4, 4), dtype=np.uint16),
+        STAGE2_SLOT,
     )
 
     plan = build_staged_resume_plan(
         datasets=[dataset],
         output_dir=output_dir,
+        slot=STAGE2_SLOT,
         input_root=tmp_path,
         process_only_layer=None,
         markers_required=True,
@@ -340,10 +365,16 @@ def test_clear_downstream_artifacts_removes_token_raw_and_marker(
     _write_stage2_signal(output_dir, "redo")
     write_stage3_completion_marker(output_dir, "plate", "redo.tif", "redo")
 
-    clear_downstream_artifacts_for_stage1(output_dir, "plate", "redo")
+    clear_downstream_artifacts_for_stage1(
+        output_dir, "plate", "redo", STAGE2_SLOT
+    )
 
-    assert not stage2_token_path(output_dir, "plate", "redo").exists()
-    assert not stage2_raw_path(output_dir, "plate", "redo").exists()
+    assert not stage2_token_path(
+        output_dir, "plate", "redo", STAGE2_SLOT
+    ).exists()
+    assert not stage2_raw_path(
+        output_dir, "plate", "redo", STAGE2_SLOT
+    ).exists()
     assert not stage3_completion_exists(output_dir, "plate", "redo")
     assert store.is_dir(), "the store must survive until Stage 1 replaces it"
 
@@ -364,10 +395,14 @@ def test_reconcile_consumes_the_token_and_the_raw_array(
     write_stage3_completion_marker(output_dir, "plate", "done.tif", "done")
 
     moved = reconcile_stage3_publications(
-        output_dir, {"plate": ["done.tif"]}, namespace="test"
+        output_dir, {"plate": ["done.tif"]}, STAGE2_SLOT, namespace="test"
     )
 
     assert moved == 0
-    assert not stage2_token_path(output_dir, "plate", "done").exists()
-    assert not stage2_raw_path(output_dir, "plate", "done").exists()
+    assert not stage2_token_path(
+        output_dir, "plate", "done", STAGE2_SLOT
+    ).exists()
+    assert not stage2_raw_path(
+        output_dir, "plate", "done", STAGE2_SLOT
+    ).exists()
     assert parquet.is_file()

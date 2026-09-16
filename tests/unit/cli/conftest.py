@@ -24,6 +24,7 @@ from phenotypic import Image
 from phenotypic._cli._cli_completion import publish_image_success
 from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_stage2_token import (
+    detector_slot,
     write_stage2_raw,
     write_stage2_token,
 )
@@ -59,6 +60,13 @@ from tests._legacy_staged_resume import (
     legacy_sidecar_path,
     legacy_stage3_marker_path,
 )
+
+#: The one detector slot the CLI unit fixtures write and read the Stage-2
+#: signal under. These fixtures build no pipeline, so any consistent slot
+#: works -- what matters is that the seeding helper and every assertion use
+#: the same one. Tests that drive a real staged run derive theirs from the
+#: plan instead (``detector_slot(plan.gpu_path)``).
+STAGE2_SLOT = detector_slot(("FakeGpuDetector",))
 
 
 @pytest.fixture
@@ -289,9 +297,10 @@ class ArtifactWorld:
             self.DATASET,
             self.STEM,
             np.zeros((4, 4), dtype=np.uint16),
+            STAGE2_SLOT,
         )
         write_stage2_token(
-            self.root, self.DATASET, self.STEM, objmap_shape=(4, 4)
+            self.root, self.DATASET, self.STEM, STAGE2_SLOT, objmap_shape=(4, 4)
         )
 
     # -- format-neutral halves ---------------------------------------------

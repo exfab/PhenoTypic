@@ -30,6 +30,7 @@ from ._cli_preload import preload_custom_operation_modules
 from ._cli_stage2_token import (
     delete_stage2_raw,
     delete_stage2_token,
+    detector_slot,
     stage2_result_replayable,
 )
 from ._cli_staged_orchestration import (
@@ -172,14 +173,15 @@ def run_stage1_step(
     commit_guard = _commit_guard(output_dir, epoch)
     if check is not None:
         check()
+    plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
     if resume:
         clear_downstream_artifacts_for_stage1(
             output_dir,
             item.dataset,
             item.stem,
+            detector_slot(plan.gpu_path),
             commit_guard=commit_guard,
         )
-    plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
     output_manager = OutputManager.from_config(
         output_dir, ext, save_overlays=False, durable_writes=durable_writes
     )
@@ -236,6 +238,13 @@ def run_stage2_shard(
         _entry(item)
         for item in partition_shards(list(manifest), n_shards)[shard_index]
     ]
+    # Hoisted above the candidate filter, which now needs the slot. This loads
+    # and splits the pipeline (a JSON read) even when the shard turns out to be
+    # fully done; the *model* load stays below the `pending` check, so the
+    # full-dataset-sweep-with-resident-model invariant (spec §13.4) is
+    # untouched -- nothing here rebuilds a model per image.
+    plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
+    slot = detector_slot(plan.gpu_path)
     terminal = {
         record.work_id
         for record in read_terminal_failures(output_dir)
@@ -245,7 +254,9 @@ def run_stage2_shard(
         item
         for item in shard
         if item.work_id not in terminal
-        if not stage2_result_replayable(output_dir, item.dataset, item.stem)
+        if not stage2_result_replayable(
+            output_dir, item.dataset, item.stem, slot
+        )
         and not (
             bool(
                 item.work_id
@@ -293,7 +304,8 @@ def run_stage2_shard(
 
     if check is not None:
         check()
-    plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
+    # Load ONCE, after the shard is known to have work: one resident model per
+    # full pass over the shard, never one per image.
     plan.gpu_detector._ensure_model_loaded()
     for item in pending:
         if check is not None:
@@ -312,6 +324,7 @@ def run_stage2_shard(
                     output_dir,
                     item.dataset,
                     item.stem,
+                    slot,
                     image_type,
                     active_check=check,
                     commit_guard=commit_guard,
@@ -431,11 +444,16 @@ def run_stage3_step(
     if check is not None:
         check()
     log = event_log_path(output_dir)
+    # Hoisted above the prereq probe, which now needs the slot.
+    plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
+    slot = detector_slot(plan.gpu_path)
     # BOTH halves. The token is only a flag; Stage 3's input is the raw .npy,
     # and a token-present/raw-missing image would otherwise raise
     # FileNotFoundError inside stage_event and be recorded as a terminal
     # SCIENTIFIC failure rather than a missing prereq (ledger FLOW-17/M7).
-    if not stage2_result_replayable(output_dir, item.dataset, item.stem):
+    if not stage2_result_replayable(
+        output_dir, item.dataset, item.stem, slot
+    ):
         emit_missing_prereq(
             log,
             item.dataset,
@@ -445,7 +463,6 @@ def run_stage3_step(
             commit_guard=commit_guard,
         )
         raise SystemExit(1)
-    plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipeline_path))
     try:
         with stage_event(
             log,
@@ -515,6 +532,7 @@ def run_stage3_step(
                 output_dir,
                 item.dataset,
                 item.stem,
+                slot,
                 commit_guard=commit_guard,
             )
             if check is not None:
@@ -523,6 +541,7 @@ def run_stage3_step(
                 output_dir,
                 item.dataset,
                 item.stem,
+                slot,
                 commit_guard=commit_guard,
             )
     except Exception as exc:

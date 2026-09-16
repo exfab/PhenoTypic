@@ -49,6 +49,7 @@ from ._cli_pipeline_split import StagePlan
 from ._cli_stage2_token import (
     delete_stage2_raw,
     delete_stage2_token,
+    detector_slot,
     load_stage2_raw,
     read_stage2_token,
     write_stage2_raw,
@@ -370,6 +371,7 @@ def stage2_detect_core(
     output_dir: Path,
     dataset_name: str,
     image_stem: str,
+    slot: str,
     image_type: ImageTypeName = "Image",
     active_check: ActiveCheck | None = None,
     commit_guard: CommitGuard | None = None,
@@ -377,7 +379,11 @@ def stage2_detect_core(
     """Load the input layer (store read-only), infer, retain the raw + token.
 
     The detector's model must already be resident (caller invokes
-    ``_ensure_model_loaded()`` once before streaming a shard).
+    ``_ensure_model_loaded()`` once before streaming a shard). ``slot`` is
+    passed in rather than derived here precisely because this function takes
+    the *detector*, not the ``StagePlan`` the slot is a property of -- and
+    re-loading the pipeline per image to recover one would be a per-image cost
+    inside the resident-model sweep.
     """
     image_cls = _image_class(image_type)
     store = zarr_store_path(output_dir, dataset_name, image_stem)
@@ -404,6 +410,7 @@ def stage2_detect_core(
         dataset_name,
         image_stem,
         result,
+        slot,
         commit_guard=commit_guard,
     )
     _check_active(active_check)
@@ -411,6 +418,7 @@ def stage2_detect_core(
         output_dir,
         dataset_name,
         image_stem,
+        slot,
         objmap_shape=(int(result.shape[0]), int(result.shape[1])),
         detector_duration_seconds=detector_duration,
         commit_guard=commit_guard,
@@ -462,6 +470,7 @@ def stage3_merge_measure_core(
 ) -> None:
     """Replay the raw result, measure, re-promote the store, consume both."""
     image_cls = _image_class(image_type)
+    slot = detector_slot(plan.gpu_path)
     store = zarr_store_path(output_dir, dataset_name, image_stem)
     image = image_cls.load_zarr(store)
     image.name = image_stem
@@ -481,8 +490,8 @@ def stage3_merge_measure_core(
         set_provenance_status(image, "in_progress")
         write_provenance_checkpoint(store, image, commit_guard=commit_guard)
 
-        result = load_stage2_raw(output_dir, dataset_name, image_stem)
-        token = read_stage2_token(output_dir, dataset_name, image_stem)
+        result = load_stage2_raw(output_dir, dataset_name, image_stem, slot)
+        token = read_stage2_token(output_dir, dataset_name, image_stem, slot)
         _check_active(active_check)
         merge_started = perf_counter()
         plan.gpu_detector._write_object_output(image, result)
@@ -561,6 +570,7 @@ def stage3_merge_measure_core(
                 output_dir,
                 dataset_name,
                 image_stem,
+                slot,
                 commit_guard=commit_guard,
             )
             _check_active(active_check)
@@ -568,6 +578,7 @@ def stage3_merge_measure_core(
                 output_dir,
                 dataset_name,
                 image_stem,
+                slot,
                 commit_guard=commit_guard,
             )
     except SlurmGenerationInactiveError:

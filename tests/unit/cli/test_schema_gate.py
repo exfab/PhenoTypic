@@ -616,11 +616,20 @@ def test_stage2_done_is_not_a_conversion_signal(tmp_path: Path) -> None:
     Firing on it would classify every modern GPU run ``CONVERT`` and strand
     it -- and unlike the marker trees, nothing converts it away.
     """
-    from phenotypic._cli._cli_stage2_token import stage2_token_path
+    from phenotypic._cli._cli_stage2_token import (
+        detector_slot,
+        stage2_token_path,
+    )
 
     tree = _build_converted(tmp_path / "run")
+    # Slot-keyed, so the token now sits one level deeper. The gate tests
+    # ``is_dir()`` on two *named* segments and never walks depth, so the extra
+    # level must not change the verdict either.
     _write_json(
-        stage2_token_path(tree, "plate", "a"), {"objmap_shape": [4, 4]}
+        stage2_token_path(
+            tree, "plate", "a", detector_slot(("FakeGpuDetector",))
+        ),
+        {"objmap_shape": [4, 4]},
     )
 
     assert requires_conversion(tree) is None

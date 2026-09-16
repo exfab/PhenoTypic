@@ -66,6 +66,13 @@ def _classify_stage2(
     epoch = str(config["epoch"])
     resume = bool(config.get("resume", False))
     markers_required = bool(config.get("stage3_markers_required", True))
+    # The recovery controller has no ``StagePlan`` -- it runs from a JSON
+    # config, not a pipeline. The submitter, which does have one, recorded the
+    # slot for it in ``staged_controller.json``. Read with ``[]``, not
+    # ``.get``: a config without it is a submitter/controller version skew, and
+    # silently probing some other slot would make every image look un-done and
+    # resubmit the whole GPU sweep.
+    slot = str(config["detector_slot"])
     failed = {
         record.work_id
         for record in read_terminal_failures(output_dir)
@@ -81,7 +88,9 @@ def _classify_stage2(
         # BOTH halves: a token whose raw array is gone is not a finished
         # Stage 2, and skipping it here is what would strand the image --
         # nothing else in the SLURM path routes it back (ledger FLOW-17/M7).
-        if stage2_result_replayable(output_dir, entry.dataset, entry.stem):
+        if stage2_result_replayable(
+            output_dir, entry.dataset, entry.stem, slot
+        ):
             continue
         if stage3_completion_exists(
             output_dir, entry.dataset, entry.stem
