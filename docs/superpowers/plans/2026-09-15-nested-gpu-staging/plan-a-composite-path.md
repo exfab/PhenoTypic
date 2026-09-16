@@ -1812,6 +1812,9 @@ them is most of this task's cost:
 |---|---|---|
 | `_cli_staged_resume.py` | `:256, :309, :420, :423, :478, :479` | `classify_staged_image` is a pure classifier — signature `(image, dataset, output_dir, input_root, process_only_layer, markers_required, expected_work_id)`, no plan, no slot. Threading one means changing `build_staged_resume_plan` and every caller above it |
 | `_cli_staged_controller.py` | `:84` | the recovery controller's already-done skip; no plan in scope |
+| `_cli_staged_slurm.py` | `:406-418` | **Not in the original list.** Must *WRITE* `"detector_slot"` into `staged_controller.json`, or the controller row below has nothing to read — the plan named the reader and not the writer, which is a runtime `KeyError` on the first SLURM recovery. `generate_staged_scripts` already takes `pipeline_path`, so the slot is derivable there |
+| `phenotypicCLI.py` | `:2626, :2665, :3072` | **Not in the original list.** `build_staged_resume_plan` and `reconcile_stage3_publications` |
+| `_cli_checkpoint_handler.py` | `:263` | **Not in the original list.** `reconcile_stage3_publications`; `job_metadata[JobMetadataKey.PIPELINE_PATH]` is in scope |
 | `_cli_migrate_state.py` | `:184` | builds the token path **by hand** from `progress_dir / DIR_STAGE2_DONE / dataset / f"{stem}.json"`. With a slot level inserted, `_stage2_entry` silently returns `None` for every modern token and `--mode migrate` stops recording interrupted Stage-2 state |
 
 Instead: **the strategies derive the slot from the plan and pass it down one
@@ -1876,6 +1879,16 @@ def relocate_legacy_stage2_signal(
     legacy file is stale and the current one wins.
     """
 ```
+
+> **CORRECTED at execution time.** The call site below is wrong.
+> `clear_downstream_artifacts_for_stage1` *deletes* the Stage-2 signal when
+> Stage 1 re-runs, so relocating from beside it is too late: by then
+> `classify_staged_image` has already returned `"stage2"` and a GPU sweep is
+> scheduled on the scarcest resource in the cluster — the exact cost this
+> helper exists to avoid. Call it from **`build_staged_resume_plan`, per image,
+> immediately before `classify_staged_image`**: the single funnel every resume
+> passes through, and the last point before classification. The classifier
+> itself stays pure.
 
 **Call site and guard.** `StagePlan` has no `slots` attribute in Plan A — that
 is Spec §13's future `N > 1` shape, and an earlier draft gated on it, which is
@@ -2086,77 +2099,194 @@ git commit -m "feat(cli): replay the staged detector via path substitution"
 ## Task 9: Pin the addressing invariant
 
 **Files:**
-- Test: `tests/unit/cli/test_gpu_path_is_the_step_path.py` (create)
+- Test: `tests/unit/cli/test_recorded_paths_resolve.py` (create)
 
-**Interfaces:** consumes Tasks 4 and 5. Produces no source change — this task is a test only.
+**Interfaces:** consumes Tasks 4 and 5. Produces no source change — test only.
 
-**Why:** spec §5.3. Without this assertion, `gpu_path` and `pipeline_step_path` are two schemes kept aligned by hand, and they will drift.
+**Why:** spec §5.3. Without it, `gpu_path` and `pipeline_step_path` are two
+schemes kept aligned by hand, and they will drift.
+
+> **REWRITTEN at execution time, on the Phase 0–2 reviewer's recommendation.**
+> The original asserted `recorded == [list(plan.gpu_path)]` — set equality
+> between the walker's paths and the journal's. That is the **wrong invariant**,
+> and not merely a fragile one:
+>
+> - **It is already false today.** `CompositeDetector._operate` enumerates its
+>   whole `ops` list *including unfilled `None` slots*, so each branch's segment
+>   is its real index; the walker skips those slots. The two sets therefore
+>   differ for any pipeline the GUI builder produces mid-edit — a shape users
+>   create routinely. Set equality would assert something false about it.
+> - **It demands too much.** Every walker path would have to be *recorded*, which
+>   is untrue for any branch that is skipped, short-circuited, or refused.
+> - **It would have missed the defect it was written to catch.** Parametrised
+>   over composites it passed, while `TwoKFilamentousDetector` was recording
+>   `['TwoK', 'InoculumDetector']` — a well-formed path `get_at_path` cannot
+>   resolve at all.
+>
+> The property actually wanted is **resolvability**: every path the journal
+> records must address something real. That is cheaper, does not break when a
+> branch is skipped, and catches the misaddressing that set equality missed.
+>
+> Note resolvability is deliberately weaker than *unique* addressing. An
+> operation that runs sub-operations without pushing segments (e.g.
+> `InoculumDetector`) leaves its children recording the nearest addressable
+> ancestor. That is an honest partial address; an unresolvable one is a lie.
 
 - [ ] **Step 1: Write the test**
 
 ```python
-# tests/unit/cli/test_gpu_path_is_the_step_path.py
-import numpy as np
+# tests/unit/cli/test_recorded_paths_resolve.py
 import pytest
 
-from phenotypic import ImagePipeline
-from phenotypic.abc_ import GpuDetector
+from phenotypic import GridImage, ImagePipeline
 from phenotypic.data import load_synth_yeast_plate
-from phenotypic.detect import CompositeDetector, ManualPointDetector
+from phenotypic.detect import (
+    CompositeDetector,
+    ManualPointDetector,
+    OtsuDetector,
+    TwoKFilamentousDetector,
+)
 from phenotypic.enhance import ContrastStretching
-from phenotypic._cli._cli_pipeline_split import split_pipeline_at_gpu
+from phenotypic.sdk_._operation_tree import get_at_path
 
 CENTERS = [[150.0, 200.0], [300.0, 400.0]]
-
-
-from tests._fakes.fake_gpu_detector import FakeGpuDetector
 
 
 def _manual():
     return ManualPointDetector(centers=CENTERS, shape="disk", width=41)
 
 
+def _recorded_paths(image):
+    for app in image._metadata.provenance_journal.get("applications", []):
+        for op in app.get("operations", []):
+            path = op.get("pipeline_step_path")
+            if path:
+                yield op["operation_class"].rsplit(".", 1)[-1], tuple(path)
+
+
 def _shapes():
-    yield "leaf", CompositeDetector(ops=[FakeGpuDetector(), _manual()], mode="overlap")
-    branch = ImagePipeline(ops={
-        "ContrastStretching": ContrastStretching(input_layer="detect_mat"),
-        "FakeGpu": FakeGpuDetector()})
-    yield "branch", CompositeDetector(ops=[branch, _manual()], mode="overlap")
-    yield "nested", CompositeDetector(
-        ops=[CompositeDetector(ops=[FakeGpuDetector(), _manual()], mode="union"),
-             _manual()], mode="overlap")
+    yield "flat", ImagePipeline(ops={"OtsuDetector": OtsuDetector()})
+    yield "composite", ImagePipeline(
+        ops={"C": CompositeDetector(ops=[OtsuDetector(), _manual()], mode="overlap")}
+    )
+    yield "nested-composite", ImagePipeline(
+        ops={
+            "C": CompositeDetector(
+                ops=[
+                    CompositeDetector(ops=[OtsuDetector(), _manual()], mode="union"),
+                    _manual(),
+                ],
+                mode="overlap",
+            )
+        }
+    )
+    yield "branch-pipeline", ImagePipeline(
+        ops={
+            "C": CompositeDetector(
+                ops=[
+                    ImagePipeline(
+                        ops={
+                            "ContrastStretching": ContrastStretching(
+                                input_layer="detect_mat"
+                            ),
+                            "OtsuDetector": OtsuDetector(),
+                        }
+                    ),
+                    _manual(),
+                ],
+                mode="overlap",
+            )
+        }
+    )
+    # The shape that exposed the defect. `center_detector` is itself an
+    # ImagePipeline, so its children were recording a path with the MIDDLE
+    # segment dropped until Task 4's omission was corrected.
+    yield "two-k", ImagePipeline(ops={"TwoK": TwoKFilamentousDetector()})
 
 
-@pytest.mark.parametrize("name,detector", list(_shapes()),
-                         ids=[n for n, _ in _shapes()])
-def test_gpu_path_equals_the_recorded_step_path(name, detector):
-    pipe = ImagePipeline(ops={"CompositeDetector": detector})
+# A None slot is the exact case that makes SET EQUALITY with the walker false:
+# the composite records `ops[2]` for its second real branch, and the walker
+# never yields `ops[1]` at all.
+def _with_none_slot():
+    return ImagePipeline(
+        ops={"C": CompositeDetector(ops=[OtsuDetector(), None, _manual()],
+                                    mode="overlap")}
+    )
+
+
+@pytest.mark.parametrize("name,pipeline", list(_shapes()) + [("none-slot", _with_none_slot())],
+                         ids=[n for n, _ in list(_shapes())] + ["none-slot"])
+def test_every_recorded_step_path_resolves(name, pipeline):
+    """Every `pipeline_step_path` in the journal must address something real.
+
+    NOT set equality with the walker's paths -- see the note above this task.
+    A path that `get_at_path` cannot resolve is not an incomplete journal entry,
+    it is a wrong one, and nothing downstream reports it.
+    """
+    image = load_synth_yeast_plate()
+    if pipeline.nrows is None and name == "two-k":
+        image = GridImage(image.rgb[:], nrows=8, ncols=12)
+    pipeline.apply(image, inplace=True)
+
+    recorded = list(_recorded_paths(image))
+    assert recorded, f"{name}: nothing recorded -- the test proves nothing"
+
+    unresolvable = []
+    for cls_name, path in recorded:
+        try:
+            get_at_path(pipeline, path)
+        except KeyError as exc:
+            unresolvable.append((cls_name, path, str(exc)))
+
+    assert not unresolvable, (
+        f"{name}: {len(unresolvable)} recorded path(s) address nothing: "
+        f"{unresolvable}"
+    )
+
+
+def test_the_gpu_paths_segments_are_the_recorded_segments():
+    """The walker's `gpu_path` IS the detector's recorded path.
+
+    The narrower claim the staged engine actually depends on: Stage 3
+    substitutes at `gpu_path`, and the journal must say the detector ran there.
+    """
+    from tests._fakes.fake_gpu_detector import FakeGpuDetector
+
+    from phenotypic._cli._cli_pipeline_split import split_pipeline_at_gpu
+
+    detector = CompositeDetector(ops=[FakeGpuDetector(), _manual()], mode="overlap")
+    pipe = ImagePipeline(ops={"C": detector})
     plan = split_pipeline_at_gpu(pipe)
 
     image = load_synth_yeast_plate()
     pipe.apply(image, inplace=True)
 
-    recorded = [
-        op["pipeline_step_path"]
-        for app in image._metadata.provenance_journal.get("applications", [])
-        for op in app.get("operations", [])
-        if op["operation_class"].endswith("FakeGpuDetector")
-    ]
-    assert recorded == [list(plan.gpu_path)], (
-        f"{name}: walker path {plan.gpu_path} != journal path {recorded}"
-    )
+    recorded = [p for cls, p in _recorded_paths(image) if cls == "FakeGpuDetector"]
+    assert recorded == [tuple(plan.gpu_path)]
 ```
 
 - [ ] **Step 2: Run it**
 
-Run: `uv run pytest tests/unit/cli/test_gpu_path_is_the_step_path.py -v`
-Expected: PASS (3 parametrisations). A failure means Task 4's segments and Task 1's path segments disagree — fix the *segment* construction, not the test.
+Run: `uv run pytest tests/unit/cli/test_recorded_paths_resolve.py -v`
+Expected: PASS. Report the real parametrisation count; do not reconcile to a
+number in this plan.
 
-- [ ] **Step 3: Commit**
+A failure means the segment construction in Task 4 and the path construction in
+Task 1 disagree — fix the **segments**, not the test.
+
+- [ ] **Step 3: Mutation control** (the red step is not performed in this plan;
+      a mutation control is the substitute, and it is better evidence)
+
+Revert `_two_k_filamentous_detector.py`'s `center_detector` call to a direct
+`.apply()` and confirm `two-k` goes red with an unresolvable
+`('TwoK', 'InoculumDetector')`. Restore and re-verify. Back up by full relative
+path, never basename.
+
+- [ ] **Step 4: Commit**
 
 ```bash
-git add tests/unit/cli/test_gpu_path_is_the_step_path.py
-git commit -m "test(cli): pin gpu_path == pipeline_step_path"
+git add tests/unit/cli/test_recorded_paths_resolve.py
+git commit -m "test(cli): every recorded pipeline_step_path must resolve"
 ```
 
 ---
