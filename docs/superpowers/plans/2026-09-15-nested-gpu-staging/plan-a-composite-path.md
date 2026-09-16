@@ -2845,6 +2845,51 @@ and never a weaker model than the implementer.
 
 ## Revision history
 
+**Amended 2026-09-16 at the end of Phase 3.**
+
+11. **One finding, five instances: a check that sits adjacent to the question it
+    is asked.** Each was found only after the previous was fixed, and each looked
+    like diligence at the time. Listed together because the instances are what
+    make the rule checkable rather than a slogan:
+
+    | # | The check | Why it answered nothing |
+    |---|---|---|
+    | 1 | *"Did the anchor match?"* | All five scripted replacements matched. The docstring was rewritten and the body was not, so the narrowing existed in prose, a lookup table and tests — and in **no code path**. |
+    | 2 | *"Is the arity legal?"* | It was. `stage2_detect_core(..., "Image")` rebound `image_type` to the new `slot`. No `TypeError`, test green, call wrong — and a signal written under a slot named `Image` would have left the next assertion inspecting an empty directory and **passing**. |
+    | 3 | *"Do the recorded and walked paths agree?"* | On a **top-level** fixture both are one-element lists holding the same key, so the assertion passes on broken code. Needs a nested fixture or it certifies what the weaker version did. |
+    | 4 | *"Did the helper write the pipeline?"* | It returned the path it was handed. `to_json(p)` writes to `ensure_typed_json_suffix(p, ".json.pht-pipe")` and returns `None`, so the file existed one suffix away and the requested path stayed empty. **Success signal indistinguishable from a no-op.** |
+    | 5 | *"Is `_provenance_pipeline` carried through?"* | `PrivateAttr(default=None)`, so the obvious assertion compares `None is None` and passes under the mutant that substitutes `None`. |
+
+    **The rule: whatever you assert, ask what shape of input would make it pass
+    on broken code — then check your fixture is not that shape, and say in the
+    test why.**
+
+    Two corollaries earned the hard way. **Naming the pattern confers no
+    immunity:** instance 4 was authored by the agent who had cited the rule
+    twice that day. The defence that works is mechanical — a post-condition
+    (`assert path.is_file()`) so the failure lands in the fixture, where it
+    names itself, rather than three tests downstream where it names something
+    else. And **a mutant that raises is a reachability proof, not a
+    discrimination proof**: it shows the line executes, not that any assertion
+    would notice the line executing *and being wrong*.
+
+12. **Derive the affected surface from callees too, not only from callers.**
+    Two sweeps independently missed the same nine regressions because both asked
+    "what calls the helpers I changed?". `generate_staged_scripts` called none of
+    them — it became affected by acquiring a **new call to** one of them. A new
+    dependency is structurally invisible to a callers-of-what-I-changed sweep.
+    `_cli/CLAUDE.md`'s "derive the surface from importers, mechanically" catches
+    changed signatures and does not catch this. The wide gate is what closed it.
+
+13. **A contaminated mutation run fails in the reassuring direction.** An
+    ordinary suite run against a moving tree looks wrong; a *mutation* run looks
+    good, because mutants get scored as killed by the unrelated breakage rather
+    than by the tests meant to catch them, so survival numbers come out better
+    than the suite has earned. The lead ran one in a shared worktree while two
+    agents were editing — the frozen-checkout rule written for the gates applies
+    to any measurement whose output someone will quote, not to gates
+    specifically. The numbers were discarded and re-taken frozen.
+
 **Amended 2026-09-16 during execution of Phase 3 (Task 6a).**
 
 8. **A positional insertion can produce a call that is still legal, still
