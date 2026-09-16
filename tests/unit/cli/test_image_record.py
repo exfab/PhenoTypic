@@ -809,12 +809,15 @@ def test_a_forward_tree_still_needs_no_conversion_after_a_recompile(tmp_path):
     and `--mode migrate`, the remedy it names, does not remove that
     directory.
 
-    The failure is about *creation*, not about recompile succeeding, so the
-    exception is suppressed deliberately: on a forward tree
-    ``begin_recompile_table_transition`` may still raise for its own reasons,
-    and the assertion that matters holds either way. Testing the directory
-    rather than the lock's location is what keeps this honest if the lock
-    moves again.
+    The failure is about *creation*, not about anything the lock guards
+    succeeding, so the exception is suppressed deliberately and the assertion
+    that matters holds either way. Testing the directory rather than the
+    lock's location is what keeps this honest if the lock moves again.
+
+    The lock itself outlived the table transitions it was introduced for:
+    those went with recompile's per-store rewrite (2026-09-11), and
+    ``recompile_store_lock_path`` is still taken by the overlay-repair path
+    in ``_cli_recompile_slurm_scripts``.
     """
     import contextlib
 
@@ -878,23 +881,33 @@ def test_the_republish_probe_names_the_record_not_the_legacy_marker():
     from pathlib import Path
 
     import phenotypic._cli._cli_process_single as process_single
-    import phenotypic._cli._cli_recompile_tables as recompile_tables
 
-    for module in (process_single, recompile_tables):
-        names = {
-            node.func.id
-            for node in ast.walk(
-                ast.parse(Path(module.__file__).read_text(encoding="utf-8"))
+    # **One module, not two, and the second one leaving is the point.**
+    # `_cli_recompile_tables` used to resolve the record path itself, inside
+    # `_replace_and_republish_table` -- the recompile rewrite's half of this
+    # same probe. That rewrite was deleted on 2026-09-11 (recompile writes no
+    # store byte), and what survives in that module is
+    # `_republish_table_marker`, which takes the path as an ARGUMENT. It has
+    # no probe left to get wrong, so asserting it resolves `image_record_path`
+    # would be asserting a detail of a caller it no longer has. The whole
+    # probe now lives here, in the measure path, which is where the failure
+    # this test describes would occur.
+    names = {
+        node.func.id
+        for node in ast.walk(
+            ast.parse(
+                Path(process_single.__file__).read_text(encoding="utf-8")
             )
-            if isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Name)
-            and node.func.id
-            in {"image_record_path", "image_completion_marker_path"}
-        }
-        assert "image_record_path" in names, (
-            f"{module.__name__} does not resolve the record path at all; "
-            "its re-publish probe cannot be looking at the right file"
         )
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id
+        in {"image_record_path", "image_completion_marker_path"}
+    }
+    assert "image_record_path" in names, (
+        f"{process_single.__name__} does not resolve the record path at all; "
+        "its re-publish probe cannot be looking at the right file"
+    )
 
     # **AST, not a substring search over the source text, and the difference
     # is not pedantry.** The substring form could not distinguish a *use* of

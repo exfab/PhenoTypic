@@ -48,14 +48,9 @@ def refuse_mixed_measurement_authority(paths: Sequence[Path]) -> None:
     Raises:
         ValueError: Some sources are embedded store tables and some are not.
     """
-    from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH
+    from ._cli_parquet_agg import is_embedded_measurement_table
 
-    suffix = MEASUREMENT_TABLE_RELATIVE_PATH.parts
-    embedded = [
-        path
-        for path in paths
-        if tuple(Path(path).parts[-len(suffix) :]) == suffix
-    ]
+    embedded = [path for path in paths if is_embedded_measurement_table(path)]
     if embedded and len(embedded) != len(paths):
         raise ValueError(
             "Cannot aggregate mixed embedded and legacy measurement authority"
@@ -120,6 +115,36 @@ def select_measurement_sources(
 # ---------------------------------------------------------------------------
 
 
+def _merge_measurement_shards(
+    frames: "list[pl.DataFrame]",
+) -> "pl.DataFrame | None":
+    """Concatenate pre-projected shards, or ``None`` when no shard merged a source.
+
+    **All-empty is ``None``, not an empty master** (Task 4 review, MF-2). A
+    shard whose every source the projection excluded writes the zero-column
+    empty sentinel, so its FILE still counts toward the carried K. When every
+    shard is that sentinel nothing was aggregated, and the outcome must be
+    the direct path's: ``finalize_run`` returns ``None`` and publishes no
+    master, mirror or proof. Concatenating the sentinels instead produced a
+    0x0 master that overwrote the previous one, and an aggregate proof
+    certifying zero images while the run's live successes were not zero. A
+    shard that merged stores holding zero rows still carries their columns,
+    so it is not mistaken for the sentinel.
+
+    The dtype advisory runs here as well as inside each shard (MF-1): drift
+    between stores that landed in different shards is visible only at this
+    concat.
+    """
+    import polars as pl
+
+    from ._cli_parquet_agg import _warn_on_dtype_disagreement
+
+    if all(frame.width == 0 for frame in frames):
+        return None
+    _warn_on_dtype_disagreement(frames)
+    return pl.concat(frames, how="diagonal_relaxed")
+
+
 def build_master_frame(
     output_dir: Path,
     dataset_names: Sequence[str],
@@ -141,22 +166,39 @@ def build_master_frame(
         ``(master_df, authorized, path_to_dataset)``. ``master_df`` is ``None``
         when no source could be read.
 
-        The third element is **the source set this call actually selected**,
+        The third element is **the source set the master was built from**,
         returned rather than re-derived by the caller. ``finalize_run`` needs
         it to publish an aggregate proof that describes the master it just
         wrote; asking ``authorized_measurement_sources`` a second time would
         make the proof and the master answers to two different questions
-        asked at two different moments, which is flow-r3 C2 exactly.
+        asked at two different moments, which is flow-r3 C2 exactly. On the
+        embedded-table arm it is the selected set **minus every store the
+        projection excluded** (P7 Task 4), so the proof never certifies an
+        image the master does not carry.
+
+        **On the** ``shard_paths`` **branch it is the full selection**, not
+        the merged set: the shards applied the projection, and which stores
+        they excluded is not visible here. Both shard producers therefore
+        hand the merged set to ``finalize_run`` separately, as
+        ``planned_work_ids`` -- the P5 fan-out through
+        ``resolve_finalizer_shard_inputs``, and recompile's SLURM finalizer
+        through the ``source_work_ids`` its measurement statuses record. The
+        earlier KNOWN GAP -- recompile passing none, so a store its shards
+        excluded was still certified -- is closed.
     """
     import polars as pl
 
     from ._cli_output_manager import (
         _cleanup_scratch,
-        _remap_to_scratch,
         _scratch_dest_name,
         _stage_to_scratch,
     )
-    from ._cli_parquet_agg import SOURCE_PATH_COLUMN, aggregate_parquet_files
+    from ._cli_parquet_agg import (
+        SOURCE_PATH_COLUMN,
+        aggregate_embedded_measurement_tables,
+        aggregate_parquet_files,
+        is_embedded_measurement_table,
+    )
     from ._measurement_sources import add_metadata_image_name_from_filename
 
     path_to_dataset, authorized = select_measurement_sources(
@@ -175,47 +217,90 @@ def build_master_frame(
         # recompile hands its own shards to this same function -- would have
         # to re-establish it.
         frames = [pl.read_parquet(path) for path in shard_paths]
-        if not frames:
-            return None, authorized, path_to_dataset
-        return (
-            pl.concat(frames, how="diagonal_relaxed"),
-            authorized,
-            path_to_dataset,
-        )
+        return _merge_measurement_shards(frames), authorized, path_to_dataset
 
-    # -- Stage to $SCRATCH ---------------------------------------------
+    # -- Stage to $SCRATCH: BOTH arms, including the embedded one ------
+    #
+    # It is worth staging on the embedded arm even though the copy looks
+    # redundant there, and this was **measured, not reasoned** -- the
+    # reasoning got it backwards. The argument for dropping it was that
+    # `project_embedded_measurement_table` reads each store's descriptor
+    # from the store regardless, so the copy cannot avoid the per-store GPFS
+    # round trip it exists to amortize, and every table is then read twice.
+    # All of that is true and the conclusion still does not follow: one bulk
+    # multithreaded copy of many small files beats reading them individually
+    # by far more than the second read costs.
+    #
+    # Cold, over this project's 6,529-store run (527 MB of tables), one
+    # configuration per freshly-allocated node, two independent node pairs:
+    #
+    #     staged    323.9 s (i07) / 325.1 s (i08)   [copy 156-161 s of that]
+    #     unstaged  397.3 s (i06) / 410.3 s (i09)
+    #
+    # ~20% faster cold, reproduced. WARM the two are a wash (~46 s either
+    # way), which is why an interleaved benchmark says "staging is overhead"
+    # -- its first run warms the page cache for every run after it. A
+    # finalizer reading a just-written run is the cold case.
     scratch_dir = _stage_to_scratch(list(path_to_dataset.keys()))
-    active_mapping = (
-        _remap_to_scratch(path_to_dataset, scratch_dir)
-        if scratch_dir is not None
-        else path_to_dataset
-    )
-
-    master_df = aggregate_parquet_files(
-        file_paths=list(active_mapping.keys()),
-        path_to_dataset=active_mapping,
-        include_dataset_column=include_dataset_column,
-        keep_filename=True,
-    )
-
-    if scratch_dir is not None and master_df is not None:
-        staged_to_original = {
-            str(scratch_dir / _scratch_dest_name(original)).replace(
-                "\\", "/"
-            ): str(original)
+    # Original source -> its staged copy, or `None` when nothing was staged.
+    staged = (
+        None
+        if scratch_dir is None
+        else {
+            original: scratch_dir / _scratch_dest_name(original)
             for original in path_to_dataset
         }
-        master_df = master_df.with_columns(
-            pl.col(SOURCE_PATH_COLUMN)
-            .str.replace_all(r"\\", "/")
-            .replace_strict(
-                staged_to_original,
-                default=pl.col(SOURCE_PATH_COLUMN),
+    )
+
+    # `finally`, because the projection raises by design (a newer store
+    # schema, a table missing a column its descriptor declares), and staging
+    # has already copied every table by then.
+    try:
+        if path_to_dataset and all(
+            is_embedded_measurement_table(path) for path in path_to_dataset
+        ):
+            # P7 Task 4: project each table onto its own store's descriptor.
+            # Excluded stores leave the returned source set too. Bytes come
+            # from the staged copies; descriptors from the stores.
+            master_df, path_to_dataset = aggregate_embedded_measurement_tables(
+                path_to_dataset,
+                include_dataset_column=include_dataset_column,
+                read_paths=staged,
             )
-            .alias(SOURCE_PATH_COLUMN)
-        )
-    if scratch_dir is not None:
-        _cleanup_scratch(scratch_dir)
+        else:
+            active_mapping = (
+                path_to_dataset
+                if staged is None
+                else {
+                    staged[original]: dataset
+                    for original, dataset in path_to_dataset.items()
+                }
+            )
+
+            master_df = aggregate_parquet_files(
+                file_paths=list(active_mapping.keys()),
+                path_to_dataset=active_mapping,
+                include_dataset_column=include_dataset_column,
+                keep_filename=True,
+            )
+
+            if staged is not None and master_df is not None:
+                staged_to_original = {
+                    str(copy).replace("\\", "/"): str(original)
+                    for original, copy in staged.items()
+                }
+                master_df = master_df.with_columns(
+                    pl.col(SOURCE_PATH_COLUMN)
+                    .str.replace_all(r"\\", "/")
+                    .replace_strict(
+                        staged_to_original,
+                        default=pl.col(SOURCE_PATH_COLUMN),
+                    )
+                    .alias(SOURCE_PATH_COLUMN)
+                )
+    finally:
+        if scratch_dir is not None:
+            _cleanup_scratch(scratch_dir)
 
     if master_df is None:
         return None, authorized, path_to_dataset

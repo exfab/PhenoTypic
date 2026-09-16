@@ -517,6 +517,162 @@ def _record_an_older_metadata_snapshot(root, stem, digest="e" * 64):
     )
 
 
+def _authorize_measurements(root, stem, *, projectable=True):
+    """Make one image a master source, optionally one the master must skip.
+
+    The fixture's own records declare a store and an overlay but no
+    ``measurements`` artifact, so nothing in a `build_complete_run` tree is
+    ever selected as a master source. This adds the artifact that selects it
+    -- the key ``authorized_measurement_sources`` picks on -- so the
+    exclusion the advisory is about is reachable at all.
+
+    With ``projectable=False`` the store's ``tables.measurements``
+    descriptor is removed first, which is the shape
+    ``tests/unit/cli/test_finalize_run.py::_strip_measurement_descriptor``
+    drives the projection's Step 0b with: ``table.parquet`` still on disk,
+    nothing declaring the column list to project it onto. Removing the
+    descriptor rewrites the store root and so invalidates the record that
+    fingerprints it, which is why the record is republished afterwards
+    through the real publisher either way -- without that the image stops
+    being verified and the tree would be incomplete for an unrelated reason.
+    """
+    from phenotypic._cli._cli_completion import publish_image_success
+    from phenotypic.sdk_ import (
+        MEASUREMENT_TABLE_RELATIVE_PATH,
+        atomic_write_json,
+        dataset_overlays_dir,
+        zarr_store_path,
+    )
+    from phenotypic.sdk_.ngff_ import (
+        MEASUREMENT_TABLE_GROUP,
+        STORE_ROOT_JSON,
+        PhenotypicAttr,
+    )
+    from tests._output_layout import FIXTURE_DATASET
+
+    store = zarr_store_path(root, FIXTURE_DATASET, stem)
+    if not projectable:
+        root_json = store / STORE_ROOT_JSON
+        payload = json.loads(root_json.read_text(encoding="utf-8"))
+        payload["attributes"][PhenotypicAttr.ROOT][
+            PhenotypicAttr.TABLES
+        ].pop(MEASUREMENT_TABLE_GROUP)
+        atomic_write_json(root_json, payload)
+    publish_image_success(
+        root,
+        work_id=f"work-{stem}",
+        dataset=FIXTURE_DATASET,
+        relative_image_path=f"{stem}.tif",
+        image_stem=stem,
+        mode="full",
+        attempt_id=f"attempt-{stem}",
+        lifecycle_epoch="local",
+        artifacts={
+            "store": store,
+            "measurements": store / MEASUREMENT_TABLE_RELATIVE_PATH,
+            "overlay": dataset_overlays_dir(root, FIXTURE_DATASET)
+            / f"{stem}.png",
+        },
+    )
+    return store
+
+
+def _finalize_over(root, stems):
+    """Re-publish both proofs over exactly *stems*, in publication order.
+
+    What a finalization does to the two run-level proofs when the projection
+    excluded nothing: the aggregate proof certifies that source set, then
+    the run proof copies its
+    ``source_set_digest``/``source_image_count``. Both through the real
+    publishers, so the test cannot pass against a shape no finalization
+    writes -- and both, because publishing only the aggregate would leave
+    the previous run proof asserting the older set and the tree would read
+    ``complete`` for the wrong reason.
+    """
+    from phenotypic._cli._cli_completion import (
+        publish_aggregate_snapshot,
+        publish_run_completion_evidence,
+    )
+
+    publish_aggregate_snapshot(
+        root, source_work_ids=[f"work-{stem}" for stem in stems]
+    )
+    publish_run_completion_evidence(root, execution_epoch="local")
+
+
+def _publish_master_over(root, covered):
+    """Publish an aggregate proof covering only *covered*, and no run proof.
+
+    The shape a master that does not carry every verified image leaves
+    behind, whatever put it in that state -- a store the projection
+    excluded, or an image that finished after the master was published.
+    Both trees below are built with this, and the fact that **one helper
+    builds both** is the point: the only difference between them is whether
+    a store is inconsistent, so an advisory that fires on one and not the
+    other is responding to that and nothing else.
+
+    There is **no run proof**, and there cannot be one. The writer's own
+    precondition ``_all_accepted_images_succeeded`` ends in
+    ``_current_aggregate_is_current``, which compares the proof's source
+    count against the live success count; a short master makes those
+    differ, so ``publish_run_completion_evidence`` refuses. That refusal is
+    not an obstacle to route around -- it is the mechanism that makes such a
+    run read ``incomplete`` in the first place, so it is asserted here
+    rather than caught. A fixture that forced a run proof through would be
+    building a tree no finalization can produce.
+    """
+    from phenotypic._cli._cli_completion import (
+        publish_aggregate_snapshot,
+        publish_run_completion_evidence,
+    )
+    from phenotypic.sdk_ import run_completion_marker_path
+
+    publish_aggregate_snapshot(
+        root, source_work_ids=[f"work-{stem}" for stem in covered]
+    )
+    with pytest.raises(RuntimeError):
+        publish_run_completion_evidence(root, execution_epoch="local")
+    assert not run_completion_marker_path(root).exists(), (
+        "the refusal wrote a run proof anyway"
+    )
+
+
+def _build_excluded_store_run(root, excluded, kept):
+    """Return *root* as a finalization that excluded one store leaves it.
+
+    One store's table is unprojectable, so the master carries the other and
+    the aggregate proof certifies only that one.
+
+    The fixture's run proof goes first, through the existing
+    :func:`_remove_run_proof`. Neither this tree nor the rolling one below
+    ever had a run proof: `build_complete_run` publishes one because a
+    complete run is what that fixture is for, and leaving it in place would
+    build a tree finalization cannot produce -- and worse, one that reads
+    ``complete``, because rule 1 would compare today's verified images
+    against a proof published back when the master still carried them all.
+    """
+    _remove_run_proof(root)
+    _authorize_measurements(root, excluded, projectable=False)
+    _authorize_measurements(root, kept)
+    _publish_master_over(root, [kept])
+
+
+def _build_rolling_input_run(root, published, pending):
+    """Return *root* as a master published before *pending* finished.
+
+    The **benign** shortfall, and the reason the count clause is worded as
+    an observation rather than an accusation. Both stores are healthy and
+    both declare projectable tables; the master simply predates one of
+    them, which is the ordinary state of a rolling input between
+    finalizations. Structurally identical to
+    :func:`_build_excluded_store_run` except for that one difference.
+    """
+    _remove_run_proof(root)
+    _authorize_measurements(root, published)
+    _authorize_measurements(root, pending)
+    _publish_master_over(root, [published])
+
+
 # ------------------------------------------------------- Task 5: the ladder
 
 
@@ -1094,6 +1250,271 @@ def test_an_unmarked_record_is_still_fenced_by_work_id(complete_run):
 
     state = resolve_run_state(complete_run, depth="deep")
     assert state.completion == "incomplete"
+
+
+# ------------------------------- FU-1: the store the master had to leave out
+
+
+def test_a_store_the_master_excluded_is_named_and_the_run_stays_incomplete(
+    complete_run,
+):
+    """FU-1. An excluded store made a verified run read `incomplete` with
+    nothing on disk saying which store or why.
+
+    The projection leaves out a store whose embedded table it cannot project
+    safely, the aggregate proof then certifies fewer images than the tree
+    verifies, and rule 1's `source_set_digest` comparison fails. That is the
+    correct verdict. What was missing is the sentence explaining it: the only
+    record was a `logger.warning` during finalization, gone by the time
+    anyone reads the tree.
+
+    Both halves are asserted, because each fails differently. The verdict
+    must still be `incomplete` -- an advisory is never a gate, and one that
+    quietly made this run look complete would be a far worse bug than the
+    silence it replaces. And the advisory must name the *excluded* store
+    rather than merely reporting that something is missing.
+    """
+    from phenotypic.sdk_ import resolve_run_state
+    from tests._output_layout import FIXTURE_DATASET, FIXTURE_STEMS
+
+    excluded, kept = FIXTURE_STEMS[0], FIXTURE_STEMS[1]
+    _build_excluded_store_run(complete_run, excluded, kept)
+
+    state = resolve_run_state(complete_run, depth="deep")
+
+    assert state.completion == "incomplete", (
+        "the advisory must explain the verdict, never change it"
+    )
+    assert state.diagnostics.verified == 2, (
+        "both images must still verify, or the tree is incomplete for an "
+        "unrelated reason and the assertion below reads the wrong tree"
+    )
+    assert any(
+        f"{FIXTURE_DATASET}/{excluded}" in advisory
+        for advisory in state.advisories
+    ), state.advisories
+    assert not any(
+        f"{FIXTURE_DATASET}/{kept}" in advisory
+        for advisory in state.advisories
+    ), (
+        "naming every image is not naming the excluded one: "
+        f"{state.advisories}"
+    )
+
+
+def test_a_master_that_carries_every_verified_image_names_no_store(
+    complete_run,
+):
+    """The negative control, and it is not vacuous.
+
+    The tree here is the *same* tree -- both images authorized as master
+    sources, both stores declaring a projectable table, the proofs published
+    over both -- so the advisory above could fire and does not. Without this
+    an implementation that named every image, or that fired on the mere
+    presence of a measurements artifact, would pass the test above.
+
+    The two stage assertions are what stop the control passing for the wrong
+    reason. `advisories == ()` is also what a build that recorded nothing at
+    all produces, so the control additionally pins that the facts the
+    advisory projects over were read and are both `True` on a healthy store.
+    """
+    from phenotypic.sdk_ import resolve_run_state
+    from tests._output_layout import FIXTURE_STEMS
+
+    for stem in FIXTURE_STEMS:
+        _authorize_measurements(complete_run, stem)
+    _finalize_over(complete_run, FIXTURE_STEMS)
+
+    state = resolve_run_state(complete_run, depth="deep")
+
+    assert state.completion == "complete"
+    assert state.advisories == ()
+    measured = [image.stages["measured"] for image in state.images.values()]
+    assert all(stage["declares_measurements"] is True for stage in measured)
+    assert all(stage["projectable_measurements"] is True for stage in measured)
+
+
+def test_a_master_that_merely_predates_an_image_claims_no_exclusion(
+    complete_run,
+):
+    """The count clause reports a gap; it must not allege a cause.
+
+    A rolling input reaches `certified < verified` on its own and with
+    nothing wrong: images keep finishing between finalizations, and the
+    proof records the count at the last one. The proof carries a digest and
+    a count, never the set, so this reader genuinely cannot tell that case
+    from an exclusion -- and the honest response to not knowing is to say
+    what was observed, not to guess.
+
+    Getting this wrong is not a cosmetic wording problem. This build's own
+    reasoning for gating the schema advisory is that an advisory which is
+    always on teaches people to ignore the one that matters, and the
+    rolling case is the common one. An exclusion alert firing routinely
+    would spend the credibility the FU-1 advisory exists to have.
+
+    The tree here differs from the excluded-store tree in exactly one
+    respect -- both stores declare a projectable table -- so what this pins
+    is that the naming clause responds to the store's own inconsistency and
+    to nothing else about a short master.
+    """
+    from phenotypic.sdk_ import resolve_run_state
+    from tests._output_layout import FIXTURE_DATASET, FIXTURE_STEMS
+
+    published, pending = FIXTURE_STEMS[0], FIXTURE_STEMS[1]
+    _build_rolling_input_run(complete_run, published, pending)
+
+    state = resolve_run_state(complete_run, depth="deep")
+
+    assert state.completion == "incomplete"
+    assert state.diagnostics.verified == 2, (
+        "both images must verify, or there is no shortfall to report"
+    )
+    assert any(
+        "reports the gap, not its cause" in advisory
+        for advisory in state.advisories
+    ), state.advisories
+    assert not any(
+        f"{FIXTURE_DATASET}/{stem}" in advisory
+        for stem in FIXTURE_STEMS
+        for advisory in state.advisories
+    ), (
+        "a healthy store was named as excluded on a tree where nothing was "
+        f"excluded: {state.advisories}"
+    )
+
+
+def test_a_cache_written_before_the_advisory_cannot_silence_it(complete_run):
+    """`VERIFICATION_CACHE_VERSION` 1 -> 2, and this is what the bump buys.
+
+    The naming clause projects over two facts recorded into the `measured`
+    stage during deep verification. A tier-2 cache written by a build that
+    did not record them carries entries whose stat tuples are still valid,
+    so `entry_is_still_current` would license skipping the re-verification
+    and a warm shallow pass would emit no advisory. A diagnostic switched
+    off by a cache is precisely the failure `VERIFICATION_CACHE_VERSION`'s
+    own comment describes: the payload records what was checked, never how,
+    so the version is the reader's only signal that another build's notion
+    of "verified" produced these entries.
+
+    `1` is written as a **literal** and not as `VERIFICATION_CACHE_VERSION
+    - 1`, and that is what makes this a guard rather than a tautology. 1 is
+    the version the previous build actually wrote -- a historical constant.
+    Spelled relative to the current value, the document would be re-aged
+    along with any revert of the bump, the gate would still reject it, and
+    the test would pass while the defect it guards was back.
+    """
+    from phenotypic.sdk_ import (
+        clear_verification_cache,
+        resolve_run_state,
+        verification_cache_path,
+    )
+    from tests._output_layout import FIXTURE_DATASET, FIXTURE_STEMS
+
+    excluded, kept = FIXTURE_STEMS[0], FIXTURE_STEMS[1]
+    _build_excluded_store_run(complete_run, excluded, kept)
+
+    fresh = resolve_run_state(complete_run, depth="deep")
+    assert any(
+        f"{FIXTURE_DATASET}/{excluded}" in advisory
+        for advisory in fresh.advisories
+    ), fresh.advisories
+
+    # Age the persisted tier into what the previous build wrote: its schema
+    # version, and `measured` stages carrying none of the facts it had no
+    # reason to record.
+    path = verification_cache_path(complete_run)
+    document = json.loads(path.read_text(encoding="utf-8"))
+    document["schema_version"] = 1
+    for entry in document["entries"].values():
+        for stage in entry["stages"].values():
+            stage.pop("declares_measurements", None)
+            stage.pop("projectable_measurements", None)
+    path.write_text(json.dumps(document), encoding="utf-8")
+    clear_verification_cache()
+
+    aged = resolve_run_state(complete_run, depth="shallow")
+
+    assert aged.depth == "deep", (
+        "the aged cache was trusted; a shallow pass reused entries written "
+        "under rules this build does not share"
+    )
+    assert any(
+        f"{FIXTURE_DATASET}/{excluded}" in advisory
+        for advisory in aged.advisories
+    ), aged.advisories
+
+
+def test_the_exclusion_advisory_survives_a_second_finalization(complete_run):
+    """Derived at read, so re-finalizing cannot consume it.
+
+    This is the half of FU-1 that makes the silence expensive rather than
+    merely unhelpful: the operator's response to `incomplete` is to run
+    finalization again, which excludes the same store again and reaches the
+    same verdict. A one-shot event -- a line in a log, a flag cleared when
+    read -- is gone by the second attempt, exactly when it is most needed.
+    """
+    from phenotypic.sdk_ import resolve_run_state
+    from tests._output_layout import FIXTURE_DATASET, FIXTURE_STEMS
+
+    excluded, kept = FIXTURE_STEMS[0], FIXTURE_STEMS[1]
+    _build_excluded_store_run(complete_run, excluded, kept)
+
+    seen = []
+    for round_ in range(2):
+        if round_:
+            _publish_master_over(complete_run, [kept])
+        state = resolve_run_state(complete_run, depth="deep")
+        assert state.completion == "incomplete"
+        seen.append(
+            [
+                advisory
+                for advisory in state.advisories
+                if f"{FIXTURE_DATASET}/{excluded}" in advisory
+            ]
+        )
+
+    assert seen[0], seen
+    assert seen[1] == seen[0], (
+        f"the advisory changed across re-finalization: {seen}"
+    )
+
+
+def test_the_exclusion_advisory_is_identical_at_either_depth(complete_run):
+    """`shallow` says exactly what `deep` says, and stays O(1) in images.
+
+    Pinned because the obvious implementation breaks it. Both facts the
+    naming clause projects over are properties of a *store*, and a warm
+    shallow pass opens no store at all -- so computing them at advisory time
+    would either lose the advisory on the shallow path or put a per-image
+    read back on the surfaces that poll it. They are recorded into the
+    `measured` stage during verification instead, which is how the metadata
+    divergence advisory already rides the cache.
+
+    The count clause reads one small sidecar, O(1) in images at either
+    depth, so `shallow` is not made expensive by having it.
+
+    `depth == "shallow"` is asserted first: a shallow call that escalated
+    would report `"deep"`, and this test would then be comparing a deep pass
+    against a deep pass and proving nothing.
+    """
+    from phenotypic.sdk_ import resolve_run_state
+    from tests._output_layout import FIXTURE_DATASET, FIXTURE_STEMS
+
+    excluded, kept = FIXTURE_STEMS[0], FIXTURE_STEMS[1]
+    _build_excluded_store_run(complete_run, excluded, kept)
+
+    deep = resolve_run_state(complete_run, depth="deep")
+    shallow = resolve_run_state(complete_run, depth="shallow")
+
+    assert shallow.depth == "shallow", (
+        "the shallow pass escalated, so this compares deep against deep"
+    )
+    assert shallow.completion == deep.completion == "incomplete"
+    assert shallow.advisories == deep.advisories
+    assert any(
+        f"{FIXTURE_DATASET}/{excluded}" in advisory
+        for advisory in shallow.advisories
+    ), shallow.advisories
 
 
 # ------------------------------------------ Task 5: the sdk_/CLI cross-check
