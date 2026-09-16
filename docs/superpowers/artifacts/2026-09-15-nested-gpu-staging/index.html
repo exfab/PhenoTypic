@@ -1,0 +1,400 @@
+<title>Nested GpuDetector Staging</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+  :root {
+    --ground:    #eef1f4;
+    --surface:   #ffffff;
+    --sunk:      #e4e9ee;
+    --ink:       #121820;
+    --ink-soft:  #45535f;
+    --ink-faint: #6f8090;
+    --rule:      #d2dae1;
+    --gpu:       #0d7f7f;
+    --gpu-soft:  #d6ecec;
+    --warn:      #a8500c;
+    --warn-soft: #f6e6d5;
+    --cpu:       #4a5c8a;
+    --cpu-soft:  #e0e5f2;
+
+    --sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:    #0d1216;
+      --surface:   #151d24;
+      --sunk:      #1c262e;
+      --ink:       #e6edf3;
+      --ink-soft:  #a9b8c4;
+      --ink-faint: #768896;
+      --rule:      #2a3740;
+      --gpu:       #49c3bd;
+      --gpu-soft:  #10312f;
+      --warn:      #e0954d;
+      --warn-soft: #33220f;
+      --cpu:       #93a6d8;
+      --cpu-soft:  #1b2237;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:    #0d1216;
+    --surface:   #151d24;
+    --sunk:      #1c262e;
+    --ink:       #e6edf3;
+    --ink-soft:  #a9b8c4;
+    --ink-faint: #768896;
+    --rule:      #2a3740;
+    --gpu:       #49c3bd;
+    --gpu-soft:  #10312f;
+    --warn:      #e0954d;
+    --warn-soft: #33220f;
+    --cpu:       #93a6d8;
+    --cpu-soft:  #1b2237;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.65;
+    margin: 0;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding-inline: 20px; padding-block: 0 96px; }
+
+  /* ---- masthead ---- */
+  header.mast { border-bottom: 2px solid var(--ink); padding-block: 40px 20px; margin-bottom: 40px; }
+  .eyebrow {
+    font-family: var(--sans); font-size: 11px; font-weight: 600;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--ink-faint);
+    display: flex; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 18px;
+  }
+  h1 {
+    font-family: var(--sans); font-weight: 700; font-size: clamp(30px, 6vw, 46px);
+    line-height: 1.08; letter-spacing: -.022em; margin: 0 0 14px; text-wrap: balance;
+  }
+  .standfirst { font-size: 19px; color: var(--ink-soft); margin: 0; max-width: 60ch; }
+
+  h2 {
+    font-family: var(--sans); font-weight: 600; font-size: 13px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--gpu);
+    margin: 56px 0 6px; padding-bottom: 8px; border-bottom: 1px solid var(--rule);
+  }
+  h3 {
+    font-family: var(--sans); font-weight: 600; font-size: 20px; letter-spacing: -.01em;
+    margin: 32px 0 8px; text-wrap: balance;
+  }
+  p { margin: 0 0 16px; max-width: 66ch; }
+  a { color: var(--gpu); }
+  code, .mono { font-family: var(--mono); font-size: .86em; }
+  p code, li code, td code, th code {
+    background: var(--sunk); padding: 1px 5px; border-radius: 3px;
+    color: var(--ink); word-break: break-word;
+  }
+  strong { font-weight: 600; }
+
+  /* ---- verdict strip ---- */
+  .verdict {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px; background: var(--rule); border: 1px solid var(--rule); margin: 32px 0 8px;
+  }
+  .verdict div { background: var(--surface); padding: 14px 16px; }
+  .verdict dt {
+    font-family: var(--sans); font-size: 10px; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--ink-faint); margin-bottom: 4px;
+  }
+  .verdict dd {
+    font-family: var(--sans); font-size: 21px; font-weight: 600; margin: 0;
+    font-variant-numeric: tabular-nums; letter-spacing: -.01em;
+  }
+  .verdict dd small { font-family: var(--serif); font-size: 13px; font-weight: 400; color: var(--ink-soft); display: block; letter-spacing: 0; }
+
+  /* ---- code ---- */
+  pre {
+    font-family: var(--mono); font-size: 13px; line-height: 1.55;
+    background: var(--surface); border: 1px solid var(--rule); border-left: 3px solid var(--ink-faint);
+    padding: 14px 16px; overflow-x: auto; margin: 0 0 20px; color: var(--ink);
+  }
+  pre.bad { border-left-color: var(--warn); }
+  pre.good { border-left-color: var(--gpu); }
+  pre b { font-weight: 500; color: var(--warn); }
+  pre i { font-style: normal; color: var(--ink-faint); }
+
+  /* ---- tables ---- */
+  .tw { overflow-x: auto; margin: 0 0 22px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th {
+    font-family: var(--sans); font-size: 10.5px; font-weight: 600; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--ink-faint); border-bottom: 1.5px solid var(--ink-faint);
+    white-space: nowrap;
+  }
+  td { font-family: var(--sans); font-size: 14px; color: var(--ink-soft); }
+  td:first-child { color: var(--ink); }
+  tbody tr:last-child td { border-bottom: none; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .pass { color: var(--gpu); font-weight: 600; }
+  .fail { color: var(--warn); font-weight: 600; }
+
+  /* ---- figure ---- */
+  figure { margin: 26px 0 28px; }
+  figure svg { display: block; width: 100%; max-width: 100%; height: auto; }
+  figcaption {
+    font-family: var(--sans); font-size: 13px; color: var(--ink-faint);
+    margin-top: 10px; max-width: 66ch; line-height: 1.5;
+  }
+
+  /* ---- callout ---- */
+  .note {
+    background: var(--surface); border: 1px solid var(--rule); border-top: 2px solid var(--warn);
+    padding: 18px 20px; margin: 0 0 24px;
+  }
+  .note.win { border-top-color: var(--gpu); }
+  .note h4 {
+    font-family: var(--sans); font-size: 12px; font-weight: 600; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--warn); margin: 0 0 8px;
+  }
+  .note.win h4 { color: var(--gpu); }
+  .note p:last-child { margin-bottom: 0; }
+
+  /* ---- task list ---- */
+  ol.tasks { list-style: none; counter-reset: t; padding: 0; margin: 0 0 24px; }
+  ol.tasks li {
+    counter-increment: t; display: grid; grid-template-columns: 34px 1fr; gap: 14px;
+    padding: 11px 0; border-bottom: 1px solid var(--rule);
+  }
+  ol.tasks li::before {
+    content: counter(t); font-family: var(--mono); font-size: 12px; font-weight: 500;
+    color: var(--ink-faint); padding-top: 3px; font-variant-numeric: tabular-nums;
+  }
+  ol.tasks b { font-family: var(--sans); font-weight: 600; font-size: 15px; display: block; color: var(--ink); }
+  ol.tasks span { font-family: var(--sans); font-size: 13.5px; color: var(--ink-soft); }
+
+  ul.plain { padding-left: 20px; margin: 0 0 18px; }
+  ul.plain li { margin-bottom: 8px; max-width: 64ch; }
+
+  footer {
+    margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--rule);
+    font-family: var(--sans); font-size: 13px; color: var(--ink-faint);
+  }
+  footer code { background: none; padding: 0; }
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <div class="eyebrow">
+    <span>PhenoTypic · CLI staging</span>
+    <span>Design + plan</span>
+    <span>2026-09-15</span>
+  </div>
+  <h1>A SAM2 detector the scheduler can't see</h1>
+  <p class="standfirst">A 33,923-image run was routed to CPU partitions without a single error, because its GPU detector was nested one level deeper than the splitter knew how to look.</p>
+</header>
+
+<dl class="verdict">
+  <div><dt>Images affected</dt><dd class="num">33,923<small>one run, UCR_033 Linzer</small></dd></div>
+  <div><dt>Failure mode</dt><dd style="color:var(--warn)">Silent<small>completes, wrong numbers</small></dd></div>
+  <div><dt>Spike shapes proven</dt><dd class="num">3 / 3<small>plus mutation control</small></dd></div>
+  <div><dt>Review findings</dt><dd class="num">20<small>5 would have blocked</small></dd></div>
+</dl>
+
+<h2>The defect</h2>
+
+<p>PhenoTypic splits a GPU pipeline into three stages so a GPU node isn't occupied by CPU work: preprocess on CPU, infer with a resident model on the GPU, then measure back on CPU. Whether that engine engages at all comes down to one predicate:</p>
+
+<pre class="bad"><i># src/phenotypic/_cli/_cli_validation.py:147</i>
+return any(isinstance(op, GpuDetector) for op in pipeline.<b>get_ops()</b>.values())</pre>
+
+<p><code>get_ops()</code> returns the <em>top level</em>. The production pipeline puts its <code>Sam2</code> inside a <code>CompositeDetector</code>, where it is merged against a <code>ManualPointDetector</code> by mutual overlap. Measured against the real config:</p>
+
+<pre><i>top-level ops:</i> [CropImage, DenoiseBlockMatch, CompositeEnhance, CompositeDetector,
+                MaskFill, MaskDilation, SmallObjectRemover, KeepSectionLargest]
+<i>composite.ops:</i> [Sam2, ManualPointDetector]
+pipeline_requires_gpu  -> <b>False</b>
+split_pipeline_at_gpu  -> <b>ValueError: no GpuDetector in pipeline</b></pre>
+
+<p>Nothing raises. Three consequences follow from that single <code>False</code>, and each one is a quiet downgrade rather than a stop:</p>
+
+<div class="tw"><table>
+  <thead><tr><th>Consequence</th><th>Site</th></tr></thead>
+  <tbody>
+    <tr><td>Staged engine never engages</td><td><code>_cli_execution_strategies.py:1341</code></td></tr>
+    <tr><td>SLURM never adds <code>slurm_gpus_per_node=1</code>; the array lands on a CPU partition and <code>device="auto"</code> resolves to CPU</td><td><code>:906</code></td></tr>
+    <tr><td><code>effective_n_jobs</code> stays at <code>--njobs</code> (default <code>-1</code>), so N processes each build a SAM2 model on one GPU</td><td><code>:341</code>, <code>:361</code></td></tr>
+  </tbody>
+</table></div>
+
+<p>This is a wrong-answer bug, not a slow path. The run finishes and reports success.</p>
+
+<h2>The mechanism</h2>
+
+<p>The splitter assumes a flat sequence it can cut at an index. A nested detector is a leaf in a tree — there is no "ops before it" inside the composite, and its sibling branches have to run and merge in the same call. But the Stage-2/Stage-3 contract is narrower than it looks: Stage 2 emits exactly one <code>(H,W)</code> array per image, and Stage 3 replays it. Nothing in that requires the detector to be top-level. Only the <em>split</em> and the <em>injection point</em> do.</p>
+
+<figure>
+  <svg viewBox="0 0 860 330" role="img" aria-label="The pipeline is cut at CompositeDetector: three ops before it run as Stage 1 on CPU, the nested Sam2 runs alone as Stage 2 on the GPU and writes a raw array, and Stage 3 re-runs the composite on CPU with a replay stub substituted for Sam2 so the overlap merge against ManualPointDetector still happens.">
+    <defs>
+      <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <polygon points="0,0 10,5 0,10" fill="currentColor"/>
+      </marker>
+      <marker id="argpu" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <polygon points="0,0 10,5 0,10" fill="var(--gpu)"/>
+      </marker>
+    </defs>
+
+    <!-- stage bands -->
+    <text x="0" y="16" font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="600" letter-spacing="1.2" fill="var(--cpu)">STAGE 1 · CPU</text>
+    <text x="352" y="16" font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="600" letter-spacing="1.2" fill="var(--gpu)">STAGE 2 · GPU</text>
+    <text x="566" y="16" font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="600" letter-spacing="1.2" fill="var(--cpu)">STAGE 3 · CPU</text>
+
+    <!-- stage 1 ops -->
+    <rect x="0" y="30" width="330" height="46" fill="var(--cpu-soft)" stroke="var(--cpu)" stroke-width="1"/>
+    <text x="165" y="50" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="currentColor">CropImage · DenoiseBlockMatch</text>
+    <text x="165" y="66" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="currentColor">CompositeEnhance</text>
+
+    <!-- store -->
+    <line x1="330" y1="53" x2="392" y2="53" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar)"/>
+    <text x="361" y="45" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="10" fill="var(--ink-faint)">store</text>
+
+    <!-- stage 2 -->
+    <rect x="396" y="30" width="150" height="46" fill="var(--gpu-soft)" stroke="var(--gpu)" stroke-width="1.5"/>
+    <text x="471" y="50" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500" fill="var(--gpu)">Sam2</text>
+    <text x="471" y="66" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="10" fill="var(--ink-soft)">reads detect_mat, read-only</text>
+
+    <!-- raw array -->
+    <line x1="471" y1="76" x2="471" y2="112" stroke="var(--gpu)" stroke-width="1.5" marker-end="url(#argpu)"/>
+    <rect x="404" y="114" width="134" height="30" fill="var(--surface)" stroke="var(--gpu)" stroke-width="1" stroke-dasharray="3 2"/>
+    <text x="471" y="133" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--gpu)">stage2_raw/*.npy</text>
+
+    <!-- replay arrow into stage 3 -->
+    <path d="M 538 129 L 700 129 L 700 92" fill="none" stroke="var(--gpu)" stroke-width="1.5" marker-end="url(#argpu)"/>
+    <text x="622" y="122" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="10" fill="var(--gpu)">replays as</text>
+
+    <!-- stage 3 composite box -->
+    <rect x="566" y="30" width="294" height="62" fill="var(--cpu-soft)" stroke="var(--cpu)" stroke-width="1"/>
+    <text x="576" y="45" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink-soft)">CompositeDetector(mode="overlap")</text>
+    <rect x="576" y="52" width="122" height="30" fill="var(--surface)" stroke="var(--gpu)" stroke-width="1.5"/>
+    <text x="637" y="71" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" font-weight="500" fill="var(--gpu)">ReplayDetector</text>
+    <rect x="708" y="52" width="142" height="30" fill="var(--surface)" stroke="var(--cpu)" stroke-width="1"/>
+    <text x="779" y="71" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="currentColor">ManualPointDetector</text>
+
+    <!-- merge -->
+    <line x1="637" y1="92" x2="637" y2="116" stroke="currentColor" stroke-width="1"/>
+    <line x1="779" y1="92" x2="779" y2="116" stroke="currentColor" stroke-width="1"/>
+    <line x1="637" y1="116" x2="779" y2="116" stroke="currentColor" stroke-width="1"/>
+    <line x1="708" y1="116" x2="708" y2="140" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar)"/>
+    <text x="716" y="132" font-family="IBM Plex Sans, sans-serif" font-size="10" fill="var(--ink-faint)">mutual overlap</text>
+
+    <rect x="620" y="142" width="176" height="30" fill="var(--cpu-soft)" stroke="var(--cpu)" stroke-width="1"/>
+    <text x="708" y="161" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="currentColor">MaskFill · MaskDilation · …</text>
+
+    <!-- the cut -->
+    <line x1="344" y1="24" x2="344" y2="190" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <line x1="556" y1="24" x2="556" y2="190" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="5 4"/>
+
+    <!-- path callout -->
+    <line x1="471" y1="200" x2="471" y2="232" stroke="var(--ink-faint)" stroke-width="1"/>
+    <text x="430" y="252" font-family="IBM Plex Sans, sans-serif" font-size="12" font-weight="600" fill="var(--ink)">addressed by one path, used twice</text>
+    <rect x="430" y="262" width="330" height="28" fill="var(--sunk)" stroke="var(--rule)"/>
+    <text x="442" y="281" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--gpu)">("CompositeDetector", "ops[0]")</text>
+    <text x="430" y="308" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="var(--ink-faint)">— the substitution target, and the provenance step path</text>
+
+    <text x="0" y="252" font-family="IBM Plex Sans, sans-serif" font-size="12" font-weight="600" fill="var(--ink)">The cut</text>
+    <text x="0" y="272" font-family="IBM Plex Sans, sans-serif" font-size="11.5" fill="var(--ink-soft)">falls at the detector's top-level</text>
+    <text x="0" y="288" font-family="IBM Plex Sans, sans-serif" font-size="11.5" fill="var(--ink-soft)">ancestor, not at the detector —</text>
+    <text x="0" y="304" font-family="IBM Plex Sans, sans-serif" font-size="11.5" fill="var(--ink-soft)">so the merge still happens on CPU.</text>
+  </svg>
+  <figcaption>The composite itself heads Stage 3, with a replay stub standing in for <code>Sam2</code> at its branch. The CPU sibling and the overlap merge run exactly as they would in a single-pass run — the GPU node sees only inference.</figcaption>
+</figure>
+
+<h2>Evidence</h2>
+
+<p>A throwaway spike swapped a deterministic CPU <code>FakeGpuDetector</code> in for SAM2 — same hook surface, no GPU — and ran three nesting shapes both ways: normally, and split into stages with the stub substituted.</p>
+
+<div class="tw"><table>
+  <thead><tr><th>Shape</th><th>Path found</th><th>Stage-2 prefix</th><th>objmap</th><th>Measurements</th></tr></thead>
+  <tbody>
+    <tr><td>Leaf in composite <em>(production)</em></td><td><code>CompositeDetector/ops[0]</code></td><td>—</td><td class="pass">identical</td><td class="pass">identical, 9×48</td></tr>
+    <tr><td>Behind a CPU prefix in a branch</td><td><code>…/ops[0]/FakeGpuDetector</code></td><td><code>ContrastStretching</code></td><td class="pass">identical</td><td class="pass">identical, 9×48</td></tr>
+    <tr><td>Composite inside a composite</td><td><code>…/ops[0]/ops[0]</code></td><td>—</td><td class="pass">identical</td><td class="pass">identical, 9×48</td></tr>
+  </tbody>
+</table></div>
+
+<p>An equivalence check that can only pass is worth nothing, so the recorded array was perturbed by a 7-pixel roll:</p>
+
+<pre class="good">clean replay matches reference : <b style="color:var(--gpu)">True</b>   (want True)
+corrupted replay matches ref   : <b>False</b>  (want False)
+corrupted objects=9 vs ref=9   <i>&lt;- an object-count check would NOT have caught it</i></pre>
+
+<h2>What the review changed</h2>
+
+<p>An independent reviewer read the plan against the tree and returned twenty findings. Five would have stopped execution on contact, and two of those were defects in the <em>design</em>, not the plan.</p>
+
+<div class="note">
+  <h4>The mitigation that reproduced the bug it was fixing</h4>
+  <p>The spec prescribed <code>set_provenance_status(image, "in_progress")</code> to escape a provenance trap. But <code>_append_application</code> accepts only <code>{"complete", "failed"}</code> — <code>"in_progress"</code> is non-terminal too, so it raises the exact error it was written to prevent. The probe committed alongside the spec reproduced the trap and stopped there; it never exercised the cure. An untested mitigation shipped as settled.</p>
+  <p>The real mechanism is <code>continuing_provenance_application</code>, which raises the owner depth so the apply <em>joins</em> the open application instead of appending.</p>
+</div>
+
+<div class="note">
+  <h4>A refusal production could never reach</h4>
+  <p>The plan refused a GPU detector in a measurement slot — but only under a <code>strict=True</code> argument that just one caller passes, and that caller runs only <em>after</em> <code>pipeline_requires_gpu</code> has already returned <code>True</code>. A detector hidden there would return <code>False</code> and run silently on CPU: the very bug being fixed, reintroduced one layer down. The plan's own test passed, because it called the helper directly.</p>
+</div>
+
+<div class="note win">
+  <h4>A correction that went the other way</h4>
+  <p>I believed the plan's <code>_branch_prefix</code> was wrong and the spike's version — the one that actually passed — was right. The reverse is true. The spike lacks a root guard on its final block, so for a <em>top-level</em> detector it returns every preceding top-level op as the Stage-2 prefix: ops Stage 1 has already applied and written to the store, which Stage 2 would then re-run on top of themselves. All three spike shapes nest, so nothing exercised it. Passing tests said nothing about the shape they never ran.</p>
+</div>
+
+<p>The remaining three blockers: the Stage-2 prefix raised on a <code>"staged"</code> journal because <code>image.copy()</code> carries it; the provenance identity hook covered two of four fields, and the two it missed are pinned by an existing integration test; and the tests couldn't deserialise their own fixture, because <code>from_json</code> resolves classes by bare name against the <code>phenotypic</code> namespace.</p>
+
+<h2>Scope beyond staging</h2>
+
+<p>Two decisions reach past the immediate fix. Both change shipped, documented behaviour, and each creates a version boundary.</p>
+
+<h3>The objmap export now means what the pipeline says</h3>
+<p><code>--mode process --layer objmap</code> wrote the detector's raw mask and stopped. For this pipeline that would be SAM2 alone — no overlap merge, no <code>MaskFill</code>, no <code>SmallObjectRemover</code>. It now runs the post-detector chain, for nested <em>and</em> top-level detectors, on the principle that the operations a user supplies as parameters should be the operations that actually run.</p>
+<p>That silently invalidates in-flight continuations, because the work-id digest hashes only user configuration and knows nothing about a change in PhenoTypic's own semantics. A revision constant now rides in the process-only half of the digest — not the base payload, which would have cold-started every <code>full</code> and <code>measure</code> run on the cluster for no correctness gain.</p>
+
+<h3>Provenance step paths descend uniformly</h3>
+<p>They didn't. A nested <code>ImagePipeline</code> descended; a <code>CompositeDetector</code> didn't. Nested composites produced five journal entries under one identical path — two different composites with different <code>mode</code> values, indistinguishable by path.</p>
+<p>Fixing it costs one <code>pipeline_step</code> push in four container classes, and buys something the staging work needs anyway: the walker's <code>gpu_path</code> and the recorded <code>pipeline_step_path</code> become the same value, measured identical across all three shapes. One addressing scheme instead of two kept in step by hand.</p>
+
+<h2>Bounds</h2>
+
+<ul class="plain">
+  <li><strong>Refused, loudly:</strong> more than one GPU detector anywhere in the tree; a GPU detector in <code>meas</code>/<code>post</code>/<code>filters</code>/<code>model</code>, which Stage 3 runs on a CPU node; a GPU detector inside an enhancer container, whose branch must produce a layer rather than an objmap.</li>
+  <li><strong>The branch prefix runs twice</strong> — once in Stage 2, once in Stage 3 — so it must be deterministic. Zero cost for the production pipeline, whose prefix is empty; it only bites if <code>DenoiseBlockMatch</code> or <code>FocusEdgePhase</code> later moves inside the composite branch.</li>
+  <li><strong>Known gap, recorded not papered over:</strong> a nested pipeline's own <code>meas</code> slot is never walked, so a GPU detector hidden there is neither staged nor refused. Not reachable from the builder, no known user.</li>
+</ul>
+
+<h2>The plan</h2>
+
+<p>Fifteen tasks, TDD throughout. Task 3 alone closes the wrong-answer bug and is worth landing on its own.</p>
+
+<ol class="tasks">
+  <li><b>Shared operation-tree traversal</b><span>One walker, path-addressed as <code>field[i]</code> because a path is also a provenance step path, which rejects integers.</span></li>
+  <li><b>Consolidate tune/'s traversal</b><span>Rescoped after review — <code>gui/</code> walks type annotations, not instances, so there is nothing there to share.</span></li>
+  <li><b>Detect tree-wide; refuse unstageable placements</b><span>Closes the bug. The refusal must fire on the production path, not behind a flag.</span></li>
+  <li><b>Container ops push a per-branch step</b><span>Four classes, one shared helper. Measurement probes stay excluded, by design and by test.</span></li>
+  <li><b>Path-shaped StagePlan + branch prefix</b><span>Cut at the ancestor; the detector's own slot survives so the stub can land in it.</span></li>
+  <li><b>ReplayDetector</b><span>Delegates the write to the real detector, and its identity — all four provenance fields — to the wrapped op.</span></li>
+  <li><b>Stage 2 applies the branch prefix</b><span>On a provenance-detached copy; a bare <code>copy()</code> carries the journal and raises.</span></li>
+  <li><b>Stage 3 substitutes the stub</b><span>Replaces the explicit write and hand-rolled journal append.</span></li>
+  <li><b>Pin the addressing invariant</b><span><code>gpu_path == pipeline_step_path</code>, asserted rather than assumed.</span></li>
+  <li><b>Equivalence + mutation control</b><span>The gate for the whole change.</span></li>
+  <li><b>Process mode runs the post-detector chain</b><span>With the corrected provenance handling and no success sink.</span></li>
+  <li><b>Invalidate continuation across the bump</b><span>Process-only half of the digest.</span></li>
+  <li><b>Forward stage2_prefix at both call sites</b><span>Re-aimed after review. The parameter defaults to <code>None</code>, so until this lands, shape B is broken with no error.</span></li>
+  <li><b>Documentation</b><span>Root <code>CLAUDE.md</code>'s description of the export is now false.</span></li>
+  <li><b>Full regression</b><span>Once, as a Slurm job, against the recorded baseline.</span></li>
+</ol>
+
+<footer>
+  Worktree <code>worktree-nested-gpu-staging</code> · spec, plan, review and spike committed across <code>83a8680f</code>, <code>9876ef1c</code>, <code>fac454e2</code>.<br>
+  Not yet implemented — this is the design and the plan, with the spike that proved the mechanism.
+</footer>
+
+</div>

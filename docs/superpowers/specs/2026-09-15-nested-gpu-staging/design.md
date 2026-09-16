@@ -16,8 +16,11 @@ element of `ImagePipeline.get_ops()`.
 
 **Non-goals.**
 
-- More than one `GpuDetector` per pipeline. The existing single-detector rule
-  stands, extended tree-wide.
+- More than one `GpuDetector` per pipeline. The single-detector rule stands,
+  extended tree-wide — but it is now a **deferred feature, not a limit of the
+  design**: §13 records the intended `N > 1` execution model, and §4.4 lands the
+  slot-keyed Stage-2 signal *now* so that work is additive rather than a change
+  to the on-disk layout of a signal a 33,923-image run depends on.
 - Any change to the Stage-2 raw/token contract, the epoch-fenced controller, or
   SLURM chaining. All are untouched. *Continuation is untouched in mechanism,
   but §8.3 deliberately invalidates it once, at the upgrade, via the work-id
@@ -189,7 +192,46 @@ records them for real.
 **For the driver pipeline the prefix is empty** — `Sam2` is a bare leaf, so
 Stage 2 reads `detect_mat` from the store exactly as it does today.
 
-### 4.4 The replay stub
+### 4.4 The Stage-2 signal is keyed by detector slot
+
+Today the Stage-2 signal is keyed by **image alone**:
+
+```python
+stage2_raw_path(output_dir, dataset, image_stem)
+#   -> <output>/.phenotypic/progress/stage2_raw/<dataset>/<stem>.npy
+```
+
+One array per image, structurally. That is the single thing standing between
+this design and supporting **more than one GPU detector**, and it is changed
+**now**, while `N` is still 1:
+
+```python
+stage2_raw_path(output_dir, dataset, image_stem, slot)
+#   -> <output>/.phenotypic/progress/stage2_raw/<dataset>/<slot>/<stem>.npy
+```
+
+`slot` is derived from the detector's `gpu_path`: each segment sanitised to
+`[A-Za-z0-9-]`, joined with `__`, plus an 8-character hash of the exact path so
+two different paths can never collide after sanitisation. Debuggable by eye,
+collision-proof by construction —
+`CompositeDetector__ops-0__3f9a1c02`. The token path changes the same way.
+
+**Why now rather than with the feature.** At `N == 1` this is invisible: one
+extra directory level and no behavioural difference. Deferred, it becomes a
+change to the on-disk layout of a signal that a 33,923-image run depends on,
+and every in-flight run would have to recompute Stage 2 — GPU time, on the
+scarcest resource in the system. Landing it here costs one path helper and a
+test, and makes `N > 1` purely additive.
+
+**Cost at the boundary.** A staged run interrupted mid-Stage-2 *before* this
+change and resumed *after* it will not find its signals at the new paths and
+will recompute them. That is a recompute, not a wrong answer — Stage 2 is
+content-defined and idempotent. To avoid paying it at all, resume performs a
+one-time relocation: when the legacy per-image path exists, the slot path does
+not, and the plan has exactly one slot, move the file. Roughly ten lines, and
+worth it against a 33,923-image GPU sweep.
+
+### 4.5 The replay stub
 
 ```python
 class ReplayDetector(ObjectDetector):
@@ -369,7 +411,7 @@ numeric one derivable from first principles.
 
 | Case | Reason |
 |---|---|
-| More than one `GpuDetector` anywhere in the tree | Extends the existing single-detector rule; Stage 2 emits one array per image |
+| More than one `GpuDetector` anywhere in the tree | Deferred, not impossible — see §13. The refusal must name **every** offending path, not just the count, so the message tells a user which branches to split |
 | A `GpuDetector` in the `meas` / `post` / `filters` / `model` slots | Stage 3 runs these on a CPU node. The walker must scan these slots in order to reject them — the driver pipeline does carry nested ops there (`MeasureSymZones.center_detector`, `MeasureOrientationZones.center_detector`, both `ManualPointDetector`) |
 | A `GpuDetector` inside `CompositeEnhance` or any enhancer container | `_write_object_output` writes an objmap; an enhancer branch must produce a layer. `OperationField` will not stop this being constructed |
 
@@ -522,7 +564,9 @@ required to pin the new semantics (§10).
 | 2a | `gui/`, `tune/` | Regression pass for each, as consumers of the consolidated walker |
 | 3 | `_cli_pipeline_split.py` | `gpu_key` → `gpu_path`; add `stage2_prefix`; cut at `gpu_path[0]`, ancestor heads `post_pipeline` |
 | 4 | *new* | `ReplayDetector` + path-addressed `substitute()` |
-| 5 | `_cli_staged_workers.py` `stage2_detect_core` | Apply `stage2_prefix` to an in-memory copy before reading `input_layer` |
+| 5 | `_cli_staged_workers.py` `stage2_detect_core` | Apply `stage2_prefix` to a provenance-detached copy before reading `input_layer` (§4.3) |
+| 5a | `_cli_stage2_token.py:54,145` | **Key the raw array and the token by detector slot** (§4.4). Add `slot` to `stage2_raw_path` / `stage2_token_path` and every reader/writer/predicate |
+| 5b | `_cli_stage2_token.py` | One-time resume relocation: legacy per-image path → slot path, when the plan has exactly one slot (§4.4) |
 | 6 | `_cli_staged_workers.py` `stage3_merge_measure_core:490` | Replace the explicit `_write_object_output` + `append_operation_provenance` pair with stub substitution; stub carries identity + duration |
 | 7 | `_cli_staged_strategy.py` `_export_objmap_layer:397` | Run the post-detector op chain (top-level **and** nested) via the same stub substitution, with in-memory-only provenance handling and no checkpoint write (§8.1, §8.2) |
 | 7a | `_cli_failure_tracker.py:191-236` | Add an output-semantics revision constant to `processing_configuration_digest_from_values`, bumped by this change (§8.3) |
@@ -626,3 +670,70 @@ required to pin the new semantics (§10).
 | `gpu_path` and `pipeline_step_path` drift apart after the fact | The §5.3 identity is asserted as a test, not left as a convention (§10) |
 | **A refusal that production never reaches.** If `pipeline_requires_gpu` scans non-strictly, a GpuDetector in `meas`/`post`/`filters`/`model` yields `False`, routes to the non-staged strategy, and silently runs on CPU — the exact bug this change exists to kill — while a unit test calling the refusal directly still passes | The refusal must be reachable from `pipeline_requires_gpu` itself. Because that function is also called from `gui/run_console/_callbacks.py:253-255`, where an exception is unwelcome, prefer: always scan every slot, return the ops-slot hits, and raise for a CPU-only-slot hit regardless of any `strict` flag. Test through `pipeline_requires_gpu`, never through the helper |
 | A mitigation documented but never exercised | §8.2 shipped a wrong fix because its probe reproduced the trap and stopped. Every provenance mitigation in this spec must have a test that runs **the mitigation**, at `_application_owner_depth == 0` |
+
+---
+
+## 13. Planned extension: more than one GPU detector
+
+This spec ships `N = 1`. The shape below is **not implemented here**, but §4.4's
+slot keying exists to make it additive rather than structural, so it is recorded
+now while the reasoning is fresh.
+
+### 13.1 The two axes are not equally expensive
+
+| Axis | Meaning | Where it lands |
+|---|---|---|
+| **N** — detectors per round | Detectors reading the **same** upstream state, e.g. `CompositeDetector(ops=[Sam2, Dino, ManualPointDetector])`. Composite branches each get `apply(image, inplace=False)` on the same input, so no branch depends on another. | worker + storage layer |
+| **R** — rounds | Detectors where one's input depends on another's output, e.g. `CompositeA(Sam2, …) → MaskDilation → CompositeB(Dino, …)`. | scheduler orchestration |
+
+Generalised, a pipeline is segments:
+
+```
+CPU(S0) → GPU(round 1) → CPU(S1) → GPU(round 2) → … → CPU(S_R) → measure
+```
+
+and this spec is the `R = 1, N = 1` corner. **`N > 1` and `R > 1` are separate
+pieces of work and should stay separate** — `N` touches the worker and the
+signal layout, `R` touches the epoch-fenced controller, which is the component
+where a mistake yields artifacts interleaved from two attempts rather than a
+clean failure.
+
+### 13.2 The intended execution model for `N > 1`
+
+**One detector at a time across the whole dataset; parallel across images
+within each sweep.** Stage 2 becomes `N` sub-sweeps:
+
+```
+Stage 2a   load Sam2 once per worker   → sweep every image → stage2_raw/<sam2-slot>/…
+Stage 2b   load Dino once per worker   → sweep every image → stage2_raw/<dino-slot>/…
+Stage 3    replay both slots, composite merges, both raws consumed and deleted
+```
+
+This is deliberately **not** "hold N resident models per worker". Two
+foundation models resident on one ada6000 is a memory gamble that fails late,
+after all the CPU preprocessing, in the same way a Pascal placement does. One
+model per worker keeps the existing residency invariant exactly and buys
+parallelism from array width instead of GPU memory.
+
+Consequences, all additive on top of §4.4:
+
+- `StagePlan` carries a **list** of slots rather than one.
+- Stage 3 folds `substitute_at_path` over the slots — it already composes.
+- The continuation predicate becomes *every* slot present for an image, not
+  *the* file present.
+- Intermediates are deleted per slot, as today: token consumed, then raw.
+
+### 13.3 What `R > 1` would additionally need
+
+Recorded for completeness; no user requires it today.
+
+- The controller chains `2R + 1` job groups instead of 3; the append-only
+  ledger, the recovery derivation and the epoch fence all scale with `R`.
+- `submit_capacity = max_submit - 2` (`_cli_staged_slurm.py:557`) reserves two
+  slots for the running controller and its pre-armed recovery controller. Both
+  that reservation and the
+  `ceil(n_images / min(MaxArraySize, MaxSubmitJobs - 2))` chunking change with
+  `R`, and at 33,923 images these limits are already close.
+- **No new artifact type is needed**, which is the one cheap part: each CPU
+  segment re-promotes the per-image store, so the store already carries state
+  between rounds.

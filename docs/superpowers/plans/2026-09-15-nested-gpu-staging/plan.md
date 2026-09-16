@@ -40,12 +40,13 @@
 | `src/phenotypic/detect/_two_k_filamentous_detector.py` | adopt `apply_child` | 4 |
 | `src/phenotypic/_cli/_cli_pipeline_split.py` | `StagePlan.gpu_path`, `stage2_prefix`, ancestor-based cut, plot guard | 5 |
 | `src/phenotypic/_cli/_cli_replay_detector.py` | **new** — `ReplayDetector` | 6 |
+| `src/phenotypic/_cli/_cli_stage2_token.py` | slot-keyed raw/token paths + legacy relocation | 6a |
 | `src/phenotypic/_cli/_cli_staged_workers.py` | Stage-2 prefix; Stage-3 stub substitution | 7, 8 |
 | `src/phenotypic/_cli/_cli_staged_strategy.py` | process-mode post-detector op chain (11); forward `stage2_prefix` at the local Stage-2 call site `:246` (13) | 11, 13 |
 | `src/phenotypic/_cli/_cli_failure_tracker.py` | output-semantics revision in the work-id digest | 12 |
 | `src/phenotypic/_cli/_cli_staged_slurm_worker.py` | forward `stage2_prefix` at the SLURM Stage-2 call site (`:310`) | 13 |
 
-**Dependency order:** 1 → {2, 3, 5} → 6 → {7, 8} → 9 → 10 → 11 → 12 → 13 → 14 → 15.
+**Dependency order:** 1 → {2, 3, 5} → 6 → 6a → {7, 8} → 9 → 10 → 11 → 12 → 13 → 14 → 15.
 Task 4 is independent of the staging chain and may run in parallel with 2/3/5,
 but must land before 9. Task 2 is `tune/`-only (see its note) and is on no
 critical path — it can be deferred without blocking anything.
@@ -627,9 +628,12 @@ def find_gpu_detectors(pipeline, *, strict: bool = False):
 
     if strict and len(hits) > 1:
         paths = ", ".join("/".join(p) for p, _ in hits)
+        # Name EVERY offending path, not just the count: the message's job is to
+        # tell the user which branches to split. Deferred feature, not a limit of
+        # the design -- see spec §13 for the intended N>1 execution model.
         raise UnstageableGpuDetectorError(
-            "staged execution does not support more than one GpuDetector "
-            f"per pipeline (found {len(hits)}: {paths})"
+            "staged execution currently supports one GpuDetector per pipeline; "
+            f"found {len(hits)} at: {paths}"
         )
 
     # Unconditional -- deliberately NOT gated on `strict`; see the docstring.
@@ -1360,6 +1364,186 @@ Expected: PASS (3 tests)
 uv run ruff check --fix src/phenotypic/_cli/_cli_replay_detector.py src/phenotypic/_core/_provenance.py tests/unit/cli/test_replay_detector.py
 git add -A
 git commit -m "feat(cli): add ReplayDetector for Stage-3 replay of a staged detector"
+```
+
+---
+
+## Task 6a: Key the Stage-2 signal by detector slot
+
+**Files:**
+- Modify: `src/phenotypic/_cli/_cli_stage2_token.py` (`stage2_token_path:54`, `stage2_raw_path:145`, and every reader / writer / predicate)
+- Test: `tests/unit/cli/test_stage2_slot_keying.py` (create)
+
+**Interfaces:**
+- Consumes: `StagePlan.gpu_path` (Task 5).
+- Produces:
+  - `detector_slot(gpu_path: Sequence[str]) -> str`
+  - `stage2_raw_path(output_dir, dataset, image_stem, slot)`
+  - `stage2_token_path(output_dir, dataset, image_stem, slot)`
+  - `relocate_legacy_stage2_signal(output_dir, dataset, image_stem, slot) -> bool`
+
+> **Why this task exists now, at N = 1.** The signal is currently keyed by image
+> alone — one array per image, structurally — and that is the only thing making
+> `N > 1` a change to the on-disk layout rather than an additive feature
+> (spec §4.4, §13). At `N == 1` this is one extra directory level and no
+> behavioural difference. Deferred, it becomes a layout migration on a signal a
+> 33,923-image run depends on. Land it here.
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/cli/test_stage2_slot_keying.py
+import numpy as np
+
+from phenotypic._cli._cli_stage2_token import (
+    detector_slot,
+    load_stage2_raw,
+    relocate_legacy_stage2_signal,
+    stage2_raw_path,
+    write_stage2_raw,
+)
+
+
+def test_slot_is_readable_and_collision_proof():
+    a = detector_slot(("CompositeDetector", "ops[0]"))
+    b = detector_slot(("CompositeDetector", "ops[1]"))
+
+    assert a != b
+    assert "CompositeDetector" in a and "ops-0" in a   # debuggable by eye
+    assert a.replace("-", "").replace("_", "").isalnum()  # filesystem-safe
+
+
+def test_paths_that_sanitise_alike_still_differ():
+    """`ops[0]` and `ops-0` both sanitise to `ops-0`; the hash must separate them."""
+    assert detector_slot(("A", "ops[0]")) != detector_slot(("A", "ops-0"))
+
+
+def test_two_slots_round_trip_independently(tmp_path):
+    left = detector_slot(("CompositeDetector", "ops[0]"))
+    right = detector_slot(("CompositeDetector", "ops[1]"))
+    a = np.full((4, 4), 1, dtype=np.uint16)
+    b = np.full((4, 4), 2, dtype=np.uint16)
+
+    write_stage2_raw(tmp_path, "ds", "img", a, slot=left)
+    write_stage2_raw(tmp_path, "ds", "img", b, slot=right)
+
+    assert np.array_equal(load_stage2_raw(tmp_path, "ds", "img", slot=left), a)
+    assert np.array_equal(load_stage2_raw(tmp_path, "ds", "img", slot=right), b)
+
+
+def test_a_legacy_signal_is_relocated_rather_than_recomputed(tmp_path):
+    """Avoids re-running a GPU sweep for images an interrupted run finished."""
+    slot = detector_slot(("CompositeDetector", "ops[0]"))
+    legacy = tmp_path / ".phenotypic" / "progress" / "stage2_raw" / "ds"
+    legacy.mkdir(parents=True)
+    np.save(legacy / "img.npy", np.full((4, 4), 7, dtype=np.uint16))
+
+    assert relocate_legacy_stage2_signal(tmp_path, "ds", "img", slot) is True
+    assert stage2_raw_path(tmp_path, "ds", "img", slot).is_file()
+    assert not (legacy / "img.npy").exists()
+    assert load_stage2_raw(tmp_path, "ds", "img", slot=slot).max() == 7
+
+
+def test_relocation_never_overwrites_a_current_signal(tmp_path):
+    slot = detector_slot(("CompositeDetector", "ops[0]"))
+    write_stage2_raw(tmp_path, "ds", "img", np.full((4, 4), 3, np.uint16), slot=slot)
+    legacy = tmp_path / ".phenotypic" / "progress" / "stage2_raw" / "ds"
+    legacy.mkdir(parents=True, exist_ok=True)
+    np.save(legacy / "img.npy", np.full((4, 4), 9, dtype=np.uint16))
+
+    assert relocate_legacy_stage2_signal(tmp_path, "ds", "img", slot) is False
+    assert load_stage2_raw(tmp_path, "ds", "img", slot=slot).max() == 3
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `uv run pytest tests/unit/cli/test_stage2_slot_keying.py -v`
+Expected: FAIL — `ImportError: cannot import name 'detector_slot'`
+
+- [ ] **Step 3: Implement the slot id**
+
+```python
+# src/phenotypic/_cli/_cli_stage2_token.py
+import hashlib
+import re
+from typing import Sequence
+
+_UNSAFE = re.compile(r"[^A-Za-z0-9]+")
+
+
+def detector_slot(gpu_path: Sequence[str]) -> str:
+    """A filesystem-safe, collision-proof id for one staged detector.
+
+    Readable half: each path segment with runs of non-alphanumerics collapsed to
+    ``-``, joined by ``__``. Safe half: 8 hex characters of the EXACT path, so
+    two paths that sanitise alike (``ops[0]`` and ``ops-0``) never collide.
+
+        ("CompositeDetector", "ops[0]") -> "CompositeDetector__ops-0__3f9a1c02"
+    """
+    exact = "/".join(gpu_path)
+    readable = "__".join(_UNSAFE.sub("-", part).strip("-") for part in gpu_path)
+    digest = hashlib.sha256(exact.encode("utf-8")).hexdigest()[:8]
+    return f"{readable}__{digest}"
+```
+
+- [ ] **Step 4: Thread `slot` through every path helper and its callers**
+
+`stage2_raw_path`, `stage2_token_path`, `write_stage2_raw`, `load_stage2_raw`,
+`write_stage2_token`, `read_stage2_token`, and the `stage2_result_replayable`
+predicate all take `slot`. Make it **keyword-only and required** — a default
+would let a caller silently write to a shared path, which is exactly the
+structural problem this task removes.
+
+New layout:
+
+```
+<output>/.phenotypic/progress/stage2_raw/<dataset>/<slot>/<stem>.npy
+<output>/.phenotypic/progress/stage2_done/<dataset>/<slot>/<stem>.json
+```
+
+Callers to update: `_cli_staged_workers.py` (Stage 2 write, Stage 3 read and
+consume), `_cli_staged_strategy.py` (the objmap export and the replayable
+probe), `_cli_staged_slurm_worker.py`.
+
+- [ ] **Step 5: Implement the legacy relocation**
+
+```python
+def relocate_legacy_stage2_signal(
+    output_dir: Path, dataset: str, image_stem: str, slot: str
+) -> bool:
+    """Move a pre-slot-keying signal into its slot directory. Returns moved?
+
+    A staged run interrupted before slot keying and resumed after it would
+    otherwise not find its signals and would recompute Stage 2 -- correct, but
+    paid in GPU time on the scarcest resource in the cluster. Only valid when
+    the plan has exactly ONE slot; with more, a legacy file is unattributable
+    and is left alone to be recomputed.
+
+    Never overwrites a current signal: if the slot path already exists, the
+    legacy file is stale and the current one wins.
+    """
+```
+
+Call it from the resume path **only when `len(plan.slots) == 1`**, guarded so
+it cannot run under a multi-detector plan.
+
+- [ ] **Step 6: Run the tests**
+
+```bash
+uv run pytest tests/unit/cli/test_stage2_slot_keying.py -v
+uv run pytest tests/unit/cli/test_staged_resume.py tests/unit/cli/test_staged_resume_equivalence.py -v
+uv run pytest tests/integration/cli/test_staged_gpu_local.py -v
+```
+
+Expected: PASS. The resume suites are the ones that touch these paths most —
+a failure there means a caller was missed in step 4.
+
+- [ ] **Step 7: Commit**
+
+```bash
+uv run ruff check --fix src/phenotypic/_cli/_cli_stage2_token.py src/phenotypic/_cli/_cli_staged_workers.py src/phenotypic/_cli/_cli_staged_strategy.py src/phenotypic/_cli/_cli_staged_slurm_worker.py tests/unit/cli/test_stage2_slot_keying.py
+git add -A
+git commit -m "refactor(cli): key the Stage-2 signal by detector slot"
 ```
 
 ---
