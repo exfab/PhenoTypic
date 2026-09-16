@@ -68,6 +68,16 @@ def walk_operations(pipeline: Any) -> Iterator[tuple[tuple[str, ...], Any]]:
     refused. That shape is not reachable from the GUI builder and has no known
     user, so it is out of scope here -- but it is a gap, not an invariant, and
     the CPU-only-slot refusal covers only the ROOT pipeline's slots.
+
+    **Say the consequence, not just the gap.** "Neither staged nor refused"
+    means the run routes to the CPU strategy and the detector performs
+    per-image inference on a CPU node, with nothing reported -- the same silent
+    failure the tree-wide scan exists to remove, surviving in a shape this
+    walker cannot see. Measured for a nested pipeline's ``meas``:
+    ``find_gpu_detectors`` returns ``[]``, ``pipeline_requires_gpu`` returns
+    ``False``, ``uses_staged_gpu_strategy`` returns ``False``. Pinned by
+    ``test_a_gpu_detector_in_a_NESTED_pipelines_meas_slot_is_refused``
+    (xfail, non-strict), which XPASSes when this is fixed.
     """
 
     def visit(
