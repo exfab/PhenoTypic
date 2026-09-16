@@ -188,9 +188,19 @@ class TwoKFilamentousDetector(GridObjectDetector):
         # ``inplace=True`` is load-bearing: this call's whole purpose is the
         # mutation of ``enhanced``, and ``apply_child`` defaults ``inplace`` to
         # ``False``, which would discard the enhancement silently.
-        # ``center_detector`` and ``background_subtractor`` are deliberately
-        # NOT routed through ``apply_child``: this class is refused for GPU
-        # staging, so only the enhancement branch is worth addressing.
+        #
+        # All three operation-valued fields are routed through ``apply_child``
+        # -- ``center_detector`` and ``background_subtractor`` in
+        # ``_fill_centers``. An earlier revision of this comment said those two
+        # were "deliberately NOT routed ... this class is refused for GPU
+        # staging, so only the enhancement branch is worth addressing", and
+        # that reasoning was measurably wrong: ``center_detector`` defaults to
+        # an ``ImagePipeline`` whose own ``_run_operations`` pushes a segment
+        # per child, so its children were already recording a path -- one with
+        # the MIDDLE segment missing (``['TwoK', 'InoculumDetector']`` where the
+        # walker says ``TwoK/center_detector/InoculumDetector``). ``get_at_path``
+        # cannot resolve that. Not descending did not leave the journal
+        # unchanged; it wrote an unresolvable address into it.
         apply_child(
             self.branch_base, enhanced, segment="branch_base", inplace=True
         )

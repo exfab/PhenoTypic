@@ -103,9 +103,29 @@ def test_an_empty_slot_does_not_shift_its_siblings_branch_index():
     assert recorded["ManualPointDetector"] == ["CompositeDetector", "ops[2]"]
 
 
-def test_the_recorded_paths_are_the_walker_paths():
-    """The local form of the Task-9 invariant: a journal step path is a path
-    the walker also produces for the same pipeline.
+def test_every_recorded_path_is_also_a_walker_path_for_this_shape():
+    """Recorded paths are a SUBSET of the walker's, for a composite-only shape.
+
+    RENAMED AND WEAKENED. This asserted set **equality**, which is not the
+    invariant and is false in general -- see
+    ``tests/unit/cli/test_recorded_paths_resolve.py``, which carries the real
+    one (every recorded path *resolves*). Equality demands every WALKER path
+    also be RECORDED, and a container FIELD is never recorded as itself: for
+    ``TwoKFilamentousDetector`` the walker yields 8 paths while the journal
+    records 14 entries over 6 distinct paths, with ``('TwoK','branch_base')``
+    and ``('TwoK','center_detector')`` appearing only in the walker. No correct
+    behaviour makes those sets equal.
+
+    Equality passed here only because this shape is all composites -- every
+    container is itself an op that records. Left in place, it read as a
+    competing specification sitting beside the real one, and would have failed
+    the moment anyone parametrised it over a shape with an operation-valued
+    field. Subset is what this shape actually demonstrates.
+
+    (Note the ``None``-slot case is NOT a counterexample to equality, contrary
+    to an earlier claim in the plan: ``iter_child_operations`` skips the
+    ``None`` but keeps the true index, so both sides yield
+    ``{('C',), ('C','ops[0]'), ('C','ops[2]')}``.)
     """
     inner = CompositeDetector(ops=[OtsuDetector(), _manual()], mode="union")
     pipeline = ImagePipeline(
@@ -120,7 +140,14 @@ def test_the_recorded_paths_are_the_walker_paths():
 
     walker_paths = {path for path, _ in walk_operations(pipeline)}
     recorded_paths = {tuple(p) for _, p in _step_paths(image) if p}
-    assert recorded_paths == walker_paths
+    assert recorded_paths <= walker_paths, (
+        f"recorded paths the walker never produces: "
+        f"{sorted(recorded_paths - walker_paths)}"
+    )
+    # Premise, so the subset assertion cannot pass vacuously on an empty or
+    # top-level-only journal -- which is exactly what this file's subject
+    # produced before container ops pushed a per-branch step.
+    assert max(len(p) for p in recorded_paths) >= 3
 
 
 def test_composite_enhance_children_record_their_branch_index():
