@@ -159,9 +159,19 @@ class TwoKFilamentousDetector(GridObjectDetector):
         return center_mask, center_img.objmap[:]
 
     def _operate(self, image: "GridImage") -> "GridImage":
+        from phenotypic._core._provenance import apply_child
+
         # ── BRANCH: two-k hysteresis on the enhanced base ──
         enhanced = image.copy()
-        self.branch_base.apply(enhanced, inplace=True)
+        # ``inplace=True`` is load-bearing: this call's whole purpose is the
+        # mutation of ``enhanced``, and ``apply_child`` defaults ``inplace`` to
+        # ``False``, which would discard the enhancement silently.
+        # ``center_detector`` and ``background_subtractor`` are deliberately
+        # NOT routed through ``apply_child``: this class is refused for GPU
+        # staging, so only the enhancement branch is worth addressing.
+        apply_child(
+            self.branch_base, enhanced, segment="branch_base", inplace=True
+        )
         enhanced_arr = np.asarray(enhanced.detect_mat[:], dtype=np.float32)
         enhanced_gray = np.asarray(enhanced.gray[:], dtype=np.float32)
 

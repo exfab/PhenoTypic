@@ -534,6 +534,61 @@ def pipeline_step(key: str) -> Iterator[None]:
         _pipeline_step_path.reset(token)
 
 
+def apply_child(
+    operation: Any,
+    image: "Image",
+    *,
+    segment: str,
+    inplace: bool = False,
+    reset: bool | None = None,
+) -> "Image":
+    """Apply a nested *operation* under its own ``pipeline_step`` segment.
+
+    Container operations (:class:`~phenotypic.detect.CompositeDetector`,
+    :class:`~phenotypic.enhance.CompositeEnhance`, ...) drive children by
+    calling ``.apply()`` directly, which -- unlike
+    ``ImagePipeline._run_operations`` -- pushes no step segment. Every child
+    therefore inherited the container's own path, so N children of a composite
+    were indistinguishable in the journal. Routing child applies through here
+    fixes that, and makes a walker path (``sdk_._operation_tree``) and a
+    recorded ``pipeline_step_path`` the same value (spec 5.3).
+
+    ``segment`` must be a non-empty string, normally ``f"ops[{i}]"``;
+    :func:`validate_provenance_journal` rejects a path containing anything
+    else, so an integer branch index is illegal.
+
+    NOT for measurements: a nested operation run by a ``MeasureFeatures`` is a
+    private probe whose steps deliberately stay out of the plate's provenance
+    (see ``measure/CLAUDE.md``). Those keep calling ``.apply()`` directly.
+
+    Args:
+        operation: The child operation or nested ``ImagePipeline`` to apply.
+        image: The image handed to the child.
+        segment: The path segment recorded for this branch, e.g. ``"ops[0]"``
+            for a list entry or ``"inoculum_detector"`` for a single field.
+        inplace: Forwarded to the child's ``apply``. Defaults to ``False``;
+            a container whose child mutates the caller's image must pass
+            ``True`` explicitly or the child's work is silently discarded.
+        reset: Forwarded to the child's ``apply`` when the child is an
+            ``ImagePipeline``. ``None`` (the default) sends ``reset=False``,
+            matching ``ImagePipeline._run_operations``, which forces the same
+            value on nested pipelines so an intermediate pipeline cannot reset
+            progress accumulated by its parent. Ignored for a non-pipeline
+            child, whose ``apply`` takes no ``reset``.
+
+    Returns:
+        Image: Whatever the child's ``apply`` returned.
+    """
+    from phenotypic._core._image_pipeline import ImagePipeline
+
+    kwargs: dict[str, Any] = {"inplace": inplace}
+    if isinstance(operation, ImagePipeline):
+        kwargs["reset"] = False if reset is None else reset
+
+    with pipeline_step(segment):
+        return operation.apply(image, **kwargs)
+
+
 @contextmanager
 def provenance_success_sink(
     sink: Callable[["Image"], object],

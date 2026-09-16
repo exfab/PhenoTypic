@@ -142,19 +142,23 @@ class CompositeEnhance(NormalizedOutputMixin, ImageEnhancer):
         """Reduce enhancer responses and optional grayscale pixel-wise."""
 
         # Import here to avoid a circular dependency at module load.
-        from phenotypic import ImagePipeline
+        from phenotypic._core._provenance import apply_child
 
         response_maps: list[np.ndarray] = []
         if self.include_gray:
             response_maps.append(np.asarray(image.gray[:], dtype=float))
-        for enhancer in self.ops:
+        # ``enumerate`` over the WHOLE list, including the skipped ``None``
+        # slots: the recorded segment must be the branch's position in ``ops``,
+        # which is how ``sdk_._operation_tree`` addresses it. ``apply_child``
+        # supplies the ``reset=False`` a nested ImagePipeline needs, so the
+        # branch on child type is gone from here.
+        for index, enhancer in enumerate(self.ops):
             if enhancer is None:
                 # An unfilled GUI-builder slot; nothing to apply -- skip it.
                 continue
-            if isinstance(enhancer, ImagePipeline):
-                enhanced = enhancer.apply(image, inplace=False, reset=False)
-            else:
-                enhanced = enhancer.apply(image, inplace=False)
+            enhanced = apply_child(
+                enhancer, image, segment=f"ops[{index}]", inplace=False
+            )
             response_maps.append(np.asarray(enhanced.detect_mat[:], dtype=float))
 
         if not response_maps:
