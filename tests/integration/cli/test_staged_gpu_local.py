@@ -1063,13 +1063,20 @@ def test_shard_worker_records_missing_store_without_requeue(tmp_path):
 
 
 def test_process_objmap_export_writes_the_detected_labels_not_zeros(tmp_path):
-    """``--layer objmap`` replays Stage 2's raw array, never the store.
+    """``--layer objmap`` replays Stage 2's raw array and applies the
+    post-detector ops, never reading the store.
 
     Stage 2 does not write into the store, so the store's objmap at export
     time is still Stage 1's **zeros**. An executor who reads the store here
     exports an all-zeros PNG for every image, silently, and every assertion
     about the token still passes (ledger FLOW-16). This is the assertion that
     notices.
+
+    This pipeline is ``ImagePipeline(ops=[FakeGpuDetector(...)])`` -- a
+    top-level detector with **no post-detector ops** -- so old and new export
+    semantics coincide here and nothing below distinguishes them. The chain
+    itself is pinned by ``test_process_objmap_semantics.py``; what this test
+    guards is FLOW-16, and that is unchanged.
     """
     import cv2
 
