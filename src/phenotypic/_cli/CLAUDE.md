@@ -18,15 +18,45 @@ process_only_layer, pipeline_requires_gpu)`:
 | `StagedGpuStrategy` | **local** forward GPU run, or `--mode process --layer objmap` | `_cli_staged_strategy.py` |
 | `StagedSlurmStrategy` | **SLURM** forward GPU run (`process_only_layer is None`) | `_cli_staged_slurm.py` |
 
-A "GPU run" = the pipeline contains a `GpuDetector` (`pipeline_requires_gpu`).
-The staged strategies are forward-oriented; measure-only and non-objmap
-process-layer exports stay on the Local/Autonomous strategies.
+A "GPU run" = the pipeline contains a `GpuDetector` (`pipeline_requires_gpu`),
+**at any depth in the operation tree**. The staged strategies are
+forward-oriented; measure-only and non-objmap process-layer exports stay on the
+Local/Autonomous strategies.
+
+**`--mode process --layer objmap` runs the post-detector op chain.**
+`_export_objmap_layer` (`_cli_staged_strategy.py`) runs after Stages 1–2 and
+substitutes a `ReplayDetector` at `plan.gpu_path` inside `post_pipeline`, then
+applies that residual pipeline — so the export is *the objmap the pipeline
+produces*, not the detector's raw output. For a **nested** detector the raw
+array is one branch of a composite and not an objmap at all, so the previous
+behaviour exported the wrong thing rather than merely an unrefined one. Three
+details that are load-bearing rather than incidental:
+
+- It reads `load_stage2_raw`, **never the store** — Stage 2 writes nothing into
+  the store, so the store's objmap here is still Stage 1's zeros and a store
+  read would silently export an all-zeros PNG for every image.
+- The apply is wrapped in `continuing_provenance_application` and **no**
+  `provenance_success_sink`. Stage 1 left the application `"staged"`, which is
+  not terminal, so a plain apply at owner-depth 0 raises; and a success sink
+  would write to the store *after* the image success marker, invalidating the
+  descriptor the marker just recorded. Do not "restore" the sink, and do not
+  reach for `set_provenance_status(image, "in_progress")` — that status is also
+  non-terminal and raises the very error it looks like it prevents.
+- The change of meaning is fenced in the work id:
+  `PROCESS_LAYER_SEMANTICS_REVISION` (`_cli_failure_tracker.py`, currently `2`)
+  rides beside `process_format` in the process-only branch of
+  `processing_configuration_digest_from_values`, **not** in the base payload —
+  a base placement would cold-start every in-flight `full` and `measure`
+  continuation for no correctness gain. It is one integer for all layers, so a
+  bump also invalidates `--layer gray` continuations; invalidating too much is
+  safe, so that is a cost, not a bug.
 
 ## Staged GPU engine
 
 When a CLI pipeline contains a `GpuDetector`, the **CLI** (not `ImagePipeline`)
 splits it at the detector boundary (`split_pipeline_at_gpu` in
-`_cli_pipeline_split.py` → `StagePlan{pre_pipeline, gpu_detector, post_pipeline}`)
+`_cli_pipeline_split.py` →
+`StagePlan{pre_pipeline, gpu_path, gpu_detector, stage2_prefix, post_pipeline}`)
 and runs three content-defined stages. The per-image stage cores live in
 `_cli_staged_workers.py` and are shared by both staged strategies:
 
@@ -34,19 +64,137 @@ and runs three content-defined stages. The per-image stage cores live in
    staged OME-Zarr store `results/<ds>/zarr/<stem>.ome.zarr/` (objmap included,
    as zeros, because `valid_staged_store` requires it).
 2. **Stage 2** `stage2_detect_core` — load the input layer (store **read-only**),
-   run the resident detector, and drop its **Stage-2 signal**: the retained
-   **raw** detector output at
-   `.phenotypic/progress/stage2_raw/<ds>/<stem>.npy`, then a consumable **token**
-   at `.phenotypic/progress/stage2_done/<ds>/<stem>.json` (`_cli_stage2_token.py`,
+   apply `plan.stage2_prefix` to a provenance-detached copy when the detector is
+   nested, run the resident detector, and drop its **Stage-2 signal**: the
+   retained **raw** detector output at
+   `.phenotypic/progress/stage2_raw/<ds>/<slot>/<stem>.npy`, then a consumable
+   **token** at
+   `.phenotypic/progress/stage2_done/<ds>/<slot>/<stem>.json`
+   (`_cli_stage2_token.py`,
    both atomic temp+`os.replace`; raw first, so a crash between them leaves no
    "done" signal). **Stage 2 does not write into the store** — only the final
    store needs third-party interop, and an in-store write would be visible to
    the uncached crop route as raw pre-`drop_frame_background` labels.
-3. **Stage 3** `stage3_merge_measure_core` — replay the **raw** array through the
-   accessor (never the store's own objmap: Stage 3 re-promotes over it, so a
-   retry would refine already-refined labels), apply post-ops +
-   `measure(apply_post=False)`, re-promote the store, then consume the signal —
-   **token first, then the raw array** (mandatory).
+3. **Stage 3** `stage3_merge_measure_core` — substitute a `ReplayDetector`
+   (`_cli_replay_detector.py`) at `plan.gpu_path` inside `post_pipeline`, so the
+   **raw** array is written through the real detector's `_write_object_output`
+   and the enclosing operation runs normally. Never the store's own objmap:
+   Stage 3 re-promotes over it, so a retry would refine already-refined labels.
+   Then apply post-ops + `measure(apply_post=False)`, re-promote the store, and
+   consume the signal — **token first, then the raw array** (mandatory).
+
+### Nested detectors: found tree-wide, cut at the top-level ancestor
+
+**`GpuDetector`s are found tree-wide**, not at the top level.
+`find_gpu_detectors` (`_cli_validation.py`) walks the whole operation tree via
+`sdk_._operation_tree.walk_operations` and returns `(path, detector)` pairs,
+where `path` is a tuple of non-empty strings (`"ops[0]"` for a list entry). That
+same path is the detector's recorded `pipeline_step_path`, the argument to
+`substitute_at_path`, and the input to `detector_slot` — **one addressing
+scheme, not three.**
+
+That identity is only true because container operations now push a per-branch
+step: `CompositeDetector`, `CompositeEnhance`, `FilamentousFungiDetector` and
+`TwoKFilamentousDetector` drive their children through
+`_core/_provenance.apply_child(child, image, segment=...)` instead of calling
+`.apply()` directly, so each branch records its own segment rather than
+inheriting the container's path. **Recorded `pipeline_step_path`s are therefore
+deeper for every pipeline using a container op**, not only for staged ones.
+`apply_child` is deliberately *not* used for a nested operation run by a
+`MeasureFeatures` — those are private probes that stay out of the plate's
+provenance (`measure/CLAUDE.md`).
+
+- **The split cuts at the detector's top-level ancestor.** `pre_pipeline` holds
+  the root ops before that ancestor; `post_pipeline` holds the ancestor onward
+  **including the detector itself**. Stage 3 never applies `post_pipeline`
+  as-is — it substitutes a `ReplayDetector` at `gpu_path` first, or the run
+  re-executes live GPU inference on a CPU node.
+- **`stage2_prefix` is the ops ahead of the detector *inside its own branch*.**
+  `_branch_prefix` dispatches on `_child_contract`, never on `isinstance`: a
+  `"sequence"` container contributes the ops preceding the step taken from it, a
+  `"parallel"` one contributes nothing, and the **root** contributes nothing
+  because Stage 1 already ran and stored its ops. Empty for a bare leaf and for
+  a top-level detector.
+- **Those prefix ops run twice and must be deterministic.** Stage 2 applies them
+  to a provenance-detached copy purely to produce the detector's model input,
+  then discards it; Stage 3 runs the same ops again inside the enclosing
+  operation and records *those* in the journal. A non-deterministic prefix means
+  Stage 2 infers from an image Stage 3 never reconstructs, and nothing fails to
+  say so.
+- **Unstageable placements are refused, on the production path.** All refusals
+  live in `find_gpu_detectors`, which `pipeline_requires_gpu` calls — a refusal
+  reachable only from `split_pipeline_at_gpu` fires after the run has already
+  been routed, which is how this narrowing was silently lost once already. They
+  are: a container that is not a composition primitive; a subclass of a listed
+  composite that **overrides `_operate`** (the contract was verified against the
+  base's `_operate`, so a replacement has been verified against nothing); a
+  detector in the **root** pipeline's `meas`/`post`/`filters`/`model`; and,
+  under `strict=True` (only `split_pipeline_at_gpu`), more than one detector.
+  All raise `UnstageableGpuDetectorError`, a `ValueError` subclass.
+- **`_CHILD_CONTRACT` is the closed table**, `{CompositeDetector: "parallel",
+  CompositeEnhance: "parallel"}`, with `ImagePipeline` handled separately as
+  `"sequence"` in `_child_contract`. It is populated lazily by
+  `_populate_child_contract` in a **single** `dict.update` — read it through
+  that function, never directly, and never populate it key-by-key: the guard is
+  `if _CHILD_CONTRACT: return`, so a half-populated table makes a thread refuse
+  a `CompositeEnhance` the design permits, and the GUI (threaded Werkzeug) would
+  show that as a silent route to CPU rather than an error. Entries match by
+  `isinstance`. There is no `_UNSUPPORTED_CONTAINERS` map. Coverage is asserted
+  on the table itself (`tests/unit/cli/test_gpu_detection_tree_wide.py`) and
+  each `"parallel"` entry carries a behavioural probe
+  (`tests/unit/detect/test_container_child_contracts.py`); a new container needs
+  no entry, because refused-by-default is the right answer for it.
+
+#### Two limits, both open and neither in scope of the nesting change
+
+- **A `GpuDetector` in a NESTED pipeline's `meas`/`post`/`filters`/`model` is
+  neither staged nor refused.** `walk_operations` short-circuits on
+  `ImagePipelineCore` and yields only `get_ops()`, and the CPU-only-slot loop
+  runs against the **root** pipeline's accessors. Measured for that shape:
+  `find_gpu_detectors` → `[]`, `pipeline_requires_gpu` → `False`,
+  `uses_staged_gpu_strategy` → `False`, so the run routes to
+  `LocalParallelStrategy` and infers per image on a CPU node with nothing
+  reported. Pinned by a non-strict xfail in
+  `tests/unit/cli/test_gpu_detection_tree_wide.py`, which XPASSes when the
+  walker learns to descend those slots — that, not widening the loop, is the
+  fix.
+- **The GUI swallows the refusal.** `gui/run_console/_callbacks.py:248-256`
+  wraps `pipeline_requires_gpu` in `except (OSError, ValueError, TypeError):
+  return False`, and `UnstageableGpuDetectorError` **is** a `ValueError`, so a
+  refused pipeline reports "not a GPU pipeline" and routes to CPU — the silent
+  failure the tree-wide scan exists to remove, relocated. The CLI paths
+  (`_cli_execution_strategies.py`) do not catch it, so there the user gets a raw
+  traceback. Both still want deciding.
+
+### Stage-2 signals are keyed by detector slot
+
+Both halves of the signal live under `<ds>/<slot>/`, where `slot` is
+`detector_slot(plan.gpu_path)` — each path segment with runs of
+non-alphanumerics collapsed to `-`, joined by `__`, plus 8 hex of the **exact**
+path so `ops[0]` and `ops-0` cannot collide
+(`CompositeDetector__ops-0__dddf3676`). Every path helper in
+`_cli_stage2_token.py` takes `slot` with **no default**: a default would let a
+caller reach a shared path without being handed one, which is the structural
+hole the keying closes. Sites holding a pipeline path rather than a `StagePlan`
+use `staged_detector_slot(pipeline_path)`; where a `StagePlan` is in scope, call
+`detector_slot(plan.gpu_path)` directly.
+
+At the shipped one-detector limit the slot level changes no behaviour. It exists
+so that supporting N detectors is an additive feature rather than a migration of
+the on-disk layout of a signal a 33,923-image run depends on.
+
+Two deliberate exceptions to "always pass a slot":
+
+- `find_stage2_token(output_dir, dataset, stem)` — the one legitimate slot-free
+  **read**, for `--mode migrate`, which has no pipeline and therefore no
+  `StagePlan`. It searches the legacy flat path, then each slot directory, and
+  never moves or unlinks anything.
+- `relocate_legacy_stage2_signal(...)` — a one-time move of a pre-slot-keying
+  signal into its slot directory, so a run interrupted before the change and
+  resumed after it does not repay Stage 2 in GPU time. Moves **both** halves,
+  raw first, never overwrites a current signal, and **refuses** when the caller
+  declares `slot_count != 1` (a per-image legacy signal is one detector's output
+  and cannot be attributed among several).
 
 **Continuation is automatic and content-defined.** Run the same command again;
 there is no `--resume` flag. Exact terminal failures remain skipped unless

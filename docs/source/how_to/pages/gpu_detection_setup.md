@@ -452,14 +452,25 @@ path when processing a directory:
    `preprocess → infer_batch`. The store is opened **read-only** and is never
    written to here, so an interrupted run never corrupts it. Instead Stage 2
    drops its result as machine state under `.phenotypic/progress/`: the
-   **raw** labelled object map at `stage2_raw/<dataset>/<stem>.npy`, followed by
-   a consumable **token** at `stage2_done/<dataset>/<stem>.json`.
-3. **Stage 3 — CPU replay + measure.** The **raw** array is merged back into the
-   image through the object-map accessor, the post-detector refiners and the
+   **raw** labelled object map at `stage2_raw/<dataset>/<slot>/<stem>.npy`,
+   followed by a consumable **token** at
+   `stage2_done/<dataset>/<slot>/<stem>.json`.
+3. **Stage 3 — CPU replay + measure.** The **raw** array is written back through
+   the real detector's own output writer, the post-detector refiners and the
    measurement queue run, the store is re-promoted atomically, and the token and
    then the raw array are **consumed**. Stage 3 always replays from the retained
    raw array rather than from the store's own object map, so a retried Stage 3
    cannot re-refine already-refined labels.
+
+`<slot>` identifies *which* GPU detector in the pipeline produced the signal. It
+is the detector's position in the operation tree, sanitised and suffixed with 8
+hex characters of the exact path — for a detector that is the first branch of a
+top-level `CompositeDetector`, `CompositeDetector__ops-0__dddf3676`. A pipeline
+may currently contain only one GPU detector, so the directory carries no
+behaviour today; it is there so that supporting more later does not move the
+signal of a run already in flight. A run interrupted before this layout existed
+and resumed after it has its signal relocated once, rather than recomputed on a
+GPU.
 
 The output folder is identical to a single-pass run — staging is an internal
 optimization, not a different output contract.
@@ -482,9 +493,67 @@ instead of aborting the batch.
 # Forward run: detection stages automatically because the pipeline has a GpuDetector
 python -m phenotypic --pipeline sam2_pipeline.json --input /plates/ -o /output/
 
-# Export just the object maps (runs Stages 1-2, then writes one objmap PNG per image)
+# Export just the object maps (runs Stages 1-2, then the post-detector ops,
+# then writes one objmap PNG per image)
 python -m phenotypic --mode process --layer objmap \
     --pipeline sam2_pipeline.json --input /plates/ -o /output/
+```
+
+:::{admonition} `--layer objmap` exports *your pipeline's* objmap
+:class: important
+The export replays Stage 2's raw result and then runs the **post-detector
+operation chain** — the refiners, mask fills and small-object removers you put
+after your detector — before writing the PNG. Earlier releases wrote the
+detector's raw output instead. If your detector is nested inside a
+`CompositeDetector`, that raw array is one *branch* of the composite and not an
+object map at all, so the old behaviour exported the wrong thing rather than
+merely an unrefined one.
+
+Re-running an export produced by an older release does **not** reuse those
+outputs: the semantics change is folded into the per-image work id, so a
+continuation re-derives every image. That fence is shared by all
+`--mode process` layers, so an in-flight `--layer gray` export is re-derived
+too.
+:::
+
+### Nested GPU detectors
+
+A `GpuDetector` does not have to sit at the top level of the pipeline. It can be
+a branch of a `CompositeDetector` (the common case — merge a model's mask with a
+classical detector's), a branch of a `CompositeEnhance`, or an operation inside
+a nested `ImagePipeline`, at any depth. The staged engine addresses it by its
+position in the operation tree, runs only the operations ahead of it *within its
+own branch* before inference, and in Stage 3 slots the recorded result back at
+that same position, so the enclosing composite merges branches exactly as it
+would in a single-pass run.
+
+```python
+import phenotypic as pht
+from phenotypic.detect import CompositeDetector, OtsuDetector
+from phenotypic.detect.nn import Sam2
+
+pipeline = pht.ImagePipeline(
+    ops=[CompositeDetector(ops=[Sam2(), OtsuDetector()], mode="union")],
+)
+```
+
+**Only composition primitives may carry one** — `ImagePipeline`,
+`CompositeDetector`, `CompositeEnhance`. Putting a GPU detector inside a domain
+detector such as `FilamentousFungiDetector` or `TwoKFilamentousDetector` is
+refused with a message naming the class and the way forward (run the GPU
+detector as a `CompositeDetector` branch and feed its mask onward). A detector in
+the pipeline's `meas`, `post`, `filters` or `model` slot is refused too, because
+Stage 3 runs those on a CPU node. Two GPU detectors in one pipeline are not yet
+supported; the refusal names every path it found.
+
+```{warning}
+Two gaps in that refusal, as of this release. A `GpuDetector` buried in a
+**nested** `ImagePipeline`'s own `meas`/`post`/`filters`/`model` slot is neither
+staged nor refused — the run falls back to the CPU strategy and performs
+per-image inference, slowly and silently. (The top-level pipeline's slots *are*
+refused.) And the **GUI run console** treats a refused pipeline as "not a GPU
+pipeline" and routes it to CPU rather than showing you the reason; run it from
+the command line to see the message.
 ```
 
 ## SLURM Deployment
