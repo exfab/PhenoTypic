@@ -61,10 +61,10 @@ stage** — the full suite is the *last* check, never a step-level one.
 | 0 Foundation | 1 | `tests/unit/sdk_/test_operation_tree.py` | local, seconds | everything else |
 | 0b *(deferrable)* | 2 | `tests/unit/tune` — 102 files | **Slurm**, 1 task | — |
 | 1 **Detection** | 3 | new file + `test_staged_routing.py` | local, ~1 min | the whole staged surface |
-| 2 *(deferrable)* | 4, 9 | `tests/unit/core -k provenance`, `tests/unit/detect`, `tests/unit/enhance` — 67 files | **Slurm**, 1 task | `cli`, `gui` |
-| 3 Split & replay | 5, 6, 6a, 7, 8 | `tests/unit/cli` + `tests/integration/cli` — 102 files | **Slurm**, 4 shards | `gui`, `tune` |
-| 4 Equivalence | 10 | the new equivalence file | local, ~2 min | everything else |
-| 5 Process mode | 11, 12, 13 | `tests/integration/cli` + the process/format unit files | **Slurm**, 2 shards | `gui` |
+| 2 *(deferrable)* | 4 | `tests/unit/core -k provenance`, `tests/unit/detect`, `tests/unit/enhance` — 67 files | **Slurm**, 1 task | `cli`, `gui` |
+| 3 Split & replay | 5, 6, 6a, 7, 8, 13 | `tests/unit/cli` + `tests/integration/cli` — 102 files | **Slurm**, 4 shards | `gui`, `tune` |
+| 4 Equivalence | 9, 10 | the invariant + equivalence files | **Slurm**, 1 task | everything else |
+| 5 Process mode | 11, 12 | `tests/integration/cli` + the process/format unit files | **Slurm**, 2 shards | `gui` |
 | 6 Regression | 14, 15 | all 734 files in `testpaths` | **Slurm array**, 24 shards | nothing |
 
 Dispatch phase gates with the committed `run_phase_gate.sbatch` beside this plan:
@@ -73,6 +73,18 @@ Dispatch phase gates with the committed `run_phase_gate.sbatch` beside this plan
 PHENO_GATE_PATHS="tests/unit/cli tests/integration/cli" \
   sbatch --array=0-3%4 docs/superpowers/plans/2026-09-15-nested-gpu-staging/run_phase_gate.sbatch
 ```
+
+**Two corrections to an earlier draft of this table, made at execution time:**
+
+- **Task 9 moved from Phase 2 to Phase 4.** Its Interfaces block consumes Tasks
+  4 *and 5*, and Task 5 is in Phase 3 — so Phase 2 could not contain it. Worse,
+  Phase 2's gate *excludes* `cli`, and Task 9's only deliverable is
+  `tests/unit/cli/test_gpu_path_is_the_step_path.py`: the gate structurally
+  could not run the phase's own test. Phase 2 is now Task 4 alone.
+- **Task 13 moved from Phase 5 to Phase 3.** Task 7 adds a `stage2_prefix`
+  parameter defaulting to `None`; until Task 13 forwards it at both call sites,
+  shape B is silently broken. Landing 13 in the same phase that introduces the
+  parameter closes that window instead of holding it open across two gates.
 
 **A narrow gate can be green while the default lane is red.** `testpaths` covers
 `tests/unit`, `tests/smoke`, `tests/integration` **and** `tests/gui`, so naming
@@ -109,7 +121,9 @@ covered a third of the set.
 | `src/phenotypic/_cli/_cli_failure_tracker.py` | output-semantics revision in the work-id digest | 12 |
 | `src/phenotypic/_cli/_cli_staged_slurm_worker.py` | forward `stage2_prefix` at the SLURM Stage-2 call site (`:310`) | 13 |
 
-**Dependency order:** 1 → {2, 3, 5} → 6 → 6a → {7, 8} → 9 → 10 → 11 → 12 → 13 → 14 → 15.
+**Dependency order:** 1 → {2, 3, 5} → 6 → 6a → {7, 8, 13} → {9, 10} → 11 → 12 → 14 → 15.
+Task 9 consumes Tasks 4 and 5 only — **not** 6/6a/7/8, which an earlier draft of
+this line implied by placing it after {7, 8}.
 Task 4 is independent of the staging chain and may run in parallel with 2/3/5,
 but must land before 9. Task 2 is `tune/`-only (see its note) and is on no
 critical path — it can be deferred without blocking anything.
@@ -2597,6 +2611,42 @@ The captured baseline is 11,106 tests / 81 failed, all outside `sdk_`/`_cli`/`gu
 - [ ] **Step 4: Report**
 
 State the counts measured, not counts expected. If anything regressed, stop and report rather than proceeding.
+
+---
+
+## Execution: cluster assignment
+
+Derived from the per-task `Files`/`Interfaces` blocks by the
+`execute-plan-orchestration` procedure. Shapes: **K**eystone (novel
+interdependent core logic), **S**weep (broad and mechanical), **Se**am (one
+risky wiring point), **L**eaf (small and independent).
+
+| # | Tasks | Shape | Model | Files touched | Gate |
+|---|---|---|---|---|---|
+| C1 | 1 | K | Opus, high | `sdk_/_operation_tree.py` | local (seconds) |
+| C2 | 3 | Se | Opus, high | `_cli/_cli_validation.py` | Slurm, 1 task |
+| C3 | 2 | S | Sonnet, med | `tune/_search_space/_infer.py` | Slurm, 2 shards |
+| C4 | 4 | S + K head | Opus, high | `_core/_provenance.py`, 4 container classes | Slurm, 2 shards |
+| C5 | 5, 6 | K | Opus, high | `_cli_pipeline_split.py`, `_cli_replay_detector.py` | Slurm, 2 shards |
+| C6 | 6a | S | Opus, high | `_cli_stage2_token.py` + 5 callers + ~15 test files | Slurm, 4 shards |
+| C7 | 7, 8, 13 | Se | Opus, high | `_cli_staged_workers.py`, `_cli_staged_slurm_worker.py`, `_cli_staged_strategy.py:246` | Slurm, 4 shards |
+| C8 | 9, 10 | L (tests) | Opus, high | two new test files | Slurm, 1 task |
+| C9 | 11, 12 | K + L | Opus, high | `_cli_staged_strategy.py`, `_cli_failure_tracker.py` | Slurm, 2 shards |
+| C10 | 14 | L | Sonnet, med | docs only | none (docs) |
+| C11 | 15 | gate | — | — | **Slurm array, 24 shards** |
+
+**Parallel fan-out:** C2, C3 and C4 all depend only on C1 and touch provably
+disjoint files, so they run concurrently. Everything else is sequential.
+
+**Why C6 stays on the frontier model** despite being a Sweep: it re-keys
+`stage2_result_replayable`, the predicate the whole continuation contract rests
+on, across six modules with no compiler to catch a missed call site.
+
+**Why C7 absorbs Task 13:** see the phase-table correction above.
+
+**Reviews.** A fresh `implementation-test-reviewer` runs over every cluster's
+combined diff before the next cluster is dispatched — not a lighter reviewer,
+and never a weaker model than the implementer.
 
 ---
 
