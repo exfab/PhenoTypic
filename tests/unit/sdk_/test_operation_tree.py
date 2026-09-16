@@ -286,3 +286,65 @@ def test_substitute_refuses_a_pipeline_core_it_cannot_rebuild():
 
     with pytest.raises(TypeError, match="_NotAnImagePipeline"):
         substitute_at_path(core, ("OtsuDetector",), OtsuDetector(ignore_zeros=True))
+
+
+@pytest.mark.parametrize(
+    "path, slot",
+    [
+        (("meas:MeasureSymZones", "center_detector"), "meas"),
+        (("meas:MeasureShape",), "meas"),
+        (("post:AppendString",), "post"),
+        (("filters:Tukey",), "filters"),
+        (("model:LogGrowthModel",), "model"),
+    ],
+)
+def test_substitute_refuses_a_slot_path_by_name(path, slot):
+    """A slot segment gets a named refusal, not a bare ``KeyError``.
+
+    Premise first: each path must really RESOLVE, or the test would pass for the
+    wrong reason -- a typo'd segment raises ``KeyError`` whether or not the guard
+    exists, and ``pytest.raises(TypeError)`` would then fail, not pass, but a
+    reader could not tell which it was guarding. Resolving proves the segment
+    names a live slot entry, so the only thing standing between it and a bare
+    ``KeyError`` is the guard.
+    """
+    pipe = ImagePipeline(ops={"OtsuDetector": OtsuDetector()}, **_slots())
+    get_at_path(pipe, path)  # premise: the path is real
+
+    with pytest.raises(TypeError, match=rf"does not descend a pipeline's '{slot}'"):
+        substitute_at_path(pipe, path, OtsuDetector(ignore_zeros=True))
+
+
+def test_substitute_refuses_an_ambiguous_segment_as_get_at_path_does():
+    """An ops key that is also a slot entry is refused, not silently picked.
+
+    A user may key an op ``"meas:MeasureShape"`` while the ``meas`` slot also
+    holds ``MeasureShape``. ``get_at_path`` refuses that segment as ambiguous.
+    ``substitute_at_path`` used to check ``head in ops`` first, so it silently
+    substituted into the ops entry -- the two functions disagreed about the same
+    path, and a substitution driven by a walked path could land on the node the
+    walker did not mean.
+    """
+    pipe = ImagePipeline(
+        ops={"meas:MeasureShape": OtsuDetector()},
+        meas={"MeasureShape": MeasureShape()},
+    )
+    with pytest.raises(KeyError, match="ambiguous"):
+        get_at_path(pipe, ("meas:MeasureShape",))  # premise: really ambiguous
+
+    with pytest.raises(KeyError, match="ambiguous"):
+        substitute_at_path(
+            pipe, ("meas:MeasureShape",), OtsuDetector(ignore_zeros=True)
+        )
+
+
+def test_substitute_still_replaces_an_ordinary_ops_entry_beside_filled_slots():
+    """Control: the new classification must not break the common case.
+
+    Without this, a guard that refused EVERY head on a pipeline with slots would
+    pass both tests above.
+    """
+    pipe = ImagePipeline(ops={"OtsuDetector": OtsuDetector()}, **_slots())
+    replacement = OtsuDetector(ignore_zeros=True)
+    out = substitute_at_path(pipe, ("OtsuDetector",), replacement)
+    assert get_at_path(out, ("OtsuDetector",)) is replacement

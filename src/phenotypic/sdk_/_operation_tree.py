@@ -259,9 +259,27 @@ def substitute_at_path(root: Any, path: Sequence[str], replacement: Any) -> Any:
         )
 
     if isinstance(root, ImagePipeline):
+        # Classify `head` against the live pipeline BEFORE the ops lookup, for
+        # two reasons that a plain `head not in ops` check gets wrong:
+        #
+        # - A slot segment ("meas:<key>" ...) resolves on the pipeline but is
+        #   not an ops key, so it used to raise a bare KeyError naming the
+        #   segment -- the same confusing failure the TypeError guard above
+        #   exists to prevent for an unsupported container. Substituting into a
+        #   slot is unsupported: the staged engine refuses every slot path in
+        #   find_gpu_detectors, so no StagePlan can carry one. Say so by name.
+        # - A segment that is BOTH an ops key and a slot entry (a user may key
+        #   an op "meas:X") is ambiguous. `get_at_path` refuses it; checking
+        #   `head in ops` first would have silently substituted into the ops
+        #   entry instead, so the two functions disagreed about the same path.
+        #   `pipeline_slot_of` raises KeyError for that case, as `_child` does.
+        slot = pipeline_slot_of(root, head)
+        if slot is not None:
+            raise TypeError(
+                f"cannot substitute at {head!r}: substitute_at_path does not "
+                f"descend a pipeline's {slot!r} slot"
+            )
         ops = dict(root.get_ops())
-        if head not in ops:
-            raise KeyError(head)
         ops[head] = (
             replacement
             if not rest
