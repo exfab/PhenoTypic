@@ -597,9 +597,53 @@ Stage 3    replay both slots, composite merges, both raws consumed and deleted</
   <p>Deferred, it would have become a layout migration of a signal a 33,923-image run depends on, forcing every in-flight run to recompute Stage 2 — GPU time, on the scarcest resource in the system. The slot id is readable and collision-proof: sanitised path segments plus eight hex of a hash of the exact path, so <code>ops[0]</code> and <code>ops-0</code> cannot collide after sanitisation.</p>
 </div>
 
-<h2>The plan</h2>
+<h2>Two plans, in sequence</h2>
 
-<p>Fifteen tasks, TDD throughout. Task 3 alone closes the wrong-answer bug and is worth landing on its own.</p>
+<p>Brainstorming the nesting problem produced a second, different design. Rather than revise the reviewed plan into it, the work is split — <strong>Plan A lands first</strong>, and about 70% of it stands underneath Plan B.</p>
+
+<div class="tw"><table>
+  <thead><tr><th></th><th>Plan A — composite path</th><th>Plan B — phase protocol</th></tr></thead>
+  <tbody>
+    <tr><td>Operation interface</td><td>unchanged</td><td><code>_phases</code>, <code>_child_order</code>, <code>_phase_state</code></td></tr>
+    <tr><td>Spec</td><td class="pass">committed</td><td class="fail">none yet</td></tr>
+    <tr><td>Independent review</td><td class="pass">20 findings, all applied</td><td class="fail">not reviewed</td></tr>
+    <tr><td>Supports</td><td><code>ImagePipeline</code>, <code>CompositeDetector</code>, <code>CompositeEnhance</code></td><td>any op that declares phases</td></tr>
+    <tr><td><code>FilamentousFungiDetector</code></td><td>refused</td><td class="pass">stageable</td></tr>
+    <tr><td>Prefix CPU work</td><td>runs <strong>twice</strong></td><td class="pass">runs <strong>once</strong></td></tr>
+  </tbody>
+</table></div>
+
+<p><strong>A goes first because it is the only one that fixes something today</strong>, and because it is the one that has been reviewed — that review found five blockers, two of them defects in the spec rather than the plan.</p>
+
+<h3>What Plan B is</h3>
+
+<p>Every operation declares its execution as an ordered list of phases with a device tag. The default leaves everything unchanged:</p>
+
+<pre class="good">_phases: ClassVar = (("_operate", "cpu"),)                       <i># default: unchanged, unstageable</i>
+
+_phases: ClassVar = (("_prep",          "cpu"),                  <i># a staging-aware op</i>
+                     ("_gpu_detection", "gpu"),
+                     ("_post_gpu_work", "cpu"))
+_child_order: ClassVar = "parallel"                              <i># or "sequence"</i>
+_phase_state: ClassVar = ("_inoculum_objmask", "_inoculum_objmap")</pre>
+
+<p>The values named in <code>_phase_state</code> are <code>PrivateAttr</code>s, ferried by the engine across a stage boundary and simply surviving on the instance in a notebook — the author writes the same code either way. That choice is load-bearing rather than stylistic: it keeps per-image state out of the constructor, out of <code>model_fields</code> so the walker cannot mistake it for a child, and out of <code>model_dump</code> — which is exactly the bug class <code>ReplayDetector</code>'s <code>NdArrayField</code> would otherwise have reintroduced on every phased operation.</p>
+
+<h3>What that changes</h3>
+
+<ul class="plain">
+  <li><strong>Declaring the phases <em>is</em> the opt-in.</strong> The contract table, the "composition primitives only" rule and the guard test over class kinds all disappear. Refusal becomes "hasn't declared" rather than "is the wrong kind of class" — and <code>TwoKFilamentousDetector</code> stays refused for an obvious reason instead of an argued one, since its children have mixed order.</li>
+  <li><strong>The blind spot stops being possible.</strong> <code>needs_gpu</code> becomes a scan of the flattened phase list, so nested GPU work is found by construction rather than by a tree walk that someone has to remember to write.</li>
+  <li><strong>Each phase runs exactly once.</strong> Plan A re-runs a branch prefix in Stage 3. Measured, <code>FocusEdgePhase</code> at production size is <strong>71 s and 7.4 GB peak per image</strong> — so that doubling is 669 CPU-hours across 33,923 images, and the 7.4 GB is the real OOM risk, not the 15 MB branch masks.</li>
+  <li><strong>No substitution at all.</strong> <code>ReplayDetector</code> and <code>substitute_at_path</code> disappear; the GPU phase persists its result and the next CPU phase reads it.</li>
+  <li><strong>Scheduling stays static</strong>, derived from the pipeline JSON before any image is touched — no per-image divergence, no dynamic round discovery.</li>
+</ul>
+
+<p>The five Plan A tasks that don't survive are the splitter and replay machinery — precisely the pieces that exist <em>because</em> A has to infer an operation's internal structure from outside. Plan B removes the need to infer, so they go and everything else stands.</p>
+
+<h2>Plan A in detail</h2>
+
+<p>Sixteen tasks, TDD throughout. Tasks 1 + 3 together convert the silent wrong answer into a loud failure and are worth landing first on their own — they don't make the run complete, but they stop bad numbers being reported as success.</p>
 
 <ol class="tasks">
   <li><b>Shared operation-tree traversal</b><span>One walker, path-addressed as <code>field[i]</code> because a path is also a provenance step path, which rejects integers.</span></li>
@@ -621,8 +665,8 @@ Stage 3    replay both slots, composite merges, both raws consumed and deleted</
 </ol>
 
 <footer>
-  Worktree <code>worktree-nested-gpu-staging</code> · spec, plan, independent review, spike and contributor guide across seven commits, <code>83a8680f</code>…<code>b8519730</code>.<br>
-  Not yet implemented — this is the design and the plan, with the spike that proved the mechanism.
+  Worktree <code>worktree-nested-gpu-staging</code> · spec, two plans, independent review, spike and contributor guide.<br>
+  Not yet implemented — this is the design and the plan, with the spike that proved the mechanism. Companion page: the <em>Staged Run Lifecycle</em> reference.
 </footer>
 
 </div>
