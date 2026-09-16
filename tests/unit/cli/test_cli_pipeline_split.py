@@ -23,7 +23,16 @@ def test_splits_at_first_gpu_detector():
     assert isinstance(plan, StagePlan)
     assert list(plan.pre_pipeline.get_ops().keys()) == ["BlurGauss"]
     assert isinstance(plan.gpu_detector, FakeGpuDetector)
-    assert list(plan.post_pipeline.get_ops().keys()) == ["SmallObjectRemover"]
+    # The detector's own slot is now INCLUDED in post_pipeline: the cut is
+    # taken at the detector's top-level ancestor, and for a top-level detector
+    # that ancestor is the detector itself. Stage 3 substitutes a
+    # ReplayDetector into this slot instead of calling _write_object_output
+    # before the post pipeline. Omitting it would make Stage 3 re-run the REAL
+    # detector on a CPU node.
+    assert list(plan.post_pipeline.get_ops().keys()) == [
+        "FakeGpuDetector",
+        "SmallObjectRemover",
+    ]
     # post pipeline carries the measurements
     assert "MeasureSize" in plan.post_pipeline.get_meas()
 

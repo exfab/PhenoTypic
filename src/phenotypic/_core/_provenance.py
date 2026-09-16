@@ -931,25 +931,55 @@ def append_operation_provenance(
     duration_seconds: float,
     pipeline_step_path: list[str] | None,
 ) -> None:
-    """Append one successful leaf record, including staged detector merges."""
+    """Append one successful leaf record, including staged detector merges.
+
+    Four fields are derived from *operation*, and an operation may override
+    each of them by defining the matching ``provenance_*`` hook. The staged
+    engine's ``ReplayDetector`` (``_cli/_cli_replay_detector.py``) is the one
+    implementer: it stands in for a ``GpuDetector`` whose inference already
+    happened on a GPU node, and the journal must name the **wrapped** detector
+    so a staged run's provenance matches a single-pass run's. Its
+    ``parameters`` override is not only a parity concern -- the stub holds an
+    ``NdArrayField``, so the default dump would serialise the entire recorded
+    objmap into the journal.
+    """
     journal = image._metadata.provenance_journal
     operations = _current_application(journal)["operations"]
-    parameters = json.loads(
-        json.dumps(operation.model_dump(mode="json"), ensure_ascii=False)
+    operation_name = (
+        operation.provenance_operation_name()
+        if hasattr(operation, "provenance_operation_name")
+        else type(operation).__name__
     )
+    operation_class = (
+        operation.provenance_operation_class()
+        if hasattr(operation, "provenance_operation_class")
+        else f"{type(operation).__module__}.{type(operation).__qualname__}"
+    )
+    source_parameters = (
+        operation.provenance_parameters()
+        if hasattr(operation, "provenance_parameters")
+        else operation.model_dump(mode="json")
+    )
+    # KEEP the JSON round-trip around whichever source supplied the value -- it
+    # is what guarantees the payload is JSON-native before
+    # validate_provenance_journal sees it.
+    parameters = json.loads(json.dumps(source_parameters, ensure_ascii=False))
+    duration = float(duration_seconds)
+    if hasattr(operation, "provenance_duration_offset"):
+        # The stub's own wall time covers the MERGE only; GPU inference
+        # happened in Stage 2 and its cost travels here in the Stage-2 token.
+        duration += float(operation.provenance_duration_offset())
     operations.append(
         {
             "sequence": len(_operations(journal)) + 1,
-            "operation_name": type(operation).__name__,
-            "operation_class": (
-                f"{type(operation).__module__}.{type(operation).__qualname__}"
-            ),
+            "operation_name": operation_name,
+            "operation_class": operation_class,
             "phenotypic_version": _installed_phenotypic_version(),
             "parameters": parameters,
             "applied_at_utc": datetime.now(timezone.utc)
             .isoformat(timespec="milliseconds")
             .replace("+00:00", "Z"),
-            "duration_seconds": float(duration_seconds),
+            "duration_seconds": duration,
             "pipeline_step_path": pipeline_step_path,
         }
     )

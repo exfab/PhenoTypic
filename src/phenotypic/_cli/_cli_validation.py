@@ -154,9 +154,17 @@ _CPU_ONLY_SLOTS = ("meas", "post", "filters", "model")
 #: it is refused by default, which is the correct answer for it. There is no
 #: ``_UNSUPPORTED_CONTAINERS`` map.
 #:
-#: ``ImagePipeline`` is deliberately absent and handled by ``isinstance`` in
-#: ``_child_contract``: it is matched by subclass, not by exact type, so a
-#: class-keyed entry would refuse a subclass a user actually holds.
+#: ``ImagePipeline`` is deliberately absent and handled separately in
+#: ``_child_contract``.
+#:
+#: **Entries are matched by ``isinstance``, not by exact type**, so a subclass a
+#: user actually holds -- ``class Plotted(CompositeDetector, PlotImage)`` -- is
+#: accepted. An exact-type lookup refused every such subclass; the reasoning
+#: that kept ``ImagePipeline`` out of this table applies here too and the table
+#: did not follow it. The safety argument is preserved by refusing a subclass
+#: that **overrides ``_operate``**: the contract was verified against the
+#: base's ``_operate``, so a subclass replacing it has been verified against
+#: nothing. See ``_child_contract``.
 #:
 #: Populated lazily by ``_populate_child_contract`` -- read it through that,
 #: never directly, or a first reader sees an empty dict.
@@ -169,14 +177,28 @@ def _populate_child_contract() -> None:
     Deferred rather than done at import time because this module is imported
     by CLI argument validation that may never reach a GPU question, and
     ``phenotypic.detect`` / ``phenotypic.enhance`` are heavy subpackages.
+
+    **Build the table fully, then install it in ONE operation.** The guard is
+    ``if _CHILD_CONTRACT: return``, so a thread arriving while the table is
+    half-populated sees a truthy one-key dict, returns at the guard, and then
+    ``_child_contract`` refuses a ``CompositeEnhance`` -- a placement the
+    design permits. Populating key-by-key made that window reachable. It
+    matters because the GUI reaches here on threaded Werkzeug
+    (``gui/run_console/_callbacks.py:255``) and already swallows ``ValueError``,
+    so the symptom is not an error: the run silently routes to CPU.
+
+    The dict literal below is fully constructed before ``update`` is called,
+    and ``dict.update`` from a dict is atomic under the GIL, so no thread can
+    observe a partial table.
     """
     if _CHILD_CONTRACT:
         return
     from phenotypic.detect import CompositeDetector
     from phenotypic.enhance import CompositeEnhance
 
-    _CHILD_CONTRACT[CompositeDetector] = "parallel"
-    _CHILD_CONTRACT[CompositeEnhance] = "parallel"
+    _CHILD_CONTRACT.update(
+        {CompositeDetector: "parallel", CompositeEnhance: "parallel"}
+    )
 
 
 def _child_contract(container: Any) -> str:
@@ -192,6 +214,18 @@ def _child_contract(container: Any) -> str:
     it to keep doing that, so the table's safety argument -- "this restates a
     type contract, it does not cache an observation" -- would not hold
     uniformly if it were admitted.
+
+    **Table entries match by subclass, but a subclass that overrides
+    ``_operate`` is refused.** An exact-type lookup refused every subclass of
+    ``CompositeDetector`` -- including one that only mixes in ``PlotImage`` --
+    which is the same defect the note on ``_CHILD_CONTRACT`` already identifies
+    for ``ImagePipeline`` ("matched by subclass, not by exact type, so a
+    class-keyed entry would refuse a subclass a user actually holds"). A bare
+    ``isinstance``, though, would silently admit a subclass whose ``_operate``
+    chains its branches, reintroducing exactly the error this narrowing exists
+    to prevent: the contract was verified against the *base's* ``_operate`` and
+    against nothing else. So the rule is isinstance **plus** an unmodified
+    ``_operate``.
     """
     from phenotypic._core._image_pipeline import ImagePipeline as _ImagePipeline
 
@@ -199,8 +233,30 @@ def _child_contract(container: Any) -> str:
     if isinstance(container, _ImagePipeline):
         return "sequence"
     cls = type(container)
-    if cls in _CHILD_CONTRACT:
-        return _CHILD_CONTRACT[cls]
+    # Snapshot before scanning. `_populate_child_contract` installs the table
+    # in one `update`, but this loop is now a SCAN rather than a key lookup, so
+    # a concurrent first-population overlapping this iteration would raise
+    # "dictionary changed size during iteration". Cheap insurance, and the
+    # table is two entries.
+    for base, contract in tuple(_CHILD_CONTRACT.items()):
+        if not isinstance(container, base):
+            continue
+        # `getattr` rather than attribute access: `cls` is `type(container)`
+        # where `container` is `Any`, so mypy types it as bare `type` and
+        # cannot see `_operate` on it. It also states the honest comparison --
+        # a future table entry need not have an `_operate` at all, and two
+        # absent ones compare equal, which is the right answer for a base with
+        # no algorithm for a subclass to diverge from.
+        if getattr(cls, "_operate", None) is not getattr(base, "_operate", None):
+            raise UnstageableGpuDetectorError(
+                f"a GpuDetector cannot be nested inside {cls.__name__}: it "
+                f"subclasses {base.__name__} but overrides _operate, so the "
+                f"{contract!r} child-input contract verified for "
+                f"{base.__name__} does not carry over to it. Lift the "
+                f"detector into a plain {base.__name__} branch, or into the "
+                "top-level pipeline."
+            )
+        return contract
     raise UnstageableGpuDetectorError(
         f"a GpuDetector cannot be nested inside {cls.__name__}: only "
         "composition primitives (ImagePipeline, CompositeDetector, "
@@ -256,13 +312,11 @@ def find_gpu_detectors(
             path, where a multi-detector pipeline should report True rather
             than raise.
 
-            **``strict=True`` has no production caller yet** -- it is
-            exercised only by tests. Task 5 adds the one caller, repointing
-            ``split_pipeline_at_gpu`` onto this function; until then that
-            function keeps its own top-level-only scan
-            (``_cli_pipeline_split.py:34-43``), which catches two TOP-LEVEL
-            detectors but not two nested inside a composite. So this branch is
-            pending, not dead.
+            **``split_pipeline_at_gpu`` is the one production caller** and
+            passes ``strict=True``. It previously carried its own
+            top-level-only scan, which caught two TOP-LEVEL detectors but not
+            two nested inside a composite; that scan is gone and this is now
+            the only multi-detector refusal in the codebase.
 
     Returns:
         ``(path, detector)`` pairs in depth-first order. Each ``path`` is a
