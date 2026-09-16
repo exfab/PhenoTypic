@@ -2124,11 +2124,26 @@ schemes kept aligned by hand, and they will drift.
 > between the walker's paths and the journal's. That is the **wrong invariant**,
 > and not merely a fragile one:
 >
-> - **It is already false today.** `CompositeDetector._operate` enumerates its
->   whole `ops` list *including unfilled `None` slots*, so each branch's segment
->   is its real index; the walker skips those slots. The two sets therefore
->   differ for any pipeline the GUI builder produces mid-edit — a shape users
->   create routinely. Set equality would assert something false about it.
+> - **It is already false today** — but NOT for the reason an earlier draft of
+>   this note gave. **That reason was wrong and is retracted.** The draft said
+>   the sets differ for a pipeline with an unfilled `None` slot, because the
+>   composite enumerates its whole `ops` list while the walker skips the empty
+>   entries. Measured: they do **not** differ. `iter_child_operations` skips the
+>   `None` but keeps the true index, so both sides yield
+>   `{('C',), ('C','ops[0]'), ('C','ops[2]')}` and set equality holds.
+>
+>   The real counterexample is **`TwoKFilamentousDetector`**, and it is the
+>   other direction: set equality demands every *walker* path also be
+>   **recorded**, and a container field is never recorded as itself. Measured —
+>   the walker yields 8 paths, the journal records 14 entries spanning 6
+>   distinct paths, and `('TwoK','branch_base')` and `('TwoK','center_detector')`
+>   appear only in the walker. No amount of correct behaviour makes those two
+>   sets equal, because an operation-valued *field* has no operation of its own
+>   to record.
+>
+>   The `None`-slot shape stays in the parametrisation as a **control**: it is
+>   the case where set equality happens to hold, so a test that passes on it and
+>   fails elsewhere is measuring the right thing.
 > - **It demands too much.** Every walker path would have to be *recorded*, which
 >   is untrue for any branch that is skipped, short-circuited, or refused.
 > - **It would have missed the defect it was written to catch.** Parametrised
