@@ -167,18 +167,40 @@ store layer directly. It must apply that prefix first.
 The rule walks the ancestor chain and asks one question of each container:
 **what image does it hand its children?** Two answers, and a closed table:
 
-| Contract | Meaning | Prefix contribution | Classes |
-|---|---|---|---|
-| `"same"` | every child receives the container's own input | **nothing** — siblings are parallel, none runs "before" another | `CompositeDetector`, `CompositeEnhance`, `FilamentousFungiDetector` |
-| `"sequence"` | each child receives the previous child's output | the ops preceding the branch | `ImagePipeline` |
-| *(absent)* | no single answer is true for all children | **refuse**, naming the class | `TwoKFilamentousDetector` |
+**Only composition primitives may carry a staged GPU detector.** Three
+classes, and nothing else — ever, by rule rather than by survey:
 
-**The table lives in the splitter, keyed by class — it is not a declaration on
-the operations.** That is safe because for these types the semantics is
-**definitional, not incidental**: a `CompositeDetector` whose branches chained
-would not be a composite, it would be an `ImagePipeline`, which already exists
-for exactly that. The table restates a type contract rather than caching an
-observation about today's `_operate`.
+| Contract | Meaning | Prefix contribution | Class |
+|---|---|---|---|
+| `"sequence"` | each child receives the previous child's output | the ops preceding the branch | `ImagePipeline` |
+| `"same"` | every child receives the container's own input | **nothing** — branches are parallel, none runs "before" another | `CompositeDetector`, `CompositeEnhance` |
+
+Every other `OperationField`-bearing class is **refused**, naming the class.
+
+**The line is "composition primitive", not "currently classifiable".** These
+three exist *to compose other operations*; their child-input semantics is part
+of what they are. A `CompositeDetector` whose branches chained would not be a
+composite — it would be an `ImagePipeline`, which already exists for exactly
+that. So the table restates a type contract rather than caching an observation,
+which is what makes a class-keyed table in the splitter safe rather than
+drift-prone.
+
+A **domain detector** is on the other side of that line even when its current
+code would classify cleanly. `FilamentousFungiDetector` passes
+`inoculum_detector` the container's own image today (`:395,398`), so it *reads*
+as `"same"` — but that is incidental to an algorithm whose `_operate` also runs
+an inline `ContrastStretching()` (`:413`), a destructive `_subtract_background`,
+and a `del enhanced_work`. Nothing about being a fungus detector constrains it to
+keep feeding its child the raw image. Admitting it would mean the table's safety
+argument no longer holds uniformly, for one class nobody has asked to stage.
+
+An earlier draft admitted it, and separately argued that
+`TwoKFilamentousDetector` was *inexpressible*. Drawing its call flow showed that
+was too strong — a `"same"` / `"after(<field>)"` vocabulary describes all three
+of its fields exactly (`branch_base` is `"same"`, `background_subtractor` is
+`"after(branch_base)"`). The refusal is therefore a **scope** decision, not an
+impossibility, and scoping it by *kind of class* rather than by *expressibility*
+is both simpler and more stable.
 
 **The contract is tested, not merely asserted.** Each `"same"` entry carries a
 behavioural test that puts two recording probe operations in the container's
@@ -193,11 +215,11 @@ on an explicit unsupported list with a reason. Adding a container fails the
 suite until someone decides, so the failure lands at authoring time rather than
 in a 33,923-image run.
 
-`TwoKFilamentousDetector` is the worked unsupported case: `center_detector`
-receives the original image (`:149`), `background_subtractor` a derived
-`enhanced.copy()` (`:154`), and `branch_base` **mutates** `enhanced` in place
-(`:164`). No per-class answer is true for all three, and no per-field vocabulary
-helps either — `enhanced` is a local with no identity in the operation graph.
+`TwoKFilamentousDetector` remains the worked illustration of *why* domain
+detectors are excluded: `center_detector` receives the original image (`:149`),
+`background_subtractor` a derived `enhanced.copy()` (`:154`), and `branch_base`
+**mutates** `enhanced` in place (`:164`). Three fields, three inputs, inside one
+algorithm — and the shape is invisible from the outside.
 
 The prefix is applied to an **in-memory copy** inside Stage 2 and is never
 written to the store, preserving the existing "Stage 2 does NOT write into the
@@ -441,7 +463,8 @@ numeric one derivable from first principles.
 |---|---|
 | More than one `GpuDetector` anywhere in the tree | Deferred, not impossible — see §13. The refusal must name **every** offending path, not just the count, so the message tells a user which branches to split |
 | A `GpuDetector` in the `meas` / `post` / `filters` / `model` slots | Stage 3 runs these on a CPU node. The walker must scan these slots in order to reject them — the driver pipeline does carry nested ops there (`MeasureSymZones.center_detector`, `MeasureOrientationZones.center_detector`, both `ManualPointDetector`) |
-| A `GpuDetector` inside `CompositeEnhance` or any enhancer container | `_write_object_output` writes an objmap; an enhancer branch must produce a layer. `OperationField` will not stop this being constructed |
+| A `GpuDetector` anywhere other than `ImagePipeline` / `CompositeDetector` / `CompositeEnhance` | Only composition primitives may carry one (§4.3). Domain detectors are refused by rule, not by survey |
+| A `GpuDetector` whose immediate container is an **enhancer** container | An independent gate from the one above, on *output kind* rather than child input: `_write_object_output` writes an objmap, while an enhancer branch must yield a layer. `CompositeEnhance` therefore has a child-input contract (it is a primitive) and still refuses a detector as a direct child |
 
 ### Accepted costs
 

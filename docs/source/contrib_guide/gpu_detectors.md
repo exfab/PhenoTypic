@@ -129,14 +129,19 @@ it**.
 See `docs/superpowers/specs/2026-09-15-nested-gpu-staging/design.md` §4.3.
 ```
 
-### The two contracts
+### Only composition primitives may carry one
 
-`"same"` — every child receives the container's **own input**
-: Children are parallel branches; order does not affect what any of them sees.
-  `CompositeDetector`, `CompositeEnhance`, `FilamentousFungiDetector`.
+Three classes, and nothing else:
 
-`"sequence"` — each child receives the **previous child's output**
-: `ImagePipeline`, handled by the engine directly.
+`ImagePipeline` — `"sequence"`
+: Each child receives the previous child's output.
+
+`CompositeDetector`, `CompositeEnhance` — `"same"`
+: Every child receives the container's own input. Branches are parallel; order
+  does not affect what any of them sees.
+
+A `GpuDetector` anywhere else is **refused**. That includes domain detectors
+whose current code would classify cleanly — see below.
 
 ### This is a contract, not an observation
 
@@ -154,7 +159,7 @@ stop and use a pipeline.**
 
 ### The contract is tested, not just asserted
 
-Each container with a table entry carries a behavioural test that puts two
+Each of the two `"same"` primitives carries a behavioural test that puts two
 recording probe operations in its children and asserts what they received:
 
 ```python
@@ -179,30 +184,43 @@ def test_composite_branches_each_receive_the_composites_own_input():
 A declaration can lie and still pass every test. A probe cannot: if someone
 makes the branches chain, this fails immediately and points at the contract.
 
-### Adding a container
+### Why domain detectors are excluded, even when they would classify
 
-If you add an `OperationField` to an operation, a guard test enumerates every
-`OperationField`-bearing class and requires each to be **either** in the
-engine's table **or** on an explicit unsupported list with a reason. The suite
-fails until you choose, so the decision lands at authoring time rather than in a
-30,000-image run.
+`FilamentousFungiDetector` passes `inoculum_detector` the container's own image
+(`:395,398`), so it *reads* as `"same"`. It is still refused.
 
-Put it on the unsupported list when no single answer is true for all of its
-children. `TwoKFilamentousDetector` is the worked example: its `center_detector`
-gets the original image, its `background_subtractor` gets a derived
-`enhanced.copy()`, and its `branch_base` **mutates** `enhanced` in place.
+The reason is that a composition primitive's child-input semantics is part of
+**what the class is**, while a domain detector's is incidental to **what its
+algorithm currently does**. `FilamentousFungiDetector._operate` also runs an
+inline `ContrastStretching()` (`:413`), a destructive `_subtract_background`,
+and a `del enhanced_work`. Nothing about being a fungus detector constrains it
+to keep handing its child the raw image, and if it stopped, the table would be
+wrong with nothing to say so.
 
-The consequence is not silence. A `GpuDetector` nested inside an unsupported
-container is refused, by name:
+`TwoKFilamentousDetector` shows how tangled this gets inside one algorithm:
+`center_detector` gets the original image (`:149`), `background_subtractor` a
+derived `enhanced.copy()` (`:154`), and `branch_base` **mutates** `enhanced` in
+place (`:164`). Three fields, three inputs, none of it visible from outside.
+
+So the rule is by *kind of class*, not by whether today's code happens to be
+classifiable. A new detector needs no entry and no decision — it is refused by
+default, which is the right answer for it.
+
+### What you get instead of silence
 
 ```text
-GpuDetector at CompositeDetector/ops[0]/branch_base cannot be staged:
-TwoKFilamentousDetector has no declared child-input contract — its children read
-internal intermediates (_two_k_filamentous_detector.py:154,164).
+a GpuDetector cannot be nested inside TwoKFilamentousDetector: only composition
+primitives (ImagePipeline, CompositeDetector, CompositeEnhance) may carry one.
+Lift the detector into a CompositeDetector branch, or into the top-level
+pipeline.
 ```
 
-That is the intended outcome. A wrong answer here means Stage 2 reads a layer
-that was never prepared, and the run completes with different numbers.
+The message names the way forward, because there almost always is one: run the
+GPU detector as a `CompositeDetector` branch and feed its mask to the domain
+detector, rather than nesting it inside.
+
+A wrong answer here would mean Stage 2 reads a layer that was never prepared,
+and the run completes with different numbers. Refusing is the cheap outcome.
 
 ## Testing your detector
 

@@ -394,26 +394,164 @@ TwoKFilamentous:164     branch_base.apply(enhanced, <b>inplace=True</b>)     <i>
 
 <h3>A closed table, and a refusal</h3>
 
-<p>Instead the splitter keeps a small table keyed by class, and refuses anything not in it:</p>
+<p>Instead the splitter admits only <strong>composition primitives</strong> — the three classes that exist to compose other operations — and refuses everything else:</p>
 
 <div class="tw"><table>
   <thead><tr><th>Contract</th><th>Children receive</th><th>Prefix contribution</th><th>Classes</th></tr></thead>
   <tbody>
-    <tr><td><code>"same"</code></td><td>the container's own input</td><td class="pass">nothing — branches are parallel</td><td><code>CompositeDetector</code>, <code>CompositeEnhance</code>, <code>FilamentousFungiDetector</code></td></tr>
     <tr><td><code>"sequence"</code></td><td>the previous child's output</td><td>the ops preceding the branch</td><td><code>ImagePipeline</code></td></tr>
-    <tr><td><em>absent</em></td><td>— no single answer holds</td><td class="fail">refuse, naming the class</td><td><code>TwoKFilamentousDetector</code></td></tr>
+    <tr><td><code>"same"</code></td><td>the container's own input</td><td class="pass">nothing — branches are parallel</td><td><code>CompositeDetector</code>, <code>CompositeEnhance</code></td></tr>
+    <tr><td><em>anything else</em></td><td>—</td><td class="fail">refuse, naming the class</td><td>every domain detector</td></tr>
   </tbody>
 </table></div>
 
 <p>A hardcoded type switch is only brittle if its fallthrough <em>guesses</em>. This one refuses, so a container nobody has classified produces an error naming the class rather than a silently wrong Stage-2 input.</p>
 
 <div class="note win">
-  <h4>Why a table, and not a declaration on each operation</h4>
-  <p>The obvious objection to a table is drift: it sits away from the <code>_operate</code> it describes, so someone could change a composite and never see it. That objection doesn't hold here, because for these types the semantics is <strong>definitional, not incidental</strong> — a <code>CompositeDetector</code> whose branches chained would not be a composite, it would be an <code>ImagePipeline</code>, which already exists for exactly that. The table restates a type contract rather than caching an observation.</p>
-  <p>And a contract can be <strong>tested</strong>, where a declaration can only be asserted. Each <code>"same"</code> entry carries a probe test that puts two recording operations in the container's children and asserts the second never observed the first's output. A <code>_child_input = "same"</code> attribute that is wrong passes every test; a probe cannot. A guard test then enumerates all seven <code>OperationField</code>-bearing classes and requires each to be in the table or on the unsupported list with a reason — so adding a container fails the suite until someone decides, at authoring time rather than in a 33,923-image run.</p>
+  <h4>The line is "composition primitive", not "currently classifiable"</h4>
+  <p>The obvious objection to a class-keyed table is drift: it sits away from the <code>_operate</code> it describes. That objection doesn't hold for these three, because their child-input semantics is <strong>definitional</strong> — a <code>CompositeDetector</code> whose branches chained would not be a composite, it would be an <code>ImagePipeline</code>, which already exists for exactly that. The table restates a type contract rather than caching an observation.</p>
+  <p>It does <em>not</em> hold for a domain detector, even one that would classify cleanly today. <code>FilamentousFungiDetector</code> hands <code>inoculum_detector</code> the container's own image, so it reads as <code>"same"</code> — but that is incidental to an algorithm which also runs an inline <code>ContrastStretching()</code>, a destructive <code>_subtract_background</code> and a <code>del enhanced_work</code>. Nothing about being a fungus detector constrains it to keep doing that. Admitting it would cost the safety argument for one class nobody has asked to stage, so the rule is drawn by <strong>kind of class</strong>: a new detector needs no entry and no decision, because refusal is already the right answer for it.</p>
+  <p>And a contract can be <strong>tested</strong> where a declaration can only be asserted. Each <code>"same"</code> primitive carries a probe test that puts two recording operations in its children and asserts the second never observed the first's output. An attribute that is wrong passes every test; a probe cannot.</p>
+</div>
+
+<h3>Worked example: a GPU detector inside the filamentous detectors</h3>
+
+<p><code>FilamentousFungiDetector(inoculum_detector=Sam2())</code> is <strong>supported</strong>. Its one <code>OperationField</code> is called at <code>:395</code> as <code>inoculum_detector.apply(image, inplace=False)</code> — the container's own input, untouched. Contract <code>"same"</code>, Stage-2 prefix empty, and Stage 2 reads <code>detect_mat</code> straight from the store exactly as it does for a composite.</p>
+
+<p><code>TwoKFilamentousDetector</code> is the refused one, and its <code>_operate</code> shows why — three fields, three different inputs:</p>
+
+<figure>
+  <svg viewBox="0 0 860 430" role="img" aria-label="TwoKFilamentousDetector's _operate: branch_base receives the copied image and mutates it in place; center_detector receives the original unmutated image; background_subtractor receives the image as it stands after branch_base. Three OperationFields, three different inputs, so no single per-class answer describes the container.">
+    <defs>
+      <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <polygon points="0,0 10,5 0,10" fill="currentColor"/>
+      </marker>
+      <marker id="a2w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <polygon points="0,0 10,5 0,10" fill="var(--warn)"/>
+      </marker>
+    </defs>
+
+    <text x="20" y="18" font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="600" letter-spacing="1.1" fill="var(--ink-faint)">IMAGE STATE</text>
+    <text x="330" y="18" font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="600" letter-spacing="1.1" fill="var(--ink-faint)">OperationField CALLS, IN EXECUTION ORDER</text>
+
+    <!-- state spine -->
+    <rect x="20" y="34" width="160" height="38" fill="var(--cpu-soft)" stroke="var(--cpu)"/>
+    <text x="100" y="52" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="currentColor">image</text>
+    <text x="100" y="65" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="9.5" fill="var(--ink-soft)">Stage-1 store state</text>
+
+    <line x1="100" y1="72" x2="100" y2="140" stroke="currentColor" stroke-width="1.3" marker-end="url(#a2)"/>
+    <text x="108" y="108" font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--ink-faint)">.copy()</text>
+
+    <rect x="20" y="142" width="160" height="34" fill="var(--cpu-soft)" stroke="var(--cpu)"/>
+    <text x="100" y="164" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="currentColor">enhanced</text>
+
+    <line x1="100" y1="176" x2="100" y2="228" stroke="var(--warn)" stroke-width="1.3" marker-end="url(#a2w)"/>
+
+    <rect x="20" y="230" width="160" height="38" fill="var(--warn-soft)" stroke="var(--warn)"/>
+    <text x="100" y="248" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="currentColor">enhanced′</text>
+    <text x="100" y="261" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="9.5" fill="var(--warn)">mutated by ①</text>
+
+    <!-- field calls -->
+    <rect x="330" y="132" width="510" height="52" fill="var(--surface)" stroke="var(--warn)" stroke-width="1.5"/>
+    <circle cx="348" cy="150" r="9" fill="var(--warn)"/>
+    <text x="348" y="154" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="700" fill="var(--surface)">1</text>
+    <text x="364" y="154" font-family="IBM Plex Mono, monospace" font-size="11" fill="currentColor">branch_base.apply(enhanced, inplace=True)</text>
+    <text x="364" y="172" font-family="IBM Plex Sans, sans-serif" font-size="10.5" fill="var(--warn)">mutates its input — everything after it sees the change</text>
+
+    <line x1="180" y1="159" x2="326" y2="159" stroke="currentColor" stroke-width="1.3" marker-end="url(#a2)"/>
+
+    <rect x="330" y="216" width="510" height="34" fill="var(--sunk)" stroke="var(--rule)" stroke-dasharray="3 2"/>
+    <text x="348" y="238" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink-faint)">two_k_phase(enhanced′.detect_mat) → branch_mask</text>
+
+    <rect x="330" y="268" width="510" height="52" fill="var(--surface)" stroke="var(--gpu)" stroke-width="1.5"/>
+    <circle cx="348" cy="286" r="9" fill="var(--gpu)"/>
+    <text x="348" y="290" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="700" fill="var(--surface)">2</text>
+    <text x="364" y="290" font-family="IBM Plex Mono, monospace" font-size="11" fill="currentColor">center_detector.apply(image, inplace=False)</text>
+    <text x="364" y="308" font-family="IBM Plex Sans, sans-serif" font-size="10.5" fill="var(--gpu)">the ORIGINAL image — skips ①'s mutation entirely</text>
+
+    <path d="M 62 72 L 62 294 L 326 294" fill="none" stroke="var(--gpu)" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#a2)"/>
+
+    <rect x="330" y="352" width="510" height="52" fill="var(--surface)" stroke="var(--cpu)" stroke-width="1.5"/>
+    <circle cx="348" cy="370" r="9" fill="var(--cpu)"/>
+    <text x="348" y="374" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="700" fill="var(--surface)">3</text>
+    <text x="364" y="374" font-family="IBM Plex Mono, monospace" font-size="11" fill="currentColor">background_subtractor.apply(enhanced′.copy())</text>
+    <text x="364" y="392" font-family="IBM Plex Sans, sans-serif" font-size="10.5" fill="var(--cpu)">the image AS IT STANDS AFTER ① — a third, derived input</text>
+
+    <path d="M 140 268 L 140 378 L 326 378" fill="none" stroke="var(--cpu)" stroke-width="1.3" marker-end="url(#a2)"/>
+  </svg>
+  <figcaption>Three <code>OperationField</code>s, three different inputs. Put SAM2 in ② and the Stage-2 prefix is empty; put it in ③ and the prefix is <code>[branch_base]</code>; ① mutates. No single per-class answer is true for the container, which is why it sits on the unsupported list.</figcaption>
+</figure>
+
+<div class="note">
+  <h4>A correction the diagram forced</h4>
+  <p>An earlier draft claimed no per-field vocabulary could describe <code>TwoKFilamentousDetector</code>, because <code>enhanced</code> is a local with no identity in the graph. Drawing it shows that was <strong>too strong</strong>: <code>"same"</code> plus <code>"after(&lt;field&gt;)"</code> describes all three calls exactly — ② is <code>"same"</code>, ③ is <code>"after(branch_base)"</code>.</p>
+  <p>Which makes the refusal a <em>scope</em> decision rather than an impossibility — and scoping it by <strong>kind of class</strong> is the better cut. It is simpler, it is stable against a domain algorithm being rewritten, and the way forward for a user who wants SAM2 here is not a vocabulary extension but a pipeline change: run the detector as a <code>CompositeDetector</code> branch and feed its mask in, rather than nesting it inside the algorithm.</p>
 </div>
 
 <p>All of which is documented where an author will meet it, in a new contributor page — <code>docs/source/contrib_guide/gpu_detectors.md</code> — alongside the hook surface, the capability fields, the determinism requirement, and the rule that a detector must not assume it sees one image at a time.</p>
+
+<h2>Job dispatch and the life of an intermediate</h2>
+
+<p>Nesting changes nothing here — this is the existing staged lifecycle, and it is what the slot keying has to fit into.</p>
+
+<h3>How jobs are dispatched</h3>
+
+<p>The staged SLURM strategy submits the three stages as an <code>afterany</code> dependency chain under a fresh <strong>orchestration epoch</strong>. Every submission is recorded in an append-only <strong>ledger</strong>, and a successor is only believed if the ledger proves it — a controller checks for a row tokenised <code>controller-after-&lt;predecessor_id&gt;</code> rather than trusting a job id it was handed.</p>
+
+<p>Only controller 0 is submitted initially. Before it launches Stage-1 chunk 0 it <strong>pre-arms a dependent recovery controller</strong>, so a controller that dies has a successor already queued rather than needing something alive to notice.</p>
+
+<div class="tw"><table>
+  <thead><tr><th>Stage</th><th>Shape</th><th>Chunking</th></tr></thead>
+  <tbody>
+    <tr><td>1 &amp; 3</td><td>CPU arrays, <code>--slurm</code> profile</td><td><code>ceil(n_images / chunk_limit)</code></td></tr>
+    <tr><td>2</td><td>GPU array of <code>--gpu-shards</code> resident-model workers</td><td><strong>never chunked</strong> — a shard worker streams its whole shard on one GPU</td></tr>
+    <tr><td>finalizer</td><td>dependent <code>afterany</code></td><td>sole publisher of aggregated outputs and the completion marker</td></tr>
+  </tbody>
+</table></div>
+
+<pre>chunk_limit     = min(MaxArraySize, submit_capacity)
+submit_capacity = MaxSubmitJobs - 2   <i># the running controller + its pre-armed recovery</i></pre>
+
+<p>Because Stage 2 cannot be chunked, <code>--gpu-shards</code> exceeding <code>chunk_limit</code> is rejected at submit rather than silently truncated. And <code>MaxSubmitJobs &lt; 3</code> is refused outright — there is no room for controller, array and recovery.</p>
+
+<h3>Where intermediates land</h3>
+
+<div class="tw"><table>
+  <thead><tr><th>Artifact</th><th>Path</th><th>Written by</th></tr></thead>
+  <tbody>
+    <tr><td>Per-image layer state</td><td><code>results/&lt;ds&gt;/zarr/&lt;stem&gt;.ome.zarr/</code></td><td>Stage 1 — durable, it <em>is</em> the run output</td></tr>
+    <tr><td>Raw detector output</td><td><code>.phenotypic/progress/stage2_raw/&lt;ds&gt;/&lt;slot&gt;/&lt;stem&gt;.npy</code></td><td>Stage 2</td></tr>
+    <tr><td>Done token</td><td><code>.phenotypic/progress/stage2_done/&lt;ds&gt;/&lt;slot&gt;/&lt;stem&gt;.json</code></td><td>Stage 2</td></tr>
+    <tr><td>Composite branch masks</td><td class="fail">nowhere</td><td>in-memory, inside one <code>_operate</code> call</td></tr>
+  </tbody>
+</table></div>
+
+<p>Stage 2 opens the store <strong>read-only</strong> and never writes to it. Exactly one array crosses a stage boundary per detector; the CPU siblings' masks are recomputed in Stage 3 rather than carried.</p>
+
+<h3>How the next stage picks them up</h3>
+
+<p>Continuation is <strong>content-defined</strong> — no stage trusts a status file to tell it what happened. Three predicates, checked in order:</p>
+
+<pre class="good">valid_stage1_store(...)        <i># a promoted store exists and is well-formed</i>
+stage2_result_replayable(...)  <i># the raw array AND its token are both present</i>
+stage3_completion_exists(...)  <i># the atomic completion marker for this image</i></pre>
+
+<p>Re-running the same command after an interruption is therefore the recovery procedure: each stage re-derives what is left to do by looking at artifacts, not at a record of intent.</p>
+
+<h3>Cleanup, and the ordering that makes it safe</h3>
+
+<p>The write and delete orders are deliberate mirrors:</p>
+
+<pre>write:   raw   →  token      <i># crash between: no "done" signal, so Stage 2 recomputes</i>
+delete:  token →  raw        <i># crash between: orphan raw, no "done", so Stage 2 recomputes</i></pre>
+
+<p>Both orders are chosen so that a crash at any point leaves a state that is <em>recomputable</em>, never one that claims "done" while being unreplayable. Stage 3 consumes both after re-promoting the store; the deletes are idempotent (<code>unlink(missing_ok=True)</code>) and wrapped in the publication commit guard, and the same pair is called from the local strategy, the objmap export, the SLURM worker and the resume path.</p>
+
+<div class="note">
+  <h4>Gap: orphaned raws are never swept</h4>
+  <p>Cleanup is strictly <strong>per image, at Stage 3</strong>. An image that never reaches Stage 3 — a terminal scientific failure, an OOM kill — leaves its raw array behind permanently. The run finalizer clears chunk, recompile-shard and analysis artifacts from <code>.phenotypic/progress/</code>, but nothing sweeps <code>stage2_raw/</code>.</p>
+  <p>At one <code>(H, W)</code> <code>uint16</code> array per orphaned image on a 33,923-image run, that accumulates. It is a pre-existing gap rather than something this change introduces, and slot keying makes it tidier to sweep later — the orphans sit under a per-detector directory. Worth a follow-up; not a blocker.</p>
+</div>
 
 <h2>Designing for two detectors</h2>
 

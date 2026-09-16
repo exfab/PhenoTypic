@@ -1086,29 +1086,32 @@ class StagePlan:
 _CHILD_CONTRACT: dict[type, str] = {
     CompositeDetector: "same",
     CompositeEnhance: "same",
-    FilamentousFungiDetector: "same",
-}
-
-#: Containers that cannot be described by a single answer, with the reason the
-#: refusal message quotes back to the user.
-_UNSUPPORTED_CONTAINERS: dict[type, str] = {
-    TwoKFilamentousDetector: (
-        "its children read internal intermediates "
-        "(_two_k_filamentous_detector.py:154,164)"
-    ),
 }
 
 
 def _child_contract(container) -> str:
-    """``"same"`` or ``"sequence"``; raise for a container with no contract."""
+    """``"same"`` or ``"sequence"``; raise for anything else.
+
+    ONLY composition primitives may carry a staged GpuDetector. A domain
+    detector is refused even when its current code would classify cleanly --
+    `FilamentousFungiDetector` feeds `inoculum_detector` the container's own
+    image today (:395,398) and so reads as "same", but that is incidental to an
+    algorithm that also runs an inline ContrastStretching (:413) and a
+    destructive _subtract_background. Nothing about being a fungus detector
+    constrains it to keep doing that, so the table's safety argument -- "this
+    restates a type contract, it does not cache an observation" -- would not
+    hold uniformly if it were admitted.
+    """
     if isinstance(container, ImagePipeline):
         return "sequence"
     cls = type(container)
     if cls in _CHILD_CONTRACT:
         return _CHILD_CONTRACT[cls]
-    reason = _UNSUPPORTED_CONTAINERS.get(cls, "it has no declared child-input contract")
     raise UnstageableGpuDetectorError(
-        f"{cls.__name__} cannot carry a staged GpuDetector: {reason}"
+        f"a GpuDetector cannot be nested inside {cls.__name__}: only "
+        "composition primitives (ImagePipeline, CompositeDetector, "
+        "CompositeEnhance) may carry one. Lift the detector into a "
+        "CompositeDetector branch, or into the top-level pipeline."
     )
 
 
@@ -1221,41 +1224,45 @@ Write the equivalent for `CompositeEnhance` (probe `detect_mat` rather than
 - [ ] **Step 3b: Enforce coverage of the table**
 
 ```python
-def test_every_operation_field_bearing_class_has_a_verdict():
-    """Adding a container must fail the suite until someone decides.
+def test_the_contract_table_holds_only_composition_primitives():
+    """The table is closed by RULE, not by survey.
 
-    Without this, a new container silently falls through to a wrong Stage-2
-    prefix rather than a refusal.
+    Anything not listed is refused, so this asserts the list itself rather than
+    enumerating the tree. A new domain detector needs no entry and no decision:
+    it is refused by default, which is the correct answer for it.
     """
-    classes = _operation_field_bearing_classes()   # walk phenotypic, 7 today
-    undecided = [
-        c for c in classes
-        if c not in _CHILD_CONTRACT
-        and c not in _UNSUPPORTED_CONTAINERS
-        and not _is_measurement_container(c)       # meas slots are refused earlier
-    ]
-    assert not undecided, (
-        f"containers with no child-input verdict: {undecided}. Add each to "
-        "_CHILD_CONTRACT or to _UNSUPPORTED_CONTAINERS with a reason."
-    )
+    assert set(_CHILD_CONTRACT) == {CompositeDetector, CompositeEnhance}
 
 
-def test_a_declaring_class_has_exactly_one_operation_field():
-    """One per-class answer stops being valid the moment a second field with
-    different semantics appears -- TwoKFilamentousDetector is why."""
-    for cls in _CHILD_CONTRACT:
-        assert len(_operation_fields(cls)) == 1, cls
+def test_a_domain_detector_is_refused_even_though_it_would_classify():
+    """FilamentousFungiDetector passes its child the container's own image
+    today, so it would read as "same". It is still refused: that behaviour is
+    incidental to its algorithm, not part of what the class IS."""
+    pipe = ImagePipeline(ops={"Fungi": FilamentousFungiDetector(
+        inoculum_detector=FakeGpuDetector())})
+    with pytest.raises(UnstageableGpuDetectorError,
+                       match="only composition primitives"):
+        split_pipeline_at_gpu(pipe)
 ```
 
 - [ ] **Step 3c: Refusal test**
 
 ```python
-def test_a_gpu_detector_inside_an_unsupported_container_is_refused():
+def test_a_gpu_detector_inside_a_domain_detector_is_refused():
     pipe = ImagePipeline(ops={"TwoK": TwoKFilamentousDetector(
         branch_base=FakeGpuDetector())})
     with pytest.raises(UnstageableGpuDetectorError,
-                       match="internal intermediates"):
+                       match="only composition primitives"):
         split_pipeline_at_gpu(pipe)
+
+
+def test_the_refusal_names_the_supported_containers():
+    """The message's job is to tell the user what to do instead."""
+    pipe = ImagePipeline(ops={"TwoK": TwoKFilamentousDetector(
+        branch_base=FakeGpuDetector())})
+    with pytest.raises(UnstageableGpuDetectorError) as exc:
+        split_pipeline_at_gpu(pipe)
+    assert "CompositeDetector" in str(exc.value)
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
