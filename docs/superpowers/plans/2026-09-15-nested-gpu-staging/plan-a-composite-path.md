@@ -51,6 +51,44 @@ or `CompositeEnhance`, at any depth.
 
 ---
 
+## Phase gates
+
+Tasks group into phases with one gate each. **Match the instrument to the
+stage** — the full suite is the *last* check, never a step-level one.
+
+| Phase | Tasks | Gate scope | Where | Excludes |
+|---|---|---|---|---|
+| 0 Foundation | 1 | `tests/unit/sdk_/test_operation_tree.py` | local, seconds | everything else |
+| 0b *(deferrable)* | 2 | `tests/unit/tune` — 102 files | **Slurm**, 1 task | — |
+| 1 **Detection** | 3 | new file + `test_staged_routing.py` | local, ~1 min | the whole staged surface |
+| 2 *(deferrable)* | 4, 9 | `tests/unit/core -k provenance`, `tests/unit/detect`, `tests/unit/enhance` — 67 files | **Slurm**, 1 task | `cli`, `gui` |
+| 3 Split & replay | 5, 6, 6a, 7, 8 | `tests/unit/cli` + `tests/integration/cli` — 102 files | **Slurm**, 4 shards | `gui`, `tune` |
+| 4 Equivalence | 10 | the new equivalence file | local, ~2 min | everything else |
+| 5 Process mode | 11, 12, 13 | `tests/integration/cli` + the process/format unit files | **Slurm**, 2 shards | `gui` |
+| 6 Regression | 14, 15 | all 734 files in `testpaths` | **Slurm array**, 24 shards | nothing |
+
+Dispatch phase gates with the committed `run_phase_gate.sbatch` beside this plan:
+
+```bash
+PHENO_GATE_PATHS="tests/unit/cli tests/integration/cli" \
+  sbatch --array=0-3%4 docs/superpowers/plans/2026-09-15-nested-gpu-staging/run_phase_gate.sbatch
+```
+
+**A narrow gate can be green while the default lane is red.** `testpaths` covers
+`tests/unit`, `tests/smoke`, `tests/integration` **and** `tests/gui`, so naming
+one path narrows the run — which is why every row above carries an *Excludes*
+column. Phase 3 being green says nothing about `tests/gui`.
+
+**`mypy` and `ruff` are already red at baseline** — 417 errors across 124 files
+and 25 respectively. A gate that runs them compares against those counts; it
+never reports "passes".
+
+**Never `-x` for a number you intend to record.** It stops at the first failure
+and `tests/unit/cli` sorts early, so a run that looks like a clean sweep may have
+covered a third of the set.
+
+---
+
 ## File Structure
 
 | File | Responsibility | Task |
@@ -232,9 +270,15 @@ def _is_operation(value: Any) -> bool:
 
 def iter_child_operations(obj: Any) -> Iterator[tuple[str, Any]]:
     """Yield ``(segment, child)`` for each operation-bearing child of *obj*."""
-    from phenotypic._core._image_pipeline import ImagePipeline
+    # Key on ImagePipelineCore, not ImagePipeline: `ops` is typed
+    # Dict[str, Union[ImageOperation, "ImagePipelineCore"]]
+    # (`_image_pipeline_core.py:202`), and ImagePipelineCore has a second
+    # concrete subclass (`NapariPipelineViewer`) that is not an ImagePipeline.
+    from phenotypic._core._pipeline_parts._image_pipeline_core import (
+        ImagePipelineCore,
+    )
 
-    if isinstance(obj, ImagePipeline):
+    if isinstance(obj, ImagePipelineCore):
         yield from obj.get_ops().items()
         return
 
@@ -331,10 +375,12 @@ def substitute_at_path(root: Any, path: Sequence[str], replacement: Any) -> Any:
             replacement if not rest
             else substitute_at_path(ops[head], rest, replacement)
         )
-        # Rebuild carrying EVERY slot. An earlier draft passed only
-        # ops/meas/post/filters/model/nrows/ncols and silently dropped `qc`,
-        # `plots`, `name` and the private `_provenance_pipeline` -- a booby
-        # trap for whoever next reads plots off a substituted pipeline.
+        # Rebuild carrying every slot a Stage-3 pipeline READS. An earlier
+        # draft dropped `qc`, `plots`, `name` and `_provenance_pipeline` -- a
+        # booby trap for whoever next reads plots off a substituted pipeline.
+        # NOT carried, deliberately: `benchmark`, `verbose`, `reset`,
+        # `desc_value` (`_image_pipeline_core.py:190-221`). Harmless for a
+        # throwaway Stage-3 pipeline, but do not describe this as complete.
         rebuilt = ImagePipeline(
             ops=ops,
             meas=root.get_meas(),
@@ -505,13 +551,10 @@ git commit -m "refactor(tune): use the shared operation-tree traversal"
 
 ```python
 # tests/unit/cli/test_gpu_detection_tree_wide.py
-import numpy as np
 import pytest
 
 from phenotypic import ImagePipeline
-from phenotypic.abc_ import GpuDetector
 from phenotypic.detect import CompositeDetector, ManualPointDetector
-from phenotypic.measure import MeasureShape
 from phenotypic._cli._cli_validation import (
     UnstageableGpuDetectorError,
     find_gpu_detectors,
@@ -665,10 +708,20 @@ def find_gpu_detectors(pipeline, *, strict: bool = False):
         # Name EVERY offending path, not just the count: the message's job is to
         # tell the user which branches to split. Deferred feature, not a limit of
         # the design -- see spec §13 for the intended N>1 execution model.
+        # Keep the literal "more than one GpuDetector": it is the wording the
+        # EXISTING suite already pins (`test_cli_pipeline_split.py:33` matches
+        # it), and the plan's own test at Task 3 matches it too. The path list
+        # follows it rather than replacing it.
         raise UnstageableGpuDetectorError(
-            "staged execution currently supports one GpuDetector per pipeline; "
-            f"found {len(hits)} at: {paths}"
+            "staged execution does not support more than one GpuDetector "
+            f"per pipeline; found {len(hits)} at: {paths}"
         )
+
+    # Placement refusals, ALL of them, live here -- not in the splitter. This is
+    # the function `pipeline_requires_gpu` calls, so a refusal placed anywhere
+    # else fires only after the run has already been routed (prior review, B5).
+    for path, _ in hits:
+        validate_ancestor_contracts(pipeline, path)
 
     # Unconditional -- deliberately NOT gated on `strict`; see the docstring.
     for slot in _CPU_ONLY_SLOTS:
@@ -701,6 +754,15 @@ def pipeline_requires_gpu(pipeline_path: Path) -> bool:
     Scans the whole operation tree, not just the top level: a ``GpuDetector``
     nested inside a ``CompositeDetector`` is still a GPU pipeline, and missing
     it means the run silently completes on CPU with different numbers.
+
+    NOTE the two callers handle this differently, and neither was designed:
+    `gui/run_console/_callbacks.py:246-255` wraps this in
+    `except (OSError, ValueError, TypeError): return False`, and
+    UnstageableGpuDetectorError IS a ValueError -- so the GUI silently reports
+    "not a GPU pipeline" instead of surfacing the message. The CLI path
+    (`_cli_execution_strategies.py:1341`) does not catch it, so there the user
+    gets a raw traceback. Decide both: the GUI should surface the reason, and
+    the CLI should print it rather than a traceback.
 
     Raises:
         UnstageableGpuDetectorError: a GpuDetector sits in a CPU-only slot.
@@ -893,13 +955,26 @@ The pattern is **not** identical everywhere — check each call's existing
 | File | Call site | `inplace` | Segment |
 |---|---|---|---|
 | `_composite_enhance.py` | list of `ops` | `False` | `f"ops[{i}]"` |
-| `_filamentous_fungi_detector.py` | list of `ops` | `False` | `f"ops[{i}]"` |
+| `_filamentous_fungi_detector.py:395,398` | `inoculum_detector` — **not** a list; the class has no `ops` | `False` | `"inoculum_detector"` |
 | `_two_k_filamentous_detector.py:164` | `self.branch_base.apply(enhanced, inplace=True)` | **`True`** | `"branch_base"` |
 
 `apply_child` takes `inplace` as a keyword and defaults it to `False`, so the
 `branch_base` call must pass `inplace=True` explicitly. Flipping it to `False`
 silently discards the enhancement — the op would run and its result be thrown
 away, with nothing failing to say so.
+
+Two more things about `TwoKFilamentousDetector`, both deliberate and both worth
+stating so the partial descent is not read as an oversight:
+
+- Only `branch_base` is listed. `center_detector` (`:149,151`) and
+  `background_subtractor` (`:154`) are **not** descended, because the class is
+  refused for staging anyway (Task 5 step 3c) and descending them buys nothing.
+- `apply_child` injects `reset=False` for an `ImagePipeline` child, while the
+  current `:164` call passes only `inplace=True` and `ImagePipeline.apply`'s
+  `reset` default is `None`, not `False` (`_image_pipeline_core.py:947-949`).
+  `branch_base` **defaults to an `ImagePipeline`** (`:103`), so this is a live
+  behaviour change on the default path. Either preserve `reset=None` or record
+  the change with a test.
 
 - [ ] **Step 6: Run the tests**
 
@@ -1054,8 +1129,11 @@ def test_a_plot_referencing_the_ancestor_is_now_allowed():
     pipe = ImagePipeline(ops={
         "CompositeDetector": CompositeDetector(ops=[FakeGpuDetector(), _manual()],
                                                mode="overlap")})
-    # attach a plot bound to the ancestor op; construction detail follows the
-    # existing pattern in tests/unit/cli/ for plot bindings
+    # Plot capability is a MIXIN ON THE OP CLASS, not something retrofitted onto
+    # an instance -- see tests/unit/cli/test_cli_pipeline_split.py:53-54
+    # (`class _PreGpuPlot(BlurGauss, PlotImage)`). `normalize_plot_bindings`
+    # raises on a non-plot-capable entry, so `_with_plot_on` needs a
+    # CompositeDetector+PlotImage subclass, not a plain CompositeDetector.
     plan = split_pipeline_at_gpu(_with_plot_on(pipe, "CompositeDetector"))
     assert "CompositeDetector" in plan.post_pipeline.get_ops()
 
@@ -1104,22 +1182,29 @@ class StagePlan:
 #: already exists for that. So this table restates a type contract; it does not
 #: cache an observation about today's `_operate`.
 #:
-#: Every entry is backed by a behavioural probe test (see the plan's Task 5
-#: step 3a), and coverage of this table is enforced by a guard test over every
-#: OperationField-bearing class.
+#: Every entry is backed by a behavioural probe test (Task 5 step 3a). Coverage
+#: is asserted on the TABLE ITSELF (step 3b), not by enumerating the tree: the
+#: set is closed by rule, so a new container needs no entry and no decision --
+#: it is refused by default, which is the correct answer for it. There is no
+#: `_UNSUPPORTED_CONTAINERS` map; an earlier draft had one and the narrowing
+#: removed the need for it.
+#: LIVES IN `_cli_validation.py`, not in the splitter. `_cli_pipeline_split`
+#: already imports from `_cli_validation`, so the dependency cannot run the
+#: other way -- and placement refusals belong with the other placement refusals,
+#: where `pipeline_requires_gpu` (the production entry point) reaches them.
 _CHILD_CONTRACT: dict[type, str] = {
-    CompositeDetector: "same",
-    CompositeEnhance: "same",
+    CompositeDetector: "parallel",
+    CompositeEnhance: "parallel",
 }
 
 
 def _child_contract(container) -> str:
-    """``"same"`` or ``"sequence"``; raise for anything else.
+    """``"parallel"`` or ``"sequence"``; raise for anything else.
 
     ONLY composition primitives may carry a staged GpuDetector. A domain
     detector is refused even when its current code would classify cleanly --
     `FilamentousFungiDetector` feeds `inoculum_detector` the container's own
-    image today (:395,398) and so reads as "same", but that is incidental to an
+    image today (:395,398) and so reads as "parallel", but that is incidental to an
     algorithm that also runs an inline ContrastStretching (:413) and a
     destructive _subtract_background. Nothing about being a fungus detector
     constrains it to keep doing that, so the table's safety argument -- "this
@@ -1139,31 +1224,50 @@ def _child_contract(container) -> str:
     )
 
 
+def validate_ancestor_contracts(pipeline: ImagePipeline, path: tuple[str, ...]) -> None:
+    """Every container on the ancestor chain must declare a child contract.
+
+    Call this from ``find_gpu_detectors`` -- NOT from the prefix builder. The
+    refusal is a property of *placement*, not of prefix computation, and
+    ``pipeline_requires_gpu`` is the production entry point that must carry
+    placement refusals (prior review, Blocker 5). A refusal reachable only from
+    `_branch_prefix` fires only after the run has already been routed.
+    """
+    from phenotypic.sdk_._operation_tree import get_at_path
+
+    for depth in range(len(path)):          # path[:0] is the root pipeline
+        _child_contract(get_at_path(pipeline, path[:depth]))
+
+
 def _branch_prefix(pipeline: ImagePipeline, path: tuple[str, ...]) -> list:
     """Ops between the Stage-1 store and the GPU op's model input.
 
-    Walks the ancestor chain, asking ``_child_contract`` what each container
-    hands its children. A ``"sequence"`` container contributes the ops
-    preceding the branch; a ``"same"`` container contributes nothing, because
-    its children are parallel branches and none runs "before" another. A
-    container with no entry raises -- see ``_child_contract``.
+    Dispatches on ``_child_contract``, never on ``isinstance``. A ``"sequence"``
+    container contributes the ops preceding the step taken from it; a
+    ``"parallel"`` container contributes nothing, because its children are
+    parallel branches and none runs "before" another.
+
+    An earlier draft tested ``isinstance(container, ImagePipeline)`` and
+    ``continue``d past everything else, which meant ``_child_contract`` was
+    never called and the "composition primitives only" rule existed nowhere in
+    the code. Dispatch on the contract string.
     """
     from phenotypic.sdk_._operation_tree import get_at_path
 
     prefix: list = []
-    for depth in range(1, len(path)):
-        container = get_at_path(pipeline, path[:depth - 1]) if depth > 1 else pipeline
-        if not isinstance(container, ImagePipeline) or container is pipeline:
+    for depth in range(len(path)):
+        container = get_at_path(pipeline, path[:depth])     # path[:0] -> the root
+        if _child_contract(container) == "parallel":
+            continue
+        if container is pipeline:
+            # The root's own preceding ops are Stage 1's; they already ran and
+            # are already in the store. This is the guard the spike lacked --
+            # without it a TOP-LEVEL detector's prefix is every op Stage 1 just
+            # applied, re-run on top of itself.
             continue
         keys = list(container.get_ops())
-        for key in keys[: keys.index(path[depth - 1])]:
+        for key in keys[: keys.index(path[depth])]:
             prefix.append(container.get_ops()[key])
-
-    parent = get_at_path(pipeline, path[:-1]) if len(path) > 1 else pipeline
-    if isinstance(parent, ImagePipeline) and parent is not pipeline:
-        keys = list(parent.get_ops())
-        for key in keys[: keys.index(path[-1])]:
-            prefix.append(parent.get_ops()[key])
     return prefix
 
 
@@ -1214,7 +1318,23 @@ def split_pipeline_at_gpu(pipeline: ImagePipeline) -> StagePlan:
     )
 ```
 
-**Note on the plot guard:** the ancestor key now lives in `post_ops`, so the old `ref.key == gpu_key or ref.key in pre_ops` check reduces to `ref.key in pre_ops`. A plot referencing the ancestor is now legal, because the ancestor runs in Stage 3.
+**Note on the plot guard.** The ancestor key now lives in `post_ops`, so a plot
+referencing a *container* ancestor is legal — it runs in Stage 3. But the
+reduction to `ref.key in pre_ops` is **wrong when the detector is itself
+top-level**: there `gpu_path[0]` IS the detector, and the dropped disjunct was
+what refused a plot bound to it. Stage 3 never runs the real detector, and the
+substituted `ReplayDetector` is not plot-capable, so `_resolve_plot_bindings`
+(`_image_pipeline_core.py:328-344`) would raise — or worse, `PlotCoordinator`
+(untouched by Task 8) would emit against the *original* detector while the image
+came from the substituted copy.
+
+```python
+if ref.key in pre_ops or (len(gpu_path) == 1 and ref.key == gpu_path[0]):
+    raise ValueError(...)
+```
+
+Narrow in practice — it needs a `GpuDetector` that also subclasses `PlotImage` —
+but pin it with a test for the top-level case, not only the nested one.
 
 - [ ] **Step 3a: Verify each `"same"` contract behaviourally, not by assertion**
 
@@ -1243,7 +1363,9 @@ def test_composite_branches_each_receive_the_composites_own_input():
 ```
 
 Write the equivalent for `CompositeEnhance` (probe `detect_mat` rather than
-`objmap`) and `FilamentousFungiDetector`.
+`objmap`). **Not** `FilamentousFungiDetector` — it is not in `_CHILD_CONTRACT`
+and Task 5 step 3b/3c explicitly refuses it; a probe test for a refused class is
+a leftover from the pre-narrowing draft.
 
 - [ ] **Step 3b: Enforce coverage of the table**
 
@@ -1642,9 +1764,41 @@ def detector_slot(gpu_path: Sequence[str]) -> str:
 
 `stage2_raw_path`, `stage2_token_path`, `write_stage2_raw`, `load_stage2_raw`,
 `write_stage2_token`, `read_stage2_token`, and the `stage2_result_replayable`
-predicate all take `slot`. Make it **keyword-only and required** — a default
-would let a caller silently write to a shared path, which is exactly the
-structural problem this task removes.
+predicate all take `slot`.
+
+**Do NOT make it required keyword-only everywhere.** Three of the six calling
+modules have no `plan` in scope to derive a slot from, and forcing one through
+them is most of this task's cost:
+
+| Module | Sites | Problem |
+|---|---|---|
+| `_cli_staged_resume.py` | `:256, :309, :420, :423, :478, :479` | `classify_staged_image` is a pure classifier — signature `(image, dataset, output_dir, input_root, process_only_layer, markers_required, expected_work_id)`, no plan, no slot. Threading one means changing `build_staged_resume_plan` and every caller above it |
+| `_cli_staged_controller.py` | `:84` | the recovery controller's already-done skip; no plan in scope |
+| `_cli_migrate_state.py` | `:184` | builds the token path **by hand** from `progress_dir / DIR_STAGE2_DONE / dataset / f"{stem}.json"`. With a slot level inserted, `_stage2_entry` silently returns `None` for every modern token and `--mode migrate` stops recording interrupted Stage-2 state |
+
+Instead: **the strategies derive the slot from the plan and pass it down one
+level**, and the resume/controller layer takes it as an ordinary parameter. That
+closes the structural hole just as well — no caller can reach a shared path
+without being handed a slot — at a fraction of the churn.
+
+**Test files touching these helpers positionally**, all of which break:
+`tests/unit/cli/conftest.py:287`, `tests/integration/cli/conftest.py:209,210,235`,
+`test_staged_controller.py:455,847,851,869,876,877`,
+`test_provenance_fencing.py:102,103`,
+`test_lifecycle_publication_races.py:453,471,493,496,521,538,560,563`,
+`test_staged_store_stages.py:71,76,77,252,262,278,284,352,360`,
+`test_staged_gpu_local.py` (~15 sites), `test_staged_resume.py` (~14 sites),
+`test_staged_resume_equivalence.py:1443`, `test_schema_gate.py:623`,
+`test_migrate_state.py:110`.
+
+**Where the slot comes from, per stage** — say it once, here: Stage 2 and Stage 3
+both have `plan` in scope (`detector_slot(plan.gpu_path)`); the process-mode
+export does too, via `_export_objmap_layer`'s `plan` parameter
+(`_cli_staged_strategy.py:398`).
+
+The rationale's *"at `N == 1` this is one extra directory level and no
+behavioural difference"* is true of the **on-disk layout**, not of the code
+change. The code change is the widest in Plan A.
 
 New layout:
 
@@ -1666,18 +1820,38 @@ def relocate_legacy_stage2_signal(
     """Move a pre-slot-keying signal into its slot directory. Returns moved?
 
     A staged run interrupted before slot keying and resumed after it would
-    otherwise not find its signals and would recompute Stage 2 -- correct, but
-    paid in GPU time on the scarcest resource in the cluster. Only valid when
-    the plan has exactly ONE slot; with more, a legacy file is unattributable
-    and is left alone to be recomputed.
+    otherwise not find its signals and recompute Stage 2 -- correct, but paid in
+    GPU time on the scarcest resource in the cluster.
+
+    Moves BOTH halves. The Stage-2 *signal* is two files -- the retained raw and
+    the consumable token (`_cli_stage2_token.py:1-10`) -- and
+    `stage2_result_replayable` (`:186-210`) requires both. Moving only the raw
+    leaves the slot-keyed token absent, so `stage2_result_replayable` stays
+    False, Stage 2 recomputes anyway, and the tree is half-migrated: the exact
+    cost this helper exists to avoid, plus a mess.
+
+    Moves the **raw first, then the token**, mirroring the write order
+    (`_cli_stage2_token.py:172-174`) so an interrupted relocation can never
+    leave a slot-keyed token with no slot-keyed raw.
 
     Never overwrites a current signal: if the slot path already exists, the
     legacy file is stale and the current one wins.
     """
 ```
 
-Call it from the resume path **only when `len(plan.slots) == 1`**, guarded so
-it cannot run under a multi-detector plan.
+**Call site and guard.** `StagePlan` has no `slots` attribute in Plan A — that
+is Spec §13's future `N > 1` shape, and an earlier draft gated on it, which is
+unimplementable. Under Plan A a plan has exactly one slot by construction, so a
+count check would be vacuous anyway.
+
+Instead the caller passes the single slot explicitly and the helper refuses to
+run when the caller declares more than one. Call it from
+`clear_downstream_artifacts_for_stage1`'s sibling on the resume path
+(`_cli_staged_resume.py`), where the slot arrives as the ordinary parameter M3
+introduces — **not** from `classify_staged_image`, which is a pure classifier
+with no slot.
+
+Both tests must assert **both** files moved, not just the raw.
 
 - [ ] **Step 6: Run the tests**
 
@@ -1732,7 +1906,8 @@ def test_prefix_is_applied_in_memory_and_never_written(staged_store_fixture):
     assert _store_digest(staged_store_fixture.store_path) == before, (
         "Stage 2 wrote into the store"
     )
-    raw = load_stage2_raw(staged_store_fixture.output_dir, "ds", "img")
+    raw = load_stage2_raw(staged_store_fixture.output_dir, "ds", "img",
+                          slot=staged_store_fixture.slot)
     assert raw.shape == staged_store_fixture.expected_shape
 ```
 
@@ -1825,8 +2000,9 @@ The current code writes the objmap and appends the journal entry by hand, *outsi
 #   with continuing_provenance_application(image), provenance_success_sink(...):
 #       plan.post_pipeline.apply(image, inplace=True)
 
-result = load_stage2_raw(output_dir, dataset_name, image_stem)
-token = read_stage2_token(output_dir, dataset_name, image_stem)
+slot = detector_slot(plan.gpu_path)          # Task 6a: every helper takes it
+result = load_stage2_raw(output_dir, dataset_name, image_stem, slot=slot)
+token = read_stage2_token(output_dir, dataset_name, image_stem, slot=slot)
 _check_active(active_check)
 
 stub = ReplayDetector(
@@ -1976,14 +2152,40 @@ def test_a_corrupted_replay_is_detected():
     assert not np.array_equal(reference, staged_dirty)
 ```
 
+- [ ] **Step 2a: Drive at least one shape through the PRODUCTION entry points**
+
+Steps 1-2 port the spike, which reimplements the stage sequence in-test. That
+checks the *algorithm* and would miss a defect in Task 7's provenance-detached
+probe, Task 8's substitution wiring, the token/duration plumbing, or Task 13's
+forwarding — none of which the port touches.
+
+Add one shape driven end-to-end through `stage2_detect_core` +
+`stage3_merge_measure_core` against a real staged store. The fixtures exist:
+`tests/unit/cli/conftest.py:287` (`write_stage2_raw`) and
+`tests/integration/cli/conftest.py:200-240` already build one.
+
 - [ ] **Step 3: Run**
 
 Run: `uv run pytest tests/unit/cli/test_staged_nested_equivalence.py -v`
 Expected: PASS — all three shapes equivalent, corrupted replay detected.
 
+**Shape names:** the spike defines `shape_a` / `shape_b` / `shape_c`
+(`spike_nested_gpu.py:171,175,184`). Use those, not `shape_leaf`.
+
 - [ ] **Step 4: Add the owner-depth-0 test**
 
-Per `measure/CLAUDE.md`, a test at the default programmatic depth passes on broken code. Exercise Stage 3 with `_application_owner_depth` forced to 0:
+**The stated mechanism in an earlier draft was wrong.** `_application_owner_depth`
+is a `ContextVar` with `default=0` (`_provenance.py:80-81`), so setting it to 0
+outside an enclosing `provenance_application` is a **no-op**. The
+`measure/CLAUDE.md` rationale comes from the *measurement* case, where a
+surrounding `with provenance_application(image, kind="programmatic"):` is what
+raises the depth in the first place.
+
+The test is still worth having — but for the real reason: Stage 3's depth-0
+exposure comes from the **store's trailing `"staged"` application**, not from the
+context var. Either exercise it against a real staged store, or reproduce the
+measurement pattern in full (wrap in `provenance_application`, *then* force the
+depth back to 0):
 
 ```python
 from phenotypic._core._provenance import _application_owner_depth
@@ -2066,7 +2268,8 @@ from phenotypic.sdk_._operation_tree import substitute_at_path
 from ._cli_replay_detector import ReplayDetector
 
 image = image_cls.load_zarr(store)
-raw = load_stage2_raw(output_dir, ds.name, source_image_stem(img))
+raw = load_stage2_raw(output_dir, ds.name, source_image_stem(img),
+                      slot=detector_slot(plan.gpu_path))
 
 stub = ReplayDetector(detector=plan.gpu_detector, result=raw)
 residual = substitute_at_path(plan.post_pipeline, plan.gpu_path, stub)
@@ -2086,8 +2289,18 @@ residual = substitute_at_path(plan.post_pipeline, plan.gpu_path, stub)
 # NOT, because the sink is what writes to the store, and a store write after the
 # success marker invalidates the descriptor the marker just recorded (ledger
 # FLOW-16/FLOW-30/FLOW-6). The absence is deliberate -- do not "restore" it.
-with continuing_provenance_application(image):
-    residual.apply(image, inplace=True)   # ops only; never .measure()
+# KEEP the wrapper the replaced call had (_cli_staged_strategy.py:464-471).
+# This does strictly MORE work than the single array write it replaces -- the
+# whole post-detector op chain -- so it is strictly more likely to raise, and an
+# unwrapped exception changes how _record_local_terminal_failure classifies the
+# image.
+try:
+    with continuing_provenance_application(image):
+        residual.apply(image, inplace=True)   # ops only; never .measure()
+except MemoryError:
+    raise
+except Exception as exc:
+    raise PerImageScientificError(STAGE_MEASURE, exc) from exc
 
 write_process_only_layer(image, "objmap", out_path)
 ```
@@ -2267,13 +2480,22 @@ git commit -m "fix(cli): invalidate continuation across an output-semantics chan
 `_cli_staged_slurm_worker.py:310` currently calls `stage2_detect_core` with
 positional arguments. Add the keyword:
 
+The real call there passes `active_check` and `commit_guard`. **Keep both** —
+`active_check` is the SLURM epoch fence and `commit_guard` gates durable writes;
+dropping them disables both on the GPU stage and nothing fails to say so. Note
+the variable names are the SLURM worker's (`item.dataset` / `item.stem` /
+`image_type`), not the local strategy's:
+
 ```python
 stage2_detect_core(
     plan.gpu_detector,
     output_dir,
-    ds_name,
-    stem,
-    cfg.image_type,
+    item.dataset,
+    item.stem,
+    image_type,
+    active_check=check,
+    commit_guard=commit_guard,
+    slot=detector_slot(plan.gpu_path),
     stage2_prefix=plan.stage2_prefix,
 )
 ```
@@ -2334,7 +2556,8 @@ git commit -m "fix(cli): forward stage2_prefix at both Stage-2 call sites"
 `docs/source/contrib_guide/gpu_detectors.md` is written and registered in the
 toctree on this branch. Re-read it against the implementation as landed and fix
 any drift — in particular the container-contract section, whose refusal message
-and class list must match `_CHILD_CONTRACT` / `_UNSUPPORTED_CONTAINERS` exactly.
+and class list must match `_CHILD_CONTRACT` exactly. (There is no
+`_UNSUPPORTED_CONTAINERS`; the narrowing removed it -- see Task 5 step 3b.)
 
 Build the docs to confirm the page renders and the toctree resolves:
 
@@ -2420,6 +2643,6 @@ shapes nest, so nothing caught it. Task 5 now pins it.
 
 ## Self-Review Notes
 
-**Spec coverage:** every row of the spec's §9 inventory maps to a task — 1→T3, 2/2a→T1/T2, 3→T5, 4→T6, 5→T7, 6→T8, 7→T11, 7a→T12, 7b/7c→T14, 7d→T11 step 5, 7e/7f/7g→T4, 8→T5 step 3, 9→T13, 10→T9/T10/T15.
+**Spec coverage:** every row of the spec's §9 inventory maps to a task — 1→T3, 2/2a→T1/T2, 3→T5, 4→T6, 5→T7, **5a/5b→T6a** (slot keying and the legacy relocation), 6→T8, 7→T11, 7a→T12, 7b/7c→T14, 7d→T11 step 5, 7e/7f/7g→T4, 8→T5 step 3, 9→T13, 10→T9/T10/T15.
 
 **Known gap, deliberately left to the executor:** Task 7 and Task 11 reference existing store-construction fixtures in `tests/unit/cli/` and `tests/integration/cli/` without reproducing them. Those fixtures are long and already established (`test_staged_resume.py`, `test_staged_gpu_local.py`); copying them here would drift. The executor must read the existing pattern and follow it.

@@ -339,3 +339,55 @@ The worked example of the whole plan, and the thing Plan A cannot do.
 2. **Does a phase return a new image or mutate in place?** In-place matches `_operate`'s convention and is the recommendation; the visibility concern that argued for return-style turned out to be unfounded — the real hazard is instance state, which Task B5 step 3 covers.
 3. **Conditional GPU phases** are supported and cost a near-empty array submission when no image requests inference, because the round's task list derives from disk. Confirm that is acceptable rather than worth a static "this pipeline never infers" check.
 4. **Flattening order for `"parallel"` children** is currently one round per sub-pipeline (storage-scoped). The alternative — coalescing all branches' CPU phases, then all their GPU phases — is fewer rounds and one model load, at the cost of every branch's intermediates being live simultaneously. Revisit if round count becomes the binding constraint.
+
+---
+
+## Measurements taken while designing this (keep — they are perishable)
+
+All at production size, `3140×5094` (a Linzer `.CR3` after `F1gfd5`'s crop),
+33,923 images in the run.
+
+| What | Time | Peak RSS | Across the run |
+|---|---|---|---|
+| `FocusEdgePhase._phasecong3` — a **branch prefix** | **71.1 s** | **7.36 GB** | 669 CPU-hours per pass |
+| `CompositeDetector._filter_mask_by_overlap_bidirectional` — a **parent body** | **4.0 s** (4.5 s at `min_overlap_ratio=0.3`) | 0.84 GB | 38 CPU-hours per pass |
+| `np.savez_compressed` on a 240-label objmap | 1.2 s | — | 30.5 MB → **0.23 MB** (133×) |
+
+Three things follow, and none is obvious without the numbers:
+
+1. **The OOM risk is the ops, not the branch masks.** A retained composite branch
+   mask is 15 MB; `FocusEdgePhase` peaks at 7.36 GB for one op on one image. Run
+   32 concurrently under the `exfab` cap and you need 235 GB against a 256 GB
+   ceiling. **Stage 1 needs `--mem` ≈ 8 GB per task** on this pipeline;
+   `DefMemPerCPU` is 1 GB, so an array that does not set it is OOM-killed.
+2. **Compression changes the storage story.** The dataset-wide barrier means
+   every Stage-2 output is live before Stage 3 starts: uncompressed that is
+   ~1.03 TB for one detector, ~8 GB compressed. (133× is an idealised synthetic
+   — clean disks, 240 labels. Real SAM2 output with noisier boundaries will do
+   worse, perhaps 10–30×. Still an order of magnitude.)
+3. **The hybrid buys less than it first appears.** "Phase-split the children,
+   re-execute the parent body" avoids re-running the 71 s prefix but **relocates
+   it onto the GPU node**, where it costs ~19 h wall with both GPUs idle rather
+   than ~3.5 h on the 384-CPU pool. Getting it onto a CPU partition needs Stage 1
+   to descend into branches and persist per-branch layers — which is new
+   machinery and ~1 TB of transient storage. The hybrid is still strictly better
+   than Plan A on this axis (one prefix run instead of two, and a simpler stub),
+   but it is not the near-free capture of Plan B's value it looks like.
+
+**Open design questions Plan B must answer** (from its review, three blockers):
+
+- **How a parent's own phases consume its children's output.** `CompositeDetector`
+  runs each child on a *copy* and then **combines** their objmaps — the production
+  shape — and `_child_order` cannot express the combine. The rule needs four
+  things, not one: where the child block sits among the parent's phases (a
+  sentinel, so a container with children and no sentinel is a definition-time
+  error); what each child receives, **per-slot** rather than per-class; what the
+  parent gets back, including a second phase signature; and where that handoff
+  lives between rounds, which collides with "Stage 2 never writes the store".
+- **The device tag is a `ClassVar`, but for a container it is instance state.** A
+  `FilamentousFungiDetector` with a CPU `inoculum_detector` has no GPU work; one
+  with `Sam2` does. As written, every default all-CPU instance advertises a GPU
+  phase and routes a whole run to `exfab`.
+- **Driving phases bypasses `apply()`**, which is where provenance,
+  `pipeline_step_path` and the error wrapper live — falsifying the "Task 4 reused
+  unchanged" and "Task 9 reused" carry-over claims.

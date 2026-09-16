@@ -209,11 +209,17 @@ declaration can lie and still pass; a probe cannot. This is the reason a
 lookup table beats a `_child_input` ClassVar on each operation — the ClassVar
 would add API surface *and* still need the probe test to be trustworthy.
 
-**Coverage is enforced.** A guard test enumerates every
-`OperationField`-bearing class (7 today) and requires each to be in the table or
-on an explicit unsupported list with a reason. Adding a container fails the
-suite until someone decides, so the failure lands at authoring time rather than
-in a 33,923-image run.
+**Coverage is asserted on the table itself**, not by enumerating the tree:
+
+```python
+assert set(_CHILD_CONTRACT) == {CompositeDetector, CompositeEnhance}
+```
+
+The set is closed **by rule**, so a new container needs no entry and no
+decision — it is refused by default, which is the correct answer for it. An
+earlier draft mandated an enumerating gate plus an explicit unsupported list
+with per-class reasons; the narrowing removed the need for both, and the
+unsupported list does not exist.
 
 `TwoKFilamentousDetector` remains the worked illustration of *why* domain
 detectors are excluded: `center_detector` receives the original image (`:149`),
