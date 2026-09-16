@@ -73,12 +73,17 @@ def test_pipeline_worker_entry_preloads_runtime_dependencies(relative_path: str)
     a presence check and raises ``NameError`` at run start on the cluster.
     """
     tree = ast.parse((PACKAGE_ROOT / relative_path).read_text(encoding="utf-8"))
-    imported = {
-        alias.asname or alias.name
-        for node in ast.walk(tree)
-        if isinstance(node, (ast.Import, ast.ImportFrom))
-        for alias in node.names
-    }
+    # ``import a.b`` binds ``a``; ``from a import b`` binds ``b``. Split only the former.
+    # Merging the two cases into one comprehension binds "a.b" for a dotted import and
+    # quietly weakens the assertion below -- this mirrors ``_locally_imported_names`` in
+    # tests/unit/ci/test_deferred_imports.py, which is the other implementation of the
+    # same question.
+    imported: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported.update(alias.asname or alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            imported.update(alias.asname or alias.name for alias in node.names)
     assert "load_runtime_dependencies" in imported, f"{relative_path}: the name is never imported"
 
     main = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "main")
