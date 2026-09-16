@@ -13,6 +13,8 @@ before and lost, because its only caller was a prefix builder that runs after
 routing has already happened.
 """
 
+from typing import Union
+
 import pytest
 
 import phenotypic
@@ -24,7 +26,10 @@ from phenotypic._cli._cli_validation import (
     find_gpu_detectors,
     pipeline_requires_gpu,
 )
+from phenotypic.analysis import LogGrowthModel, TukeyOutlierRemover
 from phenotypic.detect import CompositeDetector, ManualPointDetector
+from phenotypic.post import AppendString
+from phenotypic.sdk_.typing_ import OperationField
 from tests._fakes.fake_gpu_detector import FakeGpuDetector
 
 
@@ -133,45 +138,31 @@ def _meas_slot_pipeline():
 def test_a_gpu_detector_in_the_ROOT_meas_slot_is_refused(tmp_path):
     """Stage 3 runs measurers on a CPU node, so a GPU op there cannot stage.
 
-    Scope is the **root** pipeline's ``meas`` only -- that is what
-    ``_CPU_ONLY_SLOTS`` queries, since it calls ``get_meas()`` on the root
-    object. A nested pipeline's own ``meas`` is a different case and is NOT
-    covered; see
-    ``test_a_gpu_detector_in_a_NESTED_pipelines_meas_slot_is_refused`` below.
-
     Drives ``pipeline_requires_gpu`` -- the PRODUCTION entry point -- not
     ``find_gpu_detectors(strict=True)``. A test that calls the helper directly
     passes even when the refusal is unreachable from production, which is
     exactly the bug this test exists to prevent.
+
+    The match pins the slot-namespaced path spelling AND the slot refusal's
+    own wording, not just ``"meas"``: the ancestor-contract refusal also
+    fires for this shape (MeasureSymZones is not a composition primitive), and
+    a bare ``"meas"`` could not tell which of the two refused.
     """
-    with pytest.raises(UnstageableGpuDetectorError, match="meas"):
+    with pytest.raises(
+        UnstageableGpuDetectorError,
+        match=(
+            r"GpuDetector at meas:MeasureSymZones/center_detector cannot be "
+            r"staged: it sits in the 'meas' slot of the root pipeline"
+        ),
+    ):
         pipeline_requires_gpu(_write(tmp_path, _meas_slot_pipeline()))
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason=(
-        "KNOWN GAP. `iter_child_operations` short-circuits on "
-        "ImagePipelineCore (_operation_tree.py:41-43) and yields only "
-        "get_ops(), and `_CPU_ONLY_SLOTS` queries the ROOT pipeline's "
-        "accessors alone -- so a GpuDetector in a NESTED pipeline's own "
-        "meas/post/filters/model is invisible to both halves of the scan. "
-        "Measured: find_gpu_detectors returns [], pipeline_requires_gpu "
-        "returns False, and uses_staged_gpu_strategy returns False, so the "
-        "run routes to LocalParallelStrategy and the detector performs "
-        "per-image inference on a CPU node with nothing reported. That is "
-        "the same silent-CPU failure Task 3 exists to remove, surviving in a "
-        "shape the walker cannot see. Not strict: when the walker learns to "
-        "descend a nested pipeline's non-ops slots this XPASSes and should "
-        "be unmarked rather than fail the suite."
-    ),
-)
 def test_a_gpu_detector_in_a_NESTED_pipelines_meas_slot_is_refused(tmp_path):
-    """The desired behaviour, pinned as a test rather than as prose.
+    """Was an xfail (non-strict) until the walker descended nested slots.
 
-    A gap recorded only in a docstring is one that gets closed by accident and
-    reopened by accident. This asserts what *should* happen, so closing the
-    gap turns the marker green instead of leaving nothing to notice.
+    Before, ``walk_operations`` yielded only a nested pipeline's ``ops``, so
+    this shape was neither staged nor refused and routed to the CPU strategy.
     """
     from phenotypic.measure import MeasureSymZones
 
@@ -187,8 +178,195 @@ def test_a_gpu_detector_in_a_NESTED_pipelines_meas_slot_is_refused(tmp_path):
             )
         }
     )
-    with pytest.raises(UnstageableGpuDetectorError, match="meas"):
+    with pytest.raises(
+        UnstageableGpuDetectorError,
+        match=(
+            r"GpuDetector at inner/meas:MeasureSymZones/center_detector cannot "
+            r"be staged: it sits in the 'meas' slot of the pipeline at inner"
+        ),
+    ):
         pipeline_requires_gpu(_write(tmp_path, pipe))
+
+
+# ---------------------------------------------------------------------------
+# Every CPU-only slot, at the root and nested. `meas` carries its detector in a
+# real measurer; `post`/`filters`/`model` have no shipped class with an
+# operation-valued field, so each uses a carrier subclass of a real one.
+# ---------------------------------------------------------------------------
+
+
+class PostCarryingDetector(AppendString):
+    """A real ``PostMeasurement`` with an operation-valued field."""
+
+    detector: Union[OperationField, None] = None  # type: ignore[valid-type]
+
+
+class FilterCarryingDetector(TukeyOutlierRemover):
+    """A real ``SetAnalyzer`` with an operation-valued field."""
+
+    detector: Union[OperationField, None] = None  # type: ignore[valid-type]
+
+
+class ModelCarryingDetector(LogGrowthModel):
+    """A real ``ModelFitter`` with an operation-valued field."""
+
+    detector: Union[OperationField, None] = None  # type: ignore[valid-type]
+
+
+@pytest.fixture
+def _register_slot_carriers(monkeypatch):
+    for cls in (PostCarryingDetector, FilterCarryingDetector, ModelCarryingDetector):
+        monkeypatch.setattr(phenotypic, cls.__name__, cls, raising=False)
+
+
+#: slot -> (segment the slot entry is addressed by, field holding the detector)
+_SLOT_ADDRESS = {
+    "meas": ("meas:MeasureSymZones", "center_detector"),
+    "post": ("post:PostCarryingDetector", "detector"),
+    "filters": ("filters:FilterCarryingDetector", "detector"),
+    "model": ("model:ModelCarryingDetector", "detector"),
+}
+
+
+def _slot_kwargs(slot, detector):
+    from phenotypic.measure import MeasureSymZones
+
+    if slot == "meas":
+        return {"meas": {"MeasureSymZones": MeasureSymZones(center_detector=detector)}}
+    if slot == "post":
+        return {"post": {"PostCarryingDetector": PostCarryingDetector(
+            column="Temperature", value="C", detector=detector)}}
+    if slot == "filters":
+        return {"filters": {"FilterCarryingDetector": FilterCarryingDetector(
+            on="Size_Area", groupby=["Metadata_Plate"], detector=detector)}}
+    return {"model": ModelCarryingDetector(
+        on="Size_Area", groupby=["Metadata_Plate"], detector=detector)}
+
+
+def _slot_pipeline(slot, *, nested):
+    inner = ImagePipeline(
+        ops={"ManualPointDetector": _cpu_detector()},
+        **_slot_kwargs(slot, FakeGpuDetector()),
+    )
+    return ImagePipeline(ops={"inner": inner}) if nested else inner
+
+
+def _detector_in_slot(pipeline, slot, *, nested):
+    """The detector as it sits after a JSON round trip -- the test premise."""
+    owner = pipeline.get_ops()["inner"] if nested else pipeline
+    entry = owner.get_model() if slot == "model" else next(
+        iter(getattr(owner, f"get_{slot}")().values())
+    )
+    return getattr(entry, _SLOT_ADDRESS[slot][1])
+
+
+@pytest.mark.usefixtures("_register_slot_carriers")
+@pytest.mark.parametrize("nested", [False, True], ids=["ROOT", "NESTED"])
+@pytest.mark.parametrize("slot", ["meas", "post", "filters", "model"])
+def test_a_gpu_detector_in_every_cpu_only_slot_is_refused(tmp_path, slot, nested):
+    """One case per slot, per depth, through the production entry point.
+
+    Premise first: the detector must survive ``to_json``/``from_json`` in the
+    slot, or a refusal test on a pipeline with no GpuDetector passes vacuously.
+    """
+    path = _write(tmp_path, _slot_pipeline(slot, nested=nested))
+    assert isinstance(
+        _detector_in_slot(ImagePipeline.from_json(path), slot, nested=nested),
+        FakeGpuDetector,
+    )
+
+    segment, field = _SLOT_ADDRESS[slot]
+    prefix = "inner/" if nested else ""
+    where = "the pipeline at inner" if nested else "the root pipeline"
+    with pytest.raises(UnstageableGpuDetectorError) as caught:
+        pipeline_requires_gpu(path)
+    message = str(caught.value)
+    assert message.startswith(
+        f"GpuDetector at {prefix}{segment}/{field} cannot be staged: "
+        f"it sits in the '{slot}' slot of {where}"
+    ), message
+    # Refusal ORDER: the ancestor-contract check would also refuse this
+    # shape, blaming the slot entry's class instead of the slot.
+    assert "cannot be nested inside" not in message
+
+
+@pytest.mark.parametrize("nested", [False, True], ids=["ROOT", "NESTED"])
+def test_a_slot_entry_that_is_also_a_composite_is_refused(nested):
+    """The one shape ONLY the slot refusal catches.
+
+    Every shipped slot type (MeasureFeatures, PostMeasurement, SetAnalyzer,
+    ModelFitter) is refused by the ancestor-contract check anyway, with a
+    misleading "cannot be nested inside" message. A class that is BOTH a slot
+    type and a composition primitive passes that check -- it inherits
+    ``CompositeDetector._operate`` -- so without the slot refusal its detector
+    is an ordinary hit: staged, run by Stage 2 on the stored image, and
+    replayed. This test fails by NO RAISE AT ALL if the slot refusal goes.
+
+    Calls ``find_gpu_detectors`` on the live pipeline rather than through
+    JSON: the local class is not in the ``phenotypic`` namespace, and the
+    refusal under test does not depend on serialization.
+    """
+    from phenotypic._cli._cli_validation import _child_contract
+    from phenotypic.abc_ import MeasureFeatures
+
+    class MeasuringComposite(CompositeDetector, MeasureFeatures):
+        pass
+
+    entry = MeasuringComposite(ops=[FakeGpuDetector()], mode="union")
+    # Premise: the ancestor check ADMITS this entry, so it cannot be what
+    # makes the test pass.
+    assert _child_contract(entry) == "parallel"
+
+    inner = ImagePipeline(meas={"MeasuringComposite": entry})
+    pipe = ImagePipeline(ops={"inner": inner}) if nested else inner
+    prefix = "inner/" if nested else ""
+    with pytest.raises(
+        UnstageableGpuDetectorError,
+        match=(
+            rf"GpuDetector at {prefix}meas:MeasuringComposite/ops\[0\] cannot "
+            r"be staged: it sits in the 'meas' slot"
+        ),
+    ):
+        find_gpu_detectors(pipe)
+
+
+@pytest.mark.usefixtures("_register_slot_carriers")
+def test_the_same_nested_pipeline_is_staged_when_the_detector_is_in_its_ops(
+    tmp_path,
+):
+    """Control: the refusal is about the SLOT, not about nesting.
+
+    Same nested-pipeline shape as the slot cases, with the detector moved into
+    the inner pipeline's ``ops``: an ordinary staged hit.
+    """
+    pipe = ImagePipeline(
+        ops={
+            "inner": ImagePipeline(
+                ops={
+                    "ManualPointDetector": _cpu_detector(),
+                    "FakeGpuDetector": FakeGpuDetector(),
+                },
+                **_slot_kwargs("post", _cpu_detector()),
+            )
+        }
+    )
+    path = _write(tmp_path, pipe)
+    assert pipeline_requires_gpu(path) is True
+    hits = find_gpu_detectors(ImagePipeline.from_json(path))
+    assert [p for p, _ in hits] == [("inner", "FakeGpuDetector")]
+
+
+def test_an_ops_key_spelled_like_a_slot_segment_is_not_a_slot(tmp_path):
+    """Slot membership is decided on the live pipeline, not by the string.
+
+    A user may key an op ``"meas:Fake"``. That detector is in ``ops`` and must
+    stage normally rather than be refused as a ``meas`` entry.
+    """
+    pipe = ImagePipeline(ops={"meas:Fake": FakeGpuDetector()})
+    path = _write(tmp_path, pipe)
+    assert pipeline_requires_gpu(path) is True
+    hits = find_gpu_detectors(ImagePipeline.from_json(path))
+    assert [p for p, _ in hits] == [("meas:Fake",)]
 
 
 def test_a_ROOT_meas_slot_gpu_detector_does_not_route_to_the_cpu_strategy(tmp_path):

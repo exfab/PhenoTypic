@@ -136,12 +136,6 @@ class UnstageableGpuDetectorError(ValueError):
     """A GpuDetector sits somewhere the staged engine cannot drive it."""
 
 
-#: Pipeline slots the staged engine runs on a CPU node in Stage 3. A
-#: GpuDetector in any of them cannot be staged, so it is refused rather than
-#: silently run on CPU.
-_CPU_ONLY_SLOTS = ("meas", "post", "filters", "model")
-
-
 #: What each container hands its children. Keyed by class, and NOT a
 #: declaration on the operations themselves: for these types the semantics is
 #: definitional rather than incidental. A CompositeDetector whose branches
@@ -184,8 +178,11 @@ def _populate_child_contract() -> None:
     ``_child_contract`` refuses a ``CompositeEnhance`` -- a placement the
     design permits. Populating key-by-key made that window reachable. It
     matters because the GUI reaches here on threaded Werkzeug
-    (``gui/run_console/_callbacks.py:256``) and already swallows ``ValueError``,
-    so the symptom is not an error: the run silently routes to CPU.
+    (``gui/run_console/_callbacks.py:_pipeline_uses_staged_gpu``) and swallows
+    ``ValueError``, so the symptom there is not an error: the run console
+    hides its staged-GPU form section for a pipeline the design permits. (The
+    run itself is a separate ``python -m phenotypic`` process with its own
+    table, so it does not inherit a wrong answer from this race.)
 
     The dict literal below is fully constructed before ``update`` is called,
     and ``dict.update`` from a dict is atomic under the GIL, so no thread can
@@ -290,14 +287,61 @@ def validate_ancestor_contracts(
         _child_contract(get_at_path(pipeline, path[:depth]))
 
 
+def refuse_cpu_only_slot(pipeline: ImagePipeline, path: tuple[str, ...]) -> None:
+    """Refuse a GpuDetector reached through any pipeline's non-``ops`` slot.
+
+    Applies at every depth -- the root pipeline's ``meas``/``post``/
+    ``filters``/``model`` and those of any nested pipeline alike. Those slots
+    run after the op chain (``.measure()`` runs after ``.apply()``), and in the
+    staged engine the op chain is Stage 3: a detector there needs Stage 3's
+    output as its input, and Stage 2, where GPU inference happens, has
+    already finished. A measurement may also hand its nested detector a
+    derived image, possibly once per object, while Stage 2 records one array
+    per image per slot.
+
+    **Not refusing is worse than not seeing.** An unseen detector routes the
+    run to CPU -- slow but correct. A seen and unrefused one would be staged,
+    run by Stage 2 on the stored image (the wrong input), and replayed by
+    Stage 3: fast and silently wrong.
+
+    Args:
+        pipeline: Root pipeline the path is addressed against.
+        path: Tree path to a GpuDetector, as returned by
+            ``find_operations``.
+
+    Raises:
+        UnstageableGpuDetectorError: some segment of *path* is taken out of a
+            pipeline's ``meas``/``post``/``filters``/``model`` slot.
+    """
+    from phenotypic.sdk_._operation_tree import get_at_path, pipeline_slot_of
+
+    for depth, segment in enumerate(path):
+        owner = get_at_path(pipeline, path[:depth])  # path[:0] is the root
+        slot = pipeline_slot_of(owner, segment)
+        if slot is None:
+            continue
+        where = (
+            "the root pipeline"
+            if depth == 0
+            else f"the pipeline at {'/'.join(path[:depth])}"
+        )
+        raise UnstageableGpuDetectorError(
+            f"GpuDetector at {'/'.join(path)} cannot be staged: it sits in "
+            f"the {slot!r} slot of {where}, which runs after the op chain -- "
+            "Stage 3 runs it on a CPU node, after GPU inference has "
+            "finished. Move the detector into that pipeline's ops."
+        )
+
+
 def find_gpu_detectors(
     pipeline: ImagePipeline, *, strict: bool = False
 ) -> list[tuple[tuple[str, ...], "GpuDetector"]]:
     """Every ``(path, detector)`` GpuDetector in *pipeline*, tree-wide.
 
-    Placement refusals -- an unstageable ancestor, or a CPU-only slot -- raise
-    **regardless of** ``strict``. They have to fire on the production path
-    (``pipeline_requires_gpu``), because the only other caller,
+    Placement refusals -- a CPU-only slot of any pipeline at any depth, or an
+    unstageable ancestor -- raise **regardless of** ``strict``. They have to
+    fire on the production path (``pipeline_requires_gpu``), because the only
+    other caller,
     ``split_pipeline_at_gpu``, is reached only once ``pipeline_requires_gpu``
     has already returned True. A refusal reachable only under ``strict=True``
     is a refusal production never performs, while a unit test calling the
@@ -306,9 +350,9 @@ def find_gpu_detectors(
     Args:
         pipeline: The pipeline to scan.
         strict: When True, additionally raise for MORE THAN ONE detector. The
-            GUI (``gui/run_console/_callbacks.py:255``) calls the non-strict
-            path, where a multi-detector pipeline should report True rather
-            than raise.
+            GUI (``gui/run_console/_callbacks.py:_pipeline_uses_staged_gpu``)
+            calls the non-strict path, where a multi-detector pipeline should
+            report True rather than raise.
 
             **``split_pipeline_at_gpu`` is the one production caller** and
             passes ``strict=True``. It previously carried its own
@@ -327,9 +371,17 @@ def find_gpu_detectors(
             ``strict``, there is more than one detector.
     """
     from phenotypic.abc_ import GpuDetector
-    from phenotypic.sdk_._operation_tree import find_operations, walk_operations
+    from phenotypic.sdk_._operation_tree import find_operations
 
     hits = find_operations(pipeline, lambda op: isinstance(op, GpuDetector))
+
+    # Unconditional -- deliberately NOT gated on `strict`; see the docstring.
+    # FIRST, before the multi-detector count and before the ancestor
+    # contracts: for `meas:MeasureSymZones/center_detector` the ancestor check
+    # would refuse too, but it would blame MeasureSymZones rather than the
+    # slot, which is the actual reason.
+    for path, _ in hits:
+        refuse_cpu_only_slot(pipeline, path)
 
     if strict and len(hits) > 1:
         paths = ", ".join("/".join(p) for p, _ in hits)
@@ -350,40 +402,6 @@ def find_gpu_detectors(
     # anywhere else fires only after the run has already been routed.
     for path, _ in hits:
         validate_ancestor_contracts(pipeline, path)
-
-    # Unconditional -- deliberately NOT gated on `strict`; see the docstring.
-    #
-    # ROOT ONLY, and that is a KNOWN GAP rather than a choice. These accessors
-    # are called on `pipeline` itself, and `walk_operations` cannot reach a
-    # nested pipeline's non-`ops` slots either (`_operation_tree.py:41-43`
-    # short-circuits on ImagePipelineCore and yields only `get_ops()`). So a
-    # GpuDetector in a NESTED pipeline's meas/post/filters/model is neither
-    # staged nor refused -- measured: the run routes to LocalParallelStrategy
-    # and performs per-image inference on a CPU node with nothing reported.
-    # Pinned by an xfail in `test_gpu_detection_tree_wide.py`; closing it means
-    # teaching the walker to descend those slots, not widening this loop.
-    for slot in _CPU_ONLY_SLOTS:
-        accessor = getattr(pipeline, f"get_{slot}", None)
-        if accessor is None:
-            continue
-        container = accessor()
-        if container is None:
-            continue
-        # get_model() returns Optional[ModelFitter], NOT a dict -- calling
-        # .items() on it raises AttributeError.
-        entries = (
-            container.items()
-            if isinstance(container, dict)
-            else [(slot, container)]
-        )
-        for name, op in entries:
-            for sub_path, sub_op in walk_operations(op):
-                if isinstance(sub_op, GpuDetector):
-                    raise UnstageableGpuDetectorError(
-                        f"GpuDetector at {slot}/{name}/"
-                        f"{'/'.join(sub_path)} cannot be staged: Stage 3 "
-                        f"runs the {slot!r} slot on a CPU node"
-                    )
     return hits
 
 
@@ -395,14 +413,17 @@ def pipeline_requires_gpu(pipeline_path: Path) -> bool:
     it means the run silently completes on CPU with different numbers.
 
     NOTE the callers handle the refusal differently, and neither was designed:
-    ``gui/run_console/_callbacks.py:248-257`` wraps this in
+    ``gui/run_console/_callbacks.py:_pipeline_uses_staged_gpu`` wraps this in
     ``except (OSError, ValueError, TypeError): return False``, and
-    ``UnstageableGpuDetectorError`` IS a ``ValueError`` -- so the GUI silently
-    reports "not a GPU pipeline" instead of surfacing the message. The CLI
-    paths (``_cli_execution_strategies.py:344``, ``:906``, ``:1341``) do not
-    catch it, so there the user gets a raw traceback. Both still want
-    deciding: the GUI should surface the reason, and the CLI should print it
-    rather than a traceback.
+    ``UnstageableGpuDetectorError`` IS a ``ValueError``. That does **not**
+    route a refused run to CPU: the helper's one consumer,
+    ``show_staged_gpu_controls``, only toggles the staged-GPU form section's
+    ``display``. The GUI launches runs as ``python -m phenotypic``
+    subprocesses, where ``create_execution_strategy`` ->
+    ``uses_staged_gpu_strategy`` -> this function raises. So a refused
+    pipeline shows a hidden GPU form section, then a traceback in the run
+    log. The CLI paths (``_cli_execution_strategies.py``) do not catch it
+    either, so a CLI user also gets a raw traceback.
 
     Args:
         pipeline_path: Path to pipeline JSON file.

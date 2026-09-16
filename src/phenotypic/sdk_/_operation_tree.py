@@ -10,6 +10,13 @@ Path segments are always **non-empty strings**, because a path is also a
 ``pipeline_step_path``, which ``_provenance.validate_provenance_journal``
 rejects unless every segment is a non-empty string. A list entry is therefore
 addressed ``"ops[0]"``, never ``("ops", 0)``.
+
+A pipeline's four non-``ops`` slots are addressed with the slot name as a
+colon-separated namespace: ``"meas:<key>"``, ``"post:<key>"``,
+``"filters:<key>"`` for the three dict slots, and ``"model:<ClassName>"`` for
+the single ``model``. A bare ``"meas"`` would collide with an ``ops`` key a
+user is free to choose, and the ``"ops[0]"`` bracket form admits only integer
+indices.
 """
 
 from __future__ import annotations
@@ -19,32 +26,48 @@ from typing import Any, Callable, Iterator, Sequence
 
 _INDEXED = re.compile(r"^(?P<field>[^\[\]]+)\[(?P<index>\d+)\]$")
 
+#: The ``ImagePipelineCore`` slots that run after the op chain. The first three
+#: are ``Dict[str, ...]``; ``model`` is ``Optional[ModelFitter]``.
+PIPELINE_SLOTS = ("meas", "post", "filters", "model")
+_DICT_SLOTS = ("meas", "post", "filters")
+_SLOT_SEPARATOR = ":"
+
 
 def _is_operation(value: Any) -> bool:
     """True for anything that can carry further operations.
 
-    KNOWN LIMIT, and it is the twin of ``walk_operations``' one. This admits
-    ``ImagePipeline`` but not a bare ``ImagePipelineCore``, while
-    ``_provenance.apply_child`` pushes a ``pipeline_step`` segment for **every**
-    child a container hands it, ungated by type. So a bare
-    ``NapariPipelineViewer`` held as an operation-valued *field* of a composite
-    gets a recorded path segment that this walker never yields -- and a
-    ``GpuDetector`` beneath it is therefore invisible to ``find_gpu_detectors``.
+    Admits any ``ImagePipelineCore``, not only ``ImagePipeline``:
+    ``_provenance.apply_child`` pushes a ``pipeline_step`` segment for every
+    child a container hands it, ungated by type, so a bare
+    ``NapariPipelineViewer`` held in an operation-valued field must be yielded
+    here too or its recorded path would be one this walker never produces.
 
-    That is a **discovery** gap, not the unresolvable-address failure the
-    ``TwoKFilamentousDetector`` comment describes: ``get_at_path`` still
-    resolves such a path, because ``_child`` falls through to ``getattr``.
-
-    **If you ever teach ``walk_operations`` to descend a nested pipeline's
-    ``meas``/``post``/``filters``/``model``, widen this predicate to
-    ``ImagePipelineCore`` in the same commit** -- otherwise the two halves of
-    the addressing scheme disagree again, in a shape the other gap's note does
-    not mention.
+    This predicate gates only operation-valued **fields**. A pipeline's slot
+    children (``PostMeasurement``, ``SetAnalyzer``, ``ModelFitter``) are not
+    admitted by it and do not need to be: ``iter_child_operations`` yields them
+    because of the slot they sit in, not because of their type.
     """
-    from phenotypic._core._image_pipeline import ImagePipeline
+    from phenotypic._core._pipeline_parts._image_pipeline_core import (
+        ImagePipelineCore,
+    )
     from phenotypic.abc_ import ImageOperation, MeasureFeatures
 
-    return isinstance(value, (ImageOperation, MeasureFeatures, ImagePipeline))
+    return isinstance(value, (ImageOperation, MeasureFeatures, ImagePipelineCore))
+
+
+def _iter_slot_children(pipeline: Any) -> Iterator[tuple[str, Any]]:
+    """Yield ``(segment, child)`` for every entry of *pipeline*'s four slots.
+
+    Unconditional -- never filtered through ``_is_operation``, which rejects
+    ``ModelFitter``, ``SetAnalyzer`` and ``PostMeasurement``. The slot's
+    declared type is what makes these children operation-bearing.
+    """
+    for slot in _DICT_SLOTS:
+        for key, child in getattr(pipeline, f"get_{slot}")().items():
+            yield f"{slot}{_SLOT_SEPARATOR}{key}", child
+    model = pipeline.get_model()
+    if model is not None:
+        yield f"model{_SLOT_SEPARATOR}{type(model).__name__}", model
 
 
 def iter_child_operations(obj: Any) -> Iterator[tuple[str, Any]]:
@@ -63,6 +86,7 @@ def iter_child_operations(obj: Any) -> Iterator[tuple[str, Any]]:
 
     if isinstance(obj, ImagePipelineCore):
         yield from obj.get_ops().items()
+        yield from _iter_slot_children(obj)
         return
 
     model_fields = getattr(type(obj), "model_fields", None)
@@ -85,27 +109,13 @@ def walk_operations(pipeline: Any) -> Iterator[tuple[tuple[str, ...], Any]]:
     Does not yield the root itself (its path would be empty, and an empty
     ``pipeline_step_path`` is invalid).
 
-    KNOWN LIMIT: for a **nested** ``ImagePipeline`` this descends only its
-    ``ops``, not its own ``meas``/``post``/``filters``/``model``. A GpuDetector
-    hidden in a nested pipeline's ``meas`` is therefore neither staged nor
-    refused. That shape is not reachable from the GUI builder, and it is out of
-    scope for this change -- but it is a gap, not an invariant, and the
-    CPU-only-slot refusal covers only the ROOT pipeline's slots.
-
-    (An earlier draft of this sentence also said the shape "has no known user".
-    That is a claim about the world, not about the code, and nothing here
-    supports it. Scope is the honest reason; absence of users is not something
-    this module can know.)
-
-    **Say the consequence, not just the gap.** "Neither staged nor refused"
-    means the run routes to the CPU strategy and the detector performs
-    per-image inference on a CPU node, with nothing reported -- the same silent
-    failure the tree-wide scan exists to remove, surviving in a shape this
-    walker cannot see. Measured for a nested pipeline's ``meas``:
-    ``find_gpu_detectors`` returns ``[]``, ``pipeline_requires_gpu`` returns
-    ``False``, ``uses_staged_gpu_strategy`` returns ``False``. Pinned by
-    ``test_a_gpu_detector_in_a_NESTED_pipelines_meas_slot_is_refused``
-    (xfail, non-strict), which XPASSes when this is fixed.
+    Every pipeline on the way down -- the root and any nested one -- is
+    descended through its ``ops`` **and** its ``meas``/``post``/``filters``/
+    ``model`` slots. Seeing the slots is what lets ``find_gpu_detectors`` refuse
+    a GpuDetector placed in one: those slots run after the op chain, so the
+    staged engine would run such a detector in Stage 3, on a CPU node, after
+    GPU inference has finished. Invisible, it would instead route the whole
+    run to the CPU strategy with nothing reported.
     """
 
     def visit(
@@ -126,11 +136,79 @@ def find_operations(
     return [(path, op) for path, op in walk_operations(pipeline) if predicate(op)]
 
 
+_ABSENT = object()
+
+
+def _slot_child(pipeline: Any, segment: str) -> tuple[str | None, Any]:
+    """``(slot, child)`` if *segment* addresses one of *pipeline*'s slots.
+
+    Returns ``(None, _ABSENT)`` when *segment* is not spelled as a slot
+    segment, and ``(slot, _ABSENT)`` when it is but names nothing there --
+    including a ``"model:<ClassName>"`` whose class no longer matches, so a
+    recorded path stops resolving once the model it addressed is replaced.
+    """
+    slot, separator, key = segment.partition(_SLOT_SEPARATOR)
+    if not separator or slot not in PIPELINE_SLOTS:
+        return None, _ABSENT
+    if slot == "model":
+        model = pipeline.get_model()
+        if model is None or type(model).__name__ != key:
+            return slot, _ABSENT
+        return slot, model
+    return slot, getattr(pipeline, f"get_{slot}")().get(key, _ABSENT)
+
+
+def _pipeline_child(pipeline: Any, segment: str) -> tuple[str | None, Any]:
+    """Resolve *segment* on a pipeline: ``(slot or None, child)``.
+
+    Raises ``KeyError`` when nothing matches, and also when the segment is
+    BOTH an ``ops`` key and a resolvable slot segment -- a user may key an op
+    ``"meas:X"`` -- rather than silently picking one of the two.
+    """
+    ops = pipeline.get_ops()
+    slot, child = _slot_child(pipeline, segment)
+    if segment in ops:
+        if child is not _ABSENT:
+            raise KeyError(
+                f"{segment!r} is ambiguous: it is both an ops key and a "
+                f"{slot!r} slot entry"
+            )
+        return None, ops[segment]
+    if child is _ABSENT:
+        raise KeyError(segment)
+    return slot, child
+
+
+def pipeline_slot_of(node: Any, segment: str) -> str | None:
+    """The slot (``"meas"``, ``"post"``, ...) *segment* takes out of *node*.
+
+    ``None`` when *node* is not a pipeline or *segment* names one of its
+    ``ops``. Decided against the live node, never by parsing the string alone:
+    an ``ops`` key may itself contain a colon.
+
+    Raises:
+        KeyError: *segment* does not resolve on *node*.
+    """
+    from phenotypic._core._pipeline_parts._image_pipeline_core import (
+        ImagePipelineCore,
+    )
+
+    if not isinstance(node, ImagePipelineCore):
+        return None
+    slot, _ = _pipeline_child(node, segment)
+    return slot
+
+
 def _child(node: Any, segment: str) -> Any:
     from phenotypic._core._pipeline_parts._image_pipeline_core import (
         ImagePipelineCore,
     )
 
+    # Pipelines first: their segments are ops keys or slot segments, either of
+    # which may contain brackets, and a pipeline has no list-valued child.
+    if isinstance(node, ImagePipelineCore):
+        _, child = _pipeline_child(node, segment)
+        return child
     matched = _INDEXED.match(segment)
     if matched is not None:
         field = matched.group("field")
@@ -139,11 +217,6 @@ def _child(node: Any, segment: str) -> Any:
         if not isinstance(sequence, list) or index >= len(sequence):
             raise KeyError(segment)
         return sequence[index]
-    if isinstance(node, ImagePipelineCore):
-        ops = node.get_ops()
-        if segment not in ops:
-            raise KeyError(segment)
-        return ops[segment]
     if not hasattr(node, segment):
         raise KeyError(segment)
     return getattr(node, segment)

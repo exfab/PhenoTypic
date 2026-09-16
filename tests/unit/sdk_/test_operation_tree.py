@@ -1,11 +1,22 @@
+from typing import Any
+
 import pytest
 
 from phenotypic import ImagePipeline
+from phenotypic.analysis import (
+    LinearLagModel,
+    LogGrowthModel,
+    TukeyOutlierRemover,
+)
 from phenotypic.detect import CompositeDetector, ManualPointDetector, OtsuDetector
 from phenotypic.enhance import BlurGauss
+from phenotypic.measure import MeasureShape, MeasureSymZones
+from phenotypic.post import AppendString
 from phenotypic.sdk_._operation_tree import (
+    _is_operation,
     find_operations,
     get_at_path,
+    pipeline_slot_of,
     substitute_at_path,
     walk_operations,
 )
@@ -53,10 +64,129 @@ def test_find_operations_locates_a_nested_type():
     assert hits[0][0] == ("CompositeDetector", "ops[1]")
 
 
-def test_get_at_path_round_trips_with_walk():
-    pipe = _pipeline_with_composite()
-    for path, op in walk_operations(pipe):
+def _slots():
+    return dict(
+        meas={
+            "MeasureShape": MeasureShape(),
+            "MeasureSymZones": MeasureSymZones(center_detector=OtsuDetector()),
+        },
+        post={"AppendString": AppendString(column="Temperature", value="C")},
+        filters={
+            "Tukey": TukeyOutlierRemover(on="Size_Area", groupby=["Metadata_Plate"])
+        },
+        model=LogGrowthModel(on="Size_Area", groupby=["Metadata_Plate"]),
+    )
+
+
+def _pipeline_with_slots_at_two_depths():
+    inner = ImagePipeline(ops={"OtsuDetector": OtsuDetector()}, **_slots())
+    return ImagePipeline(
+        ops={"BlurGauss": BlurGauss(sigma=2.0), "inner": inner}, **_slots()
+    )
+
+
+@pytest.mark.parametrize(
+    "factory", [_pipeline_with_composite, _pipeline_with_slots_at_two_depths]
+)
+def test_get_at_path_round_trips_with_walk(factory):
+    pipe = factory()
+    walked = list(walk_operations(pipe))
+    assert walked  # premise: a round trip over nothing proves nothing
+    for path, op in walked:
         assert get_at_path(pipe, path) is op
+
+
+def test_walk_descends_every_slot_of_the_root_and_of_a_nested_pipeline():
+    pipe = _pipeline_with_slots_at_two_depths()
+    paths = {"/".join(p) for p, _ in walk_operations(pipe)}
+    for prefix in ("", "inner/"):
+        assert f"{prefix}meas:MeasureShape" in paths
+        assert f"{prefix}meas:MeasureSymZones" in paths
+        assert f"{prefix}meas:MeasureSymZones/center_detector" in paths
+        assert f"{prefix}post:AppendString" in paths
+        assert f"{prefix}filters:Tukey" in paths
+        assert f"{prefix}model:LogGrowthModel" in paths
+
+
+def test_slot_children_are_yielded_whatever_their_type():
+    """``_is_operation`` rejects these three types; the walker must not care.
+
+    Gating slot children on ``_is_operation`` would drop the ``model`` entry,
+    and a GpuDetector under it would stop being found.
+    """
+    pipe = _pipeline_with_slots_at_two_depths()
+    slots = _slots()
+    rejected = [slots["post"]["AppendString"], slots["filters"]["Tukey"], slots["model"]]
+    assert not any(_is_operation(entry) for entry in rejected)  # premise
+
+    types = {type(op) for _, op in walk_operations(pipe)}
+    assert {AppendString, TukeyOutlierRemover, LogGrowthModel} <= types
+
+
+def test_a_model_segment_stops_resolving_once_the_model_is_replaced():
+    pipe = ImagePipeline(**_slots())
+    path = ("model:LogGrowthModel",)
+    assert isinstance(get_at_path(pipe, path), LogGrowthModel)
+
+    pipe.set_model(LinearLagModel(on="Size_Area", groupby=["Metadata_Plate"]))
+    with pytest.raises(KeyError):
+        get_at_path(pipe, path)
+
+
+@pytest.mark.parametrize(
+    "segment",
+    ["meas:NoSuchMeasure", "post:NoSuch", "filters:NoSuch", "model:NoSuchModel",
+     "notaslot:MeasureShape", "meas"],
+)
+def test_an_unresolvable_slot_segment_raises_key_error(segment):
+    pipe = ImagePipeline(**_slots())
+    with pytest.raises(KeyError):
+        get_at_path(pipe, (segment,))
+
+
+def test_a_segment_that_is_both_an_ops_key_and_a_slot_entry_is_refused():
+    pipe = ImagePipeline(
+        ops={"meas:MeasureShape": OtsuDetector()},
+        meas={"MeasureShape": MeasureShape()},
+    )
+    with pytest.raises(KeyError, match="ambiguous"):
+        get_at_path(pipe, ("meas:MeasureShape",))
+
+
+def test_pipeline_slot_of_is_decided_on_the_live_node():
+    pipe = ImagePipeline(
+        ops={"meas:Otsu": OtsuDetector(), "inner": ImagePipeline(**_slots())},
+        **_slots(),
+    )
+    assert pipeline_slot_of(pipe, "meas:MeasureShape") == "meas"
+    assert pipeline_slot_of(pipe, "model:LogGrowthModel") == "model"
+    assert pipeline_slot_of(pipe, "meas:Otsu") is None  # an ops key
+    assert pipeline_slot_of(pipe, "inner") is None
+    assert pipeline_slot_of(OtsuDetector(), "meas:MeasureShape") is None
+    with pytest.raises(KeyError):
+        pipeline_slot_of(pipe, "meas:Absent")
+
+
+def test_a_bare_pipeline_core_in_an_operation_field_is_walked():
+    """``_is_operation`` admits any ``ImagePipelineCore``, not only
+    ``ImagePipeline``, so a recorded path through one is also a walked path.
+    """
+    from phenotypic._core._pipeline_parts._image_pipeline_core import (
+        ImagePipelineCore,
+    )
+
+    class _NotAnImagePipeline(ImagePipelineCore):
+        pass
+
+    class _Holder(OtsuDetector):
+        inner: Any = None
+
+    core = _NotAnImagePipeline(ops={"OtsuDetector": OtsuDetector()})
+    assert _is_operation(core)
+    holder = _Holder(inner=core)
+    paths = {p for p, _ in walk_operations(holder)}
+    assert ("inner",) in paths
+    assert ("inner", "OtsuDetector") in paths
 
 
 def test_substitute_replaces_only_the_addressed_node():
