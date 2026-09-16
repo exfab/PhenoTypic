@@ -2860,6 +2860,43 @@ and never a weaker model than the implementer.
 
 ## Revision history
 
+**Amended 2026-09-16 after both recorded gaps were closed** (`e70c5a4e`,
+`629b6112`). The Phase 0-2 entries 6 and 7 below stand as a record of what was
+believed then; this entry supersedes them.
+
+14. **The nested-slot gap is closed.** `iter_child_operations` now descends
+    every pipeline's `meas`/`post`/`filters`/`model` as well as its `ops`,
+    yielding slot children unconditionally, and `find_gpu_detectors` refuses
+    any hit whose path passes through a slot, at any depth. `_CPU_ONLY_SLOTS`
+    and the root-only loop in Task 3's code block no longer exist, nor does the
+    doubled `model/model/...` path that loop produced; the `KNOWN LIMIT` note
+    in Task 1's `walk_operations` docstring is obsolete. Slot entries are now
+    spelled `meas:<key>`, `post:<key>`, `filters:<key>`, `model:<ClassName>`.
+    The former xfail passes.
+15. **The reason for the slot refusal was overstated.** It was argued that a
+    seen-but-unrefused slot detector would be "fast and silently wrong". For
+    every shipped slot type that is false: none is a composition primitive, so
+    the ancestor check refuses the shape too, only with a message blaming the
+    entry's class. The silent case exists only for a class that is both a slot
+    type and a composition primitive
+    (`MeasuringComposite(CompositeDetector, MeasureFeatures)`), and the slot
+    refusal is the only guard for it.
+16. **Entry 7 was wrong about the mechanism.** The GUI catching the refusal did
+    not route a refused run to CPU. `_pipeline_uses_staged_gpu` had one
+    consumer, which only toggled the staged-GPU form section; the run is a
+    `python -m phenotypic` subprocess, which raised. The real behaviour was a
+    hidden section, then a raw traceback. Fixed: the GUI helper is now
+    `_staged_gpu_capability`, which shows the message in the
+    `rc-staged-gpu-refusal` alert and disables Run; the CLI prints a one-line
+    usage error.
+17. **Fixing entry 7 found two worse defects nobody had recorded.** The CLI
+    cleared the output for `--overwrite` *before* the refusal fired, so a
+    refused pipeline pointed at an existing run destroyed that run's results;
+    and `--dry-run` never reached the check, so Validate passed what Run
+    refused. The CLI preflight now sits above both. Still open, and older than
+    this change: `--mode process --layer rgb|gray` is refused for a refused
+    pipeline although those layers come from the pre-detector ops.
+
 **Amended 2026-09-16 at the end of Phase 3.**
 
 11. **One finding, five instances: a check that sits adjacent to the question it

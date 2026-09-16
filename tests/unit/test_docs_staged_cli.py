@@ -207,6 +207,110 @@ def test_the_contrib_guide_quotes_the_real_nesting_refusal():
     assert _collapse(str(excinfo.value)) in _collapse(guide)
 
 
+#: Docs that print the slot-segment vocabulary as ``<slot>:<key>`` placeholders.
+_SLOT_SPELLING_DOCS = _SHAPE_CHECKED_DOCS
+
+#: The key every dict slot is populated under for the spelling check. Distinct
+#: from every class name, so a segment that carried the class instead of the
+#: key cannot match.
+_SLOT_KEY = "K"
+
+
+def _pipeline_with_every_slot(key: str = _SLOT_KEY):
+    """A pipeline, nested as ``inner``, with each of its four slots populated.
+
+    The ``meas`` entry carries a ``GpuDetector``, so the same tree yields both
+    the refusal message and the slot segments. The refusal check passes the
+    key the docs quote (``MeasureSymZones``, what a list-built pipeline would
+    key it by); the spelling check keeps the default.
+    """
+    from phenotypic import ImagePipeline
+    from phenotypic.analysis import LogGrowthModel, TukeyOutlierRemover
+    from phenotypic.measure import MeasureSymZones
+    from phenotypic.post import AppendString
+    from tests._fakes.fake_gpu_detector import FakeGpuDetector
+
+    inner = ImagePipeline(
+        meas={key: MeasureSymZones(center_detector=FakeGpuDetector())},
+        post={key: AppendString(column="Temperature", value="C")},
+        filters={
+            key: TukeyOutlierRemover(
+                on="Size_Area", groupby=["Metadata_Plate"]
+            )
+        },
+        model=LogGrowthModel(on="Size_Area", groupby=["Metadata_Plate"]),
+    )
+    return ImagePipeline(ops={"inner": inner}), inner
+
+
+def test_the_documented_slot_segment_spelling_is_the_walkers():
+    """``meas:<key>`` is vocabulary a user reads in a refusal; derive it.
+
+    Each documented placeholder is rebuilt from the segments the walker
+    actually yields: the separator is whatever sits between the slot name and
+    the known key, and ``model`` must carry the model's class name for the
+    doc's ``<ClassName>`` to be true. A walker that spelled ``meas/K`` or
+    ``model:model`` fails here rather than leaving four docs quietly wrong.
+    """
+    from phenotypic.sdk_._operation_tree import iter_child_operations
+
+    _, inner = _pipeline_with_every_slot()
+    segments = [segment for segment, _ in iter_child_operations(inner)]
+    model_name = type(inner.get_model()).__name__
+
+    placeholders = []
+    for slot in ("meas", "post", "filters"):
+        (segment,) = [
+            s for s in segments if s.startswith(slot) and s.endswith(_SLOT_KEY)
+        ]
+        separator = segment[len(slot) : -len(_SLOT_KEY)]
+        assert separator, segment
+        placeholders.append(f"`{slot}{separator}<key>`")
+    (segment,) = [s for s in segments if s.startswith("model")]
+    assert segment.endswith(model_name), (segment, model_name)
+    separator = segment[len("model") : -len(model_name)]
+    assert separator, segment
+    placeholders.append(f"`model{separator}<ClassName>`")
+
+    for relative in _SLOT_SPELLING_DOCS:
+        text = (REPO / relative).read_text(encoding="utf-8")
+        for placeholder in placeholders:
+            assert placeholder in text, (
+                f"{relative}: does not spell the slot segment {placeholder}, "
+                f"which is what the walker yields ({segments})"
+            )
+
+
+def test_the_docs_quote_the_real_slot_refusal():
+    """The slot refusal is quoted in full by the guide, and by prefix in the how-to.
+
+    Derived from ``find_gpu_detectors`` on a live nested pipeline, so a
+    rewording of the raiser -- or of the path spelling inside it -- breaks
+    this rather than leaving a plausible-looking quotation behind.
+    """
+    from phenotypic._cli._cli_validation import (
+        UnstageableGpuDetectorError,
+        find_gpu_detectors,
+    )
+
+    pipeline, _ = _pipeline_with_every_slot("MeasureSymZones")
+    with pytest.raises(UnstageableGpuDetectorError) as excinfo:
+        find_gpu_detectors(pipeline)
+    message = _collapse(str(excinfo.value))
+    assert "inner/meas:" in message, message
+
+    guide = (
+        REPO / "docs" / "source" / "contrib_guide" / "gpu_detectors.md"
+    ).read_text(encoding="utf-8")
+    assert message in _collapse(guide), message
+
+    how_to = (
+        REPO / "docs" / "source" / "how_to" / "pages" / "gpu_detection_setup.md"
+    ).read_text(encoding="utf-8")
+    head = message[: message.index("staged:") + len("staged:")]
+    assert head in _collapse(how_to), head
+
+
 def test_the_contrib_guide_names_the_real_child_contract_entries():
     """The guide documents a closed table; check it against the table.
 

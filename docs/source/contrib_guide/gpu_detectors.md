@@ -170,8 +170,8 @@ question and `phenotypic.detect`/`phenotypic.enhance` are heavy. If you ever add
 an entry, add it **inside the existing single `update()`** rather than assigning
 key by key: the guard is `if _CHILD_CONTRACT: return`, so a half-built table
 lets a second thread return early and refuse a placement the design permits —
-and in the GUI, which runs threaded and swallows the error, that shows up as a
-run silently going to CPU rather than as a failure.
+and in the GUI, which runs threaded, that shows up as a refusal alert and a
+disabled Run button on a pipeline that is perfectly valid.
 
 ```{admonition} Introduced with nested GPU staging
 :class: important
@@ -315,12 +315,14 @@ verified for CompositeDetector does not carry over to it. Lift the detector into
 a plain CompositeDetector branch, or into the top-level pipeline.
 ```
 
-In one of the root pipeline's CPU-only slots (`meas`, `post`, `filters`,
-`model`), which Stage 3 runs on a CPU node:
+In a `meas`, `post`, `filters` or `model` slot of any pipeline — the root, or
+(here) a nested pipeline keyed `inner` — which runs after the op chain:
 
 ```text
-GpuDetector at meas/MeasureSymZones/center_detector cannot be staged: Stage 3
-runs the 'meas' slot on a CPU node
+GpuDetector at inner/meas:MeasureSymZones/center_detector cannot be staged: it
+sits in the 'meas' slot of the pipeline at inner, which runs after the op chain
+-- Stage 3 runs it on a CPU node, after GPU inference has finished. Move the
+detector into that pipeline's ops.
 ```
 
 And more than one detector anywhere in the tree — a deferred feature, not a
@@ -339,24 +341,51 @@ detector, rather than nesting it inside.
 A wrong answer here would mean Stage 2 reads a layer that was never prepared,
 and the run completes with different numbers. Refusing is the cheap outcome.
 
-### Two places the refusal does not reach
+### Pipeline slots, at any depth
 
-Documented because they are live, not because they are intended.
+The walker descends every pipeline's `meas`, `post`, `filters` and `model`
+slots as well as its `ops` — the root pipeline's and every nested one's — and
+names a slot entry with the slot as a colon namespace: `meas:<key>`,
+`post:<key>`, `filters:<key>`, and `model:<ClassName>` for the single model.
+A bare `meas` segment would collide with an `ops` key a user is free to
+choose. The flip side is that an `ops` key may itself contain a colon, so
+never classify a segment by parsing the string —
+`_operation_tree.pipeline_slot_of` decides against the live pipeline.
 
-1. **A `GpuDetector` in a *nested* `ImagePipeline`'s `meas`, `post`, `filters`
-   or `model` is neither staged nor refused.** The walker descends a nested
-   pipeline's `ops` only, and the CPU-only-slot check runs against the **root**
-   pipeline's accessors. Measured for that shape: `find_gpu_detectors` returns
-   `[]`, `pipeline_requires_gpu` returns `False`, and the run routes to the CPU
-   strategy and performs per-image inference on a CPU node with nothing
-   reported. The root pipeline's own slots *are* covered. Pinned by a
-   non-strict xfail in `tests/unit/cli/test_gpu_detection_tree_wide.py`.
-2. **The GUI run console swallows the refusal.**
-   `gui/run_console/_callbacks.py` wraps `pipeline_requires_gpu` in
-   `except (OSError, ValueError, TypeError): return False`, and
-   `UnstageableGpuDetectorError` is a `ValueError` — so in the GUI a refused
-   pipeline reads as "not a GPU pipeline" and the run routes to CPU. The CLI
-   does not catch it and shows a raw traceback. Both are open.
+Those slots run after the op chain. In the staged engine that is Stage 3, on a
+CPU node, after Stage 2's GPU inference has finished; and a measurement may
+hand its nested detector a derived input, possibly once per object, that
+Stage 2 has no way to reproduce. So any path through a slot is refused.
+
+For every shipped slot type the ancestor check above would refuse the shape
+anyway — `MeasureFeatures`, `PostMeasurement`, `SetAnalyzer` and `ModelFitter`
+are not composition primitives — but its message would blame the slot entry's
+class rather than the slot, which is why the slot check runs first. **For one
+shape the slot check is the only guard:** a class that is *both* a slot type
+and a composition primitive, such as
+`class MeasuringComposite(CompositeDetector, MeasureFeatures)`. It inherits
+`CompositeDetector._operate`, so the ancestor check admits it, and without the
+slot refusal its detector would be staged and inferred on the stored image —
+the wrong input, with no error. If you write such a class, that refusal is what
+keeps it honest; `test_a_slot_entry_that_is_also_a_composite_is_refused` pins
+it.
+
+### How a refusal reaches the user
+
+The CLI checks placement right after it has parsed its options, before it
+loads a manifest, clears the output directory for `--overwrite`, or exits for
+`--dry-run`, and prints the message as a one-line usage error. A refused
+pipeline therefore never touches `--output`, and `--dry-run` refuses exactly
+what a real run would.
+
+The GUI run console asks the same question when a pipeline is selected. A
+refused pipeline shows the message in a red alert, in Local and SLURM mode
+alike, and Run is disabled; Validate and Run are also refused server-side
+before any run is registered. If you ever edit the probe
+(`gui/run_console/_callbacks.py:_staged_gpu_capability`), keep its
+`except UnstageableGpuDetectorError` clause **above** the generic
+`except (OSError, ValueError, TypeError)`: the refusal is a `ValueError`, so
+the other order silently treats it as "not a GPU pipeline".
 
 ### What Stage 3 actually runs: `ReplayDetector`
 

@@ -542,19 +542,27 @@ pipeline = pht.ImagePipeline(
 detector such as `FilamentousFungiDetector` or `TwoKFilamentousDetector` is
 refused with a message naming the class and the way forward (run the GPU
 detector as a `CompositeDetector` branch and feed its mask onward). A detector in
-the pipeline's `meas`, `post`, `filters` or `model` slot is refused too, because
-Stage 3 runs those on a CPU node. Two GPU detectors in one pipeline are not yet
-supported; the refusal names every path it found.
+the `meas`, `post`, `filters` or `model` slot of **any** pipeline — the top-level
+one or a nested one — is refused too: those slots run after the op chain, in
+Stage 3 on a CPU node, once GPU inference has already finished. Move the
+detector into that pipeline's `ops`. Two GPU detectors in one pipeline are not
+yet supported; the refusal names every path it found.
 
-```{warning}
-Two gaps in that refusal, as of this release. A `GpuDetector` buried in a
-**nested** `ImagePipeline`'s own `meas`/`post`/`filters`/`model` slot is neither
-staged nor refused — the run falls back to the CPU strategy and performs
-per-image inference, slowly and silently. (The top-level pipeline's slots *are*
-refused.) And the **GUI run console** treats a refused pipeline as "not a GPU
-pipeline" and routes it to CPU rather than showing you the reason; run it from
-the command line to see the message.
+The refusal names the detector by its path through the pipeline. A slot entry
+appears as the slot name, a colon, and the entry's key — `meas:<key>`,
+`post:<key>`, `filters:<key>` — or `model:<ClassName>` for the single model
+slot, so a measurement's detector in a nested pipeline keyed `inner` reads:
+
+```text
+GpuDetector at inner/meas:MeasureSymZones/center_detector cannot be staged: ...
 ```
+
+You see the refusal before anything runs. From the command line it is a
+one-line error, and it is checked **before** `--overwrite` clears the output
+directory, so pointing a refused pipeline at an existing run leaves that run's
+results intact; `--dry-run` refuses it too. In the GUI run console, selecting
+the pipeline shows the message in a red alert — in Local and SLURM mode — and
+the Run button stays disabled until you choose a pipeline that can run.
 
 ## SLURM Deployment
 

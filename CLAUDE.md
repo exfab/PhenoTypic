@@ -188,14 +188,20 @@ isolation before attributing it — most of them pass.
   one:** `ImagePipeline`, `CompositeDetector`, `CompositeEnhance`. A domain
   detector (`FilamentousFungiDetector`, `TwoKFilamentousDetector`) is
   **refused** by name with `UnstageableGpuDetectorError`, as is a subclass of a
-  listed composite that overrides `_operate`. Two honest limits, both open:
-  a `GpuDetector` in a **nested** pipeline's `meas`/`post`/`filters`/`model` is
-  neither staged nor refused — it routes to the CPU strategy and infers per
-  image with nothing reported (the **root** pipeline's slots *are* refused); and
-  the GUI swallows the refusal, because `gui/run_console/_callbacks.py` catches
-  `(OSError, ValueError, TypeError)` and `UnstageableGpuDetectorError` is a
-  `ValueError`, so a refused pipeline reads as "not a GPU pipeline" and routes
-  to CPU. The CLI does not catch it and shows a raw traceback.
+  listed composite that overrides `_operate`. So is a `GpuDetector` in **any**
+  pipeline's `meas`/`post`/`filters`/`model`, root or nested, at any depth —
+  those slots run in Stage 3, after GPU inference. Tree paths spell a slot
+  entry with the slot as a colon namespace — `meas:<key>`, `post:<key>`,
+  `filters:<key>`, `model:<ClassName>` (e.g.
+  `inner/meas:MeasureSymZones/center_detector`) — because a bare `meas` would
+  collide with a user-chosen `ops` key. The CLI prints the refusal as one
+  usage-error line, **before** `--overwrite` clears the output directory and
+  before `--dry-run` exits; the GUI run console shows it in the
+  `rc-staged-gpu-refusal` alert and disables Run. This bullet used to say the
+  GUI swallowed the refusal and routed the run to CPU; that was wrong about
+  the mechanism (the GUI probe only hid the GPU form section, and the launched
+  `python -m phenotypic` raised a traceback) — see
+  [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md).
 - **Container operations push a per-branch `pipeline_step`.** `CompositeDetector`,
   `CompositeEnhance`, `FilamentousFungiDetector` and `TwoKFilamentousDetector`
   drive their children through `apply_child` (`_core/_provenance.py`), so each
