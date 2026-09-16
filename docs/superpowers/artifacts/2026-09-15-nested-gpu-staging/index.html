@@ -395,6 +395,20 @@ Stage 3    replay both slots, composite merges, both raws consumed and deleted</
 
 <p>Deliberately <em>not</em> "hold N resident models per worker". Two foundation models on one ada6000 is a memory gamble that fails late — after all the CPU preprocessing, exactly the way a Pascal placement does. One model per worker keeps the existing residency invariant and buys parallelism from array width instead of GPU memory.</p>
 
+<h3>The sweep is binding, at any number of rounds</h3>
+
+<p>A GPU round processes <em>every image</em> with the model resident, then hands off. It is never interleaved per image — and that holds for an intermediate detector in a multi-round pipeline just as much as for a single one.</p>
+
+<p>The tempting implementation of R&gt;1 follows one image all the way through — GPU, CPU, GPU — before moving to the next. It needs no barrier and no extra job group, which is exactly the cost that makes R expensive. It is also wrong twice over: <strong>model residency is destroyed</strong>, paying the per-image rebuild that staging exists to eliminate — <code>R × 33,923</code> loads instead of <code>R</code> per worker — and <strong>batching becomes impossible</strong>, because a worker that only ever holds one image can never fill a batch.</p>
+
+<p>So the arrows are dataset-wide barriers, not per-image transitions. That is what makes R&gt;1 costly in <em>scheduling</em> while costing nothing in <em>per-image GPU efficiency</em>, which stays identical to R=1. An implementation that reverses that trade has optimised the cheap axis.</p>
+
+<div class="note">
+  <h4>Batching headroom, currently unused</h4>
+  <p>Today's Stage 2 obtains residency but not batching: it calls <code>detector._collate([sample])</code> with a <strong>one-element</strong> list, per image. Nothing in the engine ever collates across images, so <code>supports_batching</code> buys nothing yet.</p>
+  <p>That is a gap rather than a decision, and it is why the sweep matters beyond present performance. A worker streaming a shard of a full-dataset sweep can accumulate samples and issue one <code>(N, C, H, W)</code> forward. A per-image interleave forecloses that permanently — no amount of later work recovers it.</p>
+</div>
+
 <div class="note win">
   <h4>What landed now, at N = 1</h4>
   <p>The Stage-2 signal was keyed by <em>image alone</em> — <code>stage2_raw/&lt;ds&gt;/&lt;stem&gt;.npy</code> — so exactly one array can exist per image. That single fact is what makes N&gt;1 structural rather than additive, so it is re-keyed by detector slot now, while the change is invisible: one extra directory level, no behavioural difference.</p>

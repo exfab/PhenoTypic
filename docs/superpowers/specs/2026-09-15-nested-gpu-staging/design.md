@@ -737,3 +737,45 @@ Recorded for completeness; no user requires it today.
 - **No new artifact type is needed**, which is the one cheap part: each CPU
   segment re-promotes the per-image store, so the store already carries state
   between rounds.
+
+### 13.4 Binding constraint: every GPU round is a full-dataset sweep
+
+**A GPU round processes every image with the model resident, then hands off.
+It is never interleaved per image, however many rounds there are.**
+
+The tempting implementation of `R > 1` is to follow one image all the way
+through — GPU round 1, CPU segment, GPU round 2 — and then move to the next
+image. It is tempting because it needs no barrier and no extra job group, which
+is exactly the cost §13.3 is trying to avoid. It is wrong, and it forfeits the
+entire reason the staged engine exists:
+
+- **Model residency is destroyed.** Each image would rebuild the model, which is
+  precisely the cost the non-staged path already pays at
+  `_cli_process_single.py:260` and the defect that motivated staging in the first
+  place. With `R` rounds it is paid `R × n_images` times instead of `R` times per
+  worker — on 33,923 images, catastrophically.
+- **Batching becomes impossible.** A detector that declares
+  `supports_batching = True` can only fill a batch if the worker holds several
+  images at once. Per-image interleaving guarantees it never sees more than one.
+
+So the arrows in `CPU(S0) → GPU(round 1) → CPU(S1) → GPU(round 2) → …` are
+**dataset-wide barriers**, not per-image transitions. Round `r` sweeps every
+image; the CPU segment then runs across every image; round `r+1` sweeps again.
+This is what makes `R > 1` expensive in **scheduling** — `2R + 1` job groups —
+while costing nothing in **per-image GPU efficiency**, which stays identical to
+`R = 1`. That trade is the right way round, and an implementation that reverses
+it has optimised the cheap axis.
+
+The same property holds within a round for `N > 1`: the `N` sub-sweeps of §13.2
+are each a full pass over the dataset, one model resident per pass.
+
+**Batching headroom, currently unused.** Today's Stage 2 obtains residency but
+not batching — it calls `detector._collate([sample])` with a **one-element**
+list, per image (`_cli_staged_workers.py:389`), and the only other caller is the
+single-image notebook path (`abc_/_gpu_detector.py:261`). Nothing in the engine
+ever collates across images, so `supports_batching` buys nothing yet. That is a
+gap, not a decision, and it is worth naming here because the sweep structure is
+its **precondition**: a worker streaming a shard of a full-dataset sweep can
+accumulate samples and issue one `(N, C, H, W)` forward, whereas a per-image
+interleave forecloses it permanently. Preserve the sweep and the optimisation
+stays available; abandon it and no amount of later work recovers it.

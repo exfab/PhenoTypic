@@ -17,6 +17,7 @@
 - **`pipeline_step_path` is a list of non-empty strings** (`_provenance.py:277-283`). An integer branch index is illegal — always the `field[i]` string form.
 - **Exactly one `GpuDetector` per pipeline**, anywhere in the tree.
 - **Stage 2 never writes into the per-image store.** Its outputs are the retained raw `.npy` and the token under `.phenotypic/progress/`.
+- **A GPU round is a full-dataset sweep with the model resident — never a per-image interleave** (spec §13.4). This binds every task that touches Stage 2, including the slot keying in Task 6a. Breaking it destroys model residency (paying `_cli_process_single.py:260`'s per-image rebuild cost, the defect staging exists to fix) and permanently forecloses cross-image batching. Note the engine does not batch *yet* — `_cli_staged_workers.py:389` collates a one-element list per image — so the sweep is protecting headroom, not just current behaviour.
 - **`_export_objmap_layer` never writes into the store** (ledger FLOW-16 / FLOW-30 / FLOW-6). A store write after the success marker invalidates the descriptor the marker just recorded.
 - **A measurement's nested operation is a private probe.** Its steps deliberately do not enter the plate's provenance (`measure/CLAUDE.md`). `center_detector` must keep recording no step path.
 - **Vendored reference sources under `docs/superpowers/specs/*/refs/` are read-only.** Never lint or reformat them.
