@@ -141,7 +141,7 @@ scipy, skimage and pandas stay eager: they have 49, 94 and 81 module-level impor
 - **Scope.** Every deferred library is a *required* dependency (`pyproject.toml` `[project].dependencies`), so this concerns broken environments only: a numba/llvmlite mismatch, or a binary that crashes on one node.
 - **Pipeline runs.** `load_runtime_dependencies()` imports `DEFERRED_RUNTIME_MODULES` and lets any exception propagate. It is called by:
   - the CLI command body (Design §3);
-  - the four `__main__` entry modules that load or run a pipeline: `_cli/_cli_process_single.py`, `_cli_staged_slurm_worker.py`, `_cli_recompile_worker.py`, `_cli_checkpoint_handler.py`. These were found by grepping entry modules for `from_json`/`apply`/`measure`/finalize use. Controller, sentinel, lifecycle, chunk-writer, fan-out and migrate workers have none, and stay light.
+  - the five `__main__` entry modules that load or run a pipeline: `_cli/_cli_process_single.py`, `_cli_staged_slurm_worker.py`, `_cli_recompile_worker.py`, `_cli_checkpoint_handler.py`, and `tune/__main__.py`. The first four were found by grepping `_cli/` entry modules for `from_json`/`apply`/`measure`/finalize use. Controller, sentinel, lifecycle, chunk-writer, fan-out and migrate workers have none, and stay light. **`tune/__main__.py` is the `phenotypic-tune` console script, not a worker; it is listed here because D4 binds every pipeline-running *entry point*, not only the ones under `_cli/`** (amended 2026-09-15, Amendment C/C1). Before this change tune paid every heavy import at `import phenotypic`, so a broken library on a node failed at tune startup. Deferring them without a preload would move that failure inside the first trial, where the engine records it as a trial outcome — precisely the mode D4 exists to prevent — and tune distributes over SLURM, so one bad node is its motivating scenario rather than a hypothetical.
 - **Interactive use.** In the GUI and notebooks, a broken library surfaces as the error at the page or operation that first uses it.
 
 ### B4. Compatibility that must hold
@@ -228,7 +228,7 @@ All startup guards run the entry point in a **subprocess** (`sys.executable`), b
 3. **Tier 3:** a composed hub with no request loads none of its forbidden set, and every allowed exception is justified in the test. The first `/builder/` request returns 200 and builds the builder. The run console and SLURM observer still start at composition, and the viewer and analysis mounts behave as before.
 4. **Tier 4:** `from phenotypic import Image` loads none of `DEFERRED_RUNTIME_MODULES`.
 5. **Sweep:** every package (at least 70) and every named entry module imports successfully when imported first in a fresh interpreter.
-6. **Preload:** the CLI command body and the four pipeline-running entry modules call `load_runtime_dependencies()` before any image work, and a failing import aborts the run before any image is processed.
+6. **Preload:** the CLI command body and the five pipeline-running entry modules (B3) call `load_runtime_dependencies()` before any image work, and a failing import aborts the run before any image is processed. The **position** is checked, not merely the presence: statement 0 of `main` for the three workers that can hold to it, and the statement immediately after `parse_args` for `_cli_staged_slurm_worker` and `tune/__main__`.
 7. **Mutations:** M1–M6 each make the named guard fail.
 8. **No regression:**
    - the full default lanes pass, apart from the known pre-existing local failures;
@@ -243,7 +243,7 @@ All startup guards run the entry point in a **subprocess** (`sys.executable`), b
 
 - Deferring scipy, skimage or pandas (49/94/81 module-level importers; the core `Image` handler chain needs them).
 - Python 3.15's native lazy imports (PEP 810). The project requires `>=3.11, <3.13`.
-- Guarding `phenotypic-tune` startup. It benefits from the lazy package `__init__` but gets no tier of its own.
+- Guarding `phenotypic-tune` *startup cost*. It benefits from the lazy package `__init__` but gets no startup tier of its own. That is a different question from D4's preload, which tune does call (B3): a startup tier asserts what an entry point must **not** load; the preload asserts what a pipeline run must load before it starts. Conflating the two is what produced the Phase 2 M8 ruling; see Amendment C/C1.
 - Deferring the run console, or browse unless the tier-3 measurement requires it.
 - Memory footprint. First-use latency in notebooks is accepted (B2).
 - Moving the Dash-free modules `_cli/_cli_error_outputs.py` imports out of `_gui` (a non-goal carried from the private-gui spec).
@@ -289,6 +289,24 @@ it, so the user chose removal.
 **Production behaviour was correct throughout.** I1 is a vacuous *test* over correct code, not a
 latent bug: the patches were always protected, by B. Verified by probe (patch in force, real
 function restored on exit) and by tracing CPython's `_patch.__exit__` non-local branch.
+
+## Amendment C — Task 8 final review (2026-09-15)
+
+Raised by the final whole-change review
+(`docs/superpowers/reports/2026-09-11-lazy-startup/implementation-test-review.md`, finding I-2) and
+**decided by the user**. It resolves a contradiction between D4 and B3 rather than refining either.
+
+| # | Supersedes | Finding | Change |
+|---|---|---|---|
+| C1 | B3's four-module enumeration, and the `phenotypic-tune` non-goal's wording | D4 binds "every pipeline-running entry point", but B3 enumerated only the four `__main__` modules under `_cli/`. `phenotypic-tune` runs `ImagePipeline` and was in neither list, so it got no preload. **This is the change's one genuine behaviour regression relative to `BASE_PRE`**, not a coverage gap: before the change tune paid every heavy import at `import phenotypic`, so a broken library failed at tune startup; after it, tune starts fine and the failure surfaces inside the first trial, where the engine records it as a *trial outcome* rather than an install fault. Tune distributes over SLURM, so one bad node is its motivating scenario. The Phase 2 gate saw this (M8) and ruled it in-spec on B3's enumeration, which is the narrower of the two texts. | `tune/__main__.py` joins B3 as the fifth pipeline-running entry module and calls `load_runtime_dependencies()` immediately after `parse_args`, above all three subcommand branches. It is classified `PARSE_ARGS_FIRST`, not `FIRST_STATEMENT`, because statement 0 of its `main` is a deliberate function-local `import sys` that the next statement depends on — forcing the strict contract would mean reordering shipped code to satisfy a guard. AC6 now also pins the **position**, not just the presence. |
+
+**Two consequences, recorded rather than left to be discovered.** The call sits above the dispatch,
+so `auto-space` and `finalize` pay it too. `auto-space` calls `ImagePipeline.from_json`, which is one
+of the four greps B3 itself used to select the original workers, so it is in scope by the spec's own
+criterion; `finalize` is not, and pays a one-off import cost it does not need. The narrower
+alternative — the call inside `_run_command` and `_auto_space_command` — was rejected because the
+position guard anchors on `main`, and tune would then need a second guard shape of its own.
+`phenotypic-tune --help` is unaffected: `parse_args` raises `SystemExit` before the preload line.
 
 ## Known risks
 

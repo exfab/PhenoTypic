@@ -262,6 +262,11 @@ if TYPE_CHECKING:
 #: -- 27 sites in the test suite -- keeps patching what the command body calls.
 _CLI_RUNTIME_IMPORTS: dict[str, tuple[str, ...]] = {
     "phenotypic._core._image_pipeline": ("ImagePipeline",),
+    # Compatibility shim, not a use: the CLI's own ``--detect-mode`` choice list is built
+    # from ``sorted(get_args(DetectMode))``. The row is kept so
+    # ``from phenotypic.phenotypicCLI import available_modes`` and a patch on that name
+    # still resolve. Its cost is that every loader call imports the detection-mode
+    # registry; drop the row if that import ever matters more than the spelling.
     "phenotypic._core._image_parts.detection_modes": ("available_modes",),
     "phenotypic._cli._cli_execution_strategies": ("create_execution_strategy", "uses_staged_gpu_strategy"),
     "phenotypic._core._provenance": ("pipeline_source_identity",),
@@ -312,6 +317,12 @@ def _load_cli_runtime() -> None:
     finds each module fully bound and skips it, so the Mock is never overwritten.
     Delete the skip and every ``mock.patch`` on a deferred CLI name is silently
     un-mocked mid-command, with the real implementation running in its place.
+
+    The skip has a second consequence: **each binding is a one-time snapshot**, so patch
+    ``phenotypic.phenotypicCLI.<name>``, never the defining module. A source-module patch
+    open across the first load in a process leaves the Mock bound here after it exits,
+    for the life of the interpreter, because the module is never re-read.
+    ``tests/unit/ci/test_cli_runtime_patch_targets.py`` is a partial net against that.
 
     There is deliberately only one such mechanism: spec Amendment A/P1 (as amended)
     removed a redundant ``setdefault`` here, because two independent protections meant

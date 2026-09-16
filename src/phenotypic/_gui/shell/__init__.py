@@ -41,7 +41,10 @@ def __getattr__(name: str) -> _Any:
 
 
 def __dir__() -> list[str]:
-    return sorted(set(globals()) | set(__all__))
+    # ``globals().get`` rather than a bare ``__all__``: this function sits above the eager
+    # imports for the same reason ``__getattr__`` does, so it is callable in a window where
+    # ``__all__`` has not been assigned yet. A bare reference raises ``NameError`` there.
+    return sorted(set(globals()) | set(globals().get("__all__", ())))
 
 
 if _TYPE_CHECKING:

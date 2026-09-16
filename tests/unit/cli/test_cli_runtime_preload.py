@@ -11,11 +11,15 @@ from click.testing import CliRunner
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[3] / "src" / "phenotypic"
 
+#: Every entry point that runs a pipeline. The last one is a console script
+#: (``phenotypic-tune``), not a SLURM worker: spec D4 binds *entry points*, and tune
+#: distributes over SLURM, so a bad node is its motivating case rather than an edge one.
 PIPELINE_WORKER_ENTRY_MODULES = (
     "_cli/_cli_process_single.py",
     "_cli/_cli_staged_slurm_worker.py",
     "_cli/_cli_recompile_worker.py",
     "_cli/_cli_checkpoint_handler.py",
+    "tune/__main__.py",
 )
 
 #: Workers whose ``main`` must call the preload as its very first statement (after an
@@ -27,11 +31,16 @@ FIRST_STATEMENT_WORKERS = (
     "_cli/_cli_checkpoint_handler.py",
 )
 
-#: ``_cli_staged_slurm_worker.main`` builds its ``argparse`` parser inline, so statement 0
-#: cannot be the preload. Its contract is the next-strictest one available: the preload is
-#: the statement immediately after ``parse_args``, i.e. before the first statement that
-#: does any work.
-PARSE_ARGS_FIRST_WORKERS = ("_cli/_cli_staged_slurm_worker.py",)
+#: Entry points whose ``main`` parses its own arguments inline, so statement 0 cannot be
+#: the preload. The contract is the next-strictest one available: the preload is the
+#: statement immediately after ``parse_args``, i.e. before the first statement that does
+#: any work. ``_cli_staged_slurm_worker.main`` builds its ``argparse`` parser inline;
+#: ``tune/__main__.main`` binds ``sys``, normalises ``argv`` and parses before it can
+#: dispatch, and the preload sits above all three of its subcommand branches.
+PARSE_ARGS_FIRST_WORKERS = (
+    "_cli/_cli_staged_slurm_worker.py",
+    "tune/__main__.py",
+)
 
 
 def test_cli_aborts_before_any_output_when_a_runtime_dependency_is_broken(tmp_path: Path, monkeypatch) -> None:

@@ -1,18 +1,18 @@
 """Staged startup feedback for the ``phenotypic-gui`` launcher.
 
-The console-script entry point forces the entire (heavy) ``phenotypic`` import
-chain to run *before* ``main()`` is ever called, so a live progress bar cannot
-animate that ~1.7s import — it is already spent by the time launcher code runs.
-What this reporter *can* do is:
+The console script no longer pays the heavy ``phenotypic`` import chain before
+``main()`` — the library loads inside hub composition — so the launcher passes
+no ``import_elapsed`` and there is no retroactive core-load step. What this
+reporter does is:
 
-    * report the measured core-import duration retroactively as the first
-      completed step (the launcher passes the elapsed time computed from
-      :data:`phenotypic._startup_perf.IMPORT_STARTED_AT`),
-    * show a live :mod:`rich` progress bar over the phases ``main()`` *does*
-      control — sandbox resolution and hub composition (whose six sub-apps
-      tick the bar via :meth:`StartupReporter.detail`),
+    * show a live :mod:`rich` progress bar over the phases ``main()`` controls
+      — sandbox resolution and hub composition (whose six sub-apps tick the bar
+      via :meth:`StartupReporter.detail`),
     * fall back to plain :mod:`logging` lines when stdout is not a TTY (SSH
-      pipes, log files) or when ``--debug`` is set.
+      pipes, log files) or when ``--debug`` is set,
+    * still accept an ``import_elapsed`` and replay it through
+      :meth:`record_done`, for a caller that measures an already-finished phase
+      itself. Nothing in the shipped launcher does; the API is kept deliberately.
 
 This module imports only the standard library at module scope (``rich`` is
 imported lazily inside :meth:`StartupReporter.__enter__`) so it stays cheap to
@@ -63,7 +63,7 @@ class StartupReporter:
     """Render staged launcher progress as a rich bar or plain log lines.
 
     Use as a context manager wrapping the boot sequence; call
-    :meth:`record_done` for an already-finished phase (the core import),
+    :meth:`record_done` for an already-finished phase,
     :meth:`stage` (a context manager) around each timed phase, and
     :meth:`detail` to annotate the in-flight phase with a sub-step label.
 
@@ -72,8 +72,10 @@ class StartupReporter:
             plus one per :meth:`stage`.
         use_rich: When ``True``, render a live :mod:`rich` progress bar;
             otherwise emit plain :mod:`logging` lines.
-        import_elapsed: Measured core-library import duration (seconds),
-            surfaced verbatim by the launcher's first :meth:`record_done`.
+        import_elapsed: Measured core-library import duration (seconds), for a
+            caller that replays it through :meth:`record_done`. The shipped
+            launcher passes nothing: the library no longer loads before
+            ``main()``.
     """
 
     def __init__(

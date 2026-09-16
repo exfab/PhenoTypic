@@ -131,16 +131,86 @@ def test_import_phenotypic_loads_no_heavy_module() -> None:
 
 
 def test_the_public_names_still_resolve_from_the_lazy_package() -> None:
-    """Attribute access, ``from phenotypic import``, ``dir`` and unknown names keep their contract."""
+    """Attribute access, ``from phenotypic import`` and unknown names keep their contract.
+
+    Only three names are resolved here, and deliberately so: resolving all of ``__all__``
+    would import every subpackage, which is what
+    :func:`test_every_public_name_of_a_lazy_package_resolves` does in a process of its own.
+    A ``set(__all__) <= set(dir())`` assertion used to sit here too; it was deleted because
+    ``__dir__`` unions ``__all__`` in, so it could not fail (review I-3).
+    """
     import phenotypic
     from phenotypic import Image, ImagePipeline
 
     assert phenotypic.Image is Image
     assert phenotypic.ImagePipeline is ImagePipeline
     assert phenotypic.detect.OtsuDetector.__name__ == "OtsuDetector"
-    assert set(phenotypic.__all__) <= set(dir(phenotypic))
     with pytest.raises(AttributeError):
         phenotypic.NoSuchPhenotypicName  # noqa: B018
+
+
+#: The four packages that resolve part of their public surface through a module
+#: ``__getattr__``, with the size of that surface today. The number is a **literal floor,
+#: not** ``len(__all__)``: without it the cheapest way to green a failed resolution is to
+#: delete the offending entry from ``__all__``, which passes everything and ships the
+#: regression -- the same move ``test_the_watched_sets_are_the_ones_the_spec_names``
+#: blocks for the watched tuples.
+LAZY_PACKAGE_PUBLIC_NAME_COUNTS: dict[str, int] = {
+    "phenotypic": 18,
+    "phenotypic._gui.shell": 5,
+    "phenotypic.abc_": 28,
+    "phenotypic.sdk_": 324,
+}
+
+
+@pytest.mark.parametrize(
+    ("package", "expected_count"), sorted(LAZY_PACKAGE_PUBLIC_NAME_COUNTS.items())
+)
+def test_every_public_name_of_a_lazy_package_resolves(package: str, expected_count: int) -> None:
+    """AC1's resolution half: every ``__all__`` entry must survive the move to a lazy map.
+
+    Fresh interpreter, because importing ``<package>.<name>`` by path anywhere earlier in
+    the worker binds ``<name>`` on the package as an import side effect -- so an in-process
+    getattr passes for a name the lazy map no longer carries. That is the same blind spot
+    that stops :func:`test_module_imports_first_in_a_fresh_interpreter` from covering this:
+    it uses ``importlib.import_module``, which never consults ``__getattr__``.
+
+    Separate from tier 1 rather than folded into it: resolving every entry imports every
+    subpackage, i.e. most of ``HEAVY_STARTUP_MODULES``, which would destroy
+    :func:`test_import_phenotypic_loads_no_heavy_module`'s own ``loaded == []`` assertion.
+    """
+    report = run_startup_probe(
+        "import importlib\n"
+        f"package = importlib.import_module({package!r})\n"
+        "missing = []\n"
+        "for name in package.__all__:\n"
+        "    try:\n"
+        "        getattr(package, name)\n"
+        "    except AttributeError:\n"
+        "        missing.append(name)\n"
+        "report = {'missing': missing, 'count': len(package.__all__)}\n"
+    )
+    assert report["count"] >= expected_count
+    assert report["missing"] == []
+
+
+@pytest.mark.parametrize("package", sorted(LAZY_PACKAGE_PUBLIC_NAME_COUNTS))
+def test_dir_still_answers_while_a_lazy_package_is_mid_initialisation(package: str) -> None:
+    """``__dir__`` sits above the eager imports, so it is callable before ``__all__`` exists.
+
+    Spec A/P8 puts ``__getattr__`` above the eager imports so an import that re-enters the
+    package mid-initialisation can still resolve a name. ``__dir__`` is written to the same
+    shape and must hold up under the same condition; deleting ``__all__`` reproduces that
+    window exactly. Done in a fresh interpreter because the deletion would otherwise corrupt
+    the module for every later test in the worker.
+    """
+    report = run_startup_probe(
+        "import importlib\n"
+        f"package = importlib.import_module({package!r})\n"
+        "del package.__all__\n"
+        "report = {'names': dir(package)}\n"
+    )
+    assert "__dir__" in report["names"]
 
 
 def test_package_discovery_found_the_tree() -> None:
@@ -175,19 +245,30 @@ def test_importing_image_loads_no_deferred_runtime_module() -> None:
 #: a library at its importer is only worth anything if importing the subpackage stays free
 #: of it -- that is the stated purpose of the detector rows, and nothing else asserts it:
 #: tiers 1 and 4 never import these at all, and the sweep only checks that they import.
+#:
+#: This is the completeness net, so it covers **every** name in ``_LAZY_SUBPACKAGES`` plus
+#: ``post``. Leaving ``data``, ``prefab``, ``settings`` or ``tune`` out left a hole a
+#: module-level ``import colour`` could be re-added through and pass every tier: tier 1
+#: because they are lazy, tiers 2-3 because they are not on those paths, tier 4 because
+#: they are not on the ``Image`` path, and the sweep because it only asks whether the
+#: import succeeds.
 GUARDED_SUBPACKAGES = (
     "phenotypic.abc_",
     "phenotypic.analysis",
     "phenotypic.correction",
+    "phenotypic.data",
     "phenotypic.detect",
     "phenotypic.enhance",
     "phenotypic.grid",
     "phenotypic.measure",
     "phenotypic.plotting",
     "phenotypic.post",
+    "phenotypic.prefab",
     "phenotypic.refine",
     "phenotypic.schema",
     "phenotypic.sdk_",
+    "phenotypic.settings",
+    "phenotypic.tune",
     "phenotypic.util",
 )
 
@@ -197,7 +278,21 @@ GUARDED_SUBPACKAGES = (
 #: unchanged list (spec Amendment A P3).
 SUBPACKAGE_EXPECTED_DEFERRALS: dict[str, tuple[str, ...]] = {
     "phenotypic.correction": ("colour",),
+    # Inherited, not a second leak: five of the seven prefab pipelines are built from
+    # ``phenotypic.correction`` operations, so importing the package imports that one.
+    "phenotypic.prefab": ("colour",),
 }
+
+
+def test_the_tier_five_guard_covers_every_lazy_subpackage() -> None:
+    """A lazy subpackage outside :data:`GUARDED_SUBPACKAGES` is watched by nothing.
+
+    Pinned mechanically against the shipped map, so a subpackage added there cannot land
+    unguarded. ``plotting`` and ``post`` are extras on the tuple, not omissions from it.
+    """
+    from phenotypic import _LAZY_SUBPACKAGES
+
+    assert {f"phenotypic.{name}" for name in _LAZY_SUBPACKAGES} <= set(GUARDED_SUBPACKAGES)
 
 
 @pytest.mark.parametrize("package", GUARDED_SUBPACKAGES)

@@ -589,6 +589,10 @@ travels with the field annotation.
   for a builder app object at composition time, and do not import `_app` at module level
   from `phenotypic._gui.shell` or its launcher — `tests/unit/gui/shell/test_hub_startup_imports.py`
   and `tests/unit/ci/test_startup_imports.py` fail if either creeps back.
+  **A broken builder now presents differently:** it used to abort the launcher before the
+  port was bound, and it now surfaces as a 500 on `/builder/` — and because `ToolSession.get()`
+  correctly declines to cache a failed build, every subsequent request re-runs the failing
+  build and its full import cost. Read the traceback in the server log, not the browser.
 - **`requests_pathname_prefix=url_prefix, routes_pathname_prefix=MOUNT_HOME`** — sub-apps
   mounted under `DispatcherMiddleware` see their mount prefix stripped
   before Dash routes. Standalone launches collapse to identical prefixes

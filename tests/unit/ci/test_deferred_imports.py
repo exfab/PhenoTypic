@@ -28,7 +28,6 @@ DEFERRED_SITES: dict[str, dict[str, tuple[str, ...]]] = {
     "_core/_image_parts/accessor_abstracts/_image_accessor_base_parents/_accessor_dash_handler.py": {
         "px": ("_plotly_imshow",),
         "go": (),
-        "_pio": (),
     },
     "_core/_image_parts/accessor_abstracts/_image_accessor_base_parents/_accessor_mpl_handler.py": {
         "plt": ("_add_section_boxes", "_mpl_plot", "histogram"),
@@ -290,10 +289,46 @@ def test_no_runtime_use_of_a_deferred_name_escapes_its_local_import(relative_pat
     assert escaped == [], f"{relative_path}: {escaped}"
 
 
+def _local_import_lines(function: ast.AST, name: str) -> list[int]:
+    """Lines of the local imports in ``function`` that bind ``name``."""
+    lines = []
+    for node in ast.walk(function):
+        if isinstance(node, ast.Import):
+            bound = {alias.asname or alias.name.split(".")[0] for alias in node.names}
+        elif isinstance(node, ast.ImportFrom):
+            bound = {alias.asname or alias.name for alias in node.names}
+        else:
+            continue
+        if name in bound:
+            lines.append(node.lineno)
+    return lines
+
+
+def _load_use_lines(function: ast.AST, name: str, annotated: set[int]) -> list[int]:
+    """Lines where ``function`` reads ``name``, annotations excluded."""
+    return [
+        node.lineno
+        for node in ast.walk(function)
+        if isinstance(node, ast.Name)
+        and node.id == name
+        and isinstance(node.ctx, ast.Load)
+        and id(node) not in annotated
+    ]
+
+
 @pytest.mark.parametrize("relative_path", sorted(DEFERRED_SITES))
 def test_each_user_of_a_deferred_name_imports_it_locally(relative_path: str) -> None:
+    """The import must exist in the function **and precede every use of the name in it**.
+
+    Presence alone is not enough. A function-local ``import x`` makes ``x`` local for the
+    whole scope, so a use placed above it raises ``UnboundLocalError`` rather than falling
+    back to a module global -- and a presence-only check stays green. That is the one
+    failure mode a moved import actually has, and these branches (panel helpers,
+    ``inspect()`` on the QC analyzers) are rarely exercised by any other test.
+    """
     tree = _parse(relative_path)
-    missing = []
+    annotated = _annotation_node_ids(tree) if _has_future_annotations(tree) else set()
+    missing, misordered = [], []
     for name, function_names in DEFERRED_SITES[relative_path].items():
         for function_name in function_names:
             candidates = [
@@ -304,4 +339,13 @@ def test_each_user_of_a_deferred_name_imports_it_locally(relative_path: str) -> 
             assert candidates, f"{relative_path}: no function named {function_name!r}"
             if not any(name in _locally_imported_names(node) for node in candidates):
                 missing.append(f"{function_name} does not import {name}")
+                continue
+            for node in candidates:
+                imports = _local_import_lines(node, name)
+                uses = _load_use_lines(node, name, annotated)
+                if imports and uses and min(uses) < min(imports):
+                    misordered.append(
+                        f"{function_name} uses {name} at line {min(uses)} before importing it at line {min(imports)}"
+                    )
     assert missing == [], f"{relative_path}: {missing}"
+    assert misordered == [], f"{relative_path}: {misordered}"
