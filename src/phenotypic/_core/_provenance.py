@@ -570,19 +570,35 @@ def apply_child(
             a container whose child mutates the caller's image must pass
             ``True`` explicitly or the child's work is silently discarded.
         reset: Forwarded to the child's ``apply`` when the child is an
-            ``ImagePipeline``. ``None`` (the default) sends ``reset=False``,
-            matching ``ImagePipeline._run_operations``, which forces the same
-            value on nested pipelines so an intermediate pipeline cannot reset
-            progress accumulated by its parent. Ignored for a non-pipeline
-            child, whose ``apply`` takes no ``reset``.
+            ``ImagePipelineCore`` -- which covers ``ImagePipeline`` and
+            ``NapariPipelineViewer``, the two instantiable shapes. ``None``
+            (the default) sends ``reset=False``, matching
+            ``ImagePipelineCore._run_operations`` (``:886``), which forces the
+            same value on any nested child whose signature accepts it, so an
+            intermediate pipeline cannot reset progress accumulated by its
+            parent. Ignored for a non-pipeline child, whose ``apply`` takes no
+            ``reset``.
 
     Returns:
         Image: Whatever the child's ``apply`` returned.
     """
-    from phenotypic._core._image_pipeline import ImagePipeline
+    # Keyed on ImagePipelineCore, NOT ImagePipeline. A bare
+    # `NapariPipelineViewer` is an ImagePipelineCore without being an
+    # ImagePipeline (it is an ANCESTOR of ImagePipeline in the MRO, not a
+    # sibling), so an ImagePipeline gate skipped it -- and this function's
+    # own docstring says
+    # the default "matches ImagePipeline._run_operations", which forces
+    # reset=False on any child whose signature accepts it
+    # (`_image_pipeline_core.py:886`). For that one shape the claim was false.
+    # `_apply_stage2_prefix` (`_cli/_cli_staged_workers.py:187`) already keyed on
+    # the core, so this also makes the two agree rather than leaving a reader to
+    # discover they differ.
+    from phenotypic._core._pipeline_parts._image_pipeline_core import (
+        ImagePipelineCore,
+    )
 
     kwargs: dict[str, Any] = {"inplace": inplace}
-    if isinstance(operation, ImagePipeline):
+    if isinstance(operation, ImagePipelineCore):
         kwargs["reset"] = False if reset is None else reset
 
     with pipeline_step(segment):

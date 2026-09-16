@@ -4,13 +4,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
+
 from phenotypic.abc_ import ObjectDetector
+from phenotypic.sdk_._operation_tree import substitute_at_path
 from phenotypic.sdk_.typing_ import NdArrayField, OperationField
 
 if TYPE_CHECKING:
+    from phenotypic import ImagePipeline
     from phenotypic._core._image import Image
 
-__all__ = ["ReplayDetector"]
+    from ._cli_pipeline_split import StagePlan
+
+__all__ = ["ReplayDetector", "build_replay_pipeline"]
 
 
 class ReplayDetector(ObjectDetector):
@@ -94,3 +100,43 @@ class ReplayDetector(ObjectDetector):
         """Write the recorded result through the wrapped detector's writer."""
         self.detector._write_object_output(image, self.result)
         return image
+
+
+def build_replay_pipeline(
+    plan: "StagePlan",
+    result: np.ndarray,
+    *,
+    detector_duration_seconds: float = 0.0,
+) -> "ImagePipeline":
+    """``plan.post_pipeline`` with a :class:`ReplayDetector` at ``gpu_path``.
+
+    The two consumers of a Stage-2 raw array -- Stage 3
+    (``stage3_merge_measure_core``) and the ``--mode process --layer objmap``
+    export (``_export_objmap_layer``) -- both need exactly this pipeline, so
+    the substitution rule lives here once rather than in each of them.
+
+    Substituting is not an optimisation over writing the raw array directly:
+    ``post_pipeline`` is cut at the detector's TOP-LEVEL ANCESTOR, so for a
+    nested detector it *contains the real detector*, and applying it as-is
+    would re-run live GPU inference on a CPU node.
+
+    Args:
+        plan: The split plan, for ``post_pipeline``, ``gpu_path`` and the real
+            ``gpu_detector`` whose writer and provenance identity the stub
+            borrows.
+        result: The raw Stage-2 output for this image.
+        detector_duration_seconds: Stage-2 inference wall time from the
+            Stage-2 token, added to the stub's own merge time in the journal
+            entry. The objmap export leaves this at ``0.0``: it reads no token
+            and persists no journal, so there is nothing for the offset to
+            reach.
+
+    Returns:
+        A throwaway pipeline; ``plan.post_pipeline`` is not mutated.
+    """
+    stub = ReplayDetector(
+        detector=plan.gpu_detector,
+        result=result,
+        detector_duration_seconds=detector_duration_seconds,
+    )
+    return substitute_at_path(plan.post_pipeline, plan.gpu_path, stub)

@@ -190,6 +190,7 @@ from phenotypic._cli._cli_state_management import (
     update_state_from_events,
     validate_resume_compatibility,
 )
+from phenotypic._cli._cli_stage2_token import staged_detector_slot
 from phenotypic._cli._cli_staged_resume import (
     build_staged_resume_plan,
     migrate_legacy_stage3_markers,
@@ -2623,10 +2624,6 @@ def phenotypic_cli(
                 marker_contract = bool(
                     resume_state.config.get("staged_stage3_markers", False)
                 )
-                from phenotypic._cli._cli_stage2_token import (
-                    staged_detector_slot,
-                )
-
                 # This block runs only under `staged_gpu_resume`, so the
                 # pipeline is known to hold a stageable GpuDetector.
                 staged_slot = staged_detector_slot(config.pipeline_json)
@@ -3078,10 +3075,6 @@ def phenotypic_cli(
         )
         if should_finalize_measurements:
             if local_staged_publication and config.staged_stage3_markers:
-                from phenotypic._cli._cli_stage2_token import (
-                    staged_detector_slot,
-                )
-
                 # Guarded by `local_staged_publication`, which is only true
                 # for a staged GPU run, so the pipeline has a GpuDetector.
                 reconcile_stage3_publications(

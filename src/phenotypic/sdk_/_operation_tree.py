@@ -21,7 +21,26 @@ _INDEXED = re.compile(r"^(?P<field>[^\[\]]+)\[(?P<index>\d+)\]$")
 
 
 def _is_operation(value: Any) -> bool:
-    """True for anything that can carry further operations."""
+    """True for anything that can carry further operations.
+
+    KNOWN LIMIT, and it is the twin of ``walk_operations``' one. This admits
+    ``ImagePipeline`` but not a bare ``ImagePipelineCore``, while
+    ``_provenance.apply_child`` pushes a ``pipeline_step`` segment for **every**
+    child a container hands it, ungated by type. So a bare
+    ``NapariPipelineViewer`` held as an operation-valued *field* of a composite
+    gets a recorded path segment that this walker never yields -- and a
+    ``GpuDetector`` beneath it is therefore invisible to ``find_gpu_detectors``.
+
+    That is a **discovery** gap, not the unresolvable-address failure the
+    ``TwoKFilamentousDetector`` comment describes: ``get_at_path`` still
+    resolves such a path, because ``_child`` falls through to ``getattr``.
+
+    **If you ever teach ``walk_operations`` to descend a nested pipeline's
+    ``meas``/``post``/``filters``/``model``, widen this predicate to
+    ``ImagePipelineCore`` in the same commit** -- otherwise the two halves of
+    the addressing scheme disagree again, in a shape the other gap's note does
+    not mention.
+    """
     from phenotypic._core._image_pipeline import ImagePipeline
     from phenotypic.abc_ import ImageOperation, MeasureFeatures
 
@@ -32,8 +51,12 @@ def iter_child_operations(obj: Any) -> Iterator[tuple[str, Any]]:
     """Yield ``(segment, child)`` for each operation-bearing child of *obj*."""
     # Key on ImagePipelineCore, not ImagePipeline: `ops` is typed
     # Dict[str, Union[ImageOperation, "ImagePipelineCore"]]
-    # (`_image_pipeline_core.py:202`), and ImagePipelineCore has a second
-    # concrete subclass (`NapariPipelineViewer`) that is not an ImagePipeline.
+    # (`_image_pipeline_core.py:202`), and a bare `NapariPipelineViewer` IS an
+    # ImagePipelineCore without being an ImagePipeline. Note it is an
+    # ANCESTOR of ImagePipeline, not a sibling -- the MRO is ImagePipeline ->
+    # SerializablePipeline -> NapariPipelineViewer -> ImagePipelineCore -- so
+    # `isinstance(some_pipeline, NapariPipelineViewer)` is True and cannot be
+    # used to tell them apart. Only `not isinstance(x, ImagePipeline)` does.
     from phenotypic._core._pipeline_parts._image_pipeline_core import (
         ImagePipelineCore,
     )

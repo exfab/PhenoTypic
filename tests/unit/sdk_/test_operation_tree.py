@@ -138,8 +138,8 @@ def test_substitute_refuses_a_pipeline_core_it_cannot_rebuild():
     gets ``KeyError('<operation name>')`` -- blaming the operation instead of the
     unsupported container.
 
-    Deliberately does NOT import ``NapariPipelineViewer``, the real second
-    subclass. Tying this invariant to an optional extra is exactly why it went
+    Deliberately does NOT import ``NapariPipelineViewer``, the real one.
+    Tying this invariant to an optional extra is exactly why it went
     untested: it lives in the one gate shard that cannot run without the
     ``napari`` extra installed. ``ImagePipelineCore`` is a plain pydantic model
     with no abstract methods (``:143``), so a local subclass pins the type

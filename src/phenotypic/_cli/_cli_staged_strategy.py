@@ -29,7 +29,6 @@ from phenotypic.sdk_ import (
     zarr_store_path,
 )
 from phenotypic.sdk_._io_constants import GUI_RECORD_GENERATION_ENV_VAR
-from phenotypic.sdk_._operation_tree import substitute_at_path
 
 from ._cli_execution_strategies import (
     ExecutionStrategy,
@@ -37,7 +36,7 @@ from ._cli_execution_strategies import (
     _record_local_terminal_failure,
 )
 from ._cli_pipeline_split import split_pipeline_at_gpu
-from ._cli_replay_detector import ReplayDetector
+from ._cli_replay_detector import build_replay_pipeline
 from ._cli_completion import valid_image_success
 from ._cli_failure_tracker import PerImageScientificError, work_id_for_image
 from ._cli_stage2_token import (
@@ -488,13 +487,9 @@ class StagedGpuStrategy(ExecutionStrategy):
                     # raw array here: `post_pipeline` is cut at the detector's
                     # TOP-LEVEL ANCESTOR, so for a nested detector it contains
                     # the real one, and applying it as-is would re-run live GPU
-                    # inference on a CPU node.
-                    stub = ReplayDetector(
-                        detector=plan.gpu_detector, result=raw
-                    )
-                    residual = substitute_at_path(
-                        plan.post_pipeline, plan.gpu_path, stub
-                    )
+                    # inference on a CPU node. No `detector_duration_seconds`:
+                    # this path reads no token and persists no journal.
+                    residual = build_replay_pipeline(plan, raw)
                     # Stage 1 left the application "staged", which is NOT
                     # terminal, so an apply at CLI owner-depth 0 would raise
                     # "cannot start a new provenance application before the

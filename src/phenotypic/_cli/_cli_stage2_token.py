@@ -289,7 +289,9 @@ def find_stage2_token(
         The token path, or ``None`` when this image has no token in any slot.
     """
     base = progress_dir(output_dir) / DIR_STAGE2_DONE / dataset
-    legacy = base / f"{image_stem}.json"
+    # The one spelling of the pre-slot-keying token path, shared with
+    # ``relocate_legacy_stage2_signal`` below.
+    legacy = _legacy_stage2_token_path(output_dir, dataset, image_stem)
     if legacy.is_file():
         return legacy
     if not base.is_dir():

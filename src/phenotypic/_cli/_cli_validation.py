@@ -207,9 +207,9 @@ def _child_contract(container: Any) -> str:
     ONLY composition primitives may carry a staged GpuDetector. A domain
     detector is refused even when its current code would classify cleanly --
     ``FilamentousFungiDetector`` feeds ``inoculum_detector`` the container's
-    own image today (``_filamentous_fungi_detector.py:387,399``) and so reads
+    own image today (``_filamentous_fungi_detector.py:398-403``) and so reads
     as ``"parallel"``, but that is incidental to an algorithm that also runs an
-    inline ``ContrastStretching`` (``:413``) and a destructive
+    inline ``ContrastStretching`` (``:418``) and a destructive
     ``_subtract_background``. Nothing about being a fungus detector constrains
     it to keep doing that, so the table's safety argument -- "this restates a
     type contract, it does not cache an observation" -- would not hold
@@ -227,10 +227,8 @@ def _child_contract(container: Any) -> str:
     against nothing else. So the rule is isinstance **plus** an unmodified
     ``_operate``.
     """
-    from phenotypic._core._image_pipeline import ImagePipeline as _ImagePipeline
-
     _populate_child_contract()
-    if isinstance(container, _ImagePipeline):
+    if isinstance(container, ImagePipeline):
         return "sequence"
     cls = type(container)
     # Snapshot before scanning. `_populate_child_contract` installs the table
@@ -340,7 +338,7 @@ def find_gpu_detectors(
         # limit of the design -- see spec section 13 for the intended N>1
         # execution model. Keep the literal "more than one GpuDetector": it is
         # the wording the existing suite already pins
-        # (``test_cli_pipeline_split.py:33``). The path list follows it rather
+        # (``test_cli_pipeline_split.py:42``). The path list follows it rather
         # than replacing it.
         raise UnstageableGpuDetectorError(
             "staged execution does not support more than one GpuDetector "

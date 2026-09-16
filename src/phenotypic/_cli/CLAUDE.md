@@ -158,7 +158,7 @@ provenance (`measure/CLAUDE.md`).
   `tests/unit/cli/test_gpu_detection_tree_wide.py`, which XPASSes when the
   walker learns to descend those slots — that, not widening the loop, is the
   fix.
-- **The GUI swallows the refusal.** `gui/run_console/_callbacks.py:248-256`
+- **The GUI swallows the refusal.** `gui/run_console/_callbacks.py:248-257`
   wraps `pipeline_requires_gpu` in `except (OSError, ValueError, TypeError):
   return False`, and `UnstageableGpuDetectorError` **is** a `ValueError`, so a
   refused pipeline reports "not a GPU pipeline" and routes to CPU — the silent

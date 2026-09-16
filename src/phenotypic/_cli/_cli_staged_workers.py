@@ -41,13 +41,12 @@ from phenotypic._core._provenance import (
 )
 from phenotypic.abc_ import GpuDetector
 from phenotypic.sdk_ import CommitGuard, zarr_store_path
-from phenotypic.sdk_._operation_tree import substitute_at_path
 from phenotypic.sdk_.ngff_ import valid_staged_store
 from phenotypic.sdk_.typing_ import ImageTypeName
 
 from ._cli_output_manager import OutputManager
 from ._cli_pipeline_split import StagePlan
-from ._cli_replay_detector import ReplayDetector
+from ._cli_replay_detector import build_replay_pipeline
 from ._cli_stage2_token import (
     delete_stage2_raw,
     delete_stage2_token,
@@ -186,9 +185,10 @@ def _apply_stage2_prefix(image: Image, stage2_prefix: list[Any]) -> Image:
     for operation in stage2_prefix:
         kwargs: dict[str, Any] = {"inplace": True}
         if isinstance(operation, ImagePipelineCore):
-            # Mirrors _run_operations (:886-889) and apply_child. Without it a
-            # nested pipeline configured with reset=True would call
-            # image.reset() and discard Stage 1's preprocessing.
+            # Mirrors _run_operations (_image_pipeline_core.py:886-889) and
+            # apply_child. Without it a nested pipeline configured with
+            # reset=True would call image.reset() and discard Stage 1's
+            # preprocessing.
             kwargs["reset"] = False
         operation.apply(probe, **kwargs)
     return probe
@@ -546,15 +546,12 @@ def stage3_merge_measure_core(
         # the same machinery a single-pass run uses, at the same
         # `pipeline_step_path`, and the entry names the WRAPPED detector via
         # ReplayDetector's four provenance hooks.
-        stub = ReplayDetector(
-            detector=plan.gpu_detector,
-            result=result,
+        replay_pipeline = build_replay_pipeline(
+            plan,
+            result,
             detector_duration_seconds=float(
                 token.get("detector_duration_seconds", 0.0)
             ),
-        )
-        replay_pipeline = substitute_at_path(
-            plan.post_pipeline, plan.gpu_path, stub
         )
 
         # the enclosing operation, the replayed detector, post-detector ops
