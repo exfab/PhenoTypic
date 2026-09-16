@@ -1,0 +1,1694 @@
+# Nested `GpuDetector` Staging Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Let the staged GPU engine run a pipeline whose single `GpuDetector` is nested inside another operation (e.g. inside `CompositeDetector.ops`) instead of being a top-level element of `ImagePipeline.get_ops()`.
+
+**Architecture:** Address the GPU op by a *tree path* rather than a top-level key. Cut the pipeline at the GPU op's top-level ancestor; Stage 2 runs the detector alone (after any CPU prefix inside its own branch); Stage 3 substitutes a replay stub for the nested detector so the enclosing operation runs normally with the recorded mask standing in for live inference. Container operations additionally push a per-branch `pipeline_step`, which makes the walker's `gpu_path` and the recorded `pipeline_step_path` the same value.
+
+**Tech Stack:** Python 3.11+, pydantic v2, zarr v3 / OME-Zarr 0.5, numpy, pytest, `uv` as the sole package manager and runner.
+
+**Spec:** `docs/superpowers/specs/2026-09-15-nested-gpu-staging/design.md` (committed at `83a8680f`). The plan argues from the spec; executors read both.
+
+## Global Constraints
+
+- **`uv` is the sole package manager and runner.** Never bare `python` or `pip`. Run commands as `uv run <cmd>`.
+- **Operations are pydantic v2 models, constructed keyword-only.** Parameters are annotated class-level fields; no hand-written `__init__`. Guards go in `field_validator`, never `__init__`.
+- **`pipeline_step_path` is a list of non-empty strings** (`_provenance.py:277-283`). An integer branch index is illegal — always the `field[i]` string form.
+- **Exactly one `GpuDetector` per pipeline**, anywhere in the tree.
+- **Stage 2 never writes into the per-image store.** Its outputs are the retained raw `.npy` and the token under `.phenotypic/progress/`.
+- **`_export_objmap_layer` never writes into the store** (ledger FLOW-16 / FLOW-30 / FLOW-6). A store write after the success marker invalidates the descriptor the marker just recorded.
+- **A measurement's nested operation is a private probe.** Its steps deliberately do not enter the plate's provenance (`measure/CLAUDE.md`). `center_detector` must keep recording no step path.
+- **Vendored reference sources under `docs/superpowers/specs/*/refs/` are read-only.** Never lint or reformat them.
+- **`ruff` is always given explicit paths.** `uv run ruff check --fix <paths you changed>` — never bare.
+- **Test running:** use the `run-phenotypic-test` skill for any non-trivial pytest invocation. Never `-n auto` (it reads node cores, not the allocation). Always `QT_QPA_PLATFORM=offscreen` for GUI tests. The full suite is a Slurm job (~65 min), run **once** at the end — not between tasks.
+- **Per-task testing:** run only the directly-touched test files (~1 minute). Per-phase, run the affected surface once.
+
+---
+
+## File Structure
+
+| File | Responsibility | Task |
+|---|---|---|
+| `src/phenotypic/sdk_/_operation_tree.py` | **new** — the single shared traversal over operation-bearing children; path addressing; `get`/`substitute` | 1 |
+| `src/phenotypic/gui/_operation_registry.py` | migrate its marker scan onto the shared traversal | 2 |
+| `src/phenotypic/tune/_search_space/_infer.py` | migrate its recursion onto the shared traversal | 2 |
+| `src/phenotypic/_cli/_cli_validation.py` | `pipeline_requires_gpu` → tree-wide; refusals for unstageable placements | 3 |
+| `src/phenotypic/_core/_provenance.py` | `apply_child()` helper wrapping `pipeline_step` | 4 |
+| `src/phenotypic/detect/_composite_detector.py` | adopt `apply_child` | 4 |
+| `src/phenotypic/enhance/_composite_enhance.py` | adopt `apply_child` | 4 |
+| `src/phenotypic/detect/_filamentous_fungi_detector.py` | adopt `apply_child` | 4 |
+| `src/phenotypic/detect/_two_k_filamentous_detector.py` | adopt `apply_child` | 4 |
+| `src/phenotypic/_cli/_cli_pipeline_split.py` | `StagePlan.gpu_path`, `stage2_prefix`, ancestor-based cut, plot guard | 5 |
+| `src/phenotypic/_cli/_cli_replay_detector.py` | **new** — `ReplayDetector` | 6 |
+| `src/phenotypic/_cli/_cli_staged_workers.py` | Stage-2 prefix; Stage-3 stub substitution | 7, 8 |
+| `src/phenotypic/_cli/_cli_staged_strategy.py` | process-mode post-detector op chain | 11 |
+| `src/phenotypic/_cli/_cli_failure_tracker.py` | output-semantics revision in the work-id digest | 12 |
+| `src/phenotypic/_cli/_cli_staged_slurm_worker.py` | three `split_pipeline_at_gpu` call sites | 13 |
+
+**Dependency order:** 1 → {2, 3, 5} → 6 → {7, 8} → 9 → 10 → 11 → 12 → 13 → 14 → 15. Task 4 is independent of the staging chain and may run in parallel with 2/3/5, but must land before 9.
+
+---
+
+## Task 1: Shared operation-tree traversal
+
+**Files:**
+- Create: `src/phenotypic/sdk_/_operation_tree.py`
+- Test: `tests/unit/sdk_/test_operation_tree.py`
+
+**Interfaces:**
+- Consumes: nothing.
+- Produces:
+  - `iter_child_operations(obj) -> Iterator[tuple[str, object]]`
+  - `walk_operations(pipeline) -> Iterator[tuple[tuple[str, ...], object]]`
+  - `find_operations(pipeline, predicate) -> list[tuple[tuple[str, ...], object]]`
+  - `get_at_path(root, path: Sequence[str]) -> object`
+  - `substitute_at_path(root, path: Sequence[str], replacement) -> object`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/sdk_/test_operation_tree.py
+import pytest
+
+from phenotypic import ImagePipeline
+from phenotypic.detect import CompositeDetector, ManualPointDetector, OtsuDetector
+from phenotypic.enhance import BlurGauss
+from phenotypic.sdk_._operation_tree import (
+    find_operations,
+    get_at_path,
+    substitute_at_path,
+    walk_operations,
+)
+
+CENTERS = [[10.0, 10.0], [10.0, 40.0]]
+
+
+def _pipeline_with_composite():
+    return ImagePipeline(
+        ops={
+            "BlurGauss": BlurGauss(sigma=2.0),
+            "CompositeDetector": CompositeDetector(
+                ops=[OtsuDetector(),
+                     ManualPointDetector(centers=CENTERS, shape="disk", width=11)],
+                mode="overlap",
+            ),
+        }
+    )
+
+
+def test_walk_yields_list_entries_as_bracket_indexed_strings():
+    pipe = _pipeline_with_composite()
+    paths = {"/".join(p) for p, _ in walk_operations(pipe)}
+    assert "BlurGauss" in paths
+    assert "CompositeDetector" in paths
+    assert "CompositeDetector/ops[0]" in paths
+    assert "CompositeDetector/ops[1]" in paths
+
+
+def test_every_path_segment_is_a_non_empty_string():
+    """pipeline_step_path validation rejects integers and empty strings."""
+    pipe = _pipeline_with_composite()
+    for path, _ in walk_operations(pipe):
+        assert path, "empty path"
+        for segment in path:
+            assert isinstance(segment, str) and segment
+
+
+def test_find_operations_locates_a_nested_type():
+    pipe = _pipeline_with_composite()
+    hits = find_operations(pipe, lambda op: isinstance(op, ManualPointDetector))
+    assert len(hits) == 1
+    assert hits[0][0] == ("CompositeDetector", "ops[1]")
+
+
+def test_get_at_path_round_trips_with_walk():
+    pipe = _pipeline_with_composite()
+    for path, op in walk_operations(pipe):
+        assert get_at_path(pipe, path) is op
+
+
+def test_substitute_replaces_only_the_addressed_node():
+    pipe = _pipeline_with_composite()
+    replacement = OtsuDetector(ignore_zeros=True)
+    out = substitute_at_path(pipe, ("CompositeDetector", "ops[1]"), replacement)
+
+    assert get_at_path(out, ("CompositeDetector", "ops[1]")) is replacement
+    # sibling untouched, and the ORIGINAL pipeline is not mutated
+    assert isinstance(get_at_path(out, ("CompositeDetector", "ops[0]")), OtsuDetector)
+    assert isinstance(
+        get_at_path(pipe, ("CompositeDetector", "ops[1]")), ManualPointDetector
+    )
+
+
+def test_substitute_at_depth_two():
+    inner = CompositeDetector(ops=[OtsuDetector(), OtsuDetector()], mode="union")
+    pipe = ImagePipeline(
+        ops={"CompositeDetector": CompositeDetector(ops=[inner, OtsuDetector()],
+                                                    mode="overlap")}
+    )
+    replacement = OtsuDetector(ignore_zeros=True)
+    path = ("CompositeDetector", "ops[0]", "ops[0]")
+    out = substitute_at_path(pipe, path, replacement)
+    assert get_at_path(out, path) is replacement
+
+
+def test_get_at_path_raises_on_unknown_path():
+    pipe = _pipeline_with_composite()
+    with pytest.raises(KeyError):
+        get_at_path(pipe, ("CompositeDetector", "ops[9]"))
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `uv run pytest tests/unit/sdk_/test_operation_tree.py -v`
+Expected: FAIL — `ModuleNotFoundError: No module named 'phenotypic.sdk_._operation_tree'`
+
+- [ ] **Step 3: Write the implementation**
+
+```python
+# src/phenotypic/sdk_/_operation_tree.py
+"""The single traversal over operation-bearing children of a pipeline.
+
+Three callers share this module and each wants something slightly different
+(see the spec §4.1): the CLI wants *paths to GpuDetectors*, ``gui/`` wants
+*marker presence on an annotation*, ``tune/`` wants *one-level list recursion
+with its own depth rule*. The primitive here is the traversal; each caller
+adapts it rather than reimplementing it.
+
+Path segments are always **non-empty strings**, because a path is also a
+``pipeline_step_path``, which ``_provenance.validate_provenance_journal``
+rejects unless every segment is a non-empty string. A list entry is therefore
+addressed ``"ops[0]"``, never ``("ops", 0)``.
+"""
+
+from __future__ import annotations
+
+import re
+from typing import Any, Callable, Iterator, Sequence
+
+_INDEXED = re.compile(r"^(?P<field>[^\[\]]+)\[(?P<index>\d+)\]$")
+
+
+def _is_operation(value: Any) -> bool:
+    """True for anything that can carry further operations."""
+    from phenotypic._core._image_pipeline import ImagePipeline
+    from phenotypic.abc_ import ImageOperation, MeasureFeatures
+
+    return isinstance(value, (ImageOperation, MeasureFeatures, ImagePipeline))
+
+
+def iter_child_operations(obj: Any) -> Iterator[tuple[str, Any]]:
+    """Yield ``(segment, child)`` for each operation-bearing child of *obj*."""
+    from phenotypic._core._image_pipeline import ImagePipeline
+
+    if isinstance(obj, ImagePipeline):
+        yield from obj.get_ops().items()
+        return
+
+    model_fields = getattr(type(obj), "model_fields", None)
+    if not model_fields:
+        return
+
+    for field_name in model_fields:
+        value = getattr(obj, field_name, None)
+        if isinstance(value, list):
+            for index, item in enumerate(value):
+                if _is_operation(item):
+                    yield f"{field_name}[{index}]", item
+        elif _is_operation(value):
+            yield field_name, value
+
+
+def walk_operations(
+    pipeline: Any, *, include_root_children: bool = True
+) -> Iterator[tuple[tuple[str, ...], Any]]:
+    """Depth-first walk yielding ``(path, operation)`` for every node."""
+
+    def visit(node: Any, path: tuple[str, ...]) -> Iterator[tuple[tuple[str, ...], Any]]:
+        if path:
+            yield path, node
+        for segment, child in iter_child_operations(node):
+            yield from visit(child, path + (segment,))
+
+    if not include_root_children:
+        return
+    yield from visit(pipeline, ())
+
+
+def find_operations(
+    pipeline: Any, predicate: Callable[[Any], bool]
+) -> list[tuple[tuple[str, ...], Any]]:
+    """Every ``(path, operation)`` in *pipeline* satisfying *predicate*."""
+    return [(path, op) for path, op in walk_operations(pipeline) if predicate(op)]
+
+
+def _child(node: Any, segment: str) -> Any:
+    from phenotypic._core._image_pipeline import ImagePipeline
+
+    matched = _INDEXED.match(segment)
+    if matched is not None:
+        field = matched.group("field")
+        index = int(matched.group("index"))
+        sequence = getattr(node, field, None)
+        if not isinstance(sequence, list) or index >= len(sequence):
+            raise KeyError(segment)
+        return sequence[index]
+    if isinstance(node, ImagePipeline):
+        ops = node.get_ops()
+        if segment not in ops:
+            raise KeyError(segment)
+        return ops[segment]
+    if not hasattr(node, segment):
+        raise KeyError(segment)
+    return getattr(node, segment)
+
+
+def get_at_path(root: Any, path: Sequence[str]) -> Any:
+    """Resolve *path* against *root*; raise ``KeyError`` if absent."""
+    node = root
+    for segment in path:
+        node = _child(node, segment)
+    return node
+
+
+def substitute_at_path(root: Any, path: Sequence[str], replacement: Any) -> Any:
+    """Return a copy of *root* with the node at *path* replaced.
+
+    *root* is never mutated: each node on the path is copied on the way down.
+    """
+    from phenotypic._core._image_pipeline import ImagePipeline
+
+    if not path:
+        return replacement
+
+    head, rest = path[0], tuple(path[1:])
+
+    if isinstance(root, ImagePipeline):
+        ops = dict(root.get_ops())
+        if head not in ops:
+            raise KeyError(head)
+        ops[head] = (
+            replacement if not rest
+            else substitute_at_path(ops[head], rest, replacement)
+        )
+        return ImagePipeline(
+            ops=ops,
+            meas=root.get_meas(),
+            post=root.get_post(),
+            filters=root.get_filters(),
+            model=root.get_model(),
+            nrows=root.nrows,
+            ncols=root.ncols,
+        )
+
+    node = root.model_copy(deep=True)
+    matched = _INDEXED.match(head)
+    if matched is not None:
+        field = matched.group("field")
+        index = int(matched.group("index"))
+        sequence = list(getattr(node, field))
+        if index >= len(sequence):
+            raise KeyError(head)
+        sequence[index] = (
+            replacement if not rest
+            else substitute_at_path(sequence[index], rest, replacement)
+        )
+        setattr(node, field, sequence)
+        return node
+
+    if not hasattr(node, head):
+        raise KeyError(head)
+    current = getattr(node, head)
+    setattr(
+        node,
+        head,
+        replacement if not rest else substitute_at_path(current, rest, replacement),
+    )
+    return node
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `uv run pytest tests/unit/sdk_/test_operation_tree.py -v`
+Expected: PASS (7 tests)
+
+- [ ] **Step 5: Lint and commit**
+
+```bash
+uv run ruff check --fix src/phenotypic/sdk_/_operation_tree.py tests/unit/sdk_/test_operation_tree.py
+uv run mypy src/phenotypic/sdk_/_operation_tree.py
+git add src/phenotypic/sdk_/_operation_tree.py tests/unit/sdk_/test_operation_tree.py
+git commit -m "feat(sdk_): add the shared operation-tree traversal"
+```
+
+---
+
+## Task 2: Migrate `gui/` and `tune/` onto the shared traversal
+
+**Files:**
+- Modify: `src/phenotypic/gui/_operation_registry.py` (the marker scan at `:33`, and the field walk at `:498-560`)
+- Modify: `src/phenotypic/tune/_search_space/_infer.py:429,546,703`
+- Test: existing `tests/unit/gui/` and `tests/unit/tune/` suites (no new behaviour)
+
+**Interfaces:**
+- Consumes: `iter_child_operations` from Task 1.
+- Produces: no new public surface. This task is behaviour-preserving.
+
+**Why this task exists:** the spec (§4.1) makes consolidation a decision, not a preference — a third private copy of this traversal is the largest design risk in the change.
+
+- [ ] **Step 1: Capture the pre-migration baseline**
+
+```bash
+uv run pytest tests/unit/tune -q 2>&1 | tail -5
+QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui -q 2>&1 | tail -5
+```
+
+Record both counts. These are the numbers the migration must reproduce exactly.
+
+- [ ] **Step 2: Migrate `tune/_search_space/_infer.py`**
+
+Replace the hand-rolled child recursion with `iter_child_operations`. `tune/` keeps its own **depth rule** (one level of list recursion by default) — that rule is the caller's, not the traversal's:
+
+```python
+from phenotypic.sdk_._operation_tree import iter_child_operations
+
+# at the nested-operation recursion site (was ~:546, ~:703)
+for segment, child in iter_child_operations(operation):
+    if _exceeds_depth(segment, depth):   # tune's own one-level rule, unchanged
+        continue
+    ...
+```
+
+Do **not** move `tune`'s depth rule into `_operation_tree.py`. The traversal is shared; the policy is not.
+
+- [ ] **Step 3: Migrate `gui/_operation_registry.py`**
+
+`gui/` asks a different question — *does this annotation carry an `_OperationFieldMarker`* — which is about the **type annotation**, not a live value. Keep `_has_operation_field_marker` as-is and migrate only the places that walk *instances*.
+
+If on inspection `gui/`'s marker scan shares no instance traversal with Task 1, record that in the commit message and leave it untouched. The spec permits this: "If a single signature cannot serve all three without contortion, the correct outcome is one shared traversal primitive with thin per-caller adapters." Do not force it.
+
+- [ ] **Step 4: Verify the baseline is reproduced exactly**
+
+```bash
+uv run pytest tests/unit/tune -q 2>&1 | tail -5
+QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/gui -q 2>&1 | tail -5
+```
+
+Expected: identical pass/fail counts to Step 1. **Any change is a regression** — this task adds no behaviour.
+
+- [ ] **Step 5: Commit**
+
+```bash
+uv run ruff check --fix src/phenotypic/tune/_search_space/_infer.py src/phenotypic/gui/_operation_registry.py
+git add src/phenotypic/tune/_search_space/_infer.py src/phenotypic/gui/_operation_registry.py
+git commit -m "refactor(tune,gui): use the shared operation-tree traversal"
+```
+
+---
+
+## Task 3: Detect GPU detectors tree-wide, and refuse unstageable placements
+
+**Files:**
+- Modify: `src/phenotypic/_cli/_cli_validation.py:135-147`
+- Test: `tests/unit/cli/test_gpu_detection_tree_wide.py` (create)
+
+**Interfaces:**
+- Consumes: `find_operations` from Task 1.
+- Produces:
+  - `pipeline_requires_gpu(pipeline_path: Path) -> bool` (unchanged signature, tree-wide behaviour)
+  - `find_gpu_detectors(pipeline) -> list[tuple[tuple[str, ...], GpuDetector]]`
+  - `UnstageableGpuDetectorError(ValueError)`
+
+**This task alone fixes a wrong-answer bug** and is worth landing independently of the rest (spec §2).
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/cli/test_gpu_detection_tree_wide.py
+import numpy as np
+import pytest
+
+from phenotypic import ImagePipeline
+from phenotypic.abc_ import GpuDetector
+from phenotypic.detect import CompositeDetector, ManualPointDetector
+from phenotypic.measure import MeasureShape
+from phenotypic._cli._cli_validation import (
+    UnstageableGpuDetectorError,
+    find_gpu_detectors,
+    pipeline_requires_gpu,
+)
+
+CENTERS = [[10.0, 10.0], [10.0, 40.0]]
+
+
+class _FakeGpu(GpuDetector):
+    input_layer: str = "detect_mat"
+
+    def _ensure_model_loaded(self) -> None:
+        return None
+
+    def _infer_one(self, sample):
+        return np.zeros(sample.shape[:2], dtype=np.uint16)
+
+
+def _write(tmp_path, pipeline):
+    path = tmp_path / "pipeline.json"
+    path.write_text(pipeline.to_json(), encoding="utf-8")
+    return path
+
+
+def test_a_nested_gpu_detector_is_detected(tmp_path):
+    pipe = ImagePipeline(
+        ops={"CompositeDetector": CompositeDetector(
+            ops=[_FakeGpu(),
+                 ManualPointDetector(centers=CENTERS, shape="disk", width=11)],
+            mode="overlap")}
+    )
+    assert pipeline_requires_gpu(_write(tmp_path, pipe)) is True
+
+
+def test_the_detected_path_addresses_the_branch(tmp_path):
+    pipe = ImagePipeline(
+        ops={"CompositeDetector": CompositeDetector(
+            ops=[_FakeGpu(),
+                 ManualPointDetector(centers=CENTERS, shape="disk", width=11)],
+            mode="overlap")}
+    )
+    hits = find_gpu_detectors(ImagePipeline.from_json(_write(tmp_path, pipe)))
+    assert [p for p, _ in hits] == [("CompositeDetector", "ops[0]")]
+
+
+def test_a_cpu_only_pipeline_is_still_false(tmp_path):
+    pipe = ImagePipeline(
+        ops={"CompositeDetector": CompositeDetector(
+            ops=[ManualPointDetector(centers=CENTERS, shape="disk", width=11)],
+            mode="union")}
+    )
+    assert pipeline_requires_gpu(_write(tmp_path, pipe)) is False
+
+
+def test_two_gpu_detectors_anywhere_are_refused(tmp_path):
+    pipe = ImagePipeline(
+        ops={"CompositeDetector": CompositeDetector(
+            ops=[_FakeGpu(), _FakeGpu()], mode="union")}
+    )
+    with pytest.raises(UnstageableGpuDetectorError, match="more than one"):
+        find_gpu_detectors(ImagePipeline.from_json(_write(tmp_path, pipe)),
+                           strict=True)
+
+
+def test_a_gpu_detector_in_the_meas_slot_is_refused(tmp_path):
+    """Stage 3 runs measurers on a CPU node, so a GPU op there cannot stage."""
+    pipe = ImagePipeline(
+        ops={"ManualPointDetector":
+             ManualPointDetector(centers=CENTERS, shape="disk", width=11)},
+        meas={"MeasureShape": MeasureShape()},
+    )
+    loaded = ImagePipeline.from_json(_write(tmp_path, pipe))
+    object.__setattr__(loaded.get_meas()["MeasureShape"], "__dict__",
+                       loaded.get_meas()["MeasureShape"].__dict__)
+    # Construct the offending shape directly rather than via JSON:
+    from phenotypic.measure import MeasureSymZones
+    offending = ImagePipeline(
+        ops={"ManualPointDetector":
+             ManualPointDetector(centers=CENTERS, shape="disk", width=11)},
+        meas={"MeasureSymZones": MeasureSymZones(center_detector=_FakeGpu())},
+    )
+    with pytest.raises(UnstageableGpuDetectorError, match="meas"):
+        find_gpu_detectors(offending, strict=True)
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `uv run pytest tests/unit/cli/test_gpu_detection_tree_wide.py -v`
+Expected: FAIL — `ImportError: cannot import name 'UnstageableGpuDetectorError'`
+
+- [ ] **Step 3: Write the implementation**
+
+```python
+# src/phenotypic/_cli/_cli_validation.py  (replacing lines 135-147)
+
+class UnstageableGpuDetectorError(ValueError):
+    """A GpuDetector sits somewhere the staged engine cannot drive it."""
+
+
+#: Pipeline slots the staged engine runs on a CPU node in Stage 3. A
+#: GpuDetector in any of them cannot be staged, so it is refused rather than
+#: silently run on CPU.
+_CPU_ONLY_SLOTS = ("meas", "post", "filters", "model")
+
+
+def find_gpu_detectors(pipeline, *, strict: bool = False):
+    """Every ``(path, detector)`` GpuDetector in *pipeline*, tree-wide.
+
+    Args:
+        pipeline: The pipeline to scan.
+        strict: When True, raise :class:`UnstageableGpuDetectorError` for a
+            placement the staged engine cannot drive — more than one detector,
+            or a detector in a CPU-only slot.
+    """
+    from phenotypic.abc_ import GpuDetector
+    from phenotypic.sdk_._operation_tree import find_operations, walk_operations
+
+    hits = find_operations(pipeline, lambda op: isinstance(op, GpuDetector))
+
+    if strict:
+        if len(hits) > 1:
+            paths = ", ".join("/".join(p) for p, _ in hits)
+            raise UnstageableGpuDetectorError(
+                "staged execution does not support more than one GpuDetector "
+                f"per pipeline (found {len(hits)}: {paths})"
+            )
+        for slot in _CPU_ONLY_SLOTS:
+            container = getattr(pipeline, f"get_{slot}", None)
+            if container is None:
+                continue
+            for name, op in (container() or {}).items():
+                for sub_path, sub_op in walk_operations(op):
+                    if isinstance(sub_op, GpuDetector):
+                        raise UnstageableGpuDetectorError(
+                            f"GpuDetector at {slot}/{name}/"
+                            f"{'/'.join(sub_path)} cannot be staged: Stage 3 "
+                            f"runs the {slot!r} slot on a CPU node"
+                        )
+    return hits
+
+
+def pipeline_requires_gpu(pipeline_path: Path) -> bool:
+    """Check whether a pipeline JSON contains any GpuDetector, at any depth.
+
+    Scans the whole operation tree, not just the top level: a ``GpuDetector``
+    nested inside a ``CompositeDetector`` is still a GPU pipeline, and missing
+    it means the run silently completes on CPU with different numbers.
+    """
+    pipeline = ImagePipeline.from_json(pipeline_path)
+    return bool(find_gpu_detectors(pipeline))
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `uv run pytest tests/unit/cli/test_gpu_detection_tree_wide.py -v`
+Expected: PASS (5 tests)
+
+- [ ] **Step 5: Verify the routing tests still pass**
+
+Run: `uv run pytest tests/unit/cli/test_staged_routing.py -v`
+Expected: PASS, unchanged count.
+
+- [ ] **Step 6: Commit**
+
+```bash
+uv run ruff check --fix src/phenotypic/_cli/_cli_validation.py tests/unit/cli/test_gpu_detection_tree_wide.py
+git add src/phenotypic/_cli/_cli_validation.py tests/unit/cli/test_gpu_detection_tree_wide.py
+git commit -m "fix(cli): detect GpuDetectors nested inside container operations"
+```
+
+---
+
+## Task 4: Container operations push a per-branch `pipeline_step`
+
+**Files:**
+- Modify: `src/phenotypic/_core/_provenance.py` (add `apply_child`)
+- Modify: `src/phenotypic/detect/_composite_detector.py:126-140`
+- Modify: `src/phenotypic/enhance/_composite_enhance.py`
+- Modify: `src/phenotypic/detect/_filamentous_fungi_detector.py`
+- Modify: `src/phenotypic/detect/_two_k_filamentous_detector.py`
+- Test: `tests/unit/core/test_provenance_step_descent.py` (create)
+
+**Interfaces:**
+- Consumes: `pipeline_step` (`_provenance.py:527`).
+- Produces: `apply_child(operation, image, *, segment, inplace=False, reset=None)` → the applied image.
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/core/test_provenance_step_descent.py
+from phenotypic import ImagePipeline
+from phenotypic.data import load_synth_yeast_plate
+from phenotypic.detect import CompositeDetector, ManualPointDetector, OtsuDetector
+from phenotypic.measure import MeasureSymZones
+
+CENTERS = [[150.0, 200.0], [300.0, 400.0]]
+
+
+def _step_paths(image):
+    journal = image._metadata.provenance_journal
+    return [
+        (op["operation_class"].rsplit(".", 1)[-1], op.get("pipeline_step_path"))
+        for app in journal.get("applications", [])
+        for op in app.get("operations", [])
+    ]
+
+
+def test_composite_children_record_their_branch_index():
+    image = load_synth_yeast_plate()
+    ImagePipeline(
+        ops={"CompositeDetector": CompositeDetector(
+            ops=[OtsuDetector(),
+                 ManualPointDetector(centers=CENTERS, shape="disk", width=41)],
+            mode="union")}
+    ).apply(image, inplace=True)
+
+    recorded = dict(_step_paths(image))
+    assert recorded["OtsuDetector"] == ["CompositeDetector", "ops[0]"]
+    assert recorded["ManualPointDetector"] == ["CompositeDetector", "ops[1]"]
+
+
+def test_nested_composites_produce_distinct_paths():
+    """Before this change all five entries shared ['CompositeDetector']."""
+    image = load_synth_yeast_plate()
+    inner = CompositeDetector(
+        ops=[OtsuDetector(),
+             ManualPointDetector(centers=CENTERS, shape="disk", width=41)],
+        mode="union")
+    ImagePipeline(
+        ops={"CompositeDetector": CompositeDetector(
+            ops=[inner,
+                 ManualPointDetector(centers=CENTERS, shape="disk", width=41)],
+            mode="overlap")}
+    ).apply(image, inplace=True)
+
+    paths = [tuple(p) for _, p in _step_paths(image)]
+    assert len(paths) == len(set(paths)), f"duplicate step paths: {paths}"
+
+
+def test_a_measurement_probe_records_no_step_path():
+    """A nested op run by a MEASUREMENT is a private probe (measure/CLAUDE.md).
+
+    This exclusion is deliberate. Without this test it is indistinguishable
+    from an oversight and will be 'completed' by a later reader.
+    """
+    image = load_synth_yeast_plate()
+    pipe = ImagePipeline(
+        ops={"OtsuDetector": OtsuDetector()},
+        meas={"MeasureSymZones": MeasureSymZones(
+            center_detector=ManualPointDetector(
+                centers=CENTERS, shape="disk", width=41))},
+    )
+    pipe.apply(image, inplace=True)
+    pipe.measure(image, apply_post=False)
+
+    classes = [cls for cls, _ in _step_paths(image)]
+    assert "ManualPointDetector" not in classes, (
+        "a measurement's center_detector must not enter the plate journal"
+    )
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `uv run pytest tests/unit/core/test_provenance_step_descent.py -v`
+Expected: FAIL — first two tests assert `['CompositeDetector', 'ops[0]']` but get `['CompositeDetector']`. The third should already PASS (it pins existing, correct behaviour).
+
+- [ ] **Step 3: Add the shared helper**
+
+```python
+# src/phenotypic/_core/_provenance.py  (append near pipeline_step)
+
+def apply_child(
+    operation: Any,
+    image: "Image",
+    *,
+    segment: str,
+    inplace: bool = False,
+    reset: bool | None = None,
+) -> "Image":
+    """Apply a nested *operation* under its own ``pipeline_step`` segment.
+
+    Container operations (``CompositeDetector``, ``CompositeEnhance``, ...)
+    drive children by calling ``.apply()`` directly, which — unlike
+    ``ImagePipeline._run_operations`` — pushes no step segment. Every child
+    therefore inherited the container's own path, so N children of a composite
+    were indistinguishable in the journal. Routing child applies through here
+    fixes that, and makes a walker path and a ``pipeline_step_path`` the same
+    value (spec §5.3).
+
+    ``segment`` must be a non-empty string, normally ``f"ops[{i}]"``;
+    ``validate_provenance_journal`` rejects a path containing anything else.
+
+    NOT for measurements: a nested operation run by a ``MeasureFeatures`` is a
+    private probe whose steps deliberately stay out of the plate's provenance
+    (see ``measure/CLAUDE.md``). Those keep calling ``.apply()`` directly.
+    """
+    from phenotypic._core._image_pipeline import ImagePipeline
+
+    kwargs: dict[str, Any] = {"inplace": inplace}
+    if isinstance(operation, ImagePipeline):
+        kwargs["reset"] = False if reset is None else reset
+
+    with pipeline_step(segment):
+        return operation.apply(image, **kwargs)
+```
+
+- [ ] **Step 4: Adopt it in `CompositeDetector`**
+
+```python
+# src/phenotypic/detect/_composite_detector.py, inside _operate
+from phenotypic._core._provenance import apply_child
+
+objmaps = []
+for index, detector in enumerate(self.ops):
+    if detector is None:
+        continue
+    detected_image = apply_child(
+        detector, image, segment=f"ops[{index}]", inplace=False
+    )
+    objmaps.append(detected_image.objmap[:].astype(bool))
+```
+
+Note this also removes the `isinstance(detector, ImagePipeline)` branch — `apply_child` handles the `reset=False` difference.
+
+- [ ] **Step 5: Adopt it in the other three containers**
+
+Apply the identical pattern in `_composite_enhance.py`, `_filamentous_fungi_detector.py`, and `_two_k_filamentous_detector.py`. For a **single-valued** `OperationField` (not a list), the segment is the field name: `segment="branch_base"`.
+
+- [ ] **Step 6: Run the tests**
+
+Run: `uv run pytest tests/unit/core/test_provenance_step_descent.py -v`
+Expected: PASS (3 tests)
+
+- [ ] **Step 7: Check the blast radius on existing provenance tests**
+
+```bash
+uv run pytest tests/unit/core -k provenance -q 2>&1 | tail -20
+uv run pytest tests/unit/detect tests/unit/enhance -q 2>&1 | tail -10
+```
+
+Any failure asserting a literal `['CompositeDetector']` step path is an **expected** update, not a regression — fix the expectation. Any other failure is a real regression: stop and investigate with systematic-debugging.
+
+- [ ] **Step 8: Commit**
+
+```bash
+uv run ruff check --fix src/phenotypic/_core/_provenance.py src/phenotypic/detect src/phenotypic/enhance tests/unit/core/test_provenance_step_descent.py
+git add -A
+git commit -m "feat(provenance): descend step paths through container operations"
+```
+
+---
+
+## Task 5: Path-shaped `StagePlan` with a Stage-2 branch prefix
+
+**Files:**
+- Modify: `src/phenotypic/_cli/_cli_pipeline_split.py` (whole file)
+- Test: `tests/unit/cli/test_pipeline_split_nested.py` (create)
+
+**Interfaces:**
+- Consumes: `find_gpu_detectors` (Task 3), `get_at_path` (Task 1).
+- Produces: `StagePlan(pre_pipeline, gpu_path: tuple[str, ...], gpu_detector, stage2_prefix: list, post_pipeline)`; `split_pipeline_at_gpu(pipeline) -> StagePlan`.
+
+**`gpu_key` is removed.** Task 13 updates the three SLURM call sites.
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/cli/test_pipeline_split_nested.py
+import numpy as np
+import pytest
+
+from phenotypic import ImagePipeline
+from phenotypic.abc_ import GpuDetector
+from phenotypic.detect import CompositeDetector, ManualPointDetector
+from phenotypic.enhance import BlurGauss, ContrastStretching, SubtractGaussian
+from phenotypic._cli._cli_pipeline_split import split_pipeline_at_gpu
+
+CENTERS = [[10.0, 10.0], [10.0, 40.0]]
+
+
+class _FakeGpu(GpuDetector):
+    input_layer: str = "detect_mat"
+
+    def _ensure_model_loaded(self) -> None:
+        return None
+
+    def _infer_one(self, sample):
+        return np.zeros(sample.shape[:2], dtype=np.uint16)
+
+
+def _manual():
+    return ManualPointDetector(centers=CENTERS, shape="disk", width=11)
+
+
+def test_split_cuts_at_the_top_level_ancestor():
+    pipe = ImagePipeline(ops={
+        "BlurGauss": BlurGauss(sigma=2.0),
+        "SubtractGaussian": SubtractGaussian(sigma=50.0),
+        "CompositeDetector": CompositeDetector(ops=[_FakeGpu(), _manual()],
+                                               mode="overlap"),
+        "ContrastStretching": ContrastStretching(input_layer="detect_mat"),
+    })
+    plan = split_pipeline_at_gpu(pipe)
+
+    assert plan.gpu_path == ("CompositeDetector", "ops[0]")
+    assert list(plan.pre_pipeline.get_ops()) == ["BlurGauss", "SubtractGaussian"]
+    # the ANCESTOR heads the post pipeline -- it has not run yet
+    assert list(plan.post_pipeline.get_ops()) == [
+        "CompositeDetector", "ContrastStretching"]
+
+
+def test_a_bare_leaf_needs_no_stage2_prefix():
+    pipe = ImagePipeline(ops={
+        "CompositeDetector": CompositeDetector(ops=[_FakeGpu(), _manual()],
+                                               mode="overlap")})
+    assert split_pipeline_at_gpu(pipe).stage2_prefix == []
+
+
+def test_a_branch_pipeline_contributes_its_preceding_ops():
+    branch = ImagePipeline(ops={
+        "ContrastStretching": ContrastStretching(input_layer="detect_mat"),
+        "FakeGpu": _FakeGpu()})
+    pipe = ImagePipeline(ops={
+        "CompositeDetector": CompositeDetector(ops=[branch, _manual()],
+                                               mode="overlap")})
+    plan = split_pipeline_at_gpu(pipe)
+
+    assert plan.gpu_path == ("CompositeDetector", "ops[0]", "FakeGpu")
+    assert [type(op).__name__ for op in plan.stage2_prefix] == ["ContrastStretching"]
+
+
+def test_composite_siblings_contribute_nothing_to_the_prefix():
+    """Composite ops are PARALLEL branches applied to the same input."""
+    pipe = ImagePipeline(ops={
+        "CompositeDetector": CompositeDetector(ops=[_manual(), _FakeGpu()],
+                                               mode="overlap")})
+    plan = split_pipeline_at_gpu(pipe)
+    assert plan.gpu_path == ("CompositeDetector", "ops[1]")
+    assert plan.stage2_prefix == []
+
+
+def test_no_gpu_detector_still_raises():
+    pipe = ImagePipeline(ops={"CompositeDetector":
+                              CompositeDetector(ops=[_manual()], mode="union")})
+    with pytest.raises(ValueError, match="no GpuDetector"):
+        split_pipeline_at_gpu(pipe)
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `uv run pytest tests/unit/cli/test_pipeline_split_nested.py -v`
+Expected: FAIL — `AttributeError: 'StagePlan' object has no attribute 'gpu_path'`
+
+- [ ] **Step 3: Write the implementation**
+
+```python
+# src/phenotypic/_cli/_cli_pipeline_split.py
+
+@dataclass
+class StagePlan:
+    """Result of splitting a pipeline at its (single) GpuDetector."""
+
+    pre_pipeline: ImagePipeline       # ops before the detector's ancestor (Stage 1)
+    gpu_path: tuple[str, ...]         # tree path to the detector (Stage 2 + provenance)
+    gpu_detector: GpuDetector         # the detector itself (Stage 2)
+    stage2_prefix: list               # ops Stage 2 must apply before inferring
+    post_pipeline: ImagePipeline      # ancestor onward + meas/post/filters/model/qc
+
+
+def _branch_prefix(pipeline: ImagePipeline, path: tuple[str, ...]) -> list:
+    """Ops between the Stage-1 store and the GPU op's model input.
+
+    A nested ``ImagePipeline`` contributes the ops preceding the branch. A
+    ``CompositeDetector`` contributes **nothing**: its ``ops`` are parallel
+    branches, each applied to the same input image with ``inplace=False``
+    (``_composite_detector.py``), so a sibling never runs "before" the
+    detector.
+    """
+    from phenotypic.sdk_._operation_tree import get_at_path
+
+    prefix: list = []
+    for depth in range(1, len(path)):
+        container = get_at_path(pipeline, path[:depth - 1]) if depth > 1 else pipeline
+        if not isinstance(container, ImagePipeline) or container is pipeline:
+            continue
+        keys = list(container.get_ops())
+        for key in keys[: keys.index(path[depth - 1])]:
+            prefix.append(container.get_ops()[key])
+
+    parent = get_at_path(pipeline, path[:-1]) if len(path) > 1 else pipeline
+    if isinstance(parent, ImagePipeline) and parent is not pipeline:
+        keys = list(parent.get_ops())
+        for key in keys[: keys.index(path[-1])]:
+            prefix.append(parent.get_ops()[key])
+    return prefix
+
+
+def split_pipeline_at_gpu(pipeline: ImagePipeline) -> StagePlan:
+    """Partition *pipeline* around its single GpuDetector, at any depth.
+
+    Raises:
+        ValueError: zero GpuDetectors in the pipeline.
+        UnstageableGpuDetectorError: more than one, or one in a CPU-only slot.
+    """
+    from ._cli_validation import find_gpu_detectors
+
+    hits = find_gpu_detectors(pipeline, strict=True)
+    if not hits:
+        raise ValueError(
+            "no GpuDetector in pipeline; staged execution requires exactly one"
+        )
+    gpu_path, gpu_detector = hits[0]
+
+    ops = pipeline.get_ops()
+    keys = list(ops)
+    cut = keys.index(gpu_path[0])
+    pre_ops = {k: ops[k] for k in keys[:cut]}
+    post_ops = {k: ops[k] for k in keys[cut:]}   # ANCESTOR INCLUDED
+
+    for binding in pipeline.get_plots():
+        ref = binding.ref
+        if ref is None or ref.slot != "ops":
+            continue
+        if ref.key in pre_ops:
+            raise ValueError(
+                f"plot {binding.id!r} references pre-GPU operation {ref.key!r}; "
+                "staged plotting supports only post-GPU operations, measurers, "
+                "aggregate slots, and inline plots"
+            )
+
+    return StagePlan(
+        pre_pipeline=ImagePipeline(ops=pre_ops, nrows=pipeline.nrows,
+                                   ncols=pipeline.ncols),
+        gpu_path=gpu_path,
+        gpu_detector=gpu_detector,
+        stage2_prefix=_branch_prefix(pipeline, gpu_path),
+        post_pipeline=ImagePipeline(
+            ops=post_ops, meas=pipeline.get_meas(), post=pipeline.get_post(),
+            filters=pipeline.get_filters(), model=pipeline.get_model(),
+            qc=pipeline.get_qc(), plots=pipeline.get_plots(),
+            nrows=pipeline.nrows, ncols=pipeline.ncols),
+    )
+```
+
+**Note on the plot guard:** the ancestor key now lives in `post_ops`, so the old `ref.key == gpu_key or ref.key in pre_ops` check reduces to `ref.key in pre_ops`. A plot referencing the ancestor is now legal, because the ancestor runs in Stage 3.
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `uv run pytest tests/unit/cli/test_pipeline_split_nested.py -v`
+Expected: PASS (5 tests)
+
+- [ ] **Step 5: Commit**
+
+```bash
+uv run ruff check --fix src/phenotypic/_cli/_cli_pipeline_split.py tests/unit/cli/test_pipeline_split_nested.py
+git add src/phenotypic/_cli/_cli_pipeline_split.py tests/unit/cli/test_pipeline_split_nested.py
+git commit -m "feat(cli): address the staged GPU detector by tree path"
+```
+
+---
+
+## Task 6: `ReplayDetector`
+
+**Files:**
+- Create: `src/phenotypic/_cli/_cli_replay_detector.py`
+- Test: `tests/unit/cli/test_replay_detector.py`
+
+**Interfaces:**
+- Consumes: nothing from earlier tasks.
+- Produces: `ReplayDetector(detector=..., result=..., detector_duration_seconds=0.0)` — an `ObjectDetector` whose `_operate` writes a pre-recorded array, and which reports the **wrapped detector's** identity to provenance.
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/cli/test_replay_detector.py
+import numpy as np
+
+from phenotypic.abc_ import GpuDetector
+from phenotypic.data import load_synth_yeast_plate
+from phenotypic._cli._cli_replay_detector import ReplayDetector
+
+
+class _FakeGpu(GpuDetector):
+    input_layer: str = "detect_mat"
+    marker: int = 7
+
+    def _ensure_model_loaded(self) -> None:
+        return None
+
+    def _infer_one(self, sample):
+        return np.zeros(sample.shape[:2], dtype=np.uint16)
+
+
+def test_replay_writes_the_recorded_array():
+    image = load_synth_yeast_plate()
+    recorded = np.zeros(image.gray[:].shape, dtype=np.uint16)
+    recorded[20:60, 20:60] = 1
+    recorded[120:160, 120:160] = 2
+
+    detector = _FakeGpu(drop_frame_background=False, split_disconnected_labels=False)
+    ReplayDetector(detector=detector, result=recorded).apply(image, inplace=True)
+
+    assert image.num_objects == 2
+
+
+def test_replay_applies_the_detectors_post_inference_cleanup():
+    """_write_object_output owns drop_frame_background / relabel; the stub must
+    delegate to it rather than assigning objmap itself."""
+    image = load_synth_yeast_plate()
+    recorded = np.zeros(image.gray[:].shape, dtype=np.uint16)
+    recorded[:] = 9                      # a background-spanning label
+    recorded[20:60, 20:60] = 1
+
+    detector = _FakeGpu(drop_frame_background=True, split_disconnected_labels=True)
+    ReplayDetector(detector=detector, result=recorded).apply(image, inplace=True)
+
+    assert image.num_objects == 1, "frame background was not dropped"
+
+
+def test_provenance_identity_is_the_wrapped_detector():
+    """The journal must name Sam2, not ReplayDetector, or a staged run's
+    provenance stops matching a single-pass run's."""
+    detector = _FakeGpu(marker=7)
+    stub = ReplayDetector(detector=detector, result=np.zeros((4, 4), np.uint16))
+
+    assert stub.provenance_operation_class().endswith("_FakeGpu")
+    assert stub.provenance_parameters()["marker"] == 7
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `uv run pytest tests/unit/cli/test_replay_detector.py -v`
+Expected: FAIL — `ModuleNotFoundError: phenotypic._cli._cli_replay_detector`
+
+- [ ] **Step 3: Write the implementation**
+
+```python
+# src/phenotypic/_cli/_cli_replay_detector.py
+"""Stage-3 stand-in for a GpuDetector whose inference already happened."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from phenotypic.abc_ import ObjectDetector
+from phenotypic.sdk_.typing_ import NdArrayField, OperationField
+
+if TYPE_CHECKING:
+    from phenotypic._core._image import Image
+
+
+class ReplayDetector(ObjectDetector):
+    """Write a PRE-RECORDED Stage-2 result in place of running the model.
+
+    Stage 2 ran the real detector on a GPU node and retained its raw output.
+    Stage 3 substitutes this stub at the detector's tree path so the enclosing
+    operation -- a ``CompositeDetector``, say -- runs exactly as it would in a
+    single-pass run, merging this branch's mask with its CPU siblings'.
+
+    The write delegates to the real detector's ``_write_object_output``, which
+    owns ``drop_frame_background`` and ``split_disconnected_labels``. Assigning
+    ``objmap`` directly here would skip both and silently bridge every colony
+    the background label touches.
+    """
+
+    detector: OperationField
+    result: NdArrayField
+    detector_duration_seconds: float = 0.0
+
+    def provenance_operation_class(self) -> str:
+        """Report the WRAPPED detector's class to the journal."""
+        cls = type(self.detector)
+        return f"{cls.__module__}.{cls.__qualname__}"
+
+    def provenance_parameters(self) -> dict:
+        """Report the WRAPPED detector's parameters to the journal."""
+        return self.detector.model_dump(mode="json")
+
+    def _operate(self, image: "Image") -> "Image":
+        self.detector._write_object_output(image, self.result)
+        return image
+```
+
+- [ ] **Step 4: Wire the provenance hooks**
+
+In `_provenance.py`, where an operation's `operation_class` and `parameters` are derived for a journal record, prefer the operation's own `provenance_operation_class()` / `provenance_parameters()` when present:
+
+```python
+operation_class = (
+    operation.provenance_operation_class()
+    if hasattr(operation, "provenance_operation_class")
+    else f"{type(operation).__module__}.{type(operation).__qualname__}"
+)
+parameters = (
+    operation.provenance_parameters()
+    if hasattr(operation, "provenance_parameters")
+    else operation.model_dump(mode="json")
+)
+```
+
+- [ ] **Step 5: Run test to verify it passes**
+
+Run: `uv run pytest tests/unit/cli/test_replay_detector.py -v`
+Expected: PASS (3 tests)
+
+- [ ] **Step 6: Commit**
+
+```bash
+uv run ruff check --fix src/phenotypic/_cli/_cli_replay_detector.py src/phenotypic/_core/_provenance.py tests/unit/cli/test_replay_detector.py
+git add -A
+git commit -m "feat(cli): add ReplayDetector for Stage-3 replay of a staged detector"
+```
+
+---
+
+## Task 7: Stage 2 applies the branch prefix
+
+**Files:**
+- Modify: `src/phenotypic/_cli/_cli_staged_workers.py` `stage2_detect_core` (~`:369-412`)
+- Test: `tests/unit/cli/test_staged_stage2_prefix.py`
+
+**Interfaces:**
+- Consumes: `StagePlan.stage2_prefix` (Task 5).
+- Produces: `stage2_detect_core(..., stage2_prefix: list | None = None)`.
+
+- [ ] **Step 1: Write the failing test**
+
+Assert that when `stage2_prefix` is non-empty, (a) the detector sees the prefixed array, and (b) the **store on disk is byte-unchanged** — Stage 2 must never write.
+
+```python
+# tests/unit/cli/test_staged_stage2_prefix.py
+# (build a Stage-1 store via the existing fixtures in tests/unit/cli/, then:)
+
+def test_prefix_is_applied_in_memory_and_never_written(staged_store_fixture):
+    before = _store_digest(staged_store_fixture.store_path)
+
+    stage2_detect_core(
+        detector=staged_store_fixture.detector,
+        output_dir=staged_store_fixture.output_dir,
+        dataset_name="ds",
+        image_stem="img",
+        stage2_prefix=[ContrastStretching(input_layer="detect_mat")],
+    )
+
+    assert _store_digest(staged_store_fixture.store_path) == before, (
+        "Stage 2 wrote into the store"
+    )
+    raw = load_stage2_raw(staged_store_fixture.output_dir, "ds", "img")
+    assert raw.shape == staged_store_fixture.expected_shape
+```
+
+Reuse the existing store-construction helpers in `tests/unit/cli/` rather than inventing new ones; `test_staged_resume.py` shows the established pattern.
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `uv run pytest tests/unit/cli/test_staged_stage2_prefix.py -v`
+Expected: FAIL — `TypeError: stage2_detect_core() got an unexpected keyword argument 'stage2_prefix'`
+
+- [ ] **Step 3: Implement**
+
+```python
+# in stage2_detect_core, replacing the input-layer read
+image = image_cls.load_zarr(store)  # read-only use; never re-promoted here
+
+if stage2_prefix:
+    # The GPU op sits behind CPU ops inside its own branch. Run them on an
+    # IN-MEMORY copy: Stage 2 must not write into the store, and Stage 3
+    # re-runs this same prefix as part of the normal branch execution.
+    image = image.copy()
+    for operation in stage2_prefix:
+        operation.apply(image, inplace=True)
+
+array = getattr(image, detector.input_layer)[:]
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `uv run pytest tests/unit/cli/test_staged_stage2_prefix.py -v`
+Expected: PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+uv run ruff check --fix src/phenotypic/_cli/_cli_staged_workers.py tests/unit/cli/test_staged_stage2_prefix.py
+git add -A
+git commit -m "feat(cli): apply the Stage-2 branch prefix in memory"
+```
+
+---
+
+## Task 8: Stage 3 substitutes the stub instead of writing directly
+
+**Files:**
+- Modify: `src/phenotypic/_cli/_cli_staged_workers.py` `stage3_merge_measure_core:487-505`
+- Test: covered by Task 10's equivalence test; add no new file here.
+
+**Interfaces:**
+- Consumes: `substitute_at_path` (Task 1), `ReplayDetector` (Task 6), `StagePlan.gpu_path` (Task 5).
+- Produces: no new signature.
+
+- [ ] **Step 1: Replace the explicit write + provenance append**
+
+The current code writes the objmap and appends the journal entry by hand, *outside* the pipeline apply. Both now happen inside the enclosing operation's `_operate`:
+
+```python
+# BEFORE (delete):
+#   plan.gpu_detector._write_object_output(image, result)
+#   append_operation_provenance(image, plan.gpu_detector, ...)
+#   _checkpoint_successful_operation(...)
+#   with continuing_provenance_application(image), provenance_success_sink(...):
+#       plan.post_pipeline.apply(image, inplace=True)
+
+result = load_stage2_raw(output_dir, dataset_name, image_stem)
+token = read_stage2_token(output_dir, dataset_name, image_stem)
+_check_active(active_check)
+
+stub = ReplayDetector(
+    detector=plan.gpu_detector,
+    result=result,
+    detector_duration_seconds=float(token.get("detector_duration_seconds", 0.0)),
+)
+replay_pipeline = substitute_at_path(plan.post_pipeline, plan.gpu_path, stub)
+
+with continuing_provenance_application(image), provenance_success_sink(
+    lambda updated: _write_provenance_checkpoint_fenced(
+        store, updated, active_check, commit_guard=commit_guard)
+):
+    replay_pipeline.apply(image, inplace=True)
+measurements = replay_pipeline.measure(image, apply_post=False)
+```
+
+**Keep the FLOW-21 comment** about replaying from the retained raw rather than the store's objmap — it still applies.
+
+- [ ] **Step 2: Verify the existing staged tests still pass**
+
+```bash
+uv run pytest tests/unit/cli/test_staged_resume.py tests/unit/cli/test_staged_resume_equivalence.py -v
+```
+
+Expected: PASS. A failure here means the substitution changed ordering or provenance — investigate before continuing.
+
+- [ ] **Step 3: Commit**
+
+```bash
+uv run ruff check --fix src/phenotypic/_cli/_cli_staged_workers.py
+git add src/phenotypic/_cli/_cli_staged_workers.py
+git commit -m "feat(cli): replay the staged detector via path substitution"
+```
+
+---
+
+## Task 9: Pin the addressing invariant
+
+**Files:**
+- Test: `tests/unit/cli/test_gpu_path_is_the_step_path.py` (create)
+
+**Interfaces:** consumes Tasks 4 and 5. Produces no source change — this task is a test only.
+
+**Why:** spec §5.3. Without this assertion, `gpu_path` and `pipeline_step_path` are two schemes kept aligned by hand, and they will drift.
+
+- [ ] **Step 1: Write the test**
+
+```python
+# tests/unit/cli/test_gpu_path_is_the_step_path.py
+import numpy as np
+import pytest
+
+from phenotypic import ImagePipeline
+from phenotypic.abc_ import GpuDetector
+from phenotypic.data import load_synth_yeast_plate
+from phenotypic.detect import CompositeDetector, ManualPointDetector
+from phenotypic.enhance import ContrastStretching
+from phenotypic._cli._cli_pipeline_split import split_pipeline_at_gpu
+
+CENTERS = [[150.0, 200.0], [300.0, 400.0]]
+
+
+class _FakeGpu(GpuDetector):
+    input_layer: str = "detect_mat"
+
+    def _ensure_model_loaded(self) -> None:
+        return None
+
+    def _infer_one(self, sample):
+        from scipy.ndimage import label
+        gray = sample[..., 0] if sample.ndim == 3 else sample
+        labelled, _ = label(gray > 110)
+        return labelled.astype(np.uint16)
+
+
+def _manual():
+    return ManualPointDetector(centers=CENTERS, shape="disk", width=41)
+
+
+def _shapes():
+    yield "leaf", CompositeDetector(ops=[_FakeGpu(), _manual()], mode="overlap")
+    branch = ImagePipeline(ops={
+        "ContrastStretching": ContrastStretching(input_layer="detect_mat"),
+        "FakeGpu": _FakeGpu()})
+    yield "branch", CompositeDetector(ops=[branch, _manual()], mode="overlap")
+    yield "nested", CompositeDetector(
+        ops=[CompositeDetector(ops=[_FakeGpu(), _manual()], mode="union"),
+             _manual()], mode="overlap")
+
+
+@pytest.mark.parametrize("name,detector", list(_shapes()), ids=lambda v: getattr(v, "__name__", v))
+def test_gpu_path_equals_the_recorded_step_path(name, detector):
+    pipe = ImagePipeline(ops={"CompositeDetector": detector})
+    plan = split_pipeline_at_gpu(pipe)
+
+    image = load_synth_yeast_plate()
+    pipe.apply(image, inplace=True)
+
+    recorded = [
+        op["pipeline_step_path"]
+        for app in image._metadata.provenance_journal.get("applications", [])
+        for op in app.get("operations", [])
+        if op["operation_class"].endswith("_FakeGpu")
+    ]
+    assert recorded == [list(plan.gpu_path)], (
+        f"{name}: walker path {plan.gpu_path} != journal path {recorded}"
+    )
+```
+
+- [ ] **Step 2: Run it**
+
+Run: `uv run pytest tests/unit/cli/test_gpu_path_is_the_step_path.py -v`
+Expected: PASS (3 parametrisations). A failure means Task 4's segments and Task 1's path segments disagree — fix the *segment* construction, not the test.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add tests/unit/cli/test_gpu_path_is_the_step_path.py
+git commit -m "test(cli): pin gpu_path == pipeline_step_path"
+```
+
+---
+
+## Task 10: Staged/single-pass equivalence, with a mutation control
+
+**Files:**
+- Test: `tests/unit/cli/test_staged_nested_equivalence.py` (create)
+
+**Interfaces:** consumes Tasks 5–8. No source change.
+
+**This is the gate for the whole change.** The spike at `docs/superpowers/specs/2026-09-15-nested-gpu-staging/spike_nested_gpu.py` is the reference; port it, do not re-derive it.
+
+- [ ] **Step 1: Write the equivalence test**
+
+Port `spike_nested_gpu.py`'s three shapes. For each: run the pipeline normally; then run Stage 1 / Stage 2 / Stage 3 through the real `split_pipeline_at_gpu` + `ReplayDetector` + `substitute_at_path`; assert the objmap and the measurement frame are identical.
+
+- [ ] **Step 2: Write the mutation control**
+
+```python
+def test_a_corrupted_replay_is_detected():
+    """Without this the equivalence assertion is vacuous.
+
+    NOTE: the perturbation below leaves the OBJECT COUNT unchanged, so a test
+    that compares num_objects passes on broken code. Compare the objmap.
+    """
+    reference, staged_clean = _run_both(shape_leaf)
+    staged_dirty = _run_staged(shape_leaf, corrupt=lambda raw: np.roll(raw, 7, axis=0))
+
+    assert np.array_equal(reference, staged_clean)
+    assert not np.array_equal(reference, staged_dirty)
+```
+
+- [ ] **Step 3: Run**
+
+Run: `uv run pytest tests/unit/cli/test_staged_nested_equivalence.py -v`
+Expected: PASS — all three shapes equivalent, corrupted replay detected.
+
+- [ ] **Step 4: Add the owner-depth-0 test**
+
+Per `measure/CLAUDE.md`, a test at the default programmatic depth passes on broken code. Exercise Stage 3 with `_application_owner_depth` forced to 0:
+
+```python
+from phenotypic._core._provenance import _application_owner_depth
+
+def test_stage3_at_cli_owner_depth():
+    token = _application_owner_depth.set(0)
+    try:
+        ...  # run stage3_merge_measure_core against a staged store
+    finally:
+        _application_owner_depth.reset(token)
+```
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add tests/unit/cli/test_staged_nested_equivalence.py
+git commit -m "test(cli): staged/single-pass equivalence for nested GPU detectors"
+```
+
+---
+
+## Task 11: Process mode runs the post-detector op chain
+
+**Files:**
+- Modify: `src/phenotypic/_cli/_cli_staged_strategy.py` `_export_objmap_layer:397-480`
+- Test: `tests/integration/cli/test_process_objmap_semantics.py` (create)
+- Modify: `tests/integration/cli/test_staged_gpu_local.py:1039` (docstring only)
+
+**Interfaces:** consumes Tasks 1, 5, 6. No new signature.
+
+**Behaviour change (spec §8):** the export now means *the objmap your pipeline produces*, for top-level and nested detectors alike.
+
+- [ ] **Step 1: Write the failing test**
+
+The existing test at `:1039` uses a pipeline with **no post-detector ops**, so old and new semantics coincide and it cannot catch this. The new test must use a pipeline whose post-detector ops measurably change the objmap.
+
+```python
+# tests/integration/cli/test_process_objmap_semantics.py
+
+def test_export_applies_post_detector_ops(tmp_path):
+    """--layer objmap exports the PIPELINE's objmap, not the detector's raw output."""
+    # pipeline: FakeGpu (emits a large blob AND a 9-px speck)
+    #           -> SmallObjectRemover(min_size=100)
+    pipe = ImagePipeline(ops={
+        "FakeGpu": FakeGpuTwoBlobs(),
+        "SmallObjectRemover": SmallObjectRemover(min_size=100),
+    })
+    ... run StagedGpuStrategy with process_only_layer="objmap" ...
+
+    exported = cv2.imread(str(out_path), cv2.IMREAD_UNCHANGED)
+    assert len(np.unique(exported)) - 1 == 1, (
+        "the speck survived -- post-detector ops were not applied"
+    )
+
+
+def test_export_applies_the_composite_merge_for_a_nested_detector(tmp_path):
+    """For a nested detector the raw array is one BRANCH, not the objmap."""
+    ...
+
+
+def test_the_store_is_byte_unchanged_by_the_export(tmp_path):
+    """FLOW-16/FLOW-30/FLOW-6: this path must not write into the store."""
+    before = _store_digest(store_path)
+    ... run the export ...
+    assert _store_digest(store_path) == before
+```
+
+- [ ] **Step 2: Run to verify it fails**
+
+Run: `uv run pytest tests/integration/cli/test_process_objmap_semantics.py -v`
+Expected: FAIL — the speck survives; only 2 labels present.
+
+- [ ] **Step 3: Implement**
+
+```python
+# in _export_objmap_layer, replacing the direct _write_object_output call
+from phenotypic._core._provenance import (
+    set_provenance_status,
+    truncate_provenance_to_retry_base,
+)
+from phenotypic.sdk_._operation_tree import substitute_at_path
+
+from ._cli_replay_detector import ReplayDetector
+
+image = image_cls.load_zarr(store)
+raw = load_stage2_raw(output_dir, ds.name, source_image_stem(img))
+
+# Stage 1 left the application "staged", which is NOT terminal, so an apply
+# at CLI owner-depth 0 would raise "cannot start a new provenance application
+# before the last ends". Do Stage 3's provenance handling IN MEMORY...
+truncate_provenance_to_retry_base(image)
+set_provenance_status(image, "in_progress")
+# ...and DELIBERATELY omit write_provenance_checkpoint. This path must not
+# write into the store: a write after the success marker invalidates the
+# descriptor the marker just recorded (ledger FLOW-16/FLOW-30/FLOW-6).
+
+stub = ReplayDetector(detector=plan.gpu_detector, result=raw)
+residual = substitute_at_path(plan.post_pipeline, plan.gpu_path, stub)
+residual.apply(image, inplace=True)   # ops only; never .measure()
+
+write_process_only_layer(image, "objmap", out_path)
+```
+
+- [ ] **Step 4: Run to verify it passes**
+
+Run: `uv run pytest tests/integration/cli/test_process_objmap_semantics.py -v`
+Expected: PASS (3 tests)
+
+- [ ] **Step 5: Update the stale docstring at `test_staged_gpu_local.py:1039`**
+
+Its assertions still hold (it guards FLOW-16), but "replays Stage 2's raw array" is now "replays Stage 2's raw array **and applies the post-detector ops**". Update the prose; change no assertion.
+
+- [ ] **Step 6: Commit**
+
+```bash
+uv run ruff check --fix src/phenotypic/_cli/_cli_staged_strategy.py tests/integration/cli/test_process_objmap_semantics.py
+git add -A
+git commit -m "feat(cli)!: process objmap export applies post-detector ops"
+```
+
+---
+
+## Task 12: Invalidate continuation across the semantics change
+
+**Files:**
+- Modify: `src/phenotypic/_cli/_cli_failure_tracker.py:191-236`
+- Test: `tests/unit/cli/test_work_id_semantics_revision.py`
+
+**Interfaces:** produces `OUTPUT_SEMANTICS_REVISION: int`.
+
+**This is the highest-severity risk in the spec (§8.3, §12).** Without it, a process run interrupted before the upgrade and resumed after reuses old-semantics PNGs and publishes a tree that *looks* complete while mixing two meanings.
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/unit/cli/test_work_id_semantics_revision.py
+from phenotypic._cli import _cli_failure_tracker as tracker
+
+
+def test_bumping_the_revision_changes_the_digest():
+    kwargs = dict(image_type="Image", nrows=8, ncols=12, bit_depth=None,
+                  detect_mode="gray", process_only_layer="objmap", ext=".png",
+                  process_format="tiff", include_dataset_column=True,
+                  overlay_alpha=0.5, save_overlays=False)
+    before = tracker.processing_configuration_digest_from_values(**kwargs)
+
+    original = tracker.OUTPUT_SEMANTICS_REVISION
+    try:
+        tracker.OUTPUT_SEMANTICS_REVISION = original + 1
+        after = tracker.processing_configuration_digest_from_values(**kwargs)
+    finally:
+        tracker.OUTPUT_SEMANTICS_REVISION = original
+
+    assert before != after, (
+        "the digest ignores the semantics revision, so a run resumed across an "
+        "output-semantics change would reuse stale outputs"
+    )
+```
+
+- [ ] **Step 2: Run to verify it fails**
+
+Run: `uv run pytest tests/unit/cli/test_work_id_semantics_revision.py -v`
+Expected: FAIL — `AttributeError: module has no attribute 'OUTPUT_SEMANTICS_REVISION'`
+
+- [ ] **Step 3: Implement**
+
+```python
+#: Bumped whenever PER-IMAGE OUTPUT SEMANTICS change, so a run resumed across
+#: the upgrade re-derives its images instead of reusing outputs that mean
+#: something different. NOT the package version -- that would invalidate
+#: continuation on every patch release, breaking legitimate resume.
+#:
+#: 1 -> 2: `--mode process --layer objmap` now applies the post-detector op
+#:         chain, so the export is the pipeline's objmap rather than the
+#:         detector's raw output (spec 2026-09-15-nested-gpu-staging §8).
+OUTPUT_SEMANTICS_REVISION = 2
+
+
+def processing_configuration_digest_from_values(...) -> str:
+    payload: dict[str, object] = {
+        "output_semantics_revision": OUTPUT_SEMANTICS_REVISION,
+        "image_type": image_type,
+        ...
+    }
+```
+
+- [ ] **Step 4: Run and check the blast radius**
+
+```bash
+uv run pytest tests/unit/cli/test_work_id_semantics_revision.py -v
+uv run pytest tests/unit/cli/test_cli_process_only.py tests/unit/cli/test_process_format_option.py -v
+```
+
+Any test asserting a **literal** digest string needs its expectation regenerated — that is the intended effect. A test asserting digest *relationships* must still pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+uv run ruff check --fix src/phenotypic/_cli/_cli_failure_tracker.py tests/unit/cli/test_work_id_semantics_revision.py
+git add -A
+git commit -m "fix(cli): invalidate continuation across an output-semantics change"
+```
+
+---
+
+## Task 13: Update the SLURM worker call sites
+
+**Files:**
+- Modify: `src/phenotypic/_cli/_cli_staged_slurm_worker.py:182,296,448`
+- Test: `tests/unit/cli/test_staged_slurm_scripts.py` (existing)
+
+- [ ] **Step 1: Replace every `plan.gpu_key` use**
+
+`gpu_key` no longer exists. Each site either wants `plan.gpu_path` (for provenance/addressing) or nothing at all, because Task 8 moved the write inside the pipeline apply. Pass `plan.stage2_prefix` into `stage2_detect_core` at the Stage-2 site.
+
+- [ ] **Step 2: Verify**
+
+```bash
+uv run pytest tests/unit/cli/test_staged_slurm_scripts.py tests/unit/cli/test_staged_controller.py -v
+uv run python -c "import phenotypic._cli._cli_staged_slurm_worker"
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+uv run ruff check --fix src/phenotypic/_cli/_cli_staged_slurm_worker.py
+git add src/phenotypic/_cli/_cli_staged_slurm_worker.py
+git commit -m "refactor(cli): carry gpu_path through the staged SLURM workers"
+```
+
+---
+
+## Task 14: Documentation
+
+**Files:**
+- Modify: root `CLAUDE.md` (the `--mode process` bullet and the staged-GPU bullet)
+- Modify: `src/phenotypic/_cli/CLAUDE.md`
+- Modify: `docs/source/how_to/` pages describing the objmap export
+
+- [ ] **Step 1: Fix the now-false sentence in root `CLAUDE.md`**
+
+"`--mode process --layer objmap` exports objmaps after Stages 1–2" is wrong. Replace with wording that says the export applies the post-detector op chain and therefore yields the pipeline's objmap.
+
+- [ ] **Step 2: Document nested support in `src/phenotypic/_cli/CLAUDE.md`**
+
+Record: GPU detectors are found tree-wide; the split cuts at the top-level ancestor; the Stage-2 branch prefix runs twice and must be deterministic; unstageable placements are refused.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add CLAUDE.md src/phenotypic/_cli/CLAUDE.md docs/source
+git commit -m "docs: nested GpuDetector staging and the new objmap export semantics"
+```
+
+---
+
+## Task 15: Full regression
+
+- [ ] **Step 1: Type check**
+
+```bash
+uv run mypy src/phenotypic
+```
+
+- [ ] **Step 2: Run the full suite as a Slurm job**
+
+Use the **`run-phenotypic-test`** skill and the committed batch script at `docs/superpowers/plans/2026-08-18-ome-zarr-image-store/run_unit_suite.sbatch`. **Never `-n auto`.** Always `QT_QPA_PLATFORM=offscreen`. This is ~65 minutes — run it **once**, here, not between tasks.
+
+- [ ] **Step 3: Compare against the recorded baseline**
+
+The captured baseline is 11,106 tests / 81 failed, all outside `sdk_`/`_cli`/`gui`. Any **new** failure inside `sdk_`, `_cli`, `gui`, `detect`, `enhance`, or `core` is attributable to this change. Run each failing test in isolation before attributing it — most pass alone.
+
+- [ ] **Step 4: Report**
+
+State the counts measured, not counts expected. If anything regressed, stop and report rather than proceeding.
+
+---
+
+## Self-Review Notes
+
+**Spec coverage:** every row of the spec's §9 inventory maps to a task — 1→T3, 2/2a→T1/T2, 3→T5, 4→T6, 5→T7, 6→T8, 7→T11, 7a→T12, 7b/7c→T14, 7d→T11 step 5, 7e/7f/7g→T4, 8→T5 step 3, 9→T13, 10→T9/T10/T15.
+
+**Known gap, deliberately left to the executor:** Task 7 and Task 11 reference existing store-construction fixtures in `tests/unit/cli/` and `tests/integration/cli/` without reproducing them. Those fixtures are long and already established (`test_staged_resume.py`, `test_staged_gpu_local.py`); copying them here would drift. The executor must read the existing pattern and follow it.
