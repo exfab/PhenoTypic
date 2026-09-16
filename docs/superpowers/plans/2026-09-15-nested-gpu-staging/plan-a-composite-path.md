@@ -2293,6 +2293,20 @@ git commit -m "test(cli): every recorded pipeline_step_path must resolve"
 
 ## Task 10: Staged/single-pass equivalence, with a mutation control
 
+> **The equivalence assertion must compare `pipeline_step_path`, not only the
+> measurements.** Spec §5.3 already closes with a claim this task is the only
+> thing that tests:
+>
+> > "Staged/single-pass journal parity is unaffected: substitution happens at
+> > the same path, so both runs record the same step path, and the stub's
+> > identity delegation supplies the same class and parameters."
+>
+> That is an existing spec sentence with no test behind it, and it is false for
+> a nested detector until Task 8 replaces `[plan.gpu_key]` with
+> `list(plan.gpu_path)`. A measurements-only equivalence check **passes a
+> one-element path against a three-element one**, so it would certify the parity
+> while the parity is broken.
+
 **Files:**
 - Test: `tests/unit/cli/test_staged_nested_equivalence.py` (create)
 
@@ -2805,6 +2819,41 @@ and never a weaker model than the implementer.
 ---
 
 ## Revision history
+
+**Amended 2026-09-16 during execution of Phase 3 (Task 6a).**
+
+8. **A positional insertion can produce a call that is still legal, still
+   passing, and simply wrong.** Adding a required `slot` parameter to
+   `stage2_detect_core` broke four call sites. Three raised `TypeError` and were
+   visible. The fourth passed five positionals across seven lines:
+   `"Image"` silently bound to the new `slot` and `image_type` fell back to its
+   default. No error, test still green — and had that call written a signal it
+   would have landed under a slot named `Image` while the following assertion
+   checked the real slot, found an empty directory, and passed **vacuously**.
+
+   A red baseline conceals same-shaped failures (two of the four were masked
+   behind the deliberate `gpu_key` red). This one needed no concealment, because
+   there was no red. **Only enumerating call sites by CALLEE and checking each
+   argument binding finds it** — searching for the shape that is failing cannot,
+   by construction.
+
+   The class is checkable rather than a matter of care: of the ten signatures
+   Task 6a changed, **exactly one has a positional parameter after `slot`** —
+   `stage2_detect_core(..., image_stem, slot, image_type="Image", ...)`. Every
+   other has `slot` last before a `*`, or is fully keyword-only. Audit that
+   column whenever a positional parameter is inserted.
+
+9. **The plan's quoted signature for `classify_staged_image` was wrong in a way
+   that made its instruction unfollowable.** "Do NOT make it required
+   keyword-only" cannot be obeyed against a function that already opens with a
+   bare `*`. The binding sentence is the one after it — "no caller can reach a
+   shared path without being handed a slot".
+
+10. **The plan named a reader with no writer.** The recovery controller was told
+    to read `config["detector_slot"]`; nothing was told to write it. That is a
+    runtime `KeyError` on the first SLURM recovery, and it surfaced only because
+    the implementer counted the real caller set (ten modules) instead of
+    trusting the plan's six.
 
 **Amended 2026-09-16 during execution of Phase 0-2.** Findings that came out of
 running the plan rather than reading it. Recorded here because a plan whose
