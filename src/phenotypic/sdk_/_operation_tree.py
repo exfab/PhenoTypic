@@ -65,9 +65,14 @@ def walk_operations(pipeline: Any) -> Iterator[tuple[tuple[str, ...], Any]]:
     KNOWN LIMIT: for a **nested** ``ImagePipeline`` this descends only its
     ``ops``, not its own ``meas``/``post``/``filters``/``model``. A GpuDetector
     hidden in a nested pipeline's ``meas`` is therefore neither staged nor
-    refused. That shape is not reachable from the GUI builder and has no known
-    user, so it is out of scope here -- but it is a gap, not an invariant, and
-    the CPU-only-slot refusal covers only the ROOT pipeline's slots.
+    refused. That shape is not reachable from the GUI builder, and it is out of
+    scope for this change -- but it is a gap, not an invariant, and the
+    CPU-only-slot refusal covers only the ROOT pipeline's slots.
+
+    (An earlier draft of this sentence also said the shape "has no known user".
+    That is a claim about the world, not about the code, and nothing here
+    supports it. Scope is the honest reason; absence of users is not something
+    this module can know.)
 
     **Say the consequence, not just the gap.** "Neither staged nor refused"
     means the run routes to the CPU strategy and the detector performs

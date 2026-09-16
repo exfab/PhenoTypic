@@ -42,8 +42,20 @@ if (( DIRTY != 0 )); then
     exit 1
 fi
 
+# `--extra napari` is NOT optional for a gate. Without it, 14 tests across
+# tests/unit/core/test_napari_pipeline_viewer.py and
+# tests/unit/sdk_/test_label_editor_widget.py fail at import, and a gate that
+# reports 14 reds it cannot explain trains its reader to skim red shards.
+# Measured: with the extra installed those same 39 tests pass in 4.2s.
+#
+# It also happens to be the ONLY coverage for `_operation_tree`'s decision to
+# key on ImagePipelineCore rather than ImagePipeline -- `NapariPipelineViewer`
+# is the second concrete subclass and the entire reason that keying exists.
+# Leaving the extra out made the one deviation with nothing else behind it
+# invisible to the gate as well.
 if [[ ! -x .venv/bin/python ]]; then
-    uv sync --group dev --group test-qt --extra gui >/dev/null 2>&1 || exit 1
+    uv sync --group dev --group test-qt --extra gui --extra napari \
+        >/dev/null 2>&1 || exit 1
 fi
 
 RESOLVED=$(uv run python -c 'import phenotypic; print(phenotypic.__file__)' 2>/dev/null | tail -1)
