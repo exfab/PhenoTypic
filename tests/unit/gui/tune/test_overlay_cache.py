@@ -13,8 +13,8 @@ import threading
 
 import numpy as np
 
-from phenotypic.gui._config import THREAD_NAME_PREFIX
-from phenotypic.gui.tune._overlays import OverlayCache
+from phenotypic._gui._config import THREAD_NAME_PREFIX
+from phenotypic._gui.tune._overlays import OverlayCache
 
 
 class _CountingRender:

@@ -13,7 +13,7 @@ def test_browser_command_remains_portable_after_form_edits(page: Page) -> None:
         Path(__file__).parents[3]
         / "src"
         / "phenotypic"
-        / "gui"
+        / "_gui"
         / "tune"
         / "_assets"
         / "tune_launch.js"

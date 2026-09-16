@@ -1,6 +1,6 @@
 """End-to-end exercise of the builder preview-cache contract.
 
-Drives :func:`phenotypic.gui.builder._callbacks._bake_preview_cache` against
+Drives :func:`phenotypic._gui.builder._callbacks._bake_preview_cache` against
 a small ``BuilderState`` (``BlurGauss → OtsuDetector → MeasureSize``) and
 asserts:
 
@@ -20,8 +20,8 @@ import pandas as pd
 import pytest
 
 from phenotypic.data._synthetic_data import load_synth_yeast_plate
-from phenotypic.gui.builder._callbacks import _bake_preview_cache
-from phenotypic.gui.builder._session import IntermediatesCache, PreviewRenderError
+from phenotypic._gui.builder._callbacks import _bake_preview_cache
+from phenotypic._gui.builder._session import IntermediatesCache, PreviewRenderError
 
 # The public ``BuilderScope`` / ``BuilderState`` names are permanent aliases
 # for the DAG schema.  The legacy-path tests below exercise
@@ -29,7 +29,7 @@ from phenotypic.gui.builder._session import IntermediatesCache, PreviewRenderErr
 # they bind the ``_Legacy*`` types directly (same pattern as
 # ``test_doc_section.py`` / ``test_state_dataclasses.py``).  ``to_pipeline``
 # already operates on the legacy scope.
-from phenotypic.gui.builder._state import (
+from phenotypic._gui.builder._state import (
     _LegacyBuilderScope as BuilderScope,
     _LegacyBuilderState as BuilderState,
     _LegacyStepNode as StepNode,
@@ -143,7 +143,7 @@ def test_failed_bake_cannot_publish_partial_generation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A staging failure leaves the prior complete generation untouched."""
-    from phenotypic.gui.builder import _callbacks
+    from phenotypic._gui.builder import _callbacks
 
     state = _seed_pipeline_state()
     pipeline = to_pipeline(state.root)
@@ -238,8 +238,8 @@ def test_bake_preview_cache_dag_uses_32char_block_id_keys():
     """
     import json
 
-    from phenotypic.gui.builder._conversion_dag import to_pipeline_dag
-    from phenotypic.gui.builder._state import (
+    from phenotypic._gui.builder._conversion_dag import to_pipeline_dag
+    from phenotypic._gui.builder._state import (
         INPUT_IMAGE_CLASS_NAME,
         state_from_json,
     )

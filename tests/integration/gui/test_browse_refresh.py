@@ -8,13 +8,13 @@ from typing import Any
 import dash
 import pytest
 
-from phenotypic.gui.browse._callbacks import register_callbacks
-from phenotypic.gui.shell._ids import (
+from phenotypic._gui.browse._callbacks import register_callbacks
+from phenotypic._gui.shell._ids import (
     SHELL_CLASSIFIER_CACHE_STORE,
     SHELL_SOURCE_IMAGE_ROOT_STORE,
 )
-from phenotypic.gui.shell._sandbox import SandboxRoot
-from phenotypic.gui.shell._source_context import source_payload_from_path
+from phenotypic._gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.shell._source_context import source_payload_from_path
 
 
 def _callback_named(app: dash.Dash, name: str) -> tuple[Any, dict[str, Any]]:

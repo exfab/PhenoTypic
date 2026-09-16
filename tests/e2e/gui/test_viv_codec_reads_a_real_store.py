@@ -38,7 +38,7 @@ import pytest
 from playwright.sync_api import Page
 
 from phenotypic import Image
-from phenotypic.gui.results_viewer._zarr_routes import (
+from phenotypic._gui.results_viewer._zarr_routes import (
     store_generation_token,
     zarr_store_url,
 )

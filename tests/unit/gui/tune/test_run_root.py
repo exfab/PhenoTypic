@@ -30,7 +30,7 @@ from phenotypic.tune.score import QCScorer
 from phenotypic.tune.strategy import OptunaConfig
 from phenotypic.tune._spec import Budget, TuningSpec
 
-from phenotypic.gui.tune import TuneRunRoot, TuneRunRootError
+from phenotypic._gui.tune import TuneRunRoot, TuneRunRootError
 
 
 def _optuna_spec(tmp_path, *, storage_url: str) -> TuningSpec:

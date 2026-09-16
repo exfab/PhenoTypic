@@ -11,25 +11,12 @@ import numpy as np
 
 from ._accessor_mpl_handler import AccessorMplHandler
 
-try:
-    import plotly.express as px
-    import plotly.graph_objects as go
+import importlib.util as _importlib_util
 
-    PLOTLY_AVAILABLE = True
-
-    import os as _os
-
-    if _os.environ.get("PHENOTYPIC_DOCS_BUILD"):
-        # nbsphinx captures cell outputs from the kernel's HTML mimetype, but
-        # Plotly's default ``plotly_mimetype+notebook`` renderer emits a JSON
-        # MIME bundle that nbsphinx drops. ``notebook_connected`` swaps that for
-        # an HTML+CDN-script bundle so dash() figures survive into the static
-        # site.
-        import plotly.io as _pio
-
-        _pio.renderers.default = "notebook_connected"
-except ImportError:  # pragma: no cover
-    PLOTLY_AVAILABLE = False
+#: Whether plotly is installed, checked without importing it: every ``Image`` carries
+#: these accessors, and plotly loads only when a figure is drawn. Patched to ``False``
+#: by ``tests/unit/core/test_plotly_fallback.py``.
+PLOTLY_AVAILABLE = _importlib_util.find_spec("plotly") is not None
 
 if TYPE_CHECKING:
     import plotly.graph_objects as go
@@ -128,7 +115,12 @@ class AccessorDashHandler(AccessorMplHandler):
         Returns:
             A ``plotly.graph_objects.Figure`` with zoom-friendly defaults.
         """
+        # Deliberately before the import, against the plan's "import first" rule: this
+        # guard exists to replace plotly's ModuleNotFoundError with an actionable message,
+        # and an import above it would raise first and make the guard unreachable.
         AccessorDashHandler._require_plotly()
+
+        import plotly.express as px
 
         if arr.ndim == 3:
             fig = px.imshow(arr, binary_string=True)

@@ -20,10 +20,10 @@ import polars as pl
 import pytest
 from PIL import Image as PILImage
 
-from phenotypic.gui._config import CFG_OPERATION_REGISTRY
-from phenotypic.gui._operation_registry import OperationRegistry
-from phenotypic.gui.results_viewer._app import create_app
-from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui._config import CFG_OPERATION_REGISTRY
+from phenotypic._gui._operation_registry import OperationRegistry
+from phenotypic._gui.results_viewer._app import create_app
+from phenotypic._gui.results_viewer._output_root import OutputRoot
 
 from tests._output_layout import write_master, write_measurements_mirror
 from phenotypic.schema import IMAGE

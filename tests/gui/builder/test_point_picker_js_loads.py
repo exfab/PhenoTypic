@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 def test_point_picker_js_exists():
-    js = Path("src/phenotypic/gui/builder/assets/point_picker.js")
+    js = Path("src/phenotypic/_gui/builder/assets/point_picker.js")
     assert js.exists()
     text = js.read_text()
     # Stub markers must be gone.

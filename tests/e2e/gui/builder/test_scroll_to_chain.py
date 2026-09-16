@@ -2,7 +2,7 @@
 
 Each test maps to one row in spec §8.3.6's ``scroll_to`` /
 ``drill_to_scope`` coverage table.  The chain lives in
-``src/phenotypic/gui/builder/assets/viewport_ops.js``:
+``src/phenotypic/_gui/builder/assets/viewport_ops.js``:
 
   * ``phenotypicScrollTo(blockId, scopePath, targetBreadcrumb)`` —
     mounts a canvas-wide scrim (``data-testid="dag-scrim"``), traverses

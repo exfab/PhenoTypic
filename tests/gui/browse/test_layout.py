@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from phenotypic.gui.browse import _ids as ids
-from phenotypic.gui.browse._layout import build_browse_layout
+from phenotypic._gui.browse import _ids as ids
+from phenotypic._gui.browse._layout import build_browse_layout
 
 
 def _ids_in_tree(node, found):
@@ -75,7 +75,7 @@ def test_prev_next_buttons_use_wider_stable_hit_target():
     assert "browse-step-button" in getattr(next_button, "className", "")
 
     css = (
-        Path(__file__).parents[3] / "src/phenotypic/gui/browse/_assets/browse.css"
+        Path(__file__).parents[3] / "src/phenotypic/_gui/browse/_assets/browse.css"
     ).read_text(encoding="utf-8")
     assert ".browse-step-button" in css
     assert "min-width: 3rem;" in css

@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`phenotypic.gui._shared._radial`.
+"""Unit tests for :mod:`phenotypic._gui._shared._radial`.
 
 These are pure component-tree tests — no browser, no Dash server.
 """
@@ -10,8 +10,8 @@ from collections.abc import Iterator
 
 from dash.development.base_component import Component
 
-from phenotypic.gui._design import category_color
-from phenotypic.gui._shared._radial import (
+from phenotypic._gui._design import category_color
+from phenotypic._gui._shared._radial import (
     RADIAL_RESTORE_SENTINEL,
     _CORE_TOKENS,
     _DEFAULT_RADIUS,

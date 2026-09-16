@@ -2173,6 +2173,17 @@ def test_a_shard_whose_stores_are_all_excluded_writes_an_empty_shard(
         "carried K and would read this as a dead worker"
     )
     assert pl.read_parquet(shard_path).height == 0
+    import_deadline = time.monotonic() + 15.0
+    while not ready.exists() and time.monotonic() < import_deadline:
+        assert process.poll() is None
+        time.sleep(0.01)
+    assert ready.is_file(), "FIFO recovery probe did not finish importing"
+    try:
+        return_code = process.wait(timeout=5.0)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=2.0)
+        pytest.fail("FIFO receipt blocked recovery discovery")
 
     status = json.loads(
         (manifest_path.parent / "status" / "task_0.json").read_text(

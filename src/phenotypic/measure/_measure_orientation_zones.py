@@ -3,14 +3,20 @@
 from __future__ import annotations
 
 import weakref
-from typing import ClassVar, Literal
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeAlias
+
+if TYPE_CHECKING:
+    # See MeasureSymZones: this satisfies the pydantic mypy plugin's inherited
+    # field resolution without changing CanonicalZoneMeasure's runtime type.
+    OperationField: TypeAlias = Any
 
 import numpy as np
 import pandas as pd
 from pydantic import PrivateAttr, field_validator, model_validator
 
-from phenotypic.abc_ import MeasureFeatures
 from phenotypic.abc_.plotting import Control, PlotImage, figure
+from phenotypic.measure._canonical_zone_measure import CanonicalZoneMeasure
 from phenotypic.schema import (
     MeasurementInfo,
     OBJECT,
@@ -29,9 +35,8 @@ from phenotypic.util._matched_ring_rotation import (
 from phenotypic.util._nematic_bend import fiber_bend_field
 from phenotypic.util._orientation_field import orientation_field
 from phenotypic.measure._zone_segmentation import (
+    ZoneResolution,
     ZoneSegmentation,
-    ZoneSegmentationParams,
-    compute_zone_segmentation,
     distance_from_point,
     expand_slice_around_center,
 )
@@ -108,6 +113,31 @@ _N_CIRCLE_PTS = 72
 _CIRCLE_THETA = np.linspace(0.0, 2.0 * np.pi, _N_CIRCLE_PTS, endpoint=True)
 
 
+@dataclass(frozen=True)
+class _ObjectZoneAnalysis:
+    """Named results from one object's zone and orientation analysis.
+
+    The zone resolver owns the segmentation geometry. The remaining arrays are
+    the orientation evidence consumed by measurements and diagnostic figures.
+    Keeping these values named avoids positional tuple unpacking at every call
+    site and makes their shared origin explicit.
+    """
+
+    prop: object
+    resolution: ZoneResolution
+    object_mask: np.ndarray
+    orientation: np.ndarray
+    coherence: np.ndarray
+    gradient: np.ndarray
+    distance_map: np.ndarray
+    center: tuple[float, float]
+
+    @property
+    def segmentation(self) -> ZoneSegmentation:
+        """Return the geometry owned by the shared resolver result."""
+        return self.resolution.segmentation
+
+
 def _circle_xy(
         cx: float, cy: float, r: float
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -124,16 +154,27 @@ def _circle_xy(
     return cx + r * np.cos(_CIRCLE_THETA), cy + r * np.sin(_CIRCLE_THETA)
 
 
-def zone_selector(dist_map, r_lo, r_hi, obj_mask, variant):
+def zone_selector(
+    dist_map,
+    r_lo,
+    r_hi,
+    obj_mask,
+    variant,
+    *,
+    include_upper=False,
+):
     """Boolean selector for a radial zone on a tile; ``Mask`` also ∩ obj_mask.
 
     Args:
         dist_map: Per-pixel distance-from-centre map (tile shape).
         r_lo: Inner radius (inclusive) of the zone in pixels.
-        r_hi: Outer radius (exclusive) of the zone in pixels.
+        r_hi: Outer radius of the zone in pixels.
         obj_mask: Boolean object mask (tile shape) used by the ``Mask`` variant.
         variant: ``"Radial"`` (all tile pixels in the ring) or ``"Mask"``
             (the ring intersected with ``obj_mask``).
+        include_upper: Include pixels exactly on ``r_hi``. Internal zone
+            boundaries remain half-open; canonical global outer boundaries
+            use this option.
 
     Returns:
         Boolean array (tile shape). All-False when the radius range is invalid
@@ -141,7 +182,8 @@ def zone_selector(dist_map, r_lo, r_hi, obj_mask, variant):
     """
     if not np.isfinite(r_lo) or not np.isfinite(r_hi) or r_hi <= r_lo:
         return np.zeros(dist_map.shape, dtype=bool)
-    radial = (dist_map >= r_lo) & (dist_map < r_hi)
+    upper = np.nextafter(r_hi, np.inf) if include_upper else r_hi
+    radial = (dist_map >= r_lo) & (dist_map < upper)
     if variant == "Mask":
         return radial & obj_mask
     return radial
@@ -456,6 +498,8 @@ def radial_ring_orientation_profile(
         outer_radius: float,
         ring_width: float,
         n_angular_bins: int = _RADIAL_RELATIVE_N_SECTORS,
+        *,
+        include_outer: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Calculate a sectorized Sholl-style orientation profile.
 
@@ -475,6 +519,8 @@ def radial_ring_orientation_profile(
         outer_radius: Exclusive outer profile radius in pixels.
         ring_width: Radial averaging width in pixels.
         n_angular_bins: Number of fixed polar sectors.
+        include_outer: Include pixels exactly on ``outer_radius`` when the
+            final complete ring ends on that global boundary.
 
     Returns:
         ``(ring_centres, sector_tilt, sector_resultant)``. The two matrices have
@@ -510,10 +556,19 @@ def radial_ring_orientation_profile(
     sector_tilt = np.full((n_rings, n_angular_bins), np.nan, dtype=np.float64)
     sector_resultant = np.full_like(sector_tilt, np.nan)
     for ring_index, start in enumerate(starts):
+        ring_upper = start + ring_width
+        if (
+                include_outer
+                and ring_index == n_rings - 1
+                and np.isclose(
+                    ring_upper, outer_radius, rtol=0.0, atol=_EPS
+                )
+        ):
+            ring_upper = np.nextafter(outer_radius, np.inf)
         ring_selector = (
                 structure_selector
                 & (dist_map >= start)
-                & (dist_map < start + ring_width)
+                & (dist_map < ring_upper)
         )
         means, resultants = _axial_sector_means(
                 signed_tilt,
@@ -889,14 +944,15 @@ def _resultant_direction(phi, coherence, selector):
     )
 
 
-class MeasureOrientationZones(MeasureFeatures, PlotImage):
+class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
     """Measure absolute and radial-relative hyphal orientation by growth zone.
 
-    Computes the structure-tensor orientation field over a mask-free tile (grid
-    section when the image is a GridImage, else an expanded crop) and aggregates
-    coherence-weighted metrics over radially-defined zones bounded by the
-    symmetric radius. Absolute concentration, turning, and coherence retain both
-    ``Radial`` and raw ``Mask`` variants. Radial-relative tilt and outward
+    Canonical mode computes one P2/P98-scaled structure-tensor field over the
+    final detector signal and aggregates coherence-weighted metrics over the
+    shared Method B zones. Overall begins at the operational CoreZone boundary
+    and ends at the configured target-mask radial percentile; it is independent
+    of ``SymmetricRadius``. Absolute concentration, turning, and coherence retain
+    both ``Radial`` and raw ``Mask`` variants. Radial-relative tilt and outward
     turning use detected structure and equal-weight reliable angular sectors.
     Their point estimates are count-scale-invariant while reliable-sector
     membership is unchanged; a separate support diagnostic exposes threshold
@@ -909,12 +965,35 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
     legacy :class:`~phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC` columns.
 
     Args:
-        intensity_source: Image array for the structure tensor and zone
-            segmentation (``"detect_mat"`` default, ``"gray"`` alternative).
-        sigma_d: Gaussian-derivative (gradient) scale in pixels, ~ hypha width.
+        center_detector: ObjectDetector or ImagePipeline that produces compact
+            center regions. The default pipeline resets ``detect_mat`` to
+            grayscale and applies ``InoculumDetector(min_diameter=20,
+            max_diameter=140, thresh_method="otsu")``. In canonical mode, each
+            detected component is associated with the final colony it overlaps
+            and its overlap centroid becomes the shared radial origin. Set to
+            ``None`` to use the final-mask distance-transform estimator.
+            Ignored in legacy mode.
+        legacy_mode: Use the historical colony-ness zone partition instead of
+            canonical Method B. Defaults to ``False``.
+        outer_zone_percentile: Target-mask radial percentile used as the
+            canonical SparseZone outer boundary. ``100`` uses full extent.
+        sigma_d: Gaussian-derivative scale in pixels, approximately hypha width.
         sigma_i: Structure-tensor integration scale in pixels.
-        radial_ring_width: Width in pixels of each Sholl-style annular band
-            used for longer-range radial rotation.
+        radial_ring_width: Width in pixels of each center-origin Sholl-style
+            annular band.
+        zone_minimum_segment: Minimum ring count in every change-point segment.
+        zone_min_crossings: Minimum literal crossings for ring support.
+        zone_min_resultant: Minimum ring-level axial resultant for support.
+        zone_min_ring_coherence: Minimum reliable-pixel mean coherence for
+            ring support.
+        zone_support_weight: Weight of the Boolean orientation-support feature.
+        zone_outer_support_margin: Minimum outer-minus-inner support fraction
+            accepted at the first Method B boundary.
+        zone_maximum_gap: Largest interior unsupported ring run bridged before
+            change-point fitting.
+        intensity_source: Image array for the structure tensor and zone
+            segmentation in legacy mode. Canonical mode always uses
+            ``detect_mat``.
         long_range_lag: Centre-to-centre radial comparison distance in pixels.
             Must be an integer multiple of ``radial_ring_width``.
         outward_peak_window_rings: Odd number of consecutive literal-crossing
@@ -952,26 +1031,10 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         ORIENTATION_ZONE_DIAGNOSTIC
     ]
 
-    intensity_source: Literal["gray", "detect_mat"] = "detect_mat"
-    sigma_d: float = 1.5
-    sigma_i: float = 4.0
-    radial_ring_width: float = 8.0
     long_range_lag: float = 16.0
     outward_peak_window_rings: int = 3
     outward_min_run_rings: int = 6
     include_diagnostics: bool = False
-    # --- zone passthrough (defaults identical to MeasureSymZones) ---
-    n_annuli: int = 100
-    pelt_penalty: float = 5.0
-    symmetry_threshold: float = 4 / 6
-    n_angular_bins: int = 6
-    smoothing_window: int = 3
-    method: Literal["distance", "intensity"] = "distance"
-    extent_margin: float = 0.05
-    min_samples_per_ring: int = 5
-    tau_core: float = 0.9
-    tau_dense: float = 0.5
-    tau_sparse: float = 0.1
     # Plot-only fields stay after every measurement field so constructor,
     # schema, and GUI form order follow the operation's functional parameters.
     quiver_block: int = 12
@@ -996,14 +1059,7 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                 if info is not ORIENTATION_ZONE_DIAGNOSTIC
         )
 
-    @field_validator("sigma_d", "sigma_i")
-    @classmethod
-    def _positive_sigma(cls, v):
-        if v <= 0:
-            raise ValueError("sigma_d and sigma_i must be > 0")
-        return v
-
-    @field_validator("radial_ring_width", "long_range_lag")
+    @field_validator("long_range_lag")
     @classmethod
     def _positive_radial_scale(cls, value: float) -> float:
         if not np.isfinite(value) or value <= 0:
@@ -1051,22 +1107,6 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                     "radial_ring_width"
             )
         return self
-
-    def _zone_params(self) -> ZoneSegmentationParams:
-        return ZoneSegmentationParams(
-                n_annuli=self.n_annuli,
-                pelt_penalty=self.pelt_penalty,
-                symmetry_threshold=self.symmetry_threshold,
-                n_angular_bins=self.n_angular_bins,
-                smoothing_window=self.smoothing_window,
-                method=self.method,
-                extent_margin=self.extent_margin,
-                min_samples_per_ring=self.min_samples_per_ring,
-                tau_core=self.tau_core,
-                tau_dense=self.tau_dense,
-                tau_sparse=self.tau_sparse,
-                intensity_source=self.intensity_source,
-        )
 
     def _resolve_tile(self, image, seg: ZoneSegmentation, prop, label2section):
         """Return (tile_intensity, obj_mask_tile, centre_rc) for one object.
@@ -1144,11 +1184,23 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         return tile, obj_mask, centre
 
     def _zone_bounds(self, seg: ZoneSegmentation):
+        if not self.legacy_mode:
+            return {
+                "Overall": (seg.core_end_radius, seg.sparse_end_radius),
+                "Dense"  : (seg.core_end_radius, seg.dense_end_radius),
+                "Sparse" : (seg.dense_end_radius, seg.sparse_end_radius),
+            }
         return {
             "Overall": (0.0, seg.symmetric_radius),
             "Dense"  : (seg.core_end_radius, seg.dense_end_radius),
             "Sparse" : (seg.dense_end_radius, seg.sparse_end_radius),
         }
+
+    def _orientation_outer_radius(self, seg: ZoneSegmentation) -> float:
+        """Return the shared outer selector while preserving legacy bounds."""
+        if not self.legacy_mode:
+            return float(seg.sparse_end_radius)
+        return min(float(seg.sparse_end_radius), float(seg.symmetric_radius))
 
     def _prep(self, image):
         """Regionprops + label→grid-section map, computed ONCE per image.
@@ -1173,29 +1225,61 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             )
         return props, label2section
 
-    def _iter_object_fields(self, image, props, label2section):
-        """Yield (prop, seg, obj_mask, phi, coh, grad, dist_map, centre) per object.
+    def _analyze_objects(self, image, props, label2section):
+        """Yield named zone and orientation evidence for each object.
 
-        SINGLE source of truth for the heavy orientation compute — reused by
+        This is the single source of truth for the heavy orientation compute,
+        reused by
         _operate() (which keeps only compact summaries) and by report()'s
         coherence panel (which recomputes on demand). The full-resolution arrays
         yielded here are consumed and discarded by each caller; nothing full-res
-        is retained on the instance. Tiny objects (area<10) are skipped.
+        is retained on the instance. Legacy mode skips tiny objects; canonical
+        mode yields their shared missing resolution so diagnostics report code 4.
         """
         for prop in props:
-            if prop.area < 10:
+            if prop.area < 10 and self.legacy_mode:
                 continue
-            seg = compute_zone_segmentation(
-                    image, prop, params=self._zone_params()
+            resolution = self._resolve_object_zones(image, prop)
+            seg = resolution.segmentation
+            context = resolution.orientation_context
+            if context is None:
+                # Canonical failures have no orientation context. Preserve the
+                # object's geometry for diagnostics, but keep every field empty
+                # so no zone metric can be emitted accidentally.
+                if not self.legacy_mode and not seg.zones_computed:
+                    obj_mask = np.asarray(seg.obj_mask, dtype=bool)
+                    centre = tuple(seg.centroid_rc)
+                    dist_map = np.asarray(seg.dist_map, dtype=np.float64)
+                    phi = np.zeros(obj_mask.shape, dtype=np.float64)
+                    coh = np.zeros(obj_mask.shape, dtype=np.float64)
+                    grad = np.zeros(obj_mask.shape, dtype=np.float64)
+                else:
+                    # Legacy segmentation does not retain tensor evidence, so
+                    # compute the historical orientation field on its tile.
+                    tile, obj_mask, centre = self._resolve_tile(
+                            image, seg, prop, label2section
+                    )
+                    phi, coh, grad = orientation_field(
+                            tile, self.sigma_d, self.sigma_i
+                    )
+                    dist_map = distance_from_point(tile.shape, centre)
+            else:
+                obj_mask = context.object_mask
+                centre = context.center
+                phi = context.phi
+                coh = context.coherence
+                grad = context.gradient
+                dist_map = context.distance_map
+            yield _ObjectZoneAnalysis(
+                prop=prop,
+                resolution=resolution,
+                object_mask=obj_mask,
+                orientation=phi,
+                coherence=coh,
+                gradient=grad,
+                distance_map=dist_map,
+                center=centre,
             )
-            tile, obj_mask, centre = self._resolve_tile(
-                    image, seg, prop, label2section
-            )
-            phi, coh, grad = orientation_field(
-                    tile, self.sigma_d, self.sigma_i
-            )
-            dist_map = distance_from_point(tile.shape, centre)
-            yield prop, seg, obj_mask, phi, coh, grad, dist_map, centre
 
     def _operate(self, image) -> pd.DataFrame:  # type: ignore[override]
         props, label2section = self._prep(image)
@@ -1214,16 +1298,13 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         self._cache.clear()  # compact per-object figure records only
         # Preserve no-argument notebook figures without retaining a full Image.
         self._cache_image_ref = weakref.ref(image)
-        for (
-                prop,
-                seg,
-                obj_mask,
-                phi,
-                coh,
-                grad,
-                dist_map,
-                centre,
-        ) in self._iter_object_fields(image, props, label2section):
+        for analysis in self._analyze_objects(image, props, label2section):
+            prop = analysis.prop
+            seg = analysis.segmentation
+            resolution = analysis.resolution
+            self._write_zone_resolution_diagnostics(
+                base[prop.label], resolution
+            )
             (
                 outward_rotation,
                 per_zone,
@@ -1233,18 +1314,19 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             ) = self._fill_metrics(
                     base[prop.label],
                     seg,
-                    obj_mask,
-                    phi,
-                    coh,
-                    grad,
-                    dist_map,
-                    centre,
+                    analysis.object_mask,
+                    analysis.orientation,
+                    analysis.coherence,
+                    analysis.gradient,
+                    analysis.distance_map,
+                    analysis.center,
+                    resolution=resolution,
             )
             # LEAN CACHE: store compact summaries only — NO full-res tile/phi/coh/
             # grad/dist_map and NO seg dataclass. Bounds memory to O(objects*blocks).
             self._cache[prop.label] = {
                 "centroid_global" : tuple(seg.centroid_global),
-                "centre"          : centre,
+                "centre"          : analysis.center,
                 "radii"           : {
                     "core"      : seg.core_radius,
                     "symmetric" : seg.symmetric_radius,
@@ -1253,9 +1335,22 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                     "sparse_end": seg.sparse_end_radius,
                 },
                 "zones_computed"  : seg.zones_computed,
+                "zone_resolution" : {
+                    "method_code": resolution.method_code,
+                    "method_used": resolution.method_used,
+                    "failure_reason": resolution.failure_reason,
+                    "outer_zone_percentile": self.outer_zone_percentile,
+                    "full_extent_radius": (
+                        resolution.canonical_result.full_extent_radius
+                        if resolution.canonical_result is not None
+                        else np.nan
+                    ),
+                },
                 "outward_rotation": outward_rotation,
                 "quiver"          : _downsample_quiver(
-                        phi, coh, self.quiver_block
+                        analysis.orientation,
+                        analysis.coherence,
+                        self.quiver_block,
                 ),  # block-res
                 "per_zone"        : per_zone,
                 "radial_relative" : radial_relative,
@@ -1272,6 +1367,48 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         if self.include_diagnostics:
             row[header] = value
 
+    def _write_zone_resolution_diagnostics(self, row: dict, resolution) -> None:
+        """Write compact provenance for the shared zone resolver."""
+        if not self.include_diagnostics:
+            return
+        row["OrientZones_ZoneSegmentationMethodCode"] = float(
+            resolution.method_code
+        )
+        result = resolution.canonical_result
+        values = {
+            "CoreZoneEndRadius": np.nan,
+            "DenseRadius": np.nan,
+            "OuterRadius": np.nan,
+            "FullExtentRadius": np.nan,
+            "OuterZonePercentile": np.nan,
+            "OuterZoneRetainedMaskFraction": np.nan,
+            "ZoneSupportedRingFraction": np.nan,
+            "ZoneChangePointObjective": np.nan,
+            "ZoneChangePointRingCount": np.nan,
+            "ZoneChangePointMinimumSegment": np.nan,
+        }
+        if result is not None:
+            values.update(
+                {
+                    "CoreZoneEndRadius": result.core_zone_radius,
+                    "DenseRadius": result.dense_radius,
+                    "OuterRadius": result.outer_radius,
+                    "FullExtentRadius": result.full_extent_radius,
+                    "OuterZonePercentile": result.requested_percentile,
+                    "OuterZoneRetainedMaskFraction": (
+                        result.retained_mask_fraction
+                    ),
+                    "ZoneSupportedRingFraction": result.supported_fraction,
+                    "ZoneChangePointObjective": result.objective,
+                    "ZoneChangePointRingCount": float(result.ring_count),
+                    "ZoneChangePointMinimumSegment": float(
+                        self.zone_minimum_segment
+                    ),
+                }
+            )
+        for label, value in values.items():
+            row[f"OrientZones_{label}"] = value
+
     def _fill_literal_crossing_metrics(
             self,
             row: dict,
@@ -1281,6 +1418,8 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             coherence: np.ndarray,
             dist_map: np.ndarray,
             centre: tuple[float, float],
+            *,
+            resolution=None,
     ) -> dict[str, dict[str, float]]:
         """Write full-length literal-crossing primary and diagnostic metrics.
 
@@ -1309,59 +1448,75 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         if not seg.zones_computed:
             return _write_missing()
         inner_radius = float(seg.core_end_radius)
-        outside_core = (
-                obj_mask & np.isfinite(dist_map) & (dist_map >= inner_radius)
+        context = (
+            resolution.orientation_context
+            if resolution is not None
+            else None
         )
-        if not outside_core.any():
-            return _write_missing()
+        if context is not None:
+            outer_radius = float(seg.sparse_end_radius)
+            profile = context.measurement_profile
+            inclusive_outer = np.nextafter(outer_radius, np.inf)
+            bounds = {
+                "Overall": (inner_radius, inclusive_outer),
+                "Dense"  : (inner_radius, float(seg.dense_end_radius)),
+                "Sparse" : (float(seg.dense_end_radius), inclusive_outer),
+            }
+        else:
+            outside_core = (
+                    obj_mask & np.isfinite(dist_map) & (dist_map >= inner_radius)
+            )
+            if not outside_core.any():
+                return _write_missing()
 
-        object_extent_radius = float(np.max(dist_map[outside_core]))
-        radial_span = np.nextafter(object_extent_radius, np.inf) - inner_radius
-        n_rings = max(
-                1,
-                int(np.ceil(radial_span / self.radial_ring_width)),
-        )
-        outer_radius = inner_radius + n_rings * self.radial_ring_width
-        radii = (
-                inner_radius
-                + (np.arange(n_rings, dtype=np.float64) + 0.5)
-                * self.radial_ring_width
-        )
-        selector = zone_selector(
-                dist_map,
-                inner_radius,
-                outer_radius,
-                obj_mask,
-                "Mask",
-        )
-        transform = literal_skeleton_ring_crossings(
-                obj_mask,
-                phi + _FIBER_AXIS_OFFSET,
-                coherence,
-                dist_map,
-                centre,
-                radii,
-                selector=selector,
-                minimum_coherence=_RADIAL_RELATIVE_MIN_COHERENCE,
-                crossing_half_width=_LITERAL_CROSSING_HALF_WIDTH,
-                minimum_crossing_resultant=_RADIAL_RING_MIN_RESULTANT,
-        )
-        profile = literal_crossing_ring_profile(
-                transform,
-                minimum_points=_LITERAL_CROSSING_MIN_POINTS,
-                minimum_resultant=_RADIAL_RING_MIN_RESULTANT,
-        )
-        bounds = {
-            "Overall": (inner_radius, outer_radius),
-            "Dense"  : (
-                inner_radius,
-                min(float(seg.dense_end_radius), outer_radius),
-            ),
-            "Sparse" : (
-                max(float(seg.dense_end_radius), inner_radius),
-                outer_radius,
-            ),
-        }
+            object_extent_radius = float(np.max(dist_map[outside_core]))
+            radial_span = np.nextafter(object_extent_radius, np.inf) - inner_radius
+            n_rings = max(
+                    1,
+                    int(np.ceil(radial_span / self.radial_ring_width)),
+            )
+            outer_radius = inner_radius + n_rings * self.radial_ring_width
+            radii = (
+                    inner_radius
+                    + (np.arange(n_rings, dtype=np.float64) + 0.5)
+                    * self.radial_ring_width
+            )
+            selector = zone_selector(
+                    dist_map,
+                    inner_radius,
+                    outer_radius,
+                    obj_mask,
+                    "Mask",
+                    include_upper=not self.legacy_mode,
+            )
+            transform = literal_skeleton_ring_crossings(
+                    obj_mask,
+                    phi + _FIBER_AXIS_OFFSET,
+                    coherence,
+                    dist_map,
+                    centre,
+                    radii,
+                    selector=selector,
+                    minimum_coherence=_RADIAL_RELATIVE_MIN_COHERENCE,
+                    crossing_half_width=_LITERAL_CROSSING_HALF_WIDTH,
+                    minimum_crossing_resultant=_RADIAL_RING_MIN_RESULTANT,
+            )
+            profile = literal_crossing_ring_profile(
+                    transform,
+                    minimum_points=_LITERAL_CROSSING_MIN_POINTS,
+                    minimum_resultant=_RADIAL_RING_MIN_RESULTANT,
+            )
+            bounds = {
+                "Overall": (inner_radius, outer_radius),
+                "Dense"  : (
+                    inner_radius,
+                    min(float(seg.dense_end_radius), outer_radius),
+                ),
+                "Sparse" : (
+                    max(float(seg.dense_end_radius), inner_radius),
+                    outer_radius,
+                ),
+            }
         for zone, (lower, upper) in bounds.items():
             metrics = aggregate_literal_crossing_zone(
                     profile,
@@ -1424,6 +1579,8 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             grad,
             dist_map,
             centre,
+            *,
+            resolution=None,
     ):
         """Write public degree-based zone columns for one object.
 
@@ -1441,19 +1598,35 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                 coh,
                 dist_map,
                 centre,
+                resolution=resolution,
         )
-        signed_tilt, _signed_turning, outward_turning, polar_angle = (
-            signed_radial_relative_field(phi, centre, dist_map)
-        )
+        if seg.zones_computed or self.legacy_mode:
+            signed_tilt, _signed_turning, outward_turning, polar_angle = (
+                signed_radial_relative_field(phi, centre, dist_map)
+            )
+        else:
+            signed_tilt = np.full(phi.shape, np.nan, dtype=np.float64)
+            outward_turning = np.full(phi.shape, np.nan, dtype=np.float64)
+            polar_angle = np.full(phi.shape, np.nan, dtype=np.float64)
         absolute_tilt = np.abs(signed_tilt)
         for zone, (r_lo, r_hi) in self._zone_bounds(seg).items():
-            zone_ok = seg.zones_computed or zone == "Overall"
+            zone_ok = seg.zones_computed or (
+                self.legacy_mode and zone == "Overall"
+            )
             for variant in _VARIANTS:
                 if not zone_ok:
                     R = t = cm = direction = np.nan
                 else:
                     sel = zone_selector(
-                            dist_map, r_lo, r_hi, obj_mask, variant
+                            dist_map,
+                            r_lo,
+                            r_hi,
+                            obj_mask,
+                            variant,
+                            include_upper=(
+                                not self.legacy_mode
+                                and zone in {"Overall", "Sparse"}
+                            ),
                     )
                     R, t, cm = aggregate_orientation(phi, coh, grad, sel)
                     direction = _resultant_direction(phi, coh, sel)
@@ -1491,6 +1664,10 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                         r_hi,
                         obj_mask,
                         "Mask",
+                        include_upper=(
+                            not self.legacy_mode
+                            and zone in {"Overall", "Sparse"}
+                        ),
                 )
                 radial_tilt, radial_turning, radial_support = (
                     aggregate_radial_relative(
@@ -1604,16 +1781,14 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             return long_range, ring_profile
 
         inner_radius = float(seg.core_end_radius)
-        outer_radius = min(
-                float(seg.sparse_end_radius),
-                float(seg.symmetric_radius),
-        )
+        outer_radius = self._orientation_outer_radius(seg)
         structure_selector = zone_selector(
                 dist_map,
                 inner_radius,
                 outer_radius,
                 obj_mask,
                 "Mask",
+                include_upper=not self.legacy_mode,
         )
         ring_centres, ring_sector_tilt, _ring_resultant = (
             radial_ring_orientation_profile(
@@ -1626,6 +1801,7 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                     outer_radius,
                     self.radial_ring_width,
                     _RADIAL_RELATIVE_N_SECTORS,
+                    include_outer=not self.legacy_mode,
             )
         )
         pair_midpoints, signed_rotation = long_range_ring_rotation_profile(
@@ -1634,14 +1810,21 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                 self.long_range_lag,
         )
         long_range_bounds = {
-            "Overall": (inner_radius, outer_radius),
+            "Overall": (
+                inner_radius,
+                np.nextafter(outer_radius, np.inf)
+                if not self.legacy_mode
+                else outer_radius,
+            ),
             "Dense"  : (
                 float(seg.core_end_radius),
                 min(float(seg.dense_end_radius), outer_radius),
             ),
             "Sparse" : (
                 float(seg.dense_end_radius),
-                outer_radius,
+                np.nextafter(outer_radius, np.inf)
+                if not self.legacy_mode
+                else outer_radius,
             ),
         }
         for zone, (lower, upper) in long_range_bounds.items():
@@ -1666,6 +1849,7 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                 outer_radius,
                 obj_mask,
                 "Mask",
+                include_upper=not self.legacy_mode,
         )
         dense_sector_tilt, _dense_resultant = _axial_sector_means(
                 signed_tilt,
@@ -1723,26 +1907,18 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         """Recompute per-object coherence and composite onto a plate canvas.
 
         Used only by report()'s heatmap. Full-res fields are recomputed via
-        _iter_object_fields and discarded here — the heatmap costs compute, not
+        _analyze_objects and discarded here — the heatmap costs compute, not
         persistent memory. Returned canvas is downsampled for a light figure.
         """
         props, label2section = self._prep(image)
         canvas = np.full(image.gray[:].shape[:2], np.nan)
-        for (
-                _prop,
-                seg,
-                _mask,
-                _phi,
-                coh,
-                _grad,
-                _dist,
-                centre,
-        ) in self._iter_object_fields(image, props, label2section):
-            r0 = int(round(seg.centroid_global[0] - centre[0]))
-            c0 = int(round(seg.centroid_global[1] - centre[1]))
-            h, w = coh.shape
+        for analysis in self._analyze_objects(image, props, label2section):
+            seg = analysis.segmentation
+            r0 = int(round(seg.centroid_global[0] - analysis.center[0]))
+            c0 = int(round(seg.centroid_global[1] - analysis.center[1]))
+            h, w = analysis.coherence.shape
             r1, c1 = min(r0 + h, canvas.shape[0]), min(c0 + w, canvas.shape[1])
-            canvas[max(r0, 0): r1, max(c0, 0): c1] = coh[
+            canvas[max(r0, 0): r1, max(c0, 0): c1] = analysis.coherence[
                 : r1 - max(r0, 0), : c1 - max(c0, 0)
             ]
         return canvas[::downsample, ::downsample]
@@ -2362,45 +2538,42 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             for _scale in scales
         ]
         raw_peaks = [0.0 for _scale in scales]
-        for (
-                _prop,
-                seg,
-                obj_mask,
-                phi,
-                coherence,
-                _gradient,
-                dist_map,
-                centre,
-        ) in self._iter_object_fields(image, props, label2section):
+        for analysis in self._analyze_objects(image, props, label2section):
+            seg = analysis.segmentation
             inner_radius = float(seg.core_end_radius)
-            outer_radius = min(
-                    float(seg.sparse_end_radius),
-                    float(seg.symmetric_radius),
-            )
+            outer_radius = self._orientation_outer_radius(seg)
             if inner_radius <= _EPS or outer_radius <= inner_radius:
                 continue
             selector = zone_selector(
-                    dist_map,
+                    analysis.distance_map,
                     inner_radius,
                     outer_radius,
-                    obj_mask,
+                    analysis.object_mask,
                     "Mask",
+                    include_upper=not self.legacy_mode,
             )
-            origin_row = int(round(seg.centroid_global[0] - centre[0]))
-            origin_col = int(round(seg.centroid_global[1] - centre[1]))
+            origin_row = int(
+                round(seg.centroid_global[0] - analysis.center[0])
+            )
+            origin_col = int(
+                round(seg.centroid_global[1] - analysis.center[1])
+            )
             for scale_index, scale in enumerate(scales):
                 bend, scale_resultant = fiber_bend_field(
-                        phi,
-                        coherence,
+                        analysis.orientation,
+                        analysis.coherence,
                         selector,
                         scale,
                 )
                 valid = (
                         selector
                         & np.isfinite(bend)
-                        & np.isfinite(coherence)
+                        & np.isfinite(analysis.coherence)
                         & np.isfinite(scale_resultant)
-                        & (coherence >= _RADIAL_RELATIVE_MIN_COHERENCE)
+                        & (
+                            analysis.coherence
+                            >= _RADIAL_RELATIVE_MIN_COHERENCE
+                        )
                         & (scale_resultant >= _RADIAL_RING_MIN_RESULTANT)
                 )
                 if not valid.any():
@@ -2619,46 +2792,47 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         positive_max = np.full(raster.size, -np.inf, dtype=np.float32)
         negative_abs_max = np.full(raster.size, -np.inf, dtype=np.float32)
         full_range = 0.0
-        for (
-                _prop,
-                seg,
-                obj_mask,
-                phi,
-                coherence,
-                _gradient,
-                dist_map,
-                centre,
-        ) in self._iter_object_fields(image, props, label2section):
+        for analysis in self._analyze_objects(image, props, label2section):
+            seg = analysis.segmentation
             _tilt, signed_turning, _magnitude, _polar = (
-                signed_radial_relative_field(phi, centre, dist_map)
+                signed_radial_relative_field(
+                    analysis.orientation,
+                    analysis.center,
+                    analysis.distance_map,
+                )
             )
             # Match the Dense zone's actual inner boundary. The separate PELT
             # ``core_radius`` can equal the full symmetric radius when no early
             # density changepoint is found, which would erase the entire view.
             core_exclusion_radius = float(seg.core_end_radius)
-            outer_radius = min(
-                    float(seg.sparse_end_radius),
-                    float(seg.symmetric_radius),
-            )
+            outer_radius = self._orientation_outer_radius(seg)
             selector = zone_selector(
-                    dist_map,
+                    analysis.distance_map,
                     core_exclusion_radius,
                     outer_radius,
-                    obj_mask,
+                    analysis.object_mask,
                     "Mask",
+                    include_upper=not self.legacy_mode,
             )
             valid = (
                     selector
-                    & (dist_map > _EPS)
+                    & (analysis.distance_map > _EPS)
                     & np.isfinite(signed_turning)
-                    & np.isfinite(coherence)
-                    & (coherence >= _RADIAL_RELATIVE_MIN_COHERENCE)
+                    & np.isfinite(analysis.coherence)
+                    & (
+                        analysis.coherence
+                        >= _RADIAL_RELATIVE_MIN_COHERENCE
+                    )
             )
             if not valid.any():
                 continue
             rows, cols = np.nonzero(valid)
-            origin_row = int(round(seg.centroid_global[0] - centre[0]))
-            origin_col = int(round(seg.centroid_global[1] - centre[1]))
+            origin_row = int(
+                round(seg.centroid_global[0] - analysis.center[0])
+            )
+            origin_col = int(
+                round(seg.centroid_global[1] - analysis.center[1])
+            )
             global_rows = rows + origin_row
             global_cols = cols + origin_col
             inside = (
@@ -2756,52 +2930,50 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         strongest = np.full(raster.size, -np.inf, dtype=np.float32)
         signed_value = np.full(raster.size, np.nan, dtype=np.float32)
         full_range = 0.0
-        for (
-                _prop,
-                seg,
-                obj_mask,
-                phi,
-                coherence,
-                _gradient,
-                dist_map,
-                centre,
-        ) in self._iter_object_fields(image, props, label2section):
+        for analysis in self._analyze_objects(image, props, label2section):
+            seg = analysis.segmentation
             signed_tilt, _turning, _magnitude, polar_angle = (
-                signed_radial_relative_field(phi, centre, dist_map)
+                signed_radial_relative_field(
+                    analysis.orientation,
+                    analysis.center,
+                    analysis.distance_map,
+                )
             )
             inner_radius = float(seg.core_end_radius)
-            outer_radius = min(
-                    float(seg.sparse_end_radius),
-                    float(seg.symmetric_radius),
-            )
+            outer_radius = self._orientation_outer_radius(seg)
             structure_selector = zone_selector(
-                    dist_map,
+                    analysis.distance_map,
                     inner_radius,
                     outer_radius,
-                    obj_mask,
+                    analysis.object_mask,
                     "Mask",
+                    include_upper=not self.legacy_mode,
             )
             _radii, sector_tilt, _resultant = radial_ring_orientation_profile(
                     signed_tilt,
                     polar_angle,
-                    coherence,
-                    dist_map,
+                    analysis.coherence,
+                    analysis.distance_map,
                     structure_selector,
                     inner_radius,
                     outer_radius,
                     self.radial_ring_width,
                     _RADIAL_RELATIVE_N_SECTORS,
+                    include_outer=not self.legacy_mode,
             )
             cumulative = cumulative_ring_rotation_profile(sector_tilt)
             reliable_structure = (
                     structure_selector
-                    & np.isfinite(coherence)
-                    & (coherence >= _RADIAL_RELATIVE_MIN_COHERENCE)
+                    & np.isfinite(analysis.coherence)
+                    & (
+                        analysis.coherence
+                        >= _RADIAL_RELATIVE_MIN_COHERENCE
+                    )
             )
             local_field = radial_ring_sector_field(
                     cumulative,
                     polar_angle,
-                    dist_map,
+                    analysis.distance_map,
                     reliable_structure,
                     inner_radius,
                     self.radial_ring_width,
@@ -2810,8 +2982,12 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             if not valid.any():
                 continue
             rows, cols = np.nonzero(valid)
-            origin_row = int(round(seg.centroid_global[0] - centre[0]))
-            origin_col = int(round(seg.centroid_global[1] - centre[1]))
+            origin_row = int(
+                round(seg.centroid_global[0] - analysis.center[0])
+            )
+            origin_col = int(
+                round(seg.centroid_global[1] - analysis.center[1])
+            )
             global_rows = rows + origin_row
             global_cols = cols + origin_col
             inside = (
@@ -2909,43 +3085,38 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         path_y: list[float | None] = []
         bridge_x: list[float | None] = []
         bridge_y: list[float | None] = []
-        for (
-                _prop,
-                seg,
-                obj_mask,
-                phi,
-                coherence,
-                _gradient,
-                dist_map,
-                centre,
-        ) in self._iter_object_fields(image, props, label2section):
+        for analysis in self._analyze_objects(image, props, label2section):
+            seg = analysis.segmentation
             _signed_tilt, _turning, _magnitude, polar_angle = (
-                signed_radial_relative_field(phi, centre, dist_map)
+                signed_radial_relative_field(
+                    analysis.orientation,
+                    analysis.center,
+                    analysis.distance_map,
+                )
             )
-            fiber_axis = phi + _FIBER_AXIS_OFFSET
+            fiber_axis = analysis.orientation + _FIBER_AXIS_OFFSET
             inner_radius = float(seg.core_end_radius)
-            outer_radius = min(
-                    float(seg.sparse_end_radius),
-                    float(seg.symmetric_radius),
-            )
+            outer_radius = self._orientation_outer_radius(seg)
             structure_selector = zone_selector(
-                    dist_map,
+                    analysis.distance_map,
                     inner_radius,
                     outer_radius,
-                    obj_mask,
+                    analysis.object_mask,
                     "Mask",
+                    include_upper=not self.legacy_mode,
             )
             radii, sector_orientation, sector_resultant = (
                 radial_ring_orientation_profile(
                         fiber_axis,
                         polar_angle,
-                        coherence,
-                        dist_map,
+                        analysis.coherence,
+                        analysis.distance_map,
                         structure_selector,
                         inner_radius,
                         outer_radius,
                         self.radial_ring_width,
                         _RADIAL_RELATIVE_N_SECTORS,
+                        include_outer=not self.legacy_mode,
                 )
             )
             cumulative, path_sectors = (
@@ -2964,20 +3135,27 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             )
             reliable_structure = (
                     structure_selector
-                    & np.isfinite(coherence)
-                    & (coherence >= _RADIAL_RELATIVE_MIN_COHERENCE)
+                    & np.isfinite(analysis.coherence)
+                    & (
+                        analysis.coherence
+                        >= _RADIAL_RELATIVE_MIN_COHERENCE
+                    )
             )
             local_field = radial_ring_sector_field(
                     ring_sector_values,
                     polar_angle,
-                    dist_map,
+                    analysis.distance_map,
                     reliable_structure,
                     inner_radius,
                     self.radial_ring_width,
             )
             valid = np.isfinite(local_field)
-            origin_row = int(round(seg.centroid_global[0] - centre[0]))
-            origin_col = int(round(seg.centroid_global[1] - centre[1]))
+            origin_row = int(
+                round(seg.centroid_global[0] - analysis.center[0])
+            )
+            origin_col = int(
+                round(seg.centroid_global[1] - analysis.center[1])
+            )
             if valid.any():
                 rows, cols = np.nonzero(valid)
                 global_rows = rows + origin_row
@@ -3025,8 +3203,12 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                     continue
                 matched_sectors = path_sectors[supported, seed_sector]
                 angles = sector_angles[matched_sectors]
-                local_rows = centre[0] + radii[supported] * np.sin(angles)
-                local_cols = centre[1] + radii[supported] * np.cos(angles)
+                local_rows = (
+                    analysis.center[0] + radii[supported] * np.sin(angles)
+                )
+                local_cols = (
+                    analysis.center[1] + radii[supported] * np.cos(angles)
+                )
                 global_rows = local_rows + origin_row
                 global_cols = local_cols + origin_col
                 inside = (
@@ -3179,11 +3361,12 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         """Draw confidence-coded local fiber axes inside the overall selector.
 
         Reads only the pre-downsampled block quiver ``(rows, cols, phi_block,
-        coh_block)`` from each cached record. Blocks outside
-        ``symmetric_radius`` are excluded because those pixels do not contribute
-        to the Overall metric. The stored gradient-normal axis is rotated 90°
-        to show the local fiber axis. Segment half-length scales with coherence;
-        three traces provide low/medium/high confidence opacity levels.
+        coh_block)`` from each cached record. Canonical blocks are clipped to
+        ``[CoreEndRadius, SparseEndRadius]``, including the exact global outer
+        boundary. Legacy blocks retain their historical symmetric-radius domain.
+        The stored gradient-normal axis is rotated 90° to show the local fiber
+        axis. Segment half-length scales with coherence; three traces provide
+        low/medium/high confidence opacity levels.
         """
         import plotly.graph_objects as go
 
@@ -3195,8 +3378,19 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             rows, cols, phi_block, coh_block = record["quiver"]
             origin_r, origin_c = self._tile_origin(record)
             centre_r, centre_c = record["centre"]
-            symmetric_radius = record["radii"].get("symmetric", np.nan)
-            if not np.isfinite(symmetric_radius) or symmetric_radius <= 0:
+            inner_radius = (
+                0.0
+                if self.legacy_mode
+                else record["radii"].get("core_end", np.nan)
+            )
+            outer_radius = record["radii"].get(
+                "symmetric" if self.legacy_mode else "sparse_end", np.nan
+            )
+            if (
+                not np.isfinite(inner_radius)
+                or not np.isfinite(outer_radius)
+                or outer_radius <= inner_radius
+            ):
                 continue
             for i in range(phi_block.shape[0]):
                 for j in range(phi_block.shape[1]):
@@ -3204,13 +3398,16 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
                     coh = coh_block[i, j]
                     if not np.isfinite(phi) or not np.isfinite(coh):
                         continue
-                    if (
-                            np.hypot(
-                                    rows[i, j] - centre_r,
-                                    cols[i, j] - centre_c,
-                            )
-                            >= symmetric_radius
-                    ):
+                    radius = np.hypot(
+                        rows[i, j] - centre_r,
+                        cols[i, j] - centre_c,
+                    )
+                    selector_outer = (
+                        np.nextafter(outer_radius, np.inf)
+                        if not self.legacy_mode
+                        else outer_radius
+                    )
+                    if radius < inner_radius or radius >= selector_outer:
                         continue
                     bin_idx = next(
                             (
@@ -3264,10 +3461,15 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
         import plotly.graph_objects as go
 
         ring_styles = (
-            ("symmetric", "Overall selector limit", "#785EF0", "solid"),
-            ("core_end", "Dense zone inner boundary", "#DC267F", "dot"),
+            ("symmetric", "Independent symmetry radius", "#785EF0", "solid"),
+            ("core_end", "CoreZone / resolved boundary", "#DC267F", "dot"),
             ("dense_end", "Dense / sparse boundary", _OI_NAVY, "dash"),
-            ("sparse_end", "Sparse zone outer boundary", _OI_SKY, "dash"),
+            (
+                "sparse_end",
+                f"Sparse outer boundary (P{self.outer_zone_percentile:g})",
+                _OI_SKY,
+                "dash",
+            ),
         )
         for key, name, color, dash in ring_styles:
             xs: list[float | None] = []
@@ -3315,10 +3517,14 @@ class MeasureOrientationZones(MeasureFeatures, PlotImage):
             axis_y: list[float | None] = []
             for record in self._cache.values():
                 cy, cx = record["centroid_global"]
-                sym = record["radii"].get("symmetric", np.nan)
+                scale_radius = record["radii"].get(
+                    "symmetric" if self.legacy_mode else "sparse_end", np.nan
+                )
                 scale = (
-                    float(sym)
-                    if sym is not None and np.isfinite(sym) and sym > 0
+                    float(scale_radius)
+                    if scale_radius is not None
+                    and np.isfinite(scale_radius)
+                    and scale_radius > 0
                     else 20.0
                 )
                 R, _turning, _coh, direction = record["per_zone"][

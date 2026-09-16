@@ -3,10 +3,12 @@
 The pure ``_colony_reconnect`` array machinery is covered in
 ``tests/unit/sdk_/reconnect/test_colony_reconnect_app2_seam.py``. These tests
 exercise the FilamentousFungiDetector integration: strategy serialization, the
-full-image-cost-before-tiling wiring, and legacy byte-identity. The detector now
-imports ``compute_full_image_app2_gi_cost`` / ``reconnect_fragments_tiled`` from
-``phenotypic.sdk_.reconnect``, so they are attributes of ``fungi_module`` and are
-monkeypatched there as plain free functions.
+full-image-cost-before-tiling wiring, and legacy byte-identity. ``_operate``
+imports ``compute_full_image_app2_gi_cost`` / ``reconnect_fragments_tiled``
+from ``phenotypic.sdk_.reconnect`` locally (point-of-use, so importing
+``phenotypic.detect`` does not pull in numba), re-resolving them from that
+module's namespace on every call. They are therefore monkeypatched on
+``phenotypic.sdk_.reconnect`` itself, not on ``fungi_module``.
 """
 
 from __future__ import annotations
@@ -16,7 +18,7 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic.detect import FilamentousFungiDetector, OtsuDetector
-from phenotypic.detect import _filamentous_fungi_detector as fungi_module
+from phenotypic.sdk_ import reconnect as reconnect_module
 
 
 def test_reconnect_strategy_round_trips_and_defaults_to_legacy() -> None:
@@ -64,12 +66,12 @@ def test_app2_cost_is_computed_once_on_full_image_before_tiling(
         return colony_labels
 
     monkeypatch.setattr(
-        fungi_module,
+        reconnect_module,
         "compute_full_image_app2_gi_cost",
         fake_compute,
     )
     monkeypatch.setattr(
-        fungi_module,
+        reconnect_module,
         "reconnect_fragments_tiled",
         fake_reconnect,
     )

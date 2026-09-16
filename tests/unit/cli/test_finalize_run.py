@@ -478,7 +478,7 @@ def test_curation_re_keying_still_works_against_the_intrinsic_master(
     curated-out objects, and keys on dataset / image / object-label -- all
     intrinsic, so it should be unaffected. Test it; do not assume it.
     """
-    from phenotypic.gui.results_viewer._curation_labels import CurationLabels
+    from phenotypic._gui.results_viewer._curation_labels import CurationLabels
     from phenotypic.sdk_ import BundleLayout
 
     _publish_successful_images(tmp_path, snapshot=_SNAPSHOT)
@@ -1149,7 +1149,7 @@ def _reader_outcomes(master_path: Path) -> dict[str, object]:
         order_measurement_columns(frame.columns)
     )
     try:
-        from phenotypic.gui.results_viewer._metadata import (
+        from phenotypic._gui.results_viewer._metadata import (
             normalize_viewer_frame,
         )
 

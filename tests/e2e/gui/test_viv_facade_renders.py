@@ -40,7 +40,7 @@ from tests.e2e.gui.test_viv_codec_reads_a_real_store import (
     _OUTPUT_NAME,
     _build_viv_sandbox,
 )
-from phenotypic.gui.results_viewer._zarr_routes import (
+from phenotypic._gui.results_viewer._zarr_routes import (
     store_generation_token,
     zarr_store_url,
 )

@@ -5,8 +5,8 @@ mode instead of unhiding it is the failure mode with the widest blast radius,
 and it is invisible in a unit test that only checks for absence.
 """
 
-from phenotypic.gui.browse import _ids as ids
-from phenotypic.gui.browse._layout import build_browse_layout
+from phenotypic._gui.browse import _ids as ids
+from phenotypic._gui.browse._layout import build_browse_layout
 
 
 def _ids_in(component) -> set[str]:

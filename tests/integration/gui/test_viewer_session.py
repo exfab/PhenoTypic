@@ -13,9 +13,9 @@ from pathlib import Path
 
 import pytest
 
-from phenotypic.gui.shell import SandboxRoot
-from phenotypic.gui.shell._app import compose_hub
-from phenotypic.gui.shell._session import start_idle_release_thread
+from phenotypic._gui.shell import SandboxRoot
+from phenotypic._gui.shell._app import compose_hub
+from phenotypic._gui.shell._session import start_idle_release_thread
 
 
 @pytest.fixture()

@@ -24,6 +24,7 @@ from ._cli_slurm_lifecycle import (
     assert_generation_active,
     generation_publication_guard,
 )
+from phenotypic._startup_perf import load_runtime_dependencies
 from phenotypic.schema import EXPERIMENT, IMAGE
 from phenotypic.sdk_ import (
     DIR_MEASUREMENTS,
@@ -70,6 +71,7 @@ def main(
     terminal_status_path: Path | None,
 ) -> None:
     """Run one recompile task from a JSON task manifest."""
+    load_runtime_dependencies()
     try:
         run_recompile_task(
             output_dir,

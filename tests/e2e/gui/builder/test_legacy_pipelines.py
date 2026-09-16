@@ -2,7 +2,7 @@
 
 Spec §5.7 + §8.3.9 — every ``pipeline.json`` saved by the pre-redesign
 popover builder must load through the new DAG path
-(:func:`phenotypic.gui.builder._conversion_dag.from_pipeline_dag`)
+(:func:`phenotypic._gui.builder._conversion_dag.from_pipeline_dag`)
 without loss, including:
 
 * Plain legacy save → renders as DAG; ``to_pipeline_dag`` re-emits an

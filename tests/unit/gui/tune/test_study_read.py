@@ -10,8 +10,8 @@ from pathlib import Path
 
 from phenotypic.tune._study_store import JournalStudyStore, Trial
 
-from phenotypic.gui.tune import TuneRunRoot
-from phenotypic.gui.tune._study_read import (
+from phenotypic._gui.tune import TuneRunRoot
+from phenotypic._gui.tune._study_read import (
     gap_badge,
     is_multi_objective,
     running_best,

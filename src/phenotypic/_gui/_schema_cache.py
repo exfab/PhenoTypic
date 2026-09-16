@@ -1,0 +1,198 @@
+"""Lazy column-name cache for the analysis sub-app's column-aware widgets.
+
+The analysis page renders column-name parameters (``on``, ``groupby``,
+``time_label``, …) as dropdowns populated from the live measurements
+schema on disk. Reading the schema is cheap when going via the parquet
+footer, but cheap-times-N becomes noticeable when filter/model stacks
+rebuild on every keystroke. This cache reads each source file once per
+mtime so subsequent calls are O(1).
+
+Resolution order is parquet-first then CSV fallback. A missing file
+returns an empty list and the GUI surfaces a tooltip; the page does
+not raise so the analysis sub-app stays usable on partially-seeded
+output roots.
+"""
+from __future__ import annotations
+
+import logging
+import threading
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+import polars as pl
+
+from phenotypic._gui._config import (
+    MASTER_MEASUREMENTS_PARQUET,
+    MEASUREMENTS_CSV,
+    MEASUREMENTS_PARQUET,
+)
+from phenotypic.sdk_ import deliverables_dir
+
+if TYPE_CHECKING:
+    from phenotypic.sdk_ import BundleLayout, ColumnSource
+
+logger = logging.getLogger(__name__)
+
+
+#: ``source -> (parquet filename, csv filename or None)``. Resolution always
+#: prefers the parquet footer; the CSV mirror is the no-pyarrow fallback.
+#:
+#: **The master has no CSV half since D8** -- ``master_measurements.csv`` is
+#: not written any more, so naming it here would only make the schema cache
+#: stat a path that never exists. The mirror keeps its fallback, and the
+#: mirror is the file a human opens.
+_FILES_BY_SOURCE: "dict[ColumnSource, tuple[str, str | None]]" = {
+    "measurements": (MEASUREMENTS_PARQUET, MEASUREMENTS_CSV),
+    "master_measurements": (MASTER_MEASUREMENTS_PARQUET, None),
+}
+
+
+@dataclass
+class MeasurementSchema:
+    """Lazy cache of column-name lists keyed by source + mtime.
+
+    Attributes:
+        output_root: Path to the CLI output directory whose
+            ``deliverables/`` subdirectory holds
+            ``measurements.{parquet,csv}`` and / or
+            ``master_measurements.parquet`` (the master has no CSV half --
+            see ``_FILES_BY_SOURCE`` above).
+        _deliverables_base: When set (via :meth:`from_layout`), the
+            deliverables folder is used *directly* instead of
+            ``deliverables_dir(output_root)``. This is what keeps a standalone
+            bundle — where ``output_root`` is already the deliverables folder —
+            from double-joining ``deliverables/``.
+    """
+
+    output_root: Path
+    #: Resolved deliverables folder override; ``None`` means resolve via
+    #: ``deliverables_dir(output_root)`` (the full-run path).
+    _deliverables_base: Path | None = None
+    #: ``source -> (sentinel mtime_ns, columns)``. The sentinel is the
+    #: highest mtime observed across the parquet+csv pair so a CSV-only
+    #: refresh still invalidates the cache.
+    _cache: dict[str, tuple[int, list[str]]] = field(default_factory=dict)
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+
+    @classmethod
+    def from_layout(cls, layout: "BundleLayout") -> "MeasurementSchema":
+        """Build a cache anchored on a resolved :class:`BundleLayout`.
+
+        Resolves measurements from ``layout.deliverables_base`` directly, so a
+        standalone deliverables bundle (``layout.output_root is None``) reads
+        the column schema from inside the bundle rather than via
+        ``deliverables_dir(output_root)`` (which would double-join).
+
+        Args:
+            layout: Resolved bundle topology.
+
+        Returns:
+            A :class:`MeasurementSchema` reading from the bundle's deliverables.
+        """
+        base = layout.deliverables_base
+        return cls(
+            output_root=layout.output_root if layout.output_root is not None else base,
+            _deliverables_base=base,
+        )
+
+    def columns_for(self, source: "ColumnSource | str") -> list[str]:
+        """Return the column list for ``source``.
+
+        Uses the parquet footer when available and falls back to a
+        zero-row CSV scan. Missing files return ``[]`` so the dropdown
+        renders blank rather than crashing the page.
+
+        Concurrency: the lock spans both the cache lookup AND the
+        ``_read_columns`` call so concurrent readers serialize while a
+        miss is materializing. Reads are footer-only (a few ms in
+        practice) so the contention window is small. Two readers that
+        both observe the same mtime before either enters the lock
+        agree on the same cached entry — the second hits the cache
+        the first thread just stored.
+
+        Args:
+            source: ``"measurements"`` or ``"master_measurements"``.
+
+        Returns:
+            List of column names in file order. Empty when neither the
+            parquet nor the CSV mirror exists.
+        """
+        source_str = str(source)
+        # Cast through `Any`-compatible str lookup since the typed dict only
+        # accepts `ColumnSource`; users can pass either form per the signature.
+        files = _FILES_BY_SOURCE.get(source_str)  # type: ignore[arg-type]
+        if files is None:
+            logger.warning("Unknown column source %r; returning []", source_str)
+            return []
+
+        deliverables = (
+            self._deliverables_base
+            if self._deliverables_base is not None
+            else deliverables_dir(self.output_root)
+        )
+        parquet_path = deliverables / files[0]
+        csv_path = deliverables / files[1] if files[1] is not None else None
+        sentinel = _max_mtime_ns(
+            *(path for path in (parquet_path, csv_path) if path is not None)
+        )
+
+        with self._lock:
+            cached = self._cache.get(source_str)
+            if cached is not None and cached[0] == sentinel:
+                return cached[1]
+            columns = _read_columns(parquet_path, csv_path)
+            self._cache[source_str] = (sentinel, columns)
+            return columns
+
+    def invalidate(self) -> None:
+        """Drop every cached entry. Forces a fresh read on the next call."""
+        with self._lock:
+            self._cache.clear()
+
+
+def _max_mtime_ns(*paths: Path) -> int:
+    """Return the highest ``stat().st_mtime_ns`` of the existing paths.
+
+    Returns ``-1`` when none of the paths exist, which makes a missing
+    pair distinguishable from any real (non-negative) mtime.
+    """
+    mtimes = []
+    for p in paths:
+        try:
+            mtimes.append(p.stat().st_mtime_ns)
+        except FileNotFoundError:
+            continue
+    return max(mtimes, default=-1)
+
+
+def _read_columns(parquet_path: Path, csv_path: Path | None) -> list[str]:
+    """Read the column list from parquet (preferred) or CSV (fallback).
+
+    ``csv_path`` is ``None`` for a source that has no CSV half -- the master,
+    since D8.
+    """
+    if parquet_path.exists():
+        try:
+            return pl.scan_parquet(parquet_path).collect_schema().names()
+        except Exception:  # noqa: BLE001
+            logger.warning(
+                "Failed to scan parquet %s; falling back to CSV",
+                parquet_path,
+                exc_info=True,
+            )
+
+    if csv_path is not None and csv_path.exists():
+        try:
+            return pl.scan_csv(csv_path, n_rows=0).collect_schema().names()
+        except Exception:  # noqa: BLE001
+            logger.warning(
+                "Failed to scan CSV %s",
+                csv_path,
+                exc_info=True,
+            )
+
+    return []
+
+
+__all__ = ["MeasurementSchema"]

@@ -11,12 +11,12 @@ unsupported linear DAG shapes block because the runtime cannot safely
 materialize them.
 
 The tests exercise the pure-Python gate helper
-:func:`phenotypic.gui.builder._callbacks._filter_blocking_issues`
+:func:`phenotypic._gui.builder._callbacks._filter_blocking_issues`
 plus the toast builder
-:func:`phenotypic.gui.builder._callbacks._gate_toast_for_issue` so
+:func:`phenotypic._gui.builder._callbacks._gate_toast_for_issue` so
 the gate's behaviour can be asserted without booting Dash.  Each
 test constructs a JSON-shaped DAG state (the
-:func:`~phenotypic.gui.builder._state.state_to_json` output) and
+:func:`~phenotypic._gui.builder._state.state_to_json` output) and
 passes it through the gate, mirroring the way the Dash callbacks
 invoke the helpers at runtime.
 """
@@ -27,13 +27,13 @@ from typing import Any, Dict, List
 
 from phenotypic import ImagePipeline
 from phenotypic.detect import OtsuDetector
-from phenotypic.gui.builder._callbacks import (
+from phenotypic._gui.builder._callbacks import (
     _filter_blocking_issues,
     _gate_toast_for_issue,
     _write_pipeline_config,
 )
 from phenotypic.sdk_ import CONFIG_SUFFIX_PIPELINE, ensure_typed_json_suffix
-from phenotypic.gui.builder._state import (
+from phenotypic._gui.builder._state import (
     BlockNode,
     Edge,
     _DagBuilderScope,
@@ -41,7 +41,7 @@ from phenotypic.gui.builder._state import (
     _new_block_id,
     state_to_json,
 )
-from phenotypic.gui.builder._validation import Issue, validate
+from phenotypic._gui.builder._validation import Issue, validate
 
 from .conftest import _make_op_info
 
@@ -163,7 +163,7 @@ def _state_with_advisory_only(monkeypatch: Any) -> Dict[str, Any]:
             return None
 
     monkeypatch.setattr(
-        "phenotypic.gui.builder._validation.get_registry", lambda: _FakeReg()
+        "phenotypic._gui.builder._validation.get_registry", lambda: _FakeReg()
     )
 
     scope = _DagBuilderScope()
@@ -342,7 +342,7 @@ class TestGatingEdgeCases:
 def _load_issues_from_state(state_data: Dict[str, Any]) -> List[Issue]:
     """Re-run validate on the raw state for assertion purposes only."""
 
-    from phenotypic.gui.builder._state import state_from_json
+    from phenotypic._gui.builder._state import state_from_json
 
     state = state_from_json(state_data)
     return validate(state)

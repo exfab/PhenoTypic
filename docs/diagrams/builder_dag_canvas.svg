@@ -9,7 +9,7 @@
   <title id="title">PhenoTypic pipeline builder — DAG canvas visual language</title>
   <desc id="desc">Reference diagram of the four canonical block shapes (Input Image green chevron, regular op with image-in / image-out / aux-in ports, Pipeline container with consumer-fed dot, validation-failing block with red border and exclamation badge) plus the blue image-flow and purple aux wires connecting them.</desc>
 
-  <!-- Color palette (mirrors src/phenotypic/gui/_design.py):
+  <!-- Color palette (mirrors src/phenotypic/_gui/_design.py):
        COLOR_NAVY    #003660  ops stage tint / borders
        COLOR_BLUE    #1b75bc  image-flow wires
        COLOR_GOLD    #febc11  meas stage tint

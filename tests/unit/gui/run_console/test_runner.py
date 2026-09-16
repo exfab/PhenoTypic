@@ -1,4 +1,4 @@
-"""Unit tests for ``phenotypic.gui.run_console._runner``.
+"""Unit tests for ``phenotypic._gui.run_console._runner``.
 
 Drives a real subprocess (``python -c "..."``) so the lifecycle paths
 (stdout tee → ring buffer + disk; SIGTERM-then-SIGKILL; reap) are
@@ -17,7 +17,7 @@ from uuid import uuid4
 
 import pytest
 
-from phenotypic.gui.run_console._runner import (
+from phenotypic._gui.run_console._runner import (
     LocalRunHandle,
     LocalRunner,
 )

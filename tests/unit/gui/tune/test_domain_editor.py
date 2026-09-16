@@ -1,6 +1,6 @@
 import pytest
 
-from phenotypic.gui.tune._domain_editor import (
+from phenotypic._gui.tune._domain_editor import (
     domain_from_editor,
     domain_summary,
     grid_feasibility,

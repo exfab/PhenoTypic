@@ -1,6 +1,6 @@
 """Unit tests for the ``block_create`` dispatch kind (Phase 3, spec §5.6).
 
-Exercises :func:`phenotypic.gui.builder._callbacks._dispatch_state_update`
+Exercises :func:`phenotypic._gui.builder._callbacks._dispatch_state_update`
 with the new ``block_create`` dispatch payload introduced for the DAG
 palette drag-and-drop redesign.  Each test runs the dispatcher against
 a JSON-shaped DAG state (``state_to_json`` output) and asserts on the
@@ -30,9 +30,9 @@ from typing import Any, Dict, Optional, Tuple
 
 import pytest
 
-from phenotypic.gui._operation_registry import ParamInfo
-from phenotypic.gui.builder._callbacks import _dispatch_state_update
-from phenotypic.gui.builder._state import (
+from phenotypic._gui._operation_registry import ParamInfo
+from phenotypic._gui.builder._callbacks import _dispatch_state_update
+from phenotypic._gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
     PIPELINE_CLASS_NAME,
     BlockNode,
@@ -41,7 +41,7 @@ from phenotypic.gui.builder._state import (
     _new_block_id,
     state_to_json,
 )
-from phenotypic.gui.builder._validation import validate
+from phenotypic._gui.builder._validation import validate
 
 from .conftest import _make_op_info
 
@@ -106,7 +106,7 @@ def _seed_registry(empty_registry: Any) -> None:
 
     Mirrored from ``test_validation.py``'s use of ``empty_registry``.
     ``_dispatch_state_update`` uses the **registry returned by
-    ``phenotypic.gui._operation_registry.get_registry``**, not the one
+    ``phenotypic._gui._operation_registry.get_registry``**, not the one
     monkeypatched into the validation module, so the dispatcher tests
     take a parallel monkeypatch via the same hook to avoid registry
     drift between the dispatcher and the validator.
@@ -121,15 +121,15 @@ def patched_registry(empty_registry: Any, monkeypatch: pytest.MonkeyPatch) -> An
     """Repoint both the dispatcher and validator at a shared fake registry.
 
     The dispatcher reads
-    ``phenotypic.gui._operation_registry.get_registry()`` via the
+    ``phenotypic._gui._operation_registry.get_registry()`` via the
     ``_default_params_for`` helper; the validator reads the same symbol
-    re-exported under ``phenotypic.gui.builder._validation.get_registry``.
+    re-exported under ``phenotypic._gui.builder._validation.get_registry``.
     Patching both keeps the tests deterministic across re-imports.
     """
 
     _seed_registry(empty_registry)
     monkeypatch.setattr(
-        "phenotypic.gui._operation_registry.get_registry",
+        "phenotypic._gui._operation_registry.get_registry",
         lambda: empty_registry,
     )
     return empty_registry
@@ -285,7 +285,7 @@ def test_block_create_uses_default_params(
     parameter; the new block should carry only the param with a default.
     """
 
-    from phenotypic.gui.builder._callbacks import _default_params_for
+    from phenotypic._gui.builder._callbacks import _default_params_for
 
     info = _make_op_info(
         "WithDefaults",
@@ -314,7 +314,7 @@ def test_block_create_uses_default_params(
     )
     empty_registry.ops["WithDefaults"] = info
     monkeypatch.setattr(
-        "phenotypic.gui._operation_registry.get_registry",
+        "phenotypic._gui._operation_registry.get_registry",
         lambda: empty_registry,
     )
 
@@ -374,7 +374,7 @@ def test_block_create_stale_container_id_short_circuits(
     initial_blocks = list(state_dict["root"]["blocks"])
     stale_id = "0" * 32  # 32-char hex but doesn't match any container
 
-    with caplog.at_level(logging.WARNING, logger="phenotypic.gui.builder._callbacks"):
+    with caplog.at_level(logging.WARNING, logger="phenotypic._gui.builder._callbacks"):
         new_state = _dispatch_state_update(
             state_dict,
             "block_create",
@@ -438,7 +438,7 @@ def test_block_create_validates_after_mutation(
     issue list reflects the expected post-mutation invariants.
     """
 
-    from phenotypic.gui.builder._state import state_from_json
+    from phenotypic._gui.builder._state import state_from_json
 
     state_dict = _empty_dag_state_dict()
     new_state_dict = _dispatch_state_update(

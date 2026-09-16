@@ -3,7 +3,7 @@
 Post-DuckDB cutover: the flat qc-parquet helpers are gone from
 ``review/_data.py``. Module slicing, the worklist, summary stats, and
 member resolution now live behind the catalog-driven read API
-(:mod:`phenotypic.gui.results_viewer._qc_tab.review._db`, covered by
+(:mod:`phenotypic._gui.results_viewer._qc_tab.review._db`, covered by
 ``test_qc_db_api``). This module covers what remains:
 
 - the picker-option builder the Review callback derives from
@@ -24,12 +24,12 @@ from PIL import Image as PILImage
 
 from phenotypic import ImagePipeline
 from phenotypic.analysis.qc import MaxModifiedZScore
-from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.gui.results_viewer._qc_tab.review import _callbacks, _data
-from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
+from phenotypic._gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.results_viewer._qc_tab.review import _callbacks, _data
+from phenotypic._gui.results_viewer._qc_tab.review._callbacks import (
     _persist_review_before_transition,
 )
-from phenotypic.gui.results_viewer._qc_tab.review._review_state import (
+from phenotypic._gui.results_viewer._qc_tab.review._review_state import (
     ReviewState,
     decode_group_key,
     encode_group_key,

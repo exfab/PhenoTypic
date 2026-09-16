@@ -7,15 +7,15 @@ import polars as pl
 import pytest
 
 from phenotypic._cli._cli_output_manager import join_metadata
-from phenotypic.gui.run_console._request_safety import (
+from phenotypic._gui.run_console._request_safety import (
     RunRequestSafetyError,
     build_metadata_preflight,
     confirm_output_target,
     recheck_metadata_selection,
     validate_output_confirmation,
 )
-from phenotypic.gui.shell._metadata_context import metadata_payload_from_path
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.shell._metadata_context import metadata_payload_from_path
+from phenotypic._gui.shell._sandbox import SandboxRoot
 from phenotypic.schema import EXPERIMENT, IMAGE, header_to_module
 
 

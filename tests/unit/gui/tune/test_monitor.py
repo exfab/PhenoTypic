@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pytest
 
-from phenotypic.gui.tune._monitor import (
+from phenotypic._gui.tune._monitor import (
     cancel_prompt,
     live_view_kind,
     run_switcher_items,
@@ -57,8 +57,8 @@ def test_cancel_prompt_is_local_only():
 def test_legacy_study_degrade_note_is_friendly(tmp_path):
     """A pre-cutover run (study_name='tune') degrades with a re-run message,
     not the generic 'couldn't reach the live study' note."""
-    from phenotypic.gui.tune._callbacks import _monitor_degrade_note
-    from phenotypic.gui.tune._run_root import TuneRunRoot
+    from phenotypic._gui.tune._callbacks import _monitor_degrade_note
+    from phenotypic._gui.tune._run_root import TuneRunRoot
 
     legacy = TuneRunRoot(
         path=tmp_path, trials_path=None, storage_url="sqlite:///x.db",
@@ -71,10 +71,10 @@ def test_legacy_study_degrade_note_is_friendly(tmp_path):
 
 def test_current_study_degrade_note_is_generic(tmp_path):
     """A current-convention run keeps the generic unreachable note."""
-    from phenotypic.gui.tune._callbacks import (
+    from phenotypic._gui.tune._callbacks import (
         _NOTE_LIVE_UNREACHABLE, _monitor_degrade_note,
     )
-    from phenotypic.gui.tune._run_root import TuneRunRoot
+    from phenotypic._gui.tune._run_root import TuneRunRoot
 
     current = TuneRunRoot(
         path=tmp_path, trials_path=None, storage_url="sqlite:///x.db",

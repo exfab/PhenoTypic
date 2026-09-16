@@ -1,4 +1,4 @@
-"""Unit tests for ``phenotypic.gui.shell._release_button``.
+"""Unit tests for ``phenotypic._gui.shell._release_button``.
 
 The Release button is scaffolding for Phase 5 (the chrome wraps each tool
 with one). Phase 3 doesn't render it anywhere, so without these tests it
@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from dash import html
 
-from phenotypic.gui.shell._ids import release_button_id, release_status_id
-from phenotypic.gui.shell._release_button import build_release_button
+from phenotypic._gui.shell._ids import release_button_id, release_status_id
+from phenotypic._gui.shell._release_button import build_release_button
 
 
 def test_button_returns_div_with_pattern_matching_id() -> None:

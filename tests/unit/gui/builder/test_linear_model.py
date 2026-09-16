@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from phenotypic.gui.builder._state import (
+from phenotypic._gui.builder._state import (
     PIPELINE_CLASS_NAME,
     BlockNode,
     Edge,
@@ -48,7 +48,7 @@ def _aux_edge(source: BlockNode, target: BlockNode, param: str, slot: int | None
 def test_dag_state_round_trips_linear_target_fields() -> None:
     """Linear target state is builder-only metadata and survives store JSON."""
 
-    from phenotypic.gui.builder._linear_model import (
+    from phenotypic._gui.builder._linear_model import (
         default_continuation_target,
         scope_key,
         target_to_dict,
@@ -78,7 +78,7 @@ def test_dag_state_round_trips_linear_target_fields() -> None:
 def test_invalid_target_falls_back_to_current_scope_continuation() -> None:
     """A stale selected target resolves to the current scope continuation."""
 
-    from phenotypic.gui.builder._linear_model import (
+    from phenotypic._gui.builder._linear_model import (
         resolve_selected_target,
         scope_key,
     )
@@ -104,7 +104,7 @@ def test_invalid_target_falls_back_to_current_scope_continuation() -> None:
 def test_nested_scope_target_resolves_without_legacy_current_scope() -> None:
     """Target fallback works inside DAG breadcrumbs."""
 
-    from phenotypic.gui.builder._linear_model import (
+    from phenotypic._gui.builder._linear_model import (
         resolve_selected_target,
         scope_key,
     )
@@ -144,7 +144,7 @@ def test_nested_scope_target_resolves_without_legacy_current_scope() -> None:
 def test_linear_scope_derives_unique_spine_and_ignores_owned_aux_blocks() -> None:
     """A clean DAG with side-loaded aux blocks derives one visible spine."""
 
-    from phenotypic.gui.builder._linear_model import derive_linear_scope
+    from phenotypic._gui.builder._linear_model import derive_linear_scope
 
     scope = _DagBuilderScope()
     input_block = scope.blocks[0]
@@ -174,7 +174,7 @@ def test_linear_scope_derives_unique_spine_and_ignores_owned_aux_blocks() -> Non
 def test_linear_scope_classifies_image_fork_as_unsupported() -> None:
     """Forked image flow is rejected before rendering the linear editor."""
 
-    from phenotypic.gui.builder._linear_model import derive_linear_scope
+    from phenotypic._gui.builder._linear_model import derive_linear_scope
 
     scope = _DagBuilderScope()
     input_block = scope.blocks[0]
@@ -192,7 +192,7 @@ def test_linear_scope_classifies_image_fork_as_unsupported() -> None:
 def test_linear_scope_classifies_aux_edge_into_input_as_unsupported() -> None:
     """InputImage may not be the consumer for an aux side value."""
 
-    from phenotypic.gui.builder._linear_model import derive_linear_scope
+    from phenotypic._gui.builder._linear_model import derive_linear_scope
 
     scope = _DagBuilderScope()
     input_block = scope.blocks[0]
@@ -212,10 +212,10 @@ def test_linear_scope_tracks_unknown_classes_without_dropping_renderable_nodes(
 ) -> None:
     """Unknown classes stay renderable but are tracked for limited editing."""
 
-    from phenotypic.gui.builder._linear_model import derive_linear_scope
+    from phenotypic._gui.builder._linear_model import derive_linear_scope
 
     monkeypatch.setattr(
-        "phenotypic.gui._operation_registry.get_registry",
+        "phenotypic._gui._operation_registry.get_registry",
         lambda: empty_registry,
     )
     scope = _DagBuilderScope()
@@ -237,7 +237,7 @@ def test_linear_scope_tracks_unknown_classes_without_dropping_renderable_nodes(
 def test_compact_list_aux_slots_removes_empty_gaps() -> None:
     """List aux slots are renumbered contiguously after a removal."""
 
-    from phenotypic.gui.builder._linear_model import compact_list_aux_slots
+    from phenotypic._gui.builder._linear_model import compact_list_aux_slots
 
     scope = _DagBuilderScope()
     consumer = _block("ConsumerOp")
@@ -263,7 +263,7 @@ def test_compact_list_aux_slots_removes_empty_gaps() -> None:
 def test_state_replacement_payload_uses_dag_conversion(monkeypatch: Any) -> None:
     """Loading JSON/prefabs replaces the builder with a DAG state."""
 
-    import phenotypic.gui.builder._callbacks as callbacks
+    import phenotypic._gui.builder._callbacks as callbacks
 
     pipeline = object()
     dag_state = _DagBuilderState()

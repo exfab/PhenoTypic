@@ -589,7 +589,7 @@ def test_every_hdf_artifact_declaration_is_ported() -> None:
     task ports is ``phenotypicCLI.py``'s
     ``_migrate_legacy_success_evidence``; the other four publishers were
     routed through ``image_data_artifact`` by earlier clusters.
-    ``gui/builder/_preview_cache.py`` is deliberately **not** allowlisted --
+    ``_gui/builder/_preview_cache.py`` is deliberately **not** allowlisted --
     Phase 2 Task 2.4 renamed it to ``"store"``, so a hit there is a
     regression.
     """

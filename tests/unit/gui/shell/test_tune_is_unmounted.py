@@ -12,9 +12,9 @@ from pathlib import Path
 
 import pytest
 
-from phenotypic.gui._config import MOUNT_TUNE
-from phenotypic.gui.shell._layout import NAV_MODEL, _NavGroup
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._gui._config import MOUNT_TUNE
+from phenotypic._gui.shell._layout import NAV_MODEL, _NavGroup
+from phenotypic._gui.shell._sandbox import SandboxRoot
 
 
 def _leaf_ids(model) -> set[str]:
@@ -36,7 +36,7 @@ def built_hub_dispatcher_mounts(tmp_path: Path) -> set[str]:
     sandbox, compose the hub via ``create_app``, and read the mount prefixes
     off the underlying ``DispatcherMiddleware``.
     """
-    from phenotypic.gui.shell._app import create_app
+    from phenotypic._gui.shell._app import create_app
 
     sandbox = SandboxRoot.from_path(tmp_path)
     app = create_app(sandbox)
@@ -53,4 +53,4 @@ def test_dispatcher_has_no_tune_mount(built_hub_dispatcher_mounts):
 
 
 def test_tune_package_is_still_importable():
-    assert importlib.import_module("phenotypic.gui.tune") is not None
+    assert importlib.import_module("phenotypic._gui.tune") is not None

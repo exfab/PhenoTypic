@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from phenotypic.gui._operation_registry import OperationRegistry, ParamInfo
-from phenotypic.gui.builder._param_form import param_form, parse_widget_value
+from phenotypic._gui._operation_registry import OperationRegistry, ParamInfo
+from phenotypic._gui.builder._param_form import param_form, parse_widget_value
 
 
 def _walk(node):

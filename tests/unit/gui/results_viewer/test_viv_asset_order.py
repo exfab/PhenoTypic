@@ -26,8 +26,8 @@ from pathlib import Path
 
 import dash
 
-import phenotypic.gui.results_viewer as results_viewer
-from phenotypic.gui.results_viewer._app import create_app, viv_bundle_version
+import phenotypic._gui.results_viewer as results_viewer
+from phenotypic._gui.results_viewer._app import create_app, viv_bundle_version
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 ASSETS = Path(results_viewer.__file__).parent / "_assets"
@@ -123,6 +123,8 @@ def test_colony_grid_uses_a_passive_bounded_linked_camera() -> None:
     facade = (ASSETS / "viv_viewer.js").read_text(encoding="utf-8")
 
     assert "controller: false" in facade
+    assert "deck.setProps({ controller: false })" in facade
+    assert "deck.setProps({ controller: true })" in facade
     assert "function clampGridCamera(grid)" in facade
     assert "function setGridCamera(containerId, command)" in facade
     assert "setGridCamera," in facade
@@ -249,7 +251,7 @@ def test_the_viewer_logs_the_bundle_version_at_startup(caplog) -> None:
     Emitted on the empty-state path too -- the version is a property of
     the installation, not of whether a run is bound.
     """
-    with caplog.at_level(logging.INFO, logger="phenotypic.gui.results_viewer._app"):
+    with caplog.at_level(logging.INFO, logger="phenotypic._gui.results_viewer._app"):
         create_app(None)
     logged = [r.getMessage() for r in caplog.records if "viv bundle:" in r.getMessage()]
     assert logged == [f"viv bundle: {viv_bundle_version()}"], caplog.records

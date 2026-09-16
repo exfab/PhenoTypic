@@ -4,7 +4,7 @@ import tifffile
 from PIL import Image as PILImage
 from pathlib import Path
 
-from phenotypic.gui.browse import _source_render as sr
+from phenotypic._gui.browse import _source_render as sr
 
 
 def test_token_round_trip_is_slash_free():
@@ -120,8 +120,8 @@ def test_process_store_round_trips_through_cli_scan_and_browse(tmp_path):
     from phenotypic import Image
     from phenotypic._cli._cli_directory_scanner import scan_directory_structure
     from phenotypic._cli._cli_process_only import write_process_only_layer
-    from phenotypic.gui.browse._source_item import resolve_source_item
-    from phenotypic.gui.browse._source_lister import list_datasets
+    from phenotypic._gui.browse._source_item import resolve_source_item
+    from phenotypic._gui.browse._source_lister import list_datasets
 
     store = tmp_path / "process-out" / "p01.ome.zarr"
     rgb = np.full((12, 16, 3), 64, dtype=np.uint8)

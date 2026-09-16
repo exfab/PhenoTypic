@@ -364,7 +364,7 @@ Call-site discipline (carried over from the original spec, unchanged):
 - Raw `--text-*` primitives are kept for back-compat and must not appear in new call
   sites.
 - Python inline styles import `FONT_FAMILY_*` and `FONT_SIZE_*` from
-  `gui/_design.py`; never hardcode a literal.
+  `_gui/_design.py`; never hardcode a literal.
 
 ---
 
@@ -387,7 +387,7 @@ Four role tokens. Nothing else may declare a `font-family`.
 />
 ```
 
-`gui/_design.py` constants (the Python call-site source of truth):
+`_gui/_design.py` constants (the Python call-site source of truth):
 
 ```python
 FONT_FAMILY_DISPLAY = "'Comfortaa', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
@@ -409,7 +409,7 @@ Role intent:
 > so headings, stat values, prose, and UI titles all share a single rounded geometric
 > sans. The role tokens still exist independently, so a future split back into two
 > families is mechanical -- change `_DISPLAY_PRIMARY` / `_BODY_PRIMARY` in
-> `gui/_design.py` and every call site inherits it with no edits.
+> `_gui/_design.py` and every call site inherits it with no edits.
 
 > **Italics need a serif.** Comfortaa ships no true italic face, so `font-style: italic`
 > on a Comfortaa run would render a browser-synthesized oblique. Italic species names
@@ -794,7 +794,7 @@ the semantic aliases, not raw primitives.
 /* modifier for display-family headings */
 ```
 
-> **Python parity:** mirror these as a `TEXT_STYLE` mapping in `gui/_design.py` (one
+> **Python parity:** mirror these as a `TEXT_STYLE` mapping in `_gui/_design.py` (one
 > entry
 > per style returning the family / size / weight / leading / tracking / color), so
 > Python
@@ -850,7 +850,7 @@ Confirm before treating this as final.
    Overline
    style to `--font-size-caption` (11px), matching real usage. Update any
    `--font-size-label`
-   references in `gui/_design.py` and CSS to `--font-size-body-sm`, or keep a deprecated
+   references in `_gui/_design.py` and CSS to `--font-size-body-sm`, or keep a deprecated
    alias `--font-size-label: var(--font-size-body-sm)` during migration.
 
 2. **Heading vs. component-title weight.** Content headings (Title, Header, H2, H3) and
@@ -862,7 +862,7 @@ Confirm before treating this as final.
    single rounded geometric sans; only italic species names (`--font-species`, IBM Plex
    Serif) and mono data (`--font-mono`, JetBrains Mono) step outside it. To split display
    and body back into two families, change `_DISPLAY_PRIMARY` / `_BODY_PRIMARY` in
-   `gui/_design.py` and update the import.
+   `_gui/_design.py` and update the import.
 
 ---
 
@@ -2102,7 +2102,7 @@ mask color in the dashboard matches the same label in napari.
 > scikit-image `label2rgb` (with a matplotlib `tab20` fallback), which spreads many
 > perceptually-distinct hues. This is a deliberate usability-over-brand-consistency
 > call. It governs the builder "Run preview" detector/refiner overlay and the tune
-> Curate overlay, which share one renderer (`gui/builder/_image_renderer.py:
+> Curate overlay, which share one renderer (`_gui/builder/_image_renderer.py:
 > to_overlay_rgb_array`). Apply `OKABE_ITO_NAPARI` only when the label count is small
 > enough that each class gets a stable, distinct brand color; revisit if a future
 > overlay is genuinely class-based (few categories) rather than per-instance.

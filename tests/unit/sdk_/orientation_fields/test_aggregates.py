@@ -54,6 +54,53 @@ def test_linear_profile_recovers_primary_metrics_and_units() -> None:
     assert metrics.median_resultant == pytest.approx(0.8)
 
 
+def test_consistency_treats_roundoff_scale_changes_as_ties() -> None:
+    """A numerically flat profile must have platform-stable consistency."""
+    epsilon = np.finfo(np.float64).eps
+    roundoff = epsilon * np.asarray([0, 4, -3, 2, -1, 3], dtype=float)
+    profile = _profile(np.degrees(roundoff).tolist())
+
+    metrics = aggregate_literal_crossing_zone(profile, 8.0, 56.0)
+
+    assert metrics.consistency == 0.0
+
+
+def test_consistency_preserves_a_trend_above_roundoff_scale() -> None:
+    """The tie guard must not erase a monotonic representable trend."""
+    epsilon = np.finfo(np.float64).eps
+    trend = 128.0 * epsilon * np.arange(6, dtype=float)
+    profile = _profile(np.degrees(trend).tolist())
+
+    metrics = aggregate_literal_crossing_zone(profile, 8.0, 56.0)
+
+    assert metrics.consistency == 1.0
+
+
+def test_consistency_ignores_roundoff_with_real_changes_present() -> None:
+    """Roundoff in a plateau must not alter a later measurable trend."""
+    epsilon = np.finfo(np.float64).eps
+    plateau_noise = epsilon * np.asarray(
+        [0, 4, -3, 2, -1, 3, -4, 1, -2, 4, -1],
+        dtype=float,
+    )
+    excursions = np.asarray([-1.0e-5, -2.0e-4, 2.0e-4], dtype=float)
+    noisy = np.concatenate([plateau_noise, excursions])
+    reference = np.concatenate([np.zeros(plateau_noise.size), excursions])
+
+    noisy_metrics = aggregate_literal_crossing_zone(
+        _profile(np.degrees(noisy).tolist()),
+        8.0,
+        120.0,
+    )
+    reference_metrics = aggregate_literal_crossing_zone(
+        _profile(np.degrees(reference).tolist()),
+        8.0,
+        120.0,
+    )
+
+    assert noisy_metrics.consistency == reference_metrics.consistency
+
+
 def test_sustained_peak_rejects_one_ring_spike() -> None:
     """A one-ring maximum must not set the rolling-median peak."""
     baseline = _profile([0, 4, 8, 12, 16, 20, 24])

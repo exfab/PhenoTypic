@@ -1,10 +1,10 @@
-from phenotypic.gui.shell._app import compose_hub
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.shell._app import compose_hub
+from phenotypic._gui.shell._sandbox import SandboxRoot
 
 
 def test_browse_tab_in_nav_model():
-    from phenotypic.gui.shell._ids import SHELL_TAB_BROWSE, SHELL_TAB_HOME
-    from phenotypic.gui.shell._layout import NAV_MODEL
+    from phenotypic._gui.shell._ids import SHELL_TAB_BROWSE, SHELL_TAB_HOME
+    from phenotypic._gui.shell._layout import NAV_MODEL
 
     # Browse is a leaf immediately after Home.
     assert NAV_MODEL[0] == SHELL_TAB_HOME

@@ -23,6 +23,7 @@ import matplotlib
 matplotlib.use("Agg")  # Non-interactive backend
 
 from phenotypic import Image, GridImage, ImagePipeline
+from phenotypic._startup_perf import load_runtime_dependencies
 from phenotypic._core._provenance import (
     continuing_provenance_application,
     initialize_cli_provenance,
@@ -675,6 +676,7 @@ def main(
     This is designed to be called by SLURM batch scripts for autonomous
     execution. It processes one image and logs completion to event log.
     """
+    load_runtime_dependencies()
     attempt_id = attempt_id or uuid4().hex
     active_check = _ordinary_slurm_active_check(output_dir)
     commit_guard = _ordinary_slurm_commit_guard(output_dir)

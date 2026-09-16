@@ -1,19 +1,15 @@
-"""Shared colony-ness → zone-radii segmentation pipeline for one detected object.
+"""Shared mask morphology and radial-zone resolution for one detected object.
 
-Extracted verbatim from :class:`MeasureSymZones` so that both the
-symmetric-zones measurer and the orientation-field measurer can obtain the same
-concentric zone geometry (core / dense / sparse radii, inoculum centre, and the
-per-ring diagnostic profiles) from a single side-effect-free entry point,
-``compute_zone_segmentation``.
-
-Single responsibility: turn one detected object into its concentric zone
-geometry. Behaviour is byte-identical to the pre-extraction
-``MeasureSymZones._compute_intermediates`` (regression-guarded).
+The private mask primitive supplies the distance-transform center, PELT core,
+symmetry, and expansion measurements to both public measurers. Canonical mode
+passes that geometry directly to Method B through ``resolve_zone_segmentation``;
+explicit legacy mode extends it through ``compute_zone_segmentation`` and the
+historical colony-ness thresholds. Legacy behavior is regression-guarded.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -22,6 +18,13 @@ if TYPE_CHECKING:
 import numpy as np
 from scipy.ndimage import convolve, distance_transform_edt
 from skimage.measure import regionprops
+
+from phenotypic.measure._orientation_zone_segmentation import (
+    OrientationAnalysisContext,
+    OrientationChangePointParams,
+    OrientationZoneResult,
+    fit_orientation_zones,
+)
 
 # Zone-segmentation constants
 _N_ANGULAR_SECTORS = 360
@@ -94,6 +97,18 @@ class ZoneSegmentationParams:
     intensity_source: str = "gray"
 
 
+@dataclass(frozen=True)
+class ZoneResolution:
+    """Shared zone segmentation plus optional reusable orientation arrays."""
+
+    segmentation: ZoneSegmentation
+    method_code: int
+    method_used: str
+    failure_reason: str
+    canonical_result: OrientationZoneResult | None = None
+    orientation_context: OrientationAnalysisContext | None = None
+
+
 # ── shared pipeline for one object ───────────────────────────────
 
 
@@ -142,6 +157,202 @@ def expand_slice_around_center(
     return slice(r0, r1), slice(c0, c1)
 
 
+def _resolve_target_prop(image: Image, prop):
+    """Return the requested object or the largest detected object."""
+    if prop is not None:
+        return prop
+    props = regionprops(
+        image.objmap[:],
+        intensity_image=image.gray[:].astype(np.float64, copy=False),
+    )
+    return max(props, key=lambda candidate: candidate.area)
+
+
+def detected_center_coordinates(
+    object_map: np.ndarray,
+    center_map: np.ndarray,
+) -> dict[int, tuple[float, float]]:
+    """Associate detected center components with final colony labels.
+
+    Each positive center component is assigned to the final object with which
+    it has the largest pixel overlap. If several center components overlap the
+    same object, the component with the greatest overlap wins. Ties are broken
+    by the lowest numeric label. The reported coordinate is the centroid of
+    the winning component's overlapping pixels, so unrelated detector pixels
+    outside the final colony cannot pull the center away.
+
+    Args:
+        object_map: Final labeled colony map.
+        center_map: Labeled compact-center map produced by ``center_detector``.
+
+    Returns:
+        Mapping from final colony label to global ``(row, col)`` coordinate.
+
+    Raises:
+        ValueError: If the two label maps do not have the same two-dimensional
+            shape.
+    """
+    objects = np.asarray(object_map)
+    centers = np.asarray(center_map)
+    if objects.ndim != 2 or centers.ndim != 2 or objects.shape != centers.shape:
+        raise ValueError(
+            "center_detector output and final objmap must have the same 2-D shape"
+        )
+
+    overlapping = (objects > 0) & (centers > 0)
+    if not overlapping.any():
+        return {}
+
+    center_labels = np.unique(centers[overlapping])
+    assignments: dict[int, tuple[int, int, tuple[float, float]]] = {}
+    for center_label_value in center_labels:
+        center_label = int(center_label_value)
+        component_overlap = overlapping & (centers == center_label_value)
+        object_labels, counts = np.unique(
+            objects[component_overlap], return_counts=True
+        )
+        maximum = int(counts.max())
+        object_label = int(object_labels[counts == maximum].min())
+        selected_pixels = np.argwhere(
+            component_overlap & (objects == object_label)
+        )
+        coordinate = (
+            float(np.mean(selected_pixels[:, 0])),
+            float(np.mean(selected_pixels[:, 1])),
+        )
+        candidate = (maximum, center_label, coordinate)
+        current = assignments.get(object_label)
+        if current is None or (-candidate[0], candidate[1]) < (
+            -current[0], current[1]
+        ):
+            assignments[object_label] = candidate
+
+    return {
+        object_label: candidate[2]
+        for object_label, candidate in assignments.items()
+    }
+
+
+def _compute_mask_morphology(
+    image: Image,
+    prop=None,
+    *,
+    params: ZoneSegmentationParams,
+    center_global: tuple[float, float] | None = None,
+) -> ZoneSegmentation:
+    """Compute mask-derived center, PELT core, symmetry, and expansion.
+
+    This primitive deliberately does not calculate the historical
+    colony-ness profile or its threshold-derived zone boundaries. Canonical
+    Method B uses this result directly; the legacy path extends it below.
+    """
+    target_prop = _resolve_target_prop(image, prop)
+    if target_prop.area < 10:
+        empty = np.array([])
+        centroid_global = (
+            float(target_prop.slice[0].start),
+            float(target_prop.slice[1].start),
+        )
+        return ZoneSegmentation(
+            label=target_prop.label,
+            bbox_slice=target_prop.slice,
+            centroid_rc=(0.0, 0.0),
+            density_profile=empty,
+            annulus_radii=empty,
+            core_radius=0.0,
+            sholl_counts=empty,
+            angular_R_profile=empty,
+            angular_coverage=empty,
+            symmetric_radius=0.0,
+            mean_expansion=0.0,
+            max_expansion=0.0,
+            obj_mask=np.zeros((1, 1), dtype=bool),
+            dist_map=np.zeros((1, 1), dtype=np.float64),
+            gray_crop=np.zeros((1, 1), dtype=np.float64),
+            r_outer_full_per_angle=np.zeros(
+                _N_ANGULAR_SECTORS, dtype=np.float64
+            ),
+            zones_computed=False,
+            centroid_global=centroid_global,
+        )
+
+    slc = target_prop.slice
+    objmap_crop = np.asarray(image.objmap[:])[slc]
+    gray_crop = np.asarray(image.gray[:])[slc]
+    local_mask = objmap_crop == target_prop.label
+    if center_global is not None:
+        local_cr = (
+            float(center_global[0]) - float(slc[0].start),
+            float(center_global[1]) - float(slc[1].start),
+        )
+    elif params.method == "distance":
+        dt = np.asarray(
+            distance_transform_edt(local_mask), dtype=np.float64
+        )
+        peak_idx = np.unravel_index(np.argmax(dt), dt.shape)
+        local_cr = (float(peak_idx[0]), float(peak_idx[1]))
+    else:
+        weighted = target_prop.centroid_weighted
+        local_cr = (
+            weighted[0] - slc[0].start,
+            weighted[1] - slc[1].start,
+        )
+    dist_map = distance_from_point(local_mask.shape, local_cr)
+    max_pixel_radius = int(np.max(dist_map[local_mask]))
+    effective_annuli = max(6, min(params.n_annuli, max_pixel_radius))
+    density_profile, annulus_radii = compute_radial_density_profile(
+        local_mask, dist_map, effective_annuli
+    )
+    core_radius = find_core_radius(
+        density_profile, annulus_radii, params.pelt_penalty
+    )
+    sholl_counts, angular_R_profile, angular_coverage = (
+        compute_sholl_angular_profile(
+            local_mask,
+            dist_map,
+            local_cr,
+            annulus_radii,
+            params.n_angular_bins,
+        )
+    )
+    symmetric_radius = find_symmetric_radius(
+        annulus_radii,
+        angular_coverage,
+        core_radius,
+        params.symmetry_threshold,
+        params.smoothing_window,
+    )
+    mean_expansion, max_expansion = compute_radial_expansion(
+        local_mask, dist_map, core_radius
+    )
+    center_global = (
+        local_cr[0] + float(slc[0].start),
+        local_cr[1] + float(slc[1].start),
+    )
+    return ZoneSegmentation(
+        label=target_prop.label,
+        bbox_slice=slc,
+        centroid_rc=local_cr,
+        density_profile=density_profile,
+        annulus_radii=annulus_radii,
+        core_radius=core_radius,
+        sholl_counts=sholl_counts,
+        angular_R_profile=angular_R_profile,
+        angular_coverage=angular_coverage,
+        symmetric_radius=symmetric_radius,
+        mean_expansion=mean_expansion,
+        max_expansion=max_expansion,
+        obj_mask=local_mask,
+        dist_map=dist_map,
+        gray_crop=gray_crop,
+        r_outer_full_per_angle=per_angle_mask_envelope(
+            local_mask, dist_map, local_cr
+        ),
+        zones_computed=False,
+        centroid_global=center_global,
+    )
+
+
 def compute_zone_segmentation(
         image: Image,
         prop=None,
@@ -164,154 +375,15 @@ def compute_zone_segmentation(
     Returns:
         ZoneSegmentation with all computed fields populated.
     """
-    # 1. Resolve target prop
-    if prop is not None:
-        target_prop = prop
-    else:
-        props = regionprops(
-                image.objmap[:],
-                intensity_image=image.gray[:].astype(np.float64, copy=False),
-        )
+    target_prop = _resolve_target_prop(image, prop)
+    base = _compute_mask_morphology(image, target_prop, params=params)
+    if target_prop.area < 10 or base.symmetric_radius <= 0:
+        return base
 
-        target_prop = max(props, key=lambda p: p.area)
-
-    # 2. Early exit for tiny objects (all expansion fields zero, arrays empty)
-    if target_prop.area < 10:
-        empty = np.array([])
-        tiny_mask = np.zeros((1, 1), dtype=bool)
-        centroid_global = (
-            float(target_prop.slice[0].start),
-            float(target_prop.slice[1].start),
-        )
-        return ZoneSegmentation(
-                label=target_prop.label,
-                bbox_slice=target_prop.slice,
-                centroid_rc=(0.0, 0.0),
-                density_profile=empty,
-                annulus_radii=empty,
-                core_radius=0.0,
-                sholl_counts=empty,
-                angular_R_profile=empty,
-                angular_coverage=empty,
-                symmetric_radius=0.0,
-                mean_expansion=0.0,
-                max_expansion=0.0,
-                obj_mask=tiny_mask,
-                dist_map=np.zeros((1, 1), dtype=np.float64),
-                gray_crop=np.zeros((1, 1), dtype=np.float64),
-                core_end_radius=0.0,
-                dense_end_radius=0.0,
-                sparse_end_radius=0.0,
-                r_outer_full_per_angle=np.zeros(
-                        _N_ANGULAR_SECTORS, dtype=np.float64),
-                core_area=0.0,
-                dense_area=0.0,
-                sparse_area=0.0,
-                colony_ness_profile=np.zeros(1, dtype=np.float64),
-                mean_profile=np.zeros(1, dtype=np.float64),
-                variance_profile=np.zeros(1, dtype=np.float64),
-                count_profile=np.zeros(1, dtype=np.int64),
-                I_core=0.0,
-                I_agar=0.0,
-                zones_computed=False,
-                centroid_global=centroid_global,
-        )
-
-    # 3. Crop to bbox; compute local_mask, centroid, dist_map
-    slc = target_prop.slice
-    objmap_crop = image.objmap[:][slc]
-    gray_crop = image.gray[:][slc]
-    local_mask = objmap_crop == target_prop.label
-
-    if params.method == "distance":
-        dt = distance_transform_edt(local_mask)
-        peak_idx = np.unravel_index(np.argmax(dt), dt.shape)
-        local_cr = (float(peak_idx[0]), float(peak_idx[1]))
-    else:
-        cw = target_prop.centroid_weighted
-        local_cr = (cw[0] - slc[0].start, cw[1] - slc[1].start)
-
-    dist_map = distance_from_point(local_mask.shape, local_cr)
-
-    # Auto-scale annuli: cap at the pixel-radius from the inoculum
-    # centre to the farthest mask edge so annuli never become sub-pixel
-    # wide, and floor at 6 (PELT minimum).
-    max_pixel_radius = int(np.max(dist_map[local_mask]))
-    effective_annuli = max(6, min(params.n_annuli, max_pixel_radius))
-
-    # 4. Radial density profile
-    density_profile, annulus_radii = compute_radial_density_profile(
-            local_mask, dist_map, effective_annuli
-    )
-
-    # 5. Core radius via PELT changepoint detection
-    core_radius = find_core_radius(
-            density_profile, annulus_radii, params.pelt_penalty
-    )
-
-    # 6. Sholl-like angular profile
-    sholl_counts, angular_R_profile, angular_coverage = (
-        compute_sholl_angular_profile(
-                local_mask, dist_map, local_cr, annulus_radii, params.n_angular_bins,
-        )
-    )
-
-    # 7. Symmetric radius (first radius where angular coverage drops
-    #    below the symmetry threshold past core)
-    symmetric_radius = find_symmetric_radius(
-            annulus_radii,
-            angular_coverage,
-            core_radius,
-            params.symmetry_threshold,
-            params.smoothing_window,
-    )
-
-    # 8. Mean / max radial expansion past the core
-    mean_expansion, max_expansion = compute_radial_expansion(
-            local_mask, dist_map, core_radius,
-    )
-
-    # 9–. Zone segmentation (skip when no symmetric envelope).
-    if symmetric_radius <= 0:
-        r_outer_full_edge = per_angle_mask_envelope(
-                local_mask, dist_map, local_cr,
-        )
-        centroid_global = (
-            local_cr[0] + float(slc[0].start),
-            local_cr[1] + float(slc[1].start),
-        )
-        return ZoneSegmentation(
-                label=target_prop.label,
-                bbox_slice=slc,
-                centroid_rc=local_cr,
-                density_profile=density_profile,
-                annulus_radii=annulus_radii,
-                core_radius=core_radius,
-                sholl_counts=sholl_counts,
-                angular_R_profile=angular_R_profile,
-                angular_coverage=angular_coverage,
-                symmetric_radius=symmetric_radius,
-                mean_expansion=mean_expansion,
-                max_expansion=max_expansion,
-                obj_mask=local_mask,
-                dist_map=dist_map,
-                gray_crop=gray_crop,
-                core_end_radius=0.0,
-                dense_end_radius=0.0,
-                sparse_end_radius=0.0,
-                r_outer_full_per_angle=r_outer_full_edge,
-                core_area=0.0,
-                dense_area=0.0,
-                sparse_area=0.0,
-                colony_ness_profile=np.zeros(1, dtype=np.float64),
-                mean_profile=np.zeros(1, dtype=np.float64),
-                variance_profile=np.zeros(1, dtype=np.float64),
-                count_profile=np.zeros(1, dtype=np.int64),
-                I_core=0.0,
-                I_agar=0.0,
-                zones_computed=False,
-                centroid_global=centroid_global,
-        )
+    local_mask = base.obj_mask
+    dist_map = base.dist_map
+    annulus_radii = base.annulus_radii
+    symmetric_radius = base.symmetric_radius
 
     # 9. Expand the analysis crop past the farthest mask pixel by
     # ``extent_margin`` so the outermost annuli see a slice of agar.
@@ -319,10 +391,7 @@ def compute_zone_segmentation(
     # in each annulus regardless of mask membership.
     max_mask_radius = float(np.max(dist_map[local_mask]))
     r_max = max_mask_radius * (1.0 + float(params.extent_margin))
-    center_global = (
-        local_cr[0] + float(slc[0].start),
-        local_cr[1] + float(slc[1].start),
-    )
+    center_global = base.centroid_global
     image_shape = image.gray[:].shape[:2]
     expanded_slc = expand_slice_around_center(
             center_global, r_max, image_shape,
@@ -405,15 +474,15 @@ def compute_zone_segmentation(
             label=target_prop.label,
             bbox_slice=expanded_slc,
             centroid_rc=local_cr_exp,
-            density_profile=density_profile,
+            density_profile=base.density_profile,
             annulus_radii=annulus_radii,
-            core_radius=core_radius,
-            sholl_counts=sholl_counts,
-            angular_R_profile=angular_R_profile,
-            angular_coverage=angular_coverage,
+            core_radius=base.core_radius,
+            sholl_counts=base.sholl_counts,
+            angular_R_profile=base.angular_R_profile,
+            angular_coverage=base.angular_coverage,
             symmetric_radius=symmetric_radius,
-            mean_expansion=mean_expansion,
-            max_expansion=max_expansion,
+            mean_expansion=base.mean_expansion,
+            max_expansion=base.max_expansion,
             obj_mask=local_mask_exp,
             dist_map=dist_map_exp,
             gray_crop=gray_crop_exp,
@@ -432,6 +501,203 @@ def compute_zone_segmentation(
             I_agar=I_agar_val,
             zones_computed=True,
             centroid_global=center_global,
+    )
+
+
+def _missing_canonical_segmentation(
+    base: ZoneSegmentation,
+    *,
+    clear_morphology: bool,
+) -> ZoneSegmentation:
+    """Return a canonical failure geometry with all zone outputs missing.
+
+    A missing center or a tiny object invalidates both mask morphology and
+    Method B, while an invalid analysis crop invalidates only the Method B
+    zones. Keeping that distinction in one helper makes each failure branch
+    short without changing its public output contract.
+    """
+    morphology = (
+        {
+            "core_radius": float("nan"),
+            "symmetric_radius": float("nan"),
+            "mean_expansion": float("nan"),
+            "max_expansion": float("nan"),
+        }
+        if clear_morphology
+        else {}
+    )
+    return replace(
+        base,
+        **morphology,
+        core_end_radius=float("nan"),
+        dense_end_radius=float("nan"),
+        sparse_end_radius=float("nan"),
+        core_area=float("nan"),
+        dense_area=float("nan"),
+        sparse_area=float("nan"),
+        zones_computed=False,
+    )
+
+
+def resolve_zone_segmentation(
+    image: Image,
+    prop,
+    *,
+    legacy_params: ZoneSegmentationParams,
+    canonical_params: OrientationChangePointParams,
+    legacy_mode: bool,
+    detected_centers: dict[int, tuple[float, float]] | None = None,
+) -> ZoneResolution:
+    """Resolve one canonical zone geometry for all zone-aware measurers.
+
+    Mask morphology supplies the independent PELT core, symmetry, and
+    expansion measurements. Only legacy mode extends that geometry through
+    the historical colony-ness thresholds; canonical mode runs Method B
+    directly from the mask-derived center and final detection signal.
+
+    Args:
+        image: Detected image containing the final object map and signal.
+        prop: RegionProperties record for the target object.
+        legacy_params: Parameters for the preserved mask and colony-ness path.
+        canonical_params: Parameters for Method B.
+        legacy_mode: Whether to return the colony-ness zone partition unchanged.
+        detected_centers: Detector-selected centers in full-image coordinates.
+            ``None`` requests the final-mask fallback. An empty mapping means
+            that a configured detector found no usable centers.
+
+    Returns:
+        Shared segmentation, provenance, and reusable orientation context.
+    """
+    # Phase 1: preserve the historical path exactly when compatibility is
+    # requested. Canonical failures never fall back into this branch.
+    if legacy_mode:
+        base = compute_zone_segmentation(image, prop, params=legacy_params)
+        return ZoneResolution(
+            segmentation=base,
+            method_code=0,
+            method_used="legacy_colony_ness",
+            failure_reason="none",
+        )
+
+    # Phase 2: choose the center once, then derive the independent mask-based
+    # morphology (PELT core, symmetry, and expansion) from that same center.
+    center_global = (
+        None
+        if detected_centers is None
+        else detected_centers.get(int(prop.label))
+    )
+    base = _compute_mask_morphology(
+        image,
+        prop,
+        params=legacy_params,
+        center_global=center_global,
+    )
+    if detected_centers is not None and center_global is None:
+        return ZoneResolution(
+            segmentation=_missing_canonical_segmentation(
+                base, clear_morphology=True
+            ),
+            method_code=4,
+            method_used="missing",
+            failure_reason="center_not_found",
+        )
+    if prop.area < 10:
+        return ZoneResolution(
+            segmentation=_missing_canonical_segmentation(
+                base, clear_morphology=True
+            ),
+            method_code=4,
+            method_used="missing",
+            failure_reason="tiny_object",
+        )
+
+    # Phase 3: build one center-aligned crop for both public measurers. The
+    # target mask alone
+    # determines the radius; adjacent objects remain excluded from every ring.
+    coords = np.asarray(prop.coords, dtype=np.float64)
+    if coords.size == 0:
+        return ZoneResolution(
+            segmentation=_missing_canonical_segmentation(
+                base, clear_morphology=False
+            ),
+            method_code=4,
+            method_used="missing",
+            failure_reason="invalid_object_mask",
+        )
+    radial_extent = float(
+        np.max(
+            np.hypot(
+                coords[:, 0] - base.centroid_global[0],
+                coords[:, 1] - base.centroid_global[1],
+            )
+        )
+    )
+    analysis_radius = radial_extent + canonical_params.ring_width
+    analysis_slice = expand_slice_around_center(
+        base.centroid_global,
+        analysis_radius,
+        image.gray[:].shape[:2],
+    )
+    signal = np.asarray(image.detect_mat[analysis_slice], dtype=np.float64)
+    object_mask = np.asarray(
+        image.objmap[:][analysis_slice] == base.label, dtype=bool
+    )
+    center = (
+        base.centroid_global[0] - float(analysis_slice[0].start),
+        base.centroid_global[1] - float(analysis_slice[1].start),
+    )
+    # Phase 4: fit Method B once and translate its radial boundaries into the
+    # shared geometry consumed by measurements and figures.
+    fitted = fit_orientation_zones(
+        object_mask,
+        signal,
+        center,
+        canonical_params,
+    )
+    result = fitted.result
+    if result.zones_computed:
+        core_area, dense_area, sparse_area = compute_zone_areas(
+            result.core_zone_radius,
+            result.dense_radius,
+            result.outer_radius,
+        )
+        core_end_radius = result.core_zone_radius
+        dense_end_radius = result.dense_radius
+        sparse_end_radius = result.outer_radius
+    else:
+        core_area = dense_area = sparse_area = float("nan")
+        core_end_radius = dense_end_radius = sparse_end_radius = float("nan")
+    context = fitted.context
+    distance_map = (
+        context.distance_map
+        if context is not None
+        else distance_from_point(object_mask.shape, center)
+    )
+    updated = replace(
+        base,
+        bbox_slice=analysis_slice,
+        centroid_rc=(float(center[0]), float(center[1])),
+        obj_mask=object_mask,
+        dist_map=distance_map,
+        gray_crop=np.asarray(image.gray[analysis_slice], dtype=np.float64),
+        core_end_radius=core_end_radius,
+        dense_end_radius=dense_end_radius,
+        sparse_end_radius=sparse_end_radius,
+        r_outer_full_per_angle=per_angle_mask_envelope(
+            object_mask, distance_map, center
+        ),
+        core_area=core_area,
+        dense_area=dense_area,
+        sparse_area=sparse_area,
+        zones_computed=result.zones_computed,
+    )
+    return ZoneResolution(
+        segmentation=updated,
+        method_code=result.method_code,
+        method_used=result.method_used,
+        failure_reason=result.failure_reason,
+        canonical_result=result,
+        orientation_context=context,
     )
 
 

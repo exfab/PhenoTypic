@@ -57,6 +57,29 @@ class TestCombinationModes:
         result = CompositeEnhance(ops=_branches(), mode="median").apply(image)
         assert np.allclose(result.detect_mat[:], 0.2)
 
+    @pytest.mark.parametrize(
+        ("mode", "branches", "expected"),
+        [
+            ("max", [0.1, 0.2], 0.6),
+            ("min", [0.7, 0.9], 0.6),
+            ("mean", [0.1, 0.9], (0.1 + 0.9 + 0.6) / 3),
+            ("median", [0.1, 0.9], 0.6),
+        ],
+    )
+    def test_include_gray_participates_in_selected_reduction(
+        self,
+        mode,
+        branches,
+        expected,
+    ):
+        image = Image(arr=np.full((8, 8), 0.6, dtype=float))
+        result = CompositeEnhance(
+            ops=[_SetPlane(value=value) for value in branches],
+            mode=mode,
+            include_gray=True,
+        ).apply(image)
+        assert np.allclose(result.detect_mat[:], expected)
+
 
 class TestNormalization:
     def test_norm_off_by_default_allows_out_of_range(self):
@@ -103,6 +126,14 @@ class TestBranchTypes:
         with pytest.raises(Exception, match="At least one enhancer"):
             CompositeEnhance(ops=[None, None]).apply(image)
 
+    def test_include_gray_allows_empty_enhancer_slots(self):
+        image = Image(arr=np.full((8, 8), 0.6, dtype=float))
+        result = CompositeEnhance(
+            ops=[None, None],
+            include_gray=True,
+        ).apply(image)
+        assert np.array_equal(result.detect_mat[:], image.gray[:])
+
 
 class TestIntegrityAndDefaults:
     def test_rgb_and_gray_unchanged(self):
@@ -113,6 +144,7 @@ class TestIntegrityAndDefaults:
         gray_before = image.gray[:].copy()
         result = CompositeEnhance(
             ops=[BlurGauss(sigma=1.0), MedianFilter()],
+            include_gray=True,
         ).apply(image)
         assert np.array_equal(result.rgb[:], rgb_before)
         assert np.array_equal(result.gray[:], gray_before)
@@ -120,6 +152,7 @@ class TestIntegrityAndDefaults:
     def test_constructs_with_no_args(self):
         op = CompositeEnhance()
         assert op.mode == "max"
+        assert op.include_gray is False
         assert op.norm is None
         assert len(op.ops) == 2
         assert isinstance(op.ops[0], BlurGauss)
@@ -136,12 +169,19 @@ class TestSerialization:
         op = CompositeEnhance(
             ops=[BlurGauss(sigma=1.5), MedianFilter()],
             mode="mean",
+            include_gray=True,
             norm="clip",
         )
         restored = CompositeEnhance.from_json(op.to_json())
         assert isinstance(restored, CompositeEnhance)
         assert restored.mode == "mean"
+        assert restored.include_gray is True
         assert restored.norm == "clip"
         assert isinstance(restored.ops[0], BlurGauss)
         assert restored.ops[0].sigma == 1.5
         assert isinstance(restored.ops[1], MedianFilter)
+
+    def test_schema_declares_include_gray_as_boolean_default_false(self):
+        field = CompositeEnhance.model_json_schema()["properties"]["include_gray"]
+        assert field["type"] == "boolean"
+        assert field["default"] is False

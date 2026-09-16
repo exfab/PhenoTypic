@@ -2,7 +2,7 @@
 
 The Launch view exposes the strategy / trials / storage-URL / screen / slurm form
 plus a live command card whose initial server-side render comes from the pure
-:func:`~phenotypic.gui.tune._command.render_launch_command`. The clientside mirror
+:func:`~phenotypic._gui.tune._command.render_launch_command`. The clientside mirror
 keeps the card in sync, but the server-rendered initial command must already be a
 valid ``uv run phenotypic-tune run …`` invocation for the bound run.
 """
@@ -14,8 +14,8 @@ from pathlib import Path
 
 def _launch_app(tmp_path: Path):  # type: ignore[no-untyped-def]
     """Build a loaded tune app over a 1-trial journal + a marked run."""
-    from phenotypic.gui.tune import create_app
-    from phenotypic.gui.tune._run_root import TuneRunRoot
+    from phenotypic._gui.tune import create_app
+    from phenotypic._gui.tune._run_root import TuneRunRoot
     from phenotypic.sdk_ import trials_parquet_path
     from phenotypic.tune._study_store import JournalStudyStore, Trial
 
@@ -66,7 +66,7 @@ def _find_component(component, target_id):  # type: ignore[no-untyped-def]
 
 
 def test_launch_initial_command_is_a_valid_run_invocation(tmp_path: Path) -> None:
-    from phenotypic.gui.tune._command import render_launch_command
+    from phenotypic._gui.tune._command import render_launch_command
     from phenotypic.sdk_ import tuning_spec_path
 
     app = _launch_app(tmp_path)

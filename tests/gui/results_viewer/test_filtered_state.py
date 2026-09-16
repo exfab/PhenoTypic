@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`phenotypic.gui.results_viewer._filtered_state`.
+"""Unit tests for :mod:`phenotypic._gui.results_viewer._filtered_state`.
 
 Exercises the curation persistence layer:
 
@@ -18,7 +18,7 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-from phenotypic.gui.results_viewer._filtered_state import FilteredMeasurements
+from phenotypic._gui.results_viewer._filtered_state import FilteredMeasurements
 from phenotypic.sdk_ import measurements_parquet_path
 
 from tests._output_layout import write_master

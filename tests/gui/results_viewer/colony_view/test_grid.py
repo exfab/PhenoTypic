@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`phenotypic.gui.results_viewer.colony_view._grid`.
+"""Unit tests for :mod:`phenotypic._gui.results_viewer.colony_view._grid`.
 
 Exercises the pure helpers:
 
@@ -18,8 +18,8 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.gui.results_viewer.colony_view._grid import (
+from phenotypic._gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.results_viewer.colony_view._grid import (
     build_grid,
     compute_max_bbox_size,
     expand_range,
@@ -502,7 +502,7 @@ def test_build_grid_renders_category_badge_for_labeled_cell(
     tmp_path: Path,
 ) -> None:
     """A cell whose key is in ``category_of`` renders a colored category badge."""
-    from phenotypic.gui._design import category_color
+    from phenotypic._gui._design import category_color
 
     root = _make_output_root(tmp_path)
     # Mark img-001/label-1 as ``debris``.

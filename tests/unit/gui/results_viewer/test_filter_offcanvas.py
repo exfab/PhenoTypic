@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import dash
 
-from phenotypic.gui.results_viewer import _ids as ids
-from phenotypic.gui.results_viewer._filter_offcanvas import (
+from phenotypic._gui.results_viewer import _ids as ids
+from phenotypic._gui.results_viewer._filter_offcanvas import (
     active_filter_count,
     badge_children,
     badge_style,
@@ -59,21 +59,21 @@ class TestActiveFilterCount:
 
 class TestRowIsActive:
     def test_list_methods_need_values(self) -> None:
-        from phenotypic.gui.results_viewer._filter_offcanvas import row_is_active
+        from phenotypic._gui.results_viewer._filter_offcanvas import row_is_active
 
         assert row_is_active({"column": "a", "method": "is_any_of", "values": ["x"]})
         assert not row_is_active({"column": "a", "method": "is_any_of", "values": []})
         assert row_is_active({"column": "a", "method": "is_none_of", "values": ["x"]})
 
     def test_range_needs_a_bound(self) -> None:
-        from phenotypic.gui.results_viewer._filter_offcanvas import row_is_active
+        from phenotypic._gui.results_viewer._filter_offcanvas import row_is_active
 
         assert row_is_active({"column": "a", "method": "range", "range_min": 1})
         assert row_is_active({"column": "a", "method": "range", "range_max": 9})
         assert not row_is_active({"column": "a", "method": "range"})
 
     def test_compare_needs_op_and_value(self) -> None:
-        from phenotypic.gui.results_viewer._filter_offcanvas import row_is_active
+        from phenotypic._gui.results_viewer._filter_offcanvas import row_is_active
 
         assert row_is_active(
             {"column": "a", "method": "compare", "compare_op": ">", "compare_value": 1}
@@ -86,7 +86,7 @@ class TestRowIsActive:
         )
 
     def test_contains_needs_nonblank_pattern(self) -> None:
-        from phenotypic.gui.results_viewer._filter_offcanvas import row_is_active
+        from phenotypic._gui.results_viewer._filter_offcanvas import row_is_active
 
         assert row_is_active({"column": "a", "method": "contains", "text_pattern": "x"})
         assert not row_is_active(
@@ -94,7 +94,7 @@ class TestRowIsActive:
         )
 
     def test_no_column_is_inactive(self) -> None:
-        from phenotypic.gui.results_viewer._filter_offcanvas import row_is_active
+        from phenotypic._gui.results_viewer._filter_offcanvas import row_is_active
 
         assert not row_is_active({"column": "", "method": "is_any_of", "values": ["x"]})
 
@@ -135,7 +135,7 @@ def _iter_components(component):
 def test_bulk_paste_popover_opens_left() -> None:
     """The per-row bulk-paste popover opens leftward so it stays on-screen
     inside the right-docked offcanvas."""
-    from phenotypic.gui.results_viewer._filter_panel import (
+    from phenotypic._gui.results_viewer._filter_panel import (
         _normalise_spec,
         _render_filter_row,
     )

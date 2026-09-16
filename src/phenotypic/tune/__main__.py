@@ -22,6 +22,7 @@ from typing import Optional, Sequence
 
 import click
 from phenotypic import ImagePipeline
+from phenotypic._startup_perf import load_runtime_dependencies
 
 from ._spec import TuningSpec
 from .strategy._config import PHENOTYPIC_TUNE_STORAGE_URL_ENV, STRATEGY_CHOICES
@@ -281,12 +282,19 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
 
     Dispatches to ``run`` (the engine) or ``auto-space`` (infer-only). A bare
     spec path with no subcommand is routed to ``run`` for Phase-1 back-compat.
+
+    The preload runs immediately after ``parse_args`` and before any dispatch, for
+    the reason spec D4 gives: tune distributes over SLURM, so a node with a broken
+    numba/cv2/bm3d is its motivating case, and without this the failure surfaces
+    inside the first trial and is recorded as a trial outcome -- a scientific result
+    standing in for an install fault.
     """
     import sys
 
     raw = list(sys.argv[1:]) if argv is None else list(argv)
     parser = _build_parser()
     args = parser.parse_args(_normalize_argv(raw))
+    load_runtime_dependencies()
     if args.command == "auto-space":
         _auto_space_command(args)
     elif args.command == "finalize":

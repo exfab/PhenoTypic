@@ -20,7 +20,7 @@ otherwise only surface in the e2e suite.
 """
 from __future__ import annotations
 
-from phenotypic.gui.shell._ids import (
+from phenotypic._gui.shell._ids import (
     SHELL_TAB_ANALYSIS,
     SHELL_TAB_BROWSE,
     SHELL_TAB_BUILDER,
@@ -30,7 +30,7 @@ from phenotypic.gui.shell._ids import (
     SHELL_TAB_RUN,
     SHELL_TAB_VIEWER,
 )
-from phenotypic.gui.shell._layout import (
+from phenotypic._gui.shell._layout import (
     NAV_MODEL,
     _NavGroup,
     _TAB_HREFS,

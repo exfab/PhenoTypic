@@ -652,7 +652,7 @@ def test_the_gui_still_contradicts_a_manifest_that_disagrees_with_inventory(
     from phenotypic.sdk_ import resolve_processing_state_path
 
     try:
-        from phenotypic.gui.results_viewer import _output_consistency
+        from phenotypic._gui.results_viewer import _output_consistency
     except ImportError as exc:  # pragma: no cover - P6 Task 2 deletes it
         # Two causes, and the reason has to say which rather than assuming
         # the flattering one: P6 Task 2 deleting the module (the defect's
@@ -732,9 +732,9 @@ def test_the_gui_does_not_call_a_state_this_build_wrote_unreadable(tmp_path):
     from phenotypic.sdk_ import resolve_event_log_path
 
     try:
-        from phenotypic.gui.shell._runs_registry import RunRegistry
+        from phenotypic._gui.shell._runs_registry import RunRegistry
     except ImportError as exc:  # pragma: no cover - relocation or no extra
-        # Unlike tripwire 1, this import is NOT free: `gui/shell/__init__`
+        # Unlike tripwire 1, this import is NOT free: `_gui/shell/__init__`
         # eagerly imports `_app`, so it pulls in Dash. Without the `gui`
         # extra this tripwire skips and never fires, which is why the reason
         # carries the exception instead of asserting a cause.

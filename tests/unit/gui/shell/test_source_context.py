@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.shell._sandbox import SandboxRoot
 
 
 class _ExplodingSandbox:
@@ -19,7 +19,7 @@ class _ExplodingSandbox:
 def test_source_payload_from_path_accepts_in_sandbox_directory(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._source_context import source_payload_from_path
+    from phenotypic._gui.shell._source_context import source_payload_from_path
 
     source_dir = tmp_path / "plates"
     source_dir.mkdir()
@@ -49,7 +49,7 @@ def test_source_payload_from_path_accepts_in_sandbox_directory(
 def test_source_payload_from_path_rejects_out_of_sandbox_path(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._source_context import source_payload_from_path
+    from phenotypic._gui.shell._source_context import source_payload_from_path
 
     sandbox_root = tmp_path / "sandbox"
     sandbox_root.mkdir()
@@ -65,7 +65,7 @@ def test_source_payload_from_path_rejects_out_of_sandbox_path(
 def test_source_payload_from_path_rejects_resolver_errors(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._source_context import source_payload_from_path
+    from phenotypic._gui.shell._source_context import source_payload_from_path
 
     sandbox = _ExplodingSandbox(tmp_path)
 
@@ -75,7 +75,7 @@ def test_source_payload_from_path_rejects_resolver_errors(
 def test_source_payload_from_path_rejects_files_and_missing_paths(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._source_context import source_payload_from_path
+    from phenotypic._gui.shell._source_context import source_payload_from_path
 
     sandbox = SandboxRoot.from_path(tmp_path)
     image_file = tmp_path / "plate.tif"
@@ -95,7 +95,7 @@ def test_source_payload_from_path_rejects_files_and_missing_paths(
 def test_resolve_source_image_root_rejects_malformed_payloads(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._source_context import resolve_source_image_root
+    from phenotypic._gui.shell._source_context import resolve_source_image_root
 
     sandbox = SandboxRoot.from_path(tmp_path)
 
@@ -118,7 +118,7 @@ def test_resolve_source_image_root_rejects_malformed_payloads(
 def test_resolve_source_image_root_rejects_resolver_errors(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._source_context import resolve_source_image_root
+    from phenotypic._gui.shell._source_context import resolve_source_image_root
 
     sandbox = _ExplodingSandbox(tmp_path)
     payload = {
@@ -137,7 +137,7 @@ def test_resolve_source_image_root_rejects_resolver_errors(
 def test_resolve_source_image_root_returns_valid_directory(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._source_context import (
+    from phenotypic._gui.shell._source_context import (
         resolve_source_image_root,
         source_payload_from_path,
     )
@@ -154,7 +154,7 @@ def test_resolve_source_image_root_returns_valid_directory(
 def test_v2_source_rejects_same_relative_path_in_different_sandbox(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._source_context import (
+    from phenotypic._gui.shell._source_context import (
         resolve_source_image_root,
         resolve_source_image_root_state,
         source_label,
@@ -195,7 +195,7 @@ def test_v2_source_rejects_same_relative_path_in_different_sandbox(
 def test_v2_source_resolution_ignores_diagnostic_absolute_path(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._source_context import (
+    from phenotypic._gui.shell._source_context import (
         resolve_source_image_root_state,
         source_payload_from_path,
     )
@@ -217,7 +217,7 @@ def test_v2_source_resolution_ignores_diagnostic_absolute_path(
 def test_v2_source_reports_unavailable_after_directory_is_removed(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._source_context import (
+    from phenotypic._gui.shell._source_context import (
         resolve_source_image_root_state,
         source_label,
         source_payload_from_path,
@@ -242,7 +242,7 @@ def test_v2_source_reports_unavailable_after_directory_is_removed(
 
 
 def test_v1_source_payload_reads_without_rewrite(tmp_path: Path) -> None:
-    from phenotypic.gui.shell._source_context import (
+    from phenotypic._gui.shell._source_context import (
         resolve_source_image_root_state,
     )
 
@@ -271,7 +271,7 @@ def test_v1_source_payload_reads_without_rewrite(tmp_path: Path) -> None:
 def test_v1_source_rejects_malformed_and_inconsistent_paths(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._source_context import (
+    from phenotypic._gui.shell._source_context import (
         resolve_source_image_root_state,
     )
 
@@ -317,7 +317,7 @@ def test_v1_source_rejects_malformed_and_inconsistent_paths(
 def test_source_label_formats_unset_invalid_and_valid_payloads(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._source_context import (
+    from phenotypic._gui.shell._source_context import (
         source_label,
         source_payload_from_path,
     )

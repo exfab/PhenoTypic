@@ -5,7 +5,7 @@
  *
  *     npm ci && node build.mjs
  *
- * Writes ../../src/phenotypic/gui/results_viewer/_assets/viv/viv-bundle.min.js
+ * Writes ../../src/phenotypic/_gui/results_viewer/_assets/viv/viv-bundle.min.js
  * and stamps VERSION's contents into the artifact so a stale vendored file can
  * be detected by comparing the two.
  */
@@ -18,7 +18,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const version = readFileSync(resolve(here, "VERSION"), "utf8").trim();
 const outfile = resolve(
   here,
-  "../../src/phenotypic/gui/results_viewer/_assets/viv/viv-bundle.min.js",
+  "../../src/phenotypic/_gui/results_viewer/_assets/viv/viv-bundle.min.js",
 );
 
 await build({

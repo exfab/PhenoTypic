@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.shell._sandbox import SandboxRoot
 from phenotypic.schema import CONDITION, IMAGE
 
 
@@ -13,7 +13,7 @@ def _write_csv(path: Path, text: str) -> Path:
 
 
 def test_metadata_payload_accepts_in_sandbox_csv(tmp_path: Path) -> None:
-    from phenotypic.gui.shell._metadata_context import metadata_payload_from_path
+    from phenotypic._gui.shell._metadata_context import metadata_payload_from_path
 
     csv_path = _write_csv(
         tmp_path / "layout.csv",
@@ -46,7 +46,7 @@ def test_metadata_payload_accepts_in_sandbox_csv(tmp_path: Path) -> None:
 
 
 def test_metadata_payload_rejects_invalid_files(tmp_path: Path) -> None:
-    from phenotypic.gui.shell._metadata_context import metadata_payload_from_path
+    from phenotypic._gui.shell._metadata_context import metadata_payload_from_path
 
     sandbox_root = tmp_path / "sandbox"
     sandbox_root.mkdir()
@@ -65,7 +65,7 @@ def test_metadata_payload_rejects_invalid_files(tmp_path: Path) -> None:
 def test_metadata_payload_allows_missing_image_name_column(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._metadata_context import metadata_payload_from_path
+    from phenotypic._gui.shell._metadata_context import metadata_payload_from_path
 
     csv_path = _write_csv(tmp_path / "layout.csv", "Plate,Treatment\n1,control\n")
     sandbox = SandboxRoot.from_path(tmp_path)
@@ -79,7 +79,7 @@ def test_metadata_payload_allows_missing_image_name_column(
 
 
 def test_metadata_payload_reports_duplicate_image_names(tmp_path: Path) -> None:
-    from phenotypic.gui.shell._metadata_context import metadata_payload_from_path
+    from phenotypic._gui.shell._metadata_context import metadata_payload_from_path
 
     csv_path = _write_csv(
         tmp_path / "layout.csv",
@@ -95,7 +95,7 @@ def test_metadata_payload_reports_duplicate_image_names(tmp_path: Path) -> None:
 
 
 def test_metadata_image_identity_supports_current_and_legacy_headers() -> None:
-    from phenotypic.gui.shell._metadata_context import (
+    from phenotypic._gui.shell._metadata_context import (
         resolve_metadata_image_identity,
     )
 
@@ -123,7 +123,7 @@ def test_metadata_image_identity_supports_current_and_legacy_headers() -> None:
 
 
 def test_metadata_image_identity_preserves_canonical_dotted_stem() -> None:
-    from phenotypic.gui.shell._metadata_context import (
+    from phenotypic._gui.shell._metadata_context import (
         resolve_metadata_image_identity,
     )
 
@@ -144,7 +144,7 @@ def test_metadata_image_identity_preserves_canonical_dotted_stem() -> None:
 
 
 def test_metadata_filename_alias_normalizes_store_double_suffix() -> None:
-    from phenotypic.gui.shell._metadata_context import (
+    from phenotypic._gui.shell._metadata_context import (
         resolve_metadata_image_identity,
     )
 
@@ -158,7 +158,7 @@ def test_metadata_filename_alias_normalizes_store_double_suffix() -> None:
 
 
 def test_metadata_image_identity_prefers_populated_legacy_column() -> None:
-    from phenotypic.gui.shell._metadata_context import (
+    from phenotypic._gui.shell._metadata_context import (
         resolve_metadata_image_identity,
     )
 
@@ -182,7 +182,7 @@ def test_metadata_image_identity_prefers_populated_legacy_column() -> None:
 
 
 def test_metadata_image_identity_rejects_complementary_sparse_aliases() -> None:
-    from phenotypic.gui.shell._metadata_context import (
+    from phenotypic._gui.shell._metadata_context import (
         resolve_metadata_image_identity,
     )
 
@@ -206,7 +206,7 @@ def test_metadata_image_identity_rejects_complementary_sparse_aliases() -> None:
 
 
 def test_metadata_image_identity_accepts_one_complete_agreeing_alias() -> None:
-    from phenotypic.gui.shell._metadata_context import (
+    from phenotypic._gui.shell._metadata_context import (
         resolve_metadata_image_identity,
     )
 
@@ -230,7 +230,7 @@ def test_metadata_image_identity_accepts_one_complete_agreeing_alias() -> None:
 
 
 def test_metadata_image_identity_is_ambiguous_when_aliases_disagree() -> None:
-    from phenotypic.gui.shell._metadata_context import (
+    from phenotypic._gui.shell._metadata_context import (
         resolve_metadata_image_identity,
     )
 
@@ -252,7 +252,7 @@ def test_metadata_image_identity_is_ambiguous_when_aliases_disagree() -> None:
 def test_metadata_payload_recognizes_legacy_image_filename(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._metadata_context import metadata_payload_from_path
+    from phenotypic._gui.shell._metadata_context import metadata_payload_from_path
 
     csv_path = _write_csv(
         tmp_path / "layout.csv",
@@ -270,7 +270,7 @@ def test_metadata_payload_recognizes_legacy_image_filename(
 def test_resolve_metadata_csv_rejects_malformed_payloads(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._metadata_context import resolve_metadata_csv
+    from phenotypic._gui.shell._metadata_context import resolve_metadata_csv
 
     sandbox = SandboxRoot.from_path(tmp_path)
     csv_path = _write_csv(tmp_path / "layout.csv", "A,B\n1,2\n")
@@ -293,7 +293,7 @@ def test_resolve_metadata_csv_rejects_malformed_payloads(
 def test_v2_metadata_rejects_same_relative_path_in_different_sandbox(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._metadata_context import (
+    from phenotypic._gui.shell._metadata_context import (
         metadata_csv_label,
         metadata_csv_title,
         metadata_payload_from_path,
@@ -330,7 +330,7 @@ def test_v2_metadata_rejects_same_relative_path_in_different_sandbox(
 def test_v2_metadata_resolution_ignores_diagnostic_absolute_path(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._metadata_context import (
+    from phenotypic._gui.shell._metadata_context import (
         metadata_payload_from_path,
         resolve_metadata_csv_state,
     )
@@ -351,7 +351,7 @@ def test_v2_metadata_resolution_ignores_diagnostic_absolute_path(
 def test_v2_metadata_reports_unavailable_after_csv_is_removed(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._metadata_context import (
+    from phenotypic._gui.shell._metadata_context import (
         metadata_csv_label,
         metadata_payload_from_path,
         resolve_metadata_csv_state,
@@ -375,7 +375,7 @@ def test_v2_metadata_reports_unavailable_after_csv_is_removed(
 
 
 def test_v1_metadata_payload_reads_without_rewrite(tmp_path: Path) -> None:
-    from phenotypic.gui.shell._metadata_context import resolve_metadata_csv_state
+    from phenotypic._gui.shell._metadata_context import resolve_metadata_csv_state
 
     csv_path = _write_csv(tmp_path / "layout.csv", "A,B\n1,2\n")
     sandbox = SandboxRoot.from_path(tmp_path)
@@ -402,7 +402,7 @@ def test_v1_metadata_payload_reads_without_rewrite(tmp_path: Path) -> None:
 def test_v1_metadata_rejects_malformed_and_inconsistent_paths(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._metadata_context import resolve_metadata_csv_state
+    from phenotypic._gui.shell._metadata_context import resolve_metadata_csv_state
 
     selected_csv = _write_csv(tmp_path / "layout.csv", "A,B\n1,2\n")
     other_csv = _write_csv(tmp_path / "other.csv", "A,B\n3,4\n")
@@ -442,7 +442,7 @@ def test_v1_metadata_rejects_malformed_and_inconsistent_paths(
 
 
 def test_read_metadata_row_matches_image_stem(tmp_path: Path) -> None:
-    from phenotypic.gui.shell._metadata_context import (
+    from phenotypic._gui.shell._metadata_context import (
         metadata_payload_from_path,
         read_metadata_row_for_image_stem,
     )
@@ -463,7 +463,7 @@ def test_read_metadata_row_matches_image_stem(tmp_path: Path) -> None:
 
 
 def test_read_metadata_row_reports_expected_states(tmp_path: Path) -> None:
-    from phenotypic.gui.shell._metadata_context import (
+    from phenotypic._gui.shell._metadata_context import (
         metadata_payload_from_path,
         read_metadata_row_for_image_stem,
     )
@@ -493,7 +493,7 @@ def test_read_metadata_row_reports_expected_states(tmp_path: Path) -> None:
 def test_read_metadata_row_returns_all_matching_colony_rows(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._metadata_context import (
+    from phenotypic._gui.shell._metadata_context import (
         metadata_payload_from_path,
         read_metadata_row_for_image_stem,
     )
@@ -523,7 +523,7 @@ def test_read_metadata_row_returns_all_matching_colony_rows(
 def test_read_metadata_row_matches_legacy_filename_and_strips_extension(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._metadata_context import (
+    from phenotypic._gui.shell._metadata_context import (
         metadata_payload_from_path,
         read_metadata_row_for_image_stem,
     )
@@ -546,7 +546,7 @@ def test_read_metadata_row_matches_legacy_filename_and_strips_extension(
 
 
 def test_read_metadata_row_preserves_dotted_stem(tmp_path: Path) -> None:
-    from phenotypic.gui.shell._metadata_context import (
+    from phenotypic._gui.shell._metadata_context import (
         metadata_payload_from_path,
         read_metadata_row_for_image_stem,
     )
@@ -572,7 +572,7 @@ def test_read_metadata_row_preserves_dotted_stem(tmp_path: Path) -> None:
 def test_read_metadata_row_matches_canonical_dotted_stem(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._metadata_context import (
+    from phenotypic._gui.shell._metadata_context import (
         metadata_payload_from_path,
         read_metadata_row_for_image_stem,
     )
@@ -598,7 +598,7 @@ def test_read_metadata_row_matches_canonical_dotted_stem(
 def test_read_metadata_row_rejects_conflicting_recognized_columns(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._metadata_context import (
+    from phenotypic._gui.shell._metadata_context import (
         metadata_payload_from_path,
         read_metadata_row_for_image_stem,
     )
@@ -620,7 +620,7 @@ def test_read_metadata_row_rejects_conflicting_recognized_columns(
 
 
 def test_read_metadata_csv_table_returns_columns_and_rows(tmp_path: Path) -> None:
-    from phenotypic.gui.shell._metadata_context import read_metadata_csv_table
+    from phenotypic._gui.shell._metadata_context import read_metadata_csv_table
 
     csv_path = _write_csv(
         tmp_path / "plain.csv",
@@ -640,7 +640,7 @@ def test_read_metadata_csv_table_strips_excel_utf8_bom(tmp_path: Path) -> None:
     # Excel CSV exports carry a UTF-8 BOM. Plain utf-8 would leave a "﻿"
     # on the first header name, so a csv_image_col="image" join would miss
     # ("﻿image" != "image"). utf-8-sig (matching _read_rows) strips it.
-    from phenotypic.gui.shell._metadata_context import read_metadata_csv_table
+    from phenotypic._gui.shell._metadata_context import read_metadata_csv_table
 
     csv_path = tmp_path / "bom.csv"
     csv_path.write_text(
@@ -657,7 +657,7 @@ def test_read_metadata_csv_table_strips_excel_utf8_bom(tmp_path: Path) -> None:
 def test_read_metadata_csv_table_normalizes_legacy_headers_without_mutating_file(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._metadata_context import read_metadata_csv_table
+    from phenotypic._gui.shell._metadata_context import read_metadata_csv_table
     from phenotypic.schema import GENETIC
 
     legacy = "MetadataGenetic_Strain"
@@ -684,7 +684,7 @@ def test_read_metadata_csv_table_rejects_conflicting_legacy_and_current_columns(
 ) -> None:
     import pytest
 
-    from phenotypic.gui.shell._metadata_context import read_metadata_csv_table
+    from phenotypic._gui.shell._metadata_context import read_metadata_csv_table
     from phenotypic.schema import GENETIC
 
     legacy = "MetadataGenetic_Strain"
@@ -701,7 +701,7 @@ def test_read_metadata_csv_table_rejects_conflicting_legacy_and_current_columns(
 def test_measurement_frame_normalization_preserves_feature_columns() -> None:
     import pandas as pd
 
-    from phenotypic.gui.shell._metadata_context import (
+    from phenotypic._gui.shell._metadata_context import (
         normalize_measurement_metadata_columns,
     )
     from phenotypic.schema import GENETIC

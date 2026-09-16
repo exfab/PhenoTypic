@@ -150,7 +150,7 @@ class ImageAccessorBase(AccessorDashHandler):
             # Create new viewer if needed
             if not _viewer_is_alive(_global_napari_viewer):
                 _global_napari_viewer = _napari.Viewer()
-                from phenotypic.gui._smart_grid import install_smart_grid
+                from phenotypic._gui._smart_grid import install_smart_grid
                 install_smart_grid(_global_napari_viewer)
 
             active_viewer = _global_napari_viewer

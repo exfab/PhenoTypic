@@ -1,4 +1,3 @@
-import colour
 import numpy as np
 
 from ..accessor_abstracts import ColorSpaceAccessor
@@ -60,4 +59,6 @@ class xyChromaticityAccessor(ColorSpaceAccessor):
             - The conversion is performed by the Colour science library's
               `colour.XYZ_to_xy` function.
         """
+        import colour
+
         return colour.XYZ_to_xy(XYZ=self._root_image.color.XYZ[:])

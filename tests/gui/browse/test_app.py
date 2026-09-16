@@ -4,10 +4,10 @@ import numpy as np
 import pytest
 from PIL import Image as PILImage
 
-from phenotypic.gui.browse import _source_render as sr
-from phenotypic.gui.browse._app import create_app
-from phenotypic.gui._shared import viv_script_urls
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.browse import _source_render as sr
+from phenotypic._gui.browse._app import create_app
+from phenotypic._gui._shared import viv_script_urls
+from phenotypic._gui.shell._sandbox import SandboxRoot
 
 
 @pytest.fixture

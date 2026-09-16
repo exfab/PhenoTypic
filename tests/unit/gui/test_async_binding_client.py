@@ -8,7 +8,7 @@ import subprocess
 
 import pytest
 
-from phenotypic.gui._async_binding_client import (
+from phenotypic._gui._async_binding_client import (
     async_binding_callback_source,
     binding_cancel_callback_source,
     binding_poll_callback_source,

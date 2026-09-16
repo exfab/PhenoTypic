@@ -21,8 +21,8 @@ import json
 
 from dash import html
 
-from phenotypic.gui.results_viewer._store_source import build_source_spec
-from phenotypic.gui.results_viewer._viewer_card import build_layer_rows, layout
+from phenotypic._gui.results_viewer._store_source import build_source_spec
+from phenotypic._gui.results_viewer._viewer_card import build_layer_rows, layout
 
 
 def _walk(node, out=None):
@@ -192,7 +192,7 @@ def test_the_panel_never_hard_codes_a_series_set():
     """
     from pathlib import Path
 
-    import phenotypic.gui.results_viewer._viewer_card as module
+    import phenotypic._gui.results_viewer._viewer_card as module
 
     source = Path(module.__file__).read_text(encoding="utf-8")
     assert '"detect_mat"' not in source
@@ -218,8 +218,8 @@ def test_no_server_callback_writes_the_served_level_readout(tmp_path):
     import polars as pl
     from PIL import Image as PILImage
 
-    from phenotypic.gui.results_viewer._app import create_app
-    from phenotypic.gui.results_viewer._output_root import OutputRoot
+    from phenotypic._gui.results_viewer._app import create_app
+    from phenotypic._gui.results_viewer._output_root import OutputRoot
     from phenotypic.schema import IMAGE
     from tests._output_layout import (
         write_complete_manifest,
