@@ -18,7 +18,7 @@ import pytest
 from phenotypic import ImagePipeline
 from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import BlurGauss
-from phenotypic.gui.tune._run_root import TuneRunRoot
+from phenotypic._gui.tune._run_root import TuneRunRoot
 from phenotypic.tune._study_store import Trial
 
 
@@ -49,7 +49,7 @@ def _base() -> ImagePipeline:
     [("side", "side"), ("difference", "difference"), (None, "side"), ("bogus", "side")],
 )
 def test_curate_mode_resolves(trigger: str | None, expected: str) -> None:
-    from phenotypic.gui.tune._callbacks import curate_mode
+    from phenotypic._gui.tune._callbacks import curate_mode
 
     assert curate_mode(trigger) == expected
 
@@ -59,7 +59,7 @@ def test_curate_mode_resolves(trigger: str | None, expected: str) -> None:
 # ---------------------------------------------------------------------------
 
 def test_write_winner_writes_round_trippable_pipeline(tmp_path: Path) -> None:
-    from phenotypic.gui.tune._winner import write_winner
+    from phenotypic._gui.tune._winner import write_winner
 
     root = _root(tmp_path)
     base = _base()
@@ -78,7 +78,7 @@ def test_write_winner_writes_round_trippable_pipeline(tmp_path: Path) -> None:
 
 def test_write_winner_overwrites_atomically(tmp_path: Path) -> None:
     """A second write replaces the prior winner (atomic os.replace, no append)."""
-    from phenotypic.gui.tune._winner import write_winner
+    from phenotypic._gui.tune._winner import write_winner
 
     root = _root(tmp_path)
     base = _base()
@@ -94,7 +94,7 @@ def test_write_winner_reraises_permission_error(tmp_path: Path, monkeypatch) -> 
     """A read-only output dir (PermissionError on replace) is re-raised."""
     import os
 
-    from phenotypic.gui.tune._winner import write_winner
+    from phenotypic._gui.tune._winner import write_winner
 
     root = _root(tmp_path)
     base = _base()

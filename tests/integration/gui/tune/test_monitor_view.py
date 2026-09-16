@@ -9,16 +9,16 @@ from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import BlurGauss
-from phenotypic.gui.shell._runs_registry import RunRecord, RunRegistry
-from phenotypic.gui.tune import _callbacks as tune_callbacks
-from phenotypic.gui.tune import _ids as ids
-from phenotypic.gui.tune import create_app
-from phenotypic.gui.tune._callbacks import (
+from phenotypic._gui.shell._runs_registry import RunRecord, RunRegistry
+from phenotypic._gui.tune import _callbacks as tune_callbacks
+from phenotypic._gui.tune import _ids as ids
+from phenotypic._gui.tune import create_app
+from phenotypic._gui.tune._callbacks import (
     cancel_monitor_run,
     export_monitor_best_pipeline,
     reconcile_run_status,
 )
-from phenotypic.gui.tune._monitor import run_receipt
+from phenotypic._gui.tune._monitor import run_receipt
 from phenotypic.sdk_ import best_params_path, best_pipeline_path, tuning_spec_path
 from phenotypic.tune import (
     Categorical,

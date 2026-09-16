@@ -1,5 +1,5 @@
 # tests/unit/gui/test_design_category_colors.py
-from phenotypic.gui._design import ERROR_CATEGORY_COLORS, category_color, OKABE_ITO
+from phenotypic._gui._design import ERROR_CATEGORY_COLORS, category_color, OKABE_ITO
 from phenotypic.schema import ErrorCategory
 
 

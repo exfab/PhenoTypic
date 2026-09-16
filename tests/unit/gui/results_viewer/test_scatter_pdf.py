@@ -12,13 +12,13 @@ import pytest
 
 pytest.importorskip("pypdf")
 
-from phenotypic.gui.results_viewer._scatter_tab._figure import (  # noqa: E402
+from phenotypic._gui.results_viewer._scatter_tab._figure import (  # noqa: E402
     CUSTOMDATA_COL,
 )
-from phenotypic.gui.results_viewer._scatter_tab._pdf import (  # noqa: E402
+from phenotypic._gui.results_viewer._scatter_tab._pdf import (  # noqa: E402
     export_sections_pdf,
 )
-from phenotypic.gui.results_viewer._scatter_tab._spec import FigureSpec  # noqa: E402
+from phenotypic._gui.results_viewer._scatter_tab._spec import FigureSpec  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -277,8 +277,8 @@ def test_the_exported_page_contains_ink_not_just_axes(chrome_or_skip, tmp_path) 
     import kaleido
     from PIL import Image as PILImage
 
-    from phenotypic.gui.results_viewer._scatter_tab._facets import plan_facets
-    from phenotypic.gui.results_viewer._scatter_tab._figure import (
+    from phenotypic._gui.results_viewer._scatter_tab._facets import plan_facets
+    from phenotypic._gui.results_viewer._scatter_tab._figure import (
         build_scatter_figure,
     )
 

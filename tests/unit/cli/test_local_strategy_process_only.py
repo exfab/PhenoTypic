@@ -7,7 +7,7 @@ from phenotypic._cli._cli_gui_lifecycle import (
     publish_local_gui_completion,
 )
 from phenotypic._cli._cli_execution_strategies import LocalParallelStrategy
-from phenotypic.gui.shell._runs_registry import RunRegistry
+from phenotypic._gui.shell._runs_registry import RunRegistry
 from phenotypic.sdk_ import (
     deliverables_dir,
     manifest_json_path,

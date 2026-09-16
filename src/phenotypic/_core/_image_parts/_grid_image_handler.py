@@ -7,14 +7,11 @@ from typing import Union, Tuple, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     import napari
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 from phenotypic.abc_ import GridFinder
 from phenotypic._core._image_parts.accessors import GridAccessor
-from phenotypic.grid import CenteredAutoGridFinder
-from phenotypic.measure import MeasureBounds
 from phenotypic.schema import IMAGE
 from phenotypic.sdk_.constants_ import IMAGE_TYPES
 from phenotypic.schema import BBOX
@@ -93,6 +90,10 @@ class ImageGridHandler(Image):
         if hasattr(arr, "grid_finder"):
             grid_finder = arr.grid_finder
         elif grid_finder is None:
+            # Inside the branch, not at the top of __init__: a caller that supplies a
+            # finder should not pay for importing phenotypic.grid at all.
+            from phenotypic.grid import CenteredAutoGridFinder
+
             grid_finder = CenteredAutoGridFinder(nrows=nrows, ncols=ncols)
 
         self._grid_finder: Optional[GridFinder] = grid_finder
@@ -390,6 +391,10 @@ class ImageGridHandler(Image):
         Returns:
             np.ndarray: Copy of overlay_arr with section boxes drawn.
         """
+        import matplotlib.pyplot as plt
+
+        from phenotypic.measure import MeasureBounds
+
         from skimage.draw import rectangle_perimeter
 
         arr = overlay_arr.copy()

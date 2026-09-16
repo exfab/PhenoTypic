@@ -15,10 +15,10 @@ from typing import Iterator
 
 from dash import html
 
-from phenotypic.gui.results_viewer._qc_tab._layout import build_qc_tab_body
-from phenotypic.gui.results_viewer._qc_tab import _ids as qc_ids
-from phenotypic.gui.results_viewer._qc_tab.review import _ids as rids
-from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
+from phenotypic._gui.results_viewer._qc_tab._layout import build_qc_tab_body
+from phenotypic._gui.results_viewer._qc_tab import _ids as qc_ids
+from phenotypic._gui.results_viewer._qc_tab.review import _ids as rids
+from phenotypic._gui.results_viewer._qc_tab.review._callbacks import (
     _previous_group,
     _render_summary_header,
     _row_metric_status,
@@ -26,7 +26,7 @@ from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
     sidebar_layout_state,
     worklist_row_metric_update,
 )
-from phenotypic.gui.results_viewer._qc_tab.review._layout import (
+from phenotypic._gui.results_viewer._qc_tab.review._layout import (
     SIDEBAR_DEFAULT_WIDTH_PX,
     SIDEBAR_MAX_WIDTH_PX,
     SIDEBAR_MIN_WIDTH_PX,
@@ -407,7 +407,7 @@ def test_encoded_key_recovered_from_match_output_shapes() -> None:
     id — so the in-place update targets the right row and degrades to a
     no-op rather than raising.
     """
-    from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
+    from phenotypic._gui.results_viewer._qc_tab.review._callbacks import (
         _encoded_key_from_output,
     )
 

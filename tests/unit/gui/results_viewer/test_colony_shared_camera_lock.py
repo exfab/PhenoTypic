@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Iterator
 
-from phenotypic.gui.results_viewer import _ids as ids
-from phenotypic.gui.results_viewer.colony_view._layout import _build_toolbar
+from phenotypic._gui.results_viewer import _ids as ids
+from phenotypic._gui.results_viewer.colony_view._layout import _build_toolbar
 
 
 def _walk(component: object) -> Iterator[object]:

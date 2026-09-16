@@ -1,4 +1,4 @@
-from phenotypic.gui.tune._nav import (
+from phenotypic._gui.tune._nav import (
     DESTINATIONS,
     active_destination,
     destination_button_class,

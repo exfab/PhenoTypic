@@ -1,4 +1,4 @@
-"""Integration tests for ``phenotypic.gui.shell._runs_blueprint``.
+"""Integration tests for ``phenotypic._gui.shell._runs_blueprint``.
 
 We mount the blueprint on a bare :class:`flask.Flask` (no Dash) and drive it
 through ``app.test_client()`` — fast, deterministic, no port allocation.
@@ -21,9 +21,9 @@ from pathlib import Path
 import pytest
 from flask import Flask
 
-from phenotypic.gui.shell._runs_blueprint import register
-from phenotypic.gui.shell._sandbox import SandboxRoot
-from phenotypic.gui.shell._session import ToolSession
+from phenotypic._gui.shell._runs_blueprint import register
+from phenotypic._gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.shell._session import ToolSession
 
 
 @pytest.fixture()

@@ -29,16 +29,8 @@ from phenotypic.detect import HysteresisDetector
 from phenotypic.detect._inoculum_detector import InoculumDetector
 from phenotypic.refine import KeepSectionLargest
 
-from phenotypic.sdk_.reconnect import (
-    ReconnectConfig,
-    build_reconnect_cost,
-    compute_full_image_app2_gi_cost,
-    filter_mask_by_overlap,
-    select_reconnect_fragments,
-    markers_from_centroids,
-    partition_by_grid_voronoi,
-    reconnect_fragments_tiled,
-)
+if TYPE_CHECKING:
+    from phenotypic.sdk_.reconnect import ReconnectConfig
 
 
 class FilamentousFungiDetector(GridObjectDetector):
@@ -382,6 +374,15 @@ class FilamentousFungiDetector(GridObjectDetector):
         """
 
         from phenotypic import ImagePipeline
+        from phenotypic.sdk_.reconnect import (
+            build_reconnect_cost,
+            compute_full_image_app2_gi_cost,
+            filter_mask_by_overlap,
+            markers_from_centroids,
+            partition_by_grid_voronoi,
+            reconnect_fragments_tiled,
+            select_reconnect_fragments,
+        )
 
         # Validate that detectors are set before operation
         if self.inoculum_detector is None:
@@ -564,6 +565,8 @@ class FilamentousFungiDetector(GridObjectDetector):
 
     def _reconnect_config(self) -> ReconnectConfig:
         """Bundle scene-derived scalars for the sdk_.reconnect functions."""
+        from phenotypic.sdk_.reconnect import ReconnectConfig
+
         return ReconnectConfig(
             beta=self.beta,
             gamma=self.gamma,

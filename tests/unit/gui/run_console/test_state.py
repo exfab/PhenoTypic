@@ -1,4 +1,4 @@
-"""Unit tests for ``phenotypic.gui.run_console._state``.
+"""Unit tests for ``phenotypic._gui.run_console._state``.
 
 The Run console form's per-session state lives behind a tiny mutable
 dataclass plus a JSON round-trip pair. The argv translator is shared
@@ -9,15 +9,15 @@ from __future__ import annotations
 
 import pytest
 
-from phenotypic.gui.run_console._state import (
+from phenotypic._gui.run_console._state import (
     RunConsoleState,
     run_state_from_json,
     run_state_to_json,
     state_from_controls,
     to_argv,
 )
-from phenotypic.gui.shell._metadata_context import metadata_payload_from_path
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.shell._metadata_context import metadata_payload_from_path
+from phenotypic._gui.shell._sandbox import SandboxRoot
 
 
 # ---------------------------------------------------------------------------

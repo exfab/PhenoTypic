@@ -43,10 +43,10 @@ import numpy as np
 import pytest
 
 from phenotypic import Image
-from phenotypic.gui.builder import _preview_cache as pc
-from phenotypic.gui.builder._preview_callbacks import build_channel_spec
-from phenotypic.gui.builder._preview_zarr_routes import preview_zarr_url
-from phenotypic.gui.results_viewer._zarr_routes import store_generation_token
+from phenotypic._gui.builder import _preview_cache as pc
+from phenotypic._gui.builder._preview_callbacks import build_channel_spec
+from phenotypic._gui.builder._preview_zarr_routes import preview_zarr_url
+from phenotypic._gui.results_viewer._zarr_routes import store_generation_token
 from tests.e2e.gui.conftest import _start_live_server
 
 #: Backdrop behind the probe. Magenta because the image is uint8 noise: a

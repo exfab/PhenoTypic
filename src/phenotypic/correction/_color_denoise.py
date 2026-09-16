@@ -2,18 +2,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated
 
-import bm3d
 import numpy as np
 from pydantic import field_validator
 
 if TYPE_CHECKING:
+    import bm3d
+
     from phenotypic._core._image import Image
 
 from ..abc_ import ImageCorrector
 from ..sdk_.mixin import NormalizedOutputMixin
 from ..sdk_.typing_ import TuneSpec
 from ..sdk_._anscombe import gat_forward, gat_inverse, resolve_scale_factor
-from ..sdk_.colourspace import decode_srgb, encode_srgb
 
 
 class ColorDenoise(NormalizedOutputMixin, ImageCorrector):
@@ -191,6 +191,8 @@ class ColorDenoise(NormalizedOutputMixin, ImageCorrector):
         RGB is written through ``set_image``, whose ``_set_from_array``
         cascade rebuilds ``gray`` and ``detect_mat``.
         """
+        from phenotypic.sdk_.colourspace import decode_srgb, encode_srgb
+
         if image.rgb.isempty():
             raise ValueError(
                     "ColorDenoise requires a 3-channel RGB image; this image "
@@ -227,6 +229,8 @@ class ColorDenoise(NormalizedOutputMixin, ImageCorrector):
 
     def _build_profile(self) -> bm3d.BM3DProfile:
         """Build a BM3D profile with the configured block size."""
+        import bm3d
+
         profile = bm3d.BM3DProfile()
         profile.bs_ht = self.block_size
         profile.bs_wiener = self.block_size
@@ -234,6 +238,8 @@ class ColorDenoise(NormalizedOutputMixin, ImageCorrector):
 
     def _denoise_plain(self, rgb_lin: np.ndarray) -> np.ndarray:
         """Run CBM3D directly on linear-light RGB in [0, 1]."""
+        import bm3d
+
         denoised = bm3d.bm3d_rgb(
                 rgb_lin, self.sigma_psd, self._build_profile(), "opp"
         )
@@ -247,6 +253,8 @@ class ColorDenoise(NormalizedOutputMixin, ImageCorrector):
         correct in the stabilized domain), then restored by the
         closed-form inverse GAT.
         """
+        import bm3d
+
         scale = resolve_scale_factor(image, self.gat_scale_factor)
         counts = rgb_lin * scale
         stabilized = gat_forward(

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from phenotypic.gui import _config
-from phenotypic.gui.run_console import _form, _ids
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._gui import _config
+from phenotypic._gui.run_console import _form, _ids
+from phenotypic._gui.shell._sandbox import SandboxRoot
 
 
 def test_input_tree_uses_canonical_image_extensions(

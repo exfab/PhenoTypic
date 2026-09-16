@@ -1,0 +1,79 @@
+{
+  "label": "before",
+  "python": "3.12.11",
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "cwd": "/private/tmp/pht-lazy-base",
+  "repeats": 5,
+  "paths": {
+    "bare interpreter": {
+      "best_seconds": 0.011,
+      "samples_seconds": [
+        0.011,
+        0.011,
+        0.011,
+        0.011,
+        0.011
+      ]
+    },
+    "import phenotypic": {
+      "best_seconds": 1.572,
+      "samples_seconds": [
+        1.86,
+        1.572,
+        1.58,
+        1.592,
+        1.592
+      ]
+    },
+    "from phenotypic import Image": {
+      "best_seconds": 1.568,
+      "samples_seconds": [
+        1.578,
+        1.568,
+        1.578,
+        1.587,
+        1.572
+      ]
+    },
+    "python -m phenotypic --help": {
+      "best_seconds": 1.612,
+      "samples_seconds": [
+        1.627,
+        1.612,
+        1.645,
+        1.63,
+        1.633
+      ]
+    },
+    "phenotypic-gui --help": {
+      "best_seconds": 1.797,
+      "samples_seconds": [
+        1.806,
+        1.797,
+        1.809,
+        1.812,
+        1.807
+      ]
+    },
+    "hub to servable (no request)": {
+      "best_seconds": 2.008,
+      "samples_seconds": [
+        2.008,
+        2.038,
+        2.041,
+        2.082,
+        2.024
+      ]
+    },
+    "hub + first /builder/ request": {
+      "best_seconds": 2.051,
+      "samples_seconds": [
+        2.051,
+        2.051,
+        2.066,
+        2.066,
+        2.077
+      ]
+    }
+  }
+}

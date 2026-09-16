@@ -10,7 +10,6 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Any, overload
 
-import colour
 import numpy as np
 from pydantic import PrivateAttr, field_validator
 from skimage.color import rgb2gray
@@ -185,6 +184,8 @@ class ColorCorrector(ImageCorrector):
         Returns:
             Image with corrected RGB, gray, and detect_mat.
         """
+        import colour
+
         ccm = self._ccm
         rgb_raw = image.rgb[:]
         original_dtype = rgb_raw.dtype

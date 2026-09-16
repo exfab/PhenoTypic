@@ -1,4 +1,4 @@
-"""Tests for :mod:`phenotypic.gui.builder._image_renderer`.
+"""Tests for :mod:`phenotypic._gui.builder._image_renderer`.
 
 Covers:
 - :func:`to_png_bytes` per channel (rgb / gray / detect_mat / objmap).
@@ -20,8 +20,8 @@ import pytest
 from PIL import Image as PILImage
 
 from phenotypic.data._synthetic_data import load_synth_yeast_plate
-from phenotypic.gui.builder import _image_renderer
-from phenotypic.gui.builder._image_renderer import (
+from phenotypic._gui.builder import _image_renderer
+from phenotypic._gui.builder._image_renderer import (
     bytes_to_data_uri,
     render_node_preview,
     to_data_uri,

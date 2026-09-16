@@ -29,7 +29,7 @@ import polars as pl
 import pytest
 from playwright.sync_api import Page
 
-from phenotypic.gui._design import OI_VERMILION
+from phenotypic._gui._design import OI_VERMILION
 from phenotypic.schema import CULTURE, EXPERIMENT, IMAGE
 from phenotypic.sdk_ import pipeline_json_path
 from tests._output_layout import write_master, write_measurements_mirror
@@ -124,7 +124,10 @@ def _seed_master_df_in_output(sandbox: Path, df: pl.DataFrame) -> Path:
     for image in _IMAGES:
         (overlays / f"{image}.png").write_bytes(_TINY_PNG)
         (overlays / f"{Path(image).stem}.png").write_bytes(_TINY_PNG)
-    publish_coherent_terminal_evidence(cli_out, total_images=len(_IMAGES))
+    publish_coherent_terminal_evidence(
+        cli_out,
+        total_images=df.select(_DATASET_COLUMN, str(IMAGE.IMAGE_NAME)).unique().height,
+    )
     return cli_out
 
 
@@ -481,7 +484,7 @@ def test_color_picker_lists_measurements_and_qc_severities(
         "Heatmap color picker missing QC_SE_Metric even though a "
         "ReplicateAgreement check is configured. Wave D's "
         "`_refresh_heatmap_controls` callback in "
-        "src/phenotypic/gui/results_viewer/_heatmap_tab/_callbacks.py "
+        "src/phenotypic/_gui/results_viewer/_heatmap_tab/_callbacks.py "
         "subscribes only to STORE_QC_RECIPE_REVISION and "
         "STORE_REMOVED_KEYS; it does NOT subscribe to "
         "STORE_QC_AUGMENTED_REVISION, so the picker option list is "

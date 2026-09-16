@@ -72,9 +72,9 @@ _LAUNCHER = textwrap.dedent(
     """
     import sys
     from pathlib import Path
-    from phenotypic.gui.tune import create_app
-    from phenotypic.gui.tune._run_root import TuneRunRoot
-    from phenotypic.gui.shell import SandboxRoot
+    from phenotypic._gui.tune import create_app
+    from phenotypic._gui.tune._run_root import TuneRunRoot
+    from phenotypic._gui.shell import SandboxRoot
     from phenotypic.sdk_ import trials_parquet_path
     from phenotypic.tune._study_store import JournalStudyStore, Trial
 

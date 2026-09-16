@@ -35,8 +35,8 @@ import polars as pl
 import pytest
 
 from phenotypic import Image
-from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.gui.results_viewer._zarr_routes import (
+from phenotypic._gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.results_viewer._zarr_routes import (
     _generation_token_for,
     readable_roots_for,
     register_zarr_routes,
@@ -463,7 +463,7 @@ def test_a_promote_between_validation_and_open_is_rejected(
     route: RouteFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The final token check binds the opened file to one generation."""
-    from phenotypic.gui.results_viewer import _zarr_routes as routes
+    from phenotypic._gui.results_viewer import _zarr_routes as routes
 
     current = route.token
     url = route.url(RGB_CHUNK, token=current)

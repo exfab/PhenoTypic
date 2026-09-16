@@ -22,7 +22,7 @@ from phenotypic._cli._cli_staged_orchestration import (
     staged_completion_path,
 )
 from phenotypic._cli._cli_staged_resume import write_stage3_completion_marker
-from phenotypic.gui.run_console._slurm_observer import (
+from phenotypic._gui.run_console._slurm_observer import (
     _all_stage3_markers_exist,
     discover_log_files,
     IncrementalLogReader,
@@ -30,7 +30,7 @@ from phenotypic.gui.run_console._slurm_observer import (
     SchedulerQueryResult,
     SlurmLifecycleObserver,
 )
-from phenotypic.gui.shell._runs_registry import RunRecord, RunRegistry
+from phenotypic._gui.shell._runs_registry import RunRecord, RunRegistry
 from phenotypic.sdk_ import (
     atomic_write_json,
     job_metadata_path,
@@ -1015,7 +1015,7 @@ def _resolve_run_state_call_sites() -> list[tuple[str, ast.Call]]:
     measures spellings, so it counts the import line and any mention in a
     comment or docstring, and it cannot say which function a call sits in.
     """
-    from phenotypic.gui.run_console import _slurm_observer
+    from phenotypic._gui.run_console import _slurm_observer
 
     source = Path(_slurm_observer.__file__).read_text(encoding="utf-8")
     tree = ast.parse(source)
@@ -1093,7 +1093,7 @@ def test_the_decision_tree_and_grace_window_are_untouched() -> None:
     """
     import inspect
 
-    from phenotypic.gui.run_console import _slurm_observer
+    from phenotypic._gui.run_console import _slurm_observer
 
     assert not hasattr(_slurm_observer, "_manifest_is_complete")
 

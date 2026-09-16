@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 
-from phenotypic.gui.results_viewer._output_root import core_readable
+from phenotypic._gui.results_viewer._output_root import core_readable
 from phenotypic.sdk_ import MEASUREMENT_TABLE_RELATIVE_PATH, BundleLayout
 
 #: A real migrated run. Not a repo fixture -- see the module docstring.
@@ -85,7 +85,7 @@ def output_root(tmp_path_factory):
     inside the selected output: this is somebody's real results tree and
     discovery must leave it byte-unchanged.
     """
-    from phenotypic.gui.results_viewer._output_root import OutputRoot
+    from phenotypic._gui.results_viewer._output_root import OutputRoot
 
     return OutputRoot.discover(
         MIGRATION_RUN,
@@ -153,7 +153,7 @@ def test_the_value_reaches_the_card_it_was_measured_for(
     ``build_grid`` uses to look a value up per cell. If the two ever
     disagree, this is where it shows.
     """
-    from phenotypic.gui.results_viewer._measurement_source import (
+    from phenotypic._gui.results_viewer._measurement_source import (
         measurement_values_for,
     )
 
@@ -176,7 +176,7 @@ def test_the_picker_offers_numeric_columns_and_not_the_hex_one(
     place a string column is filtered out; the route refuses it as a second
     line of defence.
     """
-    from phenotypic.gui.results_viewer._measurement_source import (
+    from phenotypic._gui.results_viewer._measurement_source import (
         displayable_measurement_columns,
     )
 
@@ -198,7 +198,7 @@ def test_the_four_table_less_stores_contribute_nothing_and_raise_nothing(
     from the other 32, and reading a column simply yields no keys for those
     four. Nothing here may raise, and nothing may report "pending".
     """
-    from phenotypic.gui.results_viewer._measurement_source import (
+    from phenotypic._gui.results_viewer._measurement_source import (
         measurement_values_for,
     )
 

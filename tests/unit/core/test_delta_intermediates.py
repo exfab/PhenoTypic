@@ -11,7 +11,7 @@ the store has no anchor for its label group or its OME projection (user ruling,
 The delta-intermediate *resolver/scanner* tests
 (``build_layer_resolution_index`` / ``SweepOutputScanner``) were removed with
 the ``phenotypic.sweep`` hard cutover (master §9): those helpers lived in the
-now-deleted ``phenotypic.gui.sweep._sweep_data_model`` napari viewer, which had
+now-deleted ``phenotypic._gui.sweep._sweep_data_model`` napari viewer, which had
 no surviving production consumer. The core *write* path exercised here
 (``apply_with_intermediates``) is still used by the builder GUI.
 """

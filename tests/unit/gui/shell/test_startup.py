@@ -1,4 +1,4 @@
-"""Unit tests for the launcher startup reporter (``gui/shell/_startup.py``)."""
+"""Unit tests for the launcher startup reporter (``_gui/shell/_startup.py``)."""
 from __future__ import annotations
 
 import io
@@ -6,7 +6,7 @@ import logging
 
 import pytest
 
-from phenotypic.gui.shell._startup import StartupReporter, should_use_rich
+from phenotypic._gui.shell._startup import StartupReporter, should_use_rich
 
 
 class _FakeTTY(io.StringIO):
@@ -46,7 +46,7 @@ class TestStartupReporterPlain:
         reporter = StartupReporter(
             total_steps=3, use_rich=False, import_elapsed=1.23
         )
-        with caplog.at_level(logging.INFO, logger="phenotypic.gui.startup"):
+        with caplog.at_level(logging.INFO, logger="phenotypic._gui.startup"):
             with reporter:
                 reporter.record_done(
                     "Core library loaded", reporter.import_elapsed
@@ -69,7 +69,7 @@ class TestStartupReporterPlain:
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
         reporter = StartupReporter(total_steps=1, use_rich=False)
-        with caplog.at_level(logging.ERROR, logger="phenotypic.gui.startup"):
+        with caplog.at_level(logging.ERROR, logger="phenotypic._gui.startup"):
             with pytest.raises(ValueError):
                 with reporter:
                     with reporter.stage("Resolving sandbox root"):
@@ -80,7 +80,7 @@ class TestStartupReporterPlain:
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
         reporter = StartupReporter(total_steps=1, use_rich=False)
-        with caplog.at_level(logging.INFO, logger="phenotypic.gui.startup"):
+        with caplog.at_level(logging.INFO, logger="phenotypic._gui.startup"):
             with reporter:
                 reporter.record_done("Starting server", None)
         msg = caplog.records[0].getMessage()

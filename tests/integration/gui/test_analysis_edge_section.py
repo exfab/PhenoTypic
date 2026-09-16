@@ -1,7 +1,7 @@
 """Edge-section add/remove/preview wiring over the shared _filters dict."""
 from phenotypic.analysis import EdgeCorrector, TukeyOutlierRemover
 from phenotypic import ImagePipeline
-from phenotypic.gui.analysis._callbacks import _resolve_preview_node
+from phenotypic._gui.analysis._callbacks import _resolve_preview_node
 
 
 class _Recipe:

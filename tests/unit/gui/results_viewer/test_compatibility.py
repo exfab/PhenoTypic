@@ -14,8 +14,8 @@ import pytest
 from phenotypic._cli import _cli_output_manager
 from phenotypic._core._image_pipeline import ImagePipeline
 from phenotypic.analysis.qc import ExpectedVsDetectedCount
-from phenotypic.gui.results_viewer import _compatibility
-from phenotypic.gui.results_viewer._compatibility import (
+from phenotypic._gui.results_viewer import _compatibility
+from phenotypic._gui.results_viewer._compatibility import (
     CompatibilityMigrationError,
     migrate_output_recipe,
     preflight_output_compatibility,

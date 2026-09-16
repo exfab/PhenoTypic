@@ -19,7 +19,7 @@ from pathlib import Path
 
 #: Filesystem path to this package's asset root. ``__init__.py`` lives in the
 #: asset dir, so ``__file__``-relative resolution matches the existing on-disk
-#: install pattern in :mod:`phenotypic.gui._shared._blueprint`. Wheels install
+#: install pattern in :mod:`phenotypic._gui._shared._blueprint`. Wheels install
 #: unzipped, so this is a real directory in both editable and built installs.
 ASSET_DIR: Path = Path(__file__).resolve().parent
 

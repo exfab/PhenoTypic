@@ -32,6 +32,7 @@ from phenotypic.sdk_ import (
     run_completion_marker_path,
     progress_dir as progress_dir_helper,
 )
+from phenotypic._startup_perf import load_runtime_dependencies
 from phenotypic.sdk_.typing_ import CheckpointType
 from phenotypic.sdk_._file_locking import exclusive_path_lock
 
@@ -54,6 +55,7 @@ logger = logging.getLogger(__name__)
 )
 def main(output_dir: Path, checkpoint_type: str, epoch: str | None) -> None:
     """Handle manifest or finalize checkpoint tasks."""
+    load_runtime_dependencies()
     # Click validated the value via Choice, but it arrives as bare str — narrow
     # to the typed alias before passing into render functions / comparisons.
     checkpoint: CheckpointType = (

@@ -7,7 +7,7 @@ import dash
 from werkzeug.test import Client
 from werkzeug.wrappers import Response
 
-from phenotypic.gui._url_prefix import (
+from phenotypic._gui._url_prefix import (
     URLPrefixStripMiddleware,
     configure_url_prefix_routing,
     install_url_prefix_strip_middleware,

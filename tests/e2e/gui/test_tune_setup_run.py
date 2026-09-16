@@ -63,10 +63,10 @@ _LAUNCHER = textwrap.dedent(
     from phenotypic.analysis import ExpectedVsDetectedCount
     from phenotypic.detect import OtsuDetector
     from phenotypic.enhance import BlurGauss
-    from phenotypic.gui.shell import SandboxRoot
-    from phenotypic.gui.shell._ids import TUNE_PIPELINE_PATH_STORE
-    from phenotypic.gui.shell._runs_registry import RunRegistry
-    from phenotypic.gui.tune import create_app
+    from phenotypic._gui.shell import SandboxRoot
+    from phenotypic._gui.shell._ids import TUNE_PIPELINE_PATH_STORE
+    from phenotypic._gui.shell._runs_registry import RunRegistry
+    from phenotypic._gui.tune import create_app
     from phenotypic.tune import Budget, Evaluator, TuningSpec, infer_search_space
     from phenotypic.tune.score import QCScorer
     from phenotypic.tune.strategy import OptunaConfig

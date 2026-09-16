@@ -1,0 +1,79 @@
+{
+  "label": "before",
+  "python": "3.12.10",
+  "platform": "Linux-4.18.0-553.144.1.el8_10.x86_64-x86_64-with-glibc2.28",
+  "cwd": "/bigdata/exfab/anguy344/PhenoTypic/.worktrees/lazy-baseline",
+  "repeats": 5,
+  "paths": {
+    "bare interpreter": {
+      "best_seconds": 0.031,
+      "samples_seconds": [
+        0.031,
+        0.031,
+        0.031,
+        0.032,
+        0.031
+      ]
+    },
+    "import phenotypic": {
+      "best_seconds": 4.79,
+      "samples_seconds": [
+        5.705,
+        5.068,
+        5.432,
+        4.79,
+        5.181
+      ]
+    },
+    "from phenotypic import Image": {
+      "best_seconds": 4.863,
+      "samples_seconds": [
+        4.905,
+        4.863,
+        4.974,
+        4.967,
+        5.914
+      ]
+    },
+    "python -m phenotypic --help": {
+      "best_seconds": 5.013,
+      "samples_seconds": [
+        5.013,
+        5.291,
+        5.179,
+        5.167,
+        5.14
+      ]
+    },
+    "phenotypic-gui --help": {
+      "best_seconds": 5.867,
+      "samples_seconds": [
+        6.168,
+        5.872,
+        6.094,
+        5.867,
+        6.608
+      ]
+    },
+    "hub to servable (no request)": {
+      "best_seconds": 6.261,
+      "samples_seconds": [
+        6.482,
+        6.949,
+        7.102,
+        6.261,
+        6.962
+      ]
+    },
+    "hub + first /builder/ request": {
+      "best_seconds": 6.495,
+      "samples_seconds": [
+        6.495,
+        6.53,
+        7.515,
+        6.846,
+        6.537
+      ]
+    }
+  }
+}

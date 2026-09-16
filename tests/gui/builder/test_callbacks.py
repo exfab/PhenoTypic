@@ -11,9 +11,9 @@ from copy import deepcopy
 
 from dash import html
 
-from phenotypic.gui._operation_registry import OperationRegistry
-from phenotypic.gui.builder import _ids as ids
-from phenotypic.gui.builder._callbacks import (
+from phenotypic._gui._operation_registry import OperationRegistry
+from phenotypic._gui.builder import _ids as ids
+from phenotypic._gui.builder._callbacks import (
     _dispatch_state_update,
     _new_preview_request,
     _pipeline_revision,
@@ -23,8 +23,8 @@ from phenotypic.gui.builder._callbacks import (
     _preview_status_presentation,
     _reserve_preview_request,
 )
-from phenotypic.gui.builder._app import create_app
-from phenotypic.gui.builder._state import (
+from phenotypic._gui.builder._app import create_app
+from phenotypic._gui.builder._state import (
     _DagBuilderState,
     _LegacyBuilderScope as BuilderScope,
     _LegacyBuilderState as BuilderState,
@@ -237,7 +237,7 @@ def test_preview_request_schema_rejects_client_edits() -> None:
 def test_render_views_returns_breadcrumb_children_not_nested_nav() -> None:
     """Callback payload must update ``breadcrumb.children``, not nest another nav."""
 
-    from phenotypic.gui.builder._callbacks import _render_views
+    from phenotypic._gui.builder._callbacks import _render_views
 
     registry = OperationRegistry()
     registry.discover()
@@ -254,7 +254,7 @@ def test_render_views_returns_breadcrumb_children_not_nested_nav() -> None:
 def test_render_views_drilled_in_breadcrumb_returns_button_children() -> None:
     """Drilled-in state must render ancestor buttons + separator inline, not nest a nav."""
 
-    from phenotypic.gui.builder._callbacks import _render_views
+    from phenotypic._gui.builder._callbacks import _render_views
 
     registry = OperationRegistry()
     registry.discover()
@@ -289,7 +289,7 @@ def test_render_views_drilled_in_breadcrumb_returns_button_children() -> None:
 def test_render_views_returns_side_loader_children_not_nested_container() -> None:
     """Inspector callback payload must not nest ``#inspector`` in itself."""
 
-    from phenotypic.gui.builder._callbacks import _render_views
+    from phenotypic._gui.builder._callbacks import _render_views
 
     registry = OperationRegistry()
     registry.discover()

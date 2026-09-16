@@ -1,15 +1,15 @@
 """Integration tests for ``build_canvas_elements_dag``.
 
 Renders every fixture under ``tests/fixtures/builder_dag/`` through
-:func:`phenotypic.gui.builder._layout.build_canvas_elements_dag` and
+:func:`phenotypic._gui.builder._layout.build_canvas_elements_dag` and
 asserts the resulting cytoscape ``elements`` list shape.  Server-side
 only — no browser needed.
 
 The tests check that:
 
-* Every :class:`~phenotypic.gui.builder._state.BlockNode` produces one
+* Every :class:`~phenotypic._gui.builder._state.BlockNode` produces one
   cytoscape node element keyed by ``BlockNode.block_id``.
-* Every :class:`~phenotypic.gui.builder._state.Edge` produces one
+* Every :class:`~phenotypic._gui.builder._state.Edge` produces one
   cytoscape edge element keyed by the ``edge__<edge_id>`` prefix.
 * Aux-eligible parameters render port sub-nodes with the
   ``dag-port--aux`` class and a ``data.accepts`` list of compatible
@@ -27,8 +27,8 @@ from typing import Any, Dict, List
 
 import pytest
 
-from phenotypic.gui.builder._layout import build_canvas_elements_dag
-from phenotypic.gui.builder._state import (
+from phenotypic._gui.builder._layout import build_canvas_elements_dag
+from phenotypic._gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
     PIPELINE_CLASS_NAME,
     state_from_json,
@@ -232,7 +232,7 @@ def test_selected_edge_id_adds_selected_class() -> None:
 def test_issues_decorate_offending_blocks() -> None:
     """Issues with ``block_id`` produce border classes + an issue-badge sub-node."""
 
-    from phenotypic.gui.builder._validation import Issue
+    from phenotypic._gui.builder._validation import Issue
 
     state = _load_state("linear_chain")
     offender = state.root.blocks[1]

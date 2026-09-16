@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 import pandas as pd
 
-from phenotypic.gui import _plot_refresh
+from phenotypic._gui import _plot_refresh
 from phenotypic.plotting._pipeline import AnalysisResult
 
 

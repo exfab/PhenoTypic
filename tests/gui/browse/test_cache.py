@@ -4,9 +4,9 @@ from pathlib import Path
 
 from PIL import Image as PILImage
 
-from phenotypic.gui.browse._cache import BrowseCache, CacheLocation
-from phenotypic.gui.browse._source_probe import probe_source
-from phenotypic.gui._config import BROWSE_CACHE_STAGING_GRACE_SECONDS
+from phenotypic._gui.browse._cache import BrowseCache, CacheLocation
+from phenotypic._gui.browse._source_probe import probe_source
+from phenotypic._gui._config import BROWSE_CACHE_STAGING_GRACE_SECONDS
 
 
 def _cache(

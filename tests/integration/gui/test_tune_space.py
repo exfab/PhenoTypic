@@ -4,7 +4,7 @@ The Space view infers a search space from the bound run's
 ``tuning_spec.json`` (preferred) or ``pipeline.json`` (fallback), renders one
 editable knob row per flat / presence knob (nested leaves read-only), and exports
 the edited space back to ``deliverables/tuning_spec.json`` via the pure
-:func:`~phenotypic.gui.tune._space.space_to_spec`.
+:func:`~phenotypic._gui.tune._space.space_to_spec`.
 """
 from __future__ import annotations
 
@@ -52,8 +52,8 @@ def _runnable_spec(tmp_path: Path):  # type: ignore[no-untyped-def]
 
 def _space_app(tmp_path: Path):  # type: ignore[no-untyped-def]
     """A loaded tune app whose run dir carries a tuning_spec.json + a journal."""
-    from phenotypic.gui.tune import create_app
-    from phenotypic.gui.tune._run_root import TuneRunRoot
+    from phenotypic._gui.tune import create_app
+    from phenotypic._gui.tune._run_root import TuneRunRoot
     from phenotypic.sdk_ import trials_parquet_path, tuning_spec_path
     from phenotypic.tune._study_store import JournalStudyStore, Trial
 
@@ -87,8 +87,8 @@ def test_space_view_renders_knob_rows_and_export(tmp_path: Path) -> None:
 
 def test_space_view_empty_when_no_pipeline(tmp_path: Path) -> None:
     """A run dir with neither spec nor pipeline shows the pick-a-pipeline prompt."""
-    from phenotypic.gui.tune import create_app
-    from phenotypic.gui.tune._run_root import TuneRunRoot
+    from phenotypic._gui.tune import create_app
+    from phenotypic._gui.tune._run_root import TuneRunRoot
     from phenotypic.sdk_ import trials_parquet_path
     from phenotypic.tune._study_store import JournalStudyStore, Trial
 
@@ -105,7 +105,7 @@ def test_space_view_empty_when_no_pipeline(tmp_path: Path) -> None:
 
 def test_export_writes_tuning_spec_preserving_scorer(tmp_path: Path) -> None:
     """The export helper writes a spec that preserves the run's scorer/strategy."""
-    from phenotypic.gui.tune._callbacks import write_space_spec
+    from phenotypic._gui.tune._callbacks import write_space_spec
     from phenotypic.sdk_ import tuning_spec_path
     from phenotypic.tune import TuningSpec
 

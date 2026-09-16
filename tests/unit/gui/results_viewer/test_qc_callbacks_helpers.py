@@ -12,9 +12,9 @@ from pathlib import Path
 import pandas as pd
 import polars as pl
 
-from phenotypic.gui._shared._radial import RADIAL_RESTORE_SENTINEL
-from phenotypic.gui.results_viewer._curation_labels import CurationLabels
-from phenotypic.gui.results_viewer._qc_tab._callbacks import (
+from phenotypic._gui._shared._radial import RADIAL_RESTORE_SENTINEL
+from phenotypic._gui.results_viewer._curation_labels import CurationLabels
+from phenotypic._gui.results_viewer._qc_tab._callbacks import (
     _badge_color_for_status,
     _gather_modal_raw_values,
     _left_join_qc_columns,
@@ -22,7 +22,7 @@ from phenotypic.gui.results_viewer._qc_tab._callbacks import (
     _render_summary_strip,
     _worst_status,
 )
-from phenotypic.gui.results_viewer._qc_tab.review._callbacks import (
+from phenotypic._gui.results_viewer._qc_tab.review._callbacks import (
     mark_review_tile,
 )
 from phenotypic.schema import IMAGE

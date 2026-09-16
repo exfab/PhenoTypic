@@ -8,7 +8,7 @@ import pytest
 
 import phenotypic.sdk_ as tools_
 from phenotypic.sdk_ import BundleLayout
-from phenotypic.gui.results_viewer._curation_labels import (
+from phenotypic._gui.results_viewer._curation_labels import (
     CurationLabels,
     sanitize_category,
 )
@@ -329,8 +329,8 @@ def test_mutate_and_payload_runs_under_lock(tmp_path: Path):
 
 def test_imports_alongside_existing_viewer_modules():
     # The new store must not introduce an import cycle with the viewer package.
-    import phenotypic.gui.results_viewer._curation_labels as cl
-    import phenotypic.gui.results_viewer._filtered_state as fs  # still present
+    import phenotypic._gui.results_viewer._curation_labels as cl
+    import phenotypic._gui.results_viewer._filtered_state as fs  # still present
 
     assert hasattr(cl.CurationLabels, "load")
     # Compat surface matches the methods the app currently calls on the old store.
@@ -671,7 +671,7 @@ def test_curated_mirror_preserves_post_columns(tmp_path: Path):
 
 
 def test_curation_writes_into_deliverables_qc_for_standalone(tmp_path: Path):
-    from phenotypic.gui.results_viewer._output_root import OutputRoot
+    from phenotypic._gui.results_viewer._output_root import OutputRoot
 
     base = tmp_path / "bundle" / "deliverables"
     base.mkdir(parents=True)

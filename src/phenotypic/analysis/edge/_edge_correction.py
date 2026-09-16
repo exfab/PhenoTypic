@@ -1,17 +1,19 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 from scipy.stats import permutation_test
-import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
 
 from pydantic import field_validator
 
 from phenotypic.schema import EDGE_CORRECTION
 from ..abc_ import EdgeCorrection
+
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
+    from matplotlib.figure import Figure
 
 
 class EdgeCorrector(EdgeCorrection):
@@ -228,6 +230,8 @@ class EdgeCorrector(EdgeCorrection):
             - Y-axis has positions 1 to n_groups; y_pos = n_groups - idx
             - Threshold line is orange; interior means are blue dashed; edge means are red dashed
         """
+        import matplotlib.pyplot as plt
+
         # Extract figure-level kwargs
         fig_kwargs = {
             k: v for k, v in kwargs.items() if k in ("dpi", "facecolor", "edgecolor")
@@ -429,6 +433,8 @@ class EdgeCorrector(EdgeCorrection):
             - Legend shown only on first subplot to avoid clutter
             - Unused subplot axes are hidden (set_visible(False))
         """
+        import matplotlib.pyplot as plt
+
         # Extract figure-level kwargs
         fig_kwargs = {
             k: v for k, v in kwargs.items() if k in ("dpi", "facecolor", "edgecolor")

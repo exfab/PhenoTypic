@@ -25,7 +25,7 @@ import polars as pl
 import pytest
 
 from phenotypic import Image
-from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.results_viewer._output_root import OutputRoot
 from phenotypic.schema import IMAGE, OBJECT
 from phenotypic.sdk_._measurement_tables import (
     PreparedImageTables,
@@ -43,8 +43,8 @@ def built_results_layout(tmp_path: Path):
     so the fixture writes the master parquet and one overlay rather than a
     full store-backed run.
     """
-    from phenotypic.gui.results_viewer._curation_labels import CurationLabels
-    from phenotypic.gui.results_viewer._layout import build_app_layout
+    from phenotypic._gui.results_viewer._curation_labels import CurationLabels
+    from phenotypic._gui.results_viewer._layout import build_app_layout
     from phenotypic.sdk_ import master_measurements_parquet_path
 
     (tmp_path / "results" / "d1" / "measurements").mkdir(parents=True, exist_ok=True)

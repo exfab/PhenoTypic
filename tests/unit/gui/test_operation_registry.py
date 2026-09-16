@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import threading
+from types import SimpleNamespace
 from typing import List, Optional
 
 import pytest
 
 from phenotypic.abc_ import ObjectDetector
 from phenotypic.enhance import BlurGauss
-from phenotypic.gui._operation_registry import (
+from phenotypic._gui import _operation_registry
+from phenotypic._gui._operation_registry import (
     OperationRegistry,
     ParamInfo,
     OperationInfo,
@@ -435,3 +438,225 @@ class TestEdgeCorrectionCategory:
         assert "EdgeCorrector" not in filter_names
         assert "EdgeCorrector" not in model_names
         assert "EdgeCorrector" in {i.name for i in reg.get_by_category("Edge Correction")}
+
+
+class TestGetRegistryConcurrentFirstCall:
+    """``get_registry()`` under two simultaneous first callers.
+
+    The builder and analysis sub-apps both build lazily on their first request,
+    so two Flask worker threads can reach :func:`get_registry` at the same
+    time, and ``discover()`` imports the whole operation library, so the
+    construction window is ~1s wide. Three properties have to hold together,
+    and the tests below are written so that each one fails on its own:
+
+    1. **Always complete** -- nobody ever receives a registry with zero
+       operations. Publishing the singleton before ``discover()`` populates it
+       hands the second caller *the same object*, empty, and it renders its
+       layout from that: empty dropdowns, no exception, no log line.
+    2. **Exactly one instance** -- ``id(get_registry())`` never changes.
+       ``_resolve_dag_accepts_for_class_port`` (``builder/_layout.py``) is an
+       ``lru_cache`` keyed on ``id(registry)`` that falls back to an uncached
+       per-port walk on every render when the ids diverge, so a fix that
+       publishes without a first-writer-wins check trades a visible bug for a
+       silent permanent slowdown.
+    3. **No lock held across imports** -- ``discover()`` runs outside the lock,
+       so a second caller is never blocked behind another thread's imports.
+
+    A fix that satisfies (1) but not (2) is the one most likely to be written
+    by accident, which is why identity is asserted and not merely assumed.
+    """
+
+    @pytest.fixture
+    def isolated_singleton(self):
+        """Clear the process-wide singleton for one test, then restore it."""
+        saved = _operation_registry._REGISTRY
+        _operation_registry._REGISTRY = None
+        try:
+            yield
+        finally:
+            _operation_registry._REGISTRY = saved
+
+    @pytest.fixture
+    def discover_window(self, monkeypatch):
+        """Hold the *first* ``discover()`` call open until the test releases it.
+
+        **Only the first call is parked, and that is load-bearing -- do not
+        "simplify" this to park every call.** Doing so makes the correct
+        implementation and the broken one indistinguishable, *in the wrong
+        direction*: because ``get_registry()`` builds outside the lock, a
+        second first-time caller runs its own ``discover()``, so parking every
+        call parks the second caller too. The tests below would then observe it
+        blocked and conclude it had been made to wait -- failing the correct
+        implementation while passing a publish-without-first-writer-wins one,
+        which never blocks anybody.
+
+        Parking only the first call is what makes the interleaving
+        deterministic in both directions: the first caller is pinned
+        mid-construction and cannot have published anything, while a second
+        caller that builds its own registry runs to completion inside that
+        window instead of deadlocking against it. The identity assertion in
+        particular is racy under the park-everything design, because both
+        threads resume at the same instant and their ``_REGISTRY`` reads
+        interleave arbitrarily.
+        """
+        entered = threading.Event()
+        release = threading.Event()
+        calls: List[OperationRegistry] = []
+        counter_lock = threading.Lock()
+        real_discover = OperationRegistry.discover
+
+        def parked_discover(registry: OperationRegistry) -> None:
+            with counter_lock:
+                calls.append(registry)
+                is_first = len(calls) == 1
+            if is_first:
+                entered.set()
+                assert release.wait(timeout=60.0), (
+                    "the test never released the first discover() call"
+                )
+            real_discover(registry)
+
+        monkeypatch.setattr(OperationRegistry, "discover", parked_discover)
+        try:
+            yield SimpleNamespace(entered=entered, release=release, calls=calls)
+        finally:
+            # Never leave a worker parked if the test failed mid-way.
+            release.set()
+
+    @staticmethod
+    def _race_a_second_caller_into_the_construction_window(window) -> dict:
+        """Run two first-time callers with the second landing mid-construction.
+
+        Ordering is forced with events, never with sleeps: the second caller is
+        started only after the first has signalled from inside ``discover()``,
+        and the first cannot leave ``discover()`` until this function releases
+        it. Everything the second caller does therefore happens while the
+        first has published nothing.
+        """
+        observed: dict = {}
+        second_calling = threading.Event()
+        second_returned = threading.Event()
+
+        def first_caller() -> None:
+            observed["first"] = get_registry()
+
+        def second_caller() -> None:
+            second_calling.set()
+            registry = get_registry()
+            observed["second"] = registry
+            # Snapshot the size at the instant of return. Reading it later,
+            # from the main thread, is how this kind of test goes vacuous.
+            observed["second_size"] = len(registry.get_all())
+            second_returned.set()
+
+        one = threading.Thread(target=first_caller, name="registry-first")
+        two = threading.Thread(target=second_caller, name="registry-second")
+
+        one.start()
+        assert window.entered.wait(timeout=60.0), (
+            "the first caller never entered discover()"
+        )
+
+        two.start()
+        assert second_calling.wait(timeout=60.0), (
+            "the second caller never reached get_registry()"
+        )
+        observed["second_returned_inside_window"] = second_returned.wait(timeout=60.0)
+
+        window.release.set()
+        one.join(timeout=60.0)
+        two.join(timeout=60.0)
+        assert not one.is_alive(), "the first caller never finished"
+        assert not two.is_alive(), "the second caller never finished"
+        return observed
+
+    def test_a_second_caller_never_observes_an_unpopulated_registry(
+            self, isolated_singleton, discover_window
+    ):
+        """Property 1: whatever the second caller gets, it is fully discovered."""
+        observed = self._race_a_second_caller_into_the_construction_window(
+                discover_window
+        )
+
+        assert observed.get("second_size", 0) > 0, (
+            "the second caller observed a registry carrying 0 operations: "
+            "get_registry() published _REGISTRY before discover() populated it"
+        )
+        assert observed["second_size"] == len(observed["second"].get_all()), (
+            "the registry grew after the second caller had already received it"
+        )
+
+    def test_a_concurrent_first_call_does_not_swap_the_published_instance(
+            self, isolated_singleton, discover_window
+    ):
+        """Property 2: first writer wins, so ``id(get_registry())`` is stable.
+
+        Both callers build their own registry here -- the first is parked, so
+        it cannot have published anything the second could reuse. Exactly one
+        of those two objects may reach ``_REGISTRY``, and both callers must
+        come away holding it. A fix that publishes unconditionally fails this
+        while passing the completeness test above.
+
+        **Why the failure is deterministic rather than a coin flip**, which is
+        the whole reason the fixture parks only the first ``discover()``: the
+        second caller finds ``_REGISTRY is None`` because the first is parked
+        and has published nothing, so it builds its own and publishes it via
+        the *unparked* second ``discover()`` call. Only then does the release
+        let the first caller finish and overwrite ``_REGISTRY`` with its own
+        object. The two objects therefore differ **by construction**, and the
+        write order is fixed by the release rather than by scheduling luck.
+        Park every ``discover()`` instead and both threads resume at the same
+        instant, their ``_REGISTRY`` reads interleave arbitrarily, and this
+        assertion starts passing or failing at random.
+        """
+        observed = self._race_a_second_caller_into_the_construction_window(
+                discover_window
+        )
+
+        assert observed["first"] is observed["second"], (
+            "the two callers came away with different registry instances: "
+            "id(get_registry()) is not stable, which silently demotes the "
+            "id(registry)-keyed lru_cache in builder/_layout.py to a "
+            "per-render walk"
+        )
+        assert _operation_registry._REGISTRY is observed["first"], (
+            "the published singleton is neither of the objects handed out"
+        )
+        assert len(discover_window.calls) <= 2, (
+            f"discover() ran {len(discover_window.calls)} times; at most one "
+            "duplicate build is expected from a two-caller race"
+        )
+
+    def test_the_second_caller_is_not_blocked_behind_the_first_ones_imports(
+            self, isolated_singleton, discover_window
+    ):
+        """Property 3: ``discover()`` runs outside the lock.
+
+        The first caller is parked inside ``discover()`` for the whole window,
+        so a second caller that completes within it cannot have been waiting on
+        a lock held across those imports.
+
+        This test deliberately **forbids** wrapping ``discover()`` in
+        ``with _REGISTRY_LOCK:``. That form is otherwise correct and is the
+        obvious simplification, which is exactly why it needs a test: building
+        outside the lock is a decision with a stated reason (see property 3 in
+        ``get_registry``'s docstring -- the lock's safety would otherwise
+        depend on eight operation packages never importing ``phenotypic._gui``,
+        with nothing watching), not an accident to be tidied away.
+        """
+        observed = self._race_a_second_caller_into_the_construction_window(
+                discover_window
+        )
+
+        assert observed["second_returned_inside_window"], (
+            "the second caller was still blocked while the first sat inside "
+            "discover(): the registry lock is being held across imports"
+        )
+
+    def test_repeated_calls_return_one_stable_instance(self, isolated_singleton):
+        """The uncontended path: same object, populated, and recorded globally."""
+        first = get_registry()
+        second = get_registry()
+        assert first is second
+        assert _operation_registry._REGISTRY is first
+        assert first.get_all(), "the published singleton must be populated"

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from phenotypic.gui.shell._classifier import classify, invalidate_cache
+from phenotypic._gui.shell._classifier import classify, invalidate_cache
 from phenotypic.sdk_ import (
     manifest_json_path,
     tune_cache_run_marker_path,

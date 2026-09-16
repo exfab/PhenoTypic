@@ -141,21 +141,20 @@ SLURM Execution (Autonomous HPC Cluster Processing):
             --dry-run
 """
 
+import importlib
 import json
 import logging
 import os
 import shutil
 import sys
 from pathlib import Path
-from typing import Any, List, Optional, Sequence, cast
+from typing import TYPE_CHECKING, Any, List, Optional, Sequence, cast, get_args
 from uuid import UUID
 
 import click
 import yaml  # type: ignore[import-untyped]
 from click.core import ParameterSource
 
-from phenotypic import ImagePipeline
-from phenotypic._core._image_parts.detection_modes import available_modes
 from phenotypic._cli._cli_directory_scanner import (
     ImageManifestError,
     apply_image_manifest,
@@ -164,38 +163,13 @@ from phenotypic._cli._cli_directory_scanner import (
     scan_directory_structure,
     scan_store_outputs,
 )
-from phenotypic._cli._cli_execution_strategies import (
-    create_execution_strategy,
-    uses_staged_gpu_strategy,
-)
 from phenotypic._cli._cli_failure_tracker import (
     file_sha256,
     migrate_legacy_terminal_failures,
     work_id_for_image,
 )
-from phenotypic._core._provenance import pipeline_source_identity
-from phenotypic._cli._cli_interactive import (
-    execute_dry_run,
-    get_sample_datasets,
-)
 from phenotypic._cli._cli_identity import mint_run_identity
-from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_report_generator import HTMLReportGenerator
-from phenotypic._cli._cli_state_management import (
-    create_initial_state,
-    exclude_terminal_failures_for_datasets,
-    get_remaining_images_for_datasets,
-    load_processing_state,
-    save_processing_state,
-    update_state_from_events,
-    validate_resume_compatibility,
-)
-from phenotypic._cli._cli_staged_resume import (
-    build_staged_resume_plan,
-    migrate_legacy_stage3_markers,
-    pipeline_content_digest,
-    reconcile_stage3_publications,
-)
 from phenotypic._cli._cli_types import Dataset, DatasetState, ExecutionConfig
 from phenotypic._cli._cli_update_state import (
     PROCESSING_GENERATION_ENV_VAR,
@@ -205,21 +179,8 @@ from phenotypic._cli._cli_utils import (
     parse_slurm_args,
     resolve_local_worker_count,
 )
-from phenotypic._cli._cli_process_only import resolve_process_format
-from phenotypic._cli._cli_recompile_slurm_scripts import (
-    TASK_FINALIZE,
-    TASK_MEASUREMENTS,
-    build_recompile_tasks,
-    generate_recompile_slurm_scripts,
-    recompile_attempt_dir,
-    recompile_task_status_path,
-)
 from phenotypic._cli._cli_slurm_config import get_slurm_array_limit
 from phenotypic._cli._cli_slurm_submission import submit_slurm_script_chain
-from phenotypic._cli._cli_validation import (
-    validate_execution_config,
-    validate_pipeline,
-)
 from phenotypic._cli._cli_constants import MAX_SLURM_TIME_MINUTES
 from phenotypic.schema import EXPERIMENT
 from phenotypic.sdk_ import (
@@ -251,10 +212,147 @@ from phenotypic.sdk_ import (
 from phenotypic.sdk_.slurm import parse_slurm_time
 from phenotypic.sdk_.typing_ import (
     CliMode,
+    DetectMode,
     ImageTypeName,
     ProcessFormat,
     ProcessOnlyLayer,
 )
+from phenotypic._startup_perf import load_runtime_dependencies
+
+if TYPE_CHECKING:
+    from phenotypic._cli._cli_execution_strategies import (
+        create_execution_strategy,
+        uses_staged_gpu_strategy,
+    )
+    from phenotypic._cli._cli_interactive import execute_dry_run, get_sample_datasets
+    from phenotypic._cli._cli_output_manager import OutputManager
+    from phenotypic._cli._cli_process_only import resolve_process_format
+    from phenotypic._cli._cli_recompile_slurm_scripts import (
+        TASK_FINALIZE,
+        TASK_MEASUREMENTS,
+        build_recompile_tasks,
+        generate_recompile_slurm_scripts,
+        recompile_attempt_dir,
+        recompile_task_status_path,
+    )
+    from phenotypic._cli._cli_staged_resume import (
+        build_staged_resume_plan,
+        migrate_legacy_stage3_markers,
+        pipeline_content_digest,
+        reconcile_stage3_publications,
+    )
+    from phenotypic._cli._cli_state_management import (
+        create_initial_state,
+        exclude_terminal_failures_for_datasets,
+        get_remaining_images_for_datasets,
+        load_processing_state,
+        save_processing_state,
+        update_state_from_events,
+        validate_resume_compatibility,
+    )
+    from phenotypic._cli._cli_validation import validate_execution_config, validate_pipeline
+    from phenotypic._core._image_parts.detection_modes import available_modes  # noqa: F401
+    from phenotypic._core._image_pipeline import ImagePipeline
+    from phenotypic._core._provenance import pipeline_source_identity
+
+#: Heavy names this module binds on first use. Each of these import statements reaches
+#: the image core, pandas or polars, so importing them at module level would make
+#: ``phenotypic --help`` pay for the whole library. They are bound into module globals
+#: rather than imported locally so that ``mock.patch("phenotypic.phenotypicCLI.<name>")``
+#: -- 27 sites in the test suite -- keeps patching what the command body calls.
+_CLI_RUNTIME_IMPORTS: dict[str, tuple[str, ...]] = {
+    "phenotypic._core._image_pipeline": ("ImagePipeline",),
+    # Compatibility shim, not a use: the CLI's own ``--detect-mode`` choice list is built
+    # from ``sorted(get_args(DetectMode))``. The row is kept so
+    # ``from phenotypic.phenotypicCLI import available_modes`` and a patch on that name
+    # still resolve. Its cost is that every loader call imports the detection-mode
+    # registry; drop the row if that import ever matters more than the spelling.
+    "phenotypic._core._image_parts.detection_modes": ("available_modes",),
+    "phenotypic._cli._cli_execution_strategies": ("create_execution_strategy", "uses_staged_gpu_strategy"),
+    "phenotypic._core._provenance": ("pipeline_source_identity",),
+    "phenotypic._cli._cli_output_manager": ("OutputManager",),
+    "phenotypic._cli._cli_state_management": (
+        "create_initial_state",
+        "exclude_terminal_failures_for_datasets",
+        "get_remaining_images_for_datasets",
+        "load_processing_state",
+        "save_processing_state",
+        "update_state_from_events",
+        "validate_resume_compatibility",
+    ),
+    "phenotypic._cli._cli_staged_resume": (
+        "build_staged_resume_plan",
+        "migrate_legacy_stage3_markers",
+        "pipeline_content_digest",
+        "reconcile_stage3_publications",
+    ),
+    "phenotypic._cli._cli_process_only": ("resolve_process_format",),
+    "phenotypic._cli._cli_recompile_slurm_scripts": (
+        "TASK_FINALIZE",
+        "TASK_MEASUREMENTS",
+        "build_recompile_tasks",
+        "generate_recompile_slurm_scripts",
+        "recompile_attempt_dir",
+        "recompile_task_status_path",
+    ),
+    "phenotypic._cli._cli_interactive": ("execute_dry_run", "get_sample_datasets"),
+    "phenotypic._cli._cli_validation": ("validate_execution_config", "validate_pipeline"),
+}
+
+_CLI_RUNTIME_MODULE_BY_NAME: dict[str, str] = {
+    name: module_name for module_name, names in _CLI_RUNTIME_IMPORTS.items() for name in names
+}
+
+
+def _load_cli_runtime() -> None:
+    """Bind the heavy runtime names into this module's globals.
+
+    **The ``all(...) -> continue`` skip is what keeps an active
+    ``mock.patch("phenotypic.phenotypicCLI.<name>")`` in force.** It reads as a
+    performance shortcut and is not one: ``mock.patch.__enter__`` reads the original
+    through ``__getattr__`` below, which runs this loader and binds every name of every
+    module *before* the patch body executes. Every later call -- ``phenotypic_cli``,
+    ``_migrate_legacy_success_evidence``, ``_regenerate_missing_overlays``,
+    ``_handle_recompile_slurm``, all of which run while a test's patch is live -- then
+    finds each module fully bound and skips it, so the Mock is never overwritten.
+    Delete the skip and every ``mock.patch`` on a deferred CLI name is silently
+    un-mocked mid-command, with the real implementation running in its place.
+
+    The skip has a second consequence: **each binding is a one-time snapshot**, so patch
+    ``phenotypic.phenotypicCLI.<name>``, never the defining module. A source-module patch
+    open across the first load in a process leaves the Mock bound here after it exits,
+    for the life of the interpreter, because the module is never re-read.
+    ``tests/unit/ci/test_cli_runtime_patch_targets.py`` is a partial net against that.
+
+    There is deliberately only one such mechanism: spec Amendment A/P1 (as amended)
+    removed a redundant ``setdefault`` here, because two independent protections meant
+    no single-line mutation could redden the guard that names this behaviour.
+    """
+    module_globals = globals()
+    for module_name, names in _CLI_RUNTIME_IMPORTS.items():
+        if all(name in module_globals for name in names):
+            continue
+        module = importlib.import_module(module_name)
+        for name in names:
+            module_globals[name] = getattr(module, name)
+
+
+def __getattr__(name: str) -> Any:
+    """Serve a heavy runtime name to code outside this module (imports, ``mock.patch``)."""
+    if name in _CLI_RUNTIME_MODULE_BY_NAME:
+        _load_cli_runtime()
+        return globals()[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    """Keep ``dir()`` / ``inspect.getmembers`` showing the full surface before the load.
+
+    Same shape as the lazy package ``__init__``s; the deferred-name table stands in for
+    their ``__all__``.
+    """
+    return sorted(set(globals()) | set(_CLI_RUNTIME_MODULE_BY_NAME))
+
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -575,6 +673,7 @@ def _migrate_legacy_success_evidence(
     output_dir: Path,
 ) -> int:
     """Promote only validated legacy per-image outputs to general markers."""
+    _load_cli_runtime()
     if state.config.get("success_markers_required", False):
         return 0
     from phenotypic._cli._cli_completion import (
@@ -1310,10 +1409,8 @@ def _print_process_only_dry_run_plan(
     help=(
         "Execution mode: full applies the pipeline and measures images; "
         "measure reruns measurement from an existing output root; recompile "
-        "refreshes aggregate outputs from an existing output root (NOT "
-        "supported on a run built with --metadata: it refuses without "
-        "changing anything -- re-run the forward command with the new "
-        "--metadata and --force-local instead); process "
+        "refreshes aggregate outputs from an existing output root, writing "
+        "no image store; process "
         "exports a single layer selected with --layer; migrate explicitly "
         "upgrades a full legacy run, direct OME-Zarr store, or process-output "
         "tree. A full legacy run uses two passes: metadata headers in every "
@@ -1387,7 +1484,7 @@ def _print_process_only_dry_run_plan(
 )
 @click.option(
     "--detect-mode",
-    type=click.Choice(list(available_modes())),
+    type=click.Choice(sorted(get_args(DetectMode))),
     default="gray",
     show_default=True,
     help="Source channel for the detection matrix",
@@ -1644,6 +1741,13 @@ def phenotypic_cli(
         uv run python -m phenotypic --mode process --pipeline pipe.json \\
             --input ./plates --output ./out --layer detect_mat --force-local
     """
+    # First statement of the body, ahead of mode and option validation: a broken
+    # install must fail before any parse-dependent work, and outside the ``try``
+    # below so the ImportError propagates instead of being reshaped into a CLI
+    # error. Every mode pays the import, usage errors included -- deliberate,
+    # because a run that reaches an image has already paid it (spec A/P13).
+    load_runtime_dependencies()
+    _load_cli_runtime()
     try:
         _reject_unexpected_positional_args(ctx.args)
 
@@ -3260,6 +3364,7 @@ def _regenerate_missing_overlays(
             under SLURM, otherwise host CPUs.  ``1`` runs in-thread.
             Mirrors the ``--njobs`` flag used by forward runs.
     """
+    _load_cli_runtime()
     from rich.console import Console
     from phenotypic._cli._cli_overlay_rendering import (
         OverlayWork,
@@ -3403,6 +3508,7 @@ def _handle_recompile_slurm(
             finalizer task (stashed on the finalizer task metadata so the
             recompile worker reads it).
     """
+    _load_cli_runtime()
     import json
     from datetime import datetime
 
@@ -3819,6 +3925,70 @@ def _raise_if_recompile_attempt_cannot_finish(
     )
 
 
+def _refuse_unrecoverable_recompile_authority(
+    output_dir: Path, dataset_names: list[str]
+) -> None:
+    """Abort a local recompile rather than omit a measured store from it.
+
+    **Reachability, not just presence.** This assertion used to live inside
+    ``recompile_embedded_measurement_tables``, which was deleted with the
+    per-store rewrite on 2026-09-11. Lifting the call out of a deleted
+    function is not the same as preserving it: the old caller reached the
+    assertion only on the arm where *some* authority exists, and returned 0
+    without asserting on a tree that had none. Calling it unconditionally
+    here would abort runs the previous release completed, which is a new
+    failure dressed as a restoration. So the old control flow is reproduced,
+    including the legacy-Parquet refusal that shared its other arm.
+
+    **One narrowing, stated rather than hidden.** The old code had a third
+    source of authority on the ``authorized is None`` arm --
+    ``_standalone_marker_sources``, which discovered valid legacy
+    ``image_complete/`` markers and, when it found any, made the assertion
+    run. That function went with the rewrite (it had no other caller), so a
+    marker-only legacy tree now takes the skip arm instead of the asserting
+    one. The direction is the safe one -- fewer aborts, never more -- and
+    such a tree is what ``SCHEMA_GATE_ARMED`` is due to refuse outright; but
+    it is a real loss of loudness on that one shape and it is not an
+    accident.
+
+    The SLURM path asserts the same thing in ``build_recompile_tasks``, where
+    it has its own ``accepted_sources``; this is the local half only.
+
+    Args:
+        output_dir: Existing run output root.
+        dataset_names: Datasets discovered under ``results/``.
+
+    Raises:
+        RuntimeError: A measured store has no recoverable authority, or the
+            tree still holds legacy external measurement Parquets.
+    """
+    from phenotypic._cli._cli_completion import authorized_measurement_sources
+    from phenotypic._cli._cli_recompile_recovery import (
+        assert_no_unrecoverable_measurement_authority,
+        recoverable_recompile_measurement_sources,
+    )
+
+    authorized = authorized_measurement_sources(output_dir)
+    recovery = recoverable_recompile_measurement_sources(
+        output_dir, dataset_names
+    )
+    if authorized is None and not recovery:
+        results = output_dir / DIR_RESULTS
+        legacy = sorted(results.glob("*/measurements/*.parquet"))
+        stores = sorted(results.glob(f"*/zarr/*{STORE_SUFFIX}"))
+        if legacy and stores:
+            raise RuntimeError(
+                "Legacy external measurement Parquets require --mode migrate "
+                "before recompile"
+            )
+        return
+    assert_no_unrecoverable_measurement_authority(
+        output_dir,
+        dataset_names,
+        set(authorized or {}) | set(recovery),
+    )
+
+
 def _handle_recompile(
     output_dir: Path,
     metadata_csv: Optional[Path],
@@ -3876,9 +4046,43 @@ def _handle_recompile(
     console.print("[cyan]Checking for missing overlays...")
     _regenerate_missing_overlays(output_dir, overlay_alpha, n_jobs)
 
-    from phenotypic._cli._cli_recompile_tables import (
-        recompile_embedded_measurement_tables,
-    )
+    # No per-store rewrite here any more (user ruling, 2026-09-11).
+    # `recompile_embedded_measurement_tables` re-joined the metadata snapshot
+    # into every store's `tables/measurements/table.parquet`; since P7 Task 4
+    # projects each table onto its own descriptor at read, that rewrite
+    # changed nothing the master or the mirror could see. Recompile is
+    # aggregate + finalize, and writes no store byte.
+    #
+    # **The authority abort stays, and it is called here rather than
+    # inherited.** It used to run inside the deleted rewrite, so removing the
+    # rewrite would have removed it from the local path as a side effect --
+    # leaving a measured store with no recoverable authority silently absent
+    # from the master instead of aborting the run by name. This is the local
+    # half, at the same point in the sequence the rewrite occupied: after the
+    # overlay pass, which can itself restore authority, and before anything
+    # is aggregated.
+    _refuse_unrecoverable_recompile_authority(output_dir, dataset_names)
+
+    # **The snapshot fallback, resolved here and fed to the FINALIZER.** An
+    # earlier draft of this change deleted it along with the rewrite, on the
+    # reasoning that it was only ever consumed by the per-store join. That
+    # was true and it was still a regression: pre-change the mirror carried
+    # user metadata because the rewrite joined the snapshot into every store
+    # table, so the master came out v1-shaped and the mirror inherited the
+    # columns. With the master correctly un-joined, the ONE join is
+    # `finalize_post_master_outputs` -> `join_metadata`, and that runs only
+    # `if metadata_csv is not None` (`_cli_output_manager.py:1151`) -- it
+    # resolves nothing itself. So a plain `--mode recompile` on a tree with a
+    # snapshot silently produced a mirror with no metadata at all.
+    #
+    # The fallback was computing the right value and handing it to the wrong
+    # consumer. `--metadata` still wins when given; otherwise the run's own
+    # `deliverables/metadata.csv` is what finalization joins, which is what
+    # makes a bare recompile reproduce the mirror the forward run published.
+    #
+    # The SLURM path already does exactly this, at `_handle_recompile_slurm`:
+    # it resolves `effective_metadata` the same way and stamps it onto the
+    # finalizer task, so that arm never had the hole.
     from phenotypic.sdk_ import metadata_csv_deliverable_path
 
     stable_metadata = metadata_csv_deliverable_path(output_dir)
@@ -3887,20 +4091,13 @@ def _handle_recompile(
         if metadata_csv is not None
         else (stable_metadata if stable_metadata.is_file() else None)
     )
-    rewritten = recompile_embedded_measurement_tables(
-        output_dir, effective_metadata
-    )
-    if rewritten:
-        console.print(
-            f"[green]Embedded measurement tables refreshed: {rewritten}"
-        )
 
     console.print("[cyan]Aggregating measurements...")
     master_path = aggregate_measurements(
         output_dir=output_dir,
         dataset_names=dataset_names,
         include_dataset_column=include_dataset_column,
-        metadata_csv=metadata_csv,
+        metadata_csv=effective_metadata,
         no_qc=no_qc,
     )
     if master_path:

@@ -5,12 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from phenotypic.gui.shell._sandbox import SandboxRoot
-from phenotypic.gui.shell._source_context import source_payload_from_path
+from phenotypic._gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.shell._source_context import source_payload_from_path
 
 
 def test_builder_browse_seed_uses_valid_shared_source(tmp_path: Path) -> None:
-    from phenotypic.gui.builder._callbacks import _browse_seed_from_source
+    from phenotypic._gui.builder._callbacks import _browse_seed_from_source
 
     plates = tmp_path / "plates"
     plates.mkdir()
@@ -23,7 +23,7 @@ def test_builder_browse_seed_uses_valid_shared_source(tmp_path: Path) -> None:
 def test_builder_browse_seed_falls_back_to_image_root_when_unset(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.builder._callbacks import _browse_seed_from_source
+    from phenotypic._gui.builder._callbacks import _browse_seed_from_source
 
     assert _browse_seed_from_source(tmp_path, None) == str(tmp_path.resolve())
 
@@ -31,7 +31,7 @@ def test_builder_browse_seed_falls_back_to_image_root_when_unset(
 def test_builder_browse_seed_rejects_outside_image_root(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.builder._callbacks import _browse_seed_from_source
+    from phenotypic._gui.builder._callbacks import _browse_seed_from_source
 
     image_root = tmp_path / "sandbox"
     image_root.mkdir()
@@ -55,7 +55,7 @@ def test_builder_browse_seed_rejects_outside_image_root(
 def test_builder_browse_seed_accepts_v1_compatibility_payload(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.builder._callbacks import _browse_seed_from_source
+    from phenotypic._gui.builder._callbacks import _browse_seed_from_source
 
     plates = tmp_path / "plates"
     plates.mkdir()
@@ -75,7 +75,7 @@ def test_builder_browse_seed_accepts_v1_compatibility_payload(
 def test_builder_browse_seed_rejects_v2_fingerprint_mismatch(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.builder._callbacks import _browse_seed_from_source
+    from phenotypic._gui.builder._callbacks import _browse_seed_from_source
 
     image_root = tmp_path / "active"
     image_root.mkdir()
@@ -100,7 +100,7 @@ def test_builder_browse_seed_falls_back_on_resolver_errors(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from phenotypic.gui.builder._callbacks import _browse_seed_from_source
+    from phenotypic._gui.builder._callbacks import _browse_seed_from_source
 
     image_root = tmp_path / "sandbox"
     image_root.mkdir()

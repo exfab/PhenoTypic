@@ -24,12 +24,12 @@ import polars as pl
 import pytest
 from PIL import Image as PILImage
 
-from phenotypic.gui._config import CFG_FILTERED_STATE
-from phenotypic.gui._shared._radial import RADIAL_RESTORE_SENTINEL
-from phenotypic.gui.results_viewer._app import create_app
-from phenotypic.gui.results_viewer._curation_labels import CurationLabels
-from phenotypic.gui.results_viewer._output_root import OutputRoot
-from phenotypic.gui.results_viewer._qc_tab import register_qc_callbacks
+from phenotypic._gui._config import CFG_FILTERED_STATE
+from phenotypic._gui._shared._radial import RADIAL_RESTORE_SENTINEL
+from phenotypic._gui.results_viewer._app import create_app
+from phenotypic._gui.results_viewer._curation_labels import CurationLabels
+from phenotypic._gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.results_viewer._qc_tab import register_qc_callbacks
 from phenotypic.sdk_ import (
     custom_categories_json_path,
     error_category_parquet_path,
@@ -731,7 +731,7 @@ def test_qc_selection_fold_single_toggle_sets_anchor() -> None:
     The consumer is a thin adapter over ``fold_selection_delta``; this pins
     the single-toggle semantics it produces for ``STORE_COLONY_SELECTION``.
     """
-    from phenotypic.gui._shared._triage_callbacks import fold_selection_delta
+    from phenotypic._gui._shared._triage_callbacks import fold_selection_delta
 
     gallery_order = [["img-A", 1], ["img-A", 2], ["img-B", 1], ["img-B", 2]]
     payload = fold_selection_delta(
@@ -752,7 +752,7 @@ def test_qc_selection_fold_shift_range_resolves_against_gallery_order() -> None:
     resolves against ``STORE_QC_GALLERY_ORDER`` (passed through as the order
     payload), not the colony grid's order.
     """
-    from phenotypic.gui._shared._triage_callbacks import fold_selection_delta
+    from phenotypic._gui._shared._triage_callbacks import fold_selection_delta
 
     gallery_order = [["img-A", 1], ["img-A", 2], ["img-B", 1], ["img-B", 2]]
     payload = fold_selection_delta(

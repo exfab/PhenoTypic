@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from phenotypic.gui.shell import SandboxRoot, create_app
+from phenotypic._gui.shell import SandboxRoot, create_app
 
 
 @pytest.fixture()

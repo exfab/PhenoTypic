@@ -20,14 +20,6 @@ selection and shows the resolved path. Click **↩ Open in analysis** to
 bind. The bind endpoint is shared with the Results Viewer, so picking
 an output here also binds the viewer to the same directory.
 
-```{note}
-The standalone launcher is still useful for headless workflows or
-long-running fits where you don't need the rest of the hub:
-
-    uv run python -m phenotypic.gui.analysis \
-        --root <path-to-cli-output> --port 8051
-```
-
 ## What you can do
 
 - **Author the post stack** (metadata transforms): pick a class from the

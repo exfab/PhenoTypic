@@ -1,11 +1,11 @@
-from phenotypic.gui.tune._validation import (
+from phenotypic._gui.tune._validation import (
     Issue,
     can_deploy,
     preflight_issues,
     spec_path_issue,
     validate_setup,
 )
-from phenotypic.gui.tune._callbacks import _load_spec_preflight_issues
+from phenotypic._gui.tune._callbacks import _load_spec_preflight_issues
 from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.enhance import BlurGauss

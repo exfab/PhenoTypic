@@ -6,7 +6,7 @@ the server sees AFTER the hub :class:`DispatcherMiddleware` strips the
 :class:`flask.testing.FlaskClient` directly (no dispatcher in the
 loop), so the test URLs use the bare blueprint path. Browser-facing
 URLs are ``<requests_pathname_prefix>tiles/...`` — see
-:func:`phenotypic.gui.builder._point_picker._dzi_url`.
+:func:`phenotypic._gui.builder._point_picker._dzi_url`.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ import numpy as np
 import pytest
 from PIL import Image as PILImage
 
-from phenotypic.gui.builder._app import create_app
+from phenotypic._gui.builder._app import create_app
 
 
 @pytest.fixture

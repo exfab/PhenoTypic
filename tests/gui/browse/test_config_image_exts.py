@@ -1,5 +1,5 @@
-from phenotypic.gui._config import IMAGE_EXTS, RAW_IMAGE_EXTS
-from phenotypic.gui.builder._directory_browser import IMAGE_EXTS as BUILDER_IMAGE_EXTS
+from phenotypic._gui._config import IMAGE_EXTS, RAW_IMAGE_EXTS
+from phenotypic._gui.builder._directory_browser import IMAGE_EXTS as BUILDER_IMAGE_EXTS
 
 
 def test_image_exts_cover_standard_and_raw():
