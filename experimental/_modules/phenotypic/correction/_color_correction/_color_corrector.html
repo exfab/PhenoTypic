@@ -611,7 +611,6 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">overload</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">colour</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">PrivateAttr</span><span class="p">,</span> <span class="n">field_validator</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">skimage.color</span><span class="w"> </span><span class="kn">import</span> <span class="n">rgb2gray</span>
@@ -794,6 +793,8 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            Image with corrected RGB, gray, and detect_mat.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">colour</span>
+
         <span class="n">ccm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ccm</span>
         <span class="n">rgb_raw</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">rgb</span><span class="p">[:]</span>
         <span class="n">original_dtype</span> <span class="o">=</span> <span class="n">rgb_raw</span><span class="o">.</span><span class="n">dtype</span>

@@ -1,0 +1,1436 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.sdk_ &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=8a079089"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/sdk_';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/sdk_.html" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.19.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.sdk_</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.sdk_</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Developer tools shared across fungal colony plate workflows.</span>
+
+<span class="sd">Lightweight helpers for timing, mask validation, constants, color conversions, error</span>
+<span class="sd">handling, and HDF storage used by the processing pipeline. Includes a timed execution</span>
+<span class="sd">decorator, mask validators, colourspace utilities, custom exceptions, and HDF helpers</span>
+<span class="sd">for persisting plate datasets and measurements.</span>
+
+<span class="sd">Advanced users can access GridInferenceMixin and FootprintMixin for creating custom</span>
+<span class="sd">grid-based operations and morphological footprints.</span>
+
+<span class="sd">The ``_io_constants`` submodule is the single source of truth for CLI ↔ GUI</span>
+<span class="sd">artifact filenames, directory names, JSON contract keys, and path helpers</span>
+<span class="sd">(re-exported here at package level for convenience).</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">importlib</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_importlib</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span> <span class="k">as</span> <span class="n">_TYPE_CHECKING</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span> <span class="k">as</span> <span class="n">_Any</span>
+
+<span class="c1">#: Re-exports whose submodules import heavy third-party libraries -- colour-science</span>
+<span class="c1">#: (``colourspace``), h5py (``hdf_``), pandas (``_measurement_tables``,</span>
+<span class="c1">#: ``_metadata_migration``), scipy and scikit-image (``mixin``). Importing any</span>
+<span class="c1">#: ``phenotypic.sdk_.*`` module runs this ``__init__`` first, so these resolve on first</span>
+<span class="c1">#: access instead. Defined before the eager imports below, so an import that re-enters</span>
+<span class="c1">#: this package mid-initialisation still resolves them.</span>
+<span class="n">_LAZY_ATTRS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;colourspace&quot;</span><span class="p">:</span> <span class="s2">&quot;.colourspace&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;HDF&quot;</span><span class="p">:</span> <span class="s2">&quot;.hdf_&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PreparedEmbeddedMeasurementTable&quot;</span><span class="p">:</span> <span class="s2">&quot;._measurement_tables&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PreparedImageTables&quot;</span><span class="p">:</span> <span class="s2">&quot;._measurement_tables&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;build_measurement_table_descriptor&quot;</span><span class="p">:</span> <span class="s2">&quot;._measurement_tables&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;build_metadata_table_descriptor&quot;</span><span class="p">:</span> <span class="s2">&quot;._measurement_tables&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;embedded_measurement_columns&quot;</span><span class="p">:</span> <span class="s2">&quot;._measurement_tables&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;read_embedded_measurement_column&quot;</span><span class="p">:</span> <span class="s2">&quot;._measurement_tables&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;read_embedded_measurement_descriptor&quot;</span><span class="p">:</span> <span class="s2">&quot;._measurement_tables&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;replace_embedded_measurement_table&quot;</span><span class="p">:</span> <span class="s2">&quot;._measurement_tables&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;replace_image_tables&quot;</span><span class="p">:</span> <span class="s2">&quot;._measurement_tables&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;write_embedded_measurement_table&quot;</span><span class="p">:</span> <span class="s2">&quot;._measurement_tables&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;write_image_tables&quot;</span><span class="p">:</span> <span class="s2">&quot;._measurement_tables&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;write_metadata_table&quot;</span><span class="p">:</span> <span class="s2">&quot;._measurement_tables&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MetadataMigrationAuthority&quot;</span><span class="p">:</span> <span class="s2">&quot;._metadata_migration&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MetadataMigrationReport&quot;</span><span class="p">:</span> <span class="s2">&quot;._metadata_migration&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MetadataMigrationResult&quot;</span><span class="p">:</span> <span class="s2">&quot;._metadata_migration&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MetadataMigrationTarget&quot;</span><span class="p">:</span> <span class="s2">&quot;._metadata_migration&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;metadata_migration_authority&quot;</span><span class="p">:</span> <span class="s2">&quot;._metadata_migration&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;migrate_metadata_bundle&quot;</span><span class="p">:</span> <span class="s2">&quot;._metadata_migration&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;migrate_metadata_file&quot;</span><span class="p">:</span> <span class="s2">&quot;._metadata_migration&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;migrate_preflighted_metadata_bundle&quot;</span><span class="p">:</span> <span class="s2">&quot;._metadata_migration&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;preflight_metadata_schema&quot;</span><span class="p">:</span> <span class="s2">&quot;._metadata_migration&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;rollback_metadata_migration&quot;</span><span class="p">:</span> <span class="s2">&quot;._metadata_migration&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;validated_published_metadata_migration_targets&quot;</span><span class="p">:</span> <span class="s2">&quot;._metadata_migration&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;FootprintMixin&quot;</span><span class="p">:</span> <span class="s2">&quot;.mixin&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;GridInferenceMixin&quot;</span><span class="p">:</span> <span class="s2">&quot;.mixin&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;InputLayerMixin&quot;</span><span class="p">:</span> <span class="s2">&quot;.mixin&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;LazyWidgetMixin&quot;</span><span class="p">:</span> <span class="s2">&quot;.mixin&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;NormControlMixin&quot;</span><span class="p">:</span> <span class="s2">&quot;.mixin&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;NormalizedOutputMixin&quot;</span><span class="p">:</span> <span class="s2">&quot;.mixin&quot;</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="__getattr__">
+<a class="viewcode-back" href="../../api_reference/api/phenotypic.sdk_.html#phenotypic.sdk_.__getattr__">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="fm">__getattr__</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a heavy re-export on first access and cache it on the package.&quot;&quot;&quot;</span>
+    <span class="n">module_name</span> <span class="o">=</span> <span class="n">_LAZY_ATTRS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">module_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;module </span><span class="si">{</span><span class="vm">__name__</span><span class="si">!r}</span><span class="s2"> has no attribute </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">module</span> <span class="o">=</span> <span class="n">_importlib</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="n">module_name</span><span class="p">,</span> <span class="vm">__name__</span><span class="p">)</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">module</span> <span class="k">if</span> <span class="n">module_name</span> <span class="o">==</span> <span class="sa">f</span><span class="s2">&quot;.</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">else</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+    <span class="nb">globals</span><span class="p">()[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+    <span class="k">return</span> <span class="n">value</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="fm">__dir__</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+    <span class="c1"># ``globals().get`` rather than a bare ``__all__``: this function sits above the eager</span>
+    <span class="c1"># imports for the same reason ``__getattr__`` does, so it is callable in a window where</span>
+    <span class="c1"># ``__all__`` has not been assigned yet. A bare reference raises ``NameError`` there.</span>
+    <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="nb">globals</span><span class="p">())</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="nb">globals</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;__all__&quot;</span><span class="p">,</span> <span class="p">())))</span>
+
+
+<span class="k">if</span> <span class="n">_TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">colourspace</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">._measurement_tables</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">PreparedEmbeddedMeasurementTable</span><span class="p">,</span>
+        <span class="n">PreparedImageTables</span><span class="p">,</span>
+        <span class="n">build_measurement_table_descriptor</span><span class="p">,</span>
+        <span class="n">build_metadata_table_descriptor</span><span class="p">,</span>
+        <span class="n">embedded_measurement_columns</span><span class="p">,</span>
+        <span class="n">read_embedded_measurement_column</span><span class="p">,</span>
+        <span class="n">read_embedded_measurement_descriptor</span><span class="p">,</span>
+        <span class="n">replace_embedded_measurement_table</span><span class="p">,</span>
+        <span class="n">replace_image_tables</span><span class="p">,</span>
+        <span class="n">write_embedded_measurement_table</span><span class="p">,</span>
+        <span class="n">write_image_tables</span><span class="p">,</span>
+        <span class="n">write_metadata_table</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">._metadata_migration</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">MetadataMigrationAuthority</span><span class="p">,</span>
+        <span class="n">MetadataMigrationReport</span><span class="p">,</span>
+        <span class="n">MetadataMigrationResult</span><span class="p">,</span>
+        <span class="n">MetadataMigrationTarget</span><span class="p">,</span>
+        <span class="n">metadata_migration_authority</span><span class="p">,</span>
+        <span class="n">migrate_metadata_bundle</span><span class="p">,</span>
+        <span class="n">migrate_metadata_file</span><span class="p">,</span>
+        <span class="n">migrate_preflighted_metadata_bundle</span><span class="p">,</span>
+        <span class="n">preflight_metadata_schema</span><span class="p">,</span>
+        <span class="n">rollback_metadata_migration</span><span class="p">,</span>
+        <span class="n">validated_published_metadata_migration_targets</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.hdf_</span><span class="w"> </span><span class="kn">import</span> <span class="n">HDF</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">FootprintMixin</span><span class="p">,</span>
+        <span class="n">GridInferenceMixin</span><span class="p">,</span>
+        <span class="n">InputLayerMixin</span><span class="p">,</span>
+        <span class="n">LazyWidgetMixin</span><span class="p">,</span>
+        <span class="n">NormControlMixin</span><span class="p">,</span>
+        <span class="n">NormalizedOutputMixin</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>  <span class="c1"># noqa: E402</span>
+    <span class="n">constants_</span><span class="p">,</span>
+    <span class="n">exceptions_</span><span class="p">,</span>
+    <span class="n">napari_</span><span class="p">,</span>
+    <span class="n">slurm</span><span class="p">,</span>
+    <span class="n">slurm_</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">_io_constants</span>  <span class="c1"># noqa: E402</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._atomic_io</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>  <span class="c1"># noqa: E402</span>
+    <span class="n">CommitGuard</span><span class="p">,</span>
+    <span class="n">PARQUET_WRITE_OPTIONS</span><span class="p">,</span>
+    <span class="n">atomic_write_bytes</span><span class="p">,</span>
+    <span class="n">atomic_write_json</span><span class="p">,</span>
+    <span class="n">atomic_write_parquet</span><span class="p">,</span>
+    <span class="n">atomic_write_text</span><span class="p">,</span>
+    <span class="n">atomic_write_with_writer</span><span class="p">,</span>
+    <span class="n">publication_commit</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._column_ref</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColumnRef</span><span class="p">,</span> <span class="n">ColumnRefList</span><span class="p">,</span> <span class="n">ColumnSource</span>  <span class="c1"># noqa: E402</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._io_constants</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>  <span class="c1"># noqa: E402</span>
+    <span class="c1"># Filenames (CLI artifacts)</span>
+    <span class="n">CURATION_LABELS_PARQUET</span><span class="p">,</span>
+    <span class="n">CUSTOM_CATEGORIES_JSON</span><span class="p">,</span>
+    <span class="n">DIR_ERRORS</span><span class="p">,</span>
+    <span class="n">ERROR_ANALYSIS_CSV</span><span class="p">,</span>
+    <span class="n">ERROR_ANALYSIS_HTML</span><span class="p">,</span>
+    <span class="n">ERROR_ANALYSIS_PARQUET</span><span class="p">,</span>
+    <span class="n">ANALYSIS_MANIFEST_FILENAME</span><span class="p">,</span>
+    <span class="n">ANALYSIS_MANIFEST_SCHEMA_VERSION</span><span class="p">,</span>
+    <span class="n">ANALYSIS_FULL_PARQUET</span><span class="p">,</span>
+    <span class="n">BEST_PARAMS_JSON</span><span class="p">,</span>
+    <span class="n">BEST_PIPELINE_JSON</span><span class="p">,</span>
+    <span class="n">CHUNK_LOCK</span><span class="p">,</span>
+    <span class="n">CHUNK_MANIFEST_JSON</span><span class="p">,</span>
+    <span class="n">CHUNK_STATE_JSON</span><span class="p">,</span>
+    <span class="n">CONFIG_SUFFIX_COLOR_CHECKER</span><span class="p">,</span>
+    <span class="n">CONFIG_SUFFIX_OPERATION</span><span class="p">,</span>
+    <span class="n">CONFIG_SUFFIX_PIPELINE</span><span class="p">,</span>
+    <span class="n">CONFIG_SUFFIX_TUNING</span><span class="p">,</span>
+    <span class="n">CONFIG_SUFFIXES</span><span class="p">,</span>
+    <span class="n">DASHBOARD_HTML</span><span class="p">,</span>
+    <span class="n">DATASET_AGGREGATED_PARQUET</span><span class="p">,</span>
+    <span class="n">DELIVERABLES_METADATA_CSV</span><span class="p">,</span>
+    <span class="n">DIR_AGGREGATION_SHARDS</span><span class="p">,</span>
+    <span class="n">DIR_CHUNKS</span><span class="p">,</span>
+    <span class="n">DIR_DELIVERABLES</span><span class="p">,</span>
+    <span class="n">DIR_IMAGE_COMPLETE</span><span class="p">,</span>
+    <span class="n">DIR_IMAGE_RECORDS</span><span class="p">,</span>
+    <span class="n">DIR_LEGACY_V2</span><span class="p">,</span>
+    <span class="n">DIR_LOGS</span><span class="p">,</span>
+    <span class="n">DIR_MEASUREMENTS</span><span class="p">,</span>
+    <span class="n">DIR_MEASUREMENTS_BY_FEATURE</span><span class="p">,</span>
+    <span class="n">DIR_OVERLAYS</span><span class="p">,</span>
+    <span class="n">DIR_PLOTS</span><span class="p">,</span>
+    <span class="n">DIR_PARETO</span><span class="p">,</span>
+    <span class="n">DIR_PHENOTYPIC</span><span class="p">,</span>
+    <span class="n">DIR_PHT_TUNE_CACHE</span><span class="p">,</span>
+    <span class="n">DIR_PROGRESS</span><span class="p">,</span>
+    <span class="n">DIR_QC</span><span class="p">,</span>
+    <span class="n">DIR_RECOMPILE</span><span class="p">,</span>
+    <span class="n">DIR_RECOMPILE_SHARDS</span><span class="p">,</span>
+    <span class="n">DIR_RECOMPILE_STATUS</span><span class="p">,</span>
+    <span class="n">DIR_RESULTS</span><span class="p">,</span>
+    <span class="n">DIR_SLURM_SCRIPTS</span><span class="p">,</span>
+    <span class="n">DIR_SPLITS</span><span class="p">,</span>
+    <span class="n">DIR_STAGE2_DONE</span><span class="p">,</span>
+    <span class="n">DIR_ZARR</span><span class="p">,</span>
+    <span class="n">MIGRATION_REMEDY</span><span class="p">,</span>
+    <span class="n">FAILURES_JSONL</span><span class="p">,</span>
+    <span class="n">TERMINAL_FAILURES_JSONL</span><span class="p">,</span>
+    <span class="n">GENERALIZATION_JSON</span><span class="p">,</span>
+    <span class="n">GUI_LAUNCH_OWNER_JSON</span><span class="p">,</span>
+    <span class="n">GUI_LOG_FILENAMES</span><span class="p">,</span>
+    <span class="n">JOB_METADATA_JSON</span><span class="p">,</span>
+    <span class="n">LEGACY_JSON_SUFFIX</span><span class="p">,</span>
+    <span class="n">LOCAL_SCHEDULER_EPOCH</span><span class="p">,</span>
+    <span class="n">MANIFEST_JSON</span><span class="p">,</span>
+    <span class="n">MASTER_MEASUREMENTS_PARQUET</span><span class="p">,</span>
+    <span class="n">MEASUREMENTS_CSV</span><span class="p">,</span>
+    <span class="n">MEASUREMENTS_PARQUET</span><span class="p">,</span>
+    <span class="n">PARAM_IMPORTANCE_JSON</span><span class="p">,</span>
+    <span class="n">PARETO_FRONT_PARQUET</span><span class="p">,</span>
+    <span class="n">PIPELINE_JSON</span><span class="p">,</span>
+    <span class="n">PIPELINE_CONFIG_SUFFIXES</span><span class="p">,</span>
+    <span class="n">PROCESSING_EVENTS_LOG</span><span class="p">,</span>
+    <span class="n">PROCESSING_REPORT_HTML</span><span class="p">,</span>
+    <span class="n">PROCESSING_STATE_JSON</span><span class="p">,</span>
+    <span class="n">AGGREGATE_PROOF_VERSION</span><span class="p">,</span>
+    <span class="n">ARTIFACT_KIND_FILE</span><span class="p">,</span>
+    <span class="n">ARTIFACT_KIND_STORE</span><span class="p">,</span>
+    <span class="n">RUN_COMPLETION_JSON</span><span class="p">,</span>
+    <span class="n">RUN_LOG_DIRNAME</span><span class="p">,</span>
+    <span class="n">RUN_MARKER_JSON</span><span class="p">,</span>
+    <span class="n">RUN_PROOF_VERSION</span><span class="p">,</span>
+    <span class="n">SLURM_LIFECYCLE_JSON</span><span class="p">,</span>
+    <span class="n">SUCCESS_MARKER_VERSION</span><span class="p">,</span>
+    <span class="n">QC_DUCKDB</span><span class="p">,</span>
+    <span class="n">QC_REVIEW_STATE_JSON</span><span class="p">,</span>
+    <span class="n">README_MD</span><span class="p">,</span>
+    <span class="n">RECOMPILE_TASK_MANIFEST_JSON</span><span class="p">,</span>
+    <span class="n">RESTART_EPOCH_JSON</span><span class="p">,</span>
+    <span class="n">REMBI_MANIFEST_YAML</span><span class="p">,</span>
+    <span class="n">SENTINEL_RESUBMITTED_MARKER</span><span class="p">,</span>
+    <span class="n">SPLIT_ASSIGNMENT_JSON</span><span class="p">,</span>
+    <span class="n">STDOUT_LOG</span><span class="p">,</span>
+    <span class="n">STUDY_DB</span><span class="p">,</span>
+    <span class="n">STUDY_JOURNAL_LOG</span><span class="p">,</span>
+    <span class="n">TRIALS_PARQUET</span><span class="p">,</span>
+    <span class="n">TUNING_CONFIG_SUFFIXES</span><span class="p">,</span>
+    <span class="n">TUNING_SPEC_JSON</span><span class="p">,</span>
+    <span class="n">VERIFICATION_CACHE_JSON</span><span class="p">,</span>
+    <span class="n">VERIFICATION_CACHE_VERSION</span><span class="p">,</span>
+    <span class="n">VERIFIED_PARQUET</span><span class="p">,</span>
+    <span class="c1"># Namespace classes</span>
+    <span class="n">ChunkManifestKey</span><span class="p">,</span>
+    <span class="n">ChunkStateKey</span><span class="p">,</span>
+    <span class="n">DashboardManifestKey</span><span class="p">,</span>
+    <span class="n">DashboardManifestSlurmInfoKey</span><span class="p">,</span>
+    <span class="n">EnvVar</span><span class="p">,</span>
+    <span class="n">JobMetadataKey</span><span class="p">,</span>
+    <span class="n">ModulePath</span><span class="p">,</span>
+    <span class="n">ProcessingStateKey</span><span class="p">,</span>
+    <span class="n">AnalysisArtifactPaths</span><span class="p">,</span>
+    <span class="c1"># Path helpers</span>
+    <span class="n">analysis_full_parquet_path</span><span class="p">,</span>
+    <span class="n">aggregate_publication_marker_path</span><span class="p">,</span>
+    <span class="n">analysis_manifest_path</span><span class="p">,</span>
+    <span class="n">best_pipeline_path</span><span class="p">,</span>
+    <span class="n">best_params_path</span><span class="p">,</span>
+    <span class="n">bytes_fingerprint</span><span class="p">,</span>
+    <span class="n">chunk_lock_path</span><span class="p">,</span>
+    <span class="n">chunk_manifest_path</span><span class="p">,</span>
+    <span class="n">chunk_parquet_filename</span><span class="p">,</span>
+    <span class="n">chunk_parquet_path</span><span class="p">,</span>
+    <span class="n">chunk_state_path</span><span class="p">,</span>
+    <span class="n">chunks_dir</span><span class="p">,</span>
+    <span class="n">aggregation_shard_dir</span><span class="p">,</span>
+    <span class="n">checkpoint_lock_filename</span><span class="p">,</span>
+    <span class="n">checkpoint_lock_path</span><span class="p">,</span>
+    <span class="n">dashboard_html_path</span><span class="p">,</span>
+    <span class="n">BundleLayout</span><span class="p">,</span>
+    <span class="n">dataset_measurements_dir</span><span class="p">,</span>
+    <span class="n">dataset_overlays_dir</span><span class="p">,</span>
+    <span class="n">dataset_results_dir</span><span class="p">,</span>
+    <span class="n">dataset_zarr_dir</span><span class="p">,</span>
+    <span class="n">datasets_needing_migration</span><span class="p">,</span>
+    <span class="n">overlays_dir</span><span class="p">,</span>
+    <span class="n">plots_dir</span><span class="p">,</span>
+    <span class="n">default_output_dir_name</span><span class="p">,</span>
+    <span class="n">curation_labels_parquet_path</span><span class="p">,</span>
+    <span class="n">custom_categories_json_path</span><span class="p">,</span>
+    <span class="n">deliverables_dir</span><span class="p">,</span>
+    <span class="n">error_analysis_csv_path</span><span class="p">,</span>
+    <span class="n">error_analysis_html_path</span><span class="p">,</span>
+    <span class="n">error_analysis_parquet_path</span><span class="p">,</span>
+    <span class="n">error_category_parquet_path</span><span class="p">,</span>
+    <span class="n">errors_dir</span><span class="p">,</span>
+    <span class="n">event_log_path</span><span class="p">,</span>
+    <span class="n">ensure_typed_json_suffix</span><span class="p">,</span>
+    <span class="n">failures_jsonl_path</span><span class="p">,</span>
+    <span class="n">file_fingerprint</span><span class="p">,</span>
+    <span class="n">generalization_path</span><span class="p">,</span>
+    <span class="n">generation_staging_path</span><span class="p">,</span>
+    <span class="n">gui_launch_owner_path</span><span class="p">,</span>
+    <span class="n">slurm_lifecycle_path</span><span class="p">,</span>
+    <span class="n">image_completion_marker_path</span><span class="p">,</span>
+    <span class="n">image_record_path</span><span class="p">,</span>
+    <span class="n">has_config_suffix</span><span class="p">,</span>
+    <span class="n">job_metadata_path</span><span class="p">,</span>
+    <span class="n">load_image_from_store</span><span class="p">,</span>
+    <span class="n">logs_dir</span><span class="p">,</span>
+    <span class="n">manifest_json_path</span><span class="p">,</span>
+    <span class="n">master_measurements_parquet_path</span><span class="p">,</span>
+    <span class="n">measurements_by_feature_dir</span><span class="p">,</span>
+    <span class="n">measurements_csv_path</span><span class="p">,</span>
+    <span class="n">measurements_parquet_path</span><span class="p">,</span>
+    <span class="n">migration_backup_dir</span><span class="p">,</span>
+    <span class="n">migration_backup_path</span><span class="p">,</span>
+    <span class="n">migration_lock_path</span><span class="p">,</span>
+    <span class="n">migration_receipt_path</span><span class="p">,</span>
+    <span class="n">named_analysis_csv_path</span><span class="p">,</span>
+    <span class="n">named_analysis_parquet_path</span><span class="p">,</span>
+    <span class="n">named_analysis_paths</span><span class="p">,</span>
+    <span class="n">metadata_csv_deliverable_path</span><span class="p">,</span>
+    <span class="n">terminal_failures_jsonl_path</span><span class="p">,</span>
+    <span class="n">matches_any_suffix</span><span class="p">,</span>
+    <span class="n">param_importance_path</span><span class="p">,</span>
+    <span class="n">pareto_best_pipeline_path</span><span class="p">,</span>
+    <span class="n">pareto_dir</span><span class="p">,</span>
+    <span class="n">pareto_front_parquet_path</span><span class="p">,</span>
+    <span class="n">pareto_importance_path</span><span class="p">,</span>
+    <span class="n">phenotypic_cache_dir</span><span class="p">,</span>
+    <span class="n">phenotypic_cache_pipeline_json_path</span><span class="p">,</span>
+    <span class="n">pipeline_json_path</span><span class="p">,</span>
+    <span class="n">pipeline_publication_lock_path</span><span class="p">,</span>
+    <span class="n">paths_fingerprint</span><span class="p">,</span>
+    <span class="n">processing_report_html_path</span><span class="p">,</span>
+    <span class="n">processing_state_path</span><span class="p">,</span>
+    <span class="n">progress_dir</span><span class="p">,</span>
+    <span class="n">qc_dir</span><span class="p">,</span>
+    <span class="n">qc_duckdb_path</span><span class="p">,</span>
+    <span class="n">qc_review_state_path</span><span class="p">,</span>
+    <span class="n">readme_md_path</span><span class="p">,</span>
+    <span class="n">read_run_manifest</span><span class="p">,</span>
+    <span class="n">recompile_dir</span><span class="p">,</span>
+    <span class="n">recompile_status_dir</span><span class="p">,</span>
+    <span class="n">rembi_manifest_path</span><span class="p">,</span>
+    <span class="n">resolve_event_log_path</span><span class="p">,</span>
+    <span class="n">resolve_execution_mode</span><span class="p">,</span>
+    <span class="n">resolve_manifest_json_path</span><span class="p">,</span>
+    <span class="n">resolve_pipeline_config_path</span><span class="p">,</span>
+    <span class="n">resolve_processing_state_path</span><span class="p">,</span>
+    <span class="n">resolve_progress_dir</span><span class="p">,</span>
+    <span class="n">resolve_split_assignment_path</span><span class="p">,</span>
+    <span class="n">resolve_study_db_path</span><span class="p">,</span>
+    <span class="n">resolve_tuning_spec_path</span><span class="p">,</span>
+    <span class="n">migrate_legacy_machine_state</span><span class="p">,</span>
+    <span class="n">migrate_legacy_qc</span><span class="p">,</span>
+    <span class="n">clear_machine_state</span><span class="p">,</span>
+    <span class="n">restart_epoch_path</span><span class="p">,</span>
+    <span class="n">results_dir</span><span class="p">,</span>
+    <span class="n">run_completion_marker_path</span><span class="p">,</span>
+    <span class="n">sentinel_resubmitted_path</span><span class="p">,</span>
+    <span class="n">shard_parquet_filename</span><span class="p">,</span>
+    <span class="n">slurm_scripts_dir</span><span class="p">,</span>
+    <span class="n">source_cache_key</span><span class="p">,</span>
+    <span class="n">is_zarr_store_name</span><span class="p">,</span>
+    <span class="n">store_stem</span><span class="p">,</span>
+    <span class="n">source_image_stem</span><span class="p">,</span>
+    <span class="n">source_image_suffix</span><span class="p">,</span>
+    <span class="n">store_publication_token</span><span class="p">,</span>
+    <span class="n">store_revision_identity</span><span class="p">,</span>
+    <span class="n">task_status_filename</span><span class="p">,</span>
+    <span class="n">task_status_path</span><span class="p">,</span>
+    <span class="n">trials_parquet_path</span><span class="p">,</span>
+    <span class="n">tune_cache_dir</span><span class="p">,</span>
+    <span class="n">tune_cache_run_marker_path</span><span class="p">,</span>
+    <span class="n">tune_cache_journal_path</span><span class="p">,</span>
+    <span class="n">tune_cache_split_assignment_path</span><span class="p">,</span>
+    <span class="n">tune_cache_splits_dir</span><span class="p">,</span>
+    <span class="n">tune_cache_study_db_path</span><span class="p">,</span>
+    <span class="n">tuning_spec_path</span><span class="p">,</span>
+    <span class="n">verification_cache_path</span><span class="p">,</span>
+    <span class="n">verified_parquet_path</span><span class="p">,</span>
+    <span class="n">validate_analysis_id</span><span class="p">,</span>
+    <span class="n">zarr_store_path</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._image_record</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>  <span class="c1"># noqa: E402</span>
+    <span class="n">PROVENANCE_FORWARD</span><span class="p">,</span>
+    <span class="n">PROVENANCE_MIGRATED</span><span class="p">,</span>
+    <span class="n">RECORD_VERSION</span><span class="p">,</span>
+    <span class="n">STAGE_MEASURED</span><span class="p">,</span>
+    <span class="n">STAGE_STAGE1</span><span class="p">,</span>
+    <span class="n">STAGE_STAGE2</span><span class="p">,</span>
+    <span class="n">STAGE_STAGE3</span><span class="p">,</span>
+    <span class="n">read_image_record</span><span class="p">,</span>
+    <span class="n">record_provenance</span><span class="p">,</span>
+    <span class="n">record_rejection</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._master_io</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>  <span class="c1"># noqa: E402</span>
+    <span class="n">master_carries_user_metadata</span><span class="p">,</span>
+    <span class="n">user_metadata_headers</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._pipeline_publication</span><span class="w"> </span><span class="kn">import</span> <span class="n">pipeline_publication_lock</span>  <span class="c1"># noqa: E402</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._run_state</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>  <span class="c1"># noqa: E402</span>
+    <span class="n">ImageState</span><span class="p">,</span>
+    <span class="n">RunDiagnostics</span><span class="p">,</span>
+    <span class="n">RunIdentity</span><span class="p">,</span>
+    <span class="n">RunState</span><span class="p">,</span>
+    <span class="n">aggregate_proof_is_current</span><span class="p">,</span>
+    <span class="n">assert_identity_current</span><span class="p">,</span>
+    <span class="n">clear_verification_cache</span><span class="p">,</span>
+    <span class="n">finalization_input_object</span><span class="p">,</span>
+    <span class="n">resolve_run_state</span><span class="p">,</span>
+    <span class="n">run_identity</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.funcs_</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_binary_mask</span><span class="p">,</span> <span class="n">timed_execution</span>  <span class="c1"># noqa: E402</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._metadata_helpers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>  <span class="c1"># noqa: E402</span>
+    <span class="n">canonical_metadata_order</span><span class="p">,</span>
+    <span class="n">ensure_metadata_prefix</span><span class="p">,</span>
+    <span class="n">is_metadata_header</span><span class="p">,</span>
+    <span class="n">metadata_category_for_label</span><span class="p">,</span>
+    <span class="n">metadata_category_prefixes</span><span class="p">,</span>
+    <span class="n">metadata_member_for_header</span><span class="p">,</span>
+    <span class="n">metadata_member_for_label</span><span class="p">,</span>
+    <span class="n">metadata_only_mask</span><span class="p">,</span>
+    <span class="n">metadata_owner_for_header</span><span class="p">,</span>
+    <span class="n">metadata_owner_for_label</span><span class="p">,</span>
+    <span class="n">normalize_metadata_columns</span><span class="p">,</span>
+    <span class="n">order_measurement_columns</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.ngff_</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>  <span class="c1"># noqa: E402</span>
+    <span class="n">EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS</span><span class="p">,</span>
+    <span class="n">MEASUREMENT_TABLE_RELATIVE_PATH</span><span class="p">,</span>
+    <span class="n">METADATA_TABLE_RELATIVE_PATH</span><span class="p">,</span>
+    <span class="n">STORE_ROOT_JSON</span><span class="p">,</span>
+    <span class="n">STORE_SUFFIX</span><span class="p">,</span>
+    <span class="n">PhenotypicAttr</span><span class="p">,</span>
+    <span class="n">describe_durability</span><span class="p">,</span>
+    <span class="n">durable_writes_enabled</span><span class="p">,</span>
+    <span class="n">new_part_path</span><span class="p">,</span>
+    <span class="n">promote_store</span><span class="p">,</span>
+    <span class="n">read_phenotypic_attributes</span><span class="p">,</span>
+    <span class="n">sweep_orphan_parts</span><span class="p">,</span>
+    <span class="n">valid_staged_store</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">InputLayer</span><span class="p">,</span> <span class="n">NormOut</span><span class="p">,</span> <span class="n">ProcessOnlyLayer</span>  <span class="c1"># noqa: E402</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;aggregate_publication_marker_path&quot;</span><span class="p">,</span>
+    <span class="c1"># Mixins / utilities (existing)</span>
+    <span class="s2">&quot;ColumnRef&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ColumnRefList&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ColumnSource&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;FootprintMixin&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;GridInferenceMixin&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;HDF&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;InputLayerMixin&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;LazyWidgetMixin&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;NormControlMixin&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;NormalizedOutputMixin&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;CommitGuard&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;atomic_write_bytes&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;atomic_write_json&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;atomic_write_parquet&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;atomic_write_text&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;atomic_write_with_writer&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;publication_commit&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PARQUET_WRITE_OPTIONS&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PreparedEmbeddedMeasurementTable&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PreparedImageTables&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;build_measurement_table_descriptor&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;build_metadata_table_descriptor&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;embedded_measurement_columns&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;read_embedded_measurement_column&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;read_embedded_measurement_descriptor&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;replace_embedded_measurement_table&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;replace_image_tables&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;write_embedded_measurement_table&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;write_image_tables&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;write_metadata_table&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;canonical_metadata_order&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;colourspace&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;constants_&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;exceptions_&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ensure_metadata_prefix&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;is_binary_mask&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;is_metadata_header&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;metadata_category_for_label&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;metadata_category_prefixes&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;metadata_member_for_header&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;metadata_member_for_label&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;metadata_only_mask&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;metadata_owner_for_header&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;metadata_owner_for_label&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;normalize_metadata_columns&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;order_measurement_columns&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MetadataMigrationAuthority&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MetadataMigrationReport&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MetadataMigrationResult&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MetadataMigrationTarget&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;metadata_migration_authority&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;migrate_metadata_bundle&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;migrate_metadata_file&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;migrate_preflighted_metadata_bundle&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;preflight_metadata_schema&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;rollback_metadata_migration&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;validated_published_metadata_migration_targets&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;napari_&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;slurm&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;slurm_&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;timed_execution&quot;</span><span class="p">,</span>
+    <span class="c1"># OME-Zarr per-image store (NGFF 0.5 / Zarr format v3)</span>
+    <span class="s2">&quot;PhenotypicAttr&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;EMBEDDED_MEASUREMENT_PARQUET_METADATA_KEYS&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MEASUREMENT_TABLE_RELATIVE_PATH&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;METADATA_TABLE_RELATIVE_PATH&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;STORE_ROOT_JSON&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;STORE_SUFFIX&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;describe_durability&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;durable_writes_enabled&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;new_part_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;promote_store&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;read_phenotypic_attributes&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;sweep_orphan_parts&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;valid_staged_store&quot;</span><span class="p">,</span>
+    <span class="c1"># Run-state readers (spec §5.2). The four frozen types land in P1</span>
+    <span class="c1"># Task 2, clear_verification_cache in Task 3, the identity readers in</span>
+    <span class="c1"># Task 4 and resolve_run_state in Task 5 -- each exported by the task</span>
+    <span class="c1"># that implements it, so the tree imports cleanly at every commit.</span>
+    <span class="s2">&quot;ImageState&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RunDiagnostics&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RunIdentity&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RunState&quot;</span><span class="p">,</span>
+    <span class="c1"># P6 Task 2: the GUI&#39;s `core_readable` needs the aggregate-proof half of</span>
+    <span class="c1"># the question, which was private. Its other half is the CLI&#39;s</span>
+    <span class="c1"># `state_requires_success_markers`, so `core_readable` itself cannot live</span>
+    <span class="c1"># here -- INV-LAYER keeps `_cli` out of `sdk_`.</span>
+    <span class="s2">&quot;aggregate_proof_is_current&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;assert_identity_current&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;clear_verification_cache&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;finalization_input_object&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;resolve_run_state&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;run_identity&quot;</span><span class="p">,</span>
+    <span class="c1"># Typing aliases (closed value sets)</span>
+    <span class="s2">&quot;InputLayer&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;NormOut&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ProcessOnlyLayer&quot;</span><span class="p">,</span>
+    <span class="c1"># I/O constants module (also re-exported below)</span>
+    <span class="s2">&quot;_io_constants&quot;</span><span class="p">,</span>
+    <span class="c1"># Filename constants</span>
+    <span class="s2">&quot;ANALYSIS_FULL_PARQUET&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ANALYSIS_MANIFEST_FILENAME&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ANALYSIS_MANIFEST_SCHEMA_VERSION&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;CURATION_LABELS_PARQUET&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;CUSTOM_CATEGORIES_JSON&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ERROR_ANALYSIS_CSV&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ERROR_ANALYSIS_HTML&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ERROR_ANALYSIS_PARQUET&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;BEST_PARAMS_JSON&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;BEST_PIPELINE_JSON&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;CHUNK_LOCK&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;CHUNK_MANIFEST_JSON&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;CHUNK_STATE_JSON&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;CONFIG_SUFFIX_COLOR_CHECKER&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;CONFIG_SUFFIX_OPERATION&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;CONFIG_SUFFIX_PIPELINE&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;CONFIG_SUFFIX_TUNING&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;CONFIG_SUFFIXES&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DASHBOARD_HTML&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DATASET_AGGREGATED_PARQUET&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DELIVERABLES_METADATA_CSV&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;FAILURES_JSONL&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;TERMINAL_FAILURES_JSONL&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;GENERALIZATION_JSON&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;GUI_LAUNCH_OWNER_JSON&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;GUI_LOG_FILENAMES&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;JOB_METADATA_JSON&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;LEGACY_JSON_SUFFIX&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;LOCAL_SCHEDULER_EPOCH&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MANIFEST_JSON&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MASTER_MEASUREMENTS_PARQUET&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MEASUREMENTS_CSV&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MEASUREMENTS_PARQUET&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PARAM_IMPORTANCE_JSON&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PARETO_FRONT_PARQUET&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PIPELINE_JSON&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PIPELINE_CONFIG_SUFFIXES&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PROCESSING_EVENTS_LOG&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PROCESSING_REPORT_HTML&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PROCESSING_STATE_JSON&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;AGGREGATE_PROOF_VERSION&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ARTIFACT_KIND_FILE&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ARTIFACT_KIND_STORE&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RUN_COMPLETION_JSON&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RUN_LOG_DIRNAME&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RUN_MARKER_JSON&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RUN_PROOF_VERSION&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;SLURM_LIFECYCLE_JSON&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;SUCCESS_MARKER_VERSION&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;QC_DUCKDB&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;QC_REVIEW_STATE_JSON&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;README_MD&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RECOMPILE_TASK_MANIFEST_JSON&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RESTART_EPOCH_JSON&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;REMBI_MANIFEST_YAML&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;SENTINEL_RESUBMITTED_MARKER&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;SPLIT_ASSIGNMENT_JSON&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;STDOUT_LOG&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;STUDY_DB&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;STUDY_JOURNAL_LOG&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;TRIALS_PARQUET&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;TUNING_CONFIG_SUFFIXES&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;TUNING_SPEC_JSON&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;VERIFICATION_CACHE_JSON&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;VERIFICATION_CACHE_VERSION&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;VERIFIED_PARQUET&quot;</span><span class="p">,</span>
+    <span class="c1"># Directory constants</span>
+    <span class="s2">&quot;DIR_AGGREGATION_SHARDS&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_CHUNKS&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_DELIVERABLES&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_ERRORS&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_IMAGE_COMPLETE&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_IMAGE_RECORDS&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_LEGACY_V2&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_LOGS&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_MEASUREMENTS&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_MEASUREMENTS_BY_FEATURE&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_OVERLAYS&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_PLOTS&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_PARETO&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_PHENOTYPIC&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_PHT_TUNE_CACHE&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_PROGRESS&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_QC&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_RECOMPILE&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_RECOMPILE_SHARDS&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_RECOMPILE_STATUS&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_RESULTS&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_SLURM_SCRIPTS&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_SPLITS&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_STAGE2_DONE&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DIR_ZARR&quot;</span><span class="p">,</span>
+    <span class="c1"># Namespace classes for JSON keys + dispatch</span>
+    <span class="s2">&quot;ChunkManifestKey&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ChunkStateKey&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DashboardManifestKey&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;DashboardManifestSlurmInfoKey&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;EnvVar&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;JobMetadataKey&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ModulePath&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ProcessingStateKey&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;AnalysisArtifactPaths&quot;</span><span class="p">,</span>
+    <span class="c1"># Path helpers</span>
+    <span class="s2">&quot;BundleLayout&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;aggregation_shard_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;analysis_full_parquet_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;analysis_manifest_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;best_pipeline_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;best_params_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;bytes_fingerprint&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;chunk_lock_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;chunk_manifest_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;chunk_parquet_filename&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;chunk_parquet_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;chunk_state_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;chunks_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;checkpoint_lock_filename&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;checkpoint_lock_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;dashboard_html_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;dataset_measurements_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;dataset_overlays_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;dataset_results_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MIGRATION_REMEDY&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;dataset_zarr_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;datasets_needing_migration&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;overlays_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;plots_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;curation_labels_parquet_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;custom_categories_json_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;default_output_dir_name&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;deliverables_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;error_analysis_csv_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;error_analysis_html_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;error_analysis_parquet_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;error_category_parquet_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;errors_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;event_log_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ensure_typed_json_suffix&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;failures_jsonl_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;file_fingerprint&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;generalization_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;generation_staging_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;gui_launch_owner_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;slurm_lifecycle_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;image_completion_marker_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;image_record_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;read_image_record&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;record_provenance&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;record_rejection&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PROVENANCE_FORWARD&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;PROVENANCE_MIGRATED&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RECORD_VERSION&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;STAGE_MEASURED&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;STAGE_STAGE1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;STAGE_STAGE2&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;STAGE_STAGE3&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;has_config_suffix&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;job_metadata_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;load_image_from_store&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;logs_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;manifest_json_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;master_carries_user_metadata&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;user_metadata_headers&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;master_measurements_parquet_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;measurements_by_feature_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;measurements_csv_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;measurements_parquet_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;migration_backup_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;migration_backup_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;migration_lock_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;migration_receipt_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;named_analysis_csv_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;named_analysis_parquet_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;named_analysis_paths&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;metadata_csv_deliverable_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;terminal_failures_jsonl_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;matches_any_suffix&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;migrate_legacy_machine_state&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;migrate_legacy_qc&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;clear_machine_state&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;param_importance_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;pareto_best_pipeline_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;pareto_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;pareto_front_parquet_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;pareto_importance_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;phenotypic_cache_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;phenotypic_cache_pipeline_json_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;pipeline_json_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;pipeline_publication_lock&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;pipeline_publication_lock_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;paths_fingerprint&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;processing_report_html_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;processing_state_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;progress_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;qc_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;qc_duckdb_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;qc_review_state_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;readme_md_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;read_run_manifest&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;recompile_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;recompile_status_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;rembi_manifest_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;resolve_event_log_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;resolve_execution_mode&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;resolve_manifest_json_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;resolve_pipeline_config_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;resolve_processing_state_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;resolve_progress_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;resolve_split_assignment_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;resolve_study_db_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;resolve_tuning_spec_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;restart_epoch_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;results_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;run_completion_marker_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;sentinel_resubmitted_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;shard_parquet_filename&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;slurm_scripts_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;source_cache_key&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;is_zarr_store_name&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;store_stem&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;source_image_stem&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;source_image_suffix&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;store_publication_token&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;store_revision_identity&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;task_status_filename&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;task_status_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;trials_parquet_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;tune_cache_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;tune_cache_run_marker_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;tune_cache_journal_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;tune_cache_split_assignment_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;tune_cache_splits_dir&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;tune_cache_study_db_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;tuning_spec_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;verification_cache_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;verified_parquet_path&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;validate_analysis_id&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;zarr_store_path&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

@@ -602,8 +602,6 @@
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">bm3d</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">bm3d.profiles</span><span class="w"> </span><span class="kn">import</span> <span class="n">BM3DStages</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageDenoiser</span>
@@ -740,6 +738,8 @@
         <span class="k">return</span> <span class="n">image</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_denoise_detect_mat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">bm3d</span>
+
         <span class="n">profile</span> <span class="o">=</span> <span class="n">bm3d</span><span class="o">.</span><span class="n">BM3DProfile</span><span class="p">()</span>
         <span class="n">profile</span><span class="o">.</span><span class="n">bs_ht</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">block_size</span>
         <span class="n">profile</span><span class="o">.</span><span class="n">bs_wiener</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">block_size</span>
@@ -755,6 +755,8 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_convert_stage_arg</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span> <span class="n">stage_arg</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;all_stages&quot;</span><span class="p">,</span> <span class="s2">&quot;hard_thresholding&quot;</span><span class="p">]</span>
     <span class="p">):</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">bm3d.profiles</span><span class="w"> </span><span class="kn">import</span> <span class="n">BM3DStages</span>
+
         <span class="k">match</span> <span class="n">stage_arg</span><span class="p">:</span>
             <span class="k">case</span> <span class="s2">&quot;hard_thresholding&quot;</span><span class="p">:</span>
                 <span class="k">return</span> <span class="n">BM3DStages</span><span class="o">.</span><span class="n">HARD_THRESHOLDING</span>

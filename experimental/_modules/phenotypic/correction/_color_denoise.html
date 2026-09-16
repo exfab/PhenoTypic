@@ -603,18 +603,18 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">bm3d</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">bm3d</span>
+
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageCorrector</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.mixin</span><span class="w"> </span><span class="kn">import</span> <span class="n">NormalizedOutputMixin</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_._anscombe</span><span class="w"> </span><span class="kn">import</span> <span class="n">gat_forward</span><span class="p">,</span> <span class="n">gat_inverse</span><span class="p">,</span> <span class="n">resolve_scale_factor</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.colourspace</span><span class="w"> </span><span class="kn">import</span> <span class="n">decode_srgb</span><span class="p">,</span> <span class="n">encode_srgb</span>
 
 
 <div class="viewcode-block" id="ColorDenoise">
@@ -794,6 +794,8 @@
 <span class="sd">        RGB is written through ``set_image``, whose ``_set_from_array``</span>
 <span class="sd">        cascade rebuilds ``gray`` and ``detect_mat``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.colourspace</span><span class="w"> </span><span class="kn">import</span> <span class="n">decode_srgb</span><span class="p">,</span> <span class="n">encode_srgb</span>
+
         <span class="k">if</span> <span class="n">image</span><span class="o">.</span><span class="n">rgb</span><span class="o">.</span><span class="n">isempty</span><span class="p">():</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                     <span class="s2">&quot;ColorDenoise requires a 3-channel RGB image; this image &quot;</span>
@@ -830,6 +832,8 @@
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_build_profile</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">bm3d</span><span class="o">.</span><span class="n">BM3DProfile</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Build a BM3D profile with the configured block size.&quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">bm3d</span>
+
         <span class="n">profile</span> <span class="o">=</span> <span class="n">bm3d</span><span class="o">.</span><span class="n">BM3DProfile</span><span class="p">()</span>
         <span class="n">profile</span><span class="o">.</span><span class="n">bs_ht</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">block_size</span>
         <span class="n">profile</span><span class="o">.</span><span class="n">bs_wiener</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">block_size</span>
@@ -837,6 +841,8 @@
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_denoise_plain</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rgb_lin</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Run CBM3D directly on linear-light RGB in [0, 1].&quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">bm3d</span>
+
         <span class="n">denoised</span> <span class="o">=</span> <span class="n">bm3d</span><span class="o">.</span><span class="n">bm3d_rgb</span><span class="p">(</span>
                 <span class="n">rgb_lin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_psd</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_profile</span><span class="p">(),</span> <span class="s2">&quot;opp&quot;</span>
         <span class="p">)</span>
@@ -850,6 +856,8 @@
 <span class="sd">        correct in the stabilized domain), then restored by the</span>
 <span class="sd">        closed-form inverse GAT.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">bm3d</span>
+
         <span class="n">scale</span> <span class="o">=</span> <span class="n">resolve_scale_factor</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gat_scale_factor</span><span class="p">)</span>
         <span class="n">counts</span> <span class="o">=</span> <span class="n">rgb_lin</span> <span class="o">*</span> <span class="n">scale</span>
         <span class="n">stabilized</span> <span class="o">=</span> <span class="n">gat_forward</span><span class="p">(</span>

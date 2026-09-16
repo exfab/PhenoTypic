@@ -1046,27 +1046,27 @@ here when you add a consumer.</p>
 <td><p>—</p></td>
 <td><p>Publishes them; the writer side</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">gui/shell/_runs_registry.py:1082</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">_gui/shell/_runs_registry.py:1082</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">.completion</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">shallow</span></code></p></td>
 <td><p>Status of a historical output with no GUI launch generation</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gui/shell/_runs_registry.py:1460</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">_gui/shell/_runs_registry.py:1460</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">.completion</span></code>, <code class="docutils literal notranslate"><span class="pre">.diagnostics</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">shallow</span></code></p></td>
 <td><p>The run’s row in the runs list</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">gui/results_viewer/_output_root.py:364</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">_gui/results_viewer/_output_root.py:364</span></code></p></td>
 <td><p>full <code class="docutils literal notranslate"><span class="pre">RunState</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">deep</span></code></p></td>
 <td><p>Binds run state at discovery; gates opening via <code class="docutils literal notranslate"><span class="pre">core_readable</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gui/_snapshot_status.py:121</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">_gui/_snapshot_status.py:121</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">.completion</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">shallow</span></code></p></td>
 <td><p>Live status for a bound snapshot</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">gui/run_console/_slurm_observer.py:1334</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">_gui/run_console/_slurm_observer.py:1334</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">.completion</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">shallow</span></code></p></td>
 <td><p>Whether a SLURM run is reconciling or done</p></td>
@@ -1086,7 +1086,7 @@ must not. Both carry a comment saying so; <strong>do not “simplify” them</st
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gui/shell/_runs_registry.py:699</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">_gui/shell/_runs_registry.py:699</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">_all_accepted_images_succeeded</span></code></p></td>
 <td><p>Asks <em>“have the accepted images succeeded?”</em>. <code class="docutils literal notranslate"><span class="pre">.completion</span></code> already requires the run proof, which would make the branch below it dead code.</p></td>
 </tr>
@@ -1100,7 +1100,7 @@ must not. Both carry a comment saying so; <strong>do not “simplify” them</st
 </section>
 <section id="core-readable-is-not-completion">
 <h3><code class="docutils literal notranslate"><span class="pre">core_readable</span></code> is not <code class="docutils literal notranslate"><span class="pre">completion</span></code><a class="headerlink" href="#core-readable-is-not-completion" title="Link to this heading">#</a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">core_readable(layout)</span></code> (<code class="docutils literal notranslate"><span class="pre">gui/results_viewer/_output_root.py:140</span></code>) decides
+<p><code class="docutils literal notranslate"><span class="pre">core_readable(layout)</span></code> (<code class="docutils literal notranslate"><span class="pre">_gui/results_viewer/_output_root.py:140</span></code>) decides
 whether the results viewer can open a bundle. It is <strong>not</strong> derivable from
 <code class="docutils literal notranslate"><span class="pre">completion</span></code>: a curated-but-incomplete run is core-readable, and a completion
 test that lists the acceptable verdicts gets it wrong. Ask <code class="docutils literal notranslate"><span class="pre">core_readable</span></code>
@@ -1109,7 +1109,7 @@ directly rather than approximating it.</p>
 <section id="status-vocabulary-is-hand-copied">
 <h3>Status vocabulary is hand-copied<a class="headerlink" href="#status-vocabulary-is-hand-copied" title="Link to this heading">#</a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">_runs_registry._RUN_STATUSES</span></code> is the vocabulary; other GUI sites hand-copy it.
-One copy (<code class="docutils literal notranslate"><span class="pre">gui/results_viewer/_qc_tab/_rebuild.py:157</span></code>) silently fell a member
+One copy (<code class="docutils literal notranslate"><span class="pre">_gui/results_viewer/_qc_tab/_rebuild.py:157</span></code>) silently fell a member
 behind when <code class="docutils literal notranslate"><span class="pre">incomplete</span></code> was added, and an unrecognised status there does not
 degrade — it <strong>blocks a QC rebuild on a perfectly valid status</strong>.</p>
 <p><code class="docutils literal notranslate"><span class="pre">test_every_status_vocabulary_in_the_gui_agrees_with_the_registry</span></code> walks the

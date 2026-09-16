@@ -627,16 +627,8 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect._inoculum_detector</span><span class="w"> </span><span class="kn">import</span> <span class="n">InoculumDetector</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.refine</span><span class="w"> </span><span class="kn">import</span> <span class="n">KeepSectionLargest</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.reconnect</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">ReconnectConfig</span><span class="p">,</span>
-    <span class="n">build_reconnect_cost</span><span class="p">,</span>
-    <span class="n">compute_full_image_app2_gi_cost</span><span class="p">,</span>
-    <span class="n">filter_mask_by_overlap</span><span class="p">,</span>
-    <span class="n">select_reconnect_fragments</span><span class="p">,</span>
-    <span class="n">markers_from_centroids</span><span class="p">,</span>
-    <span class="n">partition_by_grid_voronoi</span><span class="p">,</span>
-    <span class="n">reconnect_fragments_tiled</span><span class="p">,</span>
-<span class="p">)</span>
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.reconnect</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReconnectConfig</span>
 
 
 <div class="viewcode-block" id="FilamentousFungiDetector">
@@ -982,6 +974,15 @@
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.reconnect</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+            <span class="n">build_reconnect_cost</span><span class="p">,</span>
+            <span class="n">compute_full_image_app2_gi_cost</span><span class="p">,</span>
+            <span class="n">filter_mask_by_overlap</span><span class="p">,</span>
+            <span class="n">markers_from_centroids</span><span class="p">,</span>
+            <span class="n">partition_by_grid_voronoi</span><span class="p">,</span>
+            <span class="n">reconnect_fragments_tiled</span><span class="p">,</span>
+            <span class="n">select_reconnect_fragments</span><span class="p">,</span>
+        <span class="p">)</span>
 
         <span class="c1"># Validate that detectors are set before operation</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">inoculum_detector</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -1164,6 +1165,8 @@
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_reconnect_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ReconnectConfig</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Bundle scene-derived scalars for the sdk_.reconnect functions.&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.reconnect</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReconnectConfig</span>
+
         <span class="k">return</span> <span class="n">ReconnectConfig</span><span class="p">(</span>
             <span class="n">beta</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">beta</span><span class="p">,</span>
             <span class="n">gamma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">gamma</span><span class="p">,</span>

@@ -614,10 +614,17 @@
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
-<span class="c1"># Suppress mahotas&#39; module-load SyntaxWarning before importing it.</span>
-<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">SyntaxWarning</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s1">&#39;mahotas&#39;</span><span class="p">)</span>
+<span class="nd">@functools</span><span class="o">.</span><span class="n">cache</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_mahotas</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Import mahotas on first use, silencing its module-load ``SyntaxWarning``.</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">mahotas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mh</span>  <span class="c1"># noqa: E402 - must follow the filterwarnings call above</span>
+<span class="sd">    Deferred so ``phenotypic.measure`` -- imported by every pipeline -- does not load</span>
+<span class="sd">    mahotas until a texture is measured.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="ne">SyntaxWarning</span><span class="p">,</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;mahotas&quot;</span><span class="p">)</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">mahotas</span>
+
+    <span class="k">return</span> <span class="n">mahotas</span>
 
 
 <div class="viewcode-block" id="MeasureTexture">
@@ -773,6 +780,8 @@
 <span class="sd">                warning is issued with details of the error, and NaN values are assigned for the corresponding</span>
 <span class="sd">                measurements.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mh</span> <span class="o">=</span> <span class="n">_mahotas</span><span class="p">()</span>
+
         <span class="k">if</span> <span class="n">foreground_array</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">foreground_array</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Foreground array must be normalized between 0 and 1&quot;</span><span class="p">)</span>
 

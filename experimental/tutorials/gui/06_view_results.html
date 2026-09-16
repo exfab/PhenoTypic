@@ -670,24 +670,13 @@ Analysis receive one coherent, read-only snapshot, so a failed, cancelled, or
 superseded bind keeps the previous output visible rather than mixing two runs.
 If the output-consistency report finds contradictory or incomplete terminal
 evidence, you may inspect it but mutation controls for QC, Error, curation,
-Analysis, rebuild, and publication stay disabled. Two other ways to get a
-populated viewer are:</p>
-<ol class="arabic">
-<li><p><strong>Standalone launch</strong> (recommended for now). Run
-<code class="docutils literal notranslate"><span class="pre">phenotypic.gui.results_viewer</span></code> directly with <code class="docutils literal notranslate"><span class="pre">--output-root</span></code> pointing
-at the CLI output:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.gui.results_viewer<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--output-root<span class="w"> </span>gui_tutorial_dataset/results<span class="w"> </span>--port<span class="w"> </span><span class="m">8051</span>
-</pre></div>
-</div>
-</li>
-<li><p><strong>Open <code class="docutils literal notranslate"><span class="pre">deliverables/dashboard.html</span></code></strong> to monitor progress and inspect
-failures. Local dashboards render progress directly; SLURM dashboards add
-Progress and Download tabs. Use the Results Viewer or <code class="docutils literal notranslate"><span class="pre">/analysis/</span></code> app for
-result exploration.</p></li>
-</ol>
-<p>The remaining screenshots come from the standalone launcher pointed at
-the output the <a class="reference internal" href="04_run_local.html"><span class="std std-doc">Run Locally</span></a> page produced.</p>
+Analysis, rebuild, and publication stay disabled. You can also <strong>open
+<code class="docutils literal notranslate"><span class="pre">deliverables/dashboard.html</span></code></strong> to monitor progress and inspect failures.
+Local dashboards render progress directly; SLURM dashboards add Progress and
+Download tabs. Use the Results Viewer or <code class="docutils literal notranslate"><span class="pre">/analysis/</span></code> app for result
+exploration.</p>
+<p>The remaining screenshots show the viewer loaded with the output the
+<a class="reference internal" href="04_run_local.html"><span class="std std-doc">Run Locally</span></a> page produced.</p>
 <p><img alt="Hub viewer after an asynchronous bind has atomically published the Results and Analysis snapshot." src="../../_images/05_hub_bound_snapshot.png" /></p>
 </section>
 <section id="loaded-viewer">

@@ -603,18 +603,17 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Literal</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">bm3d</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">bm3d.profiles</span><span class="w"> </span><span class="kn">import</span> <span class="n">BM3DStages</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">bm3d.profiles</span><span class="w"> </span><span class="kn">import</span> <span class="n">BM3DStages</span>
+
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageCorrector</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_._anscombe</span><span class="w"> </span><span class="kn">import</span> <span class="n">gat_forward</span><span class="p">,</span> <span class="n">gat_inverse</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">..sdk_.colourspace</span><span class="w"> </span><span class="kn">import</span> <span class="n">decode_srgb</span><span class="p">,</span> <span class="n">encode_srgb</span>
 
 
 <div class="viewcode-block" id="DenoiseBlockMatch">
@@ -807,6 +806,10 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            Denoised 2D array clipped to [0, 1].</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">bm3d</span>
+
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.colourspace</span><span class="w"> </span><span class="kn">import</span> <span class="n">decode_srgb</span><span class="p">,</span> <span class="n">encode_srgb</span>
+
         <span class="c1"># sRGB -&gt; linear light so the GAT sees linear photon counts</span>
         <span class="n">working</span> <span class="o">=</span> <span class="n">decode_srgb</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span>
 
@@ -856,6 +859,8 @@
             <span class="n">stage_arg</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;all_stages&quot;</span><span class="p">,</span> <span class="s2">&quot;hard_thresholding&quot;</span><span class="p">],</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BM3DStages</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert string stage argument to BM3DStages enum.&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">bm3d.profiles</span><span class="w"> </span><span class="kn">import</span> <span class="n">BM3DStages</span>
+
         <span class="k">match</span> <span class="n">stage_arg</span><span class="p">:</span>
             <span class="k">case</span> <span class="s2">&quot;hard_thresholding&quot;</span><span class="p">:</span>
                 <span class="k">return</span> <span class="n">BM3DStages</span><span class="o">.</span><span class="n">HARD_THRESHOLDING</span>

@@ -688,9 +688,8 @@ browser can only see the directory you pass via <code class="docutils literal no
 </section>
 <section id="launching-the-hub">
 <h2>Launching the hub<a class="headerlink" href="#launching-the-hub" title="Link to this heading">#</a></h2>
-<p>Two equivalent entry points boot the same server:</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">phenotypic-gui</span></code> console script boots the hub:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>phenotypic-gui<span class="w"> </span>--root<span class="w"> </span>./images<span class="w"> </span>--port<span class="w"> </span><span class="m">8050</span>
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.gui<span class="w"> </span>--root<span class="w"> </span>./images<span class="w"> </span>--port<span class="w"> </span><span class="m">8050</span>
 </pre></div>
 </div>
 <p><strong>Options:</strong></p>
@@ -808,7 +807,7 @@ paths.</p>
 <p><strong><code class="docutils literal notranslate"><span class="pre">phenotypic</span> <span class="pre">gui</span></code> (without a hyphen) is not supported.</strong></p>
 <p>The existing <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> CLI is reserved for batch pipeline execution with
 explicit path options, not subcommands. Always use the hyphenated form
-<code class="docutils literal notranslate"><span class="pre">phenotypic-gui</span></code> or the module form <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic.gui</span></code>. Typing
+<code class="docutils literal notranslate"><span class="pre">phenotypic-gui</span></code>. Typing
 <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">phenotypic</span> <span class="pre">gui</span></code> will fail because <code class="docutils literal notranslate"><span class="pre">gui</span></code> is an unexpected positional
 argument.</p>
 </div>
@@ -951,7 +950,7 @@ interactive):</strong></p>
 <li><p>Terminal A — start the GUI on the compute node:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ssh<span class="w"> </span>&lt;user&gt;@&lt;cluster&gt;
 srun<span class="w"> </span>-A<span class="w"> </span>&lt;account&gt;<span class="w"> </span>-p<span class="w"> </span>&lt;partition&gt;<span class="w"> </span>-t<span class="w"> </span><span class="m">4</span>:00:00<span class="w"> </span>--pty<span class="w"> </span>-c<span class="w"> </span><span class="m">8</span><span class="w"> </span>--mem<span class="o">=</span>32g<span class="w"> </span>bash<span class="w"> </span>-l
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.gui<span class="w"> </span>--root<span class="w"> </span>&lt;project-dir&gt;<span class="w"> </span>--port<span class="w"> </span><span class="m">8050</span>
+uv<span class="w"> </span>run<span class="w"> </span>phenotypic-gui<span class="w"> </span>--root<span class="w"> </span>&lt;project-dir&gt;<span class="w"> </span>--port<span class="w"> </span><span class="m">8050</span>
 </pre></div>
 </div>
 </li>
@@ -973,27 +972,11 @@ the symptom that you need a two-hop tunnel rather than a single-hop one.</p>
 <h2>Cloud deployment<a class="headerlink" href="#cloud-deployment" title="Link to this heading">#</a></h2>
 <p>Cloud deployment (multi-user, per-session sandbox roots, authentication) is a
 non-goal in v1. The hub is single-user with no auth gate. A
-<code class="docutils literal notranslate"><span class="pre">TODO(cloud-deploy)</span></code> in <code class="docutils literal notranslate"><span class="pre">src/phenotypic/gui/shell/_sandbox.py</span></code> marks the
+<code class="docutils literal notranslate"><span class="pre">TODO(cloud-deploy)</span></code> in the hub’s sandbox module marks the
 hook point for a future auth layer.</p>
 <p>Do not expose the hub on <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> without authentication — there is nothing
 stopping another user from reading files or submitting jobs through the
 unguarded API.</p>
-</section>
-<section id="standalone-tools">
-<h2>Standalone tools<a class="headerlink" href="#standalone-tools" title="Link to this heading">#</a></h2>
-<p>Each component can be launched independently for debugging:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Pipeline builder only</span>
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.gui.builder<span class="w"> </span>--image-root<span class="w"> </span>./images
-
-<span class="c1"># Results viewer only</span>
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.gui.results_viewer<span class="w"> </span>--output-root<span class="w"> </span>./out
-
-<span class="c1"># Run console only</span>
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic.gui.run_console<span class="w"> </span>--root<span class="w"> </span>./images
-</pre></div>
-</div>
-<p>All three accept <code class="docutils literal notranslate"><span class="pre">--host</span></code>, <code class="docutils literal notranslate"><span class="pre">--port</span></code>, and <code class="docutils literal notranslate"><span class="pre">--debug</span></code> with the same defaults as
-the hub launcher.</p>
 </section>
 </section>
 
@@ -1041,7 +1024,6 @@ the hub launcher.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cloud-deployment">Cloud deployment</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#standalone-tools">Standalone tools</a></li>
 </ul>
   </nav></div>
 
