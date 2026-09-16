@@ -371,6 +371,50 @@ corrupted objects=9 vs ref=9   <i>&lt;- an object-count check would NOT have cau
   <li><strong>One GPU detector per pipeline</strong> — deferred, not a limit of the design. See below.</li>
 </ul>
 
+<h2>Robust at depth</h2>
+
+<p>Multi-level nesting needs no new machinery. The walker, path resolution, substitution, the slot id, the cut at <code>gpu_path[0]</code>, the replay stub and the step-path descent are all depth-general <em>by construction</em> — plain recursion with no depth term. The spike already ran depth 2 in two different flavours.</p>
+
+<p>One piece is not automatically general: working out what runs, on the image the GPU detector will read, <em>before</em> it runs. That depends on how each container hands work to its children — and containers differ:</p>
+
+<pre><i># each child gets the container's own input</i>
+CompositeDetector:136   detector.apply(image, inplace=False)
+CompositeEnhance:155    enhancer.apply(image, inplace=False)
+
+<i># ...and then there is this one</i>
+TwoKFilamentous:149     center_detector.apply(image, ...)            <i>original image</i>
+TwoKFilamentous:154     background_subtractor.apply(enhanced.copy()) <i>a derived image</i>
+TwoKFilamentous:164     branch_base.apply(enhanced, <b>inplace=True</b>)     <i>mutates it</i></pre>
+
+<h3>Why not a DAG</h3>
+
+<p>A dependency graph is the right mental model, and the prefix rule is a DAG traversal in miniature. But a faithful one can't be derived: <code>enhanced</code> above is a local variable, and <code>FilamentousFungiDetector:413</code> runs a <code>ContrastStretching()</code> constructed inline that is not an operation in the graph at all. The edges live in imperative <code>_operate</code> bodies.</p>
+
+<p>Building one anyway would mean every container declaring its internal dataflow, including intermediates that have no name — a large API change producing a structure that <em>looks</em> authoritative while being wrong wherever someone forgot a declaration. Overkill and unfaithful at once.</p>
+
+<h3>A closed table, and a refusal</h3>
+
+<p>Instead the splitter keeps a small table keyed by class, and refuses anything not in it:</p>
+
+<div class="tw"><table>
+  <thead><tr><th>Contract</th><th>Children receive</th><th>Prefix contribution</th><th>Classes</th></tr></thead>
+  <tbody>
+    <tr><td><code>"same"</code></td><td>the container's own input</td><td class="pass">nothing — branches are parallel</td><td><code>CompositeDetector</code>, <code>CompositeEnhance</code>, <code>FilamentousFungiDetector</code></td></tr>
+    <tr><td><code>"sequence"</code></td><td>the previous child's output</td><td>the ops preceding the branch</td><td><code>ImagePipeline</code></td></tr>
+    <tr><td><em>absent</em></td><td>— no single answer holds</td><td class="fail">refuse, naming the class</td><td><code>TwoKFilamentousDetector</code></td></tr>
+  </tbody>
+</table></div>
+
+<p>A hardcoded type switch is only brittle if its fallthrough <em>guesses</em>. This one refuses, so a container nobody has classified produces an error naming the class rather than a silently wrong Stage-2 input.</p>
+
+<div class="note win">
+  <h4>Why a table, and not a declaration on each operation</h4>
+  <p>The obvious objection to a table is drift: it sits away from the <code>_operate</code> it describes, so someone could change a composite and never see it. That objection doesn't hold here, because for these types the semantics is <strong>definitional, not incidental</strong> — a <code>CompositeDetector</code> whose branches chained would not be a composite, it would be an <code>ImagePipeline</code>, which already exists for exactly that. The table restates a type contract rather than caching an observation.</p>
+  <p>And a contract can be <strong>tested</strong>, where a declaration can only be asserted. Each <code>"same"</code> entry carries a probe test that puts two recording operations in the container's children and asserts the second never observed the first's output. A <code>_child_input = "same"</code> attribute that is wrong passes every test; a probe cannot. A guard test then enumerates all seven <code>OperationField</code>-bearing classes and requires each to be in the table or on the unsupported list with a reason — so adding a container fails the suite until someone decides, at authoring time rather than in a 33,923-image run.</p>
+</div>
+
+<p>All of which is documented where an author will meet it, in a new contributor page — <code>docs/source/contrib_guide/gpu_detectors.md</code> — alongside the hook surface, the capability fields, the determinism requirement, and the rule that a detector must not assume it sees one image at a time.</p>
+
 <h2>Designing for two detectors</h2>
 
 <p>This ships <code>N = 1</code>, but "more than one GPU detector" is two different problems with very different costs, and only one of them is expensive.</p>
@@ -424,7 +468,7 @@ Stage 3    replay both slots, composite merges, both raws consumed and deleted</
   <li><b>Consolidate tune/'s traversal</b><span>Rescoped after review — <code>gui/</code> walks type annotations, not instances, so there is nothing there to share.</span></li>
   <li><b>Detect tree-wide; refuse unstageable placements</b><span>Closes the bug. The refusal must fire on the production path, not behind a flag.</span></li>
   <li><b>Container ops push a per-branch step</b><span>Four classes, one shared helper. Measurement probes stay excluded, by design and by test.</span></li>
-  <li><b>Path-shaped StagePlan + branch prefix</b><span>Cut at the ancestor; the detector's own slot survives so the stub can land in it.</span></li>
+  <li><b>Path-shaped StagePlan + branch prefix</b><span>Cut at the ancestor; the detector's own slot survives so the stub can land in it. Carries the container-contract table, its probe tests and the coverage guard.</span></li>
   <li><b>ReplayDetector</b><span>Delegates the write to the real detector, and its identity — all four provenance fields — to the wrapped op.</span></li>
   <li><b>Key the Stage-2 signal by detector slot</b><span>Added after the 2+ question. Invisible at N=1; the one thing that makes multi-detector support additive instead of a layout migration.</span></li>
   <li><b>Stage 2 applies the branch prefix</b><span>On a provenance-detached copy; a bare <code>copy()</code> carries the journal and raises.</span></li>
@@ -434,12 +478,12 @@ Stage 3    replay both slots, composite merges, both raws consumed and deleted</
   <li><b>Process mode runs the post-detector chain</b><span>With the corrected provenance handling and no success sink.</span></li>
   <li><b>Invalidate continuation across the bump</b><span>Process-only half of the digest.</span></li>
   <li><b>Forward stage2_prefix at both call sites</b><span>Re-aimed after review. The parameter defaults to <code>None</code>, so until this lands, shape B is broken with no error.</span></li>
-  <li><b>Documentation</b><span>Root <code>CLAUDE.md</code>'s description of the export is now false.</span></li>
+  <li><b>Documentation</b><span>Root <code>CLAUDE.md</code>'s description of the export is now false; the new GPU-detector contributor guide is re-checked against the implementation as landed.</span></li>
   <li><b>Full regression</b><span>Once, as a Slurm job, against the recorded baseline.</span></li>
 </ol>
 
 <footer>
-  Worktree <code>worktree-nested-gpu-staging</code> · spec, plan, review and spike committed across <code>83a8680f</code>, <code>9876ef1c</code>, <code>fac454e2</code>.<br>
+  Worktree <code>worktree-nested-gpu-staging</code> · spec, plan, independent review, spike and contributor guide across seven commits, <code>83a8680f</code>…<code>b8519730</code>.<br>
   Not yet implemented — this is the design and the plan, with the spike that proved the mechanism.
 </footer>
 
