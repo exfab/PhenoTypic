@@ -106,7 +106,10 @@ ContrastAdjustment)` yields `['gamma', 'gain', 'norm', 'input_layer']`.
   boundaries (`FootprintShape`, `DetectMode`, `FilFinderOutput`,
   `FilFinderPruneCriteria`, `FilamentousFungiReconnectStrategy`, `ExecutionMode`,
   `ImageTypeName`, `ProcessingStatus`, `RecompileTaskType`,
-  `CheckpointType`, `FailureSource`, `NormOut`, `InputLayer`).
+  `CheckpointType`, `FailureSource`, `NormOut`, `InputLayer`,
+  `GpuInputLayer`, `GpuOutputKind`). The last two are what a `GpuDetector`
+  author needs — `input_layer` is a `GpuInputLayer`, not a bare `str`, and
+  annotating it `str` silently widens the closed set.
 - `funcs_.py` — timing decorators, mask validation.
 - `hdf_.py` — the surviving HDF5 **read** surface (~516 lines). Phase 6 of the
   OME-Zarr change deleted the DataFrame half (`save_series_*`, `load_series`,

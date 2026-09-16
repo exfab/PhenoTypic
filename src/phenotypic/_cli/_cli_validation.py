@@ -184,7 +184,7 @@ def _populate_child_contract() -> None:
     ``_child_contract`` refuses a ``CompositeEnhance`` -- a placement the
     design permits. Populating key-by-key made that window reachable. It
     matters because the GUI reaches here on threaded Werkzeug
-    (``gui/run_console/_callbacks.py:255``) and already swallows ``ValueError``,
+    (``gui/run_console/_callbacks.py:256``) and already swallows ``ValueError``,
     so the symptom is not an error: the run silently routes to CPU.
 
     The dict literal below is fully constructed before ``update`` is called,
@@ -207,7 +207,7 @@ def _child_contract(container: Any) -> str:
     ONLY composition primitives may carry a staged GpuDetector. A domain
     detector is refused even when its current code would classify cleanly --
     ``FilamentousFungiDetector`` feeds ``inoculum_detector`` the container's
-    own image today (``_filamentous_fungi_detector.py:395,398``) and so reads
+    own image today (``_filamentous_fungi_detector.py:387,399``) and so reads
     as ``"parallel"``, but that is incidental to an algorithm that also runs an
     inline ``ContrastStretching`` (``:413``) and a destructive
     ``_subtract_background``. Nothing about being a fungus detector constrains
@@ -308,7 +308,7 @@ def find_gpu_detectors(
     Args:
         pipeline: The pipeline to scan.
         strict: When True, additionally raise for MORE THAN ONE detector. The
-            GUI (``gui/run_console/_callbacks.py:253``) calls the non-strict
+            GUI (``gui/run_console/_callbacks.py:255``) calls the non-strict
             path, where a multi-detector pipeline should report True rather
             than raise.
 
@@ -397,7 +397,7 @@ def pipeline_requires_gpu(pipeline_path: Path) -> bool:
     it means the run silently completes on CPU with different numbers.
 
     NOTE the callers handle the refusal differently, and neither was designed:
-    ``gui/run_console/_callbacks.py:246-255`` wraps this in
+    ``gui/run_console/_callbacks.py:248-257`` wraps this in
     ``except (OSError, ValueError, TypeError): return False``, and
     ``UnstageableGpuDetectorError`` IS a ``ValueError`` -- so the GUI silently
     reports "not a GPU pipeline" instead of surfacing the message. The CLI
