@@ -135,8 +135,25 @@ gpu_key:  str                    ->  gpu_path: tuple[str, ...]
 + stage2_prefix: list[ImageOperation]
 ```
 
-`pre_pipeline` is cut at `gpu_path[0]`; the ancestor itself heads
-`post_pipeline`.
+`pre_pipeline` is cut at `gpu_path[0]`; **the node at `gpu_path[0]` heads
+`post_pipeline`**, and Stage 3 substitutes the stub at `gpu_path` within it.
+
+This is uniform across depths, and that uniformity changes the **top-level** case
+too. When the detector is itself top-level, `gpu_path == ("Sam2",)`, so `Sam2`'s
+own slot now sits in `post_pipeline` and the stub lands in it — where previously
+`post_pipeline` began *after* the detector and Stage 3 called
+`_write_object_output` explicitly before applying it. Both paths therefore become
+one path. Two consequences the plan must carry:
+
+- Omitting the ancestor for a top-level detector would make Stage 3 **re-run the
+  real detector on a CPU node**. The existing
+  `tests/unit/cli/test_cli_pipeline_split.py:24` asserts the old exclusion and
+  must be updated — an intended change, not a regression.
+- `_branch_prefix` must return `[]` when `len(gpu_path) == 1`. The spike's
+  version does not (it lacks the root guard on its final block) and returns every
+  preceding top-level op — ops Stage 1 has already applied and written to the
+  store, which Stage 2 would then re-run on top of themselves. The spike never
+  exercises a top-level detector, so this was latent. **Pin it with a test.**
 
 ### 4.3 Stage-2 branch prefix
 
@@ -155,6 +172,19 @@ The prefix is applied to an **in-memory copy** inside Stage 2 and is never
 written to the store, preserving the existing "Stage 2 does NOT write into the
 store" invariant. It is then re-executed in Stage 3 as part of the normal branch
 run. See §7 for the cost of that double execution.
+
+**The copy must be provenance-detached, not a bare `image.copy()`.**
+`stage2_detect_core` runs at `_application_owner_depth == 0` against a store whose
+trailing application is `"staged"`, and `Image.copy()` carries the journal across.
+A bare copy therefore makes the first prefix op raise `cannot start a new
+provenance application before the last ends` (`_provenance.py:361-363`) — the same
+trap as §8.2. Use the established in-tree pattern from
+`measure/_canonical_zone_measure.py:279-295`: deep-copy the journal, mark every
+non-terminal application `"complete"`, attach it to the copy, then apply. The
+copy is discarded, so its journal is meaningless — and detaching (rather than
+`continuing_provenance_application`) is the right choice here precisely because
+the prefix's records must reach **nothing**: Stage 3 re-runs the same ops and
+records them for real.
 
 **For the driver pipeline the prefix is empty** — `Sam2` is a bare leaf, so
 Stage 2 reads `detect_mat` from the store exactly as it does today.
@@ -190,9 +220,20 @@ uniformly, and this design fixes that (§5.2).
 **non-empty strings** (`_provenance.py:277-283`). An integer branch index is
 illegal; the `field[i]` string form is used everywhere.
 
-**Required of the replay stub:** it must report the wrapped detector's
-`operation_class` and `parameters`, and carry the Stage-2 token's
-`detector_duration_seconds` plus the merge duration. Stage 3 currently appends
+**Required of the replay stub:** `append_operation_provenance`
+(`_provenance.py:872-912`) derives **four** fields from the operation, and the
+stub must override all four — not two:
+
+| Field | Default source | Why the stub must override it |
+|---|---|---|
+| `operation_name` | `type(operation).__name__` | else the journal reads `ReplayDetector` beside an `operation_class` of `Sam2` — internally inconsistent, and pinned by `tests/integration/cli/test_staged_store_stages.py:115` |
+| `operation_class` | `module.qualname` | staged/single-pass parity |
+| `parameters` | `operation.model_dump(mode="json")` | parity — **and** the stub holds an `NdArrayField`, so the default would serialise the entire recorded objmap into the journal |
+| `duration_seconds` | measured wall time of the apply | the merge alone is not the cost; the total is the Stage-2 token's `detector_duration_seconds` + the merge, pinned by `test_staged_store_stages.py:128` |
+
+Keep the existing JSON round-trip (`json.loads(json.dumps(...))`) around whichever
+source supplies `parameters`; it is what guarantees the value is JSON-native before
+`validate_provenance_journal` sees it. Stage 3 currently appends
 the GPU op's entry explicitly, *outside* the apply
 (`_cli_staged_workers.py:490-500`); under this design the write happens inside
 the enclosing operation's `_operate`, so that explicit append is replaced by the
@@ -387,13 +428,33 @@ post-detector op chain at depth 0: ValueError: cannot start a new provenance
 application before the last ends
 ```
 
-**Mitigation.** Process mode performs Stage 3's `truncate_provenance_to_retry_base`
-+ `set_provenance_status(image, "in_progress")` handling **in memory only**,
-deliberately omitting `write_provenance_checkpoint`. `_export_objmap_layer`'s
-invariant (FLOW-16/FLOW-30/FLOW-6) — that it never writes to the store, because a
-write there invalidates the descriptor the success marker just recorded — is
-preserved. This omission is intentional and must carry a comment saying so, or a
-later reader will "fix" it by adding the checkpoint back.
+**Mitigation.** Wrap the apply in `continuing_provenance_application(image)` and
+install **no** `provenance_success_sink`.
+
+> **Corrected 2026-09-15 after plan review.** An earlier draft of this section
+> prescribed `truncate_provenance_to_retry_base` + `set_provenance_status(image,
+> "in_progress")` instead. **That does not work.** `"in_progress"` is not in
+> `_append_application`'s terminal set either — the set is `{"complete",
+> "failed"}` (`_provenance.py:362-363`), while `_APPLICATION_STATUSES` is
+> `{"complete", "failed", "in_progress", "staged"}` (`:28`). Setting
+> `"in_progress"` therefore raises the very error it was written to avoid. The
+> draft was presented as settled on the strength of
+> `probe_process_provenance.py`, which reproduces the trap but never exercises
+> the mitigation — a probe that tests the disease and not the cure.
+
+What actually makes Stage 3's apply legal is `continuing_provenance_application`
+(`_provenance.py:454-465`): it accepts a `"staged"` application and increments
+`_application_owner_depth`, so `provenance_application` **joins** the open
+application instead of appending a new one. Process mode uses the same shape Stage
+3 uses (`_cli_staged_workers.py:503-511`) **minus the success sink** — the sink is
+what would write to the store, so omitting it is what preserves FLOW-16/FLOW-30/
+FLOW-6, not omitting a checkpoint call. Neither `truncate_provenance_to_retry_base`
+nor `set_provenance_status` is needed: the image is freshly loaded on every export,
+so there is nothing stale to truncate, and `continuing_provenance_application`
+accepts `"staged"` directly.
+
+The absent sink is intentional and must carry a comment saying so, or a later
+reader will "fix" it by adding one back.
 
 ### 8.3 Consequence 2 — continuation across the upgrade (the dangerous one)
 
@@ -409,11 +470,28 @@ A process run interrupted before this change and resumed after it would treat
 old-semantics PNGs as complete, and publish a tree mixing raw-detector and
 pipeline objmaps with no indication which is which.
 
-**Mitigation: add an explicit output-semantics revision to the digest payload** —
-a module-level integer constant, bumped whenever per-image output semantics
-change, folded into `processing_configuration_digest_from_values`. Resuming
-across the upgrade then re-derives every image exactly once, and the constant
-documents *why* at the site that depends on it.
+**Mitigation: add an explicit output-semantics revision to the digest** — a
+module-level integer constant, bumped whenever per-image output semantics change,
+folded into `processing_configuration_digest_from_values`.
+
+**It goes in the `process_only_layer is not None` branch, beside
+`process_format` — NOT in the base payload.** There is a documented local
+precedent three lines from the insertion point
+(`_cli_failure_tracker.py:218-223`):
+
+> `# Beside `ext` and NOT in the base payload: a full or measure run has no`
+> `# process format, and folding it into the base would change every existing`
+> `# run's digest and cold-start every continuation in flight.`
+
+The behaviour change in §8 is scoped to `--mode process --layer objmap`. A
+base-payload placement would cold-start every in-flight `full` and `measure`
+continuation on the cluster — including the 33,923-image run this spec exists
+for — buying no correctness. Fold in `f"{process_only_layer}:{revision}"` so a
+`gray` export is not invalidated by an `objmap` semantics change either.
+
+The constant's docstring must name **which outputs** the revision governs; read
+broadly, "per-image output semantics" is exactly what argues for the wrong
+placement.
 
 Two alternatives were rejected. Folding in `phenotypic.__version__` invalidates
 continuation on **every** release including patches, breaking legitimate resume.
@@ -439,7 +517,7 @@ required to pin the new semantics (§10).
 
 | # | Where | Change |
 |---|---|---|
-| 1 | `_cli_validation.py:147` | `pipeline_requires_gpu` → recursive walk, scanning `meas`/`post`/`filters`/`model` in order to refuse them |
+| 1 | `_cli_validation.py:147` | `pipeline_requires_gpu` → recursive walk. **The CPU-only-slot refusal must fire on the production path**, not only under a `strict=` argument that only `split_pipeline_at_gpu` passes — see the risk table |
 | 2 | new shared module | The tree walker, consolidated; **migrate** `gui/_operation_registry.py:33` and `tune/_search_space/_infer.py:429,546,703` onto it (§4.1) |
 | 2a | `gui/`, `tune/` | Regression pass for each, as consumers of the consolidated walker |
 | 3 | `_cli_pipeline_split.py` | `gpu_key` → `gpu_path`; add `stage2_prefix`; cut at `gpu_path[0]`, ancestor heads `post_pipeline` |
@@ -546,3 +624,5 @@ required to pin the new semantics (§10).
 | **Journals change for every composite pipeline, GPU or not (§5.2)** | A second version boundary, wider than §8.3's: the repo's "two identical runs write byte-identical stores" guarantee holds only *within* a version across this change, since the journal lives in the store. Must be called out in release notes — there is no digest to bump here, because the change is to recorded output, not to work identity |
 | The deliberate `center_detector` step-path exclusion is "completed" by a later reader | Test asserting it records no step path (§5.2, §10) |
 | `gpu_path` and `pipeline_step_path` drift apart after the fact | The §5.3 identity is asserted as a test, not left as a convention (§10) |
+| **A refusal that production never reaches.** If `pipeline_requires_gpu` scans non-strictly, a GpuDetector in `meas`/`post`/`filters`/`model` yields `False`, routes to the non-staged strategy, and silently runs on CPU — the exact bug this change exists to kill — while a unit test calling the refusal directly still passes | The refusal must be reachable from `pipeline_requires_gpu` itself. Because that function is also called from `gui/run_console/_callbacks.py:253-255`, where an exception is unwelcome, prefer: always scan every slot, return the ops-slot hits, and raise for a CPU-only-slot hit regardless of any `strict` flag. Test through `pipeline_requires_gpu`, never through the helper |
+| A mitigation documented but never exercised | §8.2 shipped a wrong fix because its probe reproduced the trap and stopped. Every provenance mitigation in this spec must have a test that runs **the mitigation**, at `_application_owner_depth == 0` |
