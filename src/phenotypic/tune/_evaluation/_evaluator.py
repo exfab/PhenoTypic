@@ -307,11 +307,18 @@ class Evaluator(BaseModel):
         rungs = self._rung_sizes(len(ordered))
 
         per_term: dict[str, list[float]] = {}
+        # Keeps every trial's processed copy alive for the whole pass so their
+        # ``id()``s stay distinct — CPython would otherwise reuse a just-freed
+        # copy's address for the next one, colliding identities that per-image
+        # scorers (and the memoization tests) rely on being unique.
+        processed_keepalive: list[Any] = []
         n_exceptions = 0
         scored = 0
         for rung_index, cutoff in enumerate(rungs):
             for image in ordered[scored:cutoff]:
-                raised = self._score_one_image(candidate, scorer, image, per_term)
+                raised = self._score_one_image(
+                    candidate, scorer, image, per_term, processed_keepalive
+                )
                 if raised:
                     n_exceptions += 1
             scored = cutoff
@@ -366,6 +373,7 @@ class Evaluator(BaseModel):
         scorer: Scorer,
         image: Any,
         per_term: dict[str, list[float]],
+        processed_keepalive: list[Any],
     ) -> bool:
         """Measure + score one image, appending each term to ``per_term``.
 
@@ -374,6 +382,9 @@ class Evaluator(BaseModel):
             scorer: The objective.
             image: The image to measure and score.
             per_term: The term → per-image-scores accumulator (mutated).
+            processed_keepalive: Accumulates each processed copy (mutated) so
+                it isn't garbage-collected before the caller's pass finishes —
+                see the ``apply`` comment below.
 
         Returns:
             ``True`` if measuring/scoring this image raised (a per-image
@@ -385,11 +396,21 @@ class Evaluator(BaseModel):
             # before measuring — ``measure`` alone only runs measurement ops on
             # whatever object state already exists, so a raw (undetected) image
             # would yield zero objects. ``inplace=False`` works on a copy so the
-            # shared calibration image stays pristine across trials and rungs.
-            measurements = candidate.apply_and_measure(
-                image, inplace=False, apply_post=False
+            # shared calibration image stays pristine across trials and rungs;
+            # ``apply`` (not ``apply_and_measure``) so that copy — the one
+            # carrying the detected ``objmap`` — is captured and scored, not the
+            # untouched original ``image`` (which ``apply_and_measure`` never
+            # returns, since it only hands back the measurement DataFrame).
+            # Retained in ``processed_keepalive`` for the caller's whole pass:
+            # once this copy is GC'd, CPython can hand its freed address to the
+            # very next copy, colliding ``id()`` with a still-relevant image —
+            # breaking any identity-keyed per-image scorer state.
+            processed = candidate.apply(image=image, inplace=False)
+            processed_keepalive.append(processed)
+            measurements = candidate.measure(
+                image=processed, apply_post=False
             )
-            for term, value in scorer.score_image(image, measurements).items():
+            for term, value in scorer.score_image(processed, measurements).items():
                 per_term.setdefault(term, []).append(float(value))
         except Exception:
             return True
