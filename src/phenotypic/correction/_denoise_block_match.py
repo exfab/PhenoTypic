@@ -2,18 +2,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, Literal
 
-import bm3d
 import numpy as np
-from bm3d.profiles import BM3DStages
 from pydantic import field_validator
 
 if TYPE_CHECKING:
+    from bm3d.profiles import BM3DStages
+
     from phenotypic._core._image import Image
 
 from ..abc_ import ImageCorrector
 from ..sdk_.typing_ import TuneSpec
 from ..sdk_._anscombe import gat_forward, gat_inverse
-from ..sdk_.colourspace import decode_srgb, encode_srgb
 
 
 class DenoiseBlockMatch(ImageCorrector):
@@ -204,6 +203,10 @@ class DenoiseBlockMatch(ImageCorrector):
         Returns:
             Denoised 2D array clipped to [0, 1].
         """
+        import bm3d
+
+        from phenotypic.sdk_.colourspace import decode_srgb, encode_srgb
+
         # sRGB -> linear light so the GAT sees linear photon counts
         working = decode_srgb(channel)
 
@@ -253,6 +256,8 @@ class DenoiseBlockMatch(ImageCorrector):
             stage_arg: Literal["all_stages", "hard_thresholding"],
     ) -> BM3DStages:
         """Convert string stage argument to BM3DStages enum."""
+        from bm3d.profiles import BM3DStages
+
         match stage_arg:
             case "hard_thresholding":
                 return BM3DStages.HARD_THRESHOLDING

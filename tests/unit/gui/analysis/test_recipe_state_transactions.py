@@ -18,11 +18,11 @@ from phenotypic.analysis import (
     LogGrowthModel,
     TukeyOutlierRemover,
 )
-from phenotypic.gui.analysis._callbacks import (
+from phenotypic._gui.analysis._callbacks import (
     _apply_param_edit,
     _semantic_values_equal,
 )
-from phenotypic.gui.analysis._recipe_state import RecipeState
+from phenotypic._gui.analysis._recipe_state import RecipeState
 from phenotypic.plotting._pipeline import PlotBinding, PipelineObjectRef
 from phenotypic.sdk_ import pipeline_json_path
 

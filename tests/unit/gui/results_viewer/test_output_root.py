@@ -12,7 +12,7 @@ from pathlib import Path
 
 import polars as pl
 
-from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui.results_viewer._output_root import OutputRoot
 from phenotypic.schema import EXPERIMENT, IMAGE
 from phenotypic.sdk_ import zarr_store_path
 

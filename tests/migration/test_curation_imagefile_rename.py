@@ -9,7 +9,7 @@ across the metadata-category namespace flip.
 
 import polars as pl
 
-from phenotypic.gui.results_viewer._curation_labels import (
+from phenotypic._gui.results_viewer._curation_labels import (
     _LEGACY_IMAGE_FILE,
     _migrate_legacy_imagefile,
 )

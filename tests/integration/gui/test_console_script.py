@@ -15,18 +15,24 @@ from __future__ import annotations
 import shutil
 import subprocess
 import sys
+import sysconfig
 from pathlib import Path
 
 import pytest
 
 
 def _phenotypic_gui_argv() -> list[str]:
-    """Return argv for invoking ``phenotypic-gui`` via the current uv env."""
-    # Prefer the console script if visible; otherwise fall back to module run.
-    binary = shutil.which("phenotypic-gui")
-    if binary is not None:
-        return [binary]
-    return [sys.executable, "-m", "phenotypic.gui"]
+    """Return argv for ``phenotypic-gui``, the hub's only entry point.
+
+    Looks only in this interpreter's scripts directory -- never ``PATH`` -- so
+    the test exercises this checkout's install. A missing script fails the
+    test: there is no module fallback to hide behind.
+    """
+    scripts_dir = sysconfig.get_path("scripts")
+    binary = shutil.which("phenotypic-gui", path=scripts_dir)
+    if binary is None:
+        pytest.fail(f"phenotypic-gui console script is not installed in {scripts_dir}")
+    return [binary]
 
 
 def test_phenotypic_gui_help_succeeds() -> None:

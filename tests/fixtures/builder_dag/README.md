@@ -7,7 +7,7 @@ DAG-redesign test layers (unit tests in
 
 Each `<name>.json` file in this directory is a **bare scope payload**
 (not a wrapped `_DagBuilderState`) — it matches the on-disk shape
-emitted by `_dag_scope_to_dict` in `phenotypic.gui.builder._state`,
+emitted by `_dag_scope_to_dict` in `phenotypic._gui.builder._state`,
 i.e. a top-level object with `"blocks"`, `"edges"`, `"name"`,
 `"desc"`, `"nrows"`, `"ncols"`.  The loader
 `state_from_json` recognises this shape via the
@@ -37,7 +37,7 @@ exercised in isolation.
 For invalid fixtures (and any fixture where the validator should
 produce a non-empty list of issues), a sibling
 `<name>.expected_issues.json` documents the expected output of
-`phenotypic.gui.builder._validation.validate(state)` as a list of
+`phenotypic._gui.builder._validation.validate(state)` as a list of
 issues.  The validator's exact `Issue` dataclass is owned by Agent
 1C (see `_validation.py`); fixtures only encode the user-visible
 fields:
@@ -105,7 +105,7 @@ In a test:
 import json
 from pathlib import Path
 
-from phenotypic.gui.builder._state import state_from_json
+from phenotypic._gui.builder._state import state_from_json
 
 FIXTURE_DIR = Path(__file__).parents[3] / "fixtures" / "builder_dag"
 state = state_from_json(json.loads((FIXTURE_DIR / "empty.json").read_text()))

@@ -305,6 +305,41 @@ def ensure_metadata_prefix(name: str) -> str:
     return _flat_header(normalized_name)
 
 
+def external_metadata_preserved_columns(
+    measurement_columns: Iterable[object],
+    metadata_columns: Iterable[object],
+) -> frozenset[str]:
+    """Return the external metadata columns that keep their raw names in a join.
+
+    An external metadata table is joined onto a mixed-schema measurement frame.
+    Its columns split in two: join keys the measurements already carry, which
+    must keep their spelling or they match nothing, and attributes, which take
+    the live ``Metadata_`` spelling. A column keeps its raw name when it is not
+    metadata-family (no known metadata member, not a ``Metadata_*`` header) and
+    it either already exists in the measurement frame or is a known
+    non-metadata schema header such as ``Grid_RowNum``. Every other column is
+    normalized with :func:`ensure_metadata_prefix`.
+
+    Args:
+        measurement_columns: Column names of the measurement frame.
+        metadata_columns: Column names of the external metadata table.
+
+    Returns:
+        The subset of ``metadata_columns`` whose names must not be prefixed.
+    """
+    raw_common = {str(column) for column in measurement_columns}
+    known_schema_headers = _schema.header_to_module()
+    preserved: set[str] = set()
+    for column in map(str, metadata_columns):
+        if (
+            _metadata_member_for_name(column) is None
+            and not is_metadata_header(column)
+            and (column in raw_common or column in known_schema_headers)
+        ):
+            preserved.add(column)
+    return frozenset(preserved)
+
+
 def metadata_category_for_label(label: str) -> str | None:
     """Return the shared category for a known label, or ``None``.
 

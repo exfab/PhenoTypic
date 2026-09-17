@@ -16,10 +16,17 @@ from phenotypic.schema import TEXTURE
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
-# Suppress mahotas' module-load SyntaxWarning before importing it.
-warnings.filterwarnings('ignore', category=SyntaxWarning, module='mahotas')
+@functools.cache
+def _mahotas():
+    """Import mahotas on first use, silencing its module-load ``SyntaxWarning``.
 
-import mahotas as mh  # noqa: E402 - must follow the filterwarnings call above
+    Deferred so ``phenotypic.measure`` -- imported by every pipeline -- does not load
+    mahotas until a texture is measured.
+    """
+    warnings.filterwarnings("ignore", category=SyntaxWarning, module="mahotas")
+    import mahotas
+
+    return mahotas
 
 
 class MeasureTexture(MeasureFeatures):
@@ -173,6 +180,8 @@ class MeasureTexture(MeasureFeatures):
                 warning is issued with details of the error, and NaN values are assigned for the corresponding
                 measurements.
         """
+        mh = _mahotas()
+
         if foreground_array.min() < 0 or foreground_array.max() > 1:
             raise ValueError("Foreground array must be normalized between 0 and 1")
 

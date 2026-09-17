@@ -66,6 +66,15 @@ ContrastAdjustment)` yields `['gamma', 'gain', 'norm', 'input_layer']`.
 
 ---
 
+## Lazy re-exports
+
+`sdk_/__init__.py` re-exports `colourspace`, `HDF`, the `_measurement_tables` and
+`_metadata_migration` names and the mixins through `__getattr__` (`_LAZY_ATTRS`), because
+those submodules import colour-science, h5py, pandas and scipy/scikit-image, and every
+`phenotypic.sdk_.*` import runs this `__init__` first. A new re-export whose module imports a
+heavy library goes into `_LAZY_ATTRS`, never into an eager import at the top of the file;
+`tests/unit/ci/test_startup_imports.py` fails otherwise.
+
 ## Other Utilities
 
 - [`branch_pathfinding/`](branch_pathfinding/CLAUDE.md) — multi-source Dijkstra, cost-surface composition, fragment prescreening, path quality filtering, Voronoi partition. Used by `FilamentousFungiDetector`; cost surfaces are the caller's responsibility.

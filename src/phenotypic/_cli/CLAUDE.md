@@ -202,7 +202,7 @@ provenance (`measure/CLAUDE.md`).
   from pre-detector ops — `pipeline_requires_gpu` raises before the layer is
   consulted. The second predates this change and is unresolved.
 - **GUI: the message, in either mode, and no Run.**
-  `gui/run_console/_callbacks.py:_staged_gpu_capability(path)` returns
+  `_gui/run_console/_callbacks.py:_staged_gpu_capability(path)` returns
   `(uses_gpu, refusal | None)` and catches `UnstageableGpuDetectorError`
   *before* its generic `(OSError, ValueError, TypeError)` clause — the refusal
   **is** a `ValueError`, so clause order is the whole fix. The
@@ -518,9 +518,11 @@ protocol, so a valid root implies a complete store. An absent `kind` reads as
 > writes into a store that is already published. *(P4 split the replacer in
 > two: that path now calls `replace_image_tables`, which moves the measurement
 > table, the metadata table and the root's `metadata_table` block together;
-> `replace_embedded_measurement_table` survives for `--mode migrate` and
-> `--mode recompile` until their producers are repointed. Both go through the
-> same root-last transaction.)*
+> `replace_embedded_measurement_table` survives for `--mode migrate` until its
+> producer is repointed. Both go through the same root-last transaction.
+> `--mode recompile` was the third writer until 2026-09-11; its per-store
+> rewrite was removed rather than repointed, so recompile is now aggregate +
+> finalize and writes no store byte.)*
 >
 > What actually holds is narrower and is what the fingerprint needs: **every
 > table replacement is a root-last store transaction**, so the root is rewritten
@@ -812,10 +814,30 @@ Each embedded table carries **measurements alone**; the image's own rows of the
 run's metadata snapshot sit beside it at `tables/metadata/pht-metadata.parquet`,
 and the store root records which snapshot it was built against in
 `attributes.phenotypic.metadata_table.snapshot_sha256`.
-`master_measurements.parquet` is the exact pre-post concatenation of
-marker-authorized embedded tables, so it is **un-joined**: intrinsic identity
+`master_measurements.parquet` is the pre-post concatenation of
+marker-authorized embedded tables, each **projected onto its own store's
+descriptor** first, so it is **un-joined**: intrinsic identity
 (`Metadata_Dataset`, `Metadata_ImageName`, the `IMAGE`-owned provenance block)
 plus measurements, and no user metadata at all.
+
+**Not every store is inverted, and the projection is what makes that safe**
+(P7 Task 4). `--mode migrate` leaves each store's embedded table as the
+pre-inversion producer wrote it: the metadata snapshot right-joined in, each
+measured row repeated once per matching metadata row. Aggregated as-is, those
+tables make a v1-shaped master, and the one global join below then joins a
+second time on the user columns — on a real 6,657-image migration that dropped
+every measured row from the mirror. So every read path into a master —
+`build_master_frame`, the P5 fan-out shards, and the recompile shards — goes
+through `project_embedded_measurement_table` (`_cli_parquet_agg.py`): keep the
+descriptor's `measurement_columns`, collapse join fan-out on `target.column`
+for a table recorded `joined`, and **exclude** a store with no descriptor or
+whose same-label rows disagree. An excluded store is logged and left out of the
+source set the aggregate proof certifies, so the run reads `incomplete` rather
+than certifying an image the master does not carry. Both shard producers report
+the set they merged to their finalizer as `planned_work_ids` — the P5 fan-out
+through `resolve_finalizer_shard_inputs`, and recompile through the
+`source_work_ids` its measurement statuses record — so an exclusion in a shard
+is not counted by the proof.
 
 **The join happens once, at finalization**, in `finalize_run`
 (`_cli_finalize_run.py`) → `finalize_post_master_outputs` →

@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import pytest
 
-from phenotypic.gui.builder import _preview_cache as pc
-from phenotypic.gui.builder._state import (
+from phenotypic._gui.builder import _preview_cache as pc
+from phenotypic._gui.builder._state import (
     BlockNode, Edge, _DagBuilderScope, _DagBuilderState, _new_block_id,
 )
 

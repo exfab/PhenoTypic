@@ -2,7 +2,7 @@
 
 Exercises the new badge UI added in Phase 6:
 
-* :func:`phenotypic.gui.builder._layout.build_issue_badge` renders the
+* :func:`phenotypic._gui.builder._layout.build_issue_badge` renders the
   ``"N issues, M hints"`` label, severity-tinted chip, and popover row
   list with one row per :class:`Issue`.
 * Each row carries ``data-testid="issue-row"`` plus a ``data-rule``
@@ -11,12 +11,12 @@ Exercises the new badge UI added in Phase 6:
   walking pattern-match ids.
 * Rule short names (e.g. ``fork`` → ``"Fork"``, ``stub`` →
   ``"Unreachable"``) come from
-  :data:`phenotypic.gui.builder._layout._ISSUE_RULE_SHORT_NAMES`.
+  :data:`phenotypic._gui.builder._layout._ISSUE_RULE_SHORT_NAMES`.
 * Issues sort before hints, and inside each severity the rows sort
   alphabetically by kind — matching the spec wording "issues first,
   hints second".
 * The row id is the pattern-matched
-  :func:`phenotypic.gui.builder._ids.issue_row_id` so the click-dispatch
+  :func:`phenotypic._gui.builder._ids.issue_row_id` so the click-dispatch
   callback can pull (``block_id``, ``kind``, ``idx``) without parsing
   the DOM.
 
@@ -28,14 +28,14 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from phenotypic.gui.builder import _ids as ids
-from phenotypic.gui.builder._layout import (
+from phenotypic._gui.builder import _ids as ids
+from phenotypic._gui.builder._layout import (
     _ISSUE_RULE_SHORT_NAMES,
     _format_issue_badge_label,
     _sort_issues_for_badge,
     build_issue_badge,
 )
-from phenotypic.gui.builder._state import (
+from phenotypic._gui.builder._state import (
     BlockNode,
     _DagBuilderScope,
     _DagBuilderState,

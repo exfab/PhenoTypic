@@ -32,13 +32,13 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List
 
-from phenotypic.gui.builder import _ids as ids
-from phenotypic.gui.builder._layout import (
+from phenotypic._gui.builder import _ids as ids
+from phenotypic._gui.builder._layout import (
     _build_container_inspector_card,
     _build_dag_inspector,
     build_canvas_elements_dag,
 )
-from phenotypic.gui.builder._state import (
+from phenotypic._gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
     PIPELINE_CLASS_NAME,
     BlockNode,
@@ -727,7 +727,7 @@ def test_container_data_carries_inner_issue_counts() -> None:
     callback) can read it without re-walking the nested scope.
     """
 
-    from phenotypic.gui.builder._validation import Issue
+    from phenotypic._gui.builder._validation import Issue
 
     inner_block_id = _new_block_id()
     inner_block = BlockNode(

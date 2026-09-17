@@ -1,6 +1,6 @@
 import pytest
 
-from phenotypic.gui.tune._run_argv import tune_run_argv
+from phenotypic._gui.tune._run_argv import tune_run_argv
 
 
 def test_minimal_local_argv():

@@ -23,7 +23,7 @@ from pathlib import Path
 
 import pytest
 
-from phenotypic.gui.shell import SandboxRoot
+from phenotypic._gui.shell import SandboxRoot
 
 
 @pytest.fixture()
@@ -33,7 +33,7 @@ def sandbox(tmp_path: Path) -> SandboxRoot:
 
 def _run_with_images(tmp_path: Path, images_dir: Path) -> object:
     """Write a run.json marker carrying ``images_dir`` and discover the root."""
-    from phenotypic.gui.tune._run_root import TuneRunRoot
+    from phenotypic._gui.tune._run_root import TuneRunRoot
     from phenotypic.sdk_ import tune_cache_run_marker_path
 
     marker = tune_cache_run_marker_path(tmp_path)
@@ -52,7 +52,7 @@ def _run_with_images(tmp_path: Path, images_dir: Path) -> object:
 
 
 def test_resolve_image_source_accepts_in_sandbox(sandbox: SandboxRoot) -> None:
-    from phenotypic.gui.tune._image_source import resolve_image_source
+    from phenotypic._gui.tune._image_source import resolve_image_source
 
     plates = sandbox.root / "plates"
     plates.mkdir()
@@ -61,7 +61,7 @@ def test_resolve_image_source_accepts_in_sandbox(sandbox: SandboxRoot) -> None:
 
 
 def test_resolve_image_source_rejects_escape(sandbox: SandboxRoot) -> None:
-    from phenotypic.gui.tune._image_source import resolve_image_source
+    from phenotypic._gui.tune._image_source import resolve_image_source
 
     # A path outside the sandbox root is refused (None, not an exception).
     assert resolve_image_source(sandbox, "/etc") is None
@@ -69,7 +69,7 @@ def test_resolve_image_source_rejects_escape(sandbox: SandboxRoot) -> None:
 
 
 def test_resolve_image_source_rejects_non_directory(sandbox: SandboxRoot) -> None:
-    from phenotypic.gui.tune._image_source import resolve_image_source
+    from phenotypic._gui.tune._image_source import resolve_image_source
 
     a_file = sandbox.root / "plate.tif"
     a_file.write_bytes(b"")
@@ -77,7 +77,7 @@ def test_resolve_image_source_rejects_non_directory(sandbox: SandboxRoot) -> Non
 
 
 def test_plate_image_path_joins_source_and_plate() -> None:
-    from phenotypic.gui.tune._image_source import plate_image_path
+    from phenotypic._gui.tune._image_source import plate_image_path
 
     src = Path("/data/plates")
     assert plate_image_path(str(src), "plate_01.tif") == src / "plate_01.tif"
@@ -97,7 +97,7 @@ def test_load_plate_grid_reads_a_real_plate(sandbox: SandboxRoot) -> None:
 
     from phenotypic import GridImage
     from phenotypic.data import load_synth_yeast_plate
-    from phenotypic.gui.tune._curate_overlays import load_plate_grid
+    from phenotypic._gui.tune._curate_overlays import load_plate_grid
 
     plates = sandbox.root / "plates"
     plates.mkdir()
@@ -111,8 +111,8 @@ def test_load_plate_grid_reads_a_real_plate(sandbox: SandboxRoot) -> None:
 
 
 def test_curate_view_exposes_picker_ids(tmp_path: Path) -> None:
-    from phenotypic.gui.tune import create_app
-    from phenotypic.gui.tune._run_root import TuneRunRoot
+    from phenotypic._gui.tune import create_app
+    from phenotypic._gui.tune._run_root import TuneRunRoot
     from phenotypic.sdk_ import trials_parquet_path
     from phenotypic.tune._study_store import JournalStudyStore, Trial
 
@@ -139,8 +139,8 @@ def test_curate_view_exposes_picker_ids(tmp_path: Path) -> None:
 
 
 def test_curate_store_prefilled_from_run_images_dir(tmp_path: Path) -> None:
-    from phenotypic.gui.tune import create_app
-    from phenotypic.gui.tune import _ids as ids
+    from phenotypic._gui.tune import create_app
+    from phenotypic._gui.tune import _ids as ids
 
     images = tmp_path / "calibration"
     images.mkdir()
@@ -169,8 +169,8 @@ def test_curate_store_prefilled_from_run_images_dir(tmp_path: Path) -> None:
 def test_curate_store_does_not_prefill_out_of_sandbox_marker_path(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.tune import create_app
-    from phenotypic.gui.tune import _ids as ids
+    from phenotypic._gui.tune import create_app
+    from phenotypic._gui.tune import _ids as ids
 
     outside = tmp_path.parent / "outside-plates"
     outside.mkdir()
@@ -197,7 +197,7 @@ def test_curate_store_does_not_prefill_out_of_sandbox_marker_path(
 
 
 def test_plate_listing_rejects_out_of_sandbox_source(tmp_path: Path) -> None:
-    from phenotypic.gui.tune._callbacks import _list_plate_names
+    from phenotypic._gui.tune._callbacks import _list_plate_names
 
     outside = tmp_path.parent / "outside-list"
     outside.mkdir()
@@ -209,8 +209,8 @@ def test_plate_listing_rejects_out_of_sandbox_source(tmp_path: Path) -> None:
 
 def test_curate_prompt_when_image_source_unset(tmp_path: Path) -> None:
     """A run with no images_dir shows a 'point me at the plate images' prompt."""
-    from phenotypic.gui.tune import create_app
-    from phenotypic.gui.tune._run_root import TuneRunRoot
+    from phenotypic._gui.tune import create_app
+    from phenotypic._gui.tune._run_root import TuneRunRoot
     from phenotypic.sdk_ import trials_parquet_path
     from phenotypic.tune._study_store import JournalStudyStore, Trial
 
@@ -230,8 +230,8 @@ def test_curate_prompt_when_image_source_unset(tmp_path: Path) -> None:
 
 
 def test_tune_image_source_builds_shared_source_payload(tmp_path: Path) -> None:
-    from phenotypic.gui.shell._source_context import source_payload_from_path
-    from phenotypic.gui.tune._callbacks import (
+    from phenotypic._gui.shell._source_context import source_payload_from_path
+    from phenotypic._gui.tune._callbacks import (
         _source_payload_for_tune_image_source,
     )
 
@@ -250,8 +250,8 @@ def test_tune_image_source_builds_shared_source_payload(tmp_path: Path) -> None:
 def test_shared_source_initializes_tune_when_no_current_source(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._source_context import source_payload_from_path
-    from phenotypic.gui.tune._callbacks import _tune_image_source_from_shared
+    from phenotypic._gui.shell._source_context import source_payload_from_path
+    from phenotypic._gui.tune._callbacks import _tune_image_source_from_shared
 
     plates = tmp_path / "plates"
     plates.mkdir()
@@ -266,8 +266,8 @@ def test_shared_source_initializes_tune_when_no_current_source(
 def test_shared_source_does_not_override_bound_tune_source(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.shell._source_context import source_payload_from_path
-    from phenotypic.gui.tune._callbacks import _tune_image_source_from_shared
+    from phenotypic._gui.shell._source_context import source_payload_from_path
+    from phenotypic._gui.tune._callbacks import _tune_image_source_from_shared
 
     plates = tmp_path / "plates"
     bound = tmp_path / "bound"

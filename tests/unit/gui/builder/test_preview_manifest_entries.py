@@ -29,7 +29,7 @@ def test_manifest_describe_does_not_load_a_full_image(
     tmp_path: Path, monkeypatch
 ) -> None:
     """Reads store metadata only; a manifest entry must not cost a full decode."""
-    from phenotypic.gui.builder import _preview_cache
+    from phenotypic._gui.builder import _preview_cache
 
     store = Image(load_synth_yeast_plate()).save_intermediate_zarr(
         tmp_path / "00_base.ome.zarr", layers=("gray",)
@@ -45,7 +45,7 @@ def test_manifest_describe_does_not_load_a_full_image(
 
 
 def test_manifest_describe_reports_the_level_zero_shape(tmp_path: Path) -> None:
-    from phenotypic.gui.builder import _preview_cache
+    from phenotypic._gui.builder import _preview_cache
 
     image = Image(load_synth_yeast_plate())
     store = image.save_intermediate_zarr(
@@ -59,7 +59,7 @@ def test_manifest_describe_reports_the_level_zero_shape(tmp_path: Path) -> None:
 def test_manifest_describe_counts_objects_when_a_label_exists(
     tmp_path: Path,
 ) -> None:
-    from phenotypic.gui.builder import _preview_cache
+    from phenotypic._gui.builder import _preview_cache
 
     image = Image(arr=np.zeros((32, 32, 3), dtype=np.uint8))
     labeled = np.zeros((32, 32), dtype=np.int32)
@@ -79,7 +79,7 @@ def test_manifest_describe_treats_a_rootless_store_as_absent(
     tmp_path: Path,
 ) -> None:
     """An interrupted write leaves no root, and reads as ABSENT, not partial."""
-    from phenotypic.gui.builder import _preview_cache
+    from phenotypic._gui.builder import _preview_cache
 
     partial = tmp_path / "00_base.ome.zarr"
     (partial / "gray" / "0").mkdir(parents=True)
@@ -98,8 +98,8 @@ def test_describe_is_reached_through_compute_scope(
     Harness copied from ``tests/gui/builder/test_preview_compute_scope.py``,
     the only real entry point into ``_build_manifest``.
     """
-    from phenotypic.gui.builder import _preview_cache as pc
-    from phenotypic.gui.builder._state import (
+    from phenotypic._gui.builder import _preview_cache as pc
+    from phenotypic._gui.builder._state import (
         BlockNode,
         Edge,
         _DagBuilderScope,

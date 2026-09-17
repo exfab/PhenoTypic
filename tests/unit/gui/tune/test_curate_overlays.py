@@ -16,7 +16,7 @@ import numpy as np
 
 
 def test_plate_discovery_uses_canonical_image_extensions(tmp_path: Path) -> None:
-    from phenotypic.gui.tune._callbacks import _list_plate_names
+    from phenotypic._gui.tune._callbacks import _list_plate_names
 
     (tmp_path / "camera.cr3").touch()
     (tmp_path / "ambiguous.raw").touch()
@@ -26,7 +26,7 @@ def test_plate_discovery_uses_canonical_image_extensions(tmp_path: Path) -> None
 
 
 def test_get_overlay_cache_is_a_per_run_singleton(tmp_path: Path) -> None:
-    from phenotypic.gui.tune._overlays import get_overlay_cache, overlay_cache_dir
+    from phenotypic._gui.tune._overlays import get_overlay_cache, overlay_cache_dir
 
     a = get_overlay_cache(tmp_path)
     b = get_overlay_cache(tmp_path)
@@ -40,8 +40,8 @@ def test_get_overlay_cache_is_a_per_run_singleton(tmp_path: Path) -> None:
 
 
 def test_request_overlay_is_non_blocking(tmp_path: Path) -> None:
-    from phenotypic.gui.tune import _curate_overlays as ov
-    from phenotypic.gui.tune._overlays import get_overlay_cache
+    from phenotypic._gui.tune import _curate_overlays as ov
+    from phenotypic._gui.tune._overlays import get_overlay_cache
 
     cache = get_overlay_cache(tmp_path)
     gate = threading.Event()
@@ -73,8 +73,8 @@ def test_request_overlay_is_non_blocking(tmp_path: Path) -> None:
 
 
 def test_take_overlay_swallows_render_failure(tmp_path: Path) -> None:
-    from phenotypic.gui.tune import _curate_overlays as ov
-    from phenotypic.gui.tune._overlays import get_overlay_cache
+    from phenotypic._gui.tune import _curate_overlays as ov
+    from phenotypic._gui.tune._overlays import get_overlay_cache
 
     cache = get_overlay_cache(tmp_path / "fail_run")
 
@@ -99,9 +99,9 @@ def test_pending_dict_stays_bounded(tmp_path: Path) -> None:
     # toggling A/B leaves stale keys whose Futures hold rendered arrays — over a
     # session that is an unbounded leak. request_overlay must cap _PENDING and
     # evict LRU so it can never grow without bound.
-    from phenotypic.gui.tune import _curate_overlays as ov
-    from phenotypic.gui.tune._curate_overlays import _PENDING, _PENDING_CAP
-    from phenotypic.gui.tune._overlays import get_overlay_cache
+    from phenotypic._gui.tune import _curate_overlays as ov
+    from phenotypic._gui.tune._curate_overlays import _PENDING, _PENDING_CAP
+    from phenotypic._gui.tune._overlays import get_overlay_cache
 
     cache = get_overlay_cache(tmp_path / "bounded_run")
 
@@ -134,12 +134,12 @@ def test_base_pipelines_registry_stays_bounded(tmp_path: Path) -> None:
     # without bound. Drive read_base_pipeline across far more than the cap worth
     # of distinct run dirs (each has no tuning_spec.json → memoizes None, which
     # still occupies a slot) and assert the cap holds.
-    from phenotypic.gui.tune import _curate_overlays as ov
-    from phenotypic.gui.tune._curate_overlays import (
+    from phenotypic._gui.tune import _curate_overlays as ov
+    from phenotypic._gui.tune._curate_overlays import (
         _BASE_PIPELINES,
         _BASE_PIPELINES_CAP,
     )
-    from phenotypic.gui.tune._run_root import TuneRunRoot
+    from phenotypic._gui.tune._run_root import TuneRunRoot
 
     _BASE_PIPELINES.clear()
     n = _BASE_PIPELINES_CAP * 3
@@ -168,7 +168,7 @@ def test_cache_key_for_strips_session_namespace() -> None:
     # OverlayCache key drops the session (the render is identical regardless of
     # tab). request_overlay (submit) and the poll self-heal (peek) MUST agree on
     # this projection, so it is single-sourced here.
-    from phenotypic.gui.tune import _curate_overlays as ov
+    from phenotypic._gui.tune import _curate_overlays as ov
 
     assert ov.cache_key_for(("sessABC", 3, "plate.tif", "candidate")) == (
         3,
@@ -184,7 +184,7 @@ def test_overlay_cache_peek_is_non_consuming(tmp_path: Path) -> None:
     # peek() returns the cached array WITHOUT consuming a future (the self-heal
     # read the poll falls back to). It must be idempotent — the array lives in
     # the OverlayCache independent of the _PENDING future registry.
-    from phenotypic.gui.tune._overlays import OverlayCache
+    from phenotypic._gui.tune._overlays import OverlayCache
 
     cache = OverlayCache(tmp_path / "peek_cache", capacity=4)
     key = (0, "plate.tif", "candidate")
@@ -207,10 +207,10 @@ def test_poll_self_heals_from_cache_after_sibling_resubmit_drops_future(
     # no_update for slot A forever → a permanent "rendering…" spinner only a full
     # reload cleared. The rendered A array still lives in the OverlayCache, so the
     # poll must self-heal: peek the cache and render the figure.
-    from phenotypic.gui.tune import _curate_overlays as ov
-    from phenotypic.gui.tune._callbacks import _poll_curate_overlays
-    from phenotypic.gui.tune._overlays import get_overlay_cache
-    from phenotypic.gui.tune._run_root import TuneRunRoot
+    from phenotypic._gui.tune import _curate_overlays as ov
+    from phenotypic._gui.tune._callbacks import _poll_curate_overlays
+    from phenotypic._gui.tune._overlays import get_overlay_cache
+    from phenotypic._gui.tune._run_root import TuneRunRoot
     from phenotypic.sdk_ import trials_parquet_path
     from phenotypic.tune._study_store import JournalStudyStore, Trial
 
@@ -242,7 +242,7 @@ def test_poll_self_heals_from_cache_after_sibling_resubmit_drops_future(
     #    stale-drop on same session+plate) — exactly the wedge.
     ov.request_overlay(cache, key_b, lambda: np.full((4, 4, 3), 20, np.uint8))
     _wait_ready(ov, key_b)
-    from phenotypic.gui.tune._curate_overlays import _PENDING
+    from phenotypic._gui.tune._curate_overlays import _PENDING
 
     assert key_a not in _PENDING  # A's future was dropped by B's submit
     assert not ov.overlay_ready(key_a)  # so tier-1 (take) can't resolve it
@@ -271,9 +271,9 @@ def test_poll_returns_no_update_when_nothing_cached_or_pending(tmp_path: Path) -
     # The self-heal must not over-reach: with no pending future AND no cached
     # array, the poll keeps no_update (the render is genuinely still in flight or
     # never submitted) rather than fabricating a figure.
-    from phenotypic.gui.tune import _curate_overlays as ov
-    from phenotypic.gui.tune._callbacks import _poll_curate_overlays
-    from phenotypic.gui.tune._run_root import TuneRunRoot
+    from phenotypic._gui.tune import _curate_overlays as ov
+    from phenotypic._gui.tune._callbacks import _poll_curate_overlays
+    from phenotypic._gui.tune._run_root import TuneRunRoot
     from phenotypic.sdk_ import trials_parquet_path
     from phenotypic.tune._study_store import JournalStudyStore, Trial
 
@@ -302,7 +302,7 @@ def test_poll_returns_no_update_when_nothing_cached_or_pending(tmp_path: Path) -
 
 
 def test_overlay_figure_wraps_rgb_array() -> None:
-    from phenotypic.gui.tune._curate_overlays import overlay_figure
+    from phenotypic._gui.tune._curate_overlays import overlay_figure
 
     array = np.zeros((4, 6, 3), dtype=np.uint8)
     fig = overlay_figure(array)
@@ -316,8 +316,8 @@ def test_load_plate_grid_rejects_out_of_sandbox(tmp_path: Path) -> None:
     # Defense-in-depth: even though plate names come from iterdir() today, the
     # final load path is re-confined through the sandbox so a future caller
     # sourcing plate_name from less-trusted input can't escape via traversal.
-    from phenotypic.gui.shell import SandboxRoot
-    from phenotypic.gui.tune._curate_overlays import load_plate_grid
+    from phenotypic._gui.shell import SandboxRoot
+    from phenotypic._gui.tune._curate_overlays import load_plate_grid
 
     sandbox = SandboxRoot.from_path(tmp_path)
     # A ``..`` traversal in the plate name escapes the image source / sandbox.

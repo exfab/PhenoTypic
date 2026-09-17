@@ -1,10 +1,10 @@
 import pytest
 
-from phenotypic.gui.browse._source_item import (
+from phenotypic._gui.browse._source_item import (
     resolve_source_item,
     source_item_relative_path,
 )
-from phenotypic.gui.browse._source_lister import list_datasets
+from phenotypic._gui.browse._source_lister import list_datasets
 
 
 def _touch(p):

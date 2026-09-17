@@ -1,0 +1,496 @@
+"""Static layout for the QC tab body.
+
+Top-level shape (vertical stack):
+
+1. Top strip — the ``+ Add check`` button.
+2. Load-warning banner — shown only when
+   :class:`~phenotypic.sdk_._qc_recipe.QcRecipe.load_warnings` is
+   non-empty at boot.
+3. Cards container — atomically rebuilt by the card-list-render
+   callback so the card count tracks the recipe.
+4. Shared add/edit modal — single ``dbc.Modal`` reused by the add /
+   edit / duplicate flows.
+5. Hidden ``dcc.Store`` carrying the instance id the modal is
+   currently editing (``None`` in add mode).
+
+Callbacks live in :mod:`._callbacks`; this module is layout-only so it
+stays importable from tests and remains free of Dash state coupling.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Iterable
+
+import dash_bootstrap_components as dbc  # type: ignore[import-untyped]
+from dash import dcc, html
+from dash.development.base_component import Component
+
+from phenotypic._gui._design import (
+    COLOR_BORDER,
+    COLOR_MUTED,
+    COLOR_NAVY,
+    COLOR_SURFACE,
+    FONT_SIZE_LABEL,
+    OI_ORANGE_TEXT,
+)
+from phenotypic.sdk_._qc_recipe import QcRecipe, QcRecipeLoadWarning
+from phenotypic.sdk_ import BundleLayout
+from phenotypic._gui.results_viewer._compatibility import (
+    OutputCompatibilityReport,
+    preflight_output_compatibility,
+)
+from phenotypic._gui.results_viewer._qc_tab import _ids as ids
+from phenotypic._gui.results_viewer._qc_tab._check_card import build_check_card
+from phenotypic._gui.results_viewer._qc_tab._rebuild import preflight_qc_rebuild
+from phenotypic._gui.results_viewer._qc_tab.review import _ids as review_ids
+from phenotypic._gui.results_viewer._qc_tab.review import build_review_view
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Sub-builders
+# ---------------------------------------------------------------------------
+
+
+def _build_top_strip(*, mutations_disabled: bool = False) -> Component:
+    """Build the top strip: the ``+ Add check`` button."""
+    add_button = dbc.Button(
+        "+ Add check",
+        id=ids.QC_ADD_CHECK_BTN_ID,
+        color="primary",
+        n_clicks=0,
+        className="me-2",
+        style={"background": COLOR_NAVY, "borderColor": COLOR_NAVY},
+        disabled=mutations_disabled,
+    )
+    return html.Div(
+        [
+            html.Div(
+                [add_button],
+                className="d-flex align-items-center",
+                style={"gap": "0.5rem"},
+            ),
+        ],
+        style={
+            "padding": "0.75rem 1rem",
+            "borderBottom": f"1px solid {COLOR_BORDER}",
+            "background": COLOR_SURFACE,
+        },
+    )
+
+
+def _render_load_warnings(
+    warnings: Iterable[QcRecipeLoadWarning],
+) -> Component:
+    """Render the load-warning banner contents (or empty when none).
+
+    Args:
+        warnings: Sequence of :class:`QcRecipeLoadWarning` produced by
+            :meth:`QcRecipe.load` (and appended-to by
+            :meth:`QcRecipe.instantiate` when construction fails).
+
+    Returns:
+        A :class:`dash.html.Div` ready to slot into
+        :data:`._ids.QC_LOAD_WARNING_BANNER_ID`. When ``warnings`` is
+        empty, returns an empty ``html.Div`` so the parent's
+        ``style.display`` toggle can still attach.
+    """
+    warnings_list = list(warnings)
+    if not warnings_list:
+        return html.Div()
+
+    items: list[Component] = []
+    for warning in warnings_list:
+        items.append(
+            html.Li(
+                [
+                    html.Code(
+                        warning.instance_id,
+                        style={"marginRight": "0.4rem", "color": COLOR_NAVY},
+                    ),
+                    html.Span(
+                        warning.class_name or "(unknown class)",
+                        style={"fontWeight": 500},
+                    ),
+                    html.Span(
+                        f" -- {warning.reason}",
+                        style={"color": COLOR_MUTED},
+                    ),
+                ]
+            )
+        )
+
+    return html.Div(
+        [
+            html.Strong(
+                "Some QC checks could not be loaded:",
+                style={"display": "block", "marginBottom": "0.25rem"},
+            ),
+            html.Ul(items, style={"marginBottom": 0}),
+        ],
+        style={"color": OI_ORANGE_TEXT},
+    )
+
+
+def _banner_style(warnings: Iterable[QcRecipeLoadWarning]) -> dict[str, str]:
+    """Pick the banner ``style`` dict based on whether warnings exist."""
+    if list(warnings):
+        return {
+            "display": "block",
+            "padding": "0.5rem 1rem",
+            "background": "rgba(254,188,17,0.12)",
+            "borderBottom": f"1px solid {COLOR_BORDER}",
+            "fontSize": FONT_SIZE_LABEL,
+        }
+    return {"display": "none"}
+
+
+def _initial_cards(
+    recipe: QcRecipe,
+    *,
+    mutations_disabled: bool = False,
+) -> list[Component]:
+    """Build the initial set of cards for enabled entries."""
+    return [
+        build_check_card(entry, mutations_disabled=mutations_disabled)
+        for entry in recipe.entries
+        if entry.enabled
+    ]
+
+
+def _compatibility_source(recipe: QcRecipe):
+    """Return the exact pipeline path the recipe was loaded from."""
+    return recipe.source_path or recipe.path
+
+
+def _compatibility_store(
+    report: OutputCompatibilityReport,
+) -> dict[str, object]:
+    """Serialize the pure compatibility result for Dash memory state."""
+    return {
+        "status": report.status,
+        "source_fingerprint": report.source_fingerprint,
+        "messages": [issue.message for issue in report.issues],
+    }
+
+
+def _initial_rebuild_ready(recipe: QcRecipe) -> bool:
+    """Return pure rebuild readiness for the recipe's containing bundle."""
+    parent = recipe.path.parent
+    candidates = [parent.parent, parent]
+    for candidate in candidates:
+        try:
+            layout = BundleLayout.detect(candidate)
+        except FileNotFoundError:
+            continue
+        return preflight_qc_rebuild(layout).ready
+    return False
+
+
+def _build_compatibility_panel(
+    report: OutputCompatibilityReport,
+    *,
+    rebuild_ready: bool,
+    mutations_disabled: bool = False,
+) -> Component:
+    """Build explicit recipe-migration and QC-rebuild actions."""
+    compatible = report.status == "compatible"
+    status_text = (
+        "QC recipe is compatible."
+        if compatible
+        else " ".join(issue.message for issue in report.issues)
+    )
+    return html.Div(
+        [
+            dcc.Store(
+                id=ids.STORE_QC_COMPATIBILITY,
+                data=_compatibility_store(report),
+                storage_type="memory",
+            ),
+            html.Div(status_text, id=ids.QC_COMPATIBILITY_STATUS_ID),
+            html.Div(
+                [
+                    dbc.Button(
+                        "Migrate Recipe",
+                        id=ids.QC_MIGRATE_RECIPE_BTN_ID,
+                        color="warning",
+                        outline=True,
+                        size="sm",
+                        n_clicks=0,
+                        disabled=(
+                            mutations_disabled or report.status != "migratable"
+                        ),
+                    ),
+                    dbc.Button(
+                        "Rebuild QC",
+                        id=ids.QC_REBUILD_DATABASE_BTN_ID,
+                        color="primary",
+                        outline=True,
+                        size="sm",
+                        n_clicks=0,
+                        disabled=mutations_disabled or not rebuild_ready,
+                    ),
+                ],
+                className="d-flex",
+                style={"gap": "0.5rem", "marginTop": "0.5rem"},
+            ),
+            html.Div(
+                id=ids.QC_ACTION_STATUS_ID,
+                style={"marginTop": "0.4rem", "color": COLOR_MUTED},
+            ),
+            dcc.ConfirmDialog(
+                id=ids.QC_MIGRATE_CONFIRM_ID,
+                message=(
+                    "Migrate this recipe now? The exact current pipeline "
+                    "will be backed up before atomic publication."
+                ),
+            ),
+            dcc.ConfirmDialog(
+                id=ids.QC_REBUILD_CONFIRM_ID,
+                message=(
+                    "Rebuild qc.duckdb from the compatible recipe and "
+                    "complete measurements mirror now?"
+                ),
+            ),
+        ],
+        style={
+            "padding": "0.75rem 1rem",
+            "borderBottom": f"1px solid {COLOR_BORDER}",
+            "background": "rgba(254,188,17,0.08)"
+            if not compatible
+            else COLOR_SURFACE,
+            "fontSize": FONT_SIZE_LABEL,
+        },
+    )
+
+
+def _build_qc_modal(*, mutations_disabled: bool = False) -> dbc.Modal:
+    """Build the shared add / edit / duplicate modal.
+
+    The class dropdown and param region are populated by callbacks on
+    open. The submit button fires
+    :func:`._callbacks._on_modal_submit` which dispatches between
+    :meth:`QcRecipe.add` and :meth:`QcRecipe.update` based on
+    :data:`._ids.STORE_QC_EDITING_INSTANCE`.
+    """
+    body = html.Div(
+        [
+            dbc.Row(
+                [
+                    dbc.Col(
+                        dbc.Label("Check class", className="fw-semibold"),
+                        width=4,
+                    ),
+                    dbc.Col(
+                        dcc.Dropdown(
+                            id=ids.QC_MODAL_CLASS_PICKER_ID,
+                            options=[],
+                            value=None,
+                            placeholder="Pick a quality-check class...",
+                            clearable=False,
+                        ),
+                        width=8,
+                    ),
+                ],
+                className="mb-3 align-items-center",
+            ),
+            html.Hr(),
+            html.Div(
+                id=ids.QC_MODAL_PARAMS_REGION_ID,
+                children=[],
+            ),
+        ]
+    )
+
+    footer = dbc.ModalFooter(
+        [
+            dbc.Button(
+                "Cancel",
+                id=ids.QC_MODAL_CANCEL_BTN_ID,
+                color="secondary",
+                outline=True,
+                n_clicks=0,
+            ),
+            dbc.Button(
+                "Save",
+                id=ids.QC_MODAL_SUBMIT_BTN_ID,
+                color="primary",
+                n_clicks=0,
+                disabled=mutations_disabled,
+            ),
+        ]
+    )
+
+    return dbc.Modal(
+        [
+            dbc.ModalHeader(
+                dbc.ModalTitle(
+                    "Add QC check",
+                    id=ids.QC_MODAL_TITLE_ID,
+                ),
+            ),
+            dbc.ModalBody(body),
+            footer,
+        ],
+        id=ids.QC_MODAL_ID,
+        is_open=False,
+        size="lg",
+        scrollable=True,
+        backdrop=True,
+        centered=True,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+
+def _build_subview_toggle() -> Component:
+    """Build the Configure | Review segmented switch + its mirror store."""
+    return html.Div(
+        [
+            dbc.RadioItems(
+                id=review_ids.QC_SUBVIEW_TOGGLE_ID,
+                options=[
+                    {
+                        "label": "Configure",
+                        "value": review_ids.QC_SUBVIEW_CONFIGURE,
+                    },
+                    {"label": "Review", "value": review_ids.QC_SUBVIEW_REVIEW},
+                ],
+                value=review_ids.QC_SUBVIEW_CONFIGURE,
+                inline=True,
+                class_name="btn-group",
+                input_class_name="btn-check",
+                label_class_name="btn btn-outline-primary btn-sm",
+                label_checked_class_name="active",
+            ),
+            dcc.Store(
+                id=review_ids.STORE_QC_SUBVIEW,
+                data=review_ids.QC_SUBVIEW_CONFIGURE,
+                storage_type="memory",
+            ),
+        ],
+        style={
+            "padding": "0.5rem 1rem",
+            "borderBottom": f"1px solid {COLOR_BORDER}",
+            "background": COLOR_SURFACE,
+        },
+    )
+
+
+def _build_configure_view(
+    recipe: QcRecipe,
+    report: OutputCompatibilityReport,
+    *,
+    mutations_disabled: bool = False,
+) -> Component:
+    """Build the Configure sub-view: the existing per-check card editor."""
+    return html.Div(
+        [
+            _build_compatibility_panel(
+                report,
+                rebuild_ready=_initial_rebuild_ready(recipe),
+                mutations_disabled=mutations_disabled,
+            ),
+            _build_top_strip(
+                mutations_disabled=(
+                    mutations_disabled or report.status != "compatible"
+                )
+            ),
+            html.Div(
+                children=_render_load_warnings(recipe.load_warnings),
+                id=ids.QC_LOAD_WARNING_BANNER_ID,
+                style=_banner_style(recipe.load_warnings),
+            ),
+            html.Div(
+                children=_initial_cards(
+                    recipe,
+                    mutations_disabled=(
+                        mutations_disabled or report.status != "compatible"
+                    ),
+                ),
+                id=ids.QC_CARDS_CONTAINER_ID,
+                style={
+                    "padding": "1rem",
+                    "display": "flex",
+                    "flexDirection": "column",
+                    "gap": "0.5rem",
+                },
+            ),
+            _build_qc_modal(mutations_disabled=mutations_disabled),
+            dcc.Store(
+                id=ids.STORE_QC_EDITING_INSTANCE,
+                data=None,
+                storage_type="memory",
+            ),
+        ],
+        id=review_ids.QC_CONFIGURE_VIEW_ID,
+    )
+
+
+def build_qc_tab_body(
+    recipe: QcRecipe,
+    *,
+    mutations_disabled: bool = False,
+) -> Component:
+    """Build the QC tab body: Configure | Review segmented sub-views.
+
+    The tab hosts a segmented toggle that swaps between **Configure** (the
+    existing per-check card editor, seeded with one card per *enabled*
+    entry) and **Review** (the master–detail curation walkthrough). Both
+    sub-views are mounted at once; the active one is shown via
+    ``style.display`` by the sub-view switch callback so neither has to be
+    rebuilt on toggle.
+
+    Args:
+        recipe: The loaded :class:`QcRecipe` for the active output
+            directory.
+
+    Returns:
+        A :class:`dash.html.Div` ready to drop into a :class:`dbc.Tab`.
+    """
+    report = preflight_output_compatibility(_compatibility_source(recipe))
+    return html.Div(
+        [
+            _build_subview_toggle(),
+            # Ticked after a user-confirmed full ``run_qc`` rebuild; the
+            # Review worklist subscribes to it.
+            dcc.Store(
+                id=ids.STORE_QC_RECOMPUTE_DONE,
+                data=0,
+                storage_type="memory",
+            ),
+            _build_configure_view(
+                recipe,
+                report,
+                mutations_disabled=mutations_disabled,
+            ),
+            html.Div(
+                children=build_review_view(
+                    mutations_disabled=mutations_disabled
+                ),
+                id=review_ids.QC_REVIEW_VIEW_ID,
+                # Hidden until the toggle flips to Review. No height cap:
+                # the Review view sizes to its content and the
+                # ``qc-tab-root`` wrapper scrolls the page; its sticky
+                # header + sidebar keep the nav pinned (the switch callback
+                # just toggles ``display`` block/none).
+                style={"display": "none"},
+            ),
+        ],
+        className="qc-tab-root",
+        style={
+            "maxHeight": "calc(100vh - 8rem)",
+            "overflow": "auto",
+            "background": COLOR_SURFACE,
+        },
+    )
+
+
+__all__ = [
+    "build_qc_tab_body",
+]

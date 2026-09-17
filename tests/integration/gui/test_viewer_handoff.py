@@ -16,10 +16,10 @@ from typing import Any
 import polars as pl
 import pytest
 
-from phenotypic.gui._config import CFG_RESULTS_BINDING_JOBS
-from phenotypic.gui.shell import SandboxRoot
-from phenotypic.gui.shell._app import compose_hub
-from phenotypic.gui.shell._binding_jobs import ResultsBindJobManager
+from phenotypic._gui._config import CFG_RESULTS_BINDING_JOBS
+from phenotypic._gui.shell import SandboxRoot
+from phenotypic._gui.shell._app import compose_hub
+from phenotypic._gui.shell._binding_jobs import ResultsBindJobManager
 
 from tests._output_layout import write_master
 from phenotypic.schema import IMAGE

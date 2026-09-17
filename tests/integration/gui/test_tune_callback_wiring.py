@@ -28,7 +28,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from phenotypic.gui.shell import SandboxRoot
+from phenotypic._gui.shell import SandboxRoot
 
 
 # ---------------------------------------------------------------------------
@@ -78,8 +78,8 @@ def _runnable_spec(tmp_path: Path):  # type: ignore[no-untyped-def]
 
 def _wiring_app(tmp_path: Path):  # type: ignore[no-untyped-def]
     """A loaded tune app over a 3-trial journal + a tuning_spec.json + sandbox."""
-    from phenotypic.gui.tune import create_app
-    from phenotypic.gui.tune._run_root import TuneRunRoot
+    from phenotypic._gui.tune import create_app
+    from phenotypic._gui.tune._run_root import TuneRunRoot
     from phenotypic.sdk_ import trials_parquet_path, tuning_spec_path
     from phenotypic.tune._study_store import JournalStudyStore, Trial
 

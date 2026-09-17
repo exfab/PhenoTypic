@@ -1,10 +1,10 @@
 """Integration tests for container recursion (Phase 5).
 
 Renders the container fixtures under ``tests/fixtures/builder_dag/``
-through :func:`phenotypic.gui.builder._layout.build_canvas_elements_dag`
+through :func:`phenotypic._gui.builder._layout.build_canvas_elements_dag`
 and asserts the cytoscape contract documented in spec §4.4 + §5.5:
 
-* Every :class:`~phenotypic.gui.builder._state.BlockNode` whose
+* Every :class:`~phenotypic._gui.builder._state.BlockNode` whose
   ``class_name == PIPELINE_CLASS_NAME`` produces exactly one cytoscape
   element with the ``dag-block--container`` class — the compound
   parent that visually groups its inner scope.
@@ -32,8 +32,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pytest
 
-from phenotypic.gui.builder._layout import build_canvas_elements_dag
-from phenotypic.gui.builder._state import (
+from phenotypic._gui.builder._layout import build_canvas_elements_dag
+from phenotypic._gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
     PIPELINE_CLASS_NAME,
     BlockNode,

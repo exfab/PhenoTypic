@@ -9,7 +9,7 @@ import pytest
 
 _FACADE = (
     Path(__file__).parents[3]
-    / "src/phenotypic/gui/results_viewer/_assets/viv_viewer.js"
+    / "src/phenotypic/_gui/results_viewer/_assets/viv_viewer.js"
 )
 
 

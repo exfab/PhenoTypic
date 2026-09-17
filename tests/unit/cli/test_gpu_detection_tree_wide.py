@@ -112,7 +112,7 @@ def test_two_gpu_detectors_anywhere_are_refused(tmp_path):
 def test_two_gpu_detectors_are_not_refused_without_strict(tmp_path):
     """The GUI asks "is this a GPU pipeline?", not "can this be split?".
 
-    ``gui/run_console/_callbacks.py:253`` calls the non-strict path, where a
+    ``_gui/run_console/_callbacks.py:_staged_gpu_capability`` calls the non-strict path, where a
     multi-detector pipeline must report True rather than raise -- the
     multi-detector refusal belongs to ``split_pipeline_at_gpu``.
     """

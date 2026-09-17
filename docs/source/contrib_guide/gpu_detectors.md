@@ -382,7 +382,7 @@ The GUI run console asks the same question when a pipeline is selected. A
 refused pipeline shows the message in a red alert, in Local and SLURM mode
 alike, and Run is disabled; Validate and Run are also refused server-side
 before any run is registered. If you ever edit the probe
-(`gui/run_console/_callbacks.py:_staged_gpu_capability`), keep its
+(`_gui/run_console/_callbacks.py:_staged_gpu_capability`), keep its
 `except UnstageableGpuDetectorError` clause **above** the generic
 `except (OSError, ValueError, TypeError)`: the refusal is a `ValueError`, so
 the other order silently treats it as "not a GPU pipeline".

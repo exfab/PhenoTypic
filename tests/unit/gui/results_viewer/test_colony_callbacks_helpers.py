@@ -11,8 +11,8 @@ from pathlib import Path
 
 import polars as pl
 
-from phenotypic.gui.results_viewer._curation_labels import CurationLabels
-from phenotypic.gui.results_viewer.colony_view._callbacks import (
+from phenotypic._gui.results_viewer._curation_labels import CurationLabels
+from phenotypic._gui.results_viewer.colony_view._callbacks import (
     bulk_mark,
     category_dropdown_options,
     register_custom_category_safe,
@@ -140,7 +140,7 @@ def test_register_custom_safe_core_collision_rejected(tmp_path: Path) -> None:
 
 def test_decode_wedge_trigger_returns_keys_on_real_click() -> None:
     """A concrete wedge id with a non-empty fire decodes to (image, label, cat)."""
-    from phenotypic.gui._shared._triage_callbacks import decode_wedge_trigger
+    from phenotypic._gui._shared._triage_callbacks import decode_wedge_trigger
 
     triggered_id = {
         "type": "colony-cat-wedge",
@@ -154,7 +154,7 @@ def test_decode_wedge_trigger_returns_keys_on_real_click() -> None:
 
 def test_decode_wedge_trigger_initial_empty_fire_is_none() -> None:
     """The ALL pattern's initial all-empty-n_clicks fire decodes to None."""
-    from phenotypic.gui._shared._triage_callbacks import decode_wedge_trigger
+    from phenotypic._gui._shared._triage_callbacks import decode_wedge_trigger
 
     triggered_id = {
         "type": "colony-cat-wedge",
@@ -168,15 +168,15 @@ def test_decode_wedge_trigger_initial_empty_fire_is_none() -> None:
 
 def test_decode_wedge_trigger_none_id_is_none() -> None:
     """A missing / non-dict triggered_id decodes to None."""
-    from phenotypic.gui._shared._triage_callbacks import decode_wedge_trigger
+    from phenotypic._gui._shared._triage_callbacks import decode_wedge_trigger
 
     assert decode_wedge_trigger(None, []) is None
 
 
 def test_decode_wedge_trigger_custom_folder_is_none() -> None:
     """The custom-folder placeholder is inert (opens the folder, never marks)."""
-    from phenotypic.gui._shared._radial import RADIAL_CUSTOM_FOLDER_SENTINEL
-    from phenotypic.gui._shared._triage_callbacks import decode_wedge_trigger
+    from phenotypic._gui._shared._radial import RADIAL_CUSTOM_FOLDER_SENTINEL
+    from phenotypic._gui._shared._triage_callbacks import decode_wedge_trigger
 
     triggered_id = {
         "type": "colony-cat-wedge",
@@ -190,7 +190,7 @@ def test_decode_wedge_trigger_custom_folder_is_none() -> None:
 
 def test_apply_wedge_mark_assigns_category(tmp_path: Path) -> None:
     """A non-sentinel category marks the colony (durable removal)."""
-    from phenotypic.gui._shared._triage_callbacks import apply_wedge_mark
+    from phenotypic._gui._shared._triage_callbacks import apply_wedge_mark
 
     store = _store(tmp_path)
     apply_wedge_mark(store, "img-A", 1, "debris")
@@ -200,8 +200,8 @@ def test_apply_wedge_mark_assigns_category(tmp_path: Path) -> None:
 
 def test_apply_wedge_mark_restore_sentinel_unmarks(tmp_path: Path) -> None:
     """The RADIAL_RESTORE_SENTINEL category clears a prior label (restore)."""
-    from phenotypic.gui._shared._radial import RADIAL_RESTORE_SENTINEL
-    from phenotypic.gui._shared._triage_callbacks import apply_wedge_mark
+    from phenotypic._gui._shared._radial import RADIAL_RESTORE_SENTINEL
+    from phenotypic._gui._shared._triage_callbacks import apply_wedge_mark
 
     store = _store(tmp_path)
     apply_wedge_mark(store, "img-A", 1, "debris")

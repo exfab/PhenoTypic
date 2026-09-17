@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import pytest
 
-from phenotypic.gui.builder._state import (
+from phenotypic._gui.builder._state import (
     INPUT_IMAGE_CLASS_NAME,
     PIPELINE_CLASS_NAME,
     BlockNode,

@@ -33,9 +33,10 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import socket
 import subprocess
-import sys
+import sysconfig
 import tempfile
 import time
 from pathlib import Path
@@ -43,8 +44,9 @@ from typing import Any, Iterator
 
 import pytest
 
-from phenotypic.gui._config import DELIVERABLES_DIRNAME
+from phenotypic._gui._config import DELIVERABLES_DIRNAME
 from phenotypic.sdk_ import manifest_json_path
+from tests._output_layout import publish_complete_run_over_outputs
 
 if os.environ.get("PLAYWRIGHT") != "1":
     pytest.skip(
@@ -71,16 +73,39 @@ def publish_coherent_terminal_evidence(
     *,
     total_images: int,
 ) -> Path:
-    """Publish a minimal successful manifest for a terminal E2E fixture.
+    """Publish a completed run over the outputs an E2E fixture wrote.
 
     Mutation-capable Results fixtures must model a completed run rather than
-    relying on the viewer to infer write authority from deliverables.  Write
-    through the canonical SDK path so a generated dashboard's
-    ``.phenotypic/progress`` directory cannot shadow a legacy manifest.
+    relying on the viewer to infer write authority from deliverables. Run state
+    is resolved from ``processing_state.json`` and the per-image, aggregate and
+    run proofs, so a manifest alone reads as ``incomplete`` and every persistent
+    control renders disabled. This writes the manifest, then the whole evidence
+    chain through :func:`tests._output_layout.publish_complete_run_over_outputs`.
 
     Args:
-        output_dir: Full-run output root.
-        total_images: Number of successfully completed input images.
+        output_dir: Full-run output root whose master and
+            ``measurements.{csv,parquet}`` mirror are already written.
+        total_images: Number of images the fixture's master lists.
+
+    Returns:
+        Canonical manifest path.
+    """
+    manifest = _write_terminal_manifest(output_dir, total_images=total_images)
+    publish_complete_run_over_outputs(output_dir, total_images=total_images)
+    return manifest
+
+
+def _write_terminal_manifest(output_dir: Path, *, total_images: int) -> Path:
+    """Write the terminal manifest, and nothing else.
+
+    ``_build_sandbox`` calls this directly: its output's master is a zero-byte
+    placeholder, not a run any viewer can bind, so it carries no completion
+    evidence. Fixtures that seed a real master call
+    :func:`publish_coherent_terminal_evidence` instead.
+
+    Args:
+        output_dir: Output root to write the manifest under.
+        total_images: Number of images the manifest reports as completed.
 
     Returns:
         Canonical manifest path.
@@ -156,7 +181,7 @@ def _build_sandbox(parent_dir: Path) -> Path:
     _write_sample_dashboard(output_dir)
     # Publish after dashboard generation because the generator creates the
     # canonical ``.phenotypic/progress`` tree.
-    publish_coherent_terminal_evidence(output_dir, total_images=2)
+    _write_terminal_manifest(output_dir, total_images=2)
 
     return sandbox
 
@@ -204,6 +229,24 @@ def _wait_for_http_200(url: str, *, timeout: float = 20.0) -> None:
     )
 
 
+def _phenotypic_gui_executable() -> str:
+    """Return the ``phenotypic-gui`` console script of the running environment.
+
+    Looks only in this interpreter's scripts directory -- never ``PATH`` -- so
+    the hub boots the checkout under test rather than another environment's
+    install, and raises rather than skipping when the script is missing.
+    """
+    scripts_dir = sysconfig.get_path("scripts")
+    found = shutil.which("phenotypic-gui", path=scripts_dir)
+    if found is None:
+        raise RuntimeError(
+            f"phenotypic-gui console script not found in {scripts_dir}; run "
+            "`uv sync` with the groups and extras you already use (CI runs "
+            "`uv sync --group dev --group test-qt --all-extras`)"
+        )
+    return found
+
+
 def _start_live_server(
     sandbox: Path,
     *,
@@ -227,9 +270,7 @@ def _start_live_server(
     """
     port = _free_port()
     cmd = [
-        sys.executable,
-        "-m",
-        "phenotypic.gui",
+        _phenotypic_gui_executable(),
         "--root",
         str(sandbox),
         "--port",

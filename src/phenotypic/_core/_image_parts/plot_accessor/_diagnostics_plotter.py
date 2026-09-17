@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
-import matplotlib.pyplot as plt
 import numpy as np
-import plotly.graph_objects as go
 from matplotlib.gridspec import GridSpec
 from scipy import fft as scipy_fft
 from scipy.stats import norm
@@ -14,9 +12,12 @@ from skimage.filters import sobel
 
 from phenotypic.abc_.plotting import Control, PhtPlot, figure
 from phenotypic.util.image_metrics import ImageMetricsCalculator, THRESHOLDS
-from phenotypic.sdk_.viz.figures._theme import NAVY, OKABE_ITO
 
 from ._base_plotter import BasePlotter
+
+if TYPE_CHECKING:
+    import matplotlib.pyplot as plt
+    import plotly.graph_objects as go
 from ._diagnostics_types import (
     PANEL_B_AUTOCORR,
     PANEL_C_PSD,
@@ -163,6 +164,10 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
             A ``go.Figure`` whose primary trace is the histogram density
             (``go.Scatter`` fill) plus the Gaussian fit overlay.
         """
+        import plotly.graph_objects as go
+
+        from phenotypic.sdk_.viz.figures._theme import NAVY, OKABE_ITO
+
         detect_mat = self._root_image.detect_mat[:]
         if min(detect_mat.shape[:2]) >= 4:
             calculator = self._get_calculator()
@@ -244,6 +249,10 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
     @staticmethod
     def _empty_plotly_figure(title: str, message: str) -> go.Figure:
         """Return an annotated empty Plotly figure for degenerate diagnostics."""
+        import plotly.graph_objects as go
+
+        from phenotypic.sdk_.viz.figures._theme import NAVY
+
         fig = go.Figure()
         fig.add_annotation(
             xref="paper",
@@ -275,6 +284,8 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
         Returns:
             A ``go.Figure`` whose primary trace is a ``go.Heatmap``.
         """
+        import plotly.graph_objects as go
+
         detect_mat = self._root_image.detect_mat[:]
         correlation_length = self._get_calculator().compute_noise_metrics()[
             "correlation_length"
@@ -326,6 +337,10 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
         Returns:
             A ``go.Figure`` whose primary trace is a log-log ``go.Scatter``.
         """
+        import plotly.graph_objects as go
+
+        from phenotypic.sdk_.viz.figures._theme import NAVY, OKABE_ITO
+
         detect_mat = self._root_image.detect_mat[:]
         freqs, psd = self._compute_psd(detect_mat.astype(np.float64))
 
@@ -389,6 +404,8 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
         Returns:
             A ``go.Figure`` whose primary trace is a grayscale ``go.Heatmap``.
         """
+        import plotly.graph_objects as go
+
         detect_mat = self._root_image.detect_mat[:]
         fig = go.Figure(
             go.Heatmap(
@@ -424,6 +441,8 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
         Returns:
             A ``go.Figure`` whose primary trace is a ``go.Heatmap``.
         """
+        import plotly.graph_objects as go
+
         calculator = self._get_calculator()
         contrast_map = calculator.compute_local_contrast()  # uses internal detect_mat
 
@@ -462,6 +481,8 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
         Returns:
             A ``go.Figure`` whose primary trace is a horizontal ``go.Bar``.
         """
+        import plotly.graph_objects as go
+
         metrics = self._get_calculator().compute_contrast_metrics()
 
         metric_names = ["RMS Contrast", "Michelson", "Dynamic Range"]
@@ -519,6 +540,8 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
         Returns:
             A ``go.Figure`` whose primary trace is a ``go.Heatmap``.
         """
+        import plotly.graph_objects as go
+
         detect_mat = self._root_image.detect_mat[:]
         img_norm = detect_mat.astype(np.float64) / self._max_intensity
         gradient = sobel(img_norm)
@@ -563,6 +586,8 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
         Returns:
             A ``go.Figure`` whose primary trace is a ``go.Heatmap``.
         """
+        import plotly.graph_objects as go
+
         calculator = ImageMetricsCalculator(self._root_image.detect_mat[:])
         structure = calculator.compute_structure_metrics(
             sigma=sigma, scales=DEFAULT_RIDGE_SCALES
@@ -624,6 +649,10 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
         Returns:
             A ``go.Figure`` whose primary trace is a ``go.Scatter`` curve.
         """
+        import plotly.graph_objects as go
+
+        from phenotypic.sdk_.viz.figures._theme import NAVY, OKABE_ITO
+
         calculator = ImageMetricsCalculator(self._root_image.detect_mat[:])
         structure = calculator.compute_structure_metrics(
             sigma=sigma, scales=DEFAULT_RIDGE_SCALES, ridge_method=ridge_method
@@ -688,6 +717,8 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
         Returns:
             A ``go.Figure`` whose primary trace is a grayscale ``go.Heatmap``.
         """
+        import plotly.graph_objects as go
+
         calculator = ImageMetricsCalculator(self._root_image.detect_mat[:])
         background_metrics = calculator.compute_background_metrics(sigma=bg_sigma)
         background = background_metrics["background_estimate"]
@@ -745,6 +776,8 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
         Returns:
             A ``go.Figure`` whose primary trace is a ``go.Heatmap``.
         """
+        import plotly.graph_objects as go
+
         calculator = self._get_calculator()
         variance = calculator.compute_local_variance()  # uses internal detect_mat
         variance_log = np.log10(variance + 1)
@@ -796,6 +829,10 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
         Returns:
             A ``go.Figure`` whose primary trace is a ``go.Scatterpolar``.
         """
+        import plotly.graph_objects as go
+
+        from phenotypic.sdk_.viz.figures._theme import NAVY
+
         calculator = ImageMetricsCalculator(self._root_image.detect_mat[:])
         noise = calculator.compute_noise_metrics()
         contrast = calculator.compute_contrast_metrics()
@@ -946,6 +983,8 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
         self, ax: plt.Axes, detect_mat: np.ndarray, correlation_length: float
     ) -> None:
         """Plot noise autocorrelation (Panel B)."""
+        import matplotlib.pyplot as plt
+
         autocorr = self._compute_autocorrelation(detect_mat.astype(np.float64))
 
         # Normalize to [0, 1]
@@ -1011,6 +1050,8 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
         self, ax: plt.Axes, detect_mat: np.ndarray, calculator: ImageMetricsCalculator
     ) -> None:
         """Plot local contrast map (Panel E)."""
+        import matplotlib.pyplot as plt
+
         contrast_map = calculator.compute_local_contrast(detect_mat)
 
         im = ax.imshow(contrast_map, cmap="magma", vmin=0, vmax=np.percentile(contrast_map, 99))
@@ -1072,6 +1113,8 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
 
     def _plot_gradient_magnitude(self, ax: plt.Axes, detect_mat: np.ndarray) -> None:
         """Plot Sobel gradient magnitude (Panel G)."""
+        import matplotlib.pyplot as plt
+
         img_norm = detect_mat.astype(np.float64) / self._max_intensity
         gradient = sobel(img_norm)
 
@@ -1084,6 +1127,8 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
         self, ax: plt.Axes, coherence_map: np.ndarray, mean_coherence: float
     ) -> None:
         """Plot orientation coherence from structure tensor (Panel H)."""
+        import matplotlib.pyplot as plt
+
         im = ax.imshow(coherence_map, cmap="plasma", vmin=0, vmax=1)
         ax.set_title("H: Orientation Coherence", fontweight="bold")
         ax.axis("off")
@@ -1127,6 +1172,8 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
         self, ax: plt.Axes, background: np.ndarray, nonuniformity: float
     ) -> None:
         """Plot background estimate (Panel J)."""
+        import matplotlib.pyplot as plt
+
         im = ax.imshow(background, cmap="gray")
         ax.set_title("J: Background Estimate", fontweight="bold")
         ax.axis("off")
@@ -1157,6 +1204,8 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
         self, ax: plt.Axes, detect_mat: np.ndarray, calculator: ImageMetricsCalculator
     ) -> None:
         """Plot local variance map on log scale (Panel K)."""
+        import matplotlib.pyplot as plt
+
         variance = calculator.compute_local_variance(detect_mat)
 
         # Log scale for better visualization
@@ -1404,6 +1453,8 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
 
         Produces the original multi-panel figure when Panel is not installed.
         """
+        import matplotlib.pyplot as plt
+
         # Parse sections
         if sections == "all":
             section_list = ["noise", "contrast", "structure", "background"]

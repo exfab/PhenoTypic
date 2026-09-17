@@ -193,8 +193,8 @@ def test_headless_error_services_do_not_import_dash() -> None:
 
         sys.meta_path.insert(0, BlockDash())
         import phenotypic._cli._cli_error_outputs
-        from phenotypic.gui.results_viewer._curation_labels import CurationLabels
-        from phenotypic.gui.results_viewer._error_tab._publication import (
+        from phenotypic._gui.results_viewer._curation_labels import CurationLabels
+        from phenotypic._gui.results_viewer._error_tab._publication import (
             compute_all_category_analysis,
         )
 

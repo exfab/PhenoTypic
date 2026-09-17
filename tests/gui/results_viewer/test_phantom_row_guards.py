@@ -16,8 +16,8 @@ from pathlib import Path
 
 import polars as pl
 
-from phenotypic.gui.results_viewer._curation_labels import CurationLabels
-from phenotypic.gui.results_viewer._filtered_state import (
+from phenotypic._gui.results_viewer._curation_labels import CurationLabels
+from phenotypic._gui.results_viewer._filtered_state import (
     FilteredMeasurements,
     _extract_keys,
 )

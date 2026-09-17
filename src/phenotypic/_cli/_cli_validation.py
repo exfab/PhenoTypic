@@ -178,7 +178,7 @@ def _populate_child_contract() -> None:
     ``_child_contract`` refuses a ``CompositeEnhance`` -- a placement the
     design permits. Populating key-by-key made that window reachable. It
     matters because the GUI reaches here on threaded Werkzeug
-    (``gui/run_console/_callbacks.py:_staged_gpu_capability``), which turns
+    (``_gui/run_console/_callbacks.py:_staged_gpu_capability``), which turns
     this refusal into a red alert and a disabled Run button -- so the symptom
     there would be a spurious refusal of a pipeline the design permits. (The
     run itself is a separate ``python -m phenotypic`` process with its own
@@ -350,7 +350,7 @@ def find_gpu_detectors(
     Args:
         pipeline: The pipeline to scan.
         strict: When True, additionally raise for MORE THAN ONE detector. The
-            GUI (``gui/run_console/_callbacks.py:_staged_gpu_capability``)
+            GUI (``_gui/run_console/_callbacks.py:_staged_gpu_capability``)
             calls the non-strict path, where a multi-detector pipeline should
             report True rather than raise.
 
@@ -414,7 +414,7 @@ def pipeline_requires_gpu(pipeline_path: Path) -> bool:
 
     How the two front ends surface the refusal:
 
-    - **GUI** -- ``gui/run_console/_callbacks.py:_staged_gpu_capability``
+    - **GUI** -- ``_gui/run_console/_callbacks.py:_staged_gpu_capability``
       catches ``UnstageableGpuDetectorError`` *before* its generic
       ``(OSError, ValueError, TypeError)`` handler; the refusal IS a
       ``ValueError``, so that clause order is load-bearing. It shows the

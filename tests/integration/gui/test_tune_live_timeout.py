@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from phenotypic.gui.tune._run_root import TuneRunRoot
+from phenotypic._gui.tune._run_root import TuneRunRoot
 
 _OPTUNA_PRESENT = importlib.util.find_spec("optuna") is not None
 
@@ -77,7 +77,7 @@ def test_slow_live_open_degrades_to_journal_without_joining_worker(
     on ``gate.wait()`` until the ``finally`` released it, and the assertion that
     the gate is still held on return would fail.
     """
-    from phenotypic.gui.tune import _callbacks
+    from phenotypic._gui.tune import _callbacks
 
     # A small, deterministic connect-timeout ceiling (the SUT reads this module
     # global in ``future.result(timeout=...)``). It is a ceiling, not a sleep —
@@ -133,18 +133,18 @@ def test_slow_live_open_degrades_to_journal_without_joining_worker(
 
 
 def test_postgres_url_gets_connect_timeout_applied() -> None:
-    from phenotypic.gui.tune._callbacks import _ensure_connect_timeout
+    from phenotypic._gui.tune._callbacks import _ensure_connect_timeout
 
     out = _ensure_connect_timeout("postgresql+psycopg://user@host:5432/db")
     assert "connect_timeout=" in out
     # The bound matches the module's timeout constant.
-    from phenotypic.gui.tune._callbacks import _LIVE_CONNECT_TIMEOUT_S
+    from phenotypic._gui.tune._callbacks import _LIVE_CONNECT_TIMEOUT_S
 
     assert f"connect_timeout={int(_LIVE_CONNECT_TIMEOUT_S)}" in out
 
 
 def test_postgres_url_preserves_user_connect_timeout() -> None:
-    from phenotypic.gui.tune._callbacks import _ensure_connect_timeout
+    from phenotypic._gui.tune._callbacks import _ensure_connect_timeout
 
     out = _ensure_connect_timeout(
         "postgresql+psycopg://user@host:5432/db?connect_timeout=9"
@@ -154,7 +154,7 @@ def test_postgres_url_preserves_user_connect_timeout() -> None:
 
 
 def test_sqlite_url_passed_through_unchanged() -> None:
-    from phenotypic.gui.tune._callbacks import _ensure_connect_timeout
+    from phenotypic._gui.tune._callbacks import _ensure_connect_timeout
 
     url = "sqlite:////tmp/study.db"
     assert _ensure_connect_timeout(url) == url

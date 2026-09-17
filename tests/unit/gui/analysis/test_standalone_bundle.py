@@ -23,13 +23,13 @@ import polars as pl
 from phenotypic import ImagePipeline
 from phenotypic.analysis import LogGrowthModel
 from phenotypic.detect import OtsuDetector
-from phenotypic.gui._config import CFG_MEASUREMENT_SCHEMA, CFG_RECIPE_STATE
-from phenotypic.gui._schema_cache import MeasurementSchema
-from phenotypic.gui.analysis import _ids
-from phenotypic.gui.analysis._app import create_app
-from phenotypic.gui.analysis._callbacks import _run_inline
-from phenotypic.gui.analysis._recipe_state import RecipeState
-from phenotypic.gui.results_viewer._output_root import OutputRoot
+from phenotypic._gui._config import CFG_MEASUREMENT_SCHEMA, CFG_RECIPE_STATE
+from phenotypic._gui._schema_cache import MeasurementSchema
+from phenotypic._gui.analysis import _ids
+from phenotypic._gui.analysis._app import create_app
+from phenotypic._gui.analysis._callbacks import _run_inline
+from phenotypic._gui.analysis._recipe_state import RecipeState
+from phenotypic._gui.results_viewer._output_root import OutputRoot
 from phenotypic.measure import MeasureShape
 from phenotypic.sdk_ import PIPELINE_JSON, BundleLayout
 from phenotypic.sdk_._io_constants import _LEGACY_PIPELINE_JSON

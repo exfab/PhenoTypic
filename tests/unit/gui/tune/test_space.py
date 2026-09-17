@@ -2,11 +2,11 @@
 
 Two pure functions back the Space view:
 
-* :func:`~phenotypic.gui.tune._space._knob_form` — maps one inferred ``Knob`` to
+* :func:`~phenotypic._gui.tune._space._knob_form` — maps one inferred ``Knob`` to
   a ``dbc.Row`` editor (FloatRange → low/high + log; IntRange → low/high int;
   Categorical → checklist), plus a per-knob ``tunable`` toggle. A ``Nested`` knob
   renders read-only / disabled (depth-1 nested leaves are not v1-editable).
-* :func:`~phenotypic.gui.tune._space.space_to_spec` — the OQ8 config-preserving
+* :func:`~phenotypic._gui.tune._space.space_to_spec` — the OQ8 config-preserving
   builder: from an existing ``TuningSpec`` it replaces only ``search_space`` and
   keeps the run's scorer / strategy / budget / evaluator; from a bare pipeline it
   defaults the scorer (``QCScorer``) / strategy / budget with a "review in Launch"
@@ -77,7 +77,7 @@ def _existing_spec(tmp_path):  # type: ignore[no-untyped-def]
 # ---------------------------------------------------------------------------
 
 def test_space_to_spec_matches_inferred_flat_and_presence_targets(tmp_path) -> None:  # type: ignore[no-untyped-def]
-    from phenotypic.gui.tune._space import space_to_spec
+    from phenotypic._gui.tune._space import space_to_spec
     from phenotypic.tune import infer_search_space
 
     spec_in = _existing_spec(tmp_path)
@@ -94,7 +94,7 @@ def test_space_to_spec_matches_inferred_flat_and_presence_targets(tmp_path) -> N
 def test_space_to_spec_round_trips_model_dump_json(tmp_path) -> None:  # type: ignore[no-untyped-def]
     from phenotypic.tune import TuningSpec
 
-    from phenotypic.gui.tune._space import space_to_spec
+    from phenotypic._gui.tune._space import space_to_spec
 
     spec_in = _existing_spec(tmp_path)
     result = space_to_spec(spec_in, edits={})
@@ -106,7 +106,7 @@ def test_space_to_spec_round_trips_model_dump_json(tmp_path) -> None:  # type: i
 
 
 def test_space_to_spec_drops_nested_knobs(tmp_path) -> None:  # type: ignore[no-untyped-def]
-    from phenotypic.gui.tune._space import space_to_spec
+    from phenotypic._gui.tune._space import space_to_spec
     from phenotypic.tune import infer_search_space
 
     spec_in = _existing_spec(tmp_path).model_copy(
@@ -126,7 +126,7 @@ def test_space_to_spec_drops_nested_knobs(tmp_path) -> None:  # type: ignore[no-
 # ---------------------------------------------------------------------------
 
 def test_space_to_spec_preserves_existing_scorer_strategy_budget(tmp_path) -> None:  # type: ignore[no-untyped-def]
-    from phenotypic.gui.tune._space import space_to_spec
+    from phenotypic._gui.tune._space import space_to_spec
 
     spec_in = _existing_spec(tmp_path)
     result = space_to_spec(spec_in, edits={})
@@ -155,7 +155,7 @@ def test_space_to_spec_preserves_existing_scorer_strategy_budget(tmp_path) -> No
 
 def test_apply_edits_recovers_typed_bool_choices_from_stringified_checklist() -> None:
     """A stringified ``"True"`` checklist value maps back to the bool ``True``."""
-    from phenotypic.gui.tune._space import _apply_edits
+    from phenotypic._gui.tune._space import _apply_edits
     from phenotypic.tune import Categorical, Knob
 
     knob = Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False)))
@@ -171,7 +171,7 @@ def test_apply_edits_recovers_typed_bool_choices_from_stringified_checklist() ->
 
 def test_apply_edits_recovers_typed_float_choices_from_stringified_checklist() -> None:
     """Stringified numeric checklist values map back to the original floats."""
-    from phenotypic.gui.tune._space import _apply_edits
+    from phenotypic._gui.tune._space import _apply_edits
     from phenotypic.tune import Categorical, Knob
 
     knob = Knob(key="0.sigma", domain=Categorical(choices=(1.0, 1.5, 2.0)))
@@ -184,7 +184,7 @@ def test_apply_edits_recovers_typed_float_choices_from_stringified_checklist() -
 
 def test_apply_edits_drops_choice_values_not_in_the_domain() -> None:
     """A stale / unknown stringified value is dropped, not coerced to a string."""
-    from phenotypic.gui.tune._space import _apply_edits
+    from phenotypic._gui.tune._space import _apply_edits
     from phenotypic.tune import Categorical, Knob
 
     knob = Knob(key="1.ignore_zeros", domain=Categorical(choices=(True, False)))
@@ -209,7 +209,7 @@ def test_space_to_spec_preserves_categorical_types_through_export(tmp_path) -> N
     from phenotypic.tune import TuningSpec, infer_search_space
     from phenotypic.tune._evaluation._builder import build_pipeline
 
-    from phenotypic.gui.tune._space import space_to_spec
+    from phenotypic._gui.tune._space import space_to_spec
 
     spec_in = _existing_spec(tmp_path)
     inferred = infer_search_space(spec_in.pipeline)
@@ -240,7 +240,7 @@ def test_space_to_spec_preserves_categorical_types_through_export(tmp_path) -> N
 # ---------------------------------------------------------------------------
 
 def test_space_to_spec_from_bare_pipeline_defaults_scorer_and_strategy() -> None:
-    from phenotypic.gui.tune._space import space_to_spec
+    from phenotypic._gui.tune._space import space_to_spec
 
     result = space_to_spec(_synth_runnable_pipeline(), edits={})
     assert type(result.scorer).__name__ == "QCScorer"
@@ -256,7 +256,7 @@ def test_space_to_spec_from_bare_pipeline_defaults_scorer_and_strategy() -> None
 # ---------------------------------------------------------------------------
 
 def test_knob_form_floatrange_renders_low_high_and_log() -> None:
-    from phenotypic.gui.tune._space import _knob_form
+    from phenotypic._gui.tune._space import _knob_form
     from phenotypic.tune import infer_search_space
 
     inferred = infer_search_space(_synth_runnable_pipeline())
@@ -271,7 +271,7 @@ def test_knob_form_floatrange_renders_low_high_and_log() -> None:
 
 
 def test_knob_form_categorical_renders_checklist() -> None:
-    from phenotypic.gui.tune._space import _knob_form
+    from phenotypic._gui.tune._space import _knob_form
     from phenotypic.tune import infer_search_space
 
     inferred = infer_search_space(_synth_runnable_pipeline())
@@ -303,7 +303,7 @@ def _collect_disabled_flags(component) -> list[bool]:  # type: ignore[no-untyped
 
 
 def test_knob_form_nested_is_disabled() -> None:
-    from phenotypic.gui.tune._space import _knob_form
+    from phenotypic._gui.tune._space import _knob_form
     from phenotypic.tune import infer_search_space
 
     inferred = infer_search_space(_nested_pipeline())
@@ -317,7 +317,7 @@ def test_knob_form_nested_is_disabled() -> None:
 
 
 def test_knob_form_flat_is_not_disabled() -> None:
-    from phenotypic.gui.tune._space import _knob_form
+    from phenotypic._gui.tune._space import _knob_form
     from phenotypic.tune import infer_search_space
 
     inferred = infer_search_space(_synth_runnable_pipeline())
@@ -332,7 +332,7 @@ def test_space_module_does_not_import_optuna() -> None:
     sys.modules.pop("optuna", None)
     import importlib
 
-    importlib.import_module("phenotypic.gui.tune._space")
+    importlib.import_module("phenotypic._gui.tune._space")
     assert "optuna" not in sys.modules
 
 
@@ -341,7 +341,7 @@ def test_space_module_does_not_import_optuna() -> None:
 )
 def test_space_to_spec_validates_against_its_pipeline(factory) -> None:  # type: ignore[no-untyped-def]
     """Every produced spec's knob targets resolve against its own pipeline."""
-    from phenotypic.gui.tune._space import space_to_spec
+    from phenotypic._gui.tune._space import space_to_spec
 
     # A fresh-from-pipeline build must construct without a target-validation error.
     result = space_to_spec(factory(), edits={})

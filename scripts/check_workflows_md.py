@@ -2,7 +2,7 @@
 script, the on-disk screenshots, and the tutorial pages in lockstep.
 
 Behaviour:
-    * Parses ``src/phenotypic/gui/WORKFLOWS.md`` as a single feature table
+    * Parses ``src/phenotypic/_gui/WORKFLOWS.md`` as a single feature table
       (header columns: ``ID``, ``Title``, ``Description``, ``Capture
       function``, ``Tutorial page``, ``Status``).
     * AST-walks ``scripts/capture_gui_tutorial_screenshots.py`` to
@@ -38,7 +38,7 @@ except ModuleNotFoundError:  # pragma: no cover - path-script execution
     from _markdown_table import split_markdown_row_cells
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-WORKFLOWS_MD = REPO_ROOT / "src" / "phenotypic" / "gui" / "WORKFLOWS.md"
+WORKFLOWS_MD = REPO_ROOT / "src" / "phenotypic" / "_gui" / "WORKFLOWS.md"
 CAPTURE_SCRIPT = REPO_ROOT / "scripts" / "capture_gui_tutorial_screenshots.py"
 SCREENSHOTS_ROOT = REPO_ROOT / "docs" / "source" / "_static" / "gui_images"
 TUTORIAL_ROOT = REPO_ROOT / "docs" / "source" / "tutorials"

@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from phenotypic.gui.shell import SandboxRoot
+from phenotypic._gui.shell import SandboxRoot
 
 
 @pytest.fixture()
@@ -25,7 +25,7 @@ def sandbox(tmp_path: Path) -> SandboxRoot:
 
 
 def test_create_app_empty_state_has_subtabs() -> None:
-    from phenotypic.gui.tune import create_app
+    from phenotypic._gui.tune import create_app
 
     app = create_app(root=None, url_prefix="/tune/")
     layout = str(app.layout)
@@ -40,8 +40,8 @@ def test_create_app_empty_state_has_subtabs() -> None:
 
 def test_hub_does_not_mount_tune(sandbox: SandboxRoot) -> None:
     """Tune is unmounted: no ``/tune`` entry in the composed hub's mounts."""
-    from phenotypic.gui.shell._app import compose_hub
-    from phenotypic.gui.shell._sandbox import SandboxRoot as SandboxRootDirect
+    from phenotypic._gui.shell._app import compose_hub
+    from phenotypic._gui.shell._sandbox import SandboxRoot as SandboxRootDirect
 
     assert SandboxRootDirect is SandboxRoot  # confirm the import path
 

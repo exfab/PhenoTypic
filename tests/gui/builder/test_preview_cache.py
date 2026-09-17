@@ -1,6 +1,6 @@
 """Disk cache primitives: scope dirs, manifest round-trip, lifecycle."""
-from phenotypic.gui.builder import _preview_cache as pc
-from phenotypic.gui.builder._state import BlockNode, _DagBuilderScope, _new_block_id
+from phenotypic._gui.builder import _preview_cache as pc
+from phenotypic._gui.builder._state import BlockNode, _DagBuilderScope, _new_block_id
 
 
 def test_scope_hash_root_vs_nested():

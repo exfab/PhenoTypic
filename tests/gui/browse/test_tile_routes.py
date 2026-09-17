@@ -9,10 +9,10 @@ import numpy as np
 import pytest
 from PIL import Image as PILImage
 
-from phenotypic.gui.browse import _source_render as sr
-from phenotypic.gui.browse import _tile_routes
-from phenotypic.gui.browse._source_probe import probe_source
-from phenotypic.gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.browse import _source_render as sr
+from phenotypic._gui.browse import _tile_routes
+from phenotypic._gui.browse._source_probe import probe_source
+from phenotypic._gui.shell._sandbox import SandboxRoot
 
 
 def _write_fake_ngff_image_group(store: Path, member: str) -> None:

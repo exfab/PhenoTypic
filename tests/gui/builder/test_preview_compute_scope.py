@@ -1,7 +1,7 @@
 """compute_scope: full-res cache, threaded nested input, chained staleness."""
 from phenotypic import GridImage, Image
-from phenotypic.gui.builder import _preview_cache as pc
-from phenotypic.gui.builder._state import (
+from phenotypic._gui.builder import _preview_cache as pc
+from phenotypic._gui.builder._state import (
     BlockNode, Edge, _DagBuilderState, _DagBuilderScope, _new_block_id,
 )
 

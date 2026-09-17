@@ -6,8 +6,8 @@ from phenotypic import ImagePipeline
 from phenotypic.analysis import ExpectedVsDetectedCount
 from phenotypic.detect import OtsuDetector
 from phenotypic.enhance import BlurGauss
-from phenotypic.gui.shell._sandbox import SandboxRoot
-from phenotypic.gui.tune._setup_authoring import (
+from phenotypic._gui.shell._sandbox import SandboxRoot
+from phenotypic._gui.tune._setup_authoring import (
     SetupDraftCache,
     SetupPathResolution,
     authored_content_fingerprint,
@@ -92,7 +92,7 @@ def test_setup_groupby_normalizes_bare_generic_metadata_reference(
 
 
 def test_setup_groupby_preserves_qualified_object_locator() -> None:
-    from phenotypic.gui.tune._setup_authoring import (
+    from phenotypic._gui.tune._setup_authoring import (
         _normalize_setup_metadata_groupby,
     )
 

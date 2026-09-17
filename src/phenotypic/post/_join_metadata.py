@@ -8,6 +8,11 @@ from pydantic import PrivateAttr, field_validator, model_validator
 
 from phenotypic.abc_._post_measurement import PostMeasurement
 
+from phenotypic.sdk_ import (
+    external_metadata_preserved_columns,
+    normalize_metadata_columns,
+)
+
 from ._utils import coalesce_metadata_aliases, ensure_metadata_prefix
 
 
@@ -24,6 +29,13 @@ class JoinMetadata(PostMeasurement):
     Unlike :class:`MergeMetadata`, which concatenates columns that are *already*
     present, and :class:`ExpandMetadata`, which splits one delimited column that
     is already present, this brings in columns the frame does not have.
+
+    Joined column names follow the same rule as the CLI's ``--metadata`` join,
+    decided against the measurement frame at apply time: a table column that
+    the measurement frame already carries (a shared key such as ``Grid_RowNum``
+    or a raw ``plate``), or that is a known non-metadata schema header, keeps
+    its name. Every other column is an annotation and takes the ``Metadata_``
+    spelling, so a bare ``Strain`` arrives as ``Metadata_Strain``.
 
     Best For:
         - Grouping measurements by an experimental factor downstream --
@@ -60,7 +72,8 @@ class JoinMetadata(PostMeasurement):
 
     Returns:
         pd.DataFrame: The measurement frame with the metadata columns appended.
-        Row count and row order are preserved.
+        Row count and row order are preserved. Joined columns use the
+        naming rule above.
 
     Raises:
         FileNotFoundError: If ``metadata`` does not exist (at construction, so
@@ -68,7 +81,10 @@ class JoinMetadata(PostMeasurement):
         ValueError: If ``on`` is empty, if ``metadata`` has an unsupported
             suffix, or if the metadata table has duplicate rows per key -- a
             duplicated key would silently multiply measurement rows, turning a
-            join into a fan-out that inflates every downstream count.
+            join into a fan-out that inflates every downstream count. Also
+            raised at run when a joined non-key column is already in the
+            measurement frame, which pandas would otherwise split into
+            ``_x``/``_y`` copies.
         KeyError: If a key or requested column is missing from the metadata
             table (at construction) or from the measurement frame (at run).
 
@@ -97,6 +113,22 @@ class JoinMetadata(PostMeasurement):
         ... )
         >>> list(op.apply(measurements)["Metadata_Strain"])
         ['WT', 'mut']
+
+        A bare annotation column is prefixed, while the shared grid keys keep
+        their names:
+
+        >>> pd.DataFrame({
+        ...     "Metadata_ImageName": ["plate1", "plate1"],
+        ...     "Grid_RowNum": [1, 3],
+        ...     "Grid_ColNum": [1, 2],
+        ...     "Medium": ["YPD", "SC"],
+        ... }).to_csv(path, index=False)
+        >>> out = JoinMetadata(
+        ...     metadata=path,
+        ...     on=["Metadata_ImageName", "Grid_RowNum", "Grid_ColNum"],
+        ... ).apply(measurements)
+        >>> [c for c in out.columns if c not in measurements.columns]
+        ['Metadata_Medium']
     """
 
     metadata: Union[str, Path]
@@ -203,6 +235,39 @@ class JoinMetadata(PostMeasurement):
         object.__setattr__(self, "_table", table)
         return self
 
+    def _normalized_table(
+        self, measurement_columns: "pd.Index"
+    ) -> "tuple[pd.DataFrame, list[str]]":
+        """Name the table's columns against the measurement frame.
+
+        Columns the measurement frame already carries, and known non-metadata
+        schema headers, keep their names; the rest take the ``Metadata_``
+        spelling. The rule is shared with the CLI ``--metadata`` join through
+        :func:`~phenotypic.sdk_.external_metadata_preserved_columns`.
+
+        Args:
+            measurement_columns: Columns of the frame being joined onto.
+
+        Returns:
+            The renamed table, keys first, and the renamed key names.
+        """
+        table = self._table
+        preserved = external_metadata_preserved_columns(
+            measurement_columns, table.columns
+        )
+        kept = [c for c in table.columns if c in preserved]
+        renamed = normalize_metadata_columns(table.drop(columns=kept))
+        table = pd.concat([table[kept], renamed], axis=1)
+
+        keys = list(
+            dict.fromkeys(
+                key if key in preserved else ensure_metadata_prefix(key)
+                for key in self.on
+            )
+        )
+        rest = [c for c in table.columns if c not in keys]
+        return table[[*keys, *rest]], keys
+
     def _operate(self, df: pd.DataFrame) -> pd.DataFrame:
         """Left-join the metadata columns onto ``df``.
 
@@ -216,19 +281,29 @@ class JoinMetadata(PostMeasurement):
             KeyError: If a key column is absent from ``df``.
             ValueError: If ``strict`` and some rows find no match.
         """
-        result = coalesce_metadata_aliases(df, list(self.on))
-        missing = [key for key in self.on if key not in result.columns]
+        table, keys = self._normalized_table(df.columns)
+        result = coalesce_metadata_aliases(df, keys)
+        missing = [key for key in keys if key not in result.columns]
         if missing:
             raise KeyError(
                 f"JoinMetadata: key column(s) {missing} not in the measurement "
                 f"frame. Available: {list(df.columns)}"
             )
 
-        table = self._table
+        clashing = [
+            c for c in table.columns if c not in keys and c in result.columns
+        ]
+        if clashing:
+            raise ValueError(
+                f"JoinMetadata: column(s) {clashing} are already in the "
+                "measurement frame. Add them to 'on' to join on them, or leave "
+                "them out of 'columns'."
+            )
+
         # Align key dtypes before merging: a CSV-read int64 key against a frame
         # whose key is object/float matches nothing, and pandas reports that as
         # an all-NaN join rather than an error.
-        for key in self.on:
+        for key in keys:
             if result[key].dtype != table[key].dtype:
                 try:
                     table = table.assign(**{key: table[key].astype(result[key].dtype)})
@@ -236,17 +311,17 @@ class JoinMetadata(PostMeasurement):
                     table = table.assign(**{key: table[key].astype(str)})
                     result = result.assign(**{key: result[key].astype(str)})
 
-        merged = result.merge(table, on=list(self.on), how="left", sort=False)
+        merged = result.merge(table, on=keys, how="left", sort=False)
         merged.index = result.index
 
         if self.strict:
-            joined = [c for c in table.columns if c not in self.on]
+            joined = [c for c in table.columns if c not in keys]
             if joined:
-                unmatched = int(merged[joined[0]].isna().sum() - result[self.on[0]].isna().sum())
+                unmatched = int(merged[joined[0]].isna().sum() - result[keys[0]].isna().sum())
                 if unmatched > 0:
                     raise ValueError(
                         f"JoinMetadata: {unmatched} measurement row(s) matched no "
-                        f"metadata row on {self.on}. Pass strict=False to accept "
+                        f"metadata row on {keys}. Pass strict=False to accept "
                         "NaN for unmatched rows."
                     )
         return merged

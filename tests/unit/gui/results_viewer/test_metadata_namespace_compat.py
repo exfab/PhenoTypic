@@ -6,7 +6,7 @@ import pandas as pd
 import polars as pl
 import pytest
 
-from phenotypic.gui.results_viewer._metadata import (
+from phenotypic._gui.results_viewer._metadata import (
     normalize_metadata_reference,
     normalize_viewer_frame,
 )
