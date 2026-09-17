@@ -99,3 +99,21 @@ This matters because the consumers fail **silently**:
 `replicate_groupby` columns are absent, with no warning — so a misconfigured
 grouping looks correct and quietly computes the statistic over the wrong
 population.
+
+### Signed axial changes go through `_axial_change`
+
+A difference between two axial angles is wrapped with the doubled-angle
+`0.5 * arctan2(sin 2d, cos 2d)`, and an **exactly 90-degree** change lands on
+the `±π` branch cut, where the sign is floating-point noise that differs
+between CPUs. In `_measure_orientation_zones.py`, compute such changes with
+`_axial_change` (stores them canonically as `+π/2`) and average signed
+changes with `_signed_axial_mean` (counts them as directionless, 0), never with
+an inline `arctan2` and `np.mean`.
+
+This is not hypothetical: the synthetic radial-spoke case in
+`test_orientation_zone_migration_golden.py` has 8 of 208 long-range cells on
+the cut, and `SignedLongRangeRotation` differed by 180/208 degrees per flipped
+cell between the machine that captured the golden and the HPCC nodes. A golden
+of an orientation measurement is only portable if nothing in it depends on the
+sign of an exact tie — see also the Kendall tie tolerance in
+`sdk_/orientation_fields/_aggregates.py`.
