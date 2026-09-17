@@ -42,7 +42,7 @@ echo
 # The FULL group set. `uv sync` removes anything not requested, so syncing
 # only `--group docs` would uninstall the dev and test-qt tooling this tree
 # also needs.
-uv sync --group dev --group test-qt --group docs --extra gui --extra napari \
+uv sync --group dev --group test-qt --group docs --all-extras \
     >/dev/null 2>&1 || { echo "uv sync failed"; exit 1; }
 
 rm -rf docs/_build/html

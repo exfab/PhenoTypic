@@ -61,19 +61,21 @@ if (( DIRTY != 0 )); then
     exit 1
 fi
 
-# `--extra napari` is NOT optional for a gate. Without it, 14 tests across
-# tests/unit/core/test_napari_pipeline_viewer.py and
-# tests/unit/sdk_/test_label_editor_widget.py fail at import, and a gate that
-# reports 14 reds it cannot explain trains its reader to skim red shards.
-# Measured: with the extra installed those same 39 tests pass in 4.2s.
+# `--all-extras`, exactly as CI syncs (.github/workflows/run-pytest.yml). A
+# gate that installs fewer extras than CI reports failures CI never sees: an
+# earlier `--extra gui --extra napari` sync left out `tune` (optuna) and
+# `topology` (fil_finder), and every full gate on this branch then carried 21
+# tune and 3 FilFinderDetector failures that were missing packages, not code.
+# They were recorded as "pre-existing" for a whole plan before anyone asked.
 #
-# It also happens to be the ONLY coverage for `_operation_tree`'s decision to
-# key on ImagePipelineCore rather than ImagePipeline -- `NapariPipelineViewer`
-# is the second concrete subclass and the entire reason that keying exists.
-# Leaving the extra out made the one deviation with nothing else behind it
-# invisible to the gate as well.
+# The napari extra matters for the same reason: without it, 14 tests across
+# tests/unit/core/test_napari_pipeline_viewer.py and
+# tests/unit/sdk_/test_label_editor_widget.py fail at import. It is also the
+# ONLY coverage for `_operation_tree`'s decision to key on ImagePipelineCore
+# rather than ImagePipeline -- `NapariPipelineViewer` is the second concrete
+# subclass and the entire reason that keying exists.
 if [[ ! -x .venv/bin/python ]]; then
-    uv sync --group dev --group test-qt --extra gui --extra napari \
+    uv sync --group dev --group test-qt --all-extras \
         >/dev/null 2>&1 || exit 1
 fi
 
