@@ -330,11 +330,19 @@ PHENO_GATE_PATHS="tests/unit tests/smoke tests/integration tests/gui" \
 
 Submitted as job 28705414.
 
-- [ ] **Step 3: Read the result by NAME, not by count**
+- [x] **Step 3: Read the result by NAME, not by count**
 
 Every shard must print `Commit: <HEAD>` and `Dirty: 0`. Compare the failure names against the previous green run at `64de95b9` (12,933 passed, 0 outstanding). A count moves with shard packing; a name does not. Re-run any failure alone before attributing it — contention failures pass in isolation.
 
-- [ ] **Step 4: Push and open the PR against #224's branch**
+**Result.** The first run at `6e2a7c06` was 12,938 passed / 2 failed, both
+wall-clock tests that pass alone, and neither related to Tasks 1–2. Fixed in
+`476102f9` (one of them was not a slow test at all — the live-read slot is
+process-wide, so another test's unfinished read made it degrade instantly,
+which no deadline could fix). The re-run at `476102f9` was **12,941 passed, 0
+failed**, 24/24 shards `COMPLETED`, every shard on the right commit with a
+clean tree.
+
+- [x] **Step 4: Push and open the PR against #224's branch** — PR #227, base `worktree-nested-gpu-staging`.
 
 ```bash
 GIT_SSH_COMMAND="ssh -i /rhome/anguy344/.ssh/github_agent -o IdentitiesOnly=yes -o BatchMode=yes" \
@@ -344,10 +352,11 @@ gh pr create --base worktree-nested-gpu-staging --head <follow-up branch> --titl
 
 The base is #224's branch, not `main`, so the diff shows only this follow-up. The body states the measured compression ratio, the backward-compatible reader, the parameter shapes now refused, and the three out-of-scope decisions above.
 
-- [ ] **Step 5: Remove the frozen checkout**
+- [x] **Step 5: Remove the frozen checkouts**
 
 ```bash
 git worktree remove --force /bigdata/exfab/anguy344/gate-trees/6e2a7c06-followup
+git worktree remove --force /bigdata/exfab/anguy344/gate-trees/476102f9-followup2
 git worktree prune
 ```
 
@@ -361,4 +370,4 @@ git worktree prune
 
 **Type consistency.** No signature changes in either task. Task 1 keeps `write_stage2_raw` / `load_stage2_raw` and touches no path helper. Task 2 keeps `iter_child_operations` / `get_at_path` and adds only segment shapes, which `_child` resolves. The only new name is the module-private `_STAGE2_RAW_KEY`.
 
-**Status.** Tasks 1 and 2 are implemented and committed (`1046030f`, `6e2a7c06`); Task 3 is at Step 3, waiting on job 28705414.
+**Status.** Complete. Tasks 1 and 2 are committed (`1046030f`, `6e2a7c06`), the gate is green at `476102f9`, and Task 3 published PR #227 against #224's branch.
