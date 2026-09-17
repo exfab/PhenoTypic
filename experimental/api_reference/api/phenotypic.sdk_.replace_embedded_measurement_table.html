@@ -1285,10 +1285,12 @@
 <p>A complete root-last store transaction whose unchanged files are
 hard-linked where the platform permits.</p>
 <p><strong>Superseded by</strong> <a class="reference internal" href="phenotypic.sdk_.replace_image_tables.html#phenotypic.sdk_.replace_image_tables" title="phenotypic.sdk_.replace_image_tables"><code class="xref py py-func docutils literal notranslate"><span class="pre">replace_image_tables()</span></code></a> on every forward path. It
-survives only for the consumers that still read and rewrite
-<em>pre-inversion</em> stores byte-exactly – <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">migrate</span></code> and <code class="docutils literal notranslate"><span class="pre">--mode</span>
-<span class="pre">recompile</span></code>, whose reclaim authority compares a store’s bytes against a
-joined payload. <strong>Retire it</strong> with the last of those call sites. It
+survives for the one consumer that still reads and rewrites
+<em>pre-inversion</em> stores byte-exactly – <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">migrate</span></code>, whose reclaim
+authority compares a store’s bytes against a joined payload. (<code class="docutils literal notranslate"><span class="pre">--mode</span>
+<span class="pre">recompile</span></code> was the other, until its per-store rewrite was removed
+outright on 2026-09-11; it now writes no store byte.) <strong>Retire it</strong> with
+the last of those call sites. It
 deliberately leaves <code class="docutils literal notranslate"><span class="pre">metadata_table</span></code> and <code class="docutils literal notranslate"><span class="pre">tables.metadata</span></code> exactly as
 it found them: it has no metadata payload to describe, and clearing a
 block it knows nothing about would be a guess.</p>

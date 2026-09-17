@@ -1000,6 +1000,33 @@
 <span class="n">_METADATA_TABLE_ATTR</span> <span class="o">=</span> <span class="n">_PhenotypicAttr</span><span class="o">.</span><span class="n">METADATA_TABLE</span>
 <span class="n">_SNAPSHOT_SHA256_ATTR</span> <span class="o">=</span> <span class="n">_PhenotypicAttr</span><span class="o">.</span><span class="n">SNAPSHOT_SHA256</span>
 
+<span class="c1">#: The measurement-table descriptor&#39;s column list, inside</span>
+<span class="c1">#: ``attributes.phenotypic.tables.measurements``.</span>
+<span class="c1">#:</span>
+<span class="c1">#: Spelled here rather than bound to a member, because this key has **no**</span>
+<span class="c1">#: shared constant: its writer</span>
+<span class="c1">#: (``_measurement_tables.build_measurement_table_descriptor``) and its three</span>
+<span class="c1">#: readers there, plus ``_cli_parquet_agg``&#39;s projection, all spell the</span>
+<span class="c1">#: literal. Adding the member belongs with those five sites, not with a sixth</span>
+<span class="c1">#: literal declared beside a comment claiming it is the home.</span>
+<span class="n">_MEASUREMENT_COLUMNS_KEY</span> <span class="o">=</span> <span class="s2">&quot;measurement_columns&quot;</span>
+
+<span class="c1">#: The artifact name a per-image record gives its embedded measurement table.</span>
+<span class="c1">#: ``authorized_measurement_sources`` selects a store as a master source by</span>
+<span class="c1">#: exactly this key, so a record carrying it is a record that promises the</span>
+<span class="c1">#: finalizer a table.</span>
+<span class="n">_MEASUREMENTS_ARTIFACT</span> <span class="o">=</span> <span class="s2">&quot;measurements&quot;</span>
+
+<span class="c1">#: Two projections this reader adds to the ``measured`` stage, for the</span>
+<span class="c1">#: advisory that names a store the master will exclude. They are a pair on</span>
+<span class="c1">#: purpose: **either alone is not a defect.** A record with no measurements</span>
+<span class="c1">#: artifact is a process run or a measure-less image and is never a master</span>
+<span class="c1">#: source; a store with no projectable descriptor that nothing selects is a</span>
+<span class="c1">#: store nothing asks to aggregate. The inconsistency FU-1 is about is the</span>
+<span class="c1">#: conjunction -- a record promising a table the store does not declare.</span>
+<span class="n">_DECLARES_MEASUREMENTS</span> <span class="o">=</span> <span class="s2">&quot;declares_measurements&quot;</span>
+<span class="n">_PROJECTABLE_MEASUREMENTS</span> <span class="o">=</span> <span class="s2">&quot;projectable_measurements&quot;</span>
+
 <span class="c1">#: U-10&#39;s marking. ``--mode migrate`` (P7) publishes per-image records</span>
 <span class="c1">#: carrying this, and such a record is accepted on **artifact validity alone**</span>
 <span class="c1">#: -- no ``work_id`` comparison, because a pre-markers tree never had one to</span>
@@ -1261,33 +1288,92 @@
     <span class="k">return</span> <span class="p">(</span><span class="n">store</span> <span class="o">/</span> <span class="n">MEASUREMENT_TABLE_RELATIVE_PATH</span><span class="p">)</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">_store_metadata_snapshot</span><span class="p">(</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_store_phenotypic_block</span><span class="p">(</span>
     <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">image_stem</span><span class="p">:</span> <span class="nb">str</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return which metadata snapshot a store was built against, if it says.</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return one store&#39;s ``attributes.phenotypic`` block, or ``None``.</span>
 
-<span class="sd">    One plain read of the store&#39;s root ``zarr.json`` -- the same small</span>
-<span class="sd">    document the marker already digests, so it is warm in the page cache by</span>
-<span class="sd">    the time this is called. ``None`` means the store does not record the</span>
-<span class="sd">    fact, which is every store until P4 Task 2 starts writing the key.</span>
+<span class="sd">    **One read of the root ``zarr.json`` per image, for every fact the deep</span>
+<span class="sd">    pass projects out of a store.** Both projections below live in the same</span>
+<span class="sd">    document, and giving the second one its own reader would double a</span>
+<span class="sd">    per-image ``open`` on a tree of ~6,500 stores to learn nothing new --</span>
+<span class="sd">    which on GPFS is latency, not bytes. It is the same small document the</span>
+<span class="sd">    record already digests, so it is warm in the page cache by the time this</span>
+<span class="sd">    is called.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">.ngff_</span><span class="w"> </span><span class="kn">import</span> <span class="n">STORE_ROOT_JSON</span><span class="p">,</span> <span class="n">PhenotypicAttr</span>
 
     <span class="n">payload</span> <span class="o">=</span> <span class="n">_read_json_object</span><span class="p">(</span>
         <span class="n">zarr_store_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">image_stem</span><span class="p">)</span> <span class="o">/</span> <span class="n">STORE_ROOT_JSON</span>
     <span class="p">)</span>
-    <span class="k">if</span> <span class="n">payload</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">return</span> <span class="kc">None</span>
-    <span class="n">attributes</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;attributes&quot;</span><span class="p">)</span>
+    <span class="n">attributes</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">payload</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;attributes&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attributes</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
         <span class="k">return</span> <span class="kc">None</span>
-    <span class="n">phenotypic</span> <span class="o">=</span> <span class="n">attributes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">ROOT</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">phenotypic</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-        <span class="k">return</span> <span class="kc">None</span>
-    <span class="n">table</span> <span class="o">=</span> <span class="n">phenotypic</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_METADATA_TABLE_ATTR</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">table</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+    <span class="n">block</span> <span class="o">=</span> <span class="n">attributes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">ROOT</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">block</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_store_metadata_snapshot</span><span class="p">(</span>
+    <span class="n">block</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return which metadata snapshot a store was built against, if it says.</span>
+
+<span class="sd">    ``None`` means the store does not record the fact, which is every store</span>
+<span class="sd">    until P4 Task 2 starts writing the key. A projection over the block</span>
+<span class="sd">    :func:`_store_phenotypic_block` already read, rather than a reader of its</span>
+<span class="sd">    own -- it opens nothing.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">table</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">block</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_METADATA_TABLE_ATTR</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">table</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">):</span>
         <span class="k">return</span> <span class="kc">None</span>
     <span class="k">return</span> <span class="n">_optional_str</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_SNAPSHOT_SHA256_ATTR</span><span class="p">))</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_store_declares_projectable_table</span><span class="p">(</span>
+    <span class="n">block</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return whether the store declares a table the master can project.</span>
+
+<span class="sd">    The **store&#39;s** half of FU-1&#39;s inconsistency. ``finalize_run`` projects</span>
+<span class="sd">    every authorized embedded table onto its own store&#39;s recorded</span>
+<span class="sd">    ``measurement_columns`` and excludes the store when there is no such</span>
+<span class="sd">    list to project onto -- an absent ``tables.measurements`` descriptor, or</span>
+<span class="sd">    one whose ``measurement_columns`` is not a list of strings. Those are</span>
+<span class="sd">    exactly the two refusals this predicate re-derives, from the one</span>
+<span class="sd">    document the deep pass already reads.</span>
+
+<span class="sd">    **Deliberately only two of the projection&#39;s four exclusions.** The other</span>
+<span class="sd">    two are properties of the Parquet payload -- a metadata-joined table that</span>
+<span class="sd">    repeats rows with no target column, and one whose same-label rows</span>
+<span class="sd">    disagree -- and answering them means opening a per-image Parquet from a</span>
+<span class="sd">    reader the GUI polls. Those stay visible through the count clause of the</span>
+<span class="sd">    advisory (which needs no per-image work at all) and through the</span>
+<span class="sd">    finalization log. A reader that opened every table to name them would</span>
+<span class="sd">    make ``resolve_run_state`` cost what finalization costs.</span>
+
+<span class="sd">    It is also **not** a call into</span>
+<span class="sd">    :func:`~phenotypic.sdk_._measurement_tables.read_embedded_measurement_descriptor`,</span>
+<span class="sd">    for two reasons: that reader re-opens the root, and it raises</span>
+<span class="sd">    ``ValueError`` on a store written by a newer build. A store this build</span>
+<span class="sd">    cannot decode is not an excluded store -- the projection raises on it and</span>
+<span class="sd">    fails the whole finalization -- so calling it here would both cost a read</span>
+<span class="sd">    and answer a different question, inside a function whose contract is that</span>
+<span class="sd">    it never raises.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.ngff_</span><span class="w"> </span><span class="kn">import</span> <span class="n">MEASUREMENT_TABLE_GROUP</span><span class="p">,</span> <span class="n">PhenotypicAttr</span>
+
+    <span class="n">tables</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">block</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">block</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">PhenotypicAttr</span><span class="o">.</span><span class="n">TABLES</span><span class="p">)</span>
+    <span class="n">descriptor</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">tables</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">MEASUREMENT_TABLE_GROUP</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tables</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">)</span>
+        <span class="k">else</span> <span class="kc">None</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">columns</span> <span class="o">=</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_MEASUREMENT_COLUMNS_KEY</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span>
+        <span class="nb">isinstance</span><span class="p">(</span><span class="n">column</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">columns</span>
+    <span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_verify_image</span><span class="p">(</span>
@@ -1388,9 +1474,23 @@
         <span class="c1"># is a projection over `images` rather than a second file to keep in</span>
         <span class="c1"># sync -- and it costs the shallow path nothing, because the value</span>
         <span class="c1"># rides in the cached ImageState.</span>
-        <span class="n">snapshot</span> <span class="o">=</span> <span class="n">_store_metadata_snapshot</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">image_stem</span><span class="p">)</span>
+        <span class="c1">#</span>
+        <span class="c1"># FU-1&#39;s two facts ride the same way, and out of the same single read</span>
+        <span class="c1"># of the root. Recording them HERE rather than computing them in</span>
+        <span class="c1"># `_advisories` is what makes the exclusion advisory depth-invariant:</span>
+        <span class="c1"># a warm shallow pass never opens a store, so an advisory that asked</span>
+        <span class="c1"># a store anything at advisory time would exist on the deep path and</span>
+        <span class="c1"># silently vanish on the one the GUI actually polls.</span>
+        <span class="n">block</span> <span class="o">=</span> <span class="n">_store_phenotypic_block</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">image_stem</span><span class="p">)</span>
+        <span class="n">snapshot</span> <span class="o">=</span> <span class="n">_store_metadata_snapshot</span><span class="p">(</span><span class="n">block</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">snapshot</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">stage</span><span class="p">[</span><span class="n">_SNAPSHOT_SHA256_ATTR</span><span class="p">]</span> <span class="o">=</span> <span class="n">snapshot</span>
+        <span class="n">stage</span><span class="p">[</span><span class="n">_DECLARES_MEASUREMENTS</span><span class="p">]</span> <span class="o">=</span> <span class="nb">isinstance</span><span class="p">(</span>
+            <span class="n">artifacts</span><span class="p">,</span> <span class="n">Mapping</span>
+        <span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">artifacts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_MEASUREMENTS_ARTIFACT</span><span class="p">),</span> <span class="n">Mapping</span><span class="p">)</span>
+        <span class="n">stage</span><span class="p">[</span><span class="n">_PROJECTABLE_MEASUREMENTS</span><span class="p">]</span> <span class="o">=</span> <span class="n">_store_declares_projectable_table</span><span class="p">(</span>
+            <span class="n">block</span>
+        <span class="p">)</span>
         <span class="c1"># Unconditional, and the guard it replaces was dead. This block is</span>
         <span class="c1"># only reachable with a non-`None` marker -- it dereferences one two</span>
         <span class="c1"># statements above -- and `record_provenance` returns FORWARD or</span>
@@ -2015,6 +2115,14 @@
 <span class="sd">    half-migrated tree reaches ``contradictory`` and flags the whole output</span>
 <span class="sd">    read-only for a reason the user cannot act on, which is the behaviour</span>
 <span class="sd">    this replaces.</span>
+
+<span class="sd">    **Depth-invariant, by construction.** Every per-image clause is a</span>
+<span class="sd">    projection over ``images`` with no I/O; the run-level clauses read small</span>
+<span class="sd">    sidecars, none of them per-image. A ``&quot;shallow&quot;`` call therefore emits</span>
+<span class="sd">    exactly the advisories a ``&quot;deep&quot;`` one does, which is the property that</span>
+<span class="sd">    makes them usable from the surfaces that only ever poll shallowly --</span>
+<span class="sd">    and it is why a clause that needs a per-image fact records that fact</span>
+<span class="sd">    during verification instead of asking for it here.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">notes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
 
@@ -2064,6 +2172,51 @@
             <span class="s2">&quot;current deliverables/metadata.csv. Advisory only.&quot;</span>
         <span class="p">)</span>
 
+    <span class="n">verified</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span>
+        <span class="mi">1</span> <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">images</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="n">image</span><span class="o">.</span><span class="n">verdict</span> <span class="o">==</span> <span class="s2">&quot;verified&quot;</span>
+    <span class="p">)</span>
+    <span class="n">certified</span> <span class="o">=</span> <span class="n">_certified_source_count</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">certified</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">certified</span> <span class="o">&lt;</span> <span class="n">verified</span><span class="p">:</span>
+        <span class="c1"># REPORTS THE GAP, NEVER DIAGNOSES IT. The same shortfall is</span>
+        <span class="c1"># produced by an excluded store and by the wholly ordinary case of</span>
+        <span class="c1"># an image finishing after the master was published -- a rolling</span>
+        <span class="c1"># input reaches that state on its own, with nothing wrong -- and</span>
+        <span class="c1"># this clause cannot tell them apart, because the proof records a</span>
+        <span class="c1"># digest and a count rather than the set. Wording it as an</span>
+        <span class="c1"># accusation would make the common, benign case read as a defect,</span>
+        <span class="c1"># and an advisory that cries wolf is how the one that matters stops</span>
+        <span class="c1"># being read. The clause below is what accuses, and only where a</span>
+        <span class="c1"># store is demonstrably inconsistent.</span>
+        <span class="n">notes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;The published master certifies </span><span class="si">{</span><span class="n">certified</span><span class="si">}</span><span class="s2"> of this run&#39;s &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">verified</span><span class="si">}</span><span class="s2"> verified images, and completion requires the two &quot;</span>
+            <span class="s2">&quot;sets to agree. This note reports the gap, not its cause: an &quot;</span>
+            <span class="s2">&quot;image is missing from the master either because it was &quot;</span>
+            <span class="s2">&quot;verified after the master was published, which re-running &quot;</span>
+            <span class="s2">&quot;finalization resolves, or because the projection excluded its &quot;</span>
+            <span class="s2">&quot;store, which re-running finalization reaches again. Any &quot;</span>
+            <span class="s2">&quot;excluded store this reader can identify is named separately. &quot;</span>
+            <span class="s2">&quot;Advisory only.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">excluded</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">dataset</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">image_stem</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">images</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">image</span><span class="o">.</span><span class="n">verdict</span> <span class="o">==</span> <span class="s2">&quot;verified&quot;</span>
+        <span class="ow">and</span> <span class="n">_stage_value</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">_DECLARES_MEASUREMENTS</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">True</span>
+        <span class="ow">and</span> <span class="n">_stage_value</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">_PROJECTABLE_MEASUREMENTS</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">excluded</span><span class="p">:</span>
+        <span class="n">notes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="s2">&quot;These images have a record that authorizes an embedded &quot;</span>
+            <span class="s2">&quot;measurement table, but a store that declares no column list to &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;project it onto: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">excluded</span><span class="p">)</span><span class="si">}</span><span class="s2">. Finalization excludes &quot;</span>
+            <span class="s2">&quot;such a store from the master and from the source set the &quot;</span>
+            <span class="s2">&quot;aggregate proof certifies, so re-running it reaches the same &quot;</span>
+            <span class="s2">&quot;verdict rather than repairing this; the store has to be &quot;</span>
+            <span class="s2">&quot;re-measured. Advisory only.&quot;</span>
+        <span class="p">)</span>
+
     <span class="n">migrated</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
         <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">dataset</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">image_stem</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">images</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
@@ -2081,13 +2234,55 @@
     <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">notes</span><span class="p">)</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_certified_source_count</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return how many images the published master&#39;s proof certifies.</span>
+
+<span class="sd">    FU-1&#39;s **detection** half, and the one that does not depend on knowing</span>
+<span class="sd">    *why* a store was left out. ``source_image_count`` is the arity of the</span>
+<span class="sd">    source set ``publish_aggregate_snapshot`` was given, so comparing it</span>
+<span class="sd">    against the live verified count is the same comparison rule 1 makes on</span>
+<span class="sd">    ``source_set_digest`` -- stated in a form a reader can be told.</span>
+
+<span class="sd">    **The set itself is not recoverable from the proof.** The proof records</span>
+<span class="sd">    the digest of the sorted work ids and their count, never the list, so</span>
+<span class="sd">    &quot;which images&quot; cannot be read back out of it and has to be derived from</span>
+<span class="sd">    the tree instead (see :func:`_store_declares_projectable_table`). The</span>
+<span class="sd">    count is what the proof does answer, and it answers it for all four of</span>
+<span class="sd">    the projection&#39;s exclusions rather than the two a store can be asked</span>
+<span class="sd">    about.</span>
+
+<span class="sd">    Read from the **aggregate** proof, which is the publisher of record for</span>
+<span class="sd">    the source set; the run proof carries a copy. Read **raw** rather than</span>
+<span class="sd">    through :func:`_valid_aggregate_proof`, and that is deliberate twice</span>
+<span class="sd">    over: validating hashes the master on every call, including the GUI&#39;s</span>
+<span class="sd">    shallow poll, and a proof whose deliverables no longer match is still</span>
+<span class="sd">    the proof that says how many images the master was built from. An</span>
+<span class="sd">    advisory suppressed by a *second*, unrelated problem is an advisory that</span>
+<span class="sd">    goes missing on exactly the trees with the most wrong with them.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The certified image count, or ``None`` when there is no readable</span>
+<span class="sd">        aggregate proof of this version, or it records no plain integer</span>
+<span class="sd">        count -- every one of which means &quot;no comparison to make&quot; rather</span>
+<span class="sd">        than &quot;zero&quot;.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">payload</span> <span class="o">=</span> <span class="n">_read_json_object</span><span class="p">(</span><span class="n">aggregate_publication_marker_path</span><span class="p">(</span><span class="n">output_dir</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">payload</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;version&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="n">AGGREGATE_PROOF_VERSION</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">count</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;source_image_count&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">count</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">_stage_value</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="n">ImageState</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">object</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Read one value out of an image&#39;s ``measured`` stage, if present.</span>
 
-<span class="sd">    Advisories are projections over ``images`` with **no I/O** -- which is</span>
-<span class="sd">    what lets the shallow path emit exactly the same advisories as the deep</span>
-<span class="sd">    path it reuses, instead of losing them or paying a per-image read to keep</span>
-<span class="sd">    them.</span>
+<span class="sd">    Every **per-image** advisory is a projection over ``images`` with **no</span>
+<span class="sd">    I/O** -- which is what lets the shallow path emit exactly the same</span>
+<span class="sd">    advisories as the deep path it reuses, instead of losing them or paying</span>
+<span class="sd">    a per-image read to keep them. The run-level clauses read a sidecar, but</span>
+<span class="sd">    O(1) of them rather than one per image; see :func:`_advisories`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">stage</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">stages</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">STAGE_MEASURED</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">stage</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">):</span>

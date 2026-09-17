@@ -668,6 +668,47 @@ Only store provenance is considered.</p></li>
 <p>An ambiguous directory that looks like both a full run and a process-output
 tree is refused. Migration does not guess.</p>
 </section>
+<section id="work-on-a-copy-when-the-original-must-stay-as-it-is">
+<h2>Work on a copy when the original must stay as it is<a class="headerlink" href="#work-on-a-copy-when-the-original-must-stay-as-it-is" title="Link to this heading">#</a></h2>
+<p>A full run is converted <strong>in place</strong>. When the original tree has to stay
+untouched — while you compare results, or because other analyses still read
+it — migrate a copy instead.</p>
+<p>The legacy <code class="docutils literal notranslate"><span class="pre">.h5</span></code> sources do not need a byte copy. Migration opens them
+read-only, so hard links cost no space and cannot change the original files.
+Copy everything else for real:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nv">SRC</span><span class="o">=</span>/path/to/run
+<span class="nv">DST</span><span class="o">=</span>/path/to/run-ome-zarr
+<span class="nv">DS</span><span class="o">=</span>&lt;dataset&gt;<span class="w">          </span><span class="c1"># repeat the first two commands for each dataset</span>
+
+mkdir<span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DST</span><span class="s2">/results/</span><span class="nv">$DS</span><span class="s2">/hdf&quot;</span>
+rsync<span class="w"> </span>-a<span class="w"> </span>--link-dest<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$SRC</span><span class="s2">/results/</span><span class="nv">$DS</span><span class="s2">/hdf/&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$SRC</span><span class="s2">/results/</span><span class="nv">$DS</span><span class="s2">/hdf/&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DST</span><span class="s2">/results/</span><span class="nv">$DS</span><span class="s2">/hdf/&quot;</span>
+rsync<span class="w"> </span>-a<span class="w"> </span>--exclude<span class="o">=</span><span class="s2">&quot;/results/</span><span class="nv">$DS</span><span class="s2">/hdf/&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$SRC</span><span class="s2">/&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DST</span><span class="s2">/&quot;</span>
+</pre></div>
+</div>
+<p>On a run of several thousand images the non-HDF part (deliverables, overlays,
+external measurement Parquets) is tens of gigabytes, so run the copy as a Slurm
+job rather than on a login node. The converted stores then need about as much
+space again as the <code class="docutils literal notranslate"><span class="pre">.h5</span></code> files they replace.</p>
+<p>If the original was <strong>already migrated once</strong> — it has <code class="docutils literal notranslate"><span class="pre">results/&lt;ds&gt;/zarr/</span></code> and
+<code class="docutils literal notranslate"><span class="pre">.phenotypic/progress/migration/</span></code> — leave out the state that records the
+original’s absolute paths. Leave out <code class="docutils literal notranslate"><span class="pre">zarr/</span></code> as well if every store should be
+rebuilt from HDF:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rsync<span class="w"> </span>-a<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--exclude<span class="o">=</span><span class="s2">&quot;/results/</span><span class="nv">$DS</span><span class="s2">/hdf/&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--exclude<span class="o">=</span><span class="s2">&quot;/results/</span><span class="nv">$DS</span><span class="s2">/zarr/&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--exclude<span class="o">=</span><span class="s2">&quot;/.phenotypic/progress/migration/&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--exclude<span class="o">=</span><span class="s2">&quot;/.phenotypic/progress/recompile/&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--exclude<span class="o">=</span><span class="s2">&quot;/.phenotypic/metadata_migration/&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--exclude<span class="o">=</span><span class="s2">&quot;/.phenotypic/slurm_scripts/&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--exclude<span class="o">=</span><span class="s2">&quot;/.phenotypic/.migration-attempt.lease&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">&quot;</span><span class="nv">$SRC</span><span class="s2">/&quot;</span><span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DST</span><span class="s2">/&quot;</span>
+</pre></div>
+</div>
+<p>A metadata-migration receipt that points outside the tree is refused anyway, so
+that pass simply reruns against the copy. <code class="docutils literal notranslate"><span class="pre">--delete-sources</span></code> on the copy
+removes only the copy’s link to each <code class="docutils literal notranslate"><span class="pre">.h5</span></code>; the original keeps its file.</p>
+</section>
 <section id="validate-before-writing">
 <h2>Validate before writing<a class="headerlink" href="#validate-before-writing" title="Link to this heading">#</a></h2>
 <p>Run a dry validation locally:</p>
@@ -723,6 +764,57 @@ chain. Direct stores and process trees use an indexed store array → provenance
 seal → finalizer chain. Both go through the shared drip-feed dispatcher and
 generation fence; migrate mode does not submit a custom wrapper or a parallel
 scheduler sidecar.</p>
+<p>The generated scripts run the Python interpreter of the environment you
+submitted from. Keep that checkout and its <code class="docutils literal notranslate"><span class="pre">.venv</span></code> in place until the finalizer
+has finished.</p>
+<section id="size-a-large-run">
+<h3>Size a large run<a class="headerlink" href="#size-a-large-run" title="Link to this heading">#</a></h3>
+<p>Every stage of the chain — metadata, each image chunk, seal and finalizer — is
+written with the <strong>same</strong> <code class="docutils literal notranslate"><span class="pre">--slurm</span></code> profile, so size the profile for the longest
+stage, not for one image task. The short example above suits a small target
+only.</p>
+<p>Measured on a 6,657-image full run of 16-bit plate images (converted stores
+≈ 190 MB each):</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Stage</p></th>
+<th class="head"><p>Wall time</p></th>
+<th class="head"><p>Peak memory</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>metadata</p></td>
+<td><p>9 min</p></td>
+<td><p>—</p></td>
+</tr>
+<tr class="row-odd"><td><p>one image task (HDF → store, table, marker)</p></td>
+<td><p>≈ 90 s, at most ≈ 2 min</p></td>
+<td><p>≈ 1.6 GB</p></td>
+</tr>
+<tr class="row-even"><td><p>seal</p></td>
+<td><p>45 min</p></td>
+<td><p>—</p></td>
+</tr>
+<tr class="row-odd"><td><p>finalizer</p></td>
+<td><p>≈ 3 h</p></td>
+<td><p>&lt; 4 GB</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<ul class="simple">
+<li><p><strong>Walltime.</strong> Earlier attempts on the same data with 1–1.5 h limits timed out
+in the seal and in the finalizer. A finalizer killed at its limit leaves the
+generation open until you rerun. Choose a partition that allows several hours,
+for example <code class="docutils literal notranslate"><span class="pre">--slurm</span> <span class="pre">slurm_partition=intel</span> <span class="pre">--slurm</span> <span class="pre">time=480</span></code>.</p></li>
+<li><p><strong>Memory.</strong> A 4 GB request out-of-memory-killed image tasks on this data;
+12 GB left ample headroom. Memory, not CPUs, is usually what caps how many
+array tasks your account runs at once, so do not over-request it.</p></li>
+<li><p><strong>The finalizer is slow, not hung.</strong> It re-verifies every image’s recorded
+artifacts, which re-reads each overlay PNG in full several times over. While
+its CPU time keeps rising it is working.</p></li>
+</ul>
+</section>
 </section>
 <section id="source-deletion">
 <h2>Source deletion<a class="headerlink" href="#source-deletion" title="Link to this heading">#</a></h2>
@@ -737,6 +829,55 @@ its converted store passes the value-level readback checks:</p>
 </div>
 <p>Direct-store and process-tree migrations reject <code class="docutils literal notranslate"><span class="pre">--delete-sources</span></code>: they only
 upgrade root provenance and have no legacy image source to reclaim.</p>
+</section>
+<section id="what-a-converted-full-run-contains">
+<h2>What a converted full run contains<a class="headerlink" href="#what-a-converted-full-run-contains" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><strong>Stores.</strong> Each image becomes <code class="docutils literal notranslate"><span class="pre">results/&lt;ds&gt;/zarr/&lt;stem&gt;.ome.zarr</span></code>, and its
+external Parquet is embedded at <code class="docutils literal notranslate"><span class="pre">tables/measurements/table.parquet</span></code>. When the
+run has a <code class="docutils literal notranslate"><span class="pre">deliverables/metadata.csv</span></code>, that table is written in the older,
+metadata-joined shape and the store has no separate <code class="docutils literal notranslate"><span class="pre">tables/metadata/</span></code> table.
+The store’s descriptor still lists only the measured columns, in
+<code class="docutils literal notranslate"><span class="pre">measurement_columns</span></code>.</p></li>
+<li><p><strong>Master.</strong> Migration finalizes the run again. Each embedded table is cut back
+to its own <code class="docutils literal notranslate"><span class="pre">measurement_columns</span></code> before the tables are concatenated, so
+<code class="docutils literal notranslate"><span class="pre">deliverables/master_measurements.parquet</span></code> carries measurements and the
+image’s intrinsic identity only — no user metadata — exactly like a run
+written by the current release. <code class="docutils literal notranslate"><span class="pre">master_measurements.csv</span></code> is deleted.</p></li>
+<li><p><strong>Mirror.</strong> <code class="docutils literal notranslate"><span class="pre">deliverables/measurements.{csv,parquet}</span></code> joins <code class="docutils literal notranslate"><span class="pre">metadata.csv</span></code>
+once, on the columns the master and the CSV share — for a plate run typically
+<code class="docutils literal notranslate"><span class="pre">Metadata_ImageName</span></code>, <code class="docutils literal notranslate"><span class="pre">Metadata_Dataset</span></code>, <code class="docutils literal notranslate"><span class="pre">Grid_RowNum</span></code> and <code class="docutils literal notranslate"><span class="pre">Grid_ColNum</span></code>.
+Metadata is the left side of that join: a metadata row with no measured object
+is kept with <code class="docutils literal notranslate"><span class="pre">QC_MetadataOnly=true</span></code>, and a measured object whose image or grid
+cell appears in no metadata row is <strong>dropped</strong>. A converted run can therefore
+show fewer measured rows in the mirror than its old <code class="docutils literal notranslate"><span class="pre">measurements.csv</span></code> did.
+Those objects are still in the master; add them to <code class="docutils literal notranslate"><span class="pre">metadata.csv</span></code> if they
+belong to the experiment.</p></li>
+<li><p><strong>Metadata snapshot.</strong> <code class="docutils literal notranslate"><span class="pre">deliverables/metadata.csv</span></code> is never rewritten. A
+header-normalized view is written beside it as <code class="docutils literal notranslate"><span class="pre">metadata.canonical.csv</span></code>.</p></li>
+<li><p><strong>Sources.</strong> <code class="docutils literal notranslate"><span class="pre">.h5</span></code> files and external Parquets stay unless you passed
+<code class="docutils literal notranslate"><span class="pre">--delete-sources</span></code>.</p></li>
+</ul>
+</section>
+<section id="check-the-result">
+<h2>Check the result<a class="headerlink" href="#check-the-result" title="Link to this heading">#</a></h2>
+<p>A migration is finished when its generation’s terminal status says so, not when
+the image array drains:</p>
+<ul class="simple">
+<li><p>In the control root printed at submission (for a Slurm run,
+<code class="docutils literal notranslate"><span class="pre">.phenotypic/progress/migration/&lt;generation&gt;/</span></code>),
+<code class="docutils literal notranslate"><span class="pre">migration_generations/&lt;generation&gt;/terminal_status.json</span></code> reads
+<code class="docutils literal notranslate"><span class="pre">&quot;status&quot;:</span> <span class="pre">&quot;succeeded&quot;</span></code>, its report’s <code class="docutils literal notranslate"><span class="pre">failed</span></code> list is empty, and <code class="docutils literal notranslate"><span class="pre">converted</span></code>
+equals the number of <code class="docutils literal notranslate"><span class="pre">.h5</span></code> sources.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">.phenotypic/progress/slurm_lifecycle.json</span></code> reads <code class="docutils literal notranslate"><span class="pre">&quot;active&quot;:</span> <span class="pre">false</span></code>.</p></li>
+<li><p>The mirror has measured rows. Filter <code class="docutils literal notranslate"><span class="pre">deliverables/measurements.parquet</span></code> on
+<code class="docutils literal notranslate"><span class="pre">QC_MetadataOnly</span> <span class="pre">==</span> <span class="pre">false</span></code>. If the master has rows and that filter returns
+none, the metadata join matched nothing: check that <code class="docutils literal notranslate"><span class="pre">metadata.csv</span></code> names the
+converted images and grid cells.</p></li>
+</ul>
+<p>Rerunning migrate on a tree that already succeeded is safe but not free. It
+starts a new generation and repeats the whole chain, re-verifying every image,
+before it finalizes again.</p>
 </section>
 <section id="provenance-schema-v2-convention">
 <h2>Provenance schema-v2 convention<a class="headerlink" href="#provenance-schema-v2-convention" title="Link to this heading">#</a></h2>
@@ -795,10 +936,16 @@ status files.</p>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#choose-the-target">Choose the target</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#work-on-a-copy-when-the-original-must-stay-as-it-is">Work on a copy when the original must stay as it is</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#validate-before-writing">Validate before writing</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#run-locally">Run locally</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dispatch-through-slurm">Dispatch through Slurm</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dispatch-through-slurm">Dispatch through Slurm</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#size-a-large-run">Size a large run</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#source-deletion">Source deletion</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-a-converted-full-run-contains">What a converted full run contains</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#check-the-result">Check the result</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#provenance-schema-v2-convention">Provenance schema-v2 convention</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#failure-and-recovery">Failure and recovery</a></li>
 </ul>

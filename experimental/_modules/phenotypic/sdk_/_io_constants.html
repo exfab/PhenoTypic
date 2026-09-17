@@ -1383,7 +1383,19 @@
 <span class="c1">#: records what was checked, never how. A rules change shipped without a bump</span>
 <span class="c1">#: is a build silently honouring another build&#39;s verdicts, which is the one</span>
 <span class="c1">#: failure the in-process tier could not have.</span>
-<span class="n">VERIFICATION_CACHE_VERSION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="c1">#:</span>
+<span class="c1">#: **2 since FU-1&#39;s exclusion advisory.** Deep verification now records two</span>
+<span class="c1">#: more facts into each image&#39;s ``measured`` stage -- whether its record</span>
+<span class="c1">#: authorizes a measurement table, and whether its store declares a</span>
+<span class="c1">#: projectable column list -- and ``resolve_run_state`` names an excluded</span>
+<span class="c1">#: store by projecting over them. A version-1 entry carries valid stat</span>
+<span class="c1">#: tuples and neither fact, so a warm shallow pass would reuse it and emit</span>
+<span class="c1">#: no advisory: the diagnostic would be silently switched off by a cache,</span>
+<span class="c1">#: which is exactly what the paragraph above forbids. This is the &quot;rules</span>
+<span class="c1">#: changed, shape did not&quot; case it describes, and the first bump to invoke</span>
+<span class="c1">#: it. Guard:</span>
+<span class="c1">#: ``test_run_state.py::test_a_cache_written_before_the_advisory_cannot_silence_it``.</span>
+<span class="n">VERIFICATION_CACHE_VERSION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>
 
 <span class="c1">#: Per-image success-marker schema version. Bumped to 2 when artifact</span>
 <span class="c1">#: descriptors gained ``kind``: a v1 marker describes the per-image ``.h5``,</span>
