@@ -17,6 +17,21 @@ any difference is the staging itself.
 | `single_pass_reference.py` | arm B's worker: writes `<stem>.objmap.npy` and `<stem>.measurements.parquet` |
 | `compare_arms.py` | per image: objmap equality, then measurement columns by max abs difference |
 
+Diagnostics used to explain the first run's mismatch (findings in
+`docs/superpowers/reports/2026-09-15-nested-gpu-staging/gpu-smoke.md`):
+
+| file | question |
+|---|---|
+| `diag_stage1_roundtrip.py` | does the staged store hand Stage 2 the pixels an in-memory Stage 1 produces? |
+| `diag_store_vs_repeat.py` | store round trip vs Stage-1 repeatability, in one process |
+| `diag_sam2_repeatability.py` | is Sam2 repeatable; does a replay reproduce a recorded single pass? |
+| `diag_replay_equivalence.py` | from ONE preprocessed image, live detector vs `ReplayDetector` |
+| `diag_env_digests.py`, `submit_env_digests.sh` | Stage-1 digests across CPU types / threads; Sam2 digests across processes |
+
+**Equality between the arms requires Stage 1 and the reference to run on the
+same CPU type with the same core allocation**: `DenoiseBlockMatch` (BM3D) is
+not reproducible across either.
+
 Arm B deliberately does not use the CLI: with this branch, a local CLI run of a
 nested-GPU pipeline is itself staged, so it would not be an independent
 single-pass reference.

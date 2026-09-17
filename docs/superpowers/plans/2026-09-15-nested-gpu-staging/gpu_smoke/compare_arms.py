@@ -98,8 +98,6 @@ def compare_arms(staged_root: Path, reference_root: Path) -> int:
         n_expected = len(np.unique(expected[expected > 0]))
         verdict = "identical" if differing == 0 else f"DIFFERS in {differing} px"
         print(f"   objmap {verdict}; objects staged={n_actual} reference={n_expected}")
-        if differing:
-            failures += 1
         staged_table = pd.read_parquet(store / MEASUREMENT_TABLE_RELATIVE_PATH)
         reference_table = pd.read_parquet(
             ref_objmap.with_name(f"{stem}.measurements.parquet")
@@ -107,7 +105,9 @@ def compare_arms(staged_root: Path, reference_root: Path) -> int:
         problems = compare_measurements(staged_table, reference_table)
         for problem in problems:
             print(f"   MEASUREMENT {problem}")
-        failures += bool(problems)
+        # One count per IMAGE: an image whose objmap and table both differ is
+        # one differing image, not two.
+        failures += bool(differing or problems)
     print(f"\n{len(recorded)} images compared, {failures} with differences")
     return 1 if failures else 0
 
