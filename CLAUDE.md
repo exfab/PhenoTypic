@@ -165,7 +165,8 @@ isolation before attributing it — most of them pass.
   resident-model GPU detect → CPU measure — reusing the per-image OME-Zarr store.
   Stage 2 reads that store **read-only** and never writes into it; its result is a
   **Stage-2 signal** under `.phenotypic/progress/`: the retained **raw** detector
-  output `stage2_raw/<ds>/<slot>/<stem>.npy` plus a consumable **token**
+  output `stage2_raw/<ds>/<slot>/<stem>.npy` (compressed, same file name;
+  readers also accept a pre-compression bare array) plus a consumable **token**
   `stage2_done/<ds>/<slot>/<stem>.json`. `<slot>` is
   `detector_slot(plan.gpu_path)` (`_cli_stage2_token.py`) — the detector's tree
   path, sanitised, plus 8 hex of the exact path, e.g.

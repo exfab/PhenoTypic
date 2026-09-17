@@ -452,7 +452,9 @@ path when processing a directory:
    `preprocess → infer_batch`. The store is opened **read-only** and is never
    written to here, so an interrupted run never corrupts it. Instead Stage 2
    drops its result as machine state under `.phenotypic/progress/`: the
-   **raw** labelled object map at `stage2_raw/<dataset>/<slot>/<stem>.npy`,
+   **raw** labelled object map at `stage2_raw/<dataset>/<slot>/<stem>.npy`
+   (compressed; a label image shrinks by an order of magnitude or more, which
+   matters because every image's output is retained until Stage 3 runs),
    followed by a consumable **token** at
    `stage2_done/<dataset>/<slot>/<stem>.json`.
 3. **Stage 3 — CPU replay + measure.** The **raw** array is written back through

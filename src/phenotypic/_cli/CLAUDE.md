@@ -67,7 +67,13 @@ and runs three content-defined stages. The per-image stage cores live in
    apply `plan.stage2_prefix` to a provenance-detached copy when the detector is
    nested, run the resident detector, and drop its **Stage-2 signal**: the
    retained **raw** detector output at
-   `.phenotypic/progress/stage2_raw/<ds>/<slot>/<stem>.npy`, then a consumable
+   `.phenotypic/progress/stage2_raw/<ds>/<slot>/<stem>.npy` — the name is
+   unchanged but the file is a **compressed** archive (`np.savez_compressed`),
+   because the dataset-wide barrier keeps every image's raw output live at
+   once: ~32 MB each uncompressed is ~1 TiB over a 33,923-image run.
+   `load_stage2_raw` reads a pre-compression bare `.npy` too, so a run
+   interrupted across that change replays instead of re-inferring — then a
+   consumable
    **token** at
    `.phenotypic/progress/stage2_done/<ds>/<slot>/<stem>.json`
    (`_cli_stage2_token.py`,

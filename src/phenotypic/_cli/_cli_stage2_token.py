@@ -309,6 +309,10 @@ def find_stage2_token(
 
 _STAGE2_RAW_DIR = "stage2_raw"
 
+#: Array name inside the compressed raw file. Reading tolerates any single
+#: name, so a file written before this key existed still loads.
+_STAGE2_RAW_KEY = "result"
+
 
 def stage2_raw_path(
     output_dir: Path, dataset: str, image_stem: str, slot: str
@@ -345,6 +349,21 @@ def write_stage2_raw(
     then token, delete token then raw**, so the only reachable intermediate
     state is "no token, orphan raw".
 
+    **Written compressed**, because every image's raw output is live at once:
+    the controller starts Stage 3 only after the whole Stage-2 round, so an
+    uncompressed 3140x5094 uint16 objmap (~32 MB) times 33,923 images is about
+    1 TiB resident on shared storage. Compressed, a plate-like objmap measured
+    525x smaller (31.9 MB -> 0.06 MB) for 0.68 s of CPU; noisier real detector
+    output will do less well, but an order of magnitude either way dwarfs the
+    write cost, which is itself far below one image's inference.
+
+    The **path and file name are unchanged** (``<stem>.npy``): it is now a
+    compressed archive rather than a bare array, so every ``.is_file()``
+    predicate, the write-raw-then-token ordering, the legacy relocation and
+    the deletion order all keep working untouched, and
+    :func:`load_stage2_raw` reads both forms. A file written by an older build
+    is therefore still replayable and is never rewritten.
+
     Args:
         output_dir: Run output root.
         dataset: Dataset name.
@@ -359,7 +378,7 @@ def write_stage2_raw(
 
     def _write(path: str) -> None:
         with open(path, "wb") as handle:
-            np.save(handle, array)
+            np.savez_compressed(handle, **{_STAGE2_RAW_KEY: array})
 
     atomic_write_with_writer(final, _write, commit_guard=commit_guard)
     return final
@@ -403,12 +422,28 @@ def stage2_result_replayable(
 def load_stage2_raw(
     output_dir: Path, dataset: str, image_stem: str, slot: str
 ) -> np.ndarray:
-    """Load the retained raw detector output.
+    """Load the retained raw detector output, compressed or not.
+
+    ``write_stage2_raw`` compresses; builds before it wrote a bare ``.npy``.
+    Both are accepted at the same path so a run interrupted across the upgrade
+    replays instead of re-inferring on a GPU.
 
     Raises:
         FileNotFoundError: If Stage 2 did not retain one.
     """
-    return np.load(stage2_raw_path(output_dir, dataset, image_stem, slot))
+    loaded = np.load(
+        stage2_raw_path(output_dir, dataset, image_stem, slot),
+        allow_pickle=False,
+    )
+    if isinstance(loaded, np.ndarray):  # pre-compression file
+        return loaded
+    with loaded as archive:
+        name = (
+            _STAGE2_RAW_KEY
+            if _STAGE2_RAW_KEY in archive.files
+            else archive.files[0]
+        )
+        return archive[name]
 
 
 def delete_stage2_raw(

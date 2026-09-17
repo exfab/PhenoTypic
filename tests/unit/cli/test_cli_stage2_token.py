@@ -21,6 +21,7 @@ from phenotypic._cli._cli_stage2_token import (
     load_stage2_raw,
     read_stage2_token,
     stage2_raw_path,
+    stage2_result_replayable,
     stage2_token_exists,
     stage2_token_path,
     write_stage2_raw,
@@ -200,6 +201,46 @@ def test_raw_array_round_trips_exactly(tmp_path: Path) -> None:
     assert load_stage2_raw(tmp_path, "ds", "img", _SLOT).dtype == array.dtype
 
 
+def test_raw_array_is_stored_compressed(tmp_path: Path) -> None:
+    """Every image's raw output is live at once across the Stage-2 barrier.
+
+    Uncompressed, a 3140x5094 uint16 objmap is ~32 MB, so a 33,923-image run
+    keeps ~1 TiB on shared storage until Stage 3 consumes it. A label image of
+    flat regions compresses by orders of magnitude, so the file must not be a
+    bare array: 4 MB of one label here is the compressible extreme, and a
+    plain ``np.save`` would write all of it.
+    """
+    array = np.full((1024, 2048), 7, dtype=np.uint16)
+    written = write_stage2_raw(tmp_path, "ds", "img", array, _SLOT)
+
+    assert written.stat().st_size < array.nbytes // 100
+    np.testing.assert_array_equal(
+        load_stage2_raw(tmp_path, "ds", "img", _SLOT), array
+    )
+
+
+def test_a_precompression_raw_array_still_replays(tmp_path: Path) -> None:
+    """A run interrupted across the upgrade must not re-infer on a GPU.
+
+    Older builds wrote a bare ``.npy`` at this same path. Writing one by hand
+    is the only way to prove the reader still accepts it; a file written by
+    ``write_stage2_raw`` cannot fail this test whatever the reader does.
+    """
+    array = np.arange(12, dtype=np.uint16).reshape(3, 4)
+    legacy = stage2_raw_path(tmp_path, "ds", "img", _SLOT)
+    legacy.parent.mkdir(parents=True, exist_ok=True)
+    with open(legacy, "wb") as handle:
+        np.save(handle, array)
+
+    loaded = load_stage2_raw(tmp_path, "ds", "img", _SLOT)
+
+    np.testing.assert_array_equal(loaded, array)
+    assert loaded.dtype == array.dtype
+    assert stage2_result_replayable(tmp_path, "ds", "img", _SLOT) is False, (
+        "no token was written, so the pair is not replayable yet"
+    )
+
+
 def test_raw_array_keeps_a_wide_label_range(tmp_path: Path) -> None:
     """A silent uint8/int16 narrowing would renumber colonies, not fail."""
     array = np.array([[0, 1], [300, 70000]], dtype=np.uint32)
@@ -249,7 +290,10 @@ def test_a_failed_raw_write_never_replaces_a_good_one(
     good = np.arange(4, dtype=np.uint16).reshape(2, 2)
     write_stage2_raw(tmp_path, "ds", "img", good, _SLOT)
 
-    monkeypatch.setattr(module.np, "save", _raise_boom)
+    # The writer compresses, so this patches savez_compressed, not save. A
+    # patch on the wrong function makes the write SUCCEED and the assertion
+    # below then compares the good array against itself.
+    monkeypatch.setattr(module.np, "savez_compressed", _raise_boom)
     with pytest.raises(OSError):
         write_stage2_raw(
             tmp_path, "ds", "img", np.full((2, 2), 9, dtype=np.uint16), _SLOT
