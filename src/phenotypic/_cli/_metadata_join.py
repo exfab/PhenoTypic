@@ -6,8 +6,8 @@ from dataclasses import dataclass
 
 import polars as pl
 
-from phenotypic.schema import header_to_module
 from phenotypic.sdk_ import (
+    external_metadata_preserved_columns,
     is_metadata_header,
     metadata_member_for_header,
     metadata_member_for_label,
@@ -123,18 +123,9 @@ def normalize_external_metadata_columns(
     Returns:
         A normalized copy of ``metadata``.
     """
-    raw_common = set(measurements.columns) & set(metadata.columns)
-    known_schema_headers = set(header_to_module())
-    preserve = {
-        column
-        for column in metadata.columns
-        if (
-            metadata_member_for_header(column) is None
-            and metadata_member_for_label(column) is None
-            and not is_metadata_header(column)
-            and (column in raw_common or column in known_schema_headers)
-        )
-    }
+    preserve = set(
+        external_metadata_preserved_columns(measurements.columns, metadata.columns)
+    )
     return _normalize_selected_metadata_columns(metadata, preserve=preserve)
 
 

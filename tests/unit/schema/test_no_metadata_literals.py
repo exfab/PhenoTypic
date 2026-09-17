@@ -45,6 +45,12 @@ _ALLOWED = {
     # arbitrary-column doctest examples (demonstrate non-vocabulary columns)
     "abc_/_post_measurement.py": {"Metadata_Flag"},                # AddConstant(column="Metadata_Flag")
     "post/_merge_metadata.py": {"Metadata_Condition"},             # doctest "Metadata_Condition"
+    # doctest: an external layout table's key and annotation columns
+    "post/_join_metadata.py": {
+        "Metadata_ImageName",
+        "Metadata_Strain",
+        "Metadata_Medium",
+    },
 }
 
 

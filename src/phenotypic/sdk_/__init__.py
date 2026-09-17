@@ -395,6 +395,7 @@ from .funcs_ import is_binary_mask, timed_execution  # noqa: E402
 from ._metadata_helpers import (  # noqa: E402
     canonical_metadata_order,
     ensure_metadata_prefix,
+    external_metadata_preserved_columns,
     is_metadata_header,
     metadata_category_for_label,
     metadata_category_prefixes,
@@ -461,6 +462,7 @@ __all__ = [
     "constants_",
     "exceptions_",
     "ensure_metadata_prefix",
+    "external_metadata_preserved_columns",
     "is_binary_mask",
     "is_metadata_header",
     "metadata_category_for_label",
