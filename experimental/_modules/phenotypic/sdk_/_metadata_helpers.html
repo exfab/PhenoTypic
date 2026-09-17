@@ -933,6 +933,44 @@
 
 
 
+<div class="viewcode-block" id="external_metadata_preserved_columns">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.external_metadata_preserved_columns.html#phenotypic.sdk_.external_metadata_preserved_columns">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">external_metadata_preserved_columns</span><span class="p">(</span>
+    <span class="n">measurement_columns</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">object</span><span class="p">],</span>
+    <span class="n">metadata_columns</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">object</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the external metadata columns that keep their raw names in a join.</span>
+
+<span class="sd">    An external metadata table is joined onto a mixed-schema measurement frame.</span>
+<span class="sd">    Its columns split in two: join keys the measurements already carry, which</span>
+<span class="sd">    must keep their spelling or they match nothing, and attributes, which take</span>
+<span class="sd">    the live ``Metadata_`` spelling. A column keeps its raw name when it is not</span>
+<span class="sd">    metadata-family (no known metadata member, not a ``Metadata_*`` header) and</span>
+<span class="sd">    it either already exists in the measurement frame or is a known</span>
+<span class="sd">    non-metadata schema header such as ``Grid_RowNum``. Every other column is</span>
+<span class="sd">    normalized with :func:`ensure_metadata_prefix`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        measurement_columns: Column names of the measurement frame.</span>
+<span class="sd">        metadata_columns: Column names of the external metadata table.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The subset of ``metadata_columns`` whose names must not be prefixed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">raw_common</span> <span class="o">=</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="n">column</span><span class="p">)</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">measurement_columns</span><span class="p">}</span>
+    <span class="n">known_schema_headers</span> <span class="o">=</span> <span class="n">_schema</span><span class="o">.</span><span class="n">header_to_module</span><span class="p">()</span>
+    <span class="n">preserved</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">metadata_columns</span><span class="p">):</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">_metadata_member_for_name</span><span class="p">(</span><span class="n">column</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_metadata_header</span><span class="p">(</span><span class="n">column</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="p">(</span><span class="n">column</span> <span class="ow">in</span> <span class="n">raw_common</span> <span class="ow">or</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">known_schema_headers</span><span class="p">)</span>
+        <span class="p">):</span>
+            <span class="n">preserved</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">column</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">preserved</span><span class="p">)</span></div>
+
+
+
 <div class="viewcode-block" id="metadata_category_for_label">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.metadata_category_for_label.html#phenotypic.sdk_.metadata_category_for_label">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">metadata_category_for_label</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>

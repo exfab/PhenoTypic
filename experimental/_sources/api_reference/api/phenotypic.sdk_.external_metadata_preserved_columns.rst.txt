@@ -1,0 +1,6 @@
+phenotypic.sdk\_.external\_metadata\_preserved\_columns
+=======================================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: external_metadata_preserved_columns

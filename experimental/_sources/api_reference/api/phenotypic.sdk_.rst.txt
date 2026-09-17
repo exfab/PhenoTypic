@@ -35,6 +35,7 @@
       write_metadata_table
       canonical_metadata_order
       ensure_metadata_prefix
+      external_metadata_preserved_columns
       is_binary_mask
       is_metadata_header
       metadata_category_for_label
