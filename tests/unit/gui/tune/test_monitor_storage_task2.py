@@ -3,9 +3,39 @@
 from __future__ import annotations
 
 import threading
-from concurrent.futures import Future
+from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _isolate_process_wide_live_read_state(monkeypatch):
+    """Give each test its own live-read slot and worker.
+
+    ``_LIVE_OPEN_POOL`` has ONE worker and ``_LIVE_READS`` keeps at most one
+    read process-wide, both by design: that is what stops a fan of connect
+    attempts accumulating against a dead host. Both are module globals, so a
+    read left unfinished by another test — in this file or any other sharing
+    the worker process — starves every later read here.
+    ``_LiveReadCoalescer.acquire`` returns ``None`` for a *different* key while
+    one is pending, and ``read_study_for_monitor`` then degrades to the journal
+    **immediately**, with the "couldn't reach the live study" note and no wait
+    at all. A test asserting ``note == ""`` therefore fails no matter how
+    generous its deadline is, which is how
+    ``test_slow_fanova_is_outside_read_deadline_and_snapshot_is_detached``
+    failed under a loaded gate shard while passing alone every time.
+    """
+    from phenotypic._gui.tune import _callbacks
+
+    pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="test-live-open")
+    monkeypatch.setattr(_callbacks, "_LIVE_OPEN_POOL", pool)
+    monkeypatch.setattr(_callbacks, "_LIVE_READS", _callbacks._LiveReadCoalescer())
+    try:
+        yield
+    finally:
+        pool.shutdown(wait=False)
 
 
 def _root(tmp_path: Path):
