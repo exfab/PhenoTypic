@@ -24,6 +24,24 @@ from phenotypic.sdk_._operation_tree import (
 CENTERS = [[10.0, 10.0], [10.0, 40.0]]
 
 
+class _DictCarrier(OtsuDetector):
+    """An operation holding children in a dict and a tuple field.
+
+    No shipped operation declares either shape today: every operation-valued
+    parameter is a single operation or a list of them. The walker still has to
+    see these, because what it cannot see cannot be refused — a GpuDetector in
+    an unwalked field reads as "not a GPU pipeline" and the run goes to the CPU
+    strategy with nothing reported.
+    """
+
+    keyed: Any = None
+    fixed: Any = None
+
+
+def _carrier(**children: Any) -> _DictCarrier:
+    return _DictCarrier(**children)
+
+
 def _pipeline_with_composite():
     return ImagePipeline(
         ops={
@@ -37,6 +55,34 @@ def _pipeline_with_composite():
             ),
         }
     )
+
+
+def test_walk_yields_dict_field_entries_with_a_colon_namespace():
+    """A colon, as the pipeline slots use; the bracket form takes only ints."""
+    inner = ManualPointDetector(centers=CENTERS, shape="disk", width=11)
+    pipe = ImagePipeline(ops={"Carrier": _carrier(keyed={"inoculum": inner})})
+
+    paths = {"/".join(path) for path, _ in walk_operations(pipe)}
+
+    assert "Carrier/keyed:inoculum" in paths
+    assert get_at_path(pipe, ("Carrier", "keyed:inoculum")) is inner
+
+
+def test_walk_yields_tuple_field_entries_as_bracket_indexed_strings():
+    inner = ManualPointDetector(centers=CENTERS, shape="disk", width=11)
+    pipe = ImagePipeline(ops={"Carrier": _carrier(fixed=(OtsuDetector(), inner))})
+
+    paths = {"/".join(path) for path, _ in walk_operations(pipe)}
+
+    assert "Carrier/fixed[1]" in paths
+    assert get_at_path(pipe, ("Carrier", "fixed[1]")) is inner
+
+
+def test_a_dict_field_of_plain_values_yields_nothing():
+    """Control: the walker filters on the value, not on the field's type."""
+    pipe = ImagePipeline(ops={"Carrier": _carrier(keyed={"width": 11})})
+
+    assert [path for path, _ in walk_operations(pipe)] == [("Carrier",)]
 
 
 def test_walk_yields_list_entries_as_bracket_indexed_strings():
