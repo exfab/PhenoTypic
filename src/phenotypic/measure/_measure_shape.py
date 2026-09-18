@@ -173,10 +173,10 @@ class MeasureShape(MeasureFeatures):
                 convex_hull = None
 
             measurements[str(SHAPE.CONVEX_AREA)][idx] = (
-                convex_hull.area if convex_hull else np.nan
+                convex_hull.volume if convex_hull else np.nan
             )
             measurements[str(SHAPE.SOLIDITY)][idx] = (
-                (current_props.area / convex_hull.area) if convex_hull else np.nan
+                (current_props.area / convex_hull.volume) if convex_hull else np.nan
             )
 
             # Calculate Feret diameters using convex hull vertices if available
