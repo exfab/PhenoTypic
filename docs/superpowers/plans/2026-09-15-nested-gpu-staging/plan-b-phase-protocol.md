@@ -3,13 +3,18 @@
 > **Second of two plans, in sequence — Plan A lands first.** See `README.md`.
 > Plan B redesigns how an operation declares its execution so the scheduler can
 > split it, instead of inferring the split from outside. It supersedes Plan A's
-> splitter, replay stub and branch-prefix machinery, and reuses the rest —
-> roughly 70% of A stands under B, so A is not throwaway.
+> splitter, replay stub and branch-prefix machinery, and reuses the rest — see
+> *What carries over from Plan A* for which parts, per task.
 >
-> **Not yet reviewed.** Plan A has been through an independent plan review (20
-> findings, all applied). Plan B has not, and has no spec of its own — the
-> committed spec describes Plan A. If Plan B is chosen, write its spec and run the
-> review before executing.
+> **Status (2026-09-17): blocked on design decisions.** Plan A is implemented
+> (PR #224, `1fcab4bf`), reviewed twice plus an implementation review, and passed
+> a real-GPU smoke run (`../../reports/2026-09-15-nested-gpu-staging/gpu-smoke.md`).
+> This plan was re-checked against the built code in `../../reports/2026-09-15-nested-gpu-staging/plan-b-staleness-review.md`; its §4 lists the
+> forks that must be decided before a spec can be written. **For `F1gfd5` the
+> built Plan A already runs every operation exactly once** (the in-branch prefix
+> is empty), so this plan's headline saving is hypothetical for today's
+> pipelines. Plan B still has no spec of its own and must get one, plus a review,
+> before execution.
 
 **Goal:** Let any operation declare its execution as an ordered list of phases with a device tag, so the staged engine derives the CPU/GPU round chain statically from the pipeline JSON rather than inferring where a GPU detector sits.
 
@@ -42,17 +47,17 @@ class ImageOperation(BaseModel):
     _child_order: ClassVar[Literal["sequence", "parallel"] | None] = None
 ```
 
-Method **names**, not bound methods — Stage 3 rebuilds the operation from JSON in a fresh process, so a bound method cannot travel. `ClassVar`, so the phase structure is readable from the pipeline JSON without constructing anything. Single underscore, because `__phases` would name-mangle and break override in subclasses.
+Method **names**, not bound methods — Stage 3 rebuilds the operation from JSON in a fresh process, so a bound method cannot travel. `ClassVar`, so the phase structure is a property of the class. Single underscore, because `__phases` would name-mangle and break override in subclasses.
 
 ### What this replaces
 
 | Plan A mechanism | Plan B |
 |---|---|
-| `pipeline_requires_gpu` walks the tree for `isinstance(op, GpuDetector)` | `any(device == "gpu" for _, device in flatten_phases(pipeline))` — **no nesting blind spot by construction** |
-| `_CHILD_CONTRACT` table in the splitter, "composition primitives only" rule, guard test over class kinds | `_child_order` on the class. Declaring `_phases` + `_child_order` **is** the opt-in; an operation that has not declared is unstageable, by construction rather than by rule |
+| `pipeline_requires_gpu` walks the tree (slots included) for `isinstance(op, GpuDetector)` | `any(device == "gpu" for _, device in flatten_phases(pipeline))`. Both are tree scans; the difference is that the answer comes from a declaration, not `isinstance` |
+| `_CHILD_CONTRACT` table in `_cli_validation.py`, "composition primitives only" rule, guard test over class kinds | `_child_order` on the class. Declaring `_phases` + `_child_order` **is** the opt-in; an operation that has not declared is unstageable, by construction rather than by rule |
 | `StagePlan` with `gpu_path` / `stage2_prefix` | the flattened phase chain |
-| `ReplayDetector` + `substitute_at_path` | **gone.** The GPU phase persists its result; the next CPU phase reads it. Nothing is substituted |
-| Stage-2 branch prefix, re-executed in Stage 3 | **gone.** Each phase runs exactly once |
+| `ReplayDetector` + `substitute_at_path` (consumed by Stage 3, the process-mode objmap export, and the provenance hook protocol) | **gone** only if parents stop being replayed (review fork F-2). The GPU phase persists its result; the next CPU phase reads it |
+| Stage-2 branch prefix, re-executed in Stage 3 (empty for `F1gfd5`) | **gone.** Each phase runs exactly once |
 
 `GpuDetector` stops being special-cased. Its existing hooks already have this shape:
 
@@ -71,13 +76,13 @@ class FilamentousFungiDetector(ObjectDetector):
     _child_order: ClassVar = "parallel"
     _phase_state: ClassVar = ("_inoculum_objmask", "_inoculum_objmap")
 
-    _inoculum_objmask: np.ndarray | None = PrivateAttr(default=None)
-    _inoculum_objmap:  np.ndarray | None = PrivateAttr(default=None)
+    _inoculum_objmask: np.ndarray | None = PrivateAttr()   # no default: see B3
+    _inoculum_objmap:  np.ndarray | None = PrivateAttr()
 ```
 
 In-process (notebook, CPU-only run) nothing is persisted — the attributes simply survive on the instance. Across stages the engine reads them after a phase, persists them, and restores them onto the rebuilt instance before the next. The author writes the same code either way.
 
-`PrivateAttr` is load-bearing, not stylistic: it keeps per-image state out of the constructor (a user cannot pass a corrupted mask), out of `model_dump(mode="json")` — so it never reaches the pipeline JSON *or* the provenance `parameters`, which is the bug class `ReplayDetector`'s `NdArrayField` would otherwise have reintroduced on every phased operation — and out of `model_fields`, so the `OperationField` walker cannot mistake it for a child.
+`PrivateAttr` is load-bearing, not stylistic: it keeps per-image state out of the constructor (a user cannot pass a corrupted mask), out of `model_dump(mode="json")` — so it never reaches the pipeline JSON *or* the provenance `parameters`. Plan A avoids that leak for `ReplayDetector`'s `NdArrayField` with an explicit `provenance_parameters` hook (`_cli/_cli_replay_detector.py:87-89`); a `PrivateAttr` avoids it structurally — and out of `model_fields`, so the `OperationField` walker cannot mistake it for a child.
 
 ### Round chain
 
@@ -99,6 +104,8 @@ Inherit every constraint from Plan A (`uv` only, keyword-only pydantic construct
 - **A GPU round is a full-dataset sweep, never a per-image interleave** (Plan A's constraint, unchanged — breaking it destroys residency and forecloses batching).
 - **`self` is a channel only for declared `_phase_state` names.** Anything else set on the instance in one phase is absent in the next, and absent usually reads as a default rather than an error.
 - **Per-image `PrivateAttr` state rules out caching a pipeline instance across images.** Two images sharing one object would clobber each other's phase state. This is now structural.
+- **Slot placements stay refused** (Plan A revision entries 14–17): a `GpuDetector` in any pipeline's `meas`/`post`/`filters`/`model` slot, at any depth, is refused by `refuse_cpu_only_slot`, independent of the phase scan. Slot entries are spelled `meas:<key>`, `post:<key>`, `filters:<key>`, `model:<ClassName>`. The refusal fires before `--overwrite` and `--dry-run`, and the GUI run console shows it in the `rc-staged-gpu-refusal` alert.
+- **The model loads once per GPU round, and only when the round has pending images** (`_cli_staged_strategy.py:228-230`); inference goes through `_infer_batch`, pinned by `tests/unit/abc_/test_infer_batch_loads_the_model.py`.
 - **Large intermediates are layers, not phase state.** The engine caps the ferried payload; anything above it must be written as an image layer, where the store already handles persistence, versioning and cleanup.
 
 ---
@@ -107,24 +114,24 @@ Inherit every constraint from Plan A (`uv` only, keyword-only pydantic construct
 
 Do these first; they are foundation under either plan and are already reviewed.
 
+Corrected against the built code; evidence per row in `../../reports/2026-09-15-nested-gpu-staging/plan-b-staleness-review.md` §2.
+
 | Plan A task | Status under B |
 |---|---|
-| 1 — shared operation-tree traversal | **reused** — phase flattening walks the same tree |
-| 3 — tree-wide detection + `UnstageableGpuDetectorError` | **reused**, with the predicate swapped for the phase scan |
-| 4 — container ops push a per-branch `pipeline_step` | **reused** unchanged |
-| 6a — slot-keyed Stage-2 signal | **reused**, generalised to the `branch/` schema |
-| 9 — `gpu_path == pipeline_step_path` invariant | **reused** as phase-path == step-path |
-| 10 — equivalence + mutation control | **reused**, generalised (see Task B5) |
-| 11 — process mode post-detector chain | **reused** unchanged |
-| 12 — continuation digest revision | **reused** unchanged |
-| 14, 15 — docs, regression | **reused** |
-| 5 — path-shaped `StagePlan` | superseded by the phase chain |
-| 6 — `ReplayDetector` | superseded — no substitution |
-| 7 — Stage-2 branch prefix | superseded — no prefix concept |
-| 8 — Stage-3 stub substitution | superseded |
-| 13 — forward `stage2_prefix` | superseded |
-
-**Roughly 70% of Plan A survives.** Doing A first is therefore not a dead end; the discarded part is the splitter/replay machinery.
+| 1 — shared operation-tree traversal | **reused** (now also walks slots; `substitute_at_path` dies only if replay is dropped) |
+| 2 — tune consolidation | **reused**, independent of staging |
+| 3 — tree-wide detection + `UnstageableGpuDetectorError` | **partly reused**: `find_gpu_detectors`, `refuse_cpu_only_slot`, the error, the CLI preflight and the GUI alert stay; `_CHILD_CONTRACT`, `_child_contract` and `validate_ancestor_contracts` are replaced, and their tests retire or invert |
+| 4 — container ops push a per-branch `pipeline_step` | segment scheme **reused**; the mechanism is reused only if phases run inside `apply()` (review F-7) |
+| 6a — slot-keyed Stage-2 signal | **reused**; `staged_detector_slot` and every `plan.gpu_path` call site are repointed from `StagePlan` |
+| 9 — recorded paths resolve | the resolvability test is **reused** as is; the gpu-path test is rewritten against the phase chain |
+| 10 — equivalence + mutation control | mutation-control and owner-depth patterns **reused**; shapes rewritten; prefix-specific tests retired |
+| 11 — process mode post-detector chain | **rewritten**: the export substitutes a `ReplayDetector` today; the semantics and the no-store-write / no-success-sink constraints carry over |
+| 12 — continuation digest revision | **reused for process mode**; full-run invalidation is a new decision (review F-8) |
+| 14 — docs | **rewritten**, including the doc-pin tests (see B7) |
+| 15 — regression | **reused** (procedure) |
+| 5 — path-shaped `StagePlan` | superseded; 8 consumers to repoint |
+| 6 — `ReplayDetector` · 8 — Stage-3 stub substitution | superseded only under review F-2 option (a) |
+| 7 — Stage-2 branch prefix · 13 — forward `stage2_prefix` | superseded |
 
 ---
 
@@ -174,7 +181,7 @@ def test_a_device_must_be_cpu_or_gpu():
 
 - [ ] **Step 5: Wire validation into the pydantic model build**
 
-`__init_subclass__` or a `model_validator` so a bad declaration fails at class definition, not at run time.
+Wire validation into `ImageOperation.__pydantic_init_subclass__`, calling `super().__pydantic_init_subclass__(**kwargs)` first (`abc_/_image_operation.py:396-416`), so a bad declaration fails at class definition. A `model_validator` runs per instance and cannot. `validate_phase_declaration` opens with an `isinstance(cls._phases, tuple)` check.
 
 - [ ] **Step 6: Commit**
 
@@ -194,6 +201,8 @@ def test_a_device_must_be_cpu_or_gpu():
 
 ```python
 def test_a_cpu_only_pipeline_is_one_round():
+    # FakeGpuDetector: tests._fakes.fake_gpu_detector, registered as in
+    # tests/unit/cli/test_gpu_detection_tree_wide.py for any from_json path.
     chain = round_chain(flatten_phases(ImagePipeline(ops=[BlurGauss(), OtsuDetector()])))
     assert [r.device for r in chain] == ["cpu"]
 
@@ -203,11 +212,14 @@ def test_a_gpu_detector_yields_cpu_gpu_cpu():
     assert [r.device for r in chain] == ["cpu", "gpu", "cpu"]
 
 
+# BLOCKED on review fork F-5: two GPU detectors are refused today
+# (find_gpu_detectors(strict=True)), and "one round per sub-pipeline"
+# contradicts spec §13.2's N-sub-sweeps model.
 def test_parallel_children_get_one_round_each():
     """The per-sub-pipeline round decision: branch intermediates stay scoped."""
     pipe = ImagePipeline(ops={"C": CompositeDetector(ops=[
-        ImagePipeline([ContrastStretching(), FakeGpuDetector()]),
-        ImagePipeline([BlurGauss(),          FakeGpuDetector()]),
+        ImagePipeline(ops=[ContrastStretching(), FakeGpuDetector()]),
+        ImagePipeline(ops=[BlurGauss(),          FakeGpuDetector()]),
     ], mode="overlap")})
     assert [r.device for r in round_chain(flatten_phases(pipe))] == [
         "cpu", "gpu", "cpu", "gpu", "cpu"]
@@ -260,7 +272,9 @@ def test_unset_is_distinguishable_from_none():
     op._carried = None
     payload_explicit_none = capture_phase_state(op)
     payload_unset = capture_phase_state(_Phased())
-    assert payload_explicit_none != payload_unset
+    # Compare by key set, then np.array_equal per value -- never ==/!= on
+    # dicts holding ndarrays, which raises.
+    assert payload_explicit_none.keys() != payload_unset.keys()
 
 
 def test_clear_resets_between_images():
@@ -269,7 +283,7 @@ def test_clear_resets_between_images():
     op = _Phased()
     op._carried = np.arange(4)
     clear_phase_state(op)
-    assert capture_phase_state(op) == capture_phase_state(_Phased())
+    assert capture_phase_state(op).keys() == capture_phase_state(_Phased()).keys()
 
 
 def test_an_oversized_payload_is_refused_with_a_pointer_to_layers():
@@ -279,7 +293,7 @@ def test_an_oversized_payload_is_refused_with_a_pointer_to_layers():
         capture_phase_state(op)
 ```
 
-- [ ] **Steps 2–5:** implement (ndarray → compressed `branch/` payload, JSON-able → token), verify, commit.
+- [ ] **Steps 2–5:** implement (ndarray → compressed payload at the location decided by review fork F-6, JSON-able → token; there is no `branch/` schema today), verify, commit.
 
 ---
 
@@ -288,11 +302,14 @@ def test_an_oversized_payload_is_refused_with_a_pointer_to_layers():
 **Files:**
 - Modify: `src/phenotypic/_cli/_cli_staged_workers.py`, `_cli_staged_slurm_worker.py`, `_cli_staged_strategy.py`
 - Modify: `src/phenotypic/abc_/_gpu_detector.py` (declare its three phases)
+- Modify (consumers of the superseded splitter/replay, per review E-9): `_cli/_cli_replay_detector.py`, `_cli/_cli_pipeline_split.py`, `_cli/_cli_validation.py`, `_cli/_cli_stage2_token.py` (`staged_detector_slot`), `phenotypicCLI.py` (`staged_detector_slot` callers), `_cli/_cli_checkpoint_handler.py`, `_cli/_cli_staged_slurm.py`, `_cli/_cli_staged_controller.py`, `_cli/_cli_staged_resume.py`, `_cli/_stages.py`, `sdk_/_image_record.py` (`STAGE_STAGE1..3`), `_cli/_cli_image_record.py`, `_core/_provenance.py` (hook docstring), `_gui/run_console/_callbacks.py` (refusal text)
 
 - [ ] **Step 1:** Replace `stage1_preprocess_core` / `stage2_detect_core` / `stage3_merge_measure_core` with a single `run_phase_round(round, image, ...)` driven by the chain. The three existing functions become the CPU/GPU/CPU instances of it.
-- [ ] **Step 2:** `GpuDetector` declares `(_phase_prep, cpu), (_phase_infer, gpu), (_phase_write, cpu)`, with the inference result carried in `_phase_state`. Delete the `ReplayDetector` path.
+- [ ] **Step 2:** `GpuDetector` declares `(_phase_prep, cpu), (_phase_infer, gpu), (_phase_write, cpu)`, with the inference result carried by the mechanism chosen in review fork F-4 (the as-built Stage-2 raw file + token, or `_phase_state`). The `ReplayDetector` path has three consumers (Stage 3, the process-mode export, the provenance hooks); replace each, do not just delete. Load the model once per GPU round, only when it has pending images; `_phase_infer` calls `_infer_batch`, never `_infer_one`.
 - [ ] **Step 3:** `clear_phase_state` at the start of every image's phase sequence.
-- [ ] **Step 4:** Verify the existing staged suites pass unchanged — `test_staged_resume.py`, `test_staged_resume_equivalence.py`, `test_staged_store_stages.py`.
+- [ ] **Step 4:** Give each staged suite a disposition (keep / rewrite / retire), decided once forks F-2..F-5 are:
+  `test_staged_resume.py`, `test_staged_resume_equivalence.py`, `test_staged_store_stages.py`, and the suites Plan A added — `tests/unit/cli/`: `test_replay_detector.py`, `test_pipeline_split_nested.py`, `test_staged_stage2_prefix.py`, `test_staged_nested_equivalence.py`, `test_cli_pipeline_split.py`, `test_gpu_detection_tree_wide.py`, `test_stage2_slot_keying.py`, `test_cli_gpu_refusal.py`; `tests/unit/detect/test_container_child_contracts.py`; `tests/integration/cli/test_process_objmap_semantics.py`; `tests/integration/gui/test_run_console_callbacks.py`; `tests/unit/test_docs_staged_cli.py`.
+  Keep unconditionally: `test_recorded_paths_resolve.py` (resolvability), the owner-depth test in `test_staged_nested_equivalence.py`, `test_stage2_slot_keying.py`, `test_cli_gpu_refusal.py`, `test_infer_batch_loads_the_model.py`.
 - [ ] **Step 5:** Commit.
 
 ---
@@ -314,10 +331,10 @@ def test_an_oversized_payload_is_refused_with_a_pointer_to_layers():
 
 ## Task B6: Make `FilamentousFungiDetector` stageable
 
-The worked example of the whole plan, and the thing Plan A cannot do.
+The worked example of the whole plan. Plan A refuses it by policy, not by mechanism (`_cli_validation.py:204-213`): one `_CHILD_CONTRACT` entry plus a behavioural probe would admit it on the replay path (review fork F-9).
 
 - [ ] **Step 1:** Split its `_operate` at the PHASE 1 / PHASE 2 boundary — the inoculum detection is essentially the first thing it does, so the CPU work before the GPU phase is nearly nothing and the split is natural.
-- [ ] **Step 2:** Declare `_phases`, `_child_order = "parallel"`, `_phase_state = ("_inoculum_objmask", "_inoculum_objmap")` as `PrivateAttr`s.
+- [ ] **Step 2:** Declare `_phases`, `_child_order = "parallel"`, `_phase_state = ("_inoculum_objmask", "_inoculum_objmap")` as `PrivateAttr()` **with no default** — the only declaration under which B3's unset-vs-None test holds. Read state through `op.__pydantic_private__`; write it with `setattr`, never `object.__setattr__`.
 - [ ] **Step 3:** Task B5's equivalence gate must pass for it.
 - [ ] **Step 4:** Commit.
 
@@ -330,6 +347,7 @@ The worked example of the whole plan, and the thing Plan A cannot do.
 - [ ] Rewrite `docs/source/contrib_guide/gpu_detectors.md`'s container-contract section around `_phases` / `_child_order` / `_phase_state`, replacing the composition-primitives rule.
 - [ ] Record the pipeline-caching collision as a constraint.
 - [ ] Root `CLAUDE.md` and `src/phenotypic/_cli/CLAUDE.md`.
+- [ ] Rewrite `docs/source/contrib_guide/gpu_detectors.md` from *"Nesting: the container contract"* through *"What Stage 3 actually runs: `ReplayDetector`"*, and update the doc-pin tests in `tests/unit/test_docs_staged_cli.py` that quote the nesting refusal and name the `_CHILD_CONTRACT` entries.
 
 ---
 
@@ -349,9 +367,14 @@ All at production size, `3140×5094` (a Linzer `.CR3` after `F1gfd5`'s crop),
 
 | What | Time | Peak RSS | Across the run |
 |---|---|---|---|
-| `FocusEdgePhase._phasecong3` — a **branch prefix** | **71.1 s** | **7.36 GB** | 669 CPU-hours per pass |
+| `FocusEdgePhase._phasecong3` — a **hypothetical in-branch prefix** (in `F1gfd5` it is a Stage-1 op and runs once under Plan A) | **71.1 s** | **7.36 GB** | 669 CPU-hours per pass |
 | `CompositeDetector._filter_mask_by_overlap_bidirectional` — a **parent body** | **4.0 s** (4.5 s at `min_overlap_ratio=0.3`) | 0.84 GB | 38 CPU-hours per pass |
 | `np.savez_compressed` on a 240-label objmap | 1.2 s | — | 30.5 MB → **0.23 MB** (133×) |
+
+Why in-branch prefix determinism matters concretely: `gpu-smoke.md` §4 found
+`DenoiseBlockMatch` (BM3D) output depends on the CPU model and thread count, so
+under Plan A such an op *inside* the GPU branch would feed the detector pixels
+that Stage 3 never reconstructs.
 
 Three things follow, and none is obvious without the numbers:
 
@@ -391,3 +414,9 @@ Three things follow, and none is obvious without the numbers:
 - **Driving phases bypasses `apply()`**, which is where provenance,
   `pipeline_step_path` and the error wrapper live — falsifying the "Task 4 reused
   unchanged" and "Task 9 reused" carry-over claims.
+
+**Reassessed 2026-09-17** in `../../reports/2026-09-15-nested-gpu-staging/plan-b-staleness-review.md` §3–4: all three blockers are still open,
+blocker 3 now has a working pattern in the built code (the final phase runs
+inside `apply()` with the `provenance_*` hooks and a forwarded duration), and
+open question 4 conflicts with spec §13.2. Eleven forks (F-1 … F-11) need a
+decision before a spec; F-1 asks whether this plan is still worth doing.

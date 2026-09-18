@@ -1982,7 +1982,14 @@ def test_transition_fifo_evidence_is_rejected_without_blocking(
             str(completed),
         ]
     )
-    import_deadline = time.monotonic() + 15.0
+    # 120 s, not 15: this window covers the probe's own interpreter start plus
+    # importing the phenotypic CLI stack, which is ~6.3 s idle but several
+    # times that on a gate shard running 12 xdist workers against shared
+    # storage (it timed out there while passing alone). The window is a
+    # PRECONDITION, not the property -- the property is the bounded
+    # `process.wait` below, and a blocking open would never return at all, so
+    # a generous import window cannot hide it.
+    import_deadline = time.monotonic() + 120.0
     while not ready.exists() and time.monotonic() < import_deadline:
         assert process.poll() is None
         time.sleep(0.01)

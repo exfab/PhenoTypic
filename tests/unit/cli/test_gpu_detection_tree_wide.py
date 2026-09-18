@@ -450,6 +450,56 @@ def test_a_gpu_detector_inside_a_domain_detector_is_refused(tmp_path):
         pipeline_requires_gpu(_write(tmp_path, pipe))
 
 
+def test_a_gpu_detector_in_a_dict_valued_parameter_is_refused():
+    """A CPU operation may not carry a GpuDetector in ANY parameter shape.
+
+    Every shipped operation-valued parameter is a single operation or a list,
+    so this shape exists only in a user's own class. The hazard is not that it
+    is unsupported: an unwalked field would make the detector INVISIBLE, so
+    ``pipeline_requires_gpu`` would answer False and the run would go to the
+    CPU strategy and infer per image, which is the wrong-answer bug this file
+    exists to prevent. Refused loudly instead.
+    """
+    from phenotypic.detect import OtsuDetector
+
+    class _KeyedCarrier(OtsuDetector):
+        keyed: Union[dict, None] = None
+
+    pipe = ImagePipeline(
+        ops={"Carrier": _KeyedCarrier(keyed={"inoculum": FakeGpuDetector()})}
+    )
+
+    with pytest.raises(
+        UnstageableGpuDetectorError, match="only composition primitives"
+    ) as caught:
+        find_gpu_detectors(pipe)
+
+    # The ancestor refusal names the carrier class, not the path. What this
+    # test pins is that the detector is SEEN at all: before the walker read
+    # dict fields, find_gpu_detectors returned [] here and the run routed to
+    # the CPU strategy.
+    assert "_KeyedCarrier" in str(caught.value)
+
+
+def test_a_gpu_detector_in_a_tuple_valued_parameter_is_refused():
+    """Control on the other new shape, indexed rather than keyed."""
+    from phenotypic.detect import OtsuDetector
+
+    class _FixedCarrier(OtsuDetector):
+        fixed: Union[tuple, None] = None
+
+    pipe = ImagePipeline(
+        ops={"Carrier": _FixedCarrier(fixed=(ManualPointDetector(), FakeGpuDetector()))}
+    )
+
+    with pytest.raises(
+        UnstageableGpuDetectorError, match="only composition primitives"
+    ) as caught:
+        find_gpu_detectors(pipe)
+
+    assert "_FixedCarrier" in str(caught.value)
+
+
 def test_a_gpu_detector_inside_the_two_k_detector_is_refused(tmp_path):
     """Three fields, three different child inputs, inside one algorithm."""
     from phenotypic.detect import TwoKFilamentousDetector

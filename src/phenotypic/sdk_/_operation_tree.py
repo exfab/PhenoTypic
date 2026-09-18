@@ -95,10 +95,23 @@ def iter_child_operations(obj: Any) -> Iterator[tuple[str, Any]]:
 
     for field_name in model_fields:
         value = getattr(obj, field_name, None)
-        if isinstance(value, list):
+        # Sequences are indexed; a dict is keyed with the same colon namespace
+        # the pipeline slots use, because the bracket form admits only
+        # integers. No shipped operation declares a dict or tuple of
+        # operations -- every one is a single operation or a list -- but an
+        # unwalked field is worse than an unsupported one: a GpuDetector there
+        # would be invisible to `find_gpu_detectors`, so the run would report
+        # "not a GPU pipeline" and go to the CPU strategy with nothing said.
+        # A set is deliberately not walked: it has no stable segment to name
+        # an entry by, so a path into one could not round-trip.
+        if isinstance(value, (list, tuple)):
             for index, item in enumerate(value):
                 if _is_operation(item):
                     yield f"{field_name}[{index}]", item
+        elif isinstance(value, dict):
+            for key, item in value.items():
+                if _is_operation(item) and isinstance(key, str) and key:
+                    yield f"{field_name}{_SLOT_SEPARATOR}{key}", item
         elif _is_operation(value):
             yield field_name, value
 
@@ -214,9 +227,18 @@ def _child(node: Any, segment: str) -> Any:
         field = matched.group("field")
         index = int(matched.group("index"))
         sequence = getattr(node, field, None)
-        if not isinstance(sequence, list) or index >= len(sequence):
+        if not isinstance(sequence, (list, tuple)) or index >= len(sequence):
             raise KeyError(segment)
         return sequence[index]
+    # A dict-valued field's entry, spelled as `iter_child_operations` yields
+    # it. Tried before the plain attribute lookup so a field whose NAME
+    # contains a colon cannot shadow it; `hasattr` below still resolves such a
+    # field when nothing keyed matches.
+    field, separator, key = segment.partition(_SLOT_SEPARATOR)
+    if separator:
+        mapping = getattr(node, field, None)
+        if isinstance(mapping, dict) and key in mapping:
+            return mapping[key]
     if not hasattr(node, segment):
         raise KeyError(segment)
     return getattr(node, segment)
