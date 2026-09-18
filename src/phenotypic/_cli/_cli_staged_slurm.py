@@ -33,6 +33,7 @@ from phenotypic.sdk_.typing_ import ImageTypeName
 
 from ._cli_execution_strategies import ExecutionStrategy
 from ._cli_failure_tracker import work_id_for_image
+from ._cli_stage2_token import staged_detector_slot
 from ._cli_staged_orchestration import (
     StagedManifestEntry,
     completed_inventory_images,
@@ -274,6 +275,7 @@ def _controller_body(python_str: str, config_path: Path) -> str:
 def generate_staged_scripts(
     *,
     pipeline_path: Path,
+    detector_slot: str,
     datasets_manifest: Sequence[StagedManifestEntry],
     output_dir: Path,
     image_type: ImageTypeName,
@@ -410,6 +412,14 @@ def generate_staged_scripts(
             "output_dir": str(output_dir.absolute()),
             "resume": resume,
             "stage3_markers_required": markers_required,
+            # The recovery controller probes the Stage-2 signal but never
+            # loads the pipeline, so the slot is recorded here. It arrives as
+            # a parameter rather than being re-derived from `pipeline_path`:
+            # this function WRITES scripts, and `pipeline_path` is a string it
+            # embeds in them, not a file it reads. Parsing here also made
+            # script generation fail on a pipeline that was never written --
+            # see the strategy's preflight for where the parse lives now.
+            "detector_slot": detector_slot,
             "manifest_path": str(manifest_path.absolute()),
             "stage1_scripts": [str(path.absolute()) for path in stage1],
             "stage2_script": str(stage2.absolute()),
@@ -565,8 +575,24 @@ class StagedSlurmStrategy(ExecutionStrategy):
             )
 
         epoch = new_orchestration_epoch()
+        # SUBMISSION PREFLIGHT, and the slot's one producer on this path.
+        # Parsing and splitting the pipeline here carries every structural
+        # refusal `split_pipeline_at_gpu` has -- two GpuDetectors, one in a
+        # slot the staged engine cannot drive, none at all -- so an unstageable
+        # pipeline is refused with nothing on disk to clean up
+        # (reviewer finding F3). `new_orchestration_epoch` above only mints a
+        # uuid; `initialize_orchestration` below is the first writer, so this
+        # still precedes all scheduler state.
+        #
+        # Placed HERE, immediately before script generation, rather than at the
+        # top of `execute`: this is the exact point the parse happened when it
+        # lived inside `generate_staged_scripts`, so the refusal keeps its
+        # ordering against the submit-capacity guard above it. Moving it
+        # earlier would pre-empt that guard's error message.
+        staged_slot = staged_detector_slot(cfg.pipeline_json)
         scripts = generate_staged_scripts(
             pipeline_path=cfg.pipeline_json,
+            detector_slot=staged_slot,
             datasets_manifest=manifest,
             output_dir=output_dir,
             image_type=cfg.image_type,

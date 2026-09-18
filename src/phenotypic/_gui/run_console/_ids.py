@@ -139,6 +139,11 @@ RC_STAGED_GPU_SECTION = "rc-staged-gpu-section"
 RC_INPUT_GPU_SLURM = "rc-input-gpu-slurm"
 RC_INPUT_GPU_SHARDS = "rc-input-gpu-shards"
 
+#: Alert explaining why the staged engine refuses the selected pipeline. It
+#: sits outside ``RC_STAGED_GPU_SECTION`` because the refusal applies in Local
+#: mode too, and its ``is_open`` gates the Run button.
+RC_STAGED_GPU_REFUSAL = "rc-staged-gpu-refusal"
+
 
 # ---------------------------------------------------------------------------
 # Picker buttons and modal IDs
@@ -308,6 +313,7 @@ __all__ = [
     "RC_STAGED_GPU_SECTION",
     "RC_INPUT_GPU_SLURM",
     "RC_INPUT_GPU_SHARDS",
+    "RC_STAGED_GPU_REFUSAL",
     "RC_BTN_PICK_PIPELINE",
     "RC_BTN_PICK_INPUT",
     "RC_BTN_PICK_OUTPUT",

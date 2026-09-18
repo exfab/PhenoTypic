@@ -51,6 +51,7 @@ from phenotypic.sdk_ import (
     MEASUREMENT_TABLE_RELATIVE_PATH,
     zarr_store_path,
 )
+from tests.unit.cli.conftest import STAGE2_SLOT
 
 _DATASET = "plate"
 _STEM = "img"
@@ -1441,10 +1442,16 @@ def _plant(
 
     if s2_raw:
         write_stage2_raw(
-            output_dir, _DATASET, _STEM, np.zeros((4, 4), dtype=np.uint16)
+            output_dir,
+            _DATASET,
+            _STEM,
+            np.zeros((4, 4), dtype=np.uint16),
+            STAGE2_SLOT,
         )
     if s2_token:
-        write_stage2_token(output_dir, _DATASET, _STEM, objmap_shape=(4, 4))
+        write_stage2_token(
+            output_dir, _DATASET, _STEM, STAGE2_SLOT, objmap_shape=(4, 4)
+        )
     if s3_done:
         # Through the WRITER, not a hand-joined path: see the module docstring.
         write_stage3_completion_marker(
@@ -1471,6 +1478,7 @@ def _classify(case: _Case, *, layer: str, markers: bool, expect: bool) -> str:
         output_dir=case.output_dir,
         dataset=case.dataset,
         image=case.image,
+        slot=STAGE2_SLOT,
         input_root=case.input_root,
         process_only_layer=_LAYER_VALUES[layer],
         markers_required=markers,

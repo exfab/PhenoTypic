@@ -62,6 +62,7 @@ def test_staged_worker_transports_drop_originals_to_stage1(
 def test_staged_slurm_emits_drop_originals_only_for_stage1(
     tmp_path: Path,
 ) -> None:
+    from phenotypic._cli._cli_stage2_token import detector_slot
     from phenotypic._cli._cli_staged_orchestration import StagedManifestEntry
     from phenotypic._cli._cli_staged_slurm import generate_staged_scripts
 
@@ -71,6 +72,7 @@ def test_staged_slurm_emits_drop_originals_only_for_stage1(
     }
     scripts = generate_staged_scripts(
         pipeline_path=tmp_path / "pipeline.json",
+        detector_slot=detector_slot(("FakeGpuDetector",)),
         datasets_manifest=[
             StagedManifestEntry(
                 "ds",

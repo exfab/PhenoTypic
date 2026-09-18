@@ -139,13 +139,35 @@ class TwoKFilamentousDetector(GridObjectDetector):
 
     def _fill_centers(self, image: "GridImage", enhanced: "GridImage"):
         """Grid stamps ∩ background-subtraction body -> (center_mask, center_objmap)."""
-        if isinstance(self.center_detector, ImagePipeline):
-            center_img = self.center_detector.apply(image, inplace=False, reset=False)
-        else:
-            center_img = self.center_detector.apply(image, inplace=False)
+        from phenotypic._core._provenance import apply_child
+
+        # `center_detector` and `background_subtractor` are routed through
+        # `apply_child` even though this class is REFUSED for GPU staging, and
+        # an earlier revision skipped them on the grounds that "descending them
+        # buys nothing". That was measurably wrong. `center_detector` defaults
+        # to an ImagePipeline, whose own `_run_operations` pushes a segment per
+        # child -- so its children were already recording a path, just one with
+        # the MIDDLE segment missing: `['TwoK', 'InoculumDetector']` where the
+        # walker says `TwoK/center_detector/InoculumDetector`. That is a
+        # well-formed path which `get_at_path` cannot resolve at all, so not
+        # descending did not leave the journal unchanged -- it wrote an
+        # unresolvable address into it. Addressed-vs-misaddressed, never
+        # addressed-vs-absent.
+        #
+        # This is NOT the `measure/CLAUDE.md` private-probe carve-out. That
+        # covers a nested operation run by a MeasureFeatures; this is a
+        # detector's own field which happens to share the name.
+        center_img = apply_child(
+            self.center_detector, image, segment="center_detector", inplace=False
+        )
         grid_mask = center_img.objmask[:] > 0
 
-        body_img = self.background_subtractor.apply(enhanced.copy(), inplace=False)
+        body_img = apply_child(
+            self.background_subtractor,
+            enhanced.copy(),
+            segment="background_subtractor",
+            inplace=False,
+        )
         body = np.asarray(body_img.detect_mat[:], dtype=float)
         body_mask = body > threshold_otsu(body)
 
@@ -153,6 +175,7 @@ class TwoKFilamentousDetector(GridObjectDetector):
         return center_mask, center_img.objmap[:]
 
     def _operate(self, image: "GridImage") -> "GridImage":
+        from phenotypic._core._provenance import apply_child
         from phenotypic.sdk_.reconnect import (
             build_reconnect_cost,
             filter_mask_by_overlap,
@@ -164,7 +187,19 @@ class TwoKFilamentousDetector(GridObjectDetector):
 
         # ── BRANCH: two-k hysteresis on the enhanced base ──
         enhanced = image.copy()
-        self.branch_base.apply(enhanced, inplace=True)
+        # ``inplace=True`` is load-bearing: this call's whole purpose is the
+        # mutation of ``enhanced``, and ``apply_child`` defaults ``inplace`` to
+        # ``False``, which would discard the enhancement silently.
+        #
+        # All three operation-valued fields are routed through ``apply_child``.
+        # The other two -- ``center_detector`` and ``background_subtractor`` --
+        # are in ``_fill_centers``, which carries the retraction of the earlier
+        # "this class is refused for GPU staging, so descending them buys
+        # nothing" reasoning. That argument is stated there, once, beside the
+        # fields it is about.
+        apply_child(
+            self.branch_base, enhanced, segment="branch_base", inplace=True
+        )
         enhanced_arr = np.asarray(enhanced.detect_mat[:], dtype=np.float32)
         enhanced_gray = np.asarray(enhanced.gray[:], dtype=np.float32)
 

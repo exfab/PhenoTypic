@@ -126,9 +126,16 @@ isolation before attributing it — most of them pass.
   measurement/deliverables/QC/
   dashboard; machine state lives under `.phenotypic/`. Full local + SLURM
   continuation reuse; switching `--process-format` invalidates continuation
-  rather than reusing outputs of the other kind. Run the same command again
-  after an interruption or when new compatible inputs appear; there is no
-  `--resume` flag.
+  rather than reusing outputs of the other kind. So does a change in what an
+  exported layer *means*: the work-id digest carries a
+  `PROCESS_LAYER_SEMANTICS_REVISION` (`_cli_failure_tracker.py`), bumped to `2`
+  when `--layer objmap` began applying the post-detector op chain, so a tree
+  processed under the old semantics is re-derived rather than reused. The
+  revision is one integer shared by every layer, so a bump invalidates
+  in-flight `--layer gray` continuations too — deliberate; invalidating too much
+  is safe. It is scoped to `--mode process` and does not touch `full`/`measure`
+  continuation. Run the same command again after an interruption or when new
+  compatible inputs appear; there is no `--resume` flag.
 - `uv run python -m phenotypic --mode migrate --output <target>` — explicitly
   migrate a full legacy run, one direct OME-Zarr store, or a process-output tree.
   Full runs keep the metadata → image → seal → optional reclaim → finalizer
@@ -158,13 +165,59 @@ isolation before attributing it — most of them pass.
   resident-model GPU detect → CPU measure — reusing the per-image OME-Zarr store.
   Stage 2 reads that store **read-only** and never writes into it; its result is a
   **Stage-2 signal** under `.phenotypic/progress/`: the retained **raw** detector
-  output `stage2_raw/<ds>/<stem>.npy` plus a consumable **token**
-  `stage2_done/<ds>/<stem>.json`. Stage 3 replays the raw array, measures,
-  re-promotes the store, and consumes the token and then the raw array. The output
-  folder is identical to a single-pass run; continuation is content-defined
-  (valid store → complete Stage-2 signal → atomic Stage-3
-  completion marker) and progress is
-  stage-tagged. `--mode process --layer objmap` exports objmaps after Stages 1–2.
+  output `stage2_raw/<ds>/<slot>/<stem>.npy` plus a consumable **token**
+  `stage2_done/<ds>/<slot>/<stem>.json`. `<slot>` is
+  `detector_slot(plan.gpu_path)` (`_cli_stage2_token.py`) — the detector's tree
+  path, sanitised, plus 8 hex of the exact path, e.g.
+  `CompositeDetector__ops-0__dddf3676`. At today's one-detector-per-pipeline
+  limit that level carries no behaviour; it exists so supporting N detectors is
+  an additive feature rather than a migration of a signal a large run depends
+  on. A pre-slot-keying signal is relocated into its slot directory once, by
+  `relocate_legacy_stage2_signal`, rather than recomputed on a GPU. Stage 3
+  replays the raw array, measures, re-promotes the store, and consumes the token
+  and then the raw array. The output folder is identical to a single-pass run;
+  continuation is content-defined (valid store → complete Stage-2 signal →
+  atomic Stage-3 completion marker) and progress is stage-tagged.
+- **A `GpuDetector` may sit anywhere in the operation tree** — nested inside a
+  `CompositeDetector`, a `CompositeEnhance`, or a branch `ImagePipeline` — not
+  only at top level. Detection is tree-wide (`find_gpu_detectors`), the detector
+  is addressed by its **tree path**, the split cuts at the detector's *top-level
+  ancestor*, and Stage 3 substitutes a `ReplayDetector` at that path so the
+  enclosing operation runs exactly as it would in a single pass, merging the
+  recorded mask with its CPU siblings'. **Only composition primitives may carry
+  one:** `ImagePipeline`, `CompositeDetector`, `CompositeEnhance`. A domain
+  detector (`FilamentousFungiDetector`, `TwoKFilamentousDetector`) is
+  **refused** by name with `UnstageableGpuDetectorError`, as is a subclass of a
+  listed composite that overrides `_operate`. So is a `GpuDetector` in **any**
+  pipeline's `meas`/`post`/`filters`/`model`, root or nested, at any depth —
+  those slots run in Stage 3, after GPU inference. Tree paths spell a slot
+  entry with the slot as a colon namespace — `meas:<key>`, `post:<key>`,
+  `filters:<key>`, `model:<ClassName>` (e.g.
+  `inner/meas:MeasureSymZones/center_detector`) — because a bare `meas` would
+  collide with a user-chosen `ops` key. The CLI prints the refusal as one
+  usage-error line, **before** `--overwrite` clears the output directory and
+  before `--dry-run` exits; the GUI run console shows it in the
+  `rc-staged-gpu-refusal` alert and disables Run. This bullet used to say the
+  GUI swallowed the refusal and routed the run to CPU; that was wrong about
+  the mechanism (the GUI probe only hid the GPU form section, and the launched
+  `python -m phenotypic` raised a traceback) — see
+  [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md).
+- **Container operations push a per-branch `pipeline_step`.** `CompositeDetector`,
+  `CompositeEnhance`, `FilamentousFungiDetector` and `TwoKFilamentousDetector`
+  drive their children through `apply_child` (`_core/_provenance.py`), so each
+  branch records its own segment (`ops[0]`, `inoculum_detector`, …) and a walker
+  path and a recorded `pipeline_step_path` are the same value. **Recorded
+  journals are therefore deeper for every pipeline using a container op** than
+  they were before this change.
+- `--mode process --layer objmap` runs the **post-detector op chain** after
+  Stages 1–2, with a `ReplayDetector` substituted at the detector's path, so the
+  export is *the objmap your pipeline produces* rather than the detector's raw
+  output. For a nested detector the raw array is one *branch* of a composite and
+  not an objmap at all, so the old behaviour exported the wrong thing rather
+  than merely an unrefined one. The change is fenced by a
+  `PROCESS_LAYER_SEMANTICS_REVISION` in the work-id digest
+  (`_cli_failure_tracker.py`), so a process run resumed across the upgrade
+  re-derives its images instead of reusing outputs that mean something else.
   On SLURM, the stages submit through an **epoch-fenced recoverable controller**:
   Stages 1 & 3 use the CPU `--slurm` profile, and Stage 2 is a GPU array
   of resident-model shard-workers. Stages 1 & 3 auto-split into
@@ -420,11 +473,16 @@ enforces this for ruff, but the rule binds regardless of the tool.
 - **Operations use `.apply()`, not `__call__`:** `op.apply(image)` is correct;
   `op(image)` raises `TypeError`.
 - **GPU pipelines stage internally:** a `GpuDetector` in a CLI run triggers the staged
-  engine (preprocess → GPU → measure) with a per-image Stage-2 signal (a retained
-  raw `.npy` plus a consumable token under `.phenotypic/progress/`), not per-image
-  processing; the resident model loads once. Notebook `op.apply(image)` is unchanged.
+  engine (preprocess → GPU → measure) with a per-image, per-detector-slot Stage-2
+  signal (a retained raw `.npy` plus a consumable token under
+  `.phenotypic/progress/`), not per-image
+  processing; the resident model loads once. The detector may be nested — only
+  inside `ImagePipeline`/`CompositeDetector`/`CompositeEnhance`; anything else is
+  refused. Notebook `op.apply(image)` is unchanged.
   See [_cli/CLAUDE.md](src/phenotypic/_cli/CLAUDE.md) for the strategy dispatch +
-  stages.
+  stages, and
+  [contrib_guide/gpu_detectors.md](docs/source/contrib_guide/gpu_detectors.md)
+  for authoring one.
 - **Staged-GPU env vars:** `PHENOTYPIC_PRELOAD_MODULES` lets a fresh SLURM worker
   resolve
   custom op classes defined outside the `phenotypic` namespace (a self-registering

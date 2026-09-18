@@ -807,6 +807,12 @@ def build_form(sandbox: SandboxRoot) -> html.Div:
         advanced_collapse,
         slurm_collapse,
         html.Hr(),
+        dbc.Alert(
+            id=ids.RC_STAGED_GPU_REFUSAL,
+            color="danger",
+            is_open=False,
+            className="py-2",
+        ),
         _build_action_buttons(),
     ]
 

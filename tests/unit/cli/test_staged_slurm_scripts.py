@@ -18,12 +18,20 @@ from phenotypic._cli._cli_staged_orchestration import (
     StagedManifestEntry,
     load_orchestration_state,
 )
+from phenotypic._cli._cli_stage2_token import detector_slot
 from phenotypic._cli._cli_types import Dataset
+from tests.unit.cli.conftest import write_stageable_pipeline
 from phenotypic.sdk_ import JOB_METADATA_JSON, progress_dir
 from phenotypic.sdk_.slurm import (
     SLURM_PYTHONPATH_BOOTSTRAP_BASH,
     SLURM_PYTHONPATH_ENV_VAR,
 )
+
+#: `generate_staged_scripts` WRITES scripts; it does not parse a pipeline, so
+#: these tests need no pipeline file on disk. The slot is produced by the
+#: strategy's submission preflight and passed in, which is why a plain constant
+#: is correct here rather than a real `FakeGpuDetector` pipeline.
+_SLOT = detector_slot(("FakeGpuDetector",))
 
 
 def _manifest(n):
@@ -89,6 +97,7 @@ def test_gpu_stage_inherits_shared_keys_and_overrides_partition():
 def test_generates_three_stage_scripts_with_correct_resources(tmp_path):
     scripts = generate_staged_scripts(
         pipeline_path=tmp_path / "p.json",
+        detector_slot=_SLOT,
         datasets_manifest=_manifest(3),
         output_dir=tmp_path,
         image_type="Image",
@@ -149,6 +158,7 @@ def test_generates_three_stage_scripts_with_correct_resources(tmp_path):
 def test_internal_reuse_option_preserves_restart_distinction(tmp_path):
     common = {
         "pipeline_path": tmp_path / "p.json",
+        "detector_slot": _SLOT,
         "datasets_manifest": _manifest(1),
         "output_dir": tmp_path,
         "image_type": "Image",
@@ -169,6 +179,7 @@ def test_internal_reuse_option_preserves_restart_distinction(tmp_path):
 def test_stage2_script_uses_controller_not_signal_requeue(tmp_path):
     scripts = generate_staged_scripts(
         pipeline_path=tmp_path / "p.json",
+        detector_slot=_SLOT,
         datasets_manifest=_manifest(2),
         output_dir=tmp_path,
         image_type="Image",
@@ -189,6 +200,7 @@ def test_image_stages_chunked_when_exceeding_array_limit(tmp_path):
     # the GPU stage is never chunked (it is an array over shards).
     scripts = generate_staged_scripts(
         pipeline_path=tmp_path / "p.json",
+        detector_slot=_SLOT,
         datasets_manifest=_manifest(5),
         output_dir=tmp_path,
         image_type="Image",
@@ -212,6 +224,7 @@ def test_image_stages_chunked_when_exceeding_array_limit(tmp_path):
 def test_chunk_windows_map_to_absolute_manifest_indices(tmp_path):
     scripts = generate_staged_scripts(
         pipeline_path=tmp_path / "p.json",
+        detector_slot=_SLOT,
         datasets_manifest=_manifest(5),
         output_dir=tmp_path,
         image_type="Image",
@@ -233,6 +246,7 @@ def test_chunk_windows_map_to_absolute_manifest_indices(tmp_path):
 def test_single_chunk_keeps_plain_script_names(tmp_path):
     scripts = generate_staged_scripts(
         pipeline_path=tmp_path / "p.json",
+        detector_slot=_SLOT,
         datasets_manifest=_manifest(3),
         output_dir=tmp_path,
         image_type="Image",
@@ -249,6 +263,7 @@ def test_single_chunk_keeps_plain_script_names(tmp_path):
 def test_empty_manifest_generates_no_image_stage_arrays(tmp_path):
     scripts = generate_staged_scripts(
         pipeline_path=tmp_path / "p.json",
+        detector_slot=_SLOT,
         datasets_manifest=[],
         output_dir=tmp_path,
         image_type="Image",
@@ -266,6 +281,7 @@ def test_empty_manifest_generates_no_image_stage_arrays(tmp_path):
 def test_multi_chunk_scripts_get_indexed_names(tmp_path):
     scripts = generate_staged_scripts(
         pipeline_path=tmp_path / "p.json",
+        detector_slot=_SLOT,
         datasets_manifest=_manifest(5),
         output_dir=tmp_path,
         image_type="Image",
@@ -373,6 +389,7 @@ def test_strategy_reserves_two_max_submit_slots_for_controllers(
             },
         },
     )()
+    write_stageable_pipeline(config.pipeline_json)
     strategy = object.__new__(StagedSlurmStrategy)
     strategy.config = config
     strategy.execute([], tmp_path)
@@ -467,6 +484,7 @@ def test_staged_slurm_manifest_uses_canonical_direct_store_stem(
         pipeline_identity=None,
         processing_generation="generation",
     )
+    write_stageable_pipeline(config.pipeline_json)
     strategy = object.__new__(StagedSlurmStrategy)
     strategy.config = config
     strategy.execute(

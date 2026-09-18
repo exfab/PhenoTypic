@@ -52,6 +52,30 @@ def test_staged_gpu_form_controls_are_mounted_hidden(tmp_path) -> None:
     assert cpu_gpu_labels[0].children == "CPU-stage GPUs"
 
 
+def test_staged_gpu_refusal_alert_is_mounted_closed_outside_the_gpu_section(
+    tmp_path,
+) -> None:
+    """The refusal applies in Local mode too, where the GPU section is hidden.
+
+    Mounted inside that section, the alert would be invisible for exactly the
+    Local-mode refusals it exists to explain.
+    """
+    form = _form.build_form(SandboxRoot.from_path(tmp_path))
+    by_id = {
+        component.id: component
+        for component in _walk_components(form)
+        if getattr(component, "id", None) is not None
+    }
+
+    alert = by_id[_ids.RC_STAGED_GPU_REFUSAL]
+    assert alert.is_open is False
+    inside_section = {
+        getattr(component, "id", None)
+        for component in _walk_components(by_id[_ids.RC_STAGED_GPU_SECTION])
+    }
+    assert _ids.RC_STAGED_GPU_REFUSAL not in inside_section
+
+
 def test_metadata_preflight_is_visible_and_defaults_to_omit(tmp_path) -> None:
     form = _form.build_form(SandboxRoot.from_path(tmp_path))
     by_id = {

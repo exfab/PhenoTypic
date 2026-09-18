@@ -273,6 +273,15 @@ segmentations into CellProfiler, Fiji, or a training set. Note that `objmap`
 holds **raw label values**, not a rendered image — opening it in a viewer shows
 a near-black frame, because label 3 is the pixel value 3.
 
+`--layer objmap` exports the objmap **your pipeline produces**, refiners
+included — the same thing a `full` run would detect, just without the
+measurement. That holds for a GPU pipeline too: the export runs the staged
+engine's Stages 1–2 and then the post-detector operation chain, rather than
+dumping the model's raw output. Older releases dumped the raw output, so
+re-running an export made before this change re-derives every image instead of
+reusing it; see
+[GPU-Accelerated Colony Detection](../../how_to/pages/gpu_detection_setup.md).
+
 Flags that only make sense for measurement output are ignored with a warning
 rather than an error:
 
@@ -335,9 +344,10 @@ array so a walltime kill loses at most N images of progress.
 
 ### GPU detectors
 
-A pipeline containing a `GpuDetector` automatically splits into three stages —
-CPU preprocess, resident-model GPU detect, CPU measure — reusing the per-image
-OME-Zarr store. You do not opt in; you only tune it:
+A pipeline containing a `GpuDetector` — at the top level, or nested inside a
+`CompositeDetector`, `CompositeEnhance` or branch `ImagePipeline` — automatically
+splits into three stages: CPU preprocess, resident-model GPU detect, CPU measure,
+reusing the per-image OME-Zarr store. You do not opt in; you only tune it:
 
 - `--gpu-slurm KEY=VALUE` — SBATCH profile for the GPU stage. It **inherits and
   deltas over `--slurm`**, so put the GPU partition and account here and leave

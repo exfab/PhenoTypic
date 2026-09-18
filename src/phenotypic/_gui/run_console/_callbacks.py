@@ -245,16 +245,28 @@ def _looks_like_pipeline_json(path: Path) -> bool:
     return b'"operations"' in head
 
 
-def _pipeline_uses_staged_gpu(path_value: object) -> bool:
-    """Return whether the selected pipeline requires staged GPU execution."""
-    if not isinstance(path_value, str) or not path_value:
-        return False
-    try:
-        from phenotypic._cli._cli_validation import pipeline_requires_gpu
+def _staged_gpu_capability(path_value: object) -> tuple[bool, str | None]:
+    """Return ``(uses_staged_gpu, refusal)`` for the selected pipeline.
 
-        return pipeline_requires_gpu(Path(path_value))
+    ``refusal`` is the staged engine's message when it cannot run the
+    pipeline at all. An unreadable file is ``(False, None)``: that is for the
+    CLI's pipeline validation to report, not a refusal.
+    """
+    if not isinstance(path_value, str) or not path_value:
+        return False, None
+    from phenotypic._cli._cli_validation import (
+        UnstageableGpuDetectorError,
+        pipeline_requires_gpu,
+    )
+
+    try:
+        return pipeline_requires_gpu(Path(path_value)), None
+    # Order matters: the refusal IS a ValueError, so the generic handler
+    # below would swallow it and report "not a GPU pipeline".
+    except UnstageableGpuDetectorError as exc:
+        return False, str(exc)
     except (OSError, ValueError, TypeError):
-        return False
+        return False, None
 
 
 # ---------------------------------------------------------------------------
@@ -1733,16 +1745,30 @@ def register_callbacks(
 
     @app.callback(
         Output(ids.RC_STAGED_GPU_SECTION, "style"),
+        Output(ids.RC_STAGED_GPU_REFUSAL, "children"),
+        Output(ids.RC_STAGED_GPU_REFUSAL, "is_open"),
         Input(ids.RC_STORE_PIPELINE_PATH, "data"),
         Input(ids.RC_RADIO_MODE, "value"),
     )
     def show_staged_gpu_controls(
         pipeline_path: object,
         mode: object,
-    ) -> dict[str, str]:
-        """Show GPU-stage resources only for a SLURM GPU pipeline."""
-        visible = mode == "slurm" and _pipeline_uses_staged_gpu(pipeline_path)
-        return {"display": "block" if visible else "none"}
+    ) -> tuple[dict[str, str], str, bool]:
+        """Show GPU-stage resources for a SLURM GPU pipeline, or the refusal.
+
+        The refusal is shown in either mode: the CLI refuses the pipeline on
+        the Local path as well.
+        """
+        uses_gpu, refusal = _staged_gpu_capability(pipeline_path)
+        visible = mode == "slurm" and uses_gpu
+        message = (
+            f"This pipeline cannot be run: {refusal}" if refusal else ""
+        )
+        return (
+            {"display": "block" if visible else "none"},
+            message,
+            refusal is not None,
+        )
 
     # ----------------------------------------------------------------------
     # 7. Form-state sync — every input writes back to the form state store.
@@ -1891,6 +1917,11 @@ def register_callbacks(
             output_dir, rel_path = _resolved_output_identity(
                 state, sandbox=sandbox
             )
+            # The disabled Run button is browser-side only; a click racing a
+            # pipeline change still arrives here, so refuse before allocating.
+            _, refusal = _staged_gpu_capability(state.pipeline_path)
+            if refusal is not None:
+                raise ValueError(f"This pipeline cannot be run: {refusal}")
         except Exception as exc:  # noqa: BLE001
             detail = _format_exception(exc)
             return (
@@ -2680,13 +2711,20 @@ def register_callbacks(
         Input(ids.RC_INTERVAL_LOG, "n_intervals"),
         Input(ids.RC_STORE_ACTIVE_RUN_ID, "data"),
         Input(ids.RC_RADIO_MODE, "value"),
+        Input(ids.RC_STAGED_GPU_REFUSAL, "is_open"),
     )
     def update_run_disabled(
         _n: Optional[int],
         _active: Optional[str],
         mode: Optional[RunMode],
+        pipeline_refused: Optional[bool],
     ) -> bool:
-        """Disable Run while a Local run is active (SLURM is unconstrained)."""
+        """Disable Run for a refused pipeline, or while a Local run is active.
+
+        SLURM runs are otherwise unconstrained.
+        """
+        if pipeline_refused:
+            return True
         if mode == "slurm":
             return False
         return _local_run_active(runner, registry)

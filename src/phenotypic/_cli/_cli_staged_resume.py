@@ -27,6 +27,7 @@ from ._cli_process_only import process_only_output_path
 from ._cli_stage2_token import (
     delete_stage2_raw,
     delete_stage2_token,
+    relocate_legacy_stage2_signal,
     stage2_raw_path,
     stage2_token_exists,
 )
@@ -227,12 +228,21 @@ def classify_staged_image(
     output_dir: Path,
     dataset: str,
     image: Path,
+    slot: str,
     input_root: Path,
     process_only_layer: str | None,
     markers_required: bool,
     expected_work_id: str | None = None,
 ) -> ResumeStage:
-    """Return the earliest stage required by one image's durable artifacts."""
+    """Return the earliest stage required by one image's durable artifacts.
+
+    ``slot`` is an ordinary parameter, handed down by the caller, because this
+    is a **pure classifier**: it has no ``StagePlan`` to derive one from and it
+    must not acquire one. Relocation of a pre-slot-keying signal happens in
+    :func:`build_staged_resume_plan`, *before* this is called -- a classifier
+    that moved files would be a different thing, and moving them afterwards
+    would be too late to change the verdict.
+    """
     stem = source_image_stem(image)
     if expected_work_id is not None:
         from ._cli_completion import valid_image_success
@@ -253,7 +263,7 @@ def classify_staged_image(
             return "complete"
 
     store = zarr_store_path(output_dir, dataset, stem)
-    stage2_done = stage2_token_exists(output_dir, dataset, stem)
+    stage2_done = stage2_token_exists(output_dir, dataset, stem, slot)
     if expected_work_id is not None:
         store_valid = staged_store_matches_work_id(store, expected_work_id)
         stage2_store_valid = _staged_store_has_work_id(store, expected_work_id)
@@ -306,7 +316,7 @@ def classify_staged_image(
     # "complete".
     if (
         stage2_done
-        and not stage2_raw_path(output_dir, dataset, stem).is_file()
+        and not stage2_raw_path(output_dir, dataset, stem, slot).is_file()
     ):
         return "stage2"
 
@@ -317,12 +327,25 @@ def build_staged_resume_plan(
     *,
     datasets: Sequence[Dataset],
     output_dir: Path,
+    slot: str,
     input_root: Path,
     process_only_layer: str | None,
     markers_required: bool,
     work_ids: Mapping[str, Mapping[str, str]] | None = None,
 ) -> StagedResumePlan:
-    """Build a filtered worklist and earliest global resume stage."""
+    """Build a filtered worklist and earliest global resume stage.
+
+    Relocates each image's pre-slot-keying Stage-2 signal **before**
+    classifying it. This is the single funnel every resume passes through and
+    the last point at which a relocation can still change the verdict: once
+    :func:`classify_staged_image` has returned ``"stage2"`` for an image whose
+    signal is sitting at the legacy path, a full-dataset GPU sweep is already
+    scheduled on the scarcest resource in the cluster.
+
+    (Plan A named ``clear_downstream_artifacts_for_stage1``'s neighbourhood as
+    the call site. That is too late by construction -- that function *deletes*
+    the Stage-2 signal when Stage 1 re-runs.)
+    """
     items: list[StagedResumeItem] = []
     pending_by_dataset: dict[str, list[Path]] = {}
     source_by_dataset = {dataset.name: dataset for dataset in datasets}
@@ -333,10 +356,14 @@ def build_staged_resume_plan(
                 if work_ids is not None
                 else None
             )
+            relocate_legacy_stage2_signal(
+                output_dir, dataset.name, source_image_stem(image), slot
+            )
             stage = classify_staged_image(
                 output_dir=output_dir,
                 dataset=dataset.name,
                 image=image,
+                slot=slot,
                 input_root=input_root,
                 process_only_layer=process_only_layer,
                 markers_required=markers_required,
@@ -403,6 +430,7 @@ def clear_downstream_artifacts_for_stage1(
     output_dir: Path,
     dataset: str,
     image_stem: str,
+    slot: str,
     *,
     commit_guard: CommitGuard | None = None,
 ) -> None:
@@ -418,10 +446,10 @@ def clear_downstream_artifacts_for_stage1(
     reverse merely orphans a ``.npy`` that Stage 2 overwrites.
     """
     delete_stage2_token(
-        output_dir, dataset, image_stem, commit_guard=commit_guard
+        output_dir, dataset, image_stem, slot, commit_guard=commit_guard
     )
     delete_stage2_raw(
-        output_dir, dataset, image_stem, commit_guard=commit_guard
+        output_dir, dataset, image_stem, slot, commit_guard=commit_guard
     )
     remove_stage3_completion_marker(
         output_dir,
@@ -434,6 +462,7 @@ def clear_downstream_artifacts_for_stage1(
 def reconcile_stage3_publications(
     output_dir: Path,
     inventory: Mapping[str, Sequence[str]],
+    slot: str,
     *,
     namespace: str,
 ) -> int:
@@ -475,8 +504,8 @@ def reconcile_stage3_publications(
             ):
                 # Token first, then the raw array -- same ordering rule as
                 # every other consumption site.
-                delete_stage2_token(output_dir, dataset, stem)
-                delete_stage2_raw(output_dir, dataset, stem)
+                delete_stage2_token(output_dir, dataset, stem, slot)
+                delete_stage2_raw(output_dir, dataset, stem, slot)
                 continue
             parquet = (
                 dataset_measurements_dir(output_dir, dataset)

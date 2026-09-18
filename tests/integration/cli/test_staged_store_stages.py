@@ -72,9 +72,18 @@ def test_stage2_drops_a_token_and_retains_the_raw_array(staged_run) -> None:
 
     staged_run.run_stage1()
     staged_run.run_stage2()
-    assert stage2_token_exists(staged_run.output_dir, "ds", "img") is True
-    assert stage2_raw_path(staged_run.output_dir, "ds", "img").is_file()
-    assert load_stage2_raw(staged_run.output_dir, "ds", "img").any()
+    assert (
+        stage2_token_exists(
+            staged_run.output_dir, "ds", "img", staged_run.slot
+        )
+        is True
+    )
+    assert stage2_raw_path(
+        staged_run.output_dir, "ds", "img", staged_run.slot
+    ).is_file()
+    assert load_stage2_raw(
+        staged_run.output_dir, "ds", "img", staged_run.slot
+    ).any()
 
 
 def test_staged_provenance_original_and_retry_are_durable(
@@ -105,7 +114,7 @@ def test_staged_provenance_original_and_retry_are_durable(
 
     before_stage2 = (store / "zarr.json").read_bytes()
     run.run_stage2()
-    token = read_stage2_token(run.output_dir, "ds", "img")
+    token = read_stage2_token(run.output_dir, "ds", "img", run.slot)
     compute_duration = token["detector_duration_seconds"]
     assert compute_duration >= 0
     assert (store / "zarr.json").read_bytes() == before_stage2
@@ -173,6 +182,7 @@ def test_stage1_hard_interruption_is_retried_from_the_decoded_checkpoint(
         output_dir=run.output_dir,
         dataset="ds",
         image=run.image_path,
+        slot=run.slot,
         input_root=run.image_path.parent,
         process_only_layer=None,
         markers_required=True,
@@ -259,7 +269,9 @@ def test_stage3_publishes_the_post_refined_objmap(staged_run_with_size_filter) -
     # sourcing raw_labels from it would make the set empty and the final
     # `published < raw_labels` assertion vacuously False for any real result.
     # Ledger FLOW-14.
-    raw_labels = set(np.unique(load_stage2_raw(run.output_dir, "ds", "img"))) - {0}
+    raw_labels = set(
+        np.unique(load_stage2_raw(run.output_dir, "ds", "img", run.slot))
+    ) - {0}
     assert raw_labels, "fixture must produce detections before post-ops run"
     run.run_stage3()
     published = set(
@@ -280,8 +292,15 @@ def test_stage3_consumes_the_token_and_the_raw_array(staged_run) -> None:
     staged_run.run_stage1()
     staged_run.run_stage2()
     staged_run.run_stage3()
-    assert stage2_token_exists(staged_run.output_dir, "ds", "img") is False
-    assert not stage2_raw_path(staged_run.output_dir, "ds", "img").exists()
+    assert (
+        stage2_token_exists(
+            staged_run.output_dir, "ds", "img", staged_run.slot
+        )
+        is False
+    )
+    assert not stage2_raw_path(
+        staged_run.output_dir, "ds", "img", staged_run.slot
+    ).exists()
 
 
 def test_stage3_is_idempotent_under_retry(staged_run_with_border_colony) -> None:
@@ -356,8 +375,8 @@ def test_stage3_leaves_the_token_alone_on_the_work_id_path(
     run.run_stage1()
     run.run_stage2()
     run.run_stage3()
-    assert stage2_token_exists(run.output_dir, "ds", "img") is True
-    assert stage2_raw_path(run.output_dir, "ds", "img").is_file()
+    assert stage2_token_exists(run.output_dir, "ds", "img", run.slot) is True
+    assert stage2_raw_path(run.output_dir, "ds", "img", run.slot).is_file()
     assert stage3_completion_exists(run.output_dir, "ds", "img") is False
 
 

@@ -24,6 +24,7 @@ from phenotypic import Image
 from phenotypic._cli._cli_completion import publish_image_success
 from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_stage2_token import (
+    detector_slot,
     write_stage2_raw,
     write_stage2_token,
 )
@@ -59,6 +60,50 @@ from tests._legacy_staged_resume import (
     legacy_sidecar_path,
     legacy_stage3_marker_path,
 )
+
+#: The one detector slot the CLI unit fixtures write and read the Stage-2
+#: signal under. These fixtures build no pipeline, so any consistent slot
+#: works -- what matters is that the seeding helper and every assertion use
+#: the same one. Tests that drive a real staged run derive theirs from the
+#: plan instead (``detector_slot(plan.gpu_path)``).
+STAGE2_SLOT = detector_slot(("FakeGpuDetector",))
+
+
+def write_stageable_pipeline(path: Path) -> Path:
+    """Write a minimal pipeline the staged SLURM submitter will accept.
+
+    ``StagedSlurmStrategy.execute`` parses and splits its configured pipeline
+    before generating scripts, so a test that calls ``execute`` with a
+    ``pipeline_json`` pointing at a file that was never written is testing a
+    configuration production cannot reach: ``create_execution_strategy`` has
+    already read that file to decide the run is a GPU run at all.
+
+    The import registers ``FakeGpuDetector`` into the ``phenotypic`` namespace,
+    which is how ``ImagePipeline.from_json`` resolves an op class defined
+    outside it.
+
+    **Writes the serialized text to the exact path given.** Do NOT use
+    ``to_json(path)`` here: that routes through
+    ``ensure_typed_json_suffix(filepath, CONFIG_SUFFIX_PIPELINE)``
+    (``_serializable_pipeline.py:105``), so ``to_json(tmp/"pipeline.json")``
+    writes ``tmp/"pipeline.json.pht-pipe"`` and leaves the requested path
+    absent -- a fixture that reports success while the caller's path is still
+    empty. ``tests/integration/cli/test_staged_slurm_live.py:154`` already used
+    the correct idiom. The post-condition below is what turns a repeat of that
+    mistake into a failure here rather than a confusing one in the test.
+    """
+    import tests._fakes.register_fake_gpu  # noqa: F401  (import side effect)
+    from tests._fakes.fake_gpu_detector import FakeGpuDetector
+
+    from phenotypic import ImagePipeline
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        ImagePipeline(ops=[FakeGpuDetector(threshold=0.3)]).to_json(),
+        encoding="utf-8",
+    )
+    assert path.is_file(), f"fixture wrote no pipeline at {path}"
+    return path
 
 
 @pytest.fixture
@@ -289,9 +334,10 @@ class ArtifactWorld:
             self.DATASET,
             self.STEM,
             np.zeros((4, 4), dtype=np.uint16),
+            STAGE2_SLOT,
         )
         write_stage2_token(
-            self.root, self.DATASET, self.STEM, objmap_shape=(4, 4)
+            self.root, self.DATASET, self.STEM, STAGE2_SLOT, objmap_shape=(4, 4)
         )
 
     # -- format-neutral halves ---------------------------------------------

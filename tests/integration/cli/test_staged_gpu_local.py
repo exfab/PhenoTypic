@@ -17,6 +17,7 @@ from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_pipeline_split import split_pipeline_at_gpu
 from phenotypic._cli._cli_process_only import process_only_output_path
 from phenotypic._cli._cli_stage2_token import (
+    detector_slot,
     stage2_raw_path,
     stage2_token_exists,
     write_stage2_raw,
@@ -62,6 +63,14 @@ from phenotypic.sdk_ import (
 from phenotypic.sdk_._io_constants import GUI_RECORD_GENERATION_ENV_VAR
 from tests._fakes.fake_gpu_detector import FakeGpuDetector
 from phenotypic.phenotypicCLI import phenotypic_cli
+
+#: Every pipeline in this file is ``ImagePipeline(ops=[FakeGpuDetector(...)])``,
+#: so the detector is top-level and its tree path is its op key alone. Pinned
+#: against the real splitter by
+#: ``test_the_fixture_slot_is_the_slot_the_staged_engine_derives`` below --
+#: without that guard a wrong constant here would make every "signal absent"
+#: assertion inspect an empty directory and pass vacuously.
+_SLOT = detector_slot(("FakeGpuDetector",))
 
 
 def _config(out, pipe_path, resume=False):
@@ -110,24 +119,38 @@ def _write_image(tmp_path):
     return p
 
 
-def _stage2_done(out, dataset, stem):
+def _stage2_done(out, dataset, stem, slot=_SLOT):
     """A finished Stage 2 is the token AND the raw array it replays from.
 
     Asserting only the token would pass with the ``.npy`` deleted, which is
     exactly the state Stage 3 cannot recover from.
     """
     return (
-        stage2_token_exists(out, dataset, stem)
-        and stage2_raw_path(out, dataset, stem).is_file()
+        stage2_token_exists(out, dataset, stem, slot)
+        and stage2_raw_path(out, dataset, stem, slot).is_file()
     )
 
 
-def _stage2_signal_absent(out, dataset, stem):
+def _stage2_signal_absent(out, dataset, stem, slot=_SLOT):
     """Cleanup means BOTH are gone -- a survivor of either is a leak."""
     return (
-        not stage2_token_exists(out, dataset, stem)
-        and not stage2_raw_path(out, dataset, stem).exists()
+        not stage2_token_exists(out, dataset, stem, slot)
+        and not stage2_raw_path(out, dataset, stem, slot).exists()
     )
+
+
+def test_the_fixture_slot_is_the_slot_the_staged_engine_derives():
+    """Pins ``_SLOT`` against the real splitter.
+
+    Every Stage-2 assertion in this file reads the signal at ``_SLOT``. If the
+    engine derived a different slot, ``_stage2_signal_absent`` would be
+    inspecting an empty directory and would pass for the wrong reason on every
+    cleanup test in the file -- a false green with no symptom.
+    """
+    from phenotypic._cli._cli_pipeline_split import split_pipeline_at_gpu
+
+    pipe = ImagePipeline(ops=[FakeGpuDetector(threshold=0.3)])
+    assert detector_slot(split_pipeline_at_gpu(pipe).gpu_path) == _SLOT
 
 
 def _measurement_table(out, dataset, stem):
@@ -175,7 +198,7 @@ def test_three_stage_cores_end_to_end(tmp_path):
 
     # Stage 2: resident detector -> retained raw + consumable token
     plan.gpu_detector._ensure_model_loaded()
-    stage2_detect_core(plan.gpu_detector, out, "ds", "img")
+    stage2_detect_core(plan.gpu_detector, out, "ds", "img", _SLOT)
     assert _stage2_done(out, "ds", "img")
 
     # Stage 3: replay + measure -> parquet, re-promote store, consume both
@@ -411,6 +434,7 @@ def test_stage2_publication_is_fenced_for_stale_epoch(tmp_path):
             out,
             "ds",
             "img",
+            _SLOT,
             "Image",
             active_check=lambda: (_ for _ in ()).throw(
                 RuntimeError("stale epoch")
@@ -822,6 +846,7 @@ def test_stage3_partial_publication_keeps_stage2_signal_and_is_resumable(
     resume_plan = build_staged_resume_plan(
         datasets=[Dataset("ds", [tmp_path / "img.tiff"], tmp_path, out)],
         output_dir=out,
+        slot=_SLOT,
         input_root=tmp_path,
         process_only_layer=None,
         markers_required=True,
@@ -838,8 +863,8 @@ def test_stage3_reconciliation_cleans_stage2_signal_and_excludes_partial_parquet
     complete.parent.mkdir(parents=True, exist_ok=True)
     complete.write_bytes(b"complete")
     partial.write_bytes(b"partial")
-    write_stage2_raw(out, "ds", "done", np.zeros((2, 2), np.uint16))
-    write_stage2_token(out, "ds", "done", objmap_shape=(2, 2))
+    write_stage2_raw(out, "ds", "done", np.zeros((2, 2), np.uint16), _SLOT)
+    write_stage2_token(out, "ds", "done", _SLOT, objmap_shape=(2, 2))
     from phenotypic._cli._cli_staged_resume import (
         write_stage3_completion_marker,
     )
@@ -849,6 +874,7 @@ def test_stage3_reconciliation_cleans_stage2_signal_and_excludes_partial_parquet
     moved = reconcile_stage3_publications(
         out,
         {"ds": ["done.tiff", "partial.tiff"]},
+        _SLOT,
         namespace="test",
     )
 
@@ -1037,13 +1063,20 @@ def test_shard_worker_records_missing_store_without_requeue(tmp_path):
 
 
 def test_process_objmap_export_writes_the_detected_labels_not_zeros(tmp_path):
-    """``--layer objmap`` replays Stage 2's raw array, never the store.
+    """``--layer objmap`` replays Stage 2's raw array and applies the
+    post-detector ops, never reading the store.
 
     Stage 2 does not write into the store, so the store's objmap at export
     time is still Stage 1's **zeros**. An executor who reads the store here
     exports an all-zeros PNG for every image, silently, and every assertion
     about the token still passes (ledger FLOW-16). This is the assertion that
     notices.
+
+    This pipeline is ``ImagePipeline(ops=[FakeGpuDetector(...)])`` -- a
+    top-level detector with **no post-detector ops** -- so old and new export
+    semantics coincide here and nothing below distinguishes them. The chain
+    itself is pinned by ``test_process_objmap_semantics.py``; what this test
+    guards is FLOW-16, and that is unchanged.
     """
     import cv2
 
@@ -1101,9 +1134,9 @@ def test_stage3_refuses_a_token_whose_raw_array_is_gone(tmp_path):
     out, pipe_path = _stage1_only(tmp_path)
     plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipe_path))
     plan.gpu_detector._ensure_model_loaded()
-    stage2_detect_core(plan.gpu_detector, out, "ds", "img")
-    delete_stage2_raw(out, "ds", "img")  # partial cleanup / truncated copy
-    assert stage2_token_exists(out, "ds", "img")
+    stage2_detect_core(plan.gpu_detector, out, "ds", "img", _SLOT)
+    delete_stage2_raw(out, "ds", "img", _SLOT)  # partial cleanup / truncated copy
+    assert stage2_token_exists(out, "ds", "img", _SLOT)
 
     om = OutputManager.from_config(out, ".tiff", save_overlays=False)
     image_path = tmp_path / "img.tiff"
@@ -1141,7 +1174,7 @@ def test_the_slurm_stage3_worker_reports_a_raw_less_token_as_a_prereq(
         shard_index=0,
         n_shards=1,
     )
-    delete_stage2_raw(out, "ds", "img")
+    delete_stage2_raw(out, "ds", "img", _SLOT)
 
     with pytest.raises(SystemExit):
         worker.run_stage3_step(
@@ -1217,8 +1250,8 @@ def test_the_shard_worker_recomputes_when_only_the_token_survives(tmp_path):
         shard_index=0,
         n_shards=1,
     )
-    delete_stage2_raw(out, "ds", "img")
-    assert stage2_token_exists(out, "ds", "img")
+    delete_stage2_raw(out, "ds", "img", _SLOT)
+    assert stage2_token_exists(out, "ds", "img", _SLOT)
 
     worker.run_stage2_shard(
         pipeline_path=pipe_path,
@@ -1245,8 +1278,8 @@ def _token_without_raw_that_stage2_cannot_rebuild(tmp_path, monkeypatch):
     out, pipe_path = _stage1_only(tmp_path)
     plan = split_pipeline_at_gpu(ImagePipeline.from_json(pipe_path))
     plan.gpu_detector._ensure_model_loaded()
-    stage2_detect_core(plan.gpu_detector, out, "ds", "img")
-    delete_stage2_raw(out, "ds", "img")
+    stage2_detect_core(plan.gpu_detector, out, "ds", "img", _SLOT)
+    delete_stage2_raw(out, "ds", "img", _SLOT)
     (zarr_store_path(out, "ds", "img") / "zarr.json").unlink()
     monkeypatch.setattr(
         "phenotypic._cli._cli_staged_strategy.stage1_preprocess_core",
@@ -1254,7 +1287,7 @@ def _token_without_raw_that_stage2_cannot_rebuild(tmp_path, monkeypatch):
             RuntimeError("Stage 1 unavailable")
         ),
     )
-    assert stage2_token_exists(out, "ds", "img")
+    assert stage2_token_exists(out, "ds", "img", _SLOT)
     return out, pipe_path
 
 
@@ -1345,8 +1378,8 @@ def test_local_stage3_crash_between_deletes_leaves_the_benign_survivor(
 
     StagedGpuStrategy(_config(out, pipe_path), om).execute(datasets, out)
 
-    assert not stage2_token_exists(out, "ds", "img")
-    assert stage2_raw_path(out, "ds", "img").is_file()
+    assert not stage2_token_exists(out, "ds", "img", _SLOT)
+    assert stage2_raw_path(out, "ds", "img", _SLOT).is_file()
 
 
 def test_objmap_export_crash_between_deletes_leaves_the_benign_survivor(
@@ -1370,8 +1403,8 @@ def test_objmap_export_crash_between_deletes_leaves_the_benign_survivor(
 
     StagedGpuStrategy(cfg, om).execute(datasets, out)
 
-    assert not stage2_token_exists(out, "ds", "img")
-    assert stage2_raw_path(out, "ds", "img").is_file()
+    assert not stage2_token_exists(out, "ds", "img", _SLOT)
+    assert stage2_raw_path(out, "ds", "img", _SLOT).is_file()
 
 
 def test_slurm_stage3_crash_between_deletes_leaves_the_benign_survivor(
@@ -1401,5 +1434,5 @@ def test_slurm_stage3_crash_between_deletes_leaves_the_benign_survivor(
             index=0,
         )
 
-    assert not stage2_token_exists(out, "ds", "img")
-    assert stage2_raw_path(out, "ds", "img").is_file()
+    assert not stage2_token_exists(out, "ds", "img", _SLOT)
+    assert stage2_raw_path(out, "ds", "img", _SLOT).is_file()

@@ -118,26 +118,25 @@ class CompositeDetector(ObjectDetector):
             )
 
         # Import here to avoid circular dependency
-        from phenotypic import ImagePipeline
+        from phenotypic._core._provenance import apply_child
 
         # Apply all detectors/pipelines and collect masks
         objmaps = []
 
-        for detector in self.ops:
+        # ``enumerate`` over the WHOLE list, including the ``None`` slots that
+        # are skipped: the recorded segment must be the branch's position in
+        # ``ops``, which is what ``sdk_._operation_tree`` addresses it by.
+        # ``apply_child`` supplies the ``reset=False`` a nested ImagePipeline
+        # needs, so the branch on child type is gone from here.
+        for index, detector in enumerate(self.ops):
             if detector is None:
                 # An unfilled list slot (the GUI builder marks an empty
                 # detector slot with None); nothing to apply — skip it.
                 continue
-            if isinstance(detector, ImagePipeline):
-                # Apply pipeline (preprocessing + detection)
-                detected_image = detector.apply(image,
-                                                inplace=False,
-                                                reset=False)
-                objmaps.append(detected_image.objmap[:].astype(bool))
-            else:
-                # Apply detector directly (ObjectDetector)
-                detected_image = detector.apply(image, inplace=False)
-                objmaps.append(detected_image.objmap[:].astype(bool))
+            detected_image = apply_child(
+                    detector, image, segment=f"ops[{index}]", inplace=False
+            )
+            objmaps.append(detected_image.objmap[:].astype(bool))
 
         # Combine masks based on mode
         if self.mode == 'union':

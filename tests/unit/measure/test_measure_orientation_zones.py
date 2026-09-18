@@ -810,6 +810,54 @@ def test_paired_zone_rotation_preserves_direction_and_opposition():
     assert support == pytest.approx(1.0)
 
 
+# An exactly 90-degree axial change has no turning direction: the doubled-angle
+# wrap lands on the +-pi branch cut, where the sign comes from floating-point
+# noise. These nudges are far below any real sector spacing but on opposite
+# sides of the cut, so before the fix they produced +90 and -90 respectively --
+# and a golden captured on one CPU disagreed with another CPU by 180/N degrees.
+_ORTHOGONAL_NUDGES = (-1e-13, 1e-13)
+
+
+@pytest.mark.parametrize("nudge", _ORTHOGONAL_NUDGES)
+def test_long_range_orthogonal_change_keeps_magnitude_and_has_no_direction(
+    nudge,
+):
+    radii = np.array([10.0, 26.0])
+    sector_tilt = np.array(
+        [
+            [0.0, 0.0],
+            [np.pi / 2.0 + nudge, np.deg2rad(30.0)],
+        ]
+    )
+
+    midpoints, rotation = long_range_ring_rotation_profile(
+        radii, sector_tilt, radial_lag=16.0
+    )
+    magnitude, signed, support = aggregate_long_range_rotation(
+        midpoints, rotation, lower_radius=0.0, upper_radius=100.0
+    )
+
+    # Stored canonically, so the intermediate array is platform-independent.
+    assert rotation[0, 0] == np.pi / 2.0
+    assert np.degrees(magnitude) == pytest.approx(60.0)
+    assert np.degrees(signed) == pytest.approx(15.0)
+    assert support == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize("nudge", _ORTHOGONAL_NUDGES)
+def test_paired_zone_orthogonal_change_keeps_magnitude_and_has_no_direction(
+    nudge,
+):
+    inner = np.array([0.0, 0.0])
+    outer = np.array([np.pi / 2.0 + nudge, np.deg2rad(30.0)])
+
+    magnitude, signed, support = aggregate_paired_zone_rotation(inner, outer)
+
+    assert np.degrees(magnitude) == pytest.approx(60.0)
+    assert np.degrees(signed) == pytest.approx(15.0)
+    assert support == pytest.approx(1.0)
+
+
 def test_long_range_midpoint_assignment_uses_lower_inclusive_bound():
     midpoints = np.array([30.0, 40.0])
     rotations = np.array([[0.1, 0.1], [0.2, 0.2]])

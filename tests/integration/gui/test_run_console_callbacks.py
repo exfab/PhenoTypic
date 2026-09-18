@@ -836,14 +836,256 @@ def test_staged_gpu_controls_follow_pipeline_capability(
     app = create_app(SandboxRoot.from_path(tmp_path))
     monkeypatch.setattr(
         callbacks_module,
-        "_pipeline_uses_staged_gpu",
-        lambda path: path == "/gpu.json",
+        "_staged_gpu_capability",
+        lambda path: (path == "/gpu.json", None),
     )
     callback = _callback_by_name(app, "show_staged_gpu_controls")
 
-    assert callback("/gpu.json", "slurm") == {"display": "block"}
-    assert callback("/cpu.json", "slurm") == {"display": "none"}
-    assert callback("/gpu.json", "local") == {"display": "none"}
+    assert callback("/gpu.json", "slurm")[0] == {"display": "block"}
+    assert callback("/cpu.json", "slurm")[0] == {"display": "none"}
+    assert callback("/gpu.json", "local")[0] == {"display": "none"}
+
+
+# ---------------------------------------------------------------------------
+# A pipeline the staged engine refuses is explained, and cannot be launched
+# ---------------------------------------------------------------------------
+
+#: The container the refusal must name.
+_REFUSED_CONTAINER = "TwoKFilamentousDetector"
+
+
+@pytest.fixture()
+def gpu_pipelines(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> dict[str, Path]:
+    """Refused, valid-GPU and corrupt pipeline files, written as a user would.
+
+    ``pipeline.to_json()`` returns the text; ``pipeline.to_json(path)`` writes
+    to a *different* file (``path`` + ``.json.pht-pipe``) and returns None.
+    """
+    import phenotypic
+    from phenotypic import ImagePipeline
+    from phenotypic.detect import TwoKFilamentousDetector
+    from tests._fakes.fake_gpu_detector import FakeGpuDetector
+
+    monkeypatch.setattr(
+        phenotypic, "FakeGpuDetector", FakeGpuDetector, raising=False
+    )
+    root = tmp_path / "pipelines"
+    root.mkdir()
+    refused = root / "refused.json"
+    refused.write_text(
+        ImagePipeline(
+            ops={
+                _REFUSED_CONTAINER: TwoKFilamentousDetector(
+                    branch_base=FakeGpuDetector()
+                )
+            }
+        ).to_json(),
+        encoding="utf-8",
+    )
+    valid = root / "valid_gpu.json"
+    valid.write_text(
+        ImagePipeline(ops={"FakeGpuDetector": FakeGpuDetector()}).to_json(),
+        encoding="utf-8",
+    )
+    corrupt = root / "corrupt.json"
+    corrupt.write_text('{"operations": [', encoding="utf-8")
+    return {"refused": refused, "valid": valid, "corrupt": corrupt}
+
+
+def _run_disabled_after_selecting(
+    app: Any, pipeline: Path, mode: str
+) -> tuple[dict[str, str], Any, bool, bool]:
+    """Select ``pipeline``, then feed the alert state into the Run gate.
+
+    Chains the two callbacks the way Dash does, so the Run assertion is about
+    what the selection produced -- not about a value the test made up.
+    """
+    section, message, is_open = _callback_by_name(
+        app, "show_staged_gpu_controls"
+    )(str(pipeline), mode)
+    run_disabled = _callback_by_name(app, "update_run_disabled")(
+        0, None, mode, is_open
+    )
+    return section, message, is_open, run_disabled
+
+
+@pytest.mark.parametrize("mode", ["slurm", "local"])
+def test_a_refused_pipeline_is_explained_and_run_is_disabled(
+    tmp_path: Path, gpu_pipelines: dict[str, Path], mode: str
+) -> None:
+    """The refusal is mode-independent: the CLI refuses on both paths."""
+    app = create_app(SandboxRoot.from_path(tmp_path))
+
+    section, message, is_open, run_disabled = _run_disabled_after_selecting(
+        app, gpu_pipelines["refused"], mode
+    )
+
+    assert is_open is True
+    assert _REFUSED_CONTAINER in str(message)
+    assert "only composition primitives" in str(message)
+    assert run_disabled is True
+    assert section == {"display": "none"}
+
+
+def test_a_valid_gpu_pipeline_shows_its_section_and_leaves_run_enabled(
+    tmp_path: Path, gpu_pipelines: dict[str, Path]
+) -> None:
+    """Without this control, "always disable Run" passes the test above."""
+    app = create_app(SandboxRoot.from_path(tmp_path))
+
+    section, message, is_open, run_disabled = _run_disabled_after_selecting(
+        app, gpu_pipelines["valid"], "slurm"
+    )
+
+    assert section == {"display": "block"}
+    assert is_open is False
+    assert not message
+    assert run_disabled is False
+
+
+def test_a_corrupt_pipeline_stays_silent_rather_than_claiming_a_refusal(
+    tmp_path: Path, gpu_pipelines: dict[str, Path]
+) -> None:
+    """Pins the ``except`` ordering from the other side.
+
+    The refusal is a ``ValueError``, and so is a JSON decode error. If the
+    handlers were reordered, or the refusal branch widened to ``ValueError``,
+    an unreadable file would start showing refusal chrome and blocking Run.
+    """
+    app = create_app(SandboxRoot.from_path(tmp_path))
+
+    section, message, is_open, run_disabled = _run_disabled_after_selecting(
+        app, gpu_pipelines["corrupt"], "slurm"
+    )
+
+    assert section == {"display": "none"}
+    assert is_open is False
+    assert not message
+    assert run_disabled is False
+
+
+def _slurm_action_controls(
+    sandbox: SandboxRoot, tmp_path: Path, pipeline: Path
+) -> tuple[Any, ...]:
+    images = tmp_path / "images"
+    output = tmp_path / "output"
+    images.mkdir(exist_ok=True)
+    output.mkdir(exist_ok=True)
+    return _guard_action_controls(
+        sandbox,
+        (
+            str(pipeline),
+            str(images),
+            str(output),
+            "slurm",
+            [],
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            "compute",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            1,
+            None,
+        ),
+    )
+
+
+def test_run_action_refuses_the_pipeline_before_allocating_or_submitting(
+    tmp_path: Path,
+    gpu_pipelines: dict[str, Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A disabled button is browser-side; the launch seam must refuse too.
+
+    A click that races a pipeline change reaches ``click_action`` with the
+    refused path even though the button is about to disable.
+    """
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+    app = create_app(sandbox, registry=registry)
+    monkeypatch.setattr(
+        callbacks_module._SLURM_EXECUTOR,
+        "submit",
+        lambda *args, **kwargs: pytest.fail("submitter was invoked"),
+    )
+    controls = _slurm_action_controls(
+        sandbox, tmp_path, gpu_pipelines["refused"]
+    )
+
+    response = _callback_by_name(app, "click_action")(0, 1, *controls, 0)
+
+    assert _REFUSED_CONTAINER in response[1]
+    assert registry.list() == []
+
+
+def test_run_action_lets_a_valid_gpu_pipeline_through_to_submission(
+    tmp_path: Path,
+    gpu_pipelines: dict[str, Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Control for the test above: the launch guard is not a blanket refusal."""
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+    app = create_app(sandbox, registry=registry)
+    submitted: list[Any] = []
+
+    def _spy(*args: Any, **kwargs: Any) -> Any:
+        submitted.append(args)
+        raise RuntimeError("submit spy reached")
+
+    monkeypatch.setattr(callbacks_module._SLURM_EXECUTOR, "submit", _spy)
+    controls = _slurm_action_controls(sandbox, tmp_path, gpu_pipelines["valid"])
+
+    response = _callback_by_name(app, "click_action")(0, 1, *controls, 0)
+
+    assert len(submitted) == 1
+    assert "submit spy reached" in response[1]
+    assert _REFUSED_CONTAINER not in response[1]
+
+
+def test_run_console_callbacks_share_no_output_without_allow_duplicate(
+    tmp_path: Path,
+) -> None:
+    """Dash only rejects this in the browser, so building the app is not enough.
+
+    ``insert_callback`` refuses an identical callback id at registration, but
+    two *different* output lists that both name ``rc-btn-run.disabled`` pass
+    registration and are rejected later by dash-renderer, which then drops the
+    callbacks. Scan the registered outputs directly instead.
+    """
+    from collections import Counter
+
+    from phenotypic._gui.run_console import _ids as ids
+    from tests._dash_layout import dangling_callback_outputs
+
+    app = create_app(SandboxRoot.from_path(tmp_path))
+    targets: Counter[str] = Counter()
+    for key in app.callback_map:
+        for segment in key.strip(".").split("..."):
+            if "@" in segment or "." not in segment:
+                continue  # allow_duplicate output, or a no-output callback
+            targets[segment.strip(".")] += 1
+
+    duplicated = {target for target, count in targets.items() if count > 1}
+    assert duplicated == set()
+    assert targets[f"{ids.RC_BTN_RUN}.disabled"] == 1
+    assert targets[f"{ids.RC_STAGED_GPU_REFUSAL}.is_open"] == 1
+    assert targets[f"{ids.RC_STAGED_GPU_REFUSAL}.children"] == 1
+    assert not {
+        output
+        for output in dangling_callback_outputs(app)
+        if output[0] == ids.RC_STAGED_GPU_REFUSAL
+    }
 
 
 def test_terminal_no_dashboard_surfaces_detail_and_manual_refresh(

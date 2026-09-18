@@ -10,6 +10,7 @@ This section provides documentation for developers who want to contribute to Phe
    architecture
    contributing
    extending
+   gpu_detectors
    testing
    tracked_state
    documentation

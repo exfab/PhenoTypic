@@ -194,7 +194,13 @@ def test_slow_fanova_is_outside_read_deadline_and_snapshot_is_detached(
 
     _callbacks._IMPORTANCES.clear()
     monkeypatch.setattr(_callbacks.importlib.util, "find_spec", lambda _name: object())
-    monkeypatch.setattr(_callbacks, "_LIVE_READ_TIMEOUT_S", 0.5)
+    # Any finite deadline proves the property: `gate` is only set in the
+    # `finally` below, so a fanova computed INSIDE the read would block it past
+    # whatever deadline this is. 0.5 s was also shorter than the pool round trip
+    # under a loaded 12-worker gate shard, where the read degraded to "couldn't
+    # reach the live study" with fanova correctly outside it (failed twice under
+    # load, passed alone every time).
+    monkeypatch.setattr(_callbacks, "_LIVE_READ_TIMEOUT_S", 10.0)
     gate = threading.Event()
     trial = Trial(
         number=7,

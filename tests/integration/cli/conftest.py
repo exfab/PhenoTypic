@@ -19,6 +19,7 @@ from phenotypic import ImagePipeline
 from phenotypic._cli._cli_output_manager import OutputManager
 from phenotypic._cli._cli_pipeline_split import split_pipeline_at_gpu
 from phenotypic._cli._cli_stage2_token import (
+    detector_slot,
     load_stage2_raw,
     read_stage2_token,
     write_stage2_raw,
@@ -173,6 +174,10 @@ class StagedStageHarness:
         work_id,
     ):
         self.plan = plan
+        #: The Stage-2 signal's slot, derived from the plan exactly as the
+        #: real strategies derive it -- never a hand-picked constant, or this
+        #: harness would stop exercising the addressing the engine uses.
+        self.slot = detector_slot(plan.gpu_path)
         self.image_path = image_path
         self.pipeline_path = pipeline_path
         self.output_dir = output_dir
@@ -201,13 +206,15 @@ class StagedStageHarness:
     def run_stage2(self) -> None:
         self.plan.gpu_detector._ensure_model_loaded()
         stage2_detect_core(
-            self.plan.gpu_detector, self.output_dir, "ds", "img"
+            self.plan.gpu_detector, self.output_dir, "ds", "img", self.slot
         )
         # Snapshot so simulate_timeout_after_promote can rebuild the exact
         # on-disk state of the promote-to-marker window, which a completed
         # Stage 3 has already cleaned up.
-        self._raw_snapshot = load_stage2_raw(self.output_dir, "ds", "img")
-        token = read_stage2_token(self.output_dir, "ds", "img")
+        self._raw_snapshot = load_stage2_raw(
+            self.output_dir, "ds", "img", self.slot
+        )
+        token = read_stage2_token(self.output_dir, "ds", "img", self.slot)
         self._detector_duration_snapshot = float(
             token["detector_duration_seconds"]
         )
@@ -232,11 +239,14 @@ class StagedStageHarness:
         """
         assert self._raw_snapshot is not None, "run_stage2 first"
         remove_stage3_completion_marker(self.output_dir, "ds", "img")
-        write_stage2_raw(self.output_dir, "ds", "img", self._raw_snapshot)
+        write_stage2_raw(
+            self.output_dir, "ds", "img", self._raw_snapshot, self.slot
+        )
         write_stage2_token(
             self.output_dir,
             "ds",
             "img",
+            self.slot,
             objmap_shape=(
                 int(self._raw_snapshot.shape[0]),
                 int(self._raw_snapshot.shape[1]),

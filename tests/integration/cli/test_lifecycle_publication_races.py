@@ -450,7 +450,7 @@ def test_stage2_token_replace_holds_generation_lock_until_commit(
         mode="full",
         controller_config_path=run.output_dir / "stale-controller.json",
     )
-    token = stage2_token_path(run.output_dir, "ds", "img")
+    token = stage2_token_path(run.output_dir, "ds", "img", run.slot)
     at_commit = threading.Event()
     release = threading.Event()
     _pause_stale_replace(monkeypatch, token, at_commit, release)
@@ -473,11 +473,13 @@ def test_stage2_token_replace_holds_generation_lock_until_commit(
             "ds",
             "img",
             np.full((600, 800), 7, dtype=np.uint16),
+            run.slot,
         )
         write_stage2_token(
             run.output_dir,
             "ds",
             "img",
+            run.slot,
             objmap_shape=(600, 800),
             detector_duration_seconds=777.0,
         )
@@ -490,10 +492,10 @@ def test_stage2_token_replace_holds_generation_lock_until_commit(
         successor_call=_successor_call,
     )
 
-    assert read_stage2_token(run.output_dir, "ds", "img")[
+    assert read_stage2_token(run.output_dir, "ds", "img", run.slot)[
         "detector_duration_seconds"
     ] == 777.0
-    assert np.all(load_stage2_raw(run.output_dir, "ds", "img") == 7)
+    assert np.all(load_stage2_raw(run.output_dir, "ds", "img", run.slot) == 7)
     assert held is True
 
 
@@ -518,7 +520,7 @@ def test_stage3_token_delete_holds_generation_lock_until_commit(
         mode="full",
         controller_config_path=run.output_dir / "stale-controller.json",
     )
-    token = stage2_token_path(run.output_dir, "ds", "img")
+    token = stage2_token_path(run.output_dir, "ds", "img", run.slot)
     at_commit = threading.Event()
     release = threading.Event()
     _pause_stale_unlink(monkeypatch, token, at_commit, release)
@@ -540,11 +542,13 @@ def test_stage3_token_delete_holds_generation_lock_until_commit(
             "ds",
             "img",
             np.full((600, 800), 9, dtype=np.uint16),
+            run.slot,
         )
         write_stage2_token(
             run.output_dir,
             "ds",
             "img",
+            run.slot,
             objmap_shape=(600, 800),
             detector_duration_seconds=999.0,
         )
@@ -557,10 +561,10 @@ def test_stage3_token_delete_holds_generation_lock_until_commit(
         successor_call=_successor_call,
     )
 
-    assert read_stage2_token(run.output_dir, "ds", "img")[
+    assert read_stage2_token(run.output_dir, "ds", "img", run.slot)[
         "detector_duration_seconds"
     ] == 999.0
-    assert np.all(load_stage2_raw(run.output_dir, "ds", "img") == 9)
+    assert np.all(load_stage2_raw(run.output_dir, "ds", "img", run.slot) == 9)
     assert held is True
 
 

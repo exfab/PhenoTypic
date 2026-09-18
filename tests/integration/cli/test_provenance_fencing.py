@@ -94,13 +94,14 @@ def test_stage2_revocation_after_raw_write_never_publishes_token(
             run.output_dir,
             "ds",
             "img",
+            run.slot,
             "Image",
             active_check=check,
         )
 
     assert observed["calls"] == 2
-    assert stage2_raw_path(run.output_dir, "ds", "img").is_file()
-    assert not stage2_token_exists(run.output_dir, "ds", "img")
+    assert stage2_raw_path(run.output_dir, "ds", "img", run.slot).is_file()
+    assert not stage2_token_exists(run.output_dir, "ds", "img", run.slot)
 
 
 @pytest.mark.parametrize("revoke_at", [1, 2, 3])

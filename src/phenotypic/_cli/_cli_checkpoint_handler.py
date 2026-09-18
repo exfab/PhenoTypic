@@ -260,8 +260,11 @@ def _run_finalize(
         quarantine_unchanged_restart_parquets(output_dir, epoch)
         orchestration = load_orchestration_state(output_dir) or {}
         if bool(orchestration.get("stage3_markers_required", False)):
+            from ._cli_stage2_token import staged_detector_slot
             from ._cli_staged_resume import reconcile_stage3_publications
 
+            # `stage3_markers_required` is set only by the staged GPU
+            # orchestration, so the recorded pipeline has a GpuDetector.
             reconcile_stage3_publications(
                 output_dir,
                 {
@@ -269,6 +272,9 @@ def _run_finalize(
                     for name, info in datasets_raw.items()
                     if isinstance(info, dict)
                 },
+                staged_detector_slot(
+                    Path(job_metadata[JobMetadataKey.PIPELINE_PATH])
+                ),
                 namespace=epoch,
             )
         _check_epoch()

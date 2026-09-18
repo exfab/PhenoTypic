@@ -1,0 +1,287 @@
+<title>Staged Run Lifecycle</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+  :root {
+    --ground:#eef1f4; --surface:#ffffff; --sunk:#e4e9ee;
+    --ink:#121820; --ink-soft:#45535f; --ink-faint:#6f8090; --rule:#d2dae1;
+    --gpu:#0d7f7f; --gpu-soft:#d6ecec;
+    --warn:#a8500c; --warn-soft:#f6e6d5;
+    --cpu:#4a5c8a; --cpu-soft:#e0e5f2;
+    --sans:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;
+    --serif:"Source Serif 4",Georgia,"Times New Roman",serif;
+    --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0d1216; --surface:#151d24; --sunk:#1c262e;
+      --ink:#e6edf3; --ink-soft:#a9b8c4; --ink-faint:#768896; --rule:#2a3740;
+      --gpu:#49c3bd; --gpu-soft:#10312f;
+      --warn:#e0954d; --warn-soft:#33220f;
+      --cpu:#93a6d8; --cpu-soft:#1b2237;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0d1216; --surface:#151d24; --sunk:#1c262e;
+    --ink:#e6edf3; --ink-soft:#a9b8c4; --ink-faint:#768896; --rule:#2a3740;
+    --gpu:#49c3bd; --gpu-soft:#10312f;
+    --warn:#e0954d; --warn-soft:#33220f;
+    --cpu:#93a6d8; --cpu-soft:#1b2237;
+  }
+
+  body { background:var(--ground); color:var(--ink); font-family:var(--serif);
+         font-size:17px; line-height:1.65; margin:0; }
+  .wrap { max-width:860px; margin:0 auto; padding-inline:20px; padding-block:0 96px; }
+
+  header.mast { border-bottom:2px solid var(--ink); padding-block:40px 20px; margin-bottom:36px; }
+  .eyebrow { font-family:var(--sans); font-size:11px; font-weight:600; letter-spacing:.14em;
+             text-transform:uppercase; color:var(--ink-faint); display:flex; flex-wrap:wrap;
+             gap:6px 16px; margin-bottom:18px; }
+  h1 { font-family:var(--sans); font-weight:700; font-size:clamp(30px,6vw,44px);
+       line-height:1.08; letter-spacing:-.022em; margin:0 0 14px; text-wrap:balance; }
+  .standfirst { font-size:19px; color:var(--ink-soft); margin:0; max-width:60ch; }
+
+  h2 { font-family:var(--sans); font-weight:600; font-size:13px; letter-spacing:.1em;
+       text-transform:uppercase; color:var(--gpu); margin:56px 0 6px;
+       padding-bottom:8px; border-bottom:1px solid var(--rule); }
+  h3 { font-family:var(--sans); font-weight:600; font-size:20px; letter-spacing:-.01em;
+       margin:30px 0 8px; text-wrap:balance; }
+  p { margin:0 0 16px; max-width:66ch; }
+  code { font-family:var(--mono); font-size:.86em; }
+  p code, li code, td code { background:var(--sunk); padding:1px 5px; border-radius:3px;
+                             color:var(--ink); word-break:break-word; }
+  strong { font-weight:600; }
+
+  pre { font-family:var(--mono); font-size:13px; line-height:1.55; background:var(--surface);
+        border:1px solid var(--rule); border-left:3px solid var(--ink-faint);
+        padding:14px 16px; overflow-x:auto; margin:0 0 20px; color:var(--ink); }
+  pre.good { border-left-color:var(--gpu); }
+  pre b { font-weight:500; color:var(--warn); }
+  pre i { font-style:normal; color:var(--ink-faint); }
+
+  .tw { overflow-x:auto; margin:0 0 22px; }
+  table { border-collapse:collapse; width:100%; font-size:14.5px; }
+  th,td { text-align:left; padding:9px 12px; border-bottom:1px solid var(--rule); vertical-align:top; }
+  th { font-family:var(--sans); font-size:10.5px; font-weight:600; letter-spacing:.09em;
+       text-transform:uppercase; color:var(--ink-faint);
+       border-bottom:1.5px solid var(--ink-faint); white-space:nowrap; }
+  td { font-family:var(--sans); font-size:14px; color:var(--ink-soft); }
+  td:first-child { color:var(--ink); }
+  tbody tr:last-child td { border-bottom:none; }
+  .ok { color:var(--gpu); font-weight:600; }
+  .bad { color:var(--warn); font-weight:600; }
+  .pt { font-family:var(--mono); font-weight:500; color:var(--warn); white-space:nowrap; }
+
+  figure { margin:26px 0 28px; }
+  figure svg { display:block; width:100%; max-width:100%; height:auto; }
+  figcaption { font-family:var(--sans); font-size:13px; color:var(--ink-faint);
+               margin-top:10px; max-width:66ch; line-height:1.5; }
+
+  .note { background:var(--surface); border:1px solid var(--rule);
+          border-top:2px solid var(--warn); padding:18px 20px; margin:0 0 24px; }
+  .note.win { border-top-color:var(--gpu); }
+  .note h4 { font-family:var(--sans); font-size:12px; font-weight:600; letter-spacing:.09em;
+             text-transform:uppercase; color:var(--warn); margin:0 0 8px; }
+  .note.win h4 { color:var(--gpu); }
+  .note p:last-child { margin-bottom:0; }
+
+  ul.plain { padding-left:20px; margin:0 0 18px; }
+  ul.plain li { margin-bottom:8px; max-width:64ch; }
+
+  footer { margin-top:60px; padding-top:20px; border-top:1px solid var(--rule);
+           font-family:var(--sans); font-size:13px; color:var(--ink-faint); }
+  footer code { background:none; padding:0; }
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <div class="eyebrow">
+    <span>PhenoTypic · staged GPU engine</span>
+    <span>Reference</span>
+    <span>2026-09-15</span>
+  </div>
+  <h1>Staged Run Lifecycle</h1>
+  <p class="standfirst">How the three stages are dispatched to SLURM, where each intermediate lands, how the next stage finds it, and the ordering that makes a crash at any point recoverable.</p>
+</header>
+
+<p>A pipeline containing a <code>GpuDetector</code> does not run per image. It splits into CPU preprocess → resident-model GPU inference → CPU measure, so a GPU node is never occupied by CPU work. This page is the reference for what that produces on disk and how the pieces find each other.</p>
+
+<h2>Dispatch</h2>
+
+<p>The three stages are submitted as an <code>afterany</code> dependency chain under a fresh <strong>orchestration epoch</strong>. Every submission is recorded in an append-only <strong>ledger</strong>, and a successor is believed only when the ledger proves it — a controller looks for a row tokenised <code>controller-after-&lt;predecessor_id&gt;</code> rather than trusting a job id it was handed.</p>
+
+<p>Only controller 0 is submitted initially. <strong>Before</strong> it launches Stage-1 chunk 0 it pre-arms a dependent recovery controller, so a controller that dies already has a successor queued rather than needing something alive to notice. No worker installs a signal handler and no worker requeues itself.</p>
+
+<figure>
+  <svg viewBox="0 0 860 250" role="img" aria-label="Controller zero pre-arms a dependent recovery controller, then launches Stage 1 as a chunked CPU array, Stage 2 as an unchunked GPU shard array, and Stage 3 as a chunked CPU array, with a dependent afterany finalizer as the sole publisher of aggregated outputs and the completion marker. Every submission is recorded in an append-only ledger.">
+    <defs>
+      <marker id="lc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <polygon points="0,0 10,5 0,10" fill="currentColor"/>
+      </marker>
+    </defs>
+
+    <rect x="0" y="30" width="150" height="44" fill="var(--surface)" stroke="var(--ink-faint)" stroke-width="1.5"/>
+    <text x="75" y="49" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12" font-weight="600" fill="currentColor">Controller 0</text>
+    <text x="75" y="64" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="10" fill="var(--ink-soft)">epoch fenced</text>
+
+    <path d="M 75 74 L 75 118 L 150 118" fill="none" stroke="var(--ink-faint)" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#lc)"/>
+    <rect x="154" y="100" width="188" height="36" fill="var(--sunk)" stroke="var(--rule)" stroke-dasharray="3 2"/>
+    <text x="248" y="122" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="10.5" fill="var(--ink-faint)">recovery controller, pre-armed</text>
+
+    <line x1="150" y1="52" x2="196" y2="52" stroke="currentColor" stroke-width="1.4" marker-end="url(#lc)"/>
+
+    <rect x="200" y="30" width="132" height="44" fill="var(--cpu-soft)" stroke="var(--cpu)" stroke-width="1.5"/>
+    <text x="266" y="48" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12" font-weight="600" fill="currentColor">Stage 1</text>
+    <text x="266" y="63" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="10" fill="var(--cpu)">CPU array · chunked</text>
+
+    <line x1="332" y1="52" x2="378" y2="52" stroke="currentColor" stroke-width="1.4" marker-end="url(#lc)"/>
+
+    <rect x="382" y="30" width="150" height="44" fill="var(--gpu-soft)" stroke="var(--gpu)" stroke-width="1.5"/>
+    <text x="457" y="48" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12" font-weight="600" fill="currentColor">Stage 2</text>
+    <text x="457" y="63" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="10" fill="var(--gpu)">GPU shards · NOT chunked</text>
+
+    <line x1="532" y1="52" x2="578" y2="52" stroke="currentColor" stroke-width="1.4" marker-end="url(#lc)"/>
+
+    <rect x="582" y="30" width="132" height="44" fill="var(--cpu-soft)" stroke="var(--cpu)" stroke-width="1.5"/>
+    <text x="648" y="48" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12" font-weight="600" fill="currentColor">Stage 3</text>
+    <text x="648" y="63" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="10" fill="var(--cpu)">CPU array · chunked</text>
+
+    <line x1="714" y1="52" x2="756" y2="52" stroke="currentColor" stroke-width="1.4" marker-end="url(#lc)"/>
+    <rect x="760" y="26" width="100" height="52" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+    <text x="810" y="46" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11.5" font-weight="600" fill="currentColor">finalizer</text>
+    <text x="810" y="60" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="9.5" fill="var(--ink-soft)">afterany</text>
+    <text x="810" y="72" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="9.5" fill="var(--ink-soft)">sole publisher</text>
+
+    <rect x="0" y="168" width="860" height="52" fill="var(--sunk)" stroke="var(--rule)"/>
+    <text x="14" y="188" font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="600" letter-spacing="1" fill="var(--ink-faint)">APPEND-ONLY LEDGER</text>
+    <text x="14" y="207" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--ink-soft)">every submission recorded · a successor is believed only via a row tokenised  controller-after-&lt;predecessor_id&gt;</text>
+    <path d="M 75 74 L 75 150 L 430 150 L 430 164" fill="none" stroke="var(--ink-faint)" stroke-width="1" stroke-dasharray="2 3"/>
+  </svg>
+  <figcaption>Stages 1 and 3 chunk to fit the scheduler's limits; Stage 2 cannot, because a shard worker streams its whole shard on one resident model. The finalizer is the only job that publishes aggregated outputs and the run's completion marker.</figcaption>
+</figure>
+
+<pre>chunk_limit     = min(MaxArraySize, submit_capacity)
+submit_capacity = MaxSubmitJobs - 2   <i># the running controller + its pre-armed recovery</i></pre>
+
+<p>Because Stage 2 cannot be chunked, a <code>--gpu-shards</code> value above <code>chunk_limit</code> is rejected at submit rather than silently truncated, and <code>MaxSubmitJobs &lt; 3</code> is refused outright — there is no room for controller, array and recovery. After a Stage-2 timeout the controller derives the remaining work from the Stage-2 signals actually on disk and submits another round.</p>
+
+<h2>Where things land</h2>
+
+<div class="tw"><table>
+  <thead><tr><th>Artifact</th><th>Path</th><th>Written by</th><th>Lifetime</th></tr></thead>
+  <tbody>
+    <tr><td>Per-image layer state</td><td><code>results/&lt;ds&gt;/zarr/&lt;stem&gt;.ome.zarr/</code></td><td>Stage 1, re-promoted by Stage 3</td><td class="ok">durable — it is the run output</td></tr>
+    <tr><td>Raw detector output</td><td><code>.phenotypic/progress/stage2_raw/&lt;ds&gt;/&lt;slot&gt;/&lt;stem&gt;.npy</code></td><td>Stage 2</td><td>consumed by Stage 3</td></tr>
+    <tr><td>Done token</td><td><code>.phenotypic/progress/stage2_done/&lt;ds&gt;/&lt;slot&gt;/&lt;stem&gt;.json</code></td><td>Stage 2</td><td>consumed by Stage 3</td></tr>
+    <tr><td>Completion marker</td><td><code>.phenotypic/progress/</code></td><td>Stage 3, atomically</td><td>durable</td></tr>
+    <tr><td>Composite branch masks</td><td class="bad">nowhere</td><td>—</td><td>in-memory, inside one <code>_operate</code> call</td></tr>
+  </tbody>
+</table></div>
+
+<p><strong>Stage 2 opens the store read-only and never writes to it.</strong> Exactly one array crosses a stage boundary per detector. A composite's CPU sibling masks are recomputed in Stage 3 rather than carried, and the merged result becomes durable only when Stage 3 re-promotes the store.</p>
+
+<h2>How the next stage finds it</h2>
+
+<p>Continuation is <strong>content-defined</strong>. No stage trusts a record of intent to tell it what happened; each re-derives what is left by looking at artifacts. Three predicates, in order:</p>
+
+<pre class="good">valid_stage1_store(...)        <i># a promoted, well-formed store exists</i>
+stage2_result_replayable(...)  <i># the raw array AND its token are both present</i>
+stage3_completion_exists(...)  <i># the atomic completion marker for this image</i></pre>
+
+<p>Which is why <strong>re-running the same command is the recovery procedure</strong>. There is no <code>--resume</code> flag, and none is needed.</p>
+
+<h2>The ordering that makes a crash safe</h2>
+
+<p>The write and delete orders are deliberate mirrors, and the invariant is stated in the source at every consumption site: <em>"Token FIRST at every consumption site: the only reachable intermediate state must be 'no token, orphan raw'."</em></p>
+
+<figure>
+  <svg viewBox="0 0 860 300" role="img" aria-label="Stage 2 writes the raw array before the token; Stage 3 promotes the store, writes the completion marker, then deletes the token before the raw array. Six crash points are marked, and every one leaves a state that is either already complete or recomputable.">
+    <defs>
+      <marker id="lf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <polygon points="0,0 10,5 0,10" fill="currentColor"/>
+      </marker>
+    </defs>
+
+    <text x="0" y="16" font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="600" letter-spacing="1.1" fill="var(--gpu)">STAGE 2 · WRITE</text>
+
+    <rect x="0" y="30" width="180" height="38" fill="var(--gpu-soft)" stroke="var(--gpu)"/>
+    <text x="90" y="54" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="currentColor">infer</text>
+    <line x1="180" y1="49" x2="222" y2="49" stroke="currentColor" stroke-width="1.3" marker-end="url(#lf)"/>
+    <text x="201" y="82" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500" fill="var(--warn)">✗A</text>
+
+    <rect x="226" y="30" width="180" height="38" fill="var(--gpu-soft)" stroke="var(--gpu)"/>
+    <text x="316" y="54" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="currentColor">write raw</text>
+    <line x1="406" y1="49" x2="448" y2="49" stroke="currentColor" stroke-width="1.3" marker-end="url(#lf)"/>
+    <text x="427" y="82" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500" fill="var(--warn)">✗B</text>
+
+    <rect x="452" y="30" width="180" height="38" fill="var(--gpu-soft)" stroke="var(--gpu)"/>
+    <text x="542" y="54" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="currentColor">write token</text>
+    <line x1="632" y1="49" x2="674" y2="49" stroke="currentColor" stroke-width="1.3" marker-end="url(#lf)"/>
+
+    <rect x="678" y="30" width="182" height="38" fill="var(--surface)" stroke="var(--gpu)" stroke-width="1.5"/>
+    <text x="769" y="54" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="600" fill="var(--gpu)">signal complete</text>
+
+    <text x="0" y="140" font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="600" letter-spacing="1.1" fill="var(--cpu)">STAGE 3 · CONSUME</text>
+
+    <rect x="0" y="154" width="152" height="38" fill="var(--cpu-soft)" stroke="var(--cpu)"/>
+    <text x="76" y="178" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="currentColor">replay + measure</text>
+    <line x1="152" y1="173" x2="184" y2="173" stroke="currentColor" stroke-width="1.3" marker-end="url(#lf)"/>
+    <text x="168" y="206" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500" fill="var(--warn)">✗C</text>
+
+    <rect x="188" y="154" width="152" height="38" fill="var(--cpu-soft)" stroke="var(--cpu)"/>
+    <text x="264" y="178" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="currentColor">promote store</text>
+    <line x1="340" y1="173" x2="372" y2="173" stroke="currentColor" stroke-width="1.3" marker-end="url(#lf)"/>
+    <text x="356" y="206" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500" fill="var(--warn)">✗D</text>
+
+    <rect x="376" y="154" width="152" height="38" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+    <text x="452" y="178" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" font-weight="500" fill="currentColor">write marker</text>
+    <line x1="528" y1="173" x2="560" y2="173" stroke="currentColor" stroke-width="1.3" marker-end="url(#lf)"/>
+    <text x="544" y="206" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500" fill="var(--warn)">✗E</text>
+
+    <rect x="564" y="154" width="140" height="38" fill="var(--cpu-soft)" stroke="var(--cpu)"/>
+    <text x="634" y="178" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="currentColor">delete token</text>
+    <line x1="704" y1="173" x2="732" y2="173" stroke="currentColor" stroke-width="1.3" marker-end="url(#lf)"/>
+    <text x="718" y="206" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" font-weight="500" fill="var(--warn)">✗F</text>
+
+    <rect x="736" y="154" width="124" height="38" fill="var(--cpu-soft)" stroke="var(--cpu)"/>
+    <text x="798" y="178" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="currentColor">delete raw</text>
+
+    <rect x="0" y="240" width="860" height="46" fill="var(--warn-soft)" stroke="var(--warn)"/>
+    <text x="14" y="259" font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="600" letter-spacing="1" fill="var(--warn)">THE ONLY REACHABLE INTERMEDIATE STATE</text>
+    <text x="14" y="277" font-family="IBM Plex Mono, monospace" font-size="11" fill="currentColor">no token, orphan raw — which reads as "not done", so the work is simply redone</text>
+  </svg>
+  <figcaption>Raw before token on the way in; token before raw on the way out. Both orders chosen so that no crash can leave a state claiming "done" while being unreplayable.</figcaption>
+</figure>
+
+<div class="tw"><table>
+  <thead><tr><th>Crash</th><th>What is on disk</th><th>What happens next</th></tr></thead>
+  <tbody>
+    <tr><td class="pt">✗A</td><td>nothing written</td><td class="ok">Stage 2 recomputes</td></tr>
+    <tr><td class="pt">✗B</td><td>raw, but no token</td><td class="ok">reads as "not done" → Stage 2 recomputes and overwrites</td></tr>
+    <tr><td class="pt">✗C</td><td>raw + token; store not yet promoted</td><td class="ok">Stage 3 re-runs from the raw array</td></tr>
+    <tr><td class="pt">✗D</td><td>store promoted, no marker</td><td class="ok">Stage 3 re-runs; replay is from the raw array, never the store's own objmap, so promoting twice is idempotent</td></tr>
+    <tr><td class="pt">✗E</td><td>marker written; raw + token orphaned</td><td class="ok">image is complete; the orphans are inert</td></tr>
+    <tr><td class="pt">✗F</td><td>marker written; orphan raw</td><td class="ok">image is complete; the orphan is inert</td></tr>
+  </tbody>
+</table></div>
+
+<p>Writing the marker <em>before</em> the deletes is what makes ✗E and ✗F harmless: continuation checks the marker first, so leftover files are never mistaken for work to do. Deleting the token before the raw is what makes ✗F the only partial-cleanup state — the reverse order would allow "token says done, raw is gone", which no later stage could act on.</p>
+
+<div class="note">
+  <h4>Gap: orphaned raws are never swept</h4>
+  <p>Cleanup is strictly <strong>per image, at Stage 3</strong>. An image that never reaches Stage 3 — a terminal scientific failure, an OOM kill — leaves its raw array behind permanently. The run finalizer clears chunk, recompile-shard and analysis artifacts from <code>.phenotypic/progress/</code>, but nothing sweeps <code>stage2_raw/</code>.</p>
+  <p>One <code>(H, W)</code> <code>uint16</code> array per orphan accumulates across a large run. It is pre-existing rather than newly introduced, and keying the signal by detector slot makes it tidier to sweep later, since orphans sit under a per-detector directory. Worth a follow-up; not a blocker.</p>
+</div>
+
+<h2>Two things that surprise people</h2>
+
+<ul class="plain">
+  <li><strong>Without <code>--wait</code>, the CLI reports submission only.</strong> The dependent finalizer is the sole publisher of aggregated outputs and the completion marker — the submitting process publishes neither.</li>
+  <li><strong>With <code>--wait</code>, the aggregated outputs are written twice.</strong> The autonomous strategy never sets <code>remote_managed</code>, so the CLI also aggregates in the submitting process while the finalizer later aggregates again. The two are serialised by a lock and read the same authorised sources, so they write the same bytes — redundant rather than divergent. That last clause holds only because shard assignment is a <em>contiguous</em> split; under the older strided assignment, merge order depended on the worker count and the two writers produced different bytes.</li>
+</ul>
+
+<footer>
+  Reference for the existing staged engine. Companion to the nested-<code>GpuDetector</code> design, which adds the <code>&lt;slot&gt;</code> level to the Stage-2 signal paths above.
+</footer>
+
+</div>

@@ -47,6 +47,8 @@ from typing import Any, Final, Literal, Union, get_args, get_origin
 import annotated_types as at
 import numpy as np
 
+from phenotypic.sdk_._operation_tree import iter_child_operations
+
 from ._domains import Categorical, FloatRange, IntRange
 from ._inferred import Excluded, ExcludeReason, InferredSearchSpace
 from ._space import Knob
@@ -624,9 +626,21 @@ def _infer_nested_field(
 ) -> tuple[list[Knob], list[Excluded]]:
     """Recurse one level into an operation-valued field's live value.
 
-    Reads ``op.<field_name>``. List members are indexed (``<field>[<i>]``) and
-    recursed via :func:`_recurse_into_op`; ``None`` slots, nested pipelines, and
-    single operation-valued fields are skipped.
+    Enumerates ``op``'s operation-bearing children via the shared
+    :func:`~phenotypic.sdk_._operation_tree.iter_child_operations` walker,
+    narrowed to the indexed ``"<field_name>[<i>]"`` members of *this* field —
+    that narrowing, plus the two exclusions below, is ``tune``'s own depth
+    rule, not the walker's, and stays here rather than moving into the shared
+    module:
+
+    - A **bare, non-list** operation-valued field (the walker yields it as the
+      plain field name, with no ``[``) is never recursed — ``_infer_field``
+      already records it as ``Excluded(unsupported_type)``, elsewhere.
+    - A **nested pipeline** list member is skipped (depth cap = 1; no chaining
+      into a sub-pipeline's own ops).
+
+    ``None`` slots are never yielded by the walker, so they need no explicit
+    skip here.
 
     ``conditional_on`` ties a nested knob to the parent's ``__enabled__`` **only
     when the parent op is presence-wrapped** (``type(op)._tune_optional`` is
@@ -643,21 +657,22 @@ def _infer_nested_field(
     Returns:
         ``(knobs, excluded)`` from the one-level recursion.
     """
-    value = getattr(op, field_name, None)
     conditional_on = _parent_presence_condition(op, position)
+    list_prefix = f"{field_name}["
 
     knobs: list[Knob] = []
     excluded: list[Excluded] = []
-    if isinstance(value, list):
-        for index, member in enumerate(value):
-            if not _is_recursable_op(member):
-                continue  # skip None slots and nested pipelines (depth cap)
-            prefix = f"{position}.{field_name}[{index}]"
-            k, e = _recurse_into_op(
-                member, prefix, factor=factor, conditional_on=conditional_on
-            )
-            knobs.extend(k)
-            excluded.extend(e)
+    for segment, child in iter_child_operations(op):
+        if not (segment.startswith(list_prefix) and segment.endswith("]")):
+            continue  # a different field, or a bare (non-list) operation field
+        if not _is_recursable_op(child):
+            continue  # skip a nested pipeline (depth cap)
+        prefix = f"{position}.{segment}"
+        k, e = _recurse_into_op(
+            child, prefix, factor=factor, conditional_on=conditional_on
+        )
+        knobs.extend(k)
+        excluded.extend(e)
     return knobs, excluded
 
 

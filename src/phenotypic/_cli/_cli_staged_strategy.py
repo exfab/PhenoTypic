@@ -21,6 +21,7 @@ from uuid import uuid4
 from joblib import Parallel, delayed
 
 from phenotypic import ImagePipeline
+from phenotypic._core._provenance import continuing_provenance_application
 from phenotypic.sdk_ import (
     event_log_path,
     progress_dir,
@@ -35,11 +36,13 @@ from ._cli_execution_strategies import (
     _record_local_terminal_failure,
 )
 from ._cli_pipeline_split import split_pipeline_at_gpu
+from ._cli_replay_detector import build_replay_pipeline
 from ._cli_completion import valid_image_success
 from ._cli_failure_tracker import PerImageScientificError, work_id_for_image
 from ._cli_stage2_token import (
     delete_stage2_raw,
     delete_stage2_token,
+    detector_slot,
     stage2_result_replayable,
 )
 from ._cli_staged_resume import (
@@ -75,6 +78,11 @@ class StagedGpuStrategy(ExecutionStrategy):
         plan = split_pipeline_at_gpu(
             ImagePipeline.from_json(cfg.pipeline_json)
         )
+        # One slot for the whole run: the pipeline is fixed, so the Stage-2
+        # signal's key is too. Derived once here rather than per image, so no
+        # probe in the three stages below can drift onto a different slot than
+        # the one Stage 2 wrote.
+        slot = detector_slot(plan.gpu_path)
         event_log = event_log_path(output_dir)
         tasks = [(ds, img) for ds in datasets for img in ds.images]
 
@@ -169,7 +177,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                 return
             if cfg.resume:
                 clear_downstream_artifacts_for_stage1(
-                    output_dir, ds.name, source_image_stem(img)
+                    output_dir, ds.name, source_image_stem(img), slot
                 )
             attempt_id = uuid4().hex
             try:  # isolate one bad image from the batch (failed event logged)
@@ -214,7 +222,7 @@ class StagedGpuStrategy(ExecutionStrategy):
             # BOTH halves: a token whose raw array is gone is not a Stage-2
             # result, and re-running Stage 2 is the only thing that recovers it.
             if not stage2_result_replayable(
-                output_dir, ds.name, source_image_stem(img)
+                output_dir, ds.name, source_image_stem(img), slot
             )
             and not _terminal_output_exists(ds.name, img)
         ]
@@ -248,7 +256,9 @@ class StagedGpuStrategy(ExecutionStrategy):
                         output_dir,
                         ds.name,
                         source_image_stem(img),
+                        slot,
                         cfg.image_type,
+                        stage2_prefix=plan.stage2_prefix,
                     )
             except Exception as exc:
                 _record_local_terminal_failure(
@@ -271,7 +281,7 @@ class StagedGpuStrategy(ExecutionStrategy):
             if cfg.resume and _terminal_output_exists(ds.name, img):
                 return ds.name, True
             if not stage2_result_replayable(
-                output_dir, ds.name, source_image_stem(img)
+                output_dir, ds.name, source_image_stem(img), slot
             ):
                 # Stage 2 failed/absent for this image (S6): skip + record.
                 emit_missing_prereq(
@@ -314,10 +324,10 @@ class StagedGpuStrategy(ExecutionStrategy):
                     # "no token, orphan raw" (inert), never "token present,
                     # raw missing" (Stage 3 replays into FileNotFoundError).
                     delete_stage2_token(
-                        output_dir, ds.name, source_image_stem(img)
+                        output_dir, ds.name, source_image_stem(img), slot
                     )
                     delete_stage2_raw(
-                        output_dir, ds.name, source_image_stem(img)
+                        output_dir, ds.name, source_image_stem(img), slot
                     )
                 return ds.name, True
             except Exception as exc:
@@ -402,18 +412,27 @@ class StagedGpuStrategy(ExecutionStrategy):
         event_log: Path,
         results: Dict[str, Dict[str, int]],
     ) -> None:
-        """``--mode process --layer objmap``: replay Stage 2's raw result and
-        write the objmap layer (mirrored) — no measurement (Spec 1 §6). Runs
+        """``--mode process --layer objmap``: replay Stage 2's raw result,
+        run the **post-detector op chain**, and write the objmap layer
+        (mirrored) — no measurement (Spec 1 §6, nested-staging spec §8). Runs
         after Stages 1-2; consumes the token and the raw array after export.
+
+        The export means *the objmap your pipeline produces*. A pipeline
+        declaring ``MaskFill``/``SmallObjectRemover`` after its detector is
+        asking for those to shape the objmap, and for a **nested** detector the
+        raw array is one *branch* of a composite, not the objmap at all. Both
+        cases therefore run the same chain the enclosing operation would run in
+        a single pass, with a :class:`ReplayDetector` substituted at
+        ``plan.gpu_path`` so no live GPU inference happens here.
 
         The merge reads :func:`load_stage2_raw`, **not the store** (ledger
         **FLOW-16**). Stage 2 never writes into the store, so the store's
         objmap here is still Stage 1's zeros; a store read would export an
         all-zeros PNG for every image, silently.
 
-        Nothing is restored or re-promoted afterwards. ``_write_object_output``
-        mutates only the in-memory image, so the residue left on disk is Stage
-        1's zeros — exactly what the HDF path left. A store write placed after
+        Nothing is restored or re-promoted afterwards. The apply mutates only
+        the in-memory image, so the residue left on disk is Stage 1's zeros —
+        exactly what the HDF path left. A store write placed after
         ``_publish_local_image_success`` would rewrite ``zarr.json`` and
         invalidate the descriptor the marker just recorded (ledger
         **FLOW-30**/**FLOW-6**).
@@ -426,6 +445,9 @@ class StagedGpuStrategy(ExecutionStrategy):
 
         cfg = self.config
         image_cls = _image_class(cfg.image_type)
+        # Same derivation as the staged run above, from this method's own
+        # ``plan`` parameter -- the export must read the slot Stage 2 wrote.
+        slot = detector_slot(plan.gpu_path)
         for ds, img in tasks:
             out_path = process_only_output_path(
                 output_dir, img, cfg.input_path, "objmap", fmt="tiff"
@@ -440,7 +462,7 @@ class StagedGpuStrategy(ExecutionStrategy):
                 results[ds.name]["completed"] += 1
                 continue
             if not stage2_result_replayable(
-                output_dir, ds.name, source_image_stem(img)
+                output_dir, ds.name, source_image_stem(img), slot
             ):
                 emit_missing_prereq(
                     event_log,
@@ -459,10 +481,45 @@ class StagedGpuStrategy(ExecutionStrategy):
                     )
                     image = image_cls.load_zarr(store)
                     raw = load_stage2_raw(
-                        output_dir, ds.name, source_image_stem(img)
+                        output_dir, ds.name, source_image_stem(img), slot
                     )
+                    # Substitute at the detector's path rather than writing the
+                    # raw array here: `post_pipeline` is cut at the detector's
+                    # TOP-LEVEL ANCESTOR, so for a nested detector it contains
+                    # the real one, and applying it as-is would re-run live GPU
+                    # inference on a CPU node. No `detector_duration_seconds`:
+                    # this path reads no token and persists no journal.
+                    residual = build_replay_pipeline(plan, raw)
+                    # Stage 1 left the application "staged", which is NOT
+                    # terminal, so an apply at CLI owner-depth 0 would raise
+                    # "cannot start a new provenance application before the
+                    # last ends". `continuing_provenance_application` accepts
+                    # "staged" (`_provenance.py:454-465`) and raises the owner
+                    # depth, so the apply JOINS the open application instead of
+                    # appending a new one. Do NOT substitute
+                    # `set_provenance_status(image, "in_progress")`:
+                    # "in_progress" is also outside `_append_application`'s
+                    # terminal set {"complete", "failed"}, so it raises the very
+                    # error it looks like it prevents.
+                    #
+                    # NOTE the absent `provenance_success_sink`. Stage 3
+                    # installs one; this path must NOT, because the sink is what
+                    # writes to the store, and a store write after the success
+                    # marker invalidates the descriptor the marker just recorded
+                    # (ledger FLOW-16/FLOW-30/FLOW-6). The absence is
+                    # deliberate -- do not "restore" it.
+                    #
+                    # The wrapper is the one the single `_write_object_output`
+                    # call had. This does strictly MORE work -- the whole
+                    # post-detector op chain -- so it is strictly more likely to
+                    # raise, and an unwrapped exception changes how
+                    # `_record_local_terminal_failure` classifies the image.
                     try:
-                        plan.gpu_detector._write_object_output(image, raw)
+                        with continuing_provenance_application(image):
+                            # Ops only; never `.measure()` -- `apply()` runs
+                            # `_run_operations` alone, so meas/post/filters/
+                            # model are not triggered by this call.
+                            residual.apply(image, inplace=True)
                     except MemoryError:
                         raise
                     except Exception as exc:
@@ -480,10 +537,10 @@ class StagedGpuStrategy(ExecutionStrategy):
                     )
                     # Ordering (ledger FLOW-6): publish, then token, then raw.
                     delete_stage2_token(
-                        output_dir, ds.name, source_image_stem(img)
+                        output_dir, ds.name, source_image_stem(img), slot
                     )
                     delete_stage2_raw(
-                        output_dir, ds.name, source_image_stem(img)
+                        output_dir, ds.name, source_image_stem(img), slot
                     )
                 results[ds.name]["completed"] += 1
             except Exception as exc:

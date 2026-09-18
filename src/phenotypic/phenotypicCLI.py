@@ -250,7 +250,12 @@ if TYPE_CHECKING:
         update_state_from_events,
         validate_resume_compatibility,
     )
-    from phenotypic._cli._cli_validation import validate_execution_config, validate_pipeline
+    from phenotypic._cli._cli_stage2_token import staged_detector_slot
+    from phenotypic._cli._cli_validation import (
+        UnstageableGpuDetectorError,
+        validate_execution_config,
+        validate_pipeline,
+    )
     from phenotypic._core._image_parts.detection_modes import available_modes  # noqa: F401
     from phenotypic._core._image_pipeline import ImagePipeline
     from phenotypic._core._provenance import pipeline_source_identity
@@ -296,7 +301,12 @@ _CLI_RUNTIME_IMPORTS: dict[str, tuple[str, ...]] = {
         "recompile_task_status_path",
     ),
     "phenotypic._cli._cli_interactive": ("execute_dry_run", "get_sample_datasets"),
-    "phenotypic._cli._cli_validation": ("validate_execution_config", "validate_pipeline"),
+    "phenotypic._cli._cli_validation": (
+        "UnstageableGpuDetectorError",
+        "validate_execution_config",
+        "validate_pipeline",
+    ),
+    "phenotypic._cli._cli_stage2_token": ("staged_detector_slot",),
 }
 
 _CLI_RUNTIME_MODULE_BY_NAME: dict[str, str] = {
@@ -2164,6 +2174,17 @@ def phenotypic_cli(
             gpu_shards=gpu_shards,
             gpu_slurm_args=_parse_slurm_args(gpu_slurm_args),
         )
+        # Refuse an unstageable GpuDetector HERE, before anything touches
+        # --output: every later step (overwrite clearing, run identity,
+        # --dry-run, strategy selection) sits below this line. Anything else
+        # the probe raises is left to the pipeline validation further down,
+        # which reports it as a clean "Pipeline loading failed" line.
+        try:
+            uses_staged_gpu_strategy(config)
+        except UnstageableGpuDetectorError as exc:
+            raise click.UsageError(str(exc)) from exc
+        except Exception:  # noqa: BLE001
+            pass
         manifest_snapshot = None
         if image_manifest is not None:
             try:
@@ -2727,9 +2748,13 @@ def phenotypic_cli(
                 marker_contract = bool(
                     resume_state.config.get("staged_stage3_markers", False)
                 )
+                # This block runs only under `staged_gpu_resume`, so the
+                # pipeline is known to hold a stageable GpuDetector.
+                staged_slot = staged_detector_slot(config.pipeline_json)
                 resume_plan = build_staged_resume_plan(
                     datasets=datasets,
                     output_dir=output_dir,
+                    slot=staged_slot,
                     input_root=config.input_path,
                     process_only_layer=config.process_only_layer,
                     markers_required=marker_contract,
@@ -2769,6 +2794,7 @@ def phenotypic_cli(
                 reconcile_stage3_publications(
                     output_dir,
                     config.full_dataset_inventory,
+                    staged_slot,
                     namespace="continuation-preflight",
                 )
                 config.staged_stage3_markers = True
@@ -3173,9 +3199,12 @@ def phenotypic_cli(
         )
         if should_finalize_measurements:
             if local_staged_publication and config.staged_stage3_markers:
+                # Guarded by `local_staged_publication`, which is only true
+                # for a staged GPU run, so the pipeline has a GpuDetector.
                 reconcile_stage3_publications(
                     output_dir,
                     config.full_dataset_inventory,
+                    staged_detector_slot(config.pipeline_json),
                     namespace="local-finalization",
                 )
             click.echo("\nAggregating measurements...")
@@ -3326,6 +3355,10 @@ def phenotypic_cli(
     except click.ClickException as exc:
         exc.show()
         sys.exit(exc.exit_code)
+    except UnstageableGpuDetectorError as exc:
+        # Backstop for a refusal raised after the preflight (e.g. the staged
+        # splitter): still a usage problem, never a traceback.
+        raise click.UsageError(str(exc)) from exc
     except Exception as e:
         click.echo(f"\nUnexpected error: {e}", err=True)
         import traceback

@@ -534,6 +534,77 @@ def pipeline_step(key: str) -> Iterator[None]:
         _pipeline_step_path.reset(token)
 
 
+def apply_child(
+    operation: Any,
+    image: "Image",
+    *,
+    segment: str,
+    inplace: bool = False,
+    reset: bool | None = None,
+) -> "Image":
+    """Apply a nested *operation* under its own ``pipeline_step`` segment.
+
+    Container operations (:class:`~phenotypic.detect.CompositeDetector`,
+    :class:`~phenotypic.enhance.CompositeEnhance`, ...) drive children by
+    calling ``.apply()`` directly, which -- unlike
+    ``ImagePipeline._run_operations`` -- pushes no step segment. Every child
+    therefore inherited the container's own path, so N children of a composite
+    were indistinguishable in the journal. Routing child applies through here
+    fixes that, and makes a walker path (``sdk_._operation_tree``) and a
+    recorded ``pipeline_step_path`` the same value (spec 5.3).
+
+    ``segment`` must be a non-empty string, normally ``f"ops[{i}]"``;
+    :func:`validate_provenance_journal` rejects a path containing anything
+    else, so an integer branch index is illegal.
+
+    NOT for measurements: a nested operation run by a ``MeasureFeatures`` is a
+    private probe whose steps deliberately stay out of the plate's provenance
+    (see ``measure/CLAUDE.md``). Those keep calling ``.apply()`` directly.
+
+    Args:
+        operation: The child operation or nested ``ImagePipeline`` to apply.
+        image: The image handed to the child.
+        segment: The path segment recorded for this branch, e.g. ``"ops[0]"``
+            for a list entry or ``"inoculum_detector"`` for a single field.
+        inplace: Forwarded to the child's ``apply``. Defaults to ``False``;
+            a container whose child mutates the caller's image must pass
+            ``True`` explicitly or the child's work is silently discarded.
+        reset: Forwarded to the child's ``apply`` when the child is an
+            ``ImagePipelineCore`` -- which covers ``ImagePipeline`` and
+            ``NapariPipelineViewer``, the two instantiable shapes. ``None``
+            (the default) sends ``reset=False``, matching
+            ``ImagePipelineCore._run_operations`` (``:886``), which forces the
+            same value on any nested child whose signature accepts it, so an
+            intermediate pipeline cannot reset progress accumulated by its
+            parent. Ignored for a non-pipeline child, whose ``apply`` takes no
+            ``reset``.
+
+    Returns:
+        Image: Whatever the child's ``apply`` returned.
+    """
+    # Keyed on ImagePipelineCore, NOT ImagePipeline. A bare
+    # `NapariPipelineViewer` is an ImagePipelineCore without being an
+    # ImagePipeline (it is an ANCESTOR of ImagePipeline in the MRO, not a
+    # sibling), so an ImagePipeline gate skipped it -- and this function's
+    # own docstring says
+    # the default "matches ImagePipeline._run_operations", which forces
+    # reset=False on any child whose signature accepts it
+    # (`_image_pipeline_core.py:886`). For that one shape the claim was false.
+    # `_apply_stage2_prefix` (`_cli/_cli_staged_workers.py:187`) already keyed on
+    # the core, so this also makes the two agree rather than leaving a reader to
+    # discover they differ.
+    from phenotypic._core._pipeline_parts._image_pipeline_core import (
+        ImagePipelineCore,
+    )
+
+    kwargs: dict[str, Any] = {"inplace": inplace}
+    if isinstance(operation, ImagePipelineCore):
+        kwargs["reset"] = False if reset is None else reset
+
+    with pipeline_step(segment):
+        return operation.apply(image, **kwargs)
+
+
 @contextmanager
 def provenance_success_sink(
     sink: Callable[["Image"], object],
@@ -876,25 +947,55 @@ def append_operation_provenance(
     duration_seconds: float,
     pipeline_step_path: list[str] | None,
 ) -> None:
-    """Append one successful leaf record, including staged detector merges."""
+    """Append one successful leaf record, including staged detector merges.
+
+    Four fields are derived from *operation*, and an operation may override
+    each of them by defining the matching ``provenance_*`` hook. The staged
+    engine's ``ReplayDetector`` (``_cli/_cli_replay_detector.py``) is the one
+    implementer: it stands in for a ``GpuDetector`` whose inference already
+    happened on a GPU node, and the journal must name the **wrapped** detector
+    so a staged run's provenance matches a single-pass run's. Its
+    ``parameters`` override is not only a parity concern -- the stub holds an
+    ``NdArrayField``, so the default dump would serialise the entire recorded
+    objmap into the journal.
+    """
     journal = image._metadata.provenance_journal
     operations = _current_application(journal)["operations"]
-    parameters = json.loads(
-        json.dumps(operation.model_dump(mode="json"), ensure_ascii=False)
+    operation_name = (
+        operation.provenance_operation_name()
+        if hasattr(operation, "provenance_operation_name")
+        else type(operation).__name__
     )
+    operation_class = (
+        operation.provenance_operation_class()
+        if hasattr(operation, "provenance_operation_class")
+        else f"{type(operation).__module__}.{type(operation).__qualname__}"
+    )
+    source_parameters = (
+        operation.provenance_parameters()
+        if hasattr(operation, "provenance_parameters")
+        else operation.model_dump(mode="json")
+    )
+    # KEEP the JSON round-trip around whichever source supplied the value -- it
+    # is what guarantees the payload is JSON-native before
+    # validate_provenance_journal sees it.
+    parameters = json.loads(json.dumps(source_parameters, ensure_ascii=False))
+    duration = float(duration_seconds)
+    if hasattr(operation, "provenance_duration_offset"):
+        # The stub's own wall time covers the MERGE only; GPU inference
+        # happened in Stage 2 and its cost travels here in the Stage-2 token.
+        duration += float(operation.provenance_duration_offset())
     operations.append(
         {
             "sequence": len(_operations(journal)) + 1,
-            "operation_name": type(operation).__name__,
-            "operation_class": (
-                f"{type(operation).__module__}.{type(operation).__qualname__}"
-            ),
+            "operation_name": operation_name,
+            "operation_class": operation_class,
             "phenotypic_version": _installed_phenotypic_version(),
             "parameters": parameters,
             "applied_at_utc": datetime.now(timezone.utc)
             .isoformat(timespec="milliseconds")
             .replace("+00:00", "Z"),
-            "duration_seconds": float(duration_seconds),
+            "duration_seconds": duration,
             "pipeline_step_path": pipeline_step_path,
         }
     )

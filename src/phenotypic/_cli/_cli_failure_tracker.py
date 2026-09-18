@@ -188,6 +188,23 @@ def file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+#: Bumped when the semantics of a PROCESS-MODE EXPORTED LAYER change, so a
+#: process run resumed across the upgrade re-derives its images instead of
+#: reusing outputs that mean something different.
+#:
+#: Scope is deliberately narrow: this governs ``--mode process --layer <L>``
+#: outputs ONLY. It is NOT the package version (that would invalidate
+#: continuation on every patch release, breaking legitimate resume), and it is
+#: NOT a general "output semantics" dial -- read broadly, that is what argues
+#: for the base payload, which is wrong. See the placement note at the
+#: insertion point below.
+#:
+#: 1 -> 2: ``--layer objmap`` now applies the post-detector op chain, so the
+#:         export is the pipeline's objmap rather than the detector's raw
+#:         output (spec 2026-09-15-nested-gpu-staging §8).
+PROCESS_LAYER_SEMANTICS_REVISION = 2
+
+
 def processing_configuration_digest_from_values(
     *,
     image_type: str,
@@ -222,6 +239,23 @@ def processing_configuration_digest_from_values(
                 # would change every existing run's digest and cold-start
                 # every continuation in flight.
                 "process_format": process_format,
+                # Beside `process_format` and NOT in the base payload, for the
+                # reason the comment above it already gives: the behaviour
+                # change this tracks is scoped to `--mode process`, and a
+                # base-payload placement would cold-start every in-flight
+                # `full` and `measure` continuation for no correctness gain.
+                #
+                # The value names the layer, but note what that does NOT buy:
+                # the revision is ONE integer, so a bump moves `gray:1` to
+                # `gray:2` exactly as it moves `objmap:1` to `objmap:2`, and a
+                # `--layer gray` continuation is invalidated by an `objmap`
+                # semantics change. Only a per-layer revision would confine the
+                # bump to the layer whose meaning changed; the layer prefix
+                # here keeps the payload ready for that without claiming it.
+                # Invalidating too much is safe, so this is a cost, not a bug.
+                "layer_semantics": (
+                    f"{process_only_layer}:{PROCESS_LAYER_SEMANTICS_REVISION}"
+                ),
             }
         )
     else:

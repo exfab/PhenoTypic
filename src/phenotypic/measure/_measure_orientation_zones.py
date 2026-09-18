@@ -582,6 +582,42 @@ def radial_ring_orientation_profile(
     return ring_centres, sector_tilt, sector_resultant
 
 
+def _is_orthogonal_change(change: np.ndarray) -> np.ndarray:
+    """Return where a wrapped axial change is exactly 90 degrees (within ``_EPS``)."""
+    return np.isclose(np.abs(change), np.pi / 2.0, atol=_EPS, rtol=0.0)
+
+
+def _axial_change(outer: np.ndarray, inner: np.ndarray) -> np.ndarray:
+    """Return the seam-safe signed axial change ``outer - inner`` in radians.
+
+    The doubled-angle wrap puts an exactly 90-degree change on the ``+-pi``
+    branch cut of ``arctan2``, where the sign is decided by floating-point
+    noise of a few ulps and so differs between CPUs. Such a change has no
+    turning direction; it is stored canonically as ``+pi / 2`` so every
+    intermediate array is platform-independent, and signed summaries treat it
+    as directionless via :func:`_signed_axial_mean`.
+    """
+    doubled = 2.0 * (
+            np.asarray(outer, dtype=np.float64)
+            - np.asarray(inner, dtype=np.float64)
+    )
+    change = 0.5 * np.arctan2(np.sin(doubled), np.cos(doubled))
+    return np.where(_is_orthogonal_change(change), np.pi / 2.0, change)
+
+
+def _signed_axial_mean(changes: np.ndarray) -> float:
+    """Mean signed axial change, counting a 90-degree change as directionless.
+
+    An orthogonal change contributes zero, exactly as a pair of opposing
+    changes cancels, while still counting toward the mean's denominator; its
+    magnitude remains in the absolute summaries.
+    """
+    changes = np.asarray(changes, dtype=np.float64)
+    return float(
+            np.mean(np.where(_is_orthogonal_change(changes), 0.0, changes))
+    )
+
+
 def cumulative_ring_rotation_profile(sector_tilt: np.ndarray) -> np.ndarray:
     """Accumulate seam-safe axial rotation from the innermost ring.
 
@@ -628,28 +664,13 @@ def cumulative_ring_rotation_profile(sector_tilt: np.ndarray) -> np.ndarray:
                     and np.isfinite(sector_tilt[ring_index, sector_index])
             ):
                 break
-            adjacent_change = 0.5 * np.arctan2(
-                    np.sin(
-                            2.0
-                            * (
-                                    sector_tilt[ring_index, sector_index]
-                                    - sector_tilt[ring_index - 1, sector_index]
-                            )
-                    ),
-                    np.cos(
-                            2.0
-                            * (
-                                    sector_tilt[ring_index, sector_index]
-                                    - sector_tilt[ring_index - 1, sector_index]
-                            )
-                    ),
+            adjacent_change = float(
+                    _axial_change(
+                            sector_tilt[ring_index, sector_index],
+                            sector_tilt[ring_index - 1, sector_index],
+                    )
             )
-            if np.isclose(
-                    abs(adjacent_change),
-                    np.pi / 2.0,
-                    atol=_EPS,
-                    rtol=0.0,
-            ):
+            if _is_orthogonal_change(adjacent_change):
                 break
             cumulative[ring_index, sector_index] = (
                     cumulative[ring_index - 1, sector_index] + adjacent_change
@@ -773,11 +794,8 @@ def long_range_ring_rotation_profile(
             continue
         if abs(float(ring_centres[outer_index]) - target) > tolerance:
             continue
-        inner = sector_tilt[inner_index]
-        outer = sector_tilt[outer_index]
-        delta = 0.5 * np.arctan2(
-                np.sin(2.0 * (outer - inner)),
-                np.cos(2.0 * (outer - inner)),
+        delta = _axial_change(
+                sector_tilt[outer_index], sector_tilt[inner_index]
         )
         midpoint_rows.append(0.5 * (inner_radius + ring_centres[outer_index]))
         rotation_rows.append(delta)
@@ -837,7 +855,11 @@ def aggregate_long_range_rotation(
     if not finite.any():
         return (np.nan, np.nan, support)
     values = chosen[finite]
-    return (float(np.mean(np.abs(values))), float(np.mean(values)), support)
+    return (
+        float(np.mean(np.abs(values))),
+        _signed_axial_mean(values),
+        support,
+    )
 
 
 def aggregate_paired_zone_rotation(
@@ -865,11 +887,12 @@ def aggregate_paired_zone_rotation(
     support = float(valid.sum()) / float(inner.size) if inner.size else 0.0
     if not valid.any():
         return (np.nan, np.nan, support)
-    delta = 0.5 * np.arctan2(
-            np.sin(2.0 * (outer[valid] - inner[valid])),
-            np.cos(2.0 * (outer[valid] - inner[valid])),
+    delta = _axial_change(outer[valid], inner[valid])
+    return (
+        float(np.mean(np.abs(delta))),
+        _signed_axial_mean(delta),
+        support,
     )
-    return (float(np.mean(np.abs(delta))), float(np.mean(delta)), support)
 
 
 def _downsample_quiver(phi, coherence, block):
@@ -1873,6 +1896,7 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
 
         def _summarize_cells(
                 cells: np.ndarray,
+                signed_mean=lambda values: float(np.mean(values)),
         ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
             absolute = np.full(cells.shape[0], np.nan, dtype=np.float64)
             signed = np.full(cells.shape[0], np.nan, dtype=np.float64)
@@ -1882,14 +1906,16 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
                 support[index] = float(finite.sum()) / float(values.size)
                 if finite.any():
                     absolute[index] = float(np.mean(np.abs(values[finite])))
-                    signed[index] = float(np.mean(values[finite]))
+                    signed[index] = signed_mean(values[finite])
             return absolute, signed, support
 
         ring_absolute, ring_signed, ring_support = _summarize_cells(
                 ring_sector_tilt
         )
+        # Rotations use the same directionless rule as the measured
+        # SignedLongRangeRotation, so the figure agrees with the table.
         pair_absolute, pair_signed, pair_support = _summarize_cells(
-                signed_rotation
+                signed_rotation, signed_mean=_signed_axial_mean
         )
         ring_profile = {
             "radii"                 : ring_centres,

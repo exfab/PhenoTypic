@@ -373,7 +373,7 @@ class FilamentousFungiDetector(GridObjectDetector):
         7. Set objmap with assignment results
         """
 
-        from phenotypic import ImagePipeline
+        from phenotypic._core._provenance import apply_child
         from phenotypic.sdk_.reconnect import (
             build_reconnect_cost,
             compute_full_image_app2_gi_cost,
@@ -392,11 +392,16 @@ class FilamentousFungiDetector(GridObjectDetector):
             )
 
         # ── PHASE 1: INOCULUM DETECTION ─────────────────────────────
-        if isinstance(self.inoculum_detector, ImagePipeline):
-            inoculum_img = self.inoculum_detector.apply(image, inplace=False,
-                                                        reset=False)
-        else:
-            inoculum_img = self.inoculum_detector.apply(image, inplace=False)
+        # A single operation-valued FIELD, not a list entry, so the recorded
+        # segment is the field name -- the same address
+        # ``sdk_._operation_tree`` yields for it. ``apply_child`` supplies the
+        # ``reset=False`` a nested ImagePipeline needs.
+        inoculum_img = apply_child(
+                self.inoculum_detector,
+                image,
+                segment="inoculum_detector",
+                inplace=False,
+        )
         inoculum_objmask = inoculum_img.objmask[:]
 
         if inoculum_img.objmap[:].max() == 0:
