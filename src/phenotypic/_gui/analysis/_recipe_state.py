@@ -968,10 +968,16 @@ class RecipeState:
 
         load_warnings: List[PipelineLoadWarning] = []
         source_payload: dict[str, Any] | None = None
+        source_bytes = b""
         source_text = ""
 
         if read_path.exists():
-            source_text = read_path.read_text(encoding="utf-8")
+            # Fingerprint the bytes on disk, not decoded text: ``read_text``
+            # folds CRLF to LF, and ``is_stale`` re-hashes the raw file, so a
+            # CRLF recipe (any ``write_text`` on Windows) read as stale forever
+            # and every save was refused.
+            source_bytes = read_path.read_bytes()
+            source_text = source_bytes.decode("utf-8")
             parsed_payload = json.loads(source_text)
             if not isinstance(parsed_payload, dict):
                 raise TypeError("pipeline configuration must be a JSON object")
@@ -1005,7 +1011,7 @@ class RecipeState:
             pipeline=pipeline,
             seed_mtime_ns=mtime,
             seed_source_fingerprint=(
-                bytes_fingerprint(source_text.encode("utf-8"))
+                bytes_fingerprint(source_bytes)
                 if source_payload is not None
                 else None
             ),

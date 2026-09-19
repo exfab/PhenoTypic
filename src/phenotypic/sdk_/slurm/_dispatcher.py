@@ -147,7 +147,9 @@ echo "Dispatch complete"
 """
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(script_content)
+    # Explicit UTF-8 and LF: the locale default (cp1252 on Windows) cannot
+    # encode a non-ASCII output path, and bash rejects CRLF line endings.
+    output_path.write_text(script_content, encoding="utf-8", newline="\n")
     output_path.chmod(0o755)
 
     return output_path

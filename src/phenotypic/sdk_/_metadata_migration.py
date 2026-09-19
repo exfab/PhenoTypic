@@ -3021,8 +3021,11 @@ def _new_temp_path(source: Path) -> Path:
 
 
 def _fsync_file(path: Path) -> None:
-    """Flush a prepared file before it becomes eligible for publication."""
-    with path.open("rb") as handle:
+    """Flush a prepared file before it becomes eligible for publication.
+
+    Read-write on Windows, where ``fsync`` of a read-only handle is ``EBADF``.
+    """
+    with path.open("rb" if os.name == "posix" else "r+b") as handle:
         os.fsync(handle.fileno())
 
 
