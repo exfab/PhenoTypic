@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -151,7 +152,9 @@ def test_run_marker_written_before_slurm_branch(tmp_path, monkeypatch):
 
     spec_path = tmp_path / "spec.json"
     spec_path.write_text(_spec(tmp_path).model_dump_json())
-    out = tmp_path / "slurm #?% 雪 out"
+    # URL-hostile characters in the output path; Windows forbids ``?`` in a
+    # file name, so it is exercised on POSIX only.
+    out = tmp_path / ("slurm #?% 雪 out" if os.name == "posix" else "slurm #% 雪 out")
     journal_path = io.tune_cache_journal_path(out.absolute())
     storage_url = journal_url_for_path(journal_path)
     run_tuning(

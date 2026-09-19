@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shlex
 from pathlib import Path
 import shutil
 from types import SimpleNamespace
@@ -929,7 +930,7 @@ def test_generic_dispatcher_separates_control_and_lifecycle_roots(
         path.is_relative_to(control) for path in result.dispatcher_scripts
     )
     dispatcher = result.dispatcher_scripts[0].read_text()
-    assert f"--output {scientific}" in dispatcher
+    assert f"--output {shlex.quote(str(scientific))}" in dispatcher
     assert f"#SBATCH --output={control}" in dispatcher
     assert str(finalizer) in dispatcher
 

@@ -9,6 +9,7 @@ the small read helpers (``overlay_path``, ``has_overlay``,
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import polars as pl
@@ -496,6 +497,10 @@ def test_one_currency_check_replaces_two() -> None:
     assert "consumed_state_fingerprint" in descriptor.__dataclass_fields__
 
 
+@pytest.mark.skipif(
+    os.name == "nt",
+    reason="st_ctime is creation time on Windows, so chmod cannot move it",
+)
 def test_a_chmod_does_not_report_changed_on_disk(tmp_path: Path) -> None:
     """Audit S3, at the consumer.
 

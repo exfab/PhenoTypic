@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import shlex
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Callable
@@ -338,7 +339,7 @@ def test_ordinary_worker_and_slurm_script_transport_drop_originals(
     script = generate_array_job_script(dataset, (0, 1), config, output_dir).read_text()
     assert "--drop-originals" in script
     assert (
-        f"--pipeline \\\n    {snapshot.resolve()}"
+        f"--pipeline \\\n    {shlex.quote(str(snapshot.resolve()))}"
         in script
     )
     assert "--provenance-pipeline-source-path" in script

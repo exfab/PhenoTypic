@@ -14,6 +14,14 @@ from phenotypic._gui.browse import _tile_routes
 from phenotypic._gui.browse._source_probe import probe_source
 from phenotypic._gui.shell._sandbox import SandboxRoot
 
+#: Serving a store member needs directory-fd-anchored, no-follow opens. Where the
+#: platform lacks them (Windows) the route refuses with 422 by design, pinned by
+#: ``test_store_member_route_refuses_on_a_platform_without_safe_store_io``.
+requires_safe_store_io = pytest.mark.skipif(
+    not _tile_routes._SAFE_STORE_IO,
+    reason="this platform cannot anchor store reads to directory fds",
+)
+
 
 def _write_fake_ngff_image_group(store: Path, member: str) -> None:
     """Write the minimum real group/array metadata the route validates."""
@@ -123,6 +131,7 @@ def test_revisioned_asset_rejects_stale_revision(app_and_root):
     assert response.get_json() == {"error": "source image changed"}
 
 
+@requires_safe_store_io
 def test_published_plain_zarr_store_is_served_as_generation_addressed_bytes(
     monkeypatch, tmp_path
 ) -> None:
@@ -183,6 +192,45 @@ def test_published_plain_zarr_store_is_served_as_generation_addressed_bytes(
     assert not list(cache.rglob("*.dzi"))
 
 
+def test_store_member_route_refuses_on_a_platform_without_safe_store_io(
+    monkeypatch, tmp_path
+) -> None:
+    """The Windows branch, reachable from any OS: a published store is refused.
+
+    Without directory-fd-anchored, no-follow opens the route cannot prove a
+    member stays inside the store, so it returns 422 rather than serving.
+    """
+    monkeypatch.setattr(tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(_tile_routes, "_SAFE_STORE_IO", False)
+    sandbox_root = tmp_path / "sandbox"
+    store = sandbox_root / "plate.zarr"
+    chunk = store / "rgb" / "0" / "c" / "0"
+    chunk.parent.mkdir(parents=True)
+    chunk.write_bytes(b"chunk-bytes")
+    _write_fake_ngff_image_group(store, "rgb")
+    (store / "zarr.json").write_text(
+        '{"attributes":{"phenotypic":{'
+        '"store_schema_version":3,'
+        '"publication_protocol":"root-last-immutable-v1",'
+        '"series":{"rgb":"rgb"},"labels":{}}}}',
+        encoding="utf-8",
+    )
+    sandbox = SandboxRoot.from_path(sandbox_root)
+    app = dash.Dash(__name__)
+    app.layout = dash.html.Div()
+    _tile_routes.register(app, sandbox)
+    revision = probe_source(store, sandbox_root=sandbox_root)
+    token = sr.encode_token("plate.zarr")
+
+    response = app.server.test_client().get(
+        f"/assets/{token}/{revision.cache_key}/zarr/rgb/0/c/0"
+    )
+
+    assert response.status_code == 422
+    assert "cannot safely serve" in response.get_json()["error"]
+
+
+@requires_safe_store_io
 def test_published_store_range_does_not_materialize_the_member(
     monkeypatch, tmp_path
 ) -> None:
@@ -224,6 +272,7 @@ def test_published_store_range_does_not_materialize_the_member(
     assert response.data == b"2345"
 
 
+@requires_safe_store_io
 def test_published_store_route_exposes_only_declared_image_roots(
     tmp_path,
 ) -> None:
@@ -265,6 +314,7 @@ def test_published_store_route_exposes_only_declared_image_roots(
     assert table.status_code == 404
 
 
+@requires_safe_store_io
 def test_store_declaration_cannot_authorize_reserved_tables_root(
     tmp_path,
 ) -> None:
@@ -308,6 +358,7 @@ def test_store_declaration_cannot_authorize_reserved_tables_root(
     assert response.data != b"private-table"
 
 
+@requires_safe_store_io
 def test_store_declaration_cannot_authorize_an_arbitrary_directory(
     tmp_path,
 ) -> None:
@@ -340,6 +391,7 @@ def test_store_declaration_cannot_authorize_an_arbitrary_directory(
     assert response.data != b"not-an-image-group"
 
 
+@requires_safe_store_io
 def test_label_declaration_requires_an_ngff_image_label_group(
     tmp_path,
 ) -> None:
@@ -465,6 +517,7 @@ def test_malformed_store_member_fails_closed(
     assert response.status_code in {400, 404}
 
 
+@requires_safe_store_io
 def test_published_store_route_maps_unstable_root_to_conflict(
     monkeypatch, tmp_path
 ) -> None:
