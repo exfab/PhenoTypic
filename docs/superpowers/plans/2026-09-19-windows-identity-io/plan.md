@@ -370,6 +370,10 @@ class HeldDirectory(Protocol):
         self, name: str, *, max_bytes: int | None = None
     ) -> bytes: ...
 
+    def read_regular_with_stat(
+        self, name: str, *, max_bytes: int | None = None
+    ) -> tuple[bytes, os.stat_result]: ...
+
     def open_regular_stream(self, name: str) -> BinaryIO: ...
 
     def reverify(self) -> None: ...
@@ -446,6 +450,7 @@ Lift the mechanics from `_cli_recompile_recovery.py:241-305` and `_gui/browse/_t
 
 from __future__ import annotations
 
+import errno
 import os
 import stat
 from contextlib import contextmanager
@@ -473,13 +478,42 @@ _FILE_FLAGS = (
 )
 
 
-class _PosixHeldDirectory:
-    """A directory pinned by an open descriptor and its `st_dev`/`st_ino`."""
+def _refuse_os_error(exc: OSError, subject: Path) -> "IdentityRefused":
+    """Translate a no-follow open's refusal errno into the contract's error.
 
-    def __init__(self, path: Path, fd: int, owned: bool) -> None:
+    ``O_NOFOLLOW`` on a symlink raises ``ELOOP``; ``O_DIRECTORY`` on a file
+    raises ``ENOTDIR``. Both are refusals 2 and 3, not transport failures --
+    the code this backend replaces mapped them the same way
+    (``_cli_recompile_recovery.py:273-274``).
+    """
+    return IdentityRefused(f"{errno.errorcode.get(exc.errno, exc.errno)}: {subject}")
+
+
+_REFUSED_ERRNOS = frozenset({errno.ELOOP, errno.ENOTDIR, errno.EISDIR, errno.EMLINK})
+
+
+class _PosixHeldDirectory:
+    """A directory pinned by an open descriptor and its `st_dev`/`st_ino`.
+
+    ``parent``/``name`` are how ``reverify`` re-resolves this directory: an
+    identity read back from ``self._fd`` is the identity that fd was opened
+    with and can never differ, so a check written that way cannot fail.
+    """
+
+    def __init__(
+        self,
+        path: Path,
+        fd: int,
+        owned: bool,
+        *,
+        parent: "_PosixHeldDirectory | None" = None,
+        name: str | None = None,
+    ) -> None:
         self.path = path
         self._fd = fd
         self._owned = owned
+        self._parent = parent
+        self._name = name
         identity = os.fstat(fd)
         if not stat.S_ISDIR(identity.st_mode):
             raise IdentityRefused(f"not a directory: {path}")
@@ -488,9 +522,16 @@ class _PosixHeldDirectory:
 
     def child_directory(self, name: str) -> HeldDirectory:
         validate_component(name)
-        child_fd = os.open(name, _DIR_FLAGS, dir_fd=self._fd)
         try:
-            child = _PosixHeldDirectory(self.path / name, child_fd, owned=True)
+            child_fd = os.open(name, _DIR_FLAGS, dir_fd=self._fd)
+        except OSError as exc:
+            if exc.errno in _REFUSED_ERRNOS:
+                raise _refuse_os_error(exc, self.path / name) from exc
+            raise
+        try:
+            child = _PosixHeldDirectory(
+                self.path / name, child_fd, owned=True, parent=self, name=name
+            )
         except BaseException:
             os.close(child_fd)
             raise
@@ -503,7 +544,12 @@ class _PosixHeldDirectory:
 
     def _open_regular_fd(self, name: str) -> int:
         validate_component(name)
-        file_fd = os.open(name, _FILE_FLAGS, dir_fd=self._fd)
+        try:
+            file_fd = os.open(name, _FILE_FLAGS, dir_fd=self._fd)
+        except OSError as exc:
+            if exc.errno in _REFUSED_ERRNOS:
+                raise _refuse_os_error(exc, self.path / name) from exc
+            raise
         try:
             identity = os.fstat(file_fd)
             if not stat.S_ISREG(identity.st_mode):
@@ -534,6 +580,43 @@ class _PosixHeldDirectory:
         self.reverify()
         return payload
 
+    def read_regular_with_stat(
+        self, name: str, *, max_bytes: int | None = None
+    ) -> tuple[bytes, os.stat_result]:
+        """Return the bytes and the stat of the same open file description.
+
+        The torn-read comparison lives here rather than in the caller: the
+        publication token folds ``st_mtime_ns``/``st_ctime_ns``/``st_ino`` and
+        must be computed over one coherent read
+        (``_io_constants.py:1946-1970``).
+        """
+        file_fd = self._open_regular_fd(name)
+        try:
+            before = os.fstat(file_fd)
+            if max_bytes is not None and before.st_size > max_bytes:
+                raise IdentityRefused(
+                    f"{self.path / name} is larger than {max_bytes} bytes"
+                )
+            with os.fdopen(file_fd, "rb", closefd=False) as stream:
+                payload = stream.read()
+            after = os.fstat(file_fd)
+        finally:
+            os.close(file_fd)
+        changed = (
+            before.st_size,
+            before.st_mtime_ns,
+            before.st_ctime_ns,
+            before.st_ino,
+        ) != (
+            after.st_size,
+            after.st_mtime_ns,
+            after.st_ctime_ns,
+            after.st_ino,
+        )
+        if changed or len(payload) != after.st_size:
+            raise IdentityRefused(f"{self.path / name} changed during the read")
+        return payload, after
+
     def open_regular_stream(self, name: str) -> BinaryIO:
         file_fd = self._open_regular_fd(name)
         try:
@@ -544,8 +627,26 @@ class _PosixHeldDirectory:
         return stream
 
     def reverify(self) -> None:
-        identity = os.fstat(self._fd)
-        if (identity.st_dev, identity.st_ino) != self._identity:
+        """Re-resolve this directory's NAME and compare it to what is held.
+
+        The stat result is only ever compared, never opened through, so this
+        re-introduces no TOCTOU window: a hostile swap makes the check fail and
+        can never make the facade open the wrong object, because every open
+        still goes through the held descriptor.
+
+        A child re-resolves one component inside its held parent, so no
+        ancestor is re-walked. The root has no held parent and re-walks its
+        whole prefix -- it catches its own rename, deletion or replacement, but
+        not the swap of an ancestor. That asymmetry is deliberate and is why
+        the spec's refusal 5 binds children.
+        """
+        if self._parent is None or self._name is None:
+            current = os.lstat(self.path)
+        else:
+            current = os.stat(
+                self._name, dir_fd=self._parent._fd, follow_symlinks=False
+            )
+        if (current.st_dev, current.st_ino) != self._identity:
             raise IdentityRefused(f"identity changed: {self.path}")
 
     def _close(self) -> None:
@@ -676,11 +777,22 @@ Expected: the `native` lane passes, every `fake-windows` lane fails — `open_id
 class _WindowsHeldDirectory:
     """A directory pinned by an NT handle and its FILE_ID_INFO identity."""
 
-    def __init__(self, path: Path, handle: int, api, owned: bool) -> None:
+    def __init__(
+        self,
+        path: Path,
+        handle: int,
+        api,
+        owned: bool,
+        *,
+        parent: "_WindowsHeldDirectory | None" = None,
+        name: str | None = None,
+    ) -> None:
         self.path = path
         self._handle = handle
         self._api = api
         self._owned = owned
+        self._parent = parent
+        self._name = name
         info = api.handle_info(handle)
         if info.attributes & _FILE_ATTRIBUTE_REPARSE_POINT:
             raise IdentityRefused(f"reparse point: {path}")
@@ -696,7 +808,12 @@ class _WindowsHeldDirectory:
         )
         try:
             child = _WindowsHeldDirectory(
-                self.path / name, handle, self._api, owned=True
+                self.path / name,
+                handle,
+                self._api,
+                owned=True,
+                parent=self,
+                name=name,
             )
         except BaseException:
             self._api.close(handle)
@@ -725,25 +842,73 @@ class _WindowsHeldDirectory:
     def read_regular_bytes(
         self, name: str, *, max_bytes: int | None = None
     ) -> bytes:
+        payload, _stat = self.read_regular_with_stat(name, max_bytes=max_bytes)
+        return payload
+
+    def read_regular_with_stat(
+        self, name: str, *, max_bytes: int | None = None
+    ) -> tuple[bytes, os.stat_result]:
+        """Bytes plus the stat CPython would build for the same file.
+
+        The stat comes from ``os.fstat`` on a descriptor adopted from the held
+        handle, so it is the *same* ``os.stat_result`` shape the path branch of
+        ``store_publication_token`` produces -- the two token branches then
+        agree by construction rather than by hope.
+        """
         handle = self._open_regular(name)
+        descriptor = self._api.adopt_descriptor(handle)  # handle is now the fd's
         try:
-            if max_bytes is not None and self._api.file_size(handle) > max_bytes:
+            before = os.fstat(descriptor)
+            if max_bytes is not None and before.st_size > max_bytes:
                 raise IdentityRefused(
                     f"{self.path / name} is larger than {max_bytes} bytes"
                 )
-            payload = self._api.read_all(handle)
+            with os.fdopen(descriptor, "rb", closefd=False) as stream:
+                payload = stream.read()
+            after = os.fstat(descriptor)
         finally:
-            self._api.close(handle)
+            os.close(descriptor)
+        if (before.st_size, before.st_mtime_ns, before.st_ino) != (
+            after.st_size,
+            after.st_mtime_ns,
+            after.st_ino,
+        ) or len(payload) != after.st_size:
+            raise IdentityRefused(f"{self.path / name} changed during the read")
         self.reverify()
-        return payload
+        return payload, after
 
     def reverify(self) -> None:
-        info = self._api.handle_info(self._handle)
-        if info.identity != self._identity:
-            raise IdentityRefused(f"identity changed: {self.path}")
+        """Re-resolve the NAME, not the handle. See the POSIX backend's note.
+
+        Reading ``handle_info`` back from ``self._handle`` returns the identity
+        that handle was opened with, so a check written that way can never
+        fail. ``_windows_metadata_journal.py:146-156`` has that bug today.
+        """
+        if self._parent is None or self._name is None:
+            probe = self._api.open_anchor(
+                str(self.path), share_delete=True
+            )
+        else:
+            probe = self._api.open_directory(
+                self._parent._handle, self._name, create=False, share_delete=True
+            )
+        try:
+            if self._api.handle_info(probe).identity != self._identity:
+                raise IdentityRefused(f"identity changed: {self.path}")
+        finally:
+            self._api.close(probe)
 ```
 
-`open_file`/`open_directory` already pass `FILE_OPEN_REPARSE_POINT` and the directory/non-directory flag, so refusals 2 and 3 come from the open itself; the explicit reparse check is belt-and-braces for a filesystem that reports it differently. Opening a *non-existent* entry must surface `FileNotFoundError` — `_nt_open` already maps errors 2 and 3 to it.
+`open_regular_read`/`open_directory` already pass `FILE_OPEN_REPARSE_POINT` and the directory/non-directory flag, so refusals 2 and 3 come from the open itself; the explicit reparse check is belt-and-braces for a filesystem that reports it differently. Opening a *non-existent* entry must surface `FileNotFoundError` — `_nt_open` already maps errors 2 and 3 to it (`_windows_metadata_journal.py:679-684`).
+
+**`_nt_open` needs the same refusal mapping the POSIX backend grew.** It maps
+only errors 2 and 3 today, so `STATUS_NOT_A_DIRECTORY` (`ERROR_DIRECTORY`,
+267) and a reparse-point refusal surface as a bare `OSError` and the contract
+tests expecting `IdentityRefused` fail. Translate 267 and
+`ERROR_ACCESS_DENIED` (5) *when the target is a reparse point* into
+`IdentityRefused`, leaving everything else as `OSError`. Do this in the
+backend's wrapper, not inside `_nt_open`, so the journal's error vocabulary is
+untouched.
 
 Add the module-level entry point, mirroring the POSIX one:
 
@@ -752,14 +917,25 @@ BACKEND_NAME = "windows"
 SUPPORTED = os.name == "nt"
 
 
+def _extended_length(path: Path) -> str:
+    """Return the ``\\\\?\\`` spelling of *path* WITHOUT resolving links.
+
+    Not ``ngff_.long_path``: that calls ``Path.resolve()``
+    (``ngff_.py:1659``), which follows a junction. A store root that *is* a
+    junction would then open successfully here while POSIX's ``O_NOFOLLOW``
+    refuses it -- the two backends would stop refusing identically, which is
+    the one property the spec insists on.
+    """
+    text = os.path.abspath(os.fspath(path))
+    return text if text.startswith("\\\\?\\") else "\\\\?\\" + text
+
+
 @contextmanager
 def open_identity_directory(path: Path, *, api=None) -> Iterator[HeldDirectory]:
     """Hold *path* by identity through NT handles."""
-    from phenotypic.sdk_.ngff_ import long_path
-
     root = Path(os.path.abspath(os.fspath(path)))
     resolved_api = api if api is not None else _CtypesWindowsApi()
-    handle = resolved_api.open_anchor(long_path(root), share_delete=True)
+    handle = resolved_api.open_anchor(_extended_length(root), share_delete=True)
     try:
         held = _WindowsHeldDirectory(root, handle, resolved_api, owned=False)
         yield held
@@ -807,6 +983,47 @@ def link_count(self, handle: int) -> int:
 def file_size(self, handle: int) -> int:
     return int(self._standard_info(handle).EndOfFile)
 ```
+
+Two more methods, and the first is a correctness fix rather than an addition.
+`open_file` (`_windows_metadata_journal.py:714-733`) requests
+`FILE_WRITE_DATA | FILE_WRITE_ATTRIBUTES | DELETE` because the journal writes
+through it. A viewer that asks for write and delete access is refused on a
+read-only store, a read-only share, or a file whose ACL denies writes -- so a
+read-only opener is required, and `open_file` must keep its mask unchanged so
+the journal is unaffected:
+
+```python
+def open_regular_read(self, parent: int, name: str) -> int:
+    """Open a member for reading only, sharing it with every other writer."""
+    return self._nt_open(
+        parent,
+        name,
+        desired_access=_FILE_READ_DATA | _FILE_READ_ATTRIBUTES | _SYNCHRONIZE,
+        disposition=_FILE_OPEN,
+        options=(
+            _FILE_NON_DIRECTORY_FILE
+            | _FILE_OPEN_REPARSE_POINT
+            | _FILE_SYNCHRONOUS_IO_NONALERT
+        ),
+        attributes=_FILE_ATTRIBUTE_NORMAL,
+        share_delete=True,
+    )
+
+
+def adopt_descriptor(self, handle: int) -> int:
+    """Adopt a handle as a CRT descriptor. Ownership transfers to the fd.
+
+    The caller closes with ``os.close``; calling ``CloseHandle`` as well is a
+    double close.
+    """
+    import msvcrt
+
+    return msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
+```
+
+`_WindowsHeldDirectory._open_regular` calls `open_regular_read`, not
+`open_file`. `open_directory` is already read-only enough for a hold
+(`_FILE_LIST_DIRECTORY | _FILE_TRAVERSE | _FILE_READ_ATTRIBUTES`).
 
 - [ ] **Step 6: Run both lanes**
 
@@ -1116,6 +1333,17 @@ def test_store_publication_token_takes_a_held_directory(tmp_path: Path) -> None:
         assert store_publication_token(store, root_directory=held) is not None
 
 
+def test_both_token_branches_agree_for_one_store(tmp_path: Path) -> None:
+    """If they ever disagree, every Browse tile request 409s forever."""
+    from phenotypic.sdk_ import _identity_io, store_publication_token
+
+    store = _published_store(tmp_path)
+    by_path = store_publication_token(store)
+    with _identity_io.open_identity_directory(store) as held:
+        by_hold = store_publication_token(store, root_directory=held)
+    assert by_path == by_hold is not None
+
+
 def test_the_removed_posix_only_parameter_is_refused(tmp_path: Path) -> None:
     """The break is deliberate and must be visible, not silently ignored."""
     from phenotypic.sdk_ import store_publication_token
@@ -1139,7 +1367,27 @@ Expected: FAIL — `root_directory` is not a parameter yet.
 
 - [ ] **Step 3: Change the public signature**
 
-In `_io_constants.py:1907`, replace the `root_dir_fd: int | None` parameter with `root_directory: HeldDirectory | None`, and read `zarr.json` through `root_directory.read_regular_bytes(STORE_ROOT_JSON)` when it is given. Update the docstring's `Args:` block: the descriptor sentence becomes "Optional held directory for the store root. When given, `zarr.json` is read through that held identity so a route can keep validation and serving bound to one directory generation."
+In `_io_constants.py:1907`, replace `root_dir_fd: int | None` with
+`root_directory: HeldDirectory | None`. The held branch (`:1943-1970`) becomes:
+
+```python
+        else:
+            try:
+                raw, after = root_directory.read_regular_with_stat(
+                    STORE_ROOT_JSON
+                )
+            except (IdentityRefused, OSError):
+                # Matches the existing `except OSError: return None` arm: no
+                # token means "use the conservative fallback", not "fail".
+                return None
+            before = after      # the backend already proved they matched
+```
+
+**The path branch (`root.lstat()` / `read_bytes()` / `root.lstat()`, `:1944-1949`) is untouched.** Both branches must keep producing the same digest for the same file: the token folds `st_mtime_ns`, `st_ctime_ns` and `st_ino` (`:1994-1997`), the route compares a path-branch token (`_tile_routes.py:347`) against a held-branch token (`:385`, `:405`), and if they ever disagree every Browse tile request returns 409 forever. That is why `read_regular_with_stat` returns a real `os.stat_result` taken through `os.fstat`, on both platforms, rather than a hand-built tuple.
+
+Swallowing `IdentityRefused` here is deliberate and is the one place the contract's "raise" becomes "return None": today a `st_nlink != 1` member yields `None` (`:1948-1950`), and letting it raise instead would turn a 404 into a 409.
+
+Update the docstring's `Args:` block: the descriptor sentence becomes "Optional held directory for the store root. When given, `zarr.json` is read through that held identity so a route can keep validation and serving bound to one directory generation."
 
 - [ ] **Step 4: Port the route**
 

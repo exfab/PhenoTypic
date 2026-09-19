@@ -70,6 +70,9 @@ class HeldDirectory(Protocol):
     def child_directory(self, name: str) -> HeldDirectory: ...
     def list_names(self) -> tuple[str, ...]: ...
     def read_regular_bytes(self, name: str, *, max_bytes: int | None = None) -> bytes: ...
+    def read_regular_with_stat(
+        self, name: str, *, max_bytes: int | None = None
+    ) -> tuple[bytes, os.stat_result]: ...
     def open_regular_stream(self, name: str) -> BinaryIO: ...
     def reverify(self) -> None: ...
 ```
@@ -110,7 +113,7 @@ Three primitives are added:
 |---|---|---|
 | `list_names()` | `GetFileInformationByHandleEx` with `FileFullDirectoryRestartInfo` / `FileFullDirectoryInfo` | The binding already exists. Preferred over `NtQueryDirectoryFileEx`, which requires Windows 10 1709 or later. Iterate the chunked buffer until `ERROR_NO_MORE_FILES`. |
 | link count | `FILE_STANDARD_INFO.NumberOfLinks`, same call | The Windows spelling of `st_nlink != 1` |
-| `open_regular_stream()` | `msvcrt.open_osfhandle(handle, O_RDONLY)` then `os.fdopen(fd, "rb")` | Yields a real seekable file, so `send_file` and range requests work unchanged. Ownership transfers to the fd; the backend must not also close the handle. |
+| `open_regular_stream()` and `read_regular_with_stat()` | `msvcrt.open_osfhandle(handle, O_RDONLY)` then `os.fdopen(fd, "rb")` / `os.fstat(fd)` | Yields a real seekable file, so `send_file` and range requests work unchanged, and a real `os.stat_result` so both `store_publication_token` branches agree by construction. Ownership transfers to the fd; the backend must not also close the handle. |
 
 Three decisions that carry correctness:
 
@@ -122,7 +125,14 @@ Three decisions that carry correctness:
   journal already refuses an absent or all-zero id (seen on some network
   filesystems); that refusal carries over, so no stable identity fails closed.
 - **Long paths.** A relative walk takes one component at a time, so `MAX_PATH`
-  never applies to it. Only the initial absolute open needs `ngff_.long_path`.
+  never applies to it. Only the initial absolute open needs the `\\?\`
+  prefix, and it must be built from `os.path.abspath` — **not**
+  `ngff_.long_path`, which calls `Path.resolve()` (`ngff_.py:1659`) and so
+  follows a junction the POSIX backend would refuse.
+- **Access mask.** Members are opened read-only. `open_file`
+  (`_windows_metadata_journal.py:726-733`) requests `FILE_WRITE_DATA |
+  FILE_WRITE_ATTRIBUTES | DELETE` for the journal's own writes; a viewer
+  asking for those is refused on a read-only store or share.
 
 Two mechanisms are asserted here on documentation, not on observation, and are
 confirmed by a throwaway Windows probe **before** implementation begins:
@@ -139,7 +149,13 @@ Both backends refuse, identically:
 2. a symlink, junction or other reparse point anywhere on the walk;
 3. a non-directory where a directory is required, and the reverse;
 4. a regular file with a link count other than 1;
-5. an entry whose identity changed since it was held (`reverify`);
+5. a **child** entry whose identity changed since it was held (`reverify`);
+   the root can only re-resolve its own path, so it catches its own rename,
+   deletion or replacement but not the swap of an ancestor. Re-resolution
+   compares; it never opens through the result, so it reopens no TOCTOU
+   window. A `reverify` that reads identity back from the held descriptor is
+   a tautology and catches nothing — `_windows_metadata_journal.py:146-156`
+   has exactly that bug today;
 6. an absent entry — `FileNotFoundError`, which callers already treat as
    "no evidence", not as failure.
 
@@ -234,3 +250,6 @@ OS/Python combinations.
 | Handle leak in the route's error paths | The hold is a context manager; the stream is the one object that outlives it, and it is closed by `call_on_close` |
 | A member open locks a store against a running CLI | Full share mode, asserted by a test that opens a member and writes the same file concurrently |
 | The moved ctypes class changes journal behaviour | The journal's existing suite runs unchanged against the relocated class; the move is mechanical |
+| `ngff_.long_path` resolves symlinks (`ngff_.py:1659`), so a junction store root would be followed on Windows and refused on POSIX | The Windows backend builds its `\\?\` prefix from `os.path.abspath` only |
+| `open_file` requests write + delete access (`_windows_metadata_journal.py:726-733`), which a read-only store refuses | A separate read-only opener; the journal's mask is untouched |
+| The two `store_publication_token` branches could disagree on identity and 409 every tile request | Both take a real `os.stat_result` via `os.fstat`; a test asserts the two branches agree for one store |
