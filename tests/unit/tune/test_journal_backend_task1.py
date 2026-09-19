@@ -10,6 +10,15 @@ import subprocess
 import pytest
 
 
+def _journal_url_prefix(path: Path) -> str:
+    """``journal:///`` plus *path* in POSIX spelling, on any platform.
+
+    ``f"journal://{path}"`` yields the triple slash only when the path itself
+    starts with ``/``; a Windows ``C:\\...`` path renders ``journal://C:\\...``.
+    """
+    return "journal:///" + path.as_posix().lstrip("/")
+
+
 def _installed_tune_console(python_executable: Path, platform: str) -> Path:
     """Return the generated console-script path for an installed environment."""
     suffix = ".exe" if platform == "win32" else ""
@@ -26,7 +35,7 @@ def test_storage_precedence_uses_absolute_run_local_journal_for_slurm(
     output = tmp_path / "relative-output"
 
     assert _resolve_storage_url(None, output, slurm=True) == (
-        f"journal://{output.absolute()}/.pht-tune-cache/journal.log?v=1"
+        f"{_journal_url_prefix(output.absolute())}/.pht-tune-cache/journal.log?v=1"
     )
     assert _resolve_storage_url(
         "postgresql+psycopg://db.example/tune",
@@ -77,7 +86,7 @@ def test_journal_url_canonically_encodes_path_data_and_round_trips_once(
 
     journal = tmp_path / component / "journal.log"
     expected = (
-        f"journal://{tmp_path.as_posix()}/{encoded_component}/journal.log?v=1"
+        f"{_journal_url_prefix(tmp_path)}/{encoded_component}/journal.log?v=1"
     )
 
     url = journal_url_for_path(journal)
@@ -108,10 +117,15 @@ def test_versioned_journal_url_canonically_encodes_literal_percent_names(
         journal_url_for_path,
     )
 
-    journal = Path("/runs") / component / "journal.log"
+    # Rooted at the filesystem anchor: ``/runs`` is drive-relative on Windows,
+    # where a journal path must carry a drive.
+    runs = Path(Path.cwd().anchor) / "runs"
+    journal = runs / component / "journal.log"
     url = journal_url_for_path(journal)
 
-    assert url == f"journal:///runs/%25{component[1:]}/journal.log?v=1"
+    assert url == (
+        f"{_journal_url_prefix(runs)}/%25{component[1:]}/journal.log?v=1"
+    )
     assert journal_path_from_url(url) == journal
 
 

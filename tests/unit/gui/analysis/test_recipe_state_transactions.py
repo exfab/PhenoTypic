@@ -156,6 +156,18 @@ def test_external_source_cas_rejection_reloads_before_later_save(
     assert saved["filters"] == {}
 
 
+def test_a_crlf_recipe_is_not_stale_on_load(tmp_path: Path) -> None:
+    """The load fingerprint is taken over the bytes that ``is_stale`` re-hashes.
+
+    ``Path.write_text`` emits CRLF on Windows. Fingerprinting the decoded text
+    (which folds CRLF to LF) made every such recipe stale on load, so every
+    save was refused.
+    """
+    path = _seed_recipe(tmp_path).path
+    path.write_bytes(path.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n"))
+
+    assert RecipeState.load(tmp_path).is_stale() is False
+
 def test_content_fingerprint_ignores_mtime_only_drift(tmp_path: Path) -> None:
     """An unchanged recipe is not stale when only its timestamp changes."""
     state = _seed_recipe(tmp_path)

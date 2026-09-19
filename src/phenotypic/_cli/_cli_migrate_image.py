@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import errno
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -696,6 +698,14 @@ def _source_artifact_state(path: Path | None) -> SourceArtifactState:
     size = 0
     try:
         handle = path.open("rb")
+    except PermissionError as exc:
+        # Windows reports opening a directory as EACCES; name it the way
+        # POSIX does, so a directory never reads as a permissions problem.
+        if path.is_dir():
+            raise IsADirectoryError(
+                errno.EISDIR, os.strerror(errno.EISDIR), str(path)
+            ) from exc
+        raise
     except FileNotFoundError:
         return SourceArtifactState(
             path=path,

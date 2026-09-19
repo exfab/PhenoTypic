@@ -25,7 +25,7 @@ import re as _re
 import shutil
 import time
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Final, Literal, Mapping, NamedTuple, Sequence
 from uuid import uuid4
 
@@ -947,7 +947,8 @@ def _resolve_ngff_relative_path(
     if not raw or "\\" in raw:
         raise ValueError(f"Invalid NGFF {role} {raw!r}: expected a non-empty POSIX path")
     posix_path = PurePosixPath(raw)
-    if posix_path.is_absolute() or any(
+    # ``PurePosixPath`` reads ``C:/x`` as relative; on Windows it is not.
+    if posix_path.is_absolute() or PureWindowsPath(raw).drive or any(
         part in {".", ".."} for part in posix_path.parts
     ):
         raise ValueError(
@@ -1675,8 +1676,14 @@ def new_part_path(final: Path) -> Path:
 
 
 def _fsync_path(path: Path) -> None:
-    """``fsync`` one already-existing file or directory."""
-    handle = os.open(long_path(path), os.O_RDONLY)
+    """``fsync`` one already-existing file or directory.
+
+    Windows implements ``fsync`` as ``FlushFileBuffers``, which fails with
+    ``EBADF`` on a read-only handle, so files are opened read-write there.
+    Directories are only ever flushed on POSIX, where read-only is required.
+    """
+    flags = os.O_RDONLY if os.name == "posix" else os.O_RDWR
+    handle = os.open(long_path(path), flags)
     try:
         os.fsync(handle)
     finally:

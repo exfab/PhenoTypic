@@ -595,9 +595,9 @@ def test_every_hdf_artifact_declaration_is_ported() -> None:
     """
     src = _src_root()
     hits = [
-        f"{p.relative_to(src)}:{n}"
+        f"{p.relative_to(src).as_posix()}:{n}"
         for p in src.rglob("*.py")
-        if str(p.relative_to(src)) not in _KEEPS_AN_HDF_KEY
+        if p.relative_to(src).as_posix() not in _KEEPS_AN_HDF_KEY
         for n, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1)
         if re.search(r'"hdf"\s*:', line)
     ]

@@ -904,7 +904,9 @@ def test_guard_spans_each_final_replace_and_final_success_validation(
     observed_replaces: list[Path] = []
 
     def checked_replace(source: str | bytes, destination: str | bytes) -> None:
-        destination_path = Path(destination)
+        # ``promote_store`` spells Windows paths through ``long_path``; strip
+        # its ``\\?\`` prefix so the destination compares as a plain path.
+        destination_path = Path(os.fsdecode(destination).removeprefix("\\\\?\\"))
         if destination_path in guarded_destinations:
             assert guard.held is True
             observed_replaces.append(destination_path)

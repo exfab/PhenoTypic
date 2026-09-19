@@ -479,6 +479,10 @@ def test_rollback_trash_sharing_violation_does_not_prevent_retry(
     )
 
 
+@pytest.mark.skipif(
+    os.name != "posix",
+    reason="directory fsync is POSIX-only; Windows relies on NTFS journaling",
+)
 def test_durable_promote_flushes_every_file_and_every_directory(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -503,6 +507,10 @@ def test_durable_promote_flushes_every_file_and_every_directory(
     assert final.parent in flushed, "the rename's own dirent was never flushed"
 
 
+@pytest.mark.skipif(
+    os.name != "posix",
+    reason="directory fsync is POSIX-only; Windows relies on NTFS journaling",
+)
 def test_fsync_tree_flushes_directories_deepest_first(tmp_path: Path, monkeypatch) -> None:
     """A parent's entry must never be made durable before the child it names."""
     store = _fake_store(tmp_path / "s.ome.zarr", "x")

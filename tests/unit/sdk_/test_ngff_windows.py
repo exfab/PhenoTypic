@@ -199,9 +199,11 @@ def test_the_windows_nightly_lane_still_collects_the_store_suites() -> None:
     and the ways it could stop are all invisible from Linux: a marker filter, an
     ``--ignore``, or an explicit path list that omits them.
 
-    The job runs bare ``pytest`` under an ``addopts`` override, so collection
-    comes from ``testpaths`` -- asserted by
-    ``test_the_store_suites_are_reachable_from_testpaths``.
+    The job runs one ``pytest`` per shard of ``.github/pytest-shards.json``
+    under an ``addopts`` override. The explicit path lists are safe because
+    ``test_each_configured_test_file_belongs_to_exactly_one_shard`` holds their
+    union equal to ``testpaths``, and these suites are under ``testpaths`` --
+    asserted by ``test_the_store_suites_are_reachable_from_testpaths``.
     """
     invocations = _pytest_invocations(WORKFLOWS / "run-pytest-full.yml", "tests-windows-full")
     assert invocations, "the Windows nightly job no longer runs pytest at all"

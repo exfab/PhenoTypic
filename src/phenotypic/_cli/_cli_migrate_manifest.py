@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+import errno
 import hashlib
 import json
 import os
@@ -1386,6 +1387,14 @@ def _current_source_state_value(path: Path | None) -> dict[str, Any]:
     source = Path(path)
     try:
         payload = source.read_bytes()
+    except PermissionError as exc:
+        # Windows reports opening a directory as EACCES; name it the way
+        # POSIX does, so a directory never reads as a permissions problem.
+        if source.is_dir():
+            raise IsADirectoryError(
+                errno.EISDIR, os.strerror(errno.EISDIR), str(source)
+            ) from exc
+        raise
     except FileNotFoundError:
         return {
             "path": str(source),

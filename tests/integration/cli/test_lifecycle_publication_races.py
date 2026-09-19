@@ -349,7 +349,8 @@ def test_ordinary_store_build_is_unlocked_but_promotion_is_locked(
     def _replace(source: Any, destination: Any) -> None:
         if (
             threading.current_thread().name == _STALE_THREAD
-            and Path(destination) == store
+            # ``promote_store`` spells Windows paths with a ``\\?\`` prefix.
+            and Path(os.fsdecode(destination).removeprefix("\\\\?\\")) == store
             and not at_promotion.is_set()
         ):
             at_promotion.set()

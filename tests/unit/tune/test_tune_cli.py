@@ -488,6 +488,7 @@ def test_cli_screen_flag_toggles_screening(tmp_path, monkeypatch):
 def test_cli_slurm_flag_uses_slurm_executor(tmp_path, monkeypatch):
     # --slurm routes through the SlurmExecutor worker-fleet submission instead of
     # the local in-process engine run.
+    from phenotypic.tune._study._storage import journal_url_for_path
     from phenotypic.tune._tune_cli import _run as run_mod
 
     submitted = {}
@@ -511,7 +512,7 @@ def test_cli_slurm_flag_uses_slurm_executor(tmp_path, monkeypatch):
         out,
         strategy="tpe",
         n_trials=4,
-        storage_url=f"journal://{out.absolute() / 'journal.log'}",
+        storage_url=journal_url_for_path(out.absolute() / "journal.log"),
         slurm=True,
         spec_path=spec_path,
         images_dir=tmp_path,

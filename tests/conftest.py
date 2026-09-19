@@ -62,14 +62,33 @@ _load_dotenv()
 #: so the default suite needs no database.
 PG_URL_ENV = "PHENOTYPIC_TEST_PG_URL"
 
+#: Fixtures only pytest-playwright provides. ``pyproject.toml`` excludes the
+#: plugin on Windows, where a test requesting one would otherwise ERROR with
+#: ``fixture 'page' not found`` instead of skipping.
+PLAYWRIGHT_FIXTURES = frozenset(
+    {"page", "browser", "browser_name", "browser_type", "launch_browser", "new_context", "playwright"}
+)
+
+
+def _missing_playwright_fixture(item: pytest.Item) -> str | None:
+    """Return a requested Playwright fixture that nothing defines, if any."""
+    fixture_info = getattr(item, "_fixtureinfo", None)
+    if fixture_info is None:
+        return None
+    for name in PLAYWRIGHT_FIXTURES.intersection(fixture_info.names_closure):
+        if not fixture_info.name2fixturedefs.get(name):
+            return name
+    return None
+
 
 def pytest_collection_modifyitems(config, items):
-    """Autoskip ``postgres`` tests without a DB URL and ``slurm`` tests without sbatch.
+    """Autoskip tests whose external requirement is absent.
 
     ``@pytest.mark.postgres`` tests skip unless ``$PHENOTYPIC_TEST_PG_URL`` is set
     (via the environment or ``.env``); ``@pytest.mark.slurm`` tests skip unless the
-    SLURM client (``sbatch``) is on ``PATH`` — so CI and slurm-less local runs
-    never fail on either.
+    SLURM client (``sbatch``) is on ``PATH``; browser tests skip where
+    pytest-playwright is not installed -- so CI, Windows, and slurm-less local
+    runs never fail on any of them.
 
     Args:
         config: The pytest config (unused; required by the hook signature).
@@ -90,6 +109,13 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip_pg)
         if skip_slurm is not None and "slurm" in item.keywords:
             item.add_marker(skip_slurm)
+        missing = _missing_playwright_fixture(item)
+        if missing is not None:
+            item.add_marker(
+                pytest.mark.skip(
+                    reason=f"requires pytest-playwright (fixture {missing!r})"
+                )
+            )
 
 
 @pytest.hookimpl(optionalhook=True)
