@@ -6,10 +6,13 @@ name: run-pytest-full
 #   * schedule (15:00 UTC = 07:00 PST nightly) — catch flakes and time-sensitive regressions
 #   * workflow_dispatch                         — manual full run on any ref
 #
-# Matrix:
-#   * Linux x Python {3.11, 3.12}
-#   * macOS-14 x Python 3.12 (public repo only)
-#   * Windows-latest x Python 3.12
+# Matrix: {Linux x Python {3.11, 3.12}, macOS-14 x 3.12 (public repo only),
+# Windows-latest x 3.12} x the logical ownership shards in
+# .github/pytest-shards.json -- the same manifest run-pytest.yml uses. The
+# manifest is coverage-checked by tests/unit/ci/test_pytest_shard_manifest.py,
+# so the union of the shards is exactly the configured testpaths: splitting
+# the lane drops no test and runs none twice. Each shard uses pytest-xdist
+# within its runner, and a red shard names the failing area in the job title.
 #
 # Run command override:
 #   ``-o "addopts=-q --tb=long -r 'Efw' --no-header"`` overrides the
@@ -37,17 +40,27 @@ permissions:
   contents: read
 
 jobs:
+  load-shards:
+    runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.load-shards.outputs.shards }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Load pytest shards
+        id: load-shards
+        run: echo "shards=$(jq -c . .github/pytest-shards.json)" >> "$GITHUB_OUTPUT"
+
   tests-linux-full:
+    name: Linux py${{ matrix.python-version }} / ${{ matrix.shard.name }}
+    needs: load-shards
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-latest
-            python-version: "3.11"
-          - os: ubuntu-latest
-            python-version: "3.12"
+        python-version: ["3.11", "3.12"]
+        shard: ${{ fromJSON(needs.load-shards.outputs.shards) }}
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     # Headless Qt: the ``test-qt`` group (and the napari extra) pull PyQt6,
     # whose QtGui is imported by pytest-qt at configure time; ``offscreen``
     # lets the qtbot widget tests run on the displayless Linux runner.
@@ -81,21 +94,24 @@ jobs:
           uv sync --group dev --group test-qt --all-extras
 
       - name: Install Playwright browsers
+        if: matrix.shard.playwright
         run: uv run playwright install --with-deps chromium
 
-      - name: Run tests (full, slow included)
+      - name: Run ${{ matrix.shard.name }} tests (full, slow included)
         run: |
           source .venv/bin/activate
-          pytest -n auto -o "addopts=-q --tb=long -r 'Efw' --no-header" --durations=20
+          pytest -n auto -o "addopts=-q --tb=long -r 'Efw' --no-header" --durations=20 ${{ join(matrix.shard.paths, ' ') }}
 
   tests-macos-full:
+    name: macOS py${{ matrix.python-version }} / ${{ matrix.shard.name }}
+    needs: load-shards
     if: github.event.repository.visibility == 'public'
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: macos-14
-            python-version: "3.12"
+        os: [macos-14]
+        python-version: ["3.12"]
+        shard: ${{ fromJSON(needs.load-shards.outputs.shards) }}
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -117,22 +133,30 @@ jobs:
           uv sync --group dev --group test-qt --all-extras
 
       - name: Install Playwright browsers
+        if: matrix.shard.playwright
         run: uv run playwright install chromium
 
-      - name: Run tests (full, slow included)
+      - name: Run ${{ matrix.shard.name }} tests (full, slow included)
         run: |
           source .venv/bin/activate
-          pytest -n auto -o "addopts=-q --tb=long -r 'Efw' --no-header" --durations=20
+          pytest -n auto -o "addopts=-q --tb=long -r 'Efw' --no-header" --durations=20 ${{ join(matrix.shard.paths, ' ') }}
 
   tests-windows-full:
+    name: Windows py${{ matrix.python-version }} / ${{ matrix.shard.name }}
+    needs: load-shards
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: windows-latest
-            python-version: "3.12"
+        os: [windows-latest]
+        python-version: ["3.12"]
+        shard: ${{ fromJSON(needs.load-shards.outputs.shards) }}
 
     runs-on: ${{ matrix.os }}
+    # Git Bash, not pwsh: shard paths include globs (``tests/unit/test_*.py``)
+    # that PowerShell would pass to pytest unexpanded.
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v6
 
@@ -151,8 +175,7 @@ jobs:
           uv lock
           uv sync --group dev --group test-qt --all-extras
 
-      - name: Run tests (full, slow included)
+      - name: Run ${{ matrix.shard.name }} tests (full, slow included)
         run: |
-          .venv\Scripts\activate
-          pytest -n auto -o "addopts=-q --tb=long -r 'Efw' --no-header" --durations=20
-        shell: pwsh
+          source .venv/Scripts/activate
+          pytest -n auto -o "addopts=-q --tb=long -r 'Efw' --no-header" --durations=20 ${{ join(matrix.shard.paths, ' ') }}

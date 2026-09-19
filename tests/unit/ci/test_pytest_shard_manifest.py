@@ -8,10 +8,13 @@ from pathlib import Path
 import re
 import tomllib
 
+import yaml
+
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 MANIFEST = REPO_ROOT / ".github" / "pytest-shards.json"
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "run-pytest.yml"
+FULL_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "run-pytest-full.yml"
 
 #: pytest-playwright fixtures that need an installed browser. ``context`` is
 #: deliberately absent: two unrelated test modules define a ``context`` fixture
@@ -103,6 +106,39 @@ def test_pr_workflow_uses_complete_shards_without_testmon() -> None:
     assert "-n auto" in workflow
     assert "--testmon" not in workflow
     assert ".testmondata" not in workflow
+
+
+def test_full_workflow_runs_every_os_job_over_the_shard_manifest() -> None:
+    """Each nightly OS lane fans out over the same coverage-checked manifest.
+
+    A job that dropped the shard matrix but kept the path join would render an
+    empty path list and fall back to ``testpaths`` -- green, but no longer
+    split; one that kept the matrix but dropped the join would run the whole
+    suite once per shard.
+    """
+    workflow = yaml.safe_load(FULL_WORKFLOW.read_text(encoding="utf-8"))
+    jobs = workflow["jobs"]
+    load_step = next(
+        step for step in jobs["load-shards"]["steps"] if step.get("id") == "load-shards"
+    )
+    assert ".github/pytest-shards.json" in load_step["run"]
+
+    for name in ("tests-linux-full", "tests-macos-full", "tests-windows-full"):
+        job = jobs[name]
+        assert job["needs"] == "load-shards", name
+        assert job["strategy"]["matrix"]["shard"] == (
+            "${{ fromJSON(needs.load-shards.outputs.shards) }}"
+        ), name
+        commands = [
+            line.strip()
+            for step in job["steps"]
+            if isinstance(step.get("run"), str)
+            for line in step["run"].splitlines()
+            if line.strip().startswith("pytest ")
+        ]
+        assert commands, name
+        assert all("join(matrix.shard.paths, ' ')" in line for line in commands), name
+        assert all("--testmon" not in line for line in commands), name
 
 
 def test_browser_tests_run_only_in_shards_that_install_a_browser() -> None:
