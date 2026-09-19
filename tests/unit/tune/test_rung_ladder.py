@@ -19,21 +19,21 @@ from phenotypic.tune.score._scorer import Scorer
 
 
 class _PerImageScorer(Scorer):
-    """Scores term ``X`` as the image's id mod-mapped value (id → value)."""
+    """Scores term ``X`` as the image's name-mapped value (name → value)."""
 
-    mapping: dict[int, float]
+    mapping: dict[str, float]
 
     def _score_terms(self, image, measurements) -> dict[str, float]:
-        return {"X": float(self.mapping[id(image)])}
+        return {"X": float(self.mapping[image.name])}
 
 
 class _CountingScorer(Scorer):
-    """Records how many distinct images it scored (by id), returns constant."""
+    """Records how many distinct images it scored (by name), returns constant."""
 
-    _seen: set[int] = PrivateAttr(default_factory=set)
+    _seen: set[str] = PrivateAttr(default_factory=set)
 
     def _score_terms(self, image, measurements) -> dict[str, float]:
-        self._seen.add(id(image))
+        self._seen.add(image.name)
         return {"X": 1.0}
 
 
@@ -62,8 +62,17 @@ class _PruneAfterFirstRungChannel:
 
 
 def _imgs(n: int) -> list:
-    # Distinct image objects so id()-keyed memoization and per-image scoring work.
-    return [load_synth_yeast_plate() for _ in range(n)]
+    # Distinct image objects, each given a unique ``name``. The Evaluator scores
+    # a *processed copy* of each calibration image, so the only identity a
+    # per-image scorer can key on is one the copy carries over -- ``id()`` is
+    # unique only among objects alive at the same moment, and CPython recycles
+    # a freed copy's address for the next one.
+    images = []
+    for i in range(n):
+        image = load_synth_yeast_plate()
+        image.name = f"plate_{i:02d}"
+        images.append(image)
+    return images
 
 
 # --- _rung_sizes geometry ------------------------------------------------------
@@ -125,7 +134,7 @@ def test_should_prune_short_circuits_to_partial_pruned_result():
 def test_unpruned_full_pass_equals_single_pass_score():
     base = ImagePipeline(ops=[OtsuDetector()])
     imgs = _imgs(18)
-    mapping = {id(im): float(i) for i, im in enumerate(imgs)}
+    mapping = {im.name: float(i) for i, im in enumerate(imgs)}
     # Ladder pass (no-op channel never prunes → scores all 18).
     laddered = Evaluator().evaluate(base, _PerImageScorer(mapping=mapping), {}, imgs)
     # Reference single pass over the SAME images in id-sorted order.
