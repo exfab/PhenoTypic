@@ -656,8 +656,8 @@ holds up on plates the search never optimized against.</p>
 <p>The engine replaces the old <code class="docutils literal notranslate"><span class="pre">sweep</span></code> module: instead of enumerating a fixed
 grid of pipeline variants, you author (or auto-infer) a search space, pick a
 scoring objective, and let the optimizer propose candidates.</p>
-<p>```{admonition} Migrating from a legacy <code class="docutils literal notranslate"><span class="pre">sweep</span></code> manifest
-:class: tip</p>
+<div class="tip admonition">
+<p class="admonition-title">Migrating from a legacy <code class="docutils literal notranslate"><span class="pre">sweep</span></code> manifest</p>
 <p>If you have an existing sweep manifest, convert it to a <code class="docutils literal notranslate"><span class="pre">tuning_spec.json</span></code> —
 a <code class="docutils literal notranslate"><span class="pre">Categorical</span></code> grid over the manifest’s varying parameters (plus
 <code class="docutils literal notranslate"><span class="pre">__enabled__</span></code> presence knobs for optional ops) — with the migration script:</p>
@@ -669,16 +669,14 @@ a <code class="docutils literal notranslate"><span class="pre">Categorical</span
 (grouped by <code class="docutils literal notranslate"><span class="pre">--groupby</span></code>, default <code class="docutils literal notranslate"><span class="pre">Metadata_ImageName</span></code>). Manifests that swept
 <strong>nested</strong> operations raise <code class="docutils literal notranslate"><span class="pre">NotImplementedError</span></code> — author those spaces by
 hand against the new <code class="docutils literal notranslate"><span class="pre">SearchSpace</span></code> API.</p>
-<div class="highlight-python3 notranslate"><div class="highlight"><pre><span></span>
-<span class="c1">## Python interface</span>
-
-<span class="c1">### Running a study from the CLI</span>
-
-<span class="n">The</span> <span class="n">basic</span> <span class="n">run</span> <span class="n">takes</span> <span class="n">a</span> <span class="err">`</span><span class="n">tuning_spec</span><span class="o">.</span><span class="n">json</span><span class="err">`</span><span class="p">,</span> <span class="n">an</span> <span class="n">image</span> <span class="n">directory</span><span class="p">,</span> <span class="ow">and</span> <span class="n">an</span> <span class="n">output</span>
-<span class="n">directory</span><span class="p">:</span>
-
-<span class="err">```</span><span class="n">bash</span>
-<span class="n">uv</span> <span class="n">run</span> <span class="n">phenotypic</span><span class="o">-</span><span class="n">tune</span> <span class="n">run</span> <span class="n">spec</span><span class="o">.</span><span class="n">json</span> <span class="o">-</span><span class="n">i</span> <span class="o">./</span><span class="n">plates</span> <span class="o">-</span><span class="n">o</span> <span class="o">./</span><span class="n">out</span>
+</div>
+<section id="python-interface">
+<h2>Python interface<a class="headerlink" href="#python-interface" title="Link to this heading">#</a></h2>
+<section id="running-a-study-from-the-cli">
+<h3>Running a study from the CLI<a class="headerlink" href="#running-a-study-from-the-cli" title="Link to this heading">#</a></h3>
+<p>The basic run takes a <code class="docutils literal notranslate"><span class="pre">tuning_spec.json</span></code>, an image directory, and an output
+directory:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>phenotypic-tune<span class="w"> </span>run<span class="w"> </span>spec.json<span class="w"> </span>-i<span class="w"> </span>./plates<span class="w"> </span>-o<span class="w"> </span>./out
 </pre></div>
 </div>
 <p>Override the spec’s strategy and trial budget, and turn on the two-round
@@ -720,8 +718,9 @@ a prior directory reopens its local <code class="docutils literal notranslate"><
 run records its shared journal in the run marker and is published only by its
 terminal lifecycle finalizer. Do not relaunch an output with an active
 lifecycle; after scheduler quiescence, use <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">phenotypic-tune</span> <span class="pre">finalize</span> <span class="pre">OUTPUT</span></code> to recover publication from the recorded backend.</p>
+</section>
 <section id="authoring-a-tuningspec-in-python">
-<h2>Authoring a <code class="docutils literal notranslate"><span class="pre">TuningSpec</span></code> in Python<a class="headerlink" href="#authoring-a-tuningspec-in-python" title="Link to this heading">#</a></h2>
+<h3>Authoring a <code class="docutils literal notranslate"><span class="pre">TuningSpec</span></code> in Python<a class="headerlink" href="#authoring-a-tuningspec-in-python" title="Link to this heading">#</a></h3>
 <p>A <code class="docutils literal notranslate"><span class="pre">TuningSpec</span></code> is one self-contained, round-trippable recipe. Its fields are:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">pipeline</span></code> — the base <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code> being tuned (embedded in the spec).</p></li>
@@ -780,7 +779,7 @@ metadata <em>path</em> (<code class="docutils literal notranslate"><span class="
 check built from an in-memory frame cannot be rebuilt from JSON.</p>
 </section>
 <section id="inferring-a-search-space-with-auto-space">
-<h2>Inferring a search space with <code class="docutils literal notranslate"><span class="pre">auto-space</span></code><a class="headerlink" href="#inferring-a-search-space-with-auto-space" title="Link to this heading">#</a></h2>
+<h3>Inferring a search space with <code class="docutils literal notranslate"><span class="pre">auto-space</span></code><a class="headerlink" href="#inferring-a-search-space-with-auto-space" title="Link to this heading">#</a></h3>
 <p>When you don’t want to hand-author every knob, <code class="docutils literal notranslate"><span class="pre">auto-space</span></code> mines a configured
 pipeline’s pydantic fields into a reviewable candidate space — no engine runs:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>phenotypic-tune<span class="w"> </span>auto-space<span class="w"> </span>pipeline.json<span class="w"> </span>-o<span class="w"> </span>./out
@@ -799,6 +798,7 @@ excluded blindly).</p></li>
 <p>Flagged knobs (<code class="docutils literal notranslate"><span class="pre">needs_review=True</span></code>) keep the autonomy gate conservative: an
 unattended run stays cautious until a human confirms the shaky guesses, so a
 generously-inferred bound never silently drives a fully-automatic study.</p>
+</section>
 </section>
 <section id="the-four-scoring-objectives">
 <h2>The four scoring objectives<a class="headerlink" href="#the-four-scoring-objectives" title="Link to this heading">#</a></h2>
@@ -1007,8 +1007,12 @@ Optuna journal (via <code class="docutils literal notranslate"><span class="pre"
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#authoring-a-tuningspec-in-python">Authoring a <code class="docutils literal notranslate"><span class="pre">TuningSpec</span></code> in Python</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#inferring-a-search-space-with-auto-space">Inferring a search space with <code class="docutils literal notranslate"><span class="pre">auto-space</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#python-interface">Python interface</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#running-a-study-from-the-cli">Running a study from the CLI</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#authoring-a-tuningspec-in-python">Authoring a <code class="docutils literal notranslate"><span class="pre">TuningSpec</span></code> in Python</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#inferring-a-search-space-with-auto-space">Inferring a search space with <code class="docutils literal notranslate"><span class="pre">auto-space</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-four-scoring-objectives">The four scoring objectives</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#qcscorer"><code class="docutils literal notranslate"><span class="pre">QCScorer</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#referencefreescorer"><code class="docutils literal notranslate"><span class="pre">ReferenceFreeScorer</span></code></a></li>

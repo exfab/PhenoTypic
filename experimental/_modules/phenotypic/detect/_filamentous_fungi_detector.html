@@ -973,7 +973,7 @@
 <span class="sd">        7. Set objmap with assignment results</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._provenance</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_child</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.reconnect</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
             <span class="n">build_reconnect_cost</span><span class="p">,</span>
             <span class="n">compute_full_image_app2_gi_cost</span><span class="p">,</span>
@@ -992,11 +992,16 @@
             <span class="p">)</span>
 
         <span class="c1"># ── PHASE 1: INOCULUM DETECTION ─────────────────────────────</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inoculum_detector</span><span class="p">,</span> <span class="n">ImagePipeline</span><span class="p">):</span>
-            <span class="n">inoculum_img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inoculum_detector</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                                                        <span class="n">reset</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">inoculum_img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inoculum_detector</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="c1"># A single operation-valued FIELD, not a list entry, so the recorded</span>
+        <span class="c1"># segment is the field name -- the same address</span>
+        <span class="c1"># ``sdk_._operation_tree`` yields for it. ``apply_child`` supplies the</span>
+        <span class="c1"># ``reset=False`` a nested ImagePipeline needs.</span>
+        <span class="n">inoculum_img</span> <span class="o">=</span> <span class="n">apply_child</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">inoculum_detector</span><span class="p">,</span>
+                <span class="n">image</span><span class="p">,</span>
+                <span class="n">segment</span><span class="o">=</span><span class="s2">&quot;inoculum_detector&quot;</span><span class="p">,</span>
+                <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
         <span class="n">inoculum_objmask</span> <span class="o">=</span> <span class="n">inoculum_img</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span>
 
         <span class="k">if</span> <span class="n">inoculum_img</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>

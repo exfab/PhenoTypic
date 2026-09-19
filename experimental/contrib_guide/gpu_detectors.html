@@ -1,0 +1,1172 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Writing a GPU detector &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=8a079089"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'contrib_guide/gpu_detectors';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/contrib_guide/gpu_detectors.html" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Testing Framework" href="testing.html" />
+    <link rel="prev" title="Extending Phenotypic" href="extending.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.19.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal current active"
+             href="index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">Developer Guide Topics</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing Guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="extending.html">Extending Phenotypic</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Writing a GPU detector</a></li>
+<li class="toctree-l1"><a class="reference internal" href="testing.html">Testing Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tracked_state.html">Run state: what is tracked, and how to read it</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documentation.html">Documentation Writing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docstring_style.html">ImageOperation Docstring Style Guide</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">Developer Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Writing a GPU detector</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="writing-a-gpu-detector">
+<h1>Writing a GPU detector<a class="headerlink" href="#writing-a-gpu-detector" title="Link to this heading">#</a></h1>
+<p>This page is the reference for <strong>authoring a <code class="docutils literal notranslate"><span class="pre">GpuDetector</span></code></strong> — the hooks you
+implement, the capability fields you declare, and the rules that decide where in
+a pipeline your detector may be placed.</p>
+<p>Read it before subclassing <code class="docutils literal notranslate"><span class="pre">GpuDetector</span></code>, and again before adding an
+<code class="docutils literal notranslate"><span class="pre">OperationField</span></code> to any operation that will contain one.</p>
+<div class="note admonition">
+<p class="admonition-title">Why a GPU detector is not just an ObjectDetector</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">GpuDetector</span></code> in a CLI run does not execute per image. It triggers the
+<strong>staged engine</strong>: CPU preprocess → resident-model GPU inference → CPU measure,
+so a GPU node is never occupied by CPU work. Your detector is driven by the same
+hooks in both the notebook path and the staged engine, but the staged engine
+calls them from three different processes, on three different machines, at three
+different times. Everything below follows from that.</p>
+</div>
+<section id="the-hook-surface">
+<h2>The hook surface<a class="headerlink" href="#the-hook-surface" title="Link to this heading">#</a></h2>
+<p>Subclass <code class="docutils literal notranslate"><span class="pre">GpuDetector</span></code> and implement <strong>two</strong> methods. Do not override
+<code class="docutils literal notranslate"><span class="pre">_operate</span></code> — it is concrete, and the staged engine bypasses it entirely.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">PrivateAttr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">GpuDetector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">GpuInputLayer</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MyDetector</span><span class="p">(</span><span class="n">GpuDetector</span><span class="p">):</span>
+    <span class="c1"># Keep the alias, don&#39;t widen to `str` -- the Literal is what rejects a</span>
+    <span class="c1"># typo&#39;d layer name at construction instead of at first inference.</span>
+    <span class="n">input_layer</span><span class="p">:</span> <span class="n">GpuInputLayer</span> <span class="o">=</span> <span class="s2">&quot;gray&quot;</span>
+    <span class="n">model_size</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;small&quot;</span>
+    <span class="n">_model</span><span class="p">:</span> <span class="nb">object</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_ensure_model_loaded</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build the model on first use. Idempotent.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>                      <span class="c1"># lazy: keep it out of import time</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_infer_one</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;One preprocessed (H, W, 3) uint8 sample -&gt; one result.</span>
+
+<span class="sd">        Return a uint16 labeled objmap for output_kind=&quot;instance&quot;, or a bool</span>
+<span class="sd">        mask for &quot;semantic&quot;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="o">...</span>
+</pre></div>
+</div>
+<p>The base class supplies the rest of the chain:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Hook</p></th>
+<th class="head"><p>Supplied behaviour</p></th>
+<th class="head"><p>Override when</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">_preprocess(array)</span></code></p></td>
+<td><p>scales to <code class="docutils literal notranslate"><span class="pre">uint8</span></code> per <code class="docutils literal notranslate"><span class="pre">input_scaling</span></code>, stacks 2-D to <code class="docutils literal notranslate"><span class="pre">(H,</span> <span class="pre">W,</span> <span class="pre">3)</span></code></p></td>
+<td><p>rarely — your model wants a different tensor layout</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">_collate(samples)</span></code></p></td>
+<td><p>returns the list unchanged</p></td>
+<td><p>your model takes a true <code class="docutils literal notranslate"><span class="pre">(N,</span> <span class="pre">C,</span> <span class="pre">H,</span> <span class="pre">W)</span></code> batch</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">_infer_batch(batch)</span></code></p></td>
+<td><p>loops <code class="docutils literal notranslate"><span class="pre">_infer_one</span></code>, calling <code class="docutils literal notranslate"><span class="pre">_ensure_model_loaded</span></code> first</p></td>
+<td><p>you overrode <code class="docutils literal notranslate"><span class="pre">_collate</span></code> for real batching — <strong>keep the <code class="docutils literal notranslate"><span class="pre">_ensure_model_loaded()</span></code> call</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">_write_object_output(image,</span> <span class="pre">result)</span></code></p></td>
+<td><p>writes <code class="docutils literal notranslate"><span class="pre">objmap</span></code>/<code class="docutils literal notranslate"><span class="pre">objmask</span></code>, applies <code class="docutils literal notranslate"><span class="pre">drop_frame_background</span></code> then the connectivity relabel</p></td>
+<td><p>essentially never — the staged replay path depends on this exact behaviour</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Defer model construction to <code class="docutils literal notranslate"><span class="pre">_ensure_model_loaded</span></code>, never <code class="docutils literal notranslate"><span class="pre">__init__</span></code>.</strong> The
+CLI constructs your detector to inspect it, serialise it, and split the pipeline
+around it, in processes that have no GPU and may not have <code class="docutils literal notranslate"><span class="pre">torch</span></code> installed. A
+model built in <code class="docutils literal notranslate"><span class="pre">__init__</span></code> makes <code class="docutils literal notranslate"><span class="pre">to_json()</span></code> require a GPU.</p>
+<p><strong>And make it idempotent, because it is called more than once and from more than
+one place.</strong> The base <code class="docutils literal notranslate"><span class="pre">_infer_batch</span></code> calls it before every batch, and the staged
+engine <em>also</em> calls it directly, once per worker, before streaming a shard
+(<code class="docutils literal notranslate"><span class="pre">_cli_staged_strategy.py</span></code>, <code class="docutils literal notranslate"><span class="pre">_cli_staged_slurm_worker.py</span></code>) — that up-front call
+is what “resident model” means. Several shipped detectors call it from their own
+helpers too. The <code class="docutils literal notranslate"><span class="pre">if</span> <span class="pre">self._model</span> <span class="pre">is</span> <span class="pre">not</span> <span class="pre">None:</span> <span class="pre">return</span></code> guard above is the whole
+contract; without it the model is rebuilt per image on the GPU node.</p>
+<div class="warning admonition">
+<p class="admonition-title">If you override <code class="docutils literal notranslate"><span class="pre">_infer_batch</span></code>, the <code class="docutils literal notranslate"><span class="pre">_ensure_model_loaded()</span></code> call is yours to keep</p>
+<p>It is not an implementation detail of the base method. In the notebook path
+(<code class="docutils literal notranslate"><span class="pre">op.apply(image)</span></code> → <code class="docutils literal notranslate"><span class="pre">_operate</span></code> → <code class="docutils literal notranslate"><span class="pre">_collate</span></code> → <code class="docutils literal notranslate"><span class="pre">_infer_batch</span></code>) there is <strong>no
+other caller</strong>, so an override that drops it runs against an unbuilt model.</p>
+<p>The staged CLI engine will not tell you: it loads the model up front, before
+streaming a shard, so the same detector works there. A bug that passes every
+batch run and fails the first interactive <code class="docutils literal notranslate"><span class="pre">apply()</span></code> is close to the worst shape
+available — the CLI is where the large runs happen, and the notebook is where
+detectors get developed.</p>
+<p>If you would rather not carry the obligation, override <code class="docutils literal notranslate"><span class="pre">_infer_one</span></code> and leave
+<code class="docutils literal notranslate"><span class="pre">_infer_batch</span></code> alone; the base loops it for you.</p>
+</div>
+</section>
+<section id="capability-fields">
+<h2>Capability fields<a class="headerlink" href="#capability-fields" title="Link to this heading">#</a></h2>
+<p>These are pydantic fields, so they serialise and round-trip. Declare them on the
+class; the engine reads them to decide how to drive you.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Field</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">input_layer</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">rgb</span></code> / <code class="docutils literal notranslate"><span class="pre">gray</span></code> / <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> — the layer your model was trained on</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">input_scaling</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">image_max</span></code> (per-image maximum) or <code class="docutils literal notranslate"><span class="pre">dtype_range</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">supports_batching</span></code></p></td>
+<td><p>whether <code class="docutils literal notranslate"><span class="pre">_infer_batch</span></code> accepts more than one sample</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">output_kind</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">instance</span></code> (labeled objmap) or <code class="docutils literal notranslate"><span class="pre">semantic</span></code> (boolean mask)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">drop_frame_background</span></code></p></td>
+<td><p>zero the border-plurality label before relabeling</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">split_disconnected_labels</span></code></p></td>
+<td><p>relabel by connected components after that</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">connectivity</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span></code> (4-neighbour) or <code class="docutils literal notranslate"><span class="pre">2</span></code> (8-neighbour)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">drop_frame_background</span></code> matters more than it looks. A class-agnostic segmenter
+can emit the plate background as a positive-labelled mask framing the image;
+left in place it survives into measurement and bridges every colony it touches,
+collapsing all instances into one blob.</p>
+</section>
+<section id="determinism-is-a-hard-requirement">
+<h2>Determinism is a hard requirement<a class="headerlink" href="#determinism-is-a-hard-requirement" title="Link to this heading">#</a></h2>
+<p>The staged engine runs your detector’s <em>inputs</em> more than once. When your
+detector is nested, the operations ahead of it <strong>inside its own branch</strong> are
+applied twice: once by Stage 2, to a provenance-detached copy, purely to build
+the model input; and again by Stage 3, inside the enclosing operation, where
+they are the ones actually recorded in the journal. A retried Stage 3 replays
+the recorded result rather than re-inferring.</p>
+<p>Seed anything stochastic — in your detector <em>and</em> in any operation you put ahead
+of it in the same branch. A non-deterministic prefix means Stage 2 inferred from
+an image Stage 3 never reconstructs, and nothing fails to say so.</p>
+</section>
+<section id="do-not-assume-you-see-one-image">
+<h2>Do not assume you see one image<a class="headerlink" href="#do-not-assume-you-see-one-image" title="Link to this heading">#</a></h2>
+<p>Your detector is invoked once per image today, but <strong>a GPU round is a
+full-dataset sweep with the model resident</strong>, and the engine is free to
+accumulate samples and issue one batched forward. Write <code class="docutils literal notranslate"><span class="pre">_infer_one</span></code> so it
+depends only on its argument — no state carried between calls, no counters, no
+“first image” special-casing.</p>
+<div class="tip admonition">
+<p class="admonition-title">Batching headroom</p>
+<p>The engine currently calls <code class="docutils literal notranslate"><span class="pre">_collate([sample])</span></code> with a one-element list, so
+<code class="docutils literal notranslate"><span class="pre">supports_batching</span></code> buys nothing <em>yet</em>. That is a gap, not a decision. If your
+model benefits from batching, implement <code class="docutils literal notranslate"><span class="pre">_collate</span></code> and <code class="docutils literal notranslate"><span class="pre">_infer_batch</span></code> properly
+anyway — the cost is small and the sweep structure exists so this can be turned
+on without touching detectors. An <code class="docutils literal notranslate"><span class="pre">_infer_batch</span></code> override must still call
+<code class="docutils literal notranslate"><span class="pre">_ensure_model_loaded()</span></code> itself; see the warning under <em>The hook surface</em>.</p>
+</div>
+</section>
+<section id="nesting-the-container-contract">
+<h2>Nesting: the container contract<a class="headerlink" href="#nesting-the-container-contract" title="Link to this heading">#</a></h2>
+<p>A <code class="docutils literal notranslate"><span class="pre">GpuDetector</span></code> may sit <strong>inside</strong> another operation, at any depth — most
+usefully inside a <code class="docutils literal notranslate"><span class="pre">CompositeDetector</span></code>, where its mask is merged with a CPU
+detector’s. The staged engine supports this by addressing the detector with a
+<strong>tree path</strong> and substituting a replay stub at that path in Stage 3.</p>
+<p>That path — <code class="docutils literal notranslate"><span class="pre">(&quot;CompositeDetector&quot;,</span> <span class="pre">&quot;ops[0]&quot;)</span></code>, say — is a single value used
+three ways: it is the detector’s recorded <code class="docutils literal notranslate"><span class="pre">pipeline_step_path</span></code>, the address
+Stage 3 substitutes at, and (sanitised, plus 8 hex of the exact path) the
+<code class="docutils literal notranslate"><span class="pre">&lt;slot&gt;</span></code> directory its Stage-2 signal is written under, e.g.
+<code class="docutils literal notranslate"><span class="pre">.phenotypic/progress/stage2_raw/&lt;dataset&gt;/CompositeDetector__ops-0__dddf3676/&lt;stem&gt;.npy</span></code>.
+One addressing scheme, not three.</p>
+<p>To split the pipeline it must answer one question about every container on the
+path:</p>
+<blockquote>
+<div><p><strong>What image does this container hand its children?</strong></p>
+</div></blockquote>
+<p>It cannot infer the answer — containers drive children in imperative <code class="docutils literal notranslate"><span class="pre">_operate</span></code>
+bodies, and some pass a local intermediate that has no name in the operation
+graph. So the engine keeps a small, closed table, and <strong>refuses anything not in
+it</strong>.</p>
+<p>The table is populated lazily on first use (<code class="docutils literal notranslate"><span class="pre">_populate_child_contract</span></code>), because
+the module is imported by CLI argument validation that may never ask a GPU
+question and <code class="docutils literal notranslate"><span class="pre">phenotypic.detect</span></code>/<code class="docutils literal notranslate"><span class="pre">phenotypic.enhance</span></code> are heavy. If you ever add
+an entry, add it <strong>inside the existing single <code class="docutils literal notranslate"><span class="pre">update()</span></code></strong> rather than assigning
+key by key: the guard is <code class="docutils literal notranslate"><span class="pre">if</span> <span class="pre">_CHILD_CONTRACT:</span> <span class="pre">return</span></code>, so a half-built table
+lets a second thread return early and refuse a placement the design permits —
+and in the GUI, which runs threaded, that shows up as a refusal alert and a
+disabled Run button on a pipeline that is perfectly valid.</p>
+<div class="important admonition">
+<p class="admonition-title">Introduced with nested GPU staging</p>
+<p>See <code class="docutils literal notranslate"><span class="pre">docs/superpowers/specs/2026-09-15-nested-gpu-staging/design.md</span></code> §4.3.</p>
+</div>
+<section id="only-composition-primitives-may-carry-one">
+<h3>Only composition primitives may carry one<a class="headerlink" href="#only-composition-primitives-may-carry-one" title="Link to this heading">#</a></h3>
+<p>Three classes, and nothing else:</p>
+<dl class="simple myst">
+<dt><code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code> — <code class="docutils literal notranslate"><span class="pre">&quot;sequence&quot;</span></code></dt><dd><p>Each child receives the previous child’s output. Handled directly in
+<code class="docutils literal notranslate"><span class="pre">_child_contract</span></code>, not by a table entry.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">CompositeDetector</span></code>, <code class="docutils literal notranslate"><span class="pre">CompositeEnhance</span></code> — <code class="docutils literal notranslate"><span class="pre">&quot;parallel&quot;</span></code></dt><dd><p>Every child receives the container’s own input. Branches are parallel; order
+does not affect what any of them sees. These are the only two entries in
+<code class="docutils literal notranslate"><span class="pre">_CHILD_CONTRACT</span></code> (<code class="docutils literal notranslate"><span class="pre">phenotypic._cli._cli_validation</span></code>).</p>
+</dd>
+</dl>
+<p>A <code class="docutils literal notranslate"><span class="pre">GpuDetector</span></code> anywhere else is <strong>refused</strong>. That includes domain detectors
+whose current code would classify cleanly — see below.</p>
+<p><strong>Entries match by <code class="docutils literal notranslate"><span class="pre">isinstance</span></code>, not by exact type.</strong> A subclass a user actually
+holds — <code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">Plotted(CompositeDetector,</span> <span class="pre">PlotImage)</span></code> — is accepted; an
+exact-type lookup refused every such subclass, which was the same defect the
+table avoided for <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code>. The safety argument is preserved by a second
+rule: <strong>a subclass that overrides <code class="docutils literal notranslate"><span class="pre">_operate</span></code> is refused</strong>, because the
+child-input contract was verified against the <em>base’s</em> <code class="docutils literal notranslate"><span class="pre">_operate</span></code> and a
+replacement has been verified against nothing.</p>
+<p>The contract answer is consumed by <code class="docutils literal notranslate"><span class="pre">_branch_prefix</span></code> in <code class="docutils literal notranslate"><span class="pre">_cli_pipeline_split.py</span></code>,
+which dispatches on <code class="docutils literal notranslate"><span class="pre">_child_contract</span></code> and never on <code class="docutils literal notranslate"><span class="pre">isinstance</span></code>. A <code class="docutils literal notranslate"><span class="pre">&quot;sequence&quot;</span></code>
+container contributes the ops preceding the step taken from it to
+<code class="docutils literal notranslate"><span class="pre">StagePlan.stage2_prefix</span></code>; a <code class="docutils literal notranslate"><span class="pre">&quot;parallel&quot;</span></code> one contributes nothing, because its
+children are branches and none runs “before” another; and the root pipeline
+contributes nothing, because Stage 1 already applied and stored its ops.</p>
+</section>
+<section id="this-is-a-contract-not-an-observation">
+<h3>This is a contract, not an observation<a class="headerlink" href="#this-is-a-contract-not-an-observation" title="Link to this heading">#</a></h3>
+<p><strong>A <code class="docutils literal notranslate"><span class="pre">CompositeDetector</span></code> is never sequential.</strong> Its branches each receive the
+image the composite itself was given, and are combined afterwards by <code class="docutils literal notranslate"><span class="pre">union</span></code>,
+<code class="docutils literal notranslate"><span class="pre">intersection</span></code> or <code class="docutils literal notranslate"><span class="pre">overlap</span></code>. That is what makes it a <em>composite</em> rather than a
+pipeline — PhenoTypic already has <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code> for the sequential case, and a
+composite whose branches chained would be one. <code class="docutils literal notranslate"><span class="pre">CompositeEnhance</span></code> carries the
+same contract for the same reason.</p>
+<p>So the entry in the engine’s table is not a cached observation about today’s
+<code class="docutils literal notranslate"><span class="pre">_operate</span></code>; it restates the type’s contract. <strong>If you are changing a composite
+so its branches no longer see the same input, you are not editing a composite —
+stop and use a pipeline.</strong></p>
+</section>
+<section id="the-contract-is-tested-not-just-asserted">
+<h3>The contract is tested, not just asserted<a class="headerlink" href="#the-contract-is-tested-not-just-asserted" title="Link to this heading">#</a></h3>
+<p>Each of the two <code class="docutils literal notranslate"><span class="pre">&quot;parallel&quot;</span></code> primitives carries a behavioural probe in
+<code class="docutils literal notranslate"><span class="pre">tests/unit/detect/test_container_child_contracts.py</span></code>, which puts two recording
+operations in the container’s children and asserts what each received:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_composite_detector_branches_each_receive_the_composites_own_input</span><span class="p">():</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="n">load_synth_yeast_plate</span><span class="p">()</span>
+    <span class="n">baseline</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+    <span class="k">assert</span> <span class="n">baseline</span> <span class="o">!=</span> <span class="n">_PROBE_OBJECT_COUNT</span><span class="p">,</span> <span class="s2">&quot;fixture collision&quot;</span>
+
+    <span class="n">CompositeDetector</span><span class="p">(</span>
+        <span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="n">_DetectProbe</span><span class="p">(</span><span class="n">tag</span><span class="o">=</span><span class="s2">&quot;a&quot;</span><span class="p">),</span> <span class="n">_DetectProbe</span><span class="p">(</span><span class="n">tag</span><span class="o">=</span><span class="s2">&quot;b&quot;</span><span class="p">)],</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;union&quot;</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+
+    <span class="c1"># Sequential branches would have &quot;b&quot; observing &quot;a&quot;&#39;s objmap.</span>
+    <span class="k">assert</span> <span class="n">_SEEN</span> <span class="o">==</span> <span class="p">[(</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">baseline</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="n">baseline</span><span class="p">)]</span>
+</pre></div>
+</div>
+<p><strong>Assert the property, not a literal.</strong> <code class="docutils literal notranslate"><span class="pre">load_synth_yeast_plate()</span></code> arrives with
+its 8×12 ground-truth objmap already populated, so a branch observes 96 on
+entry, not 0. A test hard-coding <code class="docutils literal notranslate"><span class="pre">0</span></code> would be testing the fixture rather than
+the contract, and a spike on this change was derailed by exactly that number
+once already. The probe writes one deliberate square instead of thresholding,
+because a threshold on the synthetic plate also yields ~96 objects and so would
+not discriminate chaining from parallelism — hence the explicit
+fixture-collision guard.</p>
+<p>A declaration can lie and still pass every test that reads the table. A probe
+cannot: if someone makes the branches chain, this fails immediately and points
+at the contract. A companion test in
+<code class="docutils literal notranslate"><span class="pre">tests/unit/cli/test_gpu_detection_tree_wide.py</span></code> asserts coverage of the <strong>table
+itself</strong>, so a third <code class="docutils literal notranslate"><span class="pre">&quot;parallel&quot;</span></code> entry cannot arrive without its own probe.</p>
+</section>
+<section id="why-domain-detectors-are-excluded-even-when-they-would-classify">
+<h3>Why domain detectors are excluded, even when they would classify<a class="headerlink" href="#why-domain-detectors-are-excluded-even-when-they-would-classify" title="Link to this heading">#</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">FilamentousFungiDetector</span></code> passes <code class="docutils literal notranslate"><span class="pre">inoculum_detector</span></code> the container’s own image
+(<code class="docutils literal notranslate"><span class="pre">_filamentous_fungi_detector.py:398</span></code>), so it <em>reads</em> as <code class="docutils literal notranslate"><span class="pre">&quot;parallel&quot;</span></code>. It is
+still refused.</p>
+<p>The reason is that a composition primitive’s child-input semantics is part of
+<strong>what the class is</strong>, while a domain detector’s is incidental to <strong>what its
+algorithm currently does</strong>. <code class="docutils literal notranslate"><span class="pre">FilamentousFungiDetector._operate</span></code> also runs an
+inline <code class="docutils literal notranslate"><span class="pre">ContrastStretching()</span></code> (<code class="docutils literal notranslate"><span class="pre">:418</span></code>), a destructive <code class="docutils literal notranslate"><span class="pre">_subtract_background</span></code>,
+and a <code class="docutils literal notranslate"><span class="pre">del</span> <span class="pre">enhanced_work</span></code>. Nothing about being a fungus detector constrains it
+to keep handing its child the raw image, and if it stopped, the table would be
+wrong with nothing to say so.</p>
+<p><code class="docutils literal notranslate"><span class="pre">TwoKFilamentousDetector</span></code> shows how tangled this gets inside one algorithm:
+<code class="docutils literal notranslate"><span class="pre">center_detector</span></code> gets the original image
+(<code class="docutils literal notranslate"><span class="pre">_two_k_filamentous_detector.py:166</span></code>), <code class="docutils literal notranslate"><span class="pre">background_subtractor</span></code> a derived
+<code class="docutils literal notranslate"><span class="pre">enhanced.copy()</span></code> (<code class="docutils literal notranslate"><span class="pre">:171</span></code>), and <code class="docutils literal notranslate"><span class="pre">branch_base</span></code> <strong>mutates</strong> <code class="docutils literal notranslate"><span class="pre">enhanced</span></code> in place
+(<code class="docutils literal notranslate"><span class="pre">:204</span></code>). Three fields, three inputs, none of it visible from outside.</p>
+<p>So the rule is by <em>kind of class</em>, not by whether today’s code happens to be
+classifiable. A new detector needs no entry and no decision — it is refused by
+default, which is the right answer for it.</p>
+<p>Both classes do route their children through <code class="docutils literal notranslate"><span class="pre">apply_child</span></code>, so their branches
+record distinct <code class="docutils literal notranslate"><span class="pre">pipeline_step_path</span></code>s. That is a provenance-addressing fix and
+<strong>not</strong> an admission to the staging table; do not read one from the other.</p>
+</section>
+<section id="what-you-get-instead-of-silence">
+<h3>What you get instead of silence<a class="headerlink" href="#what-you-get-instead-of-silence" title="Link to this heading">#</a></h3>
+<p>Every refusal below raises <code class="docutils literal notranslate"><span class="pre">UnstageableGpuDetectorError</span></code>, a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>
+subclass, from <code class="docutils literal notranslate"><span class="pre">find_gpu_detectors</span></code>. The <strong>placement</strong> refusals are
+unconditional, so they fire from <code class="docutils literal notranslate"><span class="pre">pipeline_requires_gpu</span></code> — <em>before</em> the run is
+routed, rather than after it has already been sent somewhere. (The
+more-than-one-detector refusal is the exception: it is gated on <code class="docutils literal notranslate"><span class="pre">strict=True</span></code>,
+which only <code class="docutils literal notranslate"><span class="pre">split_pipeline_at_gpu</span></code> passes, so the GUI’s “is this a GPU
+pipeline?” probe reports <code class="docutils literal notranslate"><span class="pre">True</span></code> for a two-detector pipeline instead of raising.)</p>
+<p>Nested in something that is not a composition primitive:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>a GpuDetector cannot be nested inside TwoKFilamentousDetector: only composition
+primitives (ImagePipeline, CompositeDetector, CompositeEnhance) may carry one.
+Lift the detector into a CompositeDetector branch, or into the top-level
+pipeline.
+</pre></div>
+</div>
+<p>Nested in a subclass of a listed composite that replaces <code class="docutils literal notranslate"><span class="pre">_operate</span></code> (here a
+hypothetical <code class="docutils literal notranslate"><span class="pre">ChainingComposite(CompositeDetector)</span></code>):</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>a GpuDetector cannot be nested inside ChainingComposite: it subclasses
+CompositeDetector but overrides _operate, so the &#39;parallel&#39; child-input contract
+verified for CompositeDetector does not carry over to it. Lift the detector into
+a plain CompositeDetector branch, or into the top-level pipeline.
+</pre></div>
+</div>
+<p>In a <code class="docutils literal notranslate"><span class="pre">meas</span></code>, <code class="docutils literal notranslate"><span class="pre">post</span></code>, <code class="docutils literal notranslate"><span class="pre">filters</span></code> or <code class="docutils literal notranslate"><span class="pre">model</span></code> slot of any pipeline — the root, or
+(here) a nested pipeline keyed <code class="docutils literal notranslate"><span class="pre">inner</span></code> — which runs after the op chain:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GpuDetector at inner/meas:MeasureSymZones/center_detector cannot be staged: it
+sits in the &#39;meas&#39; slot of the pipeline at inner, which runs after the op chain
+-- Stage 3 runs it on a CPU node, after GPU inference has finished. Move the
+detector into that pipeline&#39;s ops.
+</pre></div>
+</div>
+<p>And more than one detector anywhere in the tree — a deferred feature, not a
+limit of the design — naming every offending path so you know which branches to
+split:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>staged execution does not support more than one GpuDetector per pipeline; found
+2 at: CompositeDetector/ops[0], CompositeDetector/ops[1]
+</pre></div>
+</div>
+<p>Each message names the way forward, because there almost always is one: run the
+GPU detector as a <code class="docutils literal notranslate"><span class="pre">CompositeDetector</span></code> branch and feed its mask to the domain
+detector, rather than nesting it inside.</p>
+<p>A wrong answer here would mean Stage 2 reads a layer that was never prepared,
+and the run completes with different numbers. Refusing is the cheap outcome.</p>
+</section>
+<section id="pipeline-slots-at-any-depth">
+<h3>Pipeline slots, at any depth<a class="headerlink" href="#pipeline-slots-at-any-depth" title="Link to this heading">#</a></h3>
+<p>The walker descends every pipeline’s <code class="docutils literal notranslate"><span class="pre">meas</span></code>, <code class="docutils literal notranslate"><span class="pre">post</span></code>, <code class="docutils literal notranslate"><span class="pre">filters</span></code> and <code class="docutils literal notranslate"><span class="pre">model</span></code>
+slots as well as its <code class="docutils literal notranslate"><span class="pre">ops</span></code> — the root pipeline’s and every nested one’s — and
+names a slot entry with the slot as a colon namespace: <code class="docutils literal notranslate"><span class="pre">meas:&lt;key&gt;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">post:&lt;key&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">filters:&lt;key&gt;</span></code>, and <code class="docutils literal notranslate"><span class="pre">model:&lt;ClassName&gt;</span></code> for the single model.
+A bare <code class="docutils literal notranslate"><span class="pre">meas</span></code> segment would collide with an <code class="docutils literal notranslate"><span class="pre">ops</span></code> key a user is free to
+choose. The flip side is that an <code class="docutils literal notranslate"><span class="pre">ops</span></code> key may itself contain a colon, so
+never classify a segment by parsing the string —
+<code class="docutils literal notranslate"><span class="pre">_operation_tree.pipeline_slot_of</span></code> decides against the live pipeline.</p>
+<p>Those slots run after the op chain. In the staged engine that is Stage 3, on a
+CPU node, after Stage 2’s GPU inference has finished; and a measurement may
+hand its nested detector a derived input, possibly once per object, that
+Stage 2 has no way to reproduce. So any path through a slot is refused.</p>
+<p>For every shipped slot type the ancestor check above would refuse the shape
+anyway — <code class="docutils literal notranslate"><span class="pre">MeasureFeatures</span></code>, <code class="docutils literal notranslate"><span class="pre">PostMeasurement</span></code>, <code class="docutils literal notranslate"><span class="pre">SetAnalyzer</span></code> and <code class="docutils literal notranslate"><span class="pre">ModelFitter</span></code>
+are not composition primitives — but its message would blame the slot entry’s
+class rather than the slot, which is why the slot check runs first. <strong>For one
+shape the slot check is the only guard:</strong> a class that is <em>both</em> a slot type
+and a composition primitive, such as
+<code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">MeasuringComposite(CompositeDetector,</span> <span class="pre">MeasureFeatures)</span></code>. It inherits
+<code class="docutils literal notranslate"><span class="pre">CompositeDetector._operate</span></code>, so the ancestor check admits it, and without the
+slot refusal its detector would be staged and inferred on the stored image —
+the wrong input, with no error. If you write such a class, that refusal is what
+keeps it honest; <code class="docutils literal notranslate"><span class="pre">test_a_slot_entry_that_is_also_a_composite_is_refused</span></code> pins
+it.</p>
+</section>
+<section id="how-a-refusal-reaches-the-user">
+<h3>How a refusal reaches the user<a class="headerlink" href="#how-a-refusal-reaches-the-user" title="Link to this heading">#</a></h3>
+<p>The CLI checks placement right after it has parsed its options, before it
+loads a manifest, clears the output directory for <code class="docutils literal notranslate"><span class="pre">--overwrite</span></code>, or exits for
+<code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>, and prints the message as a one-line usage error. A refused
+pipeline therefore never touches <code class="docutils literal notranslate"><span class="pre">--output</span></code>, and <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> refuses exactly
+what a real run would.</p>
+<p>The GUI run console asks the same question when a pipeline is selected. A
+refused pipeline shows the message in a red alert, in Local and SLURM mode
+alike, and Run is disabled; Validate and Run are also refused server-side
+before any run is registered. If you ever edit the probe
+(<code class="docutils literal notranslate"><span class="pre">_gui/run_console/_callbacks.py:_staged_gpu_capability</span></code>), keep its
+<code class="docutils literal notranslate"><span class="pre">except</span> <span class="pre">UnstageableGpuDetectorError</span></code> clause <strong>above</strong> the generic
+<code class="docutils literal notranslate"><span class="pre">except</span> <span class="pre">(OSError,</span> <span class="pre">ValueError,</span> <span class="pre">TypeError)</span></code>: the refusal is a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>, so
+the other order silently treats it as “not a GPU pipeline”.</p>
+</section>
+<section id="what-stage-3-actually-runs-replaydetector">
+<h3>What Stage 3 actually runs: <code class="docutils literal notranslate"><span class="pre">ReplayDetector</span></code><a class="headerlink" href="#what-stage-3-actually-runs-replaydetector" title="Link to this heading">#</a></h3>
+<p>Stage 3 does not call your detector. It builds a <code class="docutils literal notranslate"><span class="pre">ReplayDetector</span></code>
+(<code class="docutils literal notranslate"><span class="pre">_cli_replay_detector.py</span></code>) holding your instance plus Stage 2’s recorded array,
+substitutes it at <code class="docutils literal notranslate"><span class="pre">gpu_path</span></code>, and applies the resulting pipeline. Two
+consequences for you:</p>
+<ul class="simple">
+<li><p><strong>The write still goes through <em>your</em> <code class="docutils literal notranslate"><span class="pre">_write_object_output</span></code>.</strong> The stub
+delegates to it, so <code class="docutils literal notranslate"><span class="pre">drop_frame_background</span></code> and <code class="docutils literal notranslate"><span class="pre">split_disconnected_labels</span></code>
+apply exactly as in a single pass. This is why overriding that hook is
+“essentially never” in the table above — a stub that assigned <code class="docutils literal notranslate"><span class="pre">objmap</span></code>
+directly would skip both.</p></li>
+<li><p><strong>The journal records <em>your</em> detector, not the stub.</strong> <code class="docutils literal notranslate"><span class="pre">ReplayDetector</span></code>
+overrides four provenance hooks (<code class="docutils literal notranslate"><span class="pre">operation_name</span></code>, <code class="docutils literal notranslate"><span class="pre">operation_class</span></code>,
+<code class="docutils literal notranslate"><span class="pre">parameters</span></code>, and a duration offset carrying Stage 2’s inference time), so a
+staged run and a single-pass run of the same pipeline produce the same
+journal. The <code class="docutils literal notranslate"><span class="pre">parameters</span></code> override is not only a parity concern: the stub
+holds the recorded array in an <code class="docutils literal notranslate"><span class="pre">NdArrayField</span></code>, and the default <code class="docutils literal notranslate"><span class="pre">model_dump</span></code>
+would serialise the whole objmap into the journal.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">process</span> <span class="pre">--layer</span> <span class="pre">objmap</span></code> uses the same substitution, so a process export
+runs the post-detector operation chain rather than dumping the raw array.</p>
+</section>
+</section>
+<section id="testing-your-detector">
+<h2>Testing your detector<a class="headerlink" href="#testing-your-detector" title="Link to this heading">#</a></h2>
+<p>Use the shared CPU fake rather than writing another one:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">tests/_fakes/fake_gpu_detector.py</span></code> — <code class="docutils literal notranslate"><span class="pre">FakeGpuDetector</span></code>, a threshold detector
+with the full hook surface and no <code class="docutils literal notranslate"><span class="pre">torch</span></code>.</p></li>
+<li><p>For a test that round-trips a pipeline through JSON, register it first.
+<code class="docutils literal notranslate"><span class="pre">ImagePipeline.from_json</span></code> resolves classes <strong>by bare name against the
+<code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> namespace</strong>, so a module-local fake raises <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code>. The
+in-process pattern is the autouse fixture at
+<code class="docutils literal notranslate"><span class="pre">tests/unit/cli/test_staged_routing.py:21</span></code>; <code class="docutils literal notranslate"><span class="pre">tests/_fakes/register_fake_gpu.py</span></code>
+exists for the live SLURM dispatch test, where worker processes cannot reach a
+fixture.</p></li>
+</ul>
+</section>
+<section id="gated-weights-and-custom-namespaces">
+<h2>Gated weights and custom namespaces<a class="headerlink" href="#gated-weights-and-custom-namespaces" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">PHENOTYPIC_ACCEPT_MODEL_LICENSE</span></code> plus <code class="docutils literal notranslate"><span class="pre">require_license_acceptance</span></code>
+(<code class="docutils literal notranslate"><span class="pre">detect/nn/_checkpoint_manager.py</span></code>) gate downloads of licence-restricted
+checkpoints.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PHENOTYPIC_PRELOAD_MODULES</span></code> lets a fresh SLURM worker import a
+self-registering module before <code class="docutils literal notranslate"><span class="pre">from_json</span></code>, so a detector defined outside the
+<code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> namespace can be deserialised.</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-hook-surface">The hook surface</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#capability-fields">Capability fields</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#determinism-is-a-hard-requirement">Determinism is a hard requirement</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#do-not-assume-you-see-one-image">Do not assume you see one image</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nesting-the-container-contract">Nesting: the container contract</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#only-composition-primitives-may-carry-one">Only composition primitives may carry one</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#this-is-a-contract-not-an-observation">This is a contract, not an observation</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#the-contract-is-tested-not-just-asserted">The contract is tested, not just asserted</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#why-domain-detectors-are-excluded-even-when-they-would-classify">Why domain detectors are excluded, even when they would classify</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#what-you-get-instead-of-silence">What you get instead of silence</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pipeline-slots-at-any-depth">Pipeline slots, at any depth</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-a-refusal-reaches-the-user">How a refusal reaches the user</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#what-stage-3-actually-runs-replaydetector">What Stage 3 actually runs: <code class="docutils literal notranslate"><span class="pre">ReplayDetector</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#testing-your-detector">Testing your detector</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#gated-weights-and-custom-namespaces">Gated weights and custom namespaces</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/contrib_guide/gpu_detectors.md.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

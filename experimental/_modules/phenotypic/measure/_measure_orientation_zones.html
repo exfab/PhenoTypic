@@ -1180,6 +1180,42 @@
     <span class="k">return</span> <span class="n">ring_centres</span><span class="p">,</span> <span class="n">sector_tilt</span><span class="p">,</span> <span class="n">sector_resultant</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_is_orthogonal_change</span><span class="p">(</span><span class="n">change</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return where a wrapped axial change is exactly 90 degrees (within ``_EPS``).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">change</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="n">_EPS</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_axial_change</span><span class="p">(</span><span class="n">outer</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">inner</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the seam-safe signed axial change ``outer - inner`` in radians.</span>
+
+<span class="sd">    The doubled-angle wrap puts an exactly 90-degree change on the ``+-pi``</span>
+<span class="sd">    branch cut of ``arctan2``, where the sign is decided by floating-point</span>
+<span class="sd">    noise of a few ulps and so differs between CPUs. Such a change has no</span>
+<span class="sd">    turning direction; it is stored canonically as ``+pi / 2`` so every</span>
+<span class="sd">    intermediate array is platform-independent, and signed summaries treat it</span>
+<span class="sd">    as directionless via :func:`_signed_axial_mean`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">doubled</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">outer</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">inner</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">change</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">doubled</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">doubled</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">_is_orthogonal_change</span><span class="p">(</span><span class="n">change</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">change</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_signed_axial_mean</span><span class="p">(</span><span class="n">changes</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Mean signed axial change, counting a 90-degree change as directionless.</span>
+
+<span class="sd">    An orthogonal change contributes zero, exactly as a pair of opposing</span>
+<span class="sd">    changes cancels, while still counting toward the mean&#39;s denominator; its</span>
+<span class="sd">    magnitude remains in the absolute summaries.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">changes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">changes</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">_is_orthogonal_change</span><span class="p">(</span><span class="n">changes</span><span class="p">),</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">changes</span><span class="p">))</span>
+    <span class="p">)</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">cumulative_ring_rotation_profile</span><span class="p">(</span><span class="n">sector_tilt</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Accumulate seam-safe axial rotation from the innermost ring.</span>
 
@@ -1226,28 +1262,13 @@
                     <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">sector_tilt</span><span class="p">[</span><span class="n">ring_index</span><span class="p">,</span> <span class="n">sector_index</span><span class="p">])</span>
             <span class="p">):</span>
                 <span class="k">break</span>
-            <span class="n">adjacent_change</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span>
-                    <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span>
-                            <span class="mf">2.0</span>
-                            <span class="o">*</span> <span class="p">(</span>
-                                    <span class="n">sector_tilt</span><span class="p">[</span><span class="n">ring_index</span><span class="p">,</span> <span class="n">sector_index</span><span class="p">]</span>
-                                    <span class="o">-</span> <span class="n">sector_tilt</span><span class="p">[</span><span class="n">ring_index</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">sector_index</span><span class="p">]</span>
-                            <span class="p">)</span>
-                    <span class="p">),</span>
-                    <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span>
-                            <span class="mf">2.0</span>
-                            <span class="o">*</span> <span class="p">(</span>
-                                    <span class="n">sector_tilt</span><span class="p">[</span><span class="n">ring_index</span><span class="p">,</span> <span class="n">sector_index</span><span class="p">]</span>
-                                    <span class="o">-</span> <span class="n">sector_tilt</span><span class="p">[</span><span class="n">ring_index</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">sector_index</span><span class="p">]</span>
-                            <span class="p">)</span>
-                    <span class="p">),</span>
+            <span class="n">adjacent_change</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span>
+                    <span class="n">_axial_change</span><span class="p">(</span>
+                            <span class="n">sector_tilt</span><span class="p">[</span><span class="n">ring_index</span><span class="p">,</span> <span class="n">sector_index</span><span class="p">],</span>
+                            <span class="n">sector_tilt</span><span class="p">[</span><span class="n">ring_index</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">sector_index</span><span class="p">],</span>
+                    <span class="p">)</span>
             <span class="p">)</span>
-            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span>
-                    <span class="nb">abs</span><span class="p">(</span><span class="n">adjacent_change</span><span class="p">),</span>
-                    <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span>
-                    <span class="n">atol</span><span class="o">=</span><span class="n">_EPS</span><span class="p">,</span>
-                    <span class="n">rtol</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
-            <span class="p">):</span>
+            <span class="k">if</span> <span class="n">_is_orthogonal_change</span><span class="p">(</span><span class="n">adjacent_change</span><span class="p">):</span>
                 <span class="k">break</span>
             <span class="n">cumulative</span><span class="p">[</span><span class="n">ring_index</span><span class="p">,</span> <span class="n">sector_index</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
                     <span class="n">cumulative</span><span class="p">[</span><span class="n">ring_index</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">sector_index</span><span class="p">]</span> <span class="o">+</span> <span class="n">adjacent_change</span>
@@ -1371,11 +1392,8 @@
             <span class="k">continue</span>
         <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">ring_centres</span><span class="p">[</span><span class="n">outer_index</span><span class="p">])</span> <span class="o">-</span> <span class="n">target</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">tolerance</span><span class="p">:</span>
             <span class="k">continue</span>
-        <span class="n">inner</span> <span class="o">=</span> <span class="n">sector_tilt</span><span class="p">[</span><span class="n">inner_index</span><span class="p">]</span>
-        <span class="n">outer</span> <span class="o">=</span> <span class="n">sector_tilt</span><span class="p">[</span><span class="n">outer_index</span><span class="p">]</span>
-        <span class="n">delta</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">outer</span> <span class="o">-</span> <span class="n">inner</span><span class="p">)),</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">outer</span> <span class="o">-</span> <span class="n">inner</span><span class="p">)),</span>
+        <span class="n">delta</span> <span class="o">=</span> <span class="n">_axial_change</span><span class="p">(</span>
+                <span class="n">sector_tilt</span><span class="p">[</span><span class="n">outer_index</span><span class="p">],</span> <span class="n">sector_tilt</span><span class="p">[</span><span class="n">inner_index</span><span class="p">]</span>
         <span class="p">)</span>
         <span class="n">midpoint_rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">inner_radius</span> <span class="o">+</span> <span class="n">ring_centres</span><span class="p">[</span><span class="n">outer_index</span><span class="p">]))</span>
         <span class="n">rotation_rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">delta</span><span class="p">)</span>
@@ -1435,7 +1453,11 @@
     <span class="k">if</span> <span class="ow">not</span> <span class="n">finite</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
         <span class="k">return</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">support</span><span class="p">)</span>
     <span class="n">values</span> <span class="o">=</span> <span class="n">chosen</span><span class="p">[</span><span class="n">finite</span><span class="p">]</span>
-    <span class="k">return</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">values</span><span class="p">))),</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">values</span><span class="p">)),</span> <span class="n">support</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">values</span><span class="p">))),</span>
+        <span class="n">_signed_axial_mean</span><span class="p">(</span><span class="n">values</span><span class="p">),</span>
+        <span class="n">support</span><span class="p">,</span>
+    <span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">aggregate_paired_zone_rotation</span><span class="p">(</span>
@@ -1463,11 +1485,12 @@
     <span class="n">support</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">valid</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">inner</span><span class="o">.</span><span class="n">size</span><span class="p">)</span> <span class="k">if</span> <span class="n">inner</span><span class="o">.</span><span class="n">size</span> <span class="k">else</span> <span class="mf">0.0</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">valid</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
         <span class="k">return</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">support</span><span class="p">)</span>
-    <span class="n">delta</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span>
-            <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">outer</span><span class="p">[</span><span class="n">valid</span><span class="p">]</span> <span class="o">-</span> <span class="n">inner</span><span class="p">[</span><span class="n">valid</span><span class="p">])),</span>
-            <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">outer</span><span class="p">[</span><span class="n">valid</span><span class="p">]</span> <span class="o">-</span> <span class="n">inner</span><span class="p">[</span><span class="n">valid</span><span class="p">])),</span>
+    <span class="n">delta</span> <span class="o">=</span> <span class="n">_axial_change</span><span class="p">(</span><span class="n">outer</span><span class="p">[</span><span class="n">valid</span><span class="p">],</span> <span class="n">inner</span><span class="p">[</span><span class="n">valid</span><span class="p">])</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">delta</span><span class="p">))),</span>
+        <span class="n">_signed_axial_mean</span><span class="p">(</span><span class="n">delta</span><span class="p">),</span>
+        <span class="n">support</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="k">return</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">delta</span><span class="p">))),</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">delta</span><span class="p">)),</span> <span class="n">support</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_downsample_quiver</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">coherence</span><span class="p">,</span> <span class="n">block</span><span class="p">):</span>
@@ -2476,6 +2499,7 @@
 
         <span class="k">def</span><span class="w"> </span><span class="nf">_summarize_cells</span><span class="p">(</span>
                 <span class="n">cells</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                <span class="n">signed_mean</span><span class="o">=</span><span class="k">lambda</span> <span class="n">values</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">values</span><span class="p">)),</span>
         <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
             <span class="n">absolute</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">cells</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
             <span class="n">signed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">cells</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
@@ -2485,14 +2509,16 @@
                 <span class="n">support</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">finite</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">finite</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
                     <span class="n">absolute</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="n">finite</span><span class="p">])))</span>
-                    <span class="n">signed</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="n">finite</span><span class="p">]))</span>
+                    <span class="n">signed</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">signed_mean</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="n">finite</span><span class="p">])</span>
             <span class="k">return</span> <span class="n">absolute</span><span class="p">,</span> <span class="n">signed</span><span class="p">,</span> <span class="n">support</span>
 
         <span class="n">ring_absolute</span><span class="p">,</span> <span class="n">ring_signed</span><span class="p">,</span> <span class="n">ring_support</span> <span class="o">=</span> <span class="n">_summarize_cells</span><span class="p">(</span>
                 <span class="n">ring_sector_tilt</span>
         <span class="p">)</span>
+        <span class="c1"># Rotations use the same directionless rule as the measured</span>
+        <span class="c1"># SignedLongRangeRotation, so the figure agrees with the table.</span>
         <span class="n">pair_absolute</span><span class="p">,</span> <span class="n">pair_signed</span><span class="p">,</span> <span class="n">pair_support</span> <span class="o">=</span> <span class="n">_summarize_cells</span><span class="p">(</span>
-                <span class="n">signed_rotation</span>
+                <span class="n">signed_rotation</span><span class="p">,</span> <span class="n">signed_mean</span><span class="o">=</span><span class="n">_signed_axial_mean</span>
         <span class="p">)</span>
         <span class="n">ring_profile</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;radii&quot;</span>                 <span class="p">:</span> <span class="n">ring_centres</span><span class="p">,</span>

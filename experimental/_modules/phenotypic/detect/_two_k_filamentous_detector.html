@@ -739,13 +739,35 @@
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_fill_centers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">,</span> <span class="n">enhanced</span><span class="p">:</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Grid stamps ∩ background-subtraction body -&gt; (center_mask, center_objmap).&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">center_detector</span><span class="p">,</span> <span class="n">ImagePipeline</span><span class="p">):</span>
-            <span class="n">center_img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">center_detector</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">reset</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">center_img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">center_detector</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._provenance</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_child</span>
+
+        <span class="c1"># `center_detector` and `background_subtractor` are routed through</span>
+        <span class="c1"># `apply_child` even though this class is REFUSED for GPU staging, and</span>
+        <span class="c1"># an earlier revision skipped them on the grounds that &quot;descending them</span>
+        <span class="c1"># buys nothing&quot;. That was measurably wrong. `center_detector` defaults</span>
+        <span class="c1"># to an ImagePipeline, whose own `_run_operations` pushes a segment per</span>
+        <span class="c1"># child -- so its children were already recording a path, just one with</span>
+        <span class="c1"># the MIDDLE segment missing: `[&#39;TwoK&#39;, &#39;InoculumDetector&#39;]` where the</span>
+        <span class="c1"># walker says `TwoK/center_detector/InoculumDetector`. That is a</span>
+        <span class="c1"># well-formed path which `get_at_path` cannot resolve at all, so not</span>
+        <span class="c1"># descending did not leave the journal unchanged -- it wrote an</span>
+        <span class="c1"># unresolvable address into it. Addressed-vs-misaddressed, never</span>
+        <span class="c1"># addressed-vs-absent.</span>
+        <span class="c1">#</span>
+        <span class="c1"># This is NOT the `measure/CLAUDE.md` private-probe carve-out. That</span>
+        <span class="c1"># covers a nested operation run by a MeasureFeatures; this is a</span>
+        <span class="c1"># detector&#39;s own field which happens to share the name.</span>
+        <span class="n">center_img</span> <span class="o">=</span> <span class="n">apply_child</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">center_detector</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">segment</span><span class="o">=</span><span class="s2">&quot;center_detector&quot;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
         <span class="n">grid_mask</span> <span class="o">=</span> <span class="n">center_img</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:]</span> <span class="o">&gt;</span> <span class="mi">0</span>
 
-        <span class="n">body_img</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">background_subtractor</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">enhanced</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">body_img</span> <span class="o">=</span> <span class="n">apply_child</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">background_subtractor</span><span class="p">,</span>
+            <span class="n">enhanced</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+            <span class="n">segment</span><span class="o">=</span><span class="s2">&quot;background_subtractor&quot;</span><span class="p">,</span>
+            <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
         <span class="n">body</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">body_img</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
         <span class="n">body_mask</span> <span class="o">=</span> <span class="n">body</span> <span class="o">&gt;</span> <span class="n">threshold_otsu</span><span class="p">(</span><span class="n">body</span><span class="p">)</span>
 
@@ -753,6 +775,7 @@
         <span class="k">return</span> <span class="n">center_mask</span><span class="p">,</span> <span class="n">center_img</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;GridImage&quot;</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._provenance</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_child</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.reconnect</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
             <span class="n">build_reconnect_cost</span><span class="p">,</span>
             <span class="n">filter_mask_by_overlap</span><span class="p">,</span>
@@ -764,7 +787,19 @@
 
         <span class="c1"># ── BRANCH: two-k hysteresis on the enhanced base ──</span>
         <span class="n">enhanced</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">branch_base</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">enhanced</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="c1"># ``inplace=True`` is load-bearing: this call&#39;s whole purpose is the</span>
+        <span class="c1"># mutation of ``enhanced``, and ``apply_child`` defaults ``inplace`` to</span>
+        <span class="c1"># ``False``, which would discard the enhancement silently.</span>
+        <span class="c1">#</span>
+        <span class="c1"># All three operation-valued fields are routed through ``apply_child``.</span>
+        <span class="c1"># The other two -- ``center_detector`` and ``background_subtractor`` --</span>
+        <span class="c1"># are in ``_fill_centers``, which carries the retraction of the earlier</span>
+        <span class="c1"># &quot;this class is refused for GPU staging, so descending them buys</span>
+        <span class="c1"># nothing&quot; reasoning. That argument is stated there, once, beside the</span>
+        <span class="c1"># fields it is about.</span>
+        <span class="n">apply_child</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">branch_base</span><span class="p">,</span> <span class="n">enhanced</span><span class="p">,</span> <span class="n">segment</span><span class="o">=</span><span class="s2">&quot;branch_base&quot;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
         <span class="n">enhanced_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">enhanced</span><span class="o">.</span><span class="n">detect_mat</span><span class="p">[:],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
         <span class="n">enhanced_gray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">enhanced</span><span class="o">.</span><span class="n">gray</span><span class="p">[:],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
 

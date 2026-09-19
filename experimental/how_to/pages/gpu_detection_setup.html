@@ -1142,15 +1142,27 @@ and kept resident while each staged store is streamed through
 <code class="docutils literal notranslate"><span class="pre">preprocess</span> <span class="pre">→</span> <span class="pre">infer_batch</span></code>. The store is opened <strong>read-only</strong> and is never
 written to here, so an interrupted run never corrupts it. Instead Stage 2
 drops its result as machine state under <code class="docutils literal notranslate"><span class="pre">.phenotypic/progress/</span></code>: the
-<strong>raw</strong> labelled object map at <code class="docutils literal notranslate"><span class="pre">stage2_raw/&lt;dataset&gt;/&lt;stem&gt;.npy</span></code>, followed by
-a consumable <strong>token</strong> at <code class="docutils literal notranslate"><span class="pre">stage2_done/&lt;dataset&gt;/&lt;stem&gt;.json</span></code>.</p></li>
-<li><p><strong>Stage 3 — CPU replay + measure.</strong> The <strong>raw</strong> array is merged back into the
-image through the object-map accessor, the post-detector refiners and the
+<strong>raw</strong> labelled object map at <code class="docutils literal notranslate"><span class="pre">stage2_raw/&lt;dataset&gt;/&lt;slot&gt;/&lt;stem&gt;.npy</span></code>
+(compressed; a label image shrinks by an order of magnitude or more, which
+matters because every image’s output is retained until Stage 3 runs),
+followed by a consumable <strong>token</strong> at
+<code class="docutils literal notranslate"><span class="pre">stage2_done/&lt;dataset&gt;/&lt;slot&gt;/&lt;stem&gt;.json</span></code>.</p></li>
+<li><p><strong>Stage 3 — CPU replay + measure.</strong> The <strong>raw</strong> array is written back through
+the real detector’s own output writer, the post-detector refiners and the
 measurement queue run, the store is re-promoted atomically, and the token and
 then the raw array are <strong>consumed</strong>. Stage 3 always replays from the retained
 raw array rather than from the store’s own object map, so a retried Stage 3
 cannot re-refine already-refined labels.</p></li>
 </ol>
+<p><code class="docutils literal notranslate"><span class="pre">&lt;slot&gt;</span></code> identifies <em>which</em> GPU detector in the pipeline produced the signal. It
+is the detector’s position in the operation tree, sanitised and suffixed with 8
+hex characters of the exact path — for a detector that is the first branch of a
+top-level <code class="docutils literal notranslate"><span class="pre">CompositeDetector</span></code>, <code class="docutils literal notranslate"><span class="pre">CompositeDetector__ops-0__dddf3676</span></code>. A pipeline
+may currently contain only one GPU detector, so the directory carries no
+behaviour today; it is there so that supporting more later does not move the
+signal of a run already in flight. A run interrupted before this layout existed
+and resumed after it has its signal relocated once, rather than recomputed on a
+GPU.</p>
 <p>The output folder is identical to a single-pass run — staging is an internal
 optimization, not a different output contract.</p>
 <p><strong>Continuation is content-defined.</strong> Re-running the same command classifies each image:
@@ -1169,11 +1181,70 @@ instead of aborting the batch.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Forward run: detection stages automatically because the pipeline has a GpuDetector</span>
 python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>sam2_pipeline.json<span class="w"> </span>--input<span class="w"> </span>/plates/<span class="w"> </span>-o<span class="w"> </span>/output/
 
-<span class="c1"># Export just the object maps (runs Stages 1-2, then writes one objmap PNG per image)</span>
+<span class="c1"># Export just the object maps (runs Stages 1-2, then the post-detector ops,</span>
+<span class="c1"># then writes one objmap PNG per image)</span>
 python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--mode<span class="w"> </span>process<span class="w"> </span>--layer<span class="w"> </span>objmap<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--pipeline<span class="w"> </span>sam2_pipeline.json<span class="w"> </span>--input<span class="w"> </span>/plates/<span class="w"> </span>-o<span class="w"> </span>/output/
 </pre></div>
 </div>
+<div class="important admonition">
+<p class="admonition-title"><code class="docutils literal notranslate"><span class="pre">--layer</span> <span class="pre">objmap</span></code> exports <em>your pipeline’s</em> objmap</p>
+<p>The export replays Stage 2’s raw result and then runs the <strong>post-detector
+operation chain</strong> — the refiners, mask fills and small-object removers you put
+after your detector — before writing the PNG. Earlier releases wrote the
+detector’s raw output instead. If your detector is nested inside a
+<code class="docutils literal notranslate"><span class="pre">CompositeDetector</span></code>, that raw array is one <em>branch</em> of the composite and not an
+object map at all, so the old behaviour exported the wrong thing rather than
+merely an unrefined one.</p>
+<p>Re-running an export produced by an older release does <strong>not</strong> reuse those
+outputs: the semantics change is folded into the per-image work id, so a
+continuation re-derives every image. That fence is shared by all
+<code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">process</span></code> layers, so an in-flight <code class="docutils literal notranslate"><span class="pre">--layer</span> <span class="pre">gray</span></code> export is re-derived
+too.</p>
+</div>
+<section id="nested-gpu-detectors">
+<h3>Nested GPU detectors<a class="headerlink" href="#nested-gpu-detectors" title="Link to this heading">#</a></h3>
+<p>A <code class="docutils literal notranslate"><span class="pre">GpuDetector</span></code> does not have to sit at the top level of the pipeline. It can be
+a branch of a <code class="docutils literal notranslate"><span class="pre">CompositeDetector</span></code> (the common case — merge a model’s mask with a
+classical detector’s), a branch of a <code class="docutils literal notranslate"><span class="pre">CompositeEnhance</span></code>, or an operation inside
+a nested <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code>, at any depth. The staged engine addresses it by its
+position in the operation tree, runs only the operations ahead of it <em>within its
+own branch</em> before inference, and in Stage 3 slots the recorded result back at
+that same position, so the enclosing composite merges branches exactly as it
+would in a single-pass run.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pht</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">CompositeDetector</span><span class="p">,</span> <span class="n">OtsuDetector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sam2</span>
+
+<span class="n">pipeline</span> <span class="o">=</span> <span class="n">pht</span><span class="o">.</span><span class="n">ImagePipeline</span><span class="p">(</span>
+    <span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="n">CompositeDetector</span><span class="p">(</span><span class="n">ops</span><span class="o">=</span><span class="p">[</span><span class="n">Sam2</span><span class="p">(),</span> <span class="n">OtsuDetector</span><span class="p">()],</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;union&quot;</span><span class="p">)],</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Only composition primitives may carry one</strong> — <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code>,
+<code class="docutils literal notranslate"><span class="pre">CompositeDetector</span></code>, <code class="docutils literal notranslate"><span class="pre">CompositeEnhance</span></code>. Putting a GPU detector inside a domain
+detector such as <code class="docutils literal notranslate"><span class="pre">FilamentousFungiDetector</span></code> or <code class="docutils literal notranslate"><span class="pre">TwoKFilamentousDetector</span></code> is
+refused with a message naming the class and the way forward (run the GPU
+detector as a <code class="docutils literal notranslate"><span class="pre">CompositeDetector</span></code> branch and feed its mask onward). A detector in
+the <code class="docutils literal notranslate"><span class="pre">meas</span></code>, <code class="docutils literal notranslate"><span class="pre">post</span></code>, <code class="docutils literal notranslate"><span class="pre">filters</span></code> or <code class="docutils literal notranslate"><span class="pre">model</span></code> slot of <strong>any</strong> pipeline — the top-level
+one or a nested one — is refused too: those slots run after the op chain, in
+Stage 3 on a CPU node, once GPU inference has already finished. Move the
+detector into that pipeline’s <code class="docutils literal notranslate"><span class="pre">ops</span></code>. Two GPU detectors in one pipeline are not
+yet supported; the refusal names every path it found.</p>
+<p>The refusal names the detector by its path through the pipeline. A slot entry
+appears as the slot name, a colon, and the entry’s key — <code class="docutils literal notranslate"><span class="pre">meas:&lt;key&gt;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">post:&lt;key&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">filters:&lt;key&gt;</span></code> — or <code class="docutils literal notranslate"><span class="pre">model:&lt;ClassName&gt;</span></code> for the single model
+slot, so a measurement’s detector in a nested pipeline keyed <code class="docutils literal notranslate"><span class="pre">inner</span></code> reads:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GpuDetector at inner/meas:MeasureSymZones/center_detector cannot be staged: ...
+</pre></div>
+</div>
+<p>You see the refusal before anything runs. From the command line it is a
+one-line error, and it is checked <strong>before</strong> <code class="docutils literal notranslate"><span class="pre">--overwrite</span></code> clears the output
+directory, so pointing a refused pipeline at an existing run leaves that run’s
+results intact; <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> refuses it too. In the GUI run console, selecting
+the pipeline shows the message in a red alert — in Local and SLURM mode — and
+the Run button stays disabled until you choose a pipeline that can run.</p>
+</section>
 </section>
 <section id="slurm-deployment">
 <h2>SLURM Deployment<a class="headerlink" href="#slurm-deployment" title="Link to this heading">#</a></h2>
@@ -1455,7 +1526,10 @@ Stages 1 &amp; 3 are the ones exposed to a heterogeneous CPU partition.)</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#json-serialization">JSON serialization</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#local-staged-gpu-detection-cli">Local Staged GPU Detection (CLI)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#local-staged-gpu-detection-cli">Local Staged GPU Detection (CLI)</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nested-gpu-detectors">Nested GPU detectors</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#slurm-deployment">SLURM Deployment</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#slurm-staged-gpu-detection">SLURM Staged GPU Detection</a></li>
 </ul>

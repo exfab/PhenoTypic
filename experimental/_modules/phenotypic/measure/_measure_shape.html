@@ -773,10 +773,10 @@
                 <span class="n">convex_hull</span> <span class="o">=</span> <span class="kc">None</span>
 
             <span class="n">measurements</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">SHAPE</span><span class="o">.</span><span class="n">CONVEX_AREA</span><span class="p">)][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="n">convex_hull</span><span class="o">.</span><span class="n">area</span> <span class="k">if</span> <span class="n">convex_hull</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                <span class="n">convex_hull</span><span class="o">.</span><span class="n">volume</span> <span class="k">if</span> <span class="n">convex_hull</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
             <span class="p">)</span>
             <span class="n">measurements</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">SHAPE</span><span class="o">.</span><span class="n">SOLIDITY</span><span class="p">)][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="p">(</span><span class="n">current_props</span><span class="o">.</span><span class="n">area</span> <span class="o">/</span> <span class="n">convex_hull</span><span class="o">.</span><span class="n">area</span><span class="p">)</span> <span class="k">if</span> <span class="n">convex_hull</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+                <span class="p">(</span><span class="n">current_props</span><span class="o">.</span><span class="n">area</span> <span class="o">/</span> <span class="n">convex_hull</span><span class="o">.</span><span class="n">volume</span><span class="p">)</span> <span class="k">if</span> <span class="n">convex_hull</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
             <span class="p">)</span>
 
             <span class="c1"># Calculate Feret diameters using convex hull vertices if available</span>

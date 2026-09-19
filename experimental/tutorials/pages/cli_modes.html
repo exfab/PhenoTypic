@@ -947,6 +947,14 @@ your enhancement chain actually hands the detector; export <code class="docutils
 segmentations into CellProfiler, Fiji, or a training set. Note that <code class="docutils literal notranslate"><span class="pre">objmap</span></code>
 holds <strong>raw label values</strong>, not a rendered image — opening it in a viewer shows
 a near-black frame, because label 3 is the pixel value 3.</p>
+<p><code class="docutils literal notranslate"><span class="pre">--layer</span> <span class="pre">objmap</span></code> exports the objmap <strong>your pipeline produces</strong>, refiners
+included — the same thing a <code class="docutils literal notranslate"><span class="pre">full</span></code> run would detect, just without the
+measurement. That holds for a GPU pipeline too: the export runs the staged
+engine’s Stages 1–2 and then the post-detector operation chain, rather than
+dumping the model’s raw output. Older releases dumped the raw output, so
+re-running an export made before this change re-derives every image instead of
+reusing it; see
+<a class="reference internal" href="../../how_to/pages/gpu_detection_setup.html"><span class="std std-doc">GPU-Accelerated Colony Detection</span></a>.</p>
 <p>Flags that only make sense for measurement output are ignored with a warning
 rather than an error:</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--mode<span class="w"> </span>process<span class="w"> </span>...<span class="w"> </span>--layer<span class="w"> </span>gray<span class="w"> </span>--no-qc
@@ -1002,9 +1010,10 @@ array so a walltime kill loses at most N images of progress.</p>
 </section>
 <section id="gpu-detectors">
 <h3>GPU detectors<a class="headerlink" href="#gpu-detectors" title="Link to this heading">#</a></h3>
-<p>A pipeline containing a <code class="docutils literal notranslate"><span class="pre">GpuDetector</span></code> automatically splits into three stages —
-CPU preprocess, resident-model GPU detect, CPU measure — reusing the per-image
-OME-Zarr store. You do not opt in; you only tune it:</p>
+<p>A pipeline containing a <code class="docutils literal notranslate"><span class="pre">GpuDetector</span></code> — at the top level, or nested inside a
+<code class="docutils literal notranslate"><span class="pre">CompositeDetector</span></code>, <code class="docutils literal notranslate"><span class="pre">CompositeEnhance</span></code> or branch <code class="docutils literal notranslate"><span class="pre">ImagePipeline</span></code> — automatically
+splits into three stages: CPU preprocess, resident-model GPU detect, CPU measure,
+reusing the per-image OME-Zarr store. You do not opt in; you only tune it:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">--gpu-slurm</span> <span class="pre">KEY=VALUE</span></code> — SBATCH profile for the GPU stage. It <strong>inherits and
 deltas over <code class="docutils literal notranslate"><span class="pre">--slurm</span></code></strong>, so put the GPU partition and account here and leave

@@ -645,6 +645,8 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">annotated_types</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">at</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_._operation_tree</span><span class="w"> </span><span class="kn">import</span> <span class="n">iter_child_operations</span>
+
 <span class="kn">from</span><span class="w"> </span><span class="nn">._domains</span><span class="w"> </span><span class="kn">import</span> <span class="n">Categorical</span><span class="p">,</span> <span class="n">FloatRange</span><span class="p">,</span> <span class="n">IntRange</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._inferred</span><span class="w"> </span><span class="kn">import</span> <span class="n">Excluded</span><span class="p">,</span> <span class="n">ExcludeReason</span><span class="p">,</span> <span class="n">InferredSearchSpace</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._space</span><span class="w"> </span><span class="kn">import</span> <span class="n">Knob</span>
@@ -1222,9 +1224,21 @@
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">Knob</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="n">Excluded</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Recurse one level into an operation-valued field&#39;s live value.</span>
 
-<span class="sd">    Reads ``op.&lt;field_name&gt;``. List members are indexed (``&lt;field&gt;[&lt;i&gt;]``) and</span>
-<span class="sd">    recursed via :func:`_recurse_into_op`; ``None`` slots, nested pipelines, and</span>
-<span class="sd">    single operation-valued fields are skipped.</span>
+<span class="sd">    Enumerates ``op``&#39;s operation-bearing children via the shared</span>
+<span class="sd">    :func:`~phenotypic.sdk_._operation_tree.iter_child_operations` walker,</span>
+<span class="sd">    narrowed to the indexed ``&quot;&lt;field_name&gt;[&lt;i&gt;]&quot;`` members of *this* field —</span>
+<span class="sd">    that narrowing, plus the two exclusions below, is ``tune``&#39;s own depth</span>
+<span class="sd">    rule, not the walker&#39;s, and stays here rather than moving into the shared</span>
+<span class="sd">    module:</span>
+
+<span class="sd">    - A **bare, non-list** operation-valued field (the walker yields it as the</span>
+<span class="sd">      plain field name, with no ``[``) is never recursed — ``_infer_field``</span>
+<span class="sd">      already records it as ``Excluded(unsupported_type)``, elsewhere.</span>
+<span class="sd">    - A **nested pipeline** list member is skipped (depth cap = 1; no chaining</span>
+<span class="sd">      into a sub-pipeline&#39;s own ops).</span>
+
+<span class="sd">    ``None`` slots are never yielded by the walker, so they need no explicit</span>
+<span class="sd">    skip here.</span>
 
 <span class="sd">    ``conditional_on`` ties a nested knob to the parent&#39;s ``__enabled__`` **only</span>
 <span class="sd">    when the parent op is presence-wrapped** (``type(op)._tune_optional`` is</span>
@@ -1241,21 +1255,22 @@
 <span class="sd">    Returns:</span>
 <span class="sd">        ``(knobs, excluded)`` from the one-level recursion.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="n">field_name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
     <span class="n">conditional_on</span> <span class="o">=</span> <span class="n">_parent_presence_condition</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="n">position</span><span class="p">)</span>
+    <span class="n">list_prefix</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">field_name</span><span class="si">}</span><span class="s2">[&quot;</span>
 
     <span class="n">knobs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Knob</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">excluded</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Excluded</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
-        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">member</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">_is_recursable_op</span><span class="p">(</span><span class="n">member</span><span class="p">):</span>
-                <span class="k">continue</span>  <span class="c1"># skip None slots and nested pipelines (depth cap)</span>
-            <span class="n">prefix</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">position</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">field_name</span><span class="si">}</span><span class="s2">[</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">]&quot;</span>
-            <span class="n">k</span><span class="p">,</span> <span class="n">e</span> <span class="o">=</span> <span class="n">_recurse_into_op</span><span class="p">(</span>
-                <span class="n">member</span><span class="p">,</span> <span class="n">prefix</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="n">factor</span><span class="p">,</span> <span class="n">conditional_on</span><span class="o">=</span><span class="n">conditional_on</span>
-            <span class="p">)</span>
-            <span class="n">knobs</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
-            <span class="n">excluded</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">segment</span><span class="p">,</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">iter_child_operations</span><span class="p">(</span><span class="n">op</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">segment</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">list_prefix</span><span class="p">)</span> <span class="ow">and</span> <span class="n">segment</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;]&quot;</span><span class="p">)):</span>
+            <span class="k">continue</span>  <span class="c1"># a different field, or a bare (non-list) operation field</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">_is_recursable_op</span><span class="p">(</span><span class="n">child</span><span class="p">):</span>
+            <span class="k">continue</span>  <span class="c1"># skip a nested pipeline (depth cap)</span>
+        <span class="n">prefix</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">position</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">segment</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">k</span><span class="p">,</span> <span class="n">e</span> <span class="o">=</span> <span class="n">_recurse_into_op</span><span class="p">(</span>
+            <span class="n">child</span><span class="p">,</span> <span class="n">prefix</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="n">factor</span><span class="p">,</span> <span class="n">conditional_on</span><span class="o">=</span><span class="n">conditional_on</span>
+        <span class="p">)</span>
+        <span class="n">knobs</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+        <span class="n">excluded</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">knobs</span><span class="p">,</span> <span class="n">excluded</span>
 
 

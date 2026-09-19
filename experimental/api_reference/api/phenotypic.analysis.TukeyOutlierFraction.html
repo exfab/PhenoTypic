@@ -1802,7 +1802,7 @@ In that case, it will be called later, when the model is rebuilt automatically o
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.analysis.TukeyOutlierFraction.analyze">
-<span class="sig-name descname"><span class="pre">analyze</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><span class="pre">pandas.DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.TukeyOutlierFraction.analyze" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">analyze</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.6)"><span class="pre">pandas.DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.6)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.TukeyOutlierFraction.analyze" title="Link to this definition">#</a></dt>
 <dd><p>Run the check on every group and return the augmented frame.</p>
 <p>Iterates over <code class="docutils literal notranslate"><span class="pre">data.groupby(self.groupby,</span> <span class="pre">dropna=False)</span></code>,
 delegates per-group computation to <code class="xref py py-meth docutils literal notranslate"><span class="pre">_compute()</span></code>, and adds
@@ -1822,7 +1822,7 @@ A <code class="docutils literal notranslate"><span class="pre">NaN</span></code>
 <code class="xref py py-attr docutils literal notranslate"><span class="pre">_latest_measurements</span></code> and returned.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>data</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><em>pandas.DataFrame</em></a>) – Input measurement frame. Must contain <code class="docutils literal notranslate"><span class="pre">self.on</span></code> and
+<dd class="field-odd"><p><strong>data</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.6)"><em>pandas.DataFrame</em></a>) – Input measurement frame. Must contain <code class="docutils literal notranslate"><span class="pre">self.on</span></code> and
 every column in <code class="docutils literal notranslate"><span class="pre">self.groupby</span></code>.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1834,7 +1834,7 @@ plus whatever <code class="docutils literal notranslate"><span class="pre">_comp
     missing from <code class="docutils literal notranslate"><span class="pre">data</span></code>.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)">pandas.DataFrame</a></p>
+<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.6)">pandas.DataFrame</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -2443,11 +2443,11 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.analysis.TukeyOutlierFraction.results">
-<span class="sig-name descname"><span class="pre">results</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.TukeyOutlierFraction.results" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">results</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.6)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.TukeyOutlierFraction.results" title="Link to this definition">#</a></dt>
 <dd><p>Return the augmented frame stored by the most recent analyze().</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)">pandas.DataFrame</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.6)">pandas.DataFrame</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -2522,7 +2522,7 @@ right method.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.analysis.TukeyOutlierFraction.summary">
-<span class="sig-name descname"><span class="pre">summary</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.TukeyOutlierFraction.summary" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">summary</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.6)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.TukeyOutlierFraction.summary" title="Link to this definition">#</a></dt>
 <dd><p>Return a one-row-per-group summary of the most recent analyze.</p>
 <p>The aggregate columns are <strong>prefixed with ``qc_``</strong> so they can
 never collide with a <code class="docutils literal notranslate"><span class="pre">groupby</span></code> column on <code class="docutils literal notranslate"><span class="pre">reset_index</span></code> — a
@@ -2540,7 +2540,7 @@ direction across the group: <code class="docutils literal notranslate"><span cla
 wins over <code class="docutils literal notranslate"><span class="pre">&quot;warn&quot;</span></code> which wins over <code class="docutils literal notranslate"><span class="pre">&quot;pass&quot;</span></code>.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)">pandas.DataFrame</a></p>
+<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.6)">pandas.DataFrame</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -2575,7 +2575,7 @@ frame.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.analysis.TukeyOutlierFraction.to_table">
-<span class="sig-name descname"><span class="pre">to_table</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.TukeyOutlierFraction.to_table" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">to_table</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.6)"><span class="pre">pandas.DataFrame</span></a></span></span><a class="headerlink" href="#phenotypic.analysis.TukeyOutlierFraction.to_table" title="Link to this definition">#</a></dt>
 <dd><p>Return the module’s self-describing frame to persist to DuckDB.</p>
 <p>Precondition: <a class="reference internal" href="#phenotypic.analysis.TukeyOutlierFraction.analyze" title="phenotypic.analysis.TukeyOutlierFraction.analyze"><code class="xref py py-meth docutils literal notranslate"><span class="pre">analyze()</span></code></a> has run (this reads
 <code class="xref py py-attr docutils literal notranslate"><span class="pre">_latest_measurements</span></code>). The default is member-level: the
@@ -2589,7 +2589,7 @@ augmented frame projected to group-key + member-key + <code class="docutils lite
 <dd class="field-odd"><p>The projected DataFrame; columns vary per check (self-describing).</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.5)">pandas.DataFrame</a></p>
+<dd class="field-even"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.6)">pandas.DataFrame</a></p>
 </dd>
 </dl>
 </dd></dl>
