@@ -57,6 +57,7 @@ import pickle
 import shutil
 import stat
 import struct
+import sys
 import tempfile
 from collections.abc import Iterable, Mapping
 from contextlib import ExitStack, contextmanager
@@ -163,12 +164,26 @@ _HDF_SUFFIXES = frozenset({".h5", ".hdf5", ".hdf"})
 _SUPERSEDED_STATUS_PREFIX = "status.superseded-"
 _REJECTED_STATUS_PREFIX = "status.rejected-"
 _RENAME_NOREPLACE = 1
-try:
-    _RENAMEAT2: Any = getattr(
-        ctypes.CDLL(None, use_errno=True), "renameat2", None
-    )
-except OSError:
-    _RENAMEAT2 = None
+
+
+def _load_renameat2(platform: str = sys.platform) -> Any:
+    """Return libc ``renameat2``, or ``None`` where it cannot exist.
+
+    ``renameat2`` is Linux-only, and ``ctypes.CDLL(None)`` -- "the running
+    process" -- is POSIX-only: on Windows it raises ``TypeError`` rather than
+    ``OSError``, which crashed this module's import and with it every Windows
+    test session. Probe only on Linux; elsewhere the no-clobber rename fails
+    closed in :func:`_libc_renameat2`.
+    """
+    if not platform.startswith("linux"):
+        return None
+    try:
+        return getattr(ctypes.CDLL(None, use_errno=True), "renameat2", None)
+    except OSError:
+        return None
+
+
+_RENAMEAT2: Any = _load_renameat2()
 
 
 def _libc_renameat2() -> Any:
