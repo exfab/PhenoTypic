@@ -1736,6 +1736,18 @@ def test_metadata_pass_reuses_preflight_and_revalidates_before_first_write(
         "_publish_anchored_journal_json",
         record_first_durable_publication,
     )
+    # Windows publishes through the native journal session instead.
+    real_portable_publish = migration._portable_publish_absent_bytes
+
+    def record_portable_publication(*args: object, **kwargs: object):
+        events.append(("mutation", str(args[0])))
+        return real_portable_publish(*args, **kwargs)
+
+    monkeypatch.setattr(
+        migration,
+        "_portable_publish_absent_bytes",
+        record_portable_publication,
+    )
 
     result = run_metadata_pass(output, dry_run=False)
 

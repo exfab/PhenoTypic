@@ -154,7 +154,12 @@ def test_run_marker_written_before_slurm_branch(tmp_path, monkeypatch):
     spec_path.write_text(_spec(tmp_path).model_dump_json())
     # URL-hostile characters in the output path; Windows forbids ``?`` in a
     # file name, so it is exercised on POSIX only.
-    out = tmp_path / ("slurm #?% 雪 out" if os.name == "posix" else "slurm #% 雪 out")
+    hostile, encoded = (
+        ("slurm #?% 雪 out", "%23%3F%25%20%E9%9B%AA%20")
+        if os.name == "posix"
+        else ("slurm #% 雪 out", "%23%25%20%E9%9B%AA%20")
+    )
+    out = tmp_path / hostile
     journal_path = io.tune_cache_journal_path(out.absolute())
     storage_url = journal_url_for_path(journal_path)
     run_tuning(
@@ -176,7 +181,7 @@ def test_run_marker_written_before_slurm_branch(tmp_path, monkeypatch):
     # run-local backing file, even when the output path contains URL syntax.
     assert marker["storage_url"] == storage_url
     assert marker["storage_url"].endswith("?v=1")
-    assert "%23%3F%25%20%E9%9B%AA%20" in storage_url
+    assert encoded in storage_url
     assert journal_path_from_url(marker["storage_url"]) == journal_path
     assert journal_path.is_file()
 
