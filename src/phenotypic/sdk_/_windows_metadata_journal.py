@@ -392,7 +392,11 @@ _FILE_FLAG_BACKUP_SEMANTICS = 0x02000000
 _OPEN_EXISTING = 3
 _FILE_ATTRIBUTE_TAG_INFO_CLASS = 9
 _FILE_ID_INFO_CLASS = 18
-_FILE_RENAME_INFO_CLASS = 3
+#: ``FILE_INFORMATION_CLASS.FileRenameInformation`` for ``NtSetInformationFile``.
+#: Not the Win32 ``FileRenameInfo`` (3): ``SetFileInformationByHandle`` rejects a
+#: rename relative to ``RootDirectory`` with ``ERROR_INVALID_PARAMETER``, which is
+#: the only form that keeps the target bound to the held parent handle.
+_FILE_RENAME_INFORMATION_CLASS = 10
 _FILE_DISPOSITION_INFO_CLASS = 4
 _OBJ_CASE_INSENSITIVE = 0x40
 _LOCKFILE_EXCLUSIVE_LOCK = 0x2
@@ -578,6 +582,15 @@ class _CtypesWindowsApi:
             dword,
         ]
         self.NtCreateFile.restype = ctypes.c_int32
+        self.NtSetInformationFile = self.ntdll.NtSetInformationFile
+        self.NtSetInformationFile.argtypes = [
+            handle,
+            ctypes.POINTER(_IoStatusBlock),
+            ctypes.c_void_p,
+            dword,
+            ctypes.c_int32,
+        ]
+        self.NtSetInformationFile.restype = ctypes.c_int32
         self.RtlNtStatusToDosError = self.ntdll.RtlNtStatusToDosError
         self.RtlNtStatusToDosError.argtypes = [ctypes.c_int32]
         self.RtlNtStatusToDosError.restype = ctypes.c_uint32
@@ -828,13 +841,19 @@ class _CtypesWindowsApi:
             encoded,
             len(encoded),
         )
-        if not self.SetFileInformationByHandle(
+        io_status = _IoStatusBlock()
+        status = self.NtSetInformationFile(
             handle,
-            _FILE_RENAME_INFO_CLASS,
+            ctypes.byref(io_status),
             buffer,
             total,
-        ):
-            self._raise_last_error("SetFileInformationByHandle(FileRenameInfo)")
+            _FILE_RENAME_INFORMATION_CLASS,
+        )
+        if status < 0:
+            error = int(self.RtlNtStatusToDosError(status))
+            if error in {_ERROR_ALREADY_EXISTS, _ERROR_FILE_EXISTS}:
+                raise FileExistsError(error, name)
+            raise OSError(error, f"NtSetInformationFile(FileRenameInformation) failed for {name!r}")
 
     def delete(self, handle: int) -> None:
         disposition = _FileDispositionInfo(DeleteFile=1)

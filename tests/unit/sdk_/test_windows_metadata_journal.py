@@ -45,13 +45,24 @@ def test_ctypes_binding_declares_pointer_width_safe_signatures() -> None:
     )
     api.ntdll = SimpleNamespace(
         NtCreateFile=_FakeCFunction(),
+        NtSetInformationFile=_FakeCFunction(),
         RtlNtStatusToDosError=_FakeCFunction(),
     )
 
     api._bind()
 
-    for name in (*kernel_names, "NtCreateFile", "RtlNtStatusToDosError"):
+    for name in (
+        *kernel_names,
+        "NtCreateFile",
+        "NtSetInformationFile",
+        "RtlNtStatusToDosError",
+    ):
         assert getattr(getattr(api, name), "argtypes", None), name
+    # The rename goes through ntdll: kernel32's SetFileInformationByHandle
+    # rejects a RootDirectory-relative FileRenameInfo with ERROR_INVALID_PARAMETER.
+    assert api.NtSetInformationFile.argtypes[0] is ctypes.c_void_p
+    assert api.NtSetInformationFile.argtypes[2] is ctypes.c_void_p
+    assert api.NtSetInformationFile.restype is ctypes.c_int32
     assert api.LockFileEx.argtypes == [
         ctypes.c_void_p,
         ctypes.c_uint32,
