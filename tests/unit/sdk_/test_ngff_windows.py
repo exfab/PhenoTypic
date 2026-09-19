@@ -47,6 +47,7 @@ from __future__ import annotations
 
 import ast
 import errno
+import json
 import os
 import types
 from pathlib import Path
@@ -199,9 +200,14 @@ def test_the_windows_nightly_lane_still_collects_the_store_suites() -> None:
     and the ways it could stop are all invisible from Linux: a marker filter, an
     ``--ignore``, or an explicit path list that omits them.
 
-    The job runs bare ``pytest`` under an ``addopts`` override, so collection
-    comes from ``testpaths`` -- asserted by
-    ``test_the_store_suites_are_reachable_from_testpaths``.
+    The job used to run bare ``pytest`` under an ``addopts`` override, so
+    collection came from ``testpaths`` alone. It now fans out over the shard
+    manifest, one job per shard, and the shard paths ARE the explicit path
+    list this test was written to distrust -- so being under ``testpaths`` is
+    no longer sufficient. What replaces it is the manifest's own partition
+    gate (``tests/unit/ci/test_pytest_shard_manifest.py``: every configured
+    test module belongs to exactly one shard), plus the assertion below that
+    each store suite really is under some shard the Windows lane runs.
     """
     invocations = _pytest_invocations(WORKFLOWS / "run-pytest-full.yml", "tests-windows-full")
     assert invocations, "the Windows nightly job no longer runs pytest at all"
@@ -212,6 +218,31 @@ def test_the_windows_nightly_lane_still_collects_the_store_suites() -> None:
         # a marker. The addopts override deliberately clears pyproject's
         # `-m 'not slow'`, so there must be no replacement.
         assert " -m " not in command, f"a marker filter reached the Windows lane: {command}"
+
+
+def test_the_windows_nightly_shards_own_both_store_suites() -> None:
+    """The half ``testpaths`` used to cover, now that the lane is sharded.
+
+    A shard rename or a path dropped from the manifest would leave the lane
+    green while never collecting either suite again.
+    """
+    manifest = json.loads(
+        (REPO_ROOT / ".github" / "pytest-shards.json").read_text(encoding="utf-8")
+    )
+    document = yaml.safe_load(
+        (WORKFLOWS / "run-pytest-full.yml").read_text(encoding="utf-8")
+    )
+    windows = document["jobs"]["tests-windows-full"]["strategy"]["matrix"]["shard"]
+    assert "pytest-shards.json" in str(
+        document["jobs"]["load-shards"]["steps"]
+    ), "the Windows lane no longer fans out over the shard manifest"
+    assert "needs.load-shards.outputs.shards" in windows, windows
+
+    owned = {Path(entry) for shard in manifest for entry in shard["paths"]}
+    for suite in STORE_SUITES:
+        assert any(suite.is_relative_to(entry) for entry in owned), (
+            f"{suite} is under no shard path, so no Windows shard job runs it"
+        )
 
 
 def test_the_pr_lane_runs_the_commit_protocol_tests_on_linux() -> None:
