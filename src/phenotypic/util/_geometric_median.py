@@ -1094,6 +1094,51 @@ NOT part of Cohen et al., included for benchmarking.
 """
 
 
+def _weiszfeld_result(
+    x: np.ndarray,
+    points: np.ndarray,
+    iterations: int,
+    f_initial: float,
+    converged: bool,
+    verbose: bool,
+) -> Tuple[np.ndarray, Dict]:
+    """Build the ``(x, info)`` pair returned by :func:`weiszfeld_median`.
+
+    Every exit from the solver reports the same fields, so they are built in
+    one place. ``f_initial`` is only used for the printed improvement line and
+    is skipped when it is zero (a cloud of identical points), where the ratio
+    would be ``0/0`` -- today that prints ``Improvement: nan%`` and raises a
+    numpy invalid-value warning.
+
+    Args:
+        x: The estimate being returned, shape (d,).
+        points: Data points, shape (n, d).
+        iterations: Number of iterations actually performed.
+        f_initial: Objective at the starting estimate.
+        converged: Whether the solver reached a fixed point.
+        verbose: Whether to print the summary.
+
+    Returns:
+        ``(x, info)`` exactly as :func:`weiszfeld_median` documents it.
+    """
+    objective = compute_geometric_median_objective(x, points)
+    if verbose:
+        if converged:
+            print(f"✓ Converged after {iterations} iterations")
+        else:
+            print("⚠ Maximum iterations reached")
+        print(f"  Final: f(x) = {objective:.6f}")
+        if converged and f_initial > 0.0:
+            print(f"  Improvement: {((f_initial - objective) / f_initial) * 100:.2f}%")
+    return x, {
+        "iterations": iterations,
+        "objective": objective,
+        "initial_objective": f_initial,
+        "converged": converged,
+        "method": "weiszfeld",
+    }
+
+
 def weiszfeld_median(
     points: np.ndarray, eps: float = 1e-6, max_iter: int = 1000, verbose: bool = True
 ) -> Tuple[np.ndarray, Dict]:
@@ -1143,37 +1188,15 @@ def weiszfeld_median(
         # Check convergence
         change = np.linalg.norm(x - x_old)
         if change < eps:
-            objective = compute_geometric_median_objective(x, points)
-            if verbose:
-                print(f"✓ Converged after {iteration + 1} iterations")
-                print(f"  Final: f(x) = {objective:.6f}")
-                print(
-                    f"  Improvement: {((f_initial - objective) / f_initial) * 100:.2f}%"
-                )
-            return x, {
-                "iterations": iteration + 1,
-                "objective": objective,
-                "initial_objective": f_initial,
-                "converged": True,
-                "method": "weiszfeld",
-            }
+            return _weiszfeld_result(
+                x, points, iteration + 1, f_initial, True, verbose
+            )
 
         if verbose and (iteration + 1) % 100 == 0:
             objective = compute_geometric_median_objective(x, points)
             print(f"  Iteration {iteration + 1}: f(x)={objective:.6f}")
 
-    objective = compute_geometric_median_objective(x, points)
-    if verbose:
-        print("⚠ Maximum iterations reached")
-        print(f"  Final: f(x) = {objective:.6f}")
-
-    return x, {
-        "iterations": max_iter,
-        "objective": objective,
-        "initial_objective": f_initial,
-        "converged": False,
-        "method": "weiszfeld",
-    }
+    return _weiszfeld_result(x, points, max_iter, f_initial, False, verbose)
 
 
 # =============================================================================
