@@ -48,6 +48,24 @@ def _path_key(path: Path) -> tuple[str, ...]:
     return (path.anchor, *path.parts[1:])
 
 
+
+def _true_link_count(path: Path) -> int:
+    """Return *path*'s hard-link count, opening it when the OS requires it.
+
+    Windows' no-follow ``stat`` takes a fast path that never opens the file
+    and leaves ``st_nlink`` at ``0``. Seeding the model from that made every
+    file look multi-linked: the five ordinary read tests were refused with
+    "not a single-link file", while ``test_a_multi_link_file_is_refused``
+    passed *for the wrong reason* -- the one shape a refusal test must never
+    pass in. ``fstat`` on an open handle reports the real count on both
+    platforms.
+    """
+    count = path.stat(follow_symlinks=False).st_nlink
+    if count:
+        return count
+    with path.open("rb") as handle:
+        return os.fstat(handle.fileno()).st_nlink or 1
+
 class _MemoryIdentityWindowsApi(_MemoryWindowsApi):
     """The journal's handle model, extended for read-only identity I/O."""
 
@@ -80,9 +98,9 @@ class _MemoryIdentityWindowsApi(_MemoryWindowsApi):
                     self._scan(Path(entry.path), key)
                 else:
                     self.files[key] = b""
-                    self.link_counts[key] = entry.stat(
-                        follow_symlinks=False
-                    ).st_nlink
+                    self.link_counts[key] = _true_link_count(
+                        Path(entry.path)
+                    )
 
     def open_anchor(self, anchor: str, *, share_delete: bool) -> int:
         assert share_delete is self.expect_share_delete
