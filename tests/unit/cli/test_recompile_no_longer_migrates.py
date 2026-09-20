@@ -32,6 +32,11 @@ from phenotypic.sdk_ import (
     zarr_store_path,
 )
 
+#: Windows-relevant I/O: also collected by the tests-windows-platform-io
+#: PR job (`-m platform_io`), which SELECTS marked tests and deselects
+#: everything else -- an unmarked suite simply does not run there.
+pytestmark = pytest.mark.platform_io
+
 
 def _read_headers(output_dir: Path) -> set[str]:
     """Return every column name across the per-dataset measurement parquets."""

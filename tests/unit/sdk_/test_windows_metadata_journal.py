@@ -10,6 +10,11 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
+#: Windows-relevant I/O: also collected by the tests-windows-platform-io
+#: PR job (`-m platform_io`), which SELECTS marked tests and deselects
+#: everything else -- an unmarked suite simply does not run there.
+pytestmark = pytest.mark.platform_io
+
 
 class _FakeCFunction:
     """ctypes-like callable whose declared ABI can be inspected on Linux."""

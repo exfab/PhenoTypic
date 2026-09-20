@@ -26,6 +26,8 @@ from pathlib import Path
 
 import polars as pl
 
+import pytest
+
 from phenotypic.schema import IMAGE
 from phenotypic.sdk_ import (
     DIR_RESULTS,
@@ -40,6 +42,11 @@ from .conftest import (
     _install_snapshot,
     _publish_successful_images,
 )
+
+#: Windows-relevant I/O: also collected by the tests-windows-platform-io
+#: PR job (`-m platform_io`), which SELECTS marked tests and deselects
+#: everything else -- an unmarked suite simply does not run there.
+pytestmark = pytest.mark.platform_io
 
 #: Keyed on ``Metadata_Well``, which ``_measurements`` puts in every store's
 #: baseline, so the snapshot really joins. Both tests use it, for opposite
