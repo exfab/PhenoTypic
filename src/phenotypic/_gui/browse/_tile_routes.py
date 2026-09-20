@@ -33,6 +33,7 @@ from phenotypic._gui.browse._source_probe import SourceProbeError
 from phenotypic._gui.browse._source_item import is_source_store
 from phenotypic._gui.shell._sandbox import SandboxRoot
 from phenotypic.sdk_ import store_publication_token
+from phenotypic.sdk_._io_constants import published_token_through_a_hold
 from phenotypic.sdk_._identity_io import (
     HeldDirectory,
     identity_io_available,
@@ -340,7 +341,12 @@ def register(
         if not is_source_store(source):
             raise FileNotFoundError
         try:
-            publication = store_publication_token(source)
+            # Through a hold, like every other measurement of this store.
+            # The revision this is compared against comes from
+            # ``store_revision_identity``, which holds; measuring by path
+            # here would reintroduce the Windows disagreement in a new place
+            # -- it already moved once, from the member check to this one.
+            publication = published_token_through_a_hold(source)
         except OSError as exc:
             raise SourceProbeError("unstable store root") from exc
         if publication is None:

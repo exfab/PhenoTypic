@@ -1853,7 +1853,7 @@ def source_image_suffix(path: Path) -> str:
     return ".zarr" if is_zarr_store_name(source) else source.suffix
 
 
-def _published_token_through_a_hold(store: Path) -> str | None:
+def published_token_through_a_hold(store: Path) -> str | None:
     """Return the publication token measured through a held directory.
 
     Both sides of Browse's freshness check must measure the store the same
@@ -1919,7 +1919,7 @@ def store_revision_identity(
     published = (
         store_publication_token(store, root_directory=root_directory)
         if root_directory is not None
-        else _published_token_through_a_hold(store)
+        else published_token_through_a_hold(store)
     )
     if published is not None:
         return published

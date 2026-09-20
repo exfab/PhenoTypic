@@ -14,6 +14,7 @@ from phenotypic._gui.browse import _tile_routes
 from phenotypic._gui.browse._source_probe import probe_source
 from phenotypic._gui.shell._sandbox import SandboxRoot
 from phenotypic.sdk_ import _identity_io
+from phenotypic.sdk_ import _io_constants
 
 pytestmark = pytest.mark.platform_io
 
@@ -550,8 +551,15 @@ def test_published_store_route_maps_unstable_root_to_conflict(
         assert observed is not None
         return observed
 
+    # Both lookup paths: the route holds the store for the member check and
+    # calls the imported name directly, while the revision check funnels
+    # through the sdk_ helper that opens its own hold. Patching only one
+    # leaves an observation unconsumed and the route answers 200.
     monkeypatch.setattr(
         _tile_routes, "store_publication_token", unstable_publication
+    )
+    monkeypatch.setattr(
+        _io_constants, "store_publication_token", unstable_publication
     )
 
     response = app.server.test_client().get(
@@ -591,6 +599,32 @@ def test_mutable_third_party_store_fails_closed_without_asset_rescan(
 
     assert response.status_code == 422
     assert "publication token" in response.get_json()["error"]
+
+
+def test_every_token_measurement_in_the_route_goes_through_a_hold() -> None:
+    """The invariant, not one pair of it -- this bug already moved once.
+
+    Browse compares a store's publication token measured in several places.
+    On Windows a directory-entry query can report an older ``st_mtime_ns``
+    than an open-handle query for the same file, so any site measuring by
+    path while another measures by handle answers 409 "source image changed"
+    for a store nobody touched.
+
+    Converting two of the four sites did not fix it -- it moved the mismatch
+    from the member check to the revision check, and a different pair of
+    tests failed (runs 35497611719 and 35506072940). Pinning one pair would
+    let the next conversion move it again, so this asserts the property every
+    site must have: no bare ``store_publication_token(<path>)`` call, and no
+    bare ``store_revision_identity`` outside the sdk_ helper that holds.
+    """
+    source = Path(_tile_routes.__file__).read_text(encoding="utf-8")
+
+    assert "store_publication_token(source)" not in source, (
+        "a path-measured token reached the route again"
+    )
+    held_calls = source.count("root_directory=")
+    assert held_calls >= 2, f"expected the held-branch calls to remain: {held_calls}"
+    assert "published_token_through_a_hold(source)" in source
 
 
 def test_malformed_token_404(app_and_root):
