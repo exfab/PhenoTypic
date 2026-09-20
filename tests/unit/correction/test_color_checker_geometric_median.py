@@ -11,12 +11,13 @@ differently and a fix for one does not imply a fix for the other:
 
 * ``test_patch_center_is_not_short_circuited_by_a_coincident_pixel`` pins the
   degenerate branch -- a pixel sitting on the running estimate must not end
-  the solve and be returned as the answer. **This is currently a strict
-  xfail.** Routing through ``robust_color_center`` did not close this branch:
-  the shared solver floors the distance at ``1e-10`` instead of returning the
-  point, which hands that point ~99.9995% of the weight and pins the estimate
-  to it anyway -- same wrong answer, different route. Specified for its own PR
-  in ``docs/superpowers/specs/2026-09-19-weiszfeld-coincident-point-singularity/``.
+  the solve and be returned as the answer. Routing through
+  ``robust_color_center`` did not close this branch on its own: the shared
+  solver floored the distance at ``1e-10``, which handed that pixel
+  ~99.9995% of the weight and pinned the estimate to it anyway. Closed by the
+  Vardi-Zhang coincident-point split in ``weiszfeld_median``; see
+  ``docs/superpowers/specs/2026-09-19-weiszfeld-coincident-point-singularity/``
+  and the solver-level guards in ``tests/unit/util/test_geometric_median.py``.
 * ``test_patch_center_converges_past_a_loose_tolerance`` pins the convergence
   test -- stopping at ``1e-3`` leaves the estimate short of the geometric
   median by more than the tolerance this module actually asks for.
@@ -28,7 +29,6 @@ Both are written against ``robust_color_center`` under the very constants
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from phenotypic.correction._color_correction._color_checker_profile import (
     GEOMEDIAN_MAX_ITER,
@@ -72,17 +72,6 @@ def _skewed_swatch(seed: int = 11) -> np.ndarray:
     return np.round(pixels * 255.0) / 255.0  # 8-bit, as real swatch pixels are
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Known, specified defect: weiszfeld_median floors the distance at "
-        "1e-10, so a pixel on the running estimate takes ~99.9995% of the "
-        "weight and captures the solve. See docs/superpowers/specs/"
-        "2026-09-19-weiszfeld-coincident-point-singularity/. strict=True, so "
-        "this flips to a failure the moment the fix lands and the marker "
-        "cannot be left behind."
-    ),
-)
 def test_patch_center_is_not_short_circuited_by_a_coincident_pixel():
     """A pixel lying on the running estimate must not be returned as the answer.
 

@@ -9,6 +9,10 @@ Reference:
     Proceedings of STOC 2016, pp. 9-21.
     arXiv:1606.05225
 
+    Vardi, Y., & Zhang, C.-H. (2000). The multivariate L1-median and
+    associated data depth. PNAS, 97(4), 1423-1426.
+    https://doi.org/10.1073/pnas.97.4.1423
+
 Key Implementation Notes:
     - Uses proper convergence checks on ACTUAL objective f(x), not penalized ft(x)
     - Applies practical tolerances while maintaining theoretical structure
@@ -1094,6 +1098,45 @@ NOT part of Cohen et al., included for benchmarking.
 """
 
 
+_COINCIDENCE_RTOL = 1e-12
+"""Relative radius inside which a data point counts as *on* the estimate.
+
+The test is floating-point-relative, not statistical. ``1e-12 * ||x||`` is a
+few thousand ULPs at ``x``, so it asks "is this point indistinguishable from
+the iterate at double precision?" -- which is exactly the question ``1/d``
+blows up on. That is also why it scales with ``||x||`` rather than with the
+data's spread: the failure mode is a floating-point one.
+
+Coincidence must be a radius rather than an equality test. A point at
+``1.11e-16`` from the estimate is not equal to it, but ``1/d`` still gives it
+~1e15 of weight and it captures the update exactly as the old ``1e-10``
+distance floor did -- measured at 21.9 8-bit code values of error.
+
+It is harmless at every scale this codebase works in: 8-bit pixels are
+``1/255`` apart, and for L*a*b* near (50, 10, 20) the radius is ~5.5e-11
+against a nearest-neighbour spacing many orders of magnitude larger.
+
+The ``max(||x||, 1)`` floor means the solver has a **1e-12 absolute**
+resolution floor near the origin: a caller working at a coordinate scale below
+~1e-11 would see every point swallowed into the coincident set and get the
+mean back. That is within the cloud's own diameter of the truth, so it is
+harmless, but ``geometric_median`` is a public export and this is part of its
+contract.
+"""
+
+
+def _coincidence_atol(x: np.ndarray) -> float:
+    """Absolute radius for the coincidence test at estimate ``x``.
+
+    Args:
+        x: Current estimate, shape (d,).
+
+    Returns:
+        The distance at or below which a point is treated as lying on ``x``.
+    """
+    return _COINCIDENCE_RTOL * max(float(np.linalg.norm(x)), 1.0)
+
+
 def _weiszfeld_result(
     x: np.ndarray,
     points: np.ndarray,
@@ -1145,10 +1188,19 @@ def weiszfeld_median(
     """
     Classical Weiszfeld algorithm for geometric median.
 
-    Reference: Weiszfeld (1937) - for comparison only
+    Reference: Weiszfeld (1937), with the coincident-point handling of
+    Vardi & Zhang (2000).
 
-    Iterative reweighting: x^(k+1) = Σ w_i a^(i) / Σ w_i
-    where w_i = 1/||x^(k) - a^(i)||_2
+    Iterative reweighting: x^(k+1) = Σ w_i a^(i) / Σ w_i where
+    w_i = 1/||x^(k) - a^(i)||_2. Points lying on x^(k) are excluded from that
+    sum and the step is damped toward them by γ = min(1, η/r), which is what
+    keeps a data point on the estimate from capturing the iteration. With no
+    coincident point (η = 0) this is the classical update unchanged.
+
+    Convergence reports ``r <= η + eps*W`` (W = Σ 1/||a - x|| over the
+    non-coincident points), which is exact optimality when γ = 1 and an
+    eps-scaled subgradient slack otherwise -- the same slack the classical
+    rule has always carried.
 
     Args:
         points: Data points, shape (n, d)
@@ -1177,13 +1229,48 @@ def weiszfeld_median(
     for iteration in range(max_iter):
         x_old = x.copy()
 
-        # Compute weights: w_i = 1/||x - a^(i)||_2
+        # Vardi & Zhang (2000): split the points lying *on* the estimate out of
+        # the reweighting. 1/d is undefined there, and flooring d does not
+        # define it -- it hands those points ~1e10 of weight and pins the
+        # estimate to them, which is the defect this replaces.
         distances = np.linalg.norm(points - x, axis=1)
-        distances = np.maximum(distances, 1e-10)
-        weights = 1.0 / distances
+        on_estimate = distances <= _coincidence_atol(x)
+        eta = int(on_estimate.sum())
 
-        # Weighted update
-        x = np.sum(points * weights[:, np.newaxis], axis=0) / np.sum(weights)
+        far = points[~on_estimate]
+        far_distances = distances[~on_estimate]
+
+        if far.size == 0:
+            # Every point coincides with the estimate, so it is the median.
+            return _weiszfeld_result(
+                x, points, iteration + 1, f_initial, True, verbose
+            )
+
+        weights = 1.0 / far_distances
+        reweighted = (
+            np.sum(far * weights[:, np.newaxis], axis=0) / np.sum(weights)
+        )
+
+        if eta == 0:
+            # No coincidence: exactly the classical Weiszfeld update.
+            x = reweighted
+        else:
+            # r is the norm of the non-coincident part of the subgradient.
+            # 0 lies in the subdifferential iff r <= eta, i.e. iff gamma == 1 --
+            # so gamma == 1 gives a zero step that is an optimality
+            # certificate, not a stall. (The `r == 0.0` guard is required:
+            # `eta / r` raises ZeroDivisionError there, it does not yield inf.)
+            r = float(
+                np.linalg.norm(
+                    np.sum((far - x) / far_distances[:, np.newaxis], axis=0)
+                )
+            )
+            if r == 0.0:
+                return _weiszfeld_result(
+                    x, points, iteration + 1, f_initial, True, verbose
+                )
+            gamma = min(1.0, eta / r)
+            x = (1.0 - gamma) * reweighted + gamma * x
 
         # Check convergence
         change = np.linalg.norm(x - x_old)
@@ -1224,6 +1311,11 @@ def geometric_median(
     Args:
         points: Data points, shape (n, d)
         eps: Target accuracy for (1 + eps)-approximation
+
+            Note: points within ``1e-12 * max(||x||, 1)`` of the running estimate
+            are treated as coincident with it. For data at a coordinate scale below
+            ~1e-11 this collapses the whole cloud into that set and returns the
+            mean.
         method: Algorithm to use:
             - 'weiszfeld': Classical Weiszfeld reweighting [default]
             - 'cohen': Cohen et al. (2016) O(nd log³(n/ε)) algorithm --
