@@ -259,3 +259,34 @@ OS/Python combinations.
 | `ngff_.long_path` resolves symlinks (`ngff_.py:1659`), so a junction store root would be followed on Windows and refused on POSIX | The Windows backend builds its `\\?\` prefix from `os.path.abspath` only |
 | `open_file` requests write + delete access (`_windows_metadata_journal.py:726-733`), which a read-only store refuses | A separate read-only opener; the journal's mask is untouched |
 | The two `store_publication_token` branches could disagree on identity and 409 every tile request | Both take a real `os.stat_result` via `os.fstat`; a test asserts the two branches agree for one store |
+
+---
+
+## Probe results (2026-09-20, windows-latest runner)
+
+Task 0 of the plan. Every claim below is an observation, not documentation.
+
+| Question | Answer |
+|---|---|
+| Directory listing against an `NtCreateFile` handle | **Works** with `FileFullDirectoryRestartInfo(15)` then `FileFullDirectoryInfo(14)`, ending in `ERROR_NO_MORE_FILES(18)`. `FileName.offset` is 68. |
+| Does the listing include `.` and `..`? | **Yes** — `['.', '..', 'alpha.json', 'beta.json']`. The backend must filter them; POSIX `os.listdir` does not return them. |
+| `FILE_STANDARD_INFO` (class 1) | **Works** on both handle kinds: `Directory=1` on a directory, and `links=1`, `size=18`, `Directory=0` on a file. `link_count`, `file_size` and `is_directory` all come from this one call. |
+| **B2:** does `os.fstat` on an `open_osfhandle` fd agree with `os.stat(path)`? | **Yes, exactly** — `st_ino`, `st_ctime_ns`, `st_mtime_ns` and `st_size` all identical. This is what makes the two `store_publication_token` branches agree by construction. |
+| Stream lifetime and seeking | Seekable; `seek(4).read(4)` correct; still readable **after** both directory handles are closed. |
+| **B5:** read-only mask vs the journal's write mask | The journal's mask (`FILE_WRITE_DATA\|FILE_WRITE_ATTRIBUTES\|DELETE`) is **refused with `ERROR_ACCESS_DENIED`** on both a read-only-attribute file and one whose ACL denies `WD,AD`. `FILE_READ_DATA \| FILE_READ_ATTRIBUTES \| SYNCHRONIZE` with `FILE_SYNCHRONOUS_IO_NONALERT` **opens both and reads them through the CRT fd**. |
+| **S2:** does `open_anchor` accept a regular file as a root? | **Yes** — it opened one, `Directory=0`. POSIX refuses this twice, so the Windows backend must check the `Directory` bit or the two disagree. |
+
+Two corrections to earlier text in this document:
+
+1. **The `FileIdBothDirectory(11/10)` fallback is unverified.** The probe ran it
+   with the `FILE_FULL_DIR_INFO` layout and got garbage
+   (`['\x00', '\x14BETA~1.J', …]`) — that is a probe defect, not a Windows one:
+   `FILE_ID_BOTH_DIR_INFO` has a different layout (short-name fields and a file
+   id). The fallback needs its own struct if it is ever used. `15/14` works, so
+   nothing depends on it today.
+2. **A first attempt at the B5 test proved nothing** and was rerun. `icacls
+   /deny <user>:(W)` denies `FILE_GENERIC_WRITE`, which *includes*
+   `SYNCHRONIZE`, so it refused the read-only mask too. Denying `(WD,AD)` — or
+   using the read-only file attribute — isolates write access, which is the
+   case the fix is about. Recorded because the first result read as "B5 is
+   wrong" and was in fact a badly-built experiment.
