@@ -15,7 +15,6 @@ import numpy as np
 from scipy.ndimage import binary_fill_holes, label, median_filter
 from scipy.optimize import linear_sum_assignment
 
-from phenotypic.util._robust_color_stats import robust_color_center
 
 _SRGB_CS = colour.RGB_COLOURSPACES["sRGB"]
 
@@ -371,50 +370,6 @@ def center_and_pad_checker(
         rgb = median_filter_rgb(rgb, size=filter_size)
 
     return rgb
-
-
-# ---------------------------------------------------------------------------
-# Geometric median (Weiszfeld algorithm)
-# ---------------------------------------------------------------------------
-
-
-def geometric_median(
-    points: np.ndarray,
-    eps: float = 1e-6,
-    max_iter: int = 200,
-) -> np.ndarray:
-    """Geometric median of a point set, via the package-wide solver.
-
-    Thin wrapper around :func:`phenotypic.util.robust_color_center`, so that
-    a patch colour measured here and a colony colour reported by
-    ``MeasureColor`` as ``ColorLab_*GeoMedian`` come from one implementation.
-
-    The local implementation this replaced spent a single ``eps`` on three
-    jobs: the convergence test, the floor under ``1 / distance``, and a
-    "the estimate has landed on a data point" test that returned that data
-    point. Thousands of pixels in a colour-checker swatch sit within the old
-    ``1e-3`` default of each other in sRGB, so on measured data the third test
-    fired on the first iteration for 116 of 120 tiles and the function
-    returned a raw pixel a median 0.40 ΔE2000 from the converged geometric
-    median. The shared solver clamps the distance instead of returning the
-    point, so it cannot degenerate that way.
-
-    Args:
-        points: Array of shape ``(N, D)`` with *N* points in *D* dimensions.
-            A 1-D ``(D,)`` array is returned unchanged.
-        eps: Convergence tolerance on the Weiszfeld update norm, in the units
-            of *points*. The default suits sRGB on ``[0, 1]``; the Lab-space
-            callers in :mod:`phenotypic.util` use ``1e-4``.
-        max_iter: Maximum number of Weiszfeld iterations. A colour-checker
-            swatch needs 25--109.
-
-    Returns:
-        1-D array of shape ``(D,)`` — the geometric median.
-    """
-    points = np.asarray(points, dtype=np.float64)
-    if points.ndim == 1:
-        return points.copy()
-    return robust_color_center(points, max_iter=max_iter, tol=eps)
 
 
 # ---------------------------------------------------------------------------
