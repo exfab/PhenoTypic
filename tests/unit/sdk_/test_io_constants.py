@@ -82,6 +82,12 @@ from phenotypic.sdk_.typing_ import (
     RecompileTaskType,
 )
 
+#: The store-publication tokens here are measured differently by path and
+#: by held handle, and only Windows makes those two disagree -- so this
+#: module must reach the tests-windows-platform-io PR job, which selects
+#: with `-m platform_io` and deselects everything unmarked.
+pytestmark = pytest.mark.platform_io
+
 
 # ---------------------------------------------------------------------------
 # Enum ↔ Literal alignment (the only paired Enum + Literal in this PR)
@@ -1801,6 +1807,36 @@ def test_store_publication_token_takes_a_held_directory(tmp_path: Path) -> None:
     store = _published_store(tmp_path)
     with _identity_io.open_identity_directory(store) as held:
         assert store_publication_token(store, root_directory=held) is not None
+
+
+def test_the_revision_identity_matches_what_a_holder_measures(
+    tmp_path: Path,
+) -> None:
+    """The comparison Browse actually makes, which the branch test missed.
+
+    ``test_both_token_branches_agree_for_one_store`` below pins the two
+    branches of one function. The route compares something else: a revision
+    from ``store_revision_identity`` against a token the route computes while
+    holding the store. Those were measured different ways, and on Windows a
+    directory-entry query can report an older ``st_mtime_ns`` than an
+    open-handle query for the same file -- so the route answered 409 "source
+    image changed" for a store nobody had touched (run 35497611719, two tests).
+
+    ``store_revision_identity`` now holds the store itself, so both sides
+    measure through a handle and cannot drift apart.
+    """
+    from phenotypic.sdk_ import (
+        _identity_io,
+        store_publication_token,
+        store_revision_identity,
+    )
+
+    store = _published_store(tmp_path)
+    from_probe = store_revision_identity(store)
+    with _identity_io.open_identity_directory(store) as held:
+        from_route = store_publication_token(store, root_directory=held)
+
+    assert from_probe == from_route
 
 
 def test_both_token_branches_agree_for_one_store(tmp_path: Path) -> None:

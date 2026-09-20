@@ -1853,7 +1853,40 @@ def source_image_suffix(path: Path) -> str:
     return ".zarr" if is_zarr_store_name(source) else source.suffix
 
 
-def store_revision_identity(path: Path) -> str:
+def _published_token_through_a_hold(store: Path) -> str | None:
+    """Return the publication token measured through a held directory.
+
+    Both sides of Browse's freshness check must measure the store the same
+    way. The route holds the store root and asks for the token through that
+    handle; if the revision it compares against were measured by path, the two
+    could disagree -- and they do on Windows, where a directory-entry query can
+    report an older ``st_mtime_ns`` than an open-handle query for the same
+    file. The symptom is a 409 on a store nobody touched. Observed on
+    windows-latest in run 35497611719, two tests, reproducibly.
+
+    Falls back to the path measurement where no backend exists, which is the
+    same value every platform produced before identity-bound I/O existed.
+    """
+    from phenotypic.sdk_._identity_io import (
+        identity_io_available,
+        open_identity_directory,
+    )
+
+    if not identity_io_available():
+        return store_publication_token(store)
+    try:
+        with open_identity_directory(store) as held:
+            return store_publication_token(store, root_directory=held)
+    except (OSError, ValueError):
+        # A store that cannot be held is not a store whose token we can
+        # bind; the path measurement still answers, and a genuinely broken
+        # store fails later in the same way it always did.
+        return store_publication_token(store)
+
+
+def store_revision_identity(
+    path: Path, *, root_directory: "HeldDirectory | None" = None
+) -> str:
     """Return a stable revision identity for one OME-Zarr store.
 
     PhenoTypic-published immutable generations use the explicit root-last
@@ -1865,6 +1898,10 @@ def store_revision_identity(path: Path) -> str:
 
     Args:
         path: Existing ``*.ome.zarr`` directory.
+        root_directory: Optional held directory for the store root. When
+            omitted, the store is held internally so the token is measured
+            through a handle -- the same way a consumer holding the store
+            measures it, so the two cannot disagree.
 
     Returns:
         A versioned SHA-256 metadata identity.
@@ -1879,7 +1916,11 @@ def store_revision_identity(path: Path) -> str:
     store = Path(path)
     if not is_zarr_store_name(store):
         raise ValueError(f"not an OME-Zarr store directory: {store}")
-    published = store_publication_token(store)
+    published = (
+        store_publication_token(store, root_directory=root_directory)
+        if root_directory is not None
+        else _published_token_through_a_hold(store)
+    )
     if published is not None:
         return published
     first = _store_revision_snapshot(store, root_json=STORE_ROOT_JSON)
