@@ -315,7 +315,9 @@ def test_exhausting_the_iteration_budget_reports_not_converged():
 
 **Why it matters.** `_COINCIDENCE_RTOL` is the one number this change invents. Its docstring makes three quantitative claims and all three are correct — **MEASURED**: `_coincidence_atol([50,10,20]) = 5.477226e-11` against the docstring's "~5.5e-11"; `_coincidence_atol([0,0,0]) = 1e-12` and `_coincidence_atol([0.5,0,0]) = 1e-12`, confirming the absolute floor; `1e-12 / 2.2e-16 ≈ 4500`, confirming "a few thousand ULPs". None of the three is executable. A future edit that widened the radius "to be safe" would swallow real data points into the coincident set and return something closer to the mean, which is the original defect wearing a different hat.
 
-**And one thing worth saying plainly, which no document currently says.** **MEASURED**: `_coincidence_atol` returns exactly `1e-12` for `[0,0,0]`, `[0.5,0,0]` and `[0.35,0.37,0.40]` alike, because `max(‖x‖, 1)` clamps. So **across the whole sRGB working range the radius is a flat `1e-12` absolute and is not scale-relative at all** — the relative half of the rule only begins to bite in L\*a\*b\* (`1.732051e-12` at `[1,1,1]`, `5.477226e-11` at `[50,10,20]`). The constant's docstring leads with the relative framing ("`1e-12 * ||x||` is a few thousand ULPs at `x`") and treats the clamp as a footnote about "a caller working at a coordinate scale below ~1e-11". For `ColorCheckerProfile` — the caller the spec's Blast-radius table rates **highest** exposure — the footnote is the whole story and the headline never applies. Reversing that emphasis in the docstring costs a sentence and stops the next reader reasoning about a scale-relative radius that, for their caller, does not exist.
+**And one thing worth saying plainly, which no document currently says.** **MEASURED**: `_coincidence_atol` returns exactly `1e-12` for `[0,0,0]`, `[0.5,0,0]` and `[0.35,0.37,0.40]` alike, because `max(‖x‖, 1)` clamps. So **across the whole sRGB working range the radius is a flat `1e-12` absolute and is not scale-relative at all** — the relative half of the rule only begins to bite in L\*a\*b\* (`1.732051e-12` at `[1,1,1]`, `5.477226e-11` at `[50,10,20]`). The constant's docstring leads with the relative framing ("`1e-12 * ||x||` is a few thousand ULPs at `x`") and treats the clamp as a footnote about "a caller working at a coordinate scale below ~1e-11". For `ColorCheckerProfile` — the caller the spec's Blast-radius table rates **highest** exposure — the footnote is the whole story and the headline never applies. Reversing that emphasis costs a sentence and stops the next reader reasoning about a scale-relative radius that, for their caller, does not exist.
+
+**This is time-critical in a way the rest of F-4 is not.** The constant is correct; only its justification is misleading. But Task 4 Step 4 is about to copy that justification into the spec, where it becomes the durable account of why `1e-12` was chosen. Fix the docstring before Task 4 runs, not after, or the wrong reasoning propagates to the document that outlives the code comment.
 
 **Suggested fix — every value measured:**
 
@@ -445,8 +447,9 @@ The 5m20s the run did cost is `test_measure_color.py`, and that is F-12.
 
 ## What I still did not run
 
-- `M11` (`eta := 1`) and `M12` (swapped damping) against the 26-test surface — only against the five new guards. Both survive the five; whether the wider surface catches them is unknown, though `gamma := 0.0` surviving all 26 makes it unlikely.
-- The `η = 3, r = 2` cloud proposed under F-1 for killing `eta := 1`. Explicitly **DERIVED**; measure before writing the assertion.
+One item. Everything else asked for in the course of this review was run and is folded into the findings above; no *finding* now rests on an unmeasured number. Three analytical arguments remain labelled **DERIVED** — the termination bound and the residual-approximation bound in §1.1, and the two mutations named under F-5 that were not in the probe set. They are reasoning, not measurements, and are marked as such where they appear.
+
+- `M11` (`eta := 1`) and `M12` (swapped damping) against the **26-test surface** — they were run against the five new guards, where both survive, and `M11` was additionally run against F-1's second cloud, where it dies. Whether the wider surface catches either is unknown, though `gamma := 0.0` surviving all 26 makes it unlikely. This does not affect any finding: F-1 already rests on `gamma := 0.0` surviving all 26.
 
 ## Note on the mutant count
 

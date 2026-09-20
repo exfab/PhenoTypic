@@ -1099,29 +1099,41 @@ NOT part of Cohen et al., included for benchmarking.
 
 
 _COINCIDENCE_RTOL = 1e-12
-"""Relative radius inside which a data point counts as *on* the estimate.
+"""Radius inside which a data point counts as *on* the estimate.
 
-The test is floating-point-relative, not statistical. ``1e-12 * ||x||`` is a
-few thousand ULPs at ``x``, so it asks "is this point indistinguishable from
-the iterate at double precision?" -- which is exactly the question ``1/d``
-blows up on. That is also why it scales with ``||x||`` rather than with the
-data's spread: the failure mode is a floating-point one.
+**Read the clamp first: for most callers here this radius is a constant.**
+``_coincidence_atol`` is ``1e-12 * max(||x||, 1)``, so below unit norm the
+``max`` clamps and the radius is a flat **1e-12 absolute**. Measured, it is
+exactly ``1e-12`` at ``[0,0,0]``, ``[0.5,0,0]`` and ``[0.35,0.37,0.40]``
+alike. ``ColorCheckerProfile`` works entirely in sRGB ``[0,1]``, so across
+that whole range the rule is not scale-relative at all. The relative half
+only begins above unit norm -- ``1.73e-12`` at ``[1,1,1]``, ``5.48e-11`` at
+L*a*b* ``[50,10,20]``.
+
+Where it *is* relative, the reason is floating-point, not statistical:
+``1e-12 * ||x||`` is a few thousand ULPs at ``x``, so the test asks "is this
+point indistinguishable from the iterate at double precision?" -- which is
+exactly the question ``1/d`` blows up on. That is why it scales with ``||x||``
+rather than with the data's spread.
 
 Coincidence must be a radius rather than an equality test. A point at
 ``1.11e-16`` from the estimate is not equal to it, but ``1/d`` still gives it
 ~1e15 of weight and it captures the update exactly as the old ``1e-10``
 distance floor did -- measured at 21.9 8-bit code values of error.
 
-It is harmless at every scale this codebase works in: 8-bit pixels are
-``1/255`` apart, and for L*a*b* near (50, 10, 20) the radius is ~5.5e-11
-against a nearest-neighbour spacing many orders of magnitude larger.
+The value is bounded on both sides and both bounds are tested
+(``tests/unit/util/test_geometric_median.py``). Too small degenerates to an
+equality test and reopens the defect; too large swallows real data points into
+the coincident set and returns something nearer the mean, which is the same
+defect wearing a different hat. It is far below anything real at either scale:
+8-bit pixels are ``1/255 ~= 3.9e-3`` apart, and L*a*b* spacing is larger still.
 
-The ``max(||x||, 1)`` floor means the solver has a **1e-12 absolute**
-resolution floor near the origin: a caller working at a coordinate scale below
-~1e-11 would see every point swallowed into the coincident set and get the
-mean back. That is within the cloud's own diameter of the truth, so it is
-harmless, but ``geometric_median`` is a public export and this is part of its
-contract.
+One consequence of the clamp worth stating, since ``geometric_median`` is a
+public export: the solver has a **1e-12 absolute** resolution floor near the
+origin, so a caller working at a coordinate scale below ~1e-11 sees every
+point swallowed into the coincident set and gets the mean back. That is within
+the cloud's own diameter of the truth, so it is harmless -- but it is part of
+the contract.
 """
 
 
@@ -1195,7 +1207,11 @@ def weiszfeld_median(
     w_i = 1/||x^(k) - a^(i)||_2. Points lying on x^(k) are excluded from that
     sum and the step is damped toward them by γ = min(1, η/r), which is what
     keeps a data point on the estimate from capturing the iteration. With no
-    coincident point (η = 0) this is the classical update unchanged.
+    coincident point (η = 0) this is the classical update, and bit-identical
+    to the pre-2026-09 floored rule -- except where a distance falls in
+    ``(1e-12*max(||x||,1), 1e-10]``, which the old rule floored and this one
+    does not. No colorimetric caller produces such a distance, but that band
+    is the honest scope of "unchanged".
 
     Convergence reports ``r <= η + eps*W`` (W = Σ 1/||a - x|| over the
     non-coincident points), which is exact optimality when γ = 1 and an
