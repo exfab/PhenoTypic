@@ -1761,3 +1761,88 @@ git commit --allow-empty -m "test: record identity-IO mutation results and cross
 **Type consistency.** `HeldDirectory`, `IdentityRefused`, `IdentityIoUnavailable`, `identity_io_available()`, `active_backend_name()`, `open_identity_directory()`, `validate_component()`, `link_count()`, `file_size()`, `list_names()`, `stream()` are spelled identically in Tasks 1–8. Both backends expose `SUPPORTED` and `BACKEND_NAME`; the Windows entry point alone takes the test-only `api=` keyword.
 
 **One known dependency on an external answer:** Task 4's information-class constants are confirmed by Task 0 rather than assumed. If the probe contradicts them, Task 4 uses what the runner accepted.
+
+---
+
+## Execution record (2026-09-20)
+
+All seven tasks implemented on `feat/windows-identity-io`, branched from
+`origin/main` at `3882c9c9`. Written by five subagents against this plan; every
+command with a side effect was run by the orchestrator and returned verbatim.
+
+| Task | Commit |
+|---|---|
+| 1 facade + POSIX backend | `4d41c19f` |
+| 2 ctypes relocation | `523f32b3` |
+| 3-5 Windows backend | `a81ae4cf` |
+| 6 recompile port | `0d56142d` |
+| 7 Browse port + API break | `2005a25b` |
+| 8 CI lane | `516589fd`, `cd97bf5d` |
+| 9 gates and their fallout | `33f7e51a`, `de418e70`, `815474ad`, `28db0563` |
+
+### Verification
+
+- **Refusal contract:** 6 of 6 mutants killed, in a worktree detached at a
+  commit, tree sha-verified unchanged after every mutation.
+- **Windows PR lane:** 273 passed, 1 skipped (run 35506413162).
+- **Affected surface** (19 paths, derived from importers): 805 passed, 17
+  skipped, Slurm job 28929687.
+- **Full cross-platform:** run 35507414730 on `28db0563`.
+
+### What the plan got wrong, found by implementing it
+
+1. **Task 2's re-export list named six symbols; eight are needed.** The
+   journal's own test imports `_FileDispositionInfo` and `_Overlapped`, so the
+   short list fails at collection -- the same symptom the task attributes to a
+   circular import, which makes it easy to misdiagnose. The step is also a
+   *subtraction*: `ctypes`, `Any` and `Protocol` become unused.
+2. **Task 7 Step 6's premise is false.** `store_publication_token` is rendered
+   in no documentation at all; `store_layout.rst` is scoped to
+   `phenotypic.sdk_.ngff_` and cannot autodoc a name in `_io_constants`. The
+   `versionchanged` directive is therefore a source-only record. The version to
+   cite is 0.19.0, not the literal 0.20.0 the plan carried, and
+   `_published_store` was described as an existing helper that does not exist.
+3. **A Windows-only import cycle the plan never anticipated.** The journal
+   imports `_identity_io_windows` at its top while `_identity_io` calls
+   `_select_backend()` at its bottom, so a journal-first import on Windows
+   re-enters the backend mid-execution. It resolves only because `SUPPORTED` is
+   bound before the facade import at the bottom of that file; at the top,
+   `import phenotypic` fails outright on Windows. Guarded by a source-order
+   assertion, since no Linux lane can execute the failure.
+4. **`-m platform_io` selects; it does not add.** With three files marked, the
+   Windows job collected 71 tests and covered none of the suites this port
+   exists to fix. Marking the real regression surface took it to 88, and
+   marking `test_io_constants.py` to 273.
+
+### The defect that cost the most, and why
+
+Review finding B2 said the two `store_publication_token` branches must agree or
+every Browse tile request 409s forever. It was right, and it was wrong about
+the shape: the branches agree on POSIX and disagree on Windows, where a
+directory-entry query can report an older `st_mtime_ns` than an open-handle
+query for the same file.
+
+It took three attempts:
+
+- A probe compared `fstat` to `stat` on a file written moments earlier, they
+  matched, and that was recorded as settled. It tested only the easy case.
+- The first fix converted two of four measurement sites, which *moved* the
+  mismatch from the member check to the revision check and failed a different
+  pair of tests. A partial conversion of a "both sides agree" invariant is not
+  a partial fix.
+- The second fix routed all four sites through one helper that holds the store.
+
+The test that pins it is deliberately vacuous on Linux -- path and handle agree
+there -- which is why `test_io_constants.py` had to reach the Windows lane. And
+it asserts the *invariant* (no bare path-measured call survives in the route)
+rather than a pair, because a pair-shaped test passed at every stage of this
+bug's travels.
+
+### Known failures NOT caused by this port
+
+- `test_two_concurrent_writers_produce_one_coherent_winner` -- `PermissionError`
+  on a `\\?\` path on Windows. Present in the September nightlies before this
+  branch existed.
+- `test_a_dead_gui_owner_does_not_pin_an_unfinished_run_at_active` -- macOS
+  dead-pid liveness; no code relationship, passes locally, and passed on the
+  re-run.
