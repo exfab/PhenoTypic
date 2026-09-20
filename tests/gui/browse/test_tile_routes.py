@@ -14,6 +14,8 @@ from phenotypic._gui.browse import _tile_routes
 from phenotypic._gui.browse._source_probe import probe_source
 from phenotypic._gui.shell._sandbox import SandboxRoot
 
+pytestmark = pytest.mark.platform_io
+
 #: Serving a store member needs directory-fd-anchored, no-follow opens. Where the
 #: platform lacks them (Windows) the route refuses with 422 by design, pinned by
 #: ``test_store_member_route_refuses_on_a_platform_without_safe_store_io``.

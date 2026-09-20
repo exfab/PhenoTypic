@@ -12,6 +12,15 @@ Registered in `[tool.pytest.ini_options].markers` in
 | `ci_flaky` | runs locally, **deselected on CI** | E2E tests that pass reliably locally but flake on GitHub-hosted shared runners. CI passes `-m "not ci_flaky"`. |
 | `postgres` | autoskipped | Tune study-DB tests; skipped unless `PHENOTYPIC_TEST_PG_URL` is set. |
 | `slurm` | autoskipped | Distributed tune-worker tests; skipped unless `sbatch` is on PATH. |
+| `platform_io` | runs everywhere by default | Identity-bound directory I/O (`sdk_/_identity_io.py` and its consumers). Runs in the normal Linux shards like any other test, and *additionally* in a dedicated `tests-windows-platform-io` PR job (`run-pytest.yml`) so a Windows-only regression is caught per PR instead of waiting for the nightly full-suite lane. |
+
+A command-line `-m platform_io` **replaces** `addopts`' `-m 'not slow'`
+(`pyproject.toml:222`) rather than composing with it — pytest takes the last
+`-m` given, it does not AND them. So a test marked both `slow` and
+`platform_io` runs on the Windows lane (which passes `-m platform_io` with no
+`addopts` override) while being excluded from a plain local run. Harmless
+today, since nothing carries both markers, but worth knowing before adding
+one that does.
 
 ## The `ci_flaky` convention (summary)
 

@@ -226,6 +226,7 @@ markers = [
     "ci_flaky: e2e tests that pass locally but flake on shared CI runners (Playwright DOM polls); CI workflow deselects via `-m 'not ci_flaky'`. See tests/CLAUDE.md.",
     "postgres: tune study-DB tests needing a live Postgres server; autoskipped by tests/conftest.py unless PHENOTYPIC_TEST_PG_URL is set.",
     "slurm: distributed tune-worker-fleet tests needing the SLURM client (sbatch); autoskipped by tests/conftest.py unless sbatch is on PATH.",
+    "platform_io: identity-bound directory I/O; also run on Windows per PR (see tests/CLAUDE.md)",
 ]
 filterwarnings = [
     "ignore::SyntaxWarning:mahotas",

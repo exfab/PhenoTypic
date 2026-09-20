@@ -136,4 +136,32 @@ jobs:
           pytest -q --tb=long -r "Efw" --no-header -n auto \
             ${{ join(matrix.shard.paths, ' ') }}
 
-  # Windows and macOS run in .github/workflows/run-pytest-full.yml.
+  tests-windows-platform-io:
+    name: Windows py3.12 / platform-io
+    needs: check-manual-run
+    if: needs.check-manual-run.outputs.skip != 'true'
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v8.1.0
+        with:
+          version: "latest"
+      - name: Install dependencies
+        run: |
+          uv lock
+          uv sync --group dev --group test-qt --all-extras
+      - name: Run platform-io tests
+        run: |
+          source .venv/Scripts/activate
+          pytest -q --tb=long -r "Efw" --no-header -n auto -m platform_io
+
+  # Windows and macOS full-suite runs live in .github/workflows/run-pytest-full.yml.
+  # This job is a narrow, PR-time exception: it exercises only the platform_io
+  # marker (identity-bound directory I/O), so a Windows-only regression there
+  # does not wait for the nightly full-suite lane.
