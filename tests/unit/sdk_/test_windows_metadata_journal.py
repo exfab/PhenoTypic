@@ -79,7 +79,13 @@ def test_ctypes_binding_declares_pointer_width_safe_signatures() -> None:
 class _MemoryWindowsApi:
     """In-memory NT-handle model that rejects path-based child operations."""
 
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, *, expect_share_delete: bool = False) -> None:
+        # The journal opens every handle with delete sharing denied, and that
+        # strictness is part of what its tests pin. The identity-IO backend
+        # deliberately does NOT inherit it -- a read-only viewer must never
+        # lock a store against a running CLI -- so the expected value is a
+        # constructor argument rather than a deleted assert.
+        self.expect_share_delete = expect_share_delete
         self.root = root
         self.handles: dict[int, tuple[str, ...]] = {}
         self.directories: set[tuple[str, ...]] = set()
@@ -105,7 +111,7 @@ class _MemoryWindowsApi:
         assert "/" not in name and "\\" not in name
 
     def open_anchor(self, anchor: str, *, share_delete: bool) -> int:
-        assert share_delete is False
+        assert share_delete is self.expect_share_delete
         return self._handle((anchor,))
 
     def open_directory(
@@ -116,7 +122,7 @@ class _MemoryWindowsApi:
         create: bool,
         share_delete: bool,
     ) -> int:
-        assert share_delete is False
+        assert share_delete is self.expect_share_delete
         self._relative_name(name)
         path = self.handles[parent] + (name,)
         if path not in self.directories:
@@ -133,7 +139,7 @@ class _MemoryWindowsApi:
         create_new: bool,
         share_delete: bool,
     ) -> int:
-        assert share_delete is False
+        assert share_delete is self.expect_share_delete
         self._relative_name(name)
         path = self.handles[parent] + (name,)
         if create_new:

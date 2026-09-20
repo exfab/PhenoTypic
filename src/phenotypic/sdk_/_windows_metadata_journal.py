@@ -19,15 +19,13 @@ from ._identity_io_windows import (
     WindowsHandleInfo,
     WindowsJournalUnavailable,
     _CtypesWindowsApi,
+    _FILE_ATTRIBUTE_REPARSE_POINT,
     _FileDispositionInfo,  # noqa: F401  (re-exported for callers)
     _FileRenameInfoHeader,  # noqa: F401  (re-exported for callers)
     _IoStatusBlock,  # noqa: F401  (re-exported for callers)
     _Overlapped,  # noqa: F401  (re-exported for callers)
     _WindowsApi,
 )
-
-
-_FILE_ATTRIBUTE_REPARSE_POINT = 0x00000400
 
 
 @dataclass(frozen=True)
