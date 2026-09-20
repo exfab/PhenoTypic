@@ -739,15 +739,27 @@ keeps that surface intact.
 - [ ] **Step 2: Re-export from the journal so its imports keep working**
 
 ```python
-from ._identity_io_windows import (  # noqa: F401  (re-exported for callers)
-    _CtypesWindowsApi,
-    _FileRenameInfoHeader,
-    _IoStatusBlock,
+from ._identity_io_windows import (
     WindowsHandleInfo,
     WindowsJournalUnavailable,
+    _CtypesWindowsApi,
+    _FileDispositionInfo,  # noqa: F401  (re-exported for callers)
+    _FileRenameInfoHeader,  # noqa: F401  (re-exported for callers)
+    _IoStatusBlock,  # noqa: F401  (re-exported for callers)
+    _Overlapped,  # noqa: F401  (re-exported for callers)
     _WindowsApi,
 )
 ```
+
+**Eight names, not six.** `tests/unit/sdk_/test_windows_metadata_journal.py`
+imports `_FileDispositionInfo` and `_Overlapped` from the journal at `:23-27`
+and asserts on them at `:71-76`, so a shorter list fails at **collection** —
+the same symptom this task attributes to a circular import, which makes it
+easy to misdiagnose.
+
+**This step is also a subtraction.** After the move nothing left in the
+journal uses `ctypes`, `Any` or `Protocol`, so `import ctypes` must go and the
+typing import narrows to `Iterator`, or ruff's F401 fails Step 4.
 
 - [ ] **Step 3: Prove the move changed nothing**
 
