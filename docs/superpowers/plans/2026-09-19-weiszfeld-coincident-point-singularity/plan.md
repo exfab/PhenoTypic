@@ -21,7 +21,9 @@
 - **`uv` is the sole package manager and runner.** Never bare `python` or `pip`. Run commands as `uv run <cmd>`.
 - **`geometric_median` is a public export** (`src/phenotypic/util/__init__.py:5,27`), as is `robust_color_center` (`:13,30`). `weiszfeld_median` itself is private. The public signature, defaults and return contract do **not** change (spec Non-goals).
 - **The `method='cohen'` branch stays unimplemented and keeps raising.** The Cohen et al. routines in the same module (including their own `1e-10` clamps at `_geometric_median.py:69` and `:791`) are unreachable dead code and are **out of scope** — do not touch them (spec Non-goals).
-- **`ruff` is already red on `_geometric_median.py`, pre-existing.** `F841` at `:680` (`n` assigned but unused in `line_search`) is in that same dead Cohen path, and `--fix` has no safe fix for it. **The bar for every lint step below is "no finding other than `F841` at `:680`", never "clean".** Do not fix it — that would be an out-of-scope edit to the Cohen path.
+- **`ruff` is already red on `_geometric_median.py`, pre-existing.** `F841` — `n` assigned but unused in `line_search` — is in that same dead Cohen path, and `--fix` has no safe fix for it. **The bar for every lint step below is "no finding other than that `F841`", never "clean".** Do not fix it — that would be an out-of-scope edit to the Cohen path.
+
+  **Its line number moves during Task 2.** It is at `:680` up to and including Task 1, and at **`:684`** from Task 2 Step 5 onward, because that step appends the Vardi & Zhang citation to the *module* docstring above it. Match the finding by its message and function, not by its line — a number that shifts mid-plan is a trap for whoever reads only their own task.
 - **`GEOMEDIAN_TOL = 1e-6` / `GEOMEDIAN_MAX_ITER = 200`** (`_color_checker_profile.py:57-58`) are correct and pinned by `test_profile_geomedian_constants_are_tight_enough`. Do not re-tune them (spec Non-goals).
 - **Initialization stays `np.mean`** (`_geometric_median.py:1129`). See *Decision 2* — this is not a free choice.
 - **Lint with explicit paths only:** `uv run ruff check --fix <paths you changed>`. Bare `ruff check --fix` rewrites the whole tree.
@@ -561,7 +563,20 @@ Expected: **`3 failed, 2 passed`**.
 | `test_every_point_identical_returns_that_point` | **PASS** | Regression guard; the old rule already handles it. |
 | `test_the_non_degenerate_path_is_bit_identical_to_the_old_rule` | **PASS**, `iterations == 12` included | Trivially — at this stage the solver *is* the old rule. This is what proves `_old_floored_update` is a faithful transcription; if it fails here the bit-identity guard is worthless after the fix. |
 
-**Any deviation from that table is a defect in the test file, not in the solver — stop and say so.** This step has already caught one: the certificate test originally ran at `eps=1e-9, max_iter=5000` and **passed against the old solver**, because at a tight tolerance with enough iterations the floored rule escapes the capture after its first step and converges correctly (measured: 21 iterations, 0.000 code values of error). It only fails at the shipped `eps=1e-6, max_iter=200`. A guard aimed at the wrong configuration is indistinguishable from a guard that works, right up until it is needed.
+**Any deviation from that table is a defect in the test file, not in the solver — stop and say so.** This step has already caught one: the certificate test originally ran at `eps=1e-9, max_iter=5000` and **passed against the old solver**, because the defect is *tolerance*-dependent (see below). It only fails at the shipped `eps=1e-6, max_iter=200`. A guard aimed at the wrong configuration is indistinguishable from a guard that works, right up until it is needed.
+
+**The escape is driven by `eps`, not by `max_iter`** — measured at every caller's real constants, on the planted swatch, in 8-bit code values against the converged median:
+
+| caller | `eps` | `max_iter` | old: iters / error | new: iters / error |
+|---|---|---|---|---|
+| `ColorCheckerProfile` | `1e-6` | 200 | 1 / **21.896** | 12 / 0.000 |
+| `MeasureColor` | `1e-4` | 50 | 1 / **21.896** | 7 / 0.014 |
+| `geometric_median` default | `1e-6` | 1000 | 1 / **21.896** | 12 / 0.000 |
+| tight probe | `1e-9` | 5000 | 21 / 0.000 | 19 / 0.000 |
+
+At `eps=1e-6` the old rule fails after one iteration **even with a thousand available**: the post-capture step is smaller than `1e-6`, so `change < eps` mistakes the resulting stillness for convergence and the loop never spends its budget. Only tightening `eps` makes that step register as movement. So raising `max_iter` would *not* have masked this bug, and the stopping rule — not the iteration cap — is the accomplice.
+
+Note also that **both callers are exposed**, not just the colour checker, and that `MeasureColor`'s post-fix error is `0.014` rather than `0.000` because 50 iterations at `1e-4` is a loose budget. That is a real, if small, movement in `ColorLab_*GeoMedian` output on any input that triggered the singularity — squarely the *Carried risk* below.
 
 - [ ] **Step 4: Replace the update rule**
 
@@ -667,7 +682,7 @@ Expected: all pass — acceptance criterion 4. The plan review hand-traced each 
 
 Run: `uv run ruff check --fix src/phenotypic/util/_geometric_median.py tests/unit/util/test_geometric_median.py; uv run mypy src/phenotypic/util/_geometric_median.py`
 
-Expected: `mypy` clean; `ruff` reports **only** the pre-existing `F841` at `:680`.
+Expected: `mypy` clean; `ruff` reports **only** the pre-existing `F841` in `line_search` — now at **`:684`**, having moved from `:680` when Step 5 added the module-docstring citation above it.
 
 - [ ] **Step 9: Do not commit yet**
 
@@ -1071,7 +1086,7 @@ uv run ruff check --fix \
 uv run mypy src/phenotypic/util
 ```
 
-Expected: `mypy` clean; `ruff` reports **only** the pre-existing `F841` at `_geometric_median.py:680`. **Explicit paths only** — bare `ruff check --fix` rewrites the whole tree.
+Expected: `mypy` clean; `ruff` reports **only** the pre-existing `F841` in `_geometric_median.py`'s `line_search`, at **`:684`** (not `:680` — Task 2 Step 5's module-docstring edit shifted it by +4). **Explicit paths only** — bare `ruff check --fix` rewrites the whole tree.
 
 - [ ] **Step 5: Create the gate's batch script**
 
