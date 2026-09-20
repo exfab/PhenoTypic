@@ -1123,7 +1123,22 @@ SHA=$(git rev-parse HEAD)
 GATE=/bigdata/exfab/anguy344/PhenoTypic/.claude/worktrees/gate-${SHA:0:8}
 git worktree add --detach "$GATE" "$SHA"
 mkdir -p /bigdata/exfab/anguy344/slurm_logs
-( cd "$GATE" && uv sync --group dev --group test-qt --extra gui --extra napari )
+# `--extra tune` and `--extra topology` are NOT optional here, despite not
+# appearing in CLAUDE.md's "full dev env" line. Measured: omitting them turns
+# 24 tests into hard failures rather than skips -- 21 in tests/unit/tune/ with
+# `ModuleNotFoundError: No module named 'optuna'`, and 3 FilFinderDetector
+# smoke tests with `No module named 'astropy'`. A gate whose environment is
+# incomplete reports failures that look like regressions and are not.
+#
+# `torch`, `foundation` and `gpu` are deliberately excluded: they pull torch,
+# torchvision, sam2 and transformers (multiple GB) and produced no failures
+# when absent.
+( cd "$GATE" && uv sync --group dev --group test-qt \
+      --extra gui --extra napari --extra tune --extra topology )
+
+# Verify the two that bit us are actually importable before submitting, rather
+# than discovering it in the shard logs 40 minutes later.
+( cd "$GATE" && uv run python -c "import optuna, astropy; print('optuna', optuna.__version__, '/ astropy', astropy.__version__)" )
 ```
 
 Submit, capturing the array id — **`sbatch --parsable` returns an empty id on rejection while printing the error, so verify the id before using it**:
