@@ -436,16 +436,20 @@ def test_converged_carries_the_subgradient_certificate():
 
     The guarantee the stopping rule actually gives is ``r <= eta + eps*W``
     (see the plan's Property 3), not ``r <= eta``: damping shortens the step by
-    ``eta/W``, so the loop can stop while gamma < 1. Asserting the true bound
-    rather than the ideal one is what makes this test both correct and able to
-    fail -- the pre-fix answer on this input has ``eta = 0`` and ``r = 2317.7``,
-    which misses the bound by six orders of magnitude.
+    ``eta/W``, so the loop can stop while gamma < 1.
     """
     cloud = _skewed_cloud()
     points = np.vstack([cloud, cloud.mean(axis=0)])
-    eps = 1e-9
 
-    got, info = weiszfeld_median(points, eps=eps, max_iter=5000, verbose=False)
+    # The shipped constants (GEOMEDIAN_TOL / GEOMEDIAN_MAX_ITER, which
+    # ColorCheckerProfile passes). This is not incidental: at a tighter
+    # tolerance with more iterations the OLD floored rule escapes the capture
+    # after its first step and converges correctly, so this guard would pass
+    # against the very bug it exists to catch. Measured: the old rule at
+    # eps=1e-9/5000 lands 0.000 code values from the median; at eps=1e-6/200
+    # it lands 21.896 away.
+    eps = 1e-6
+    got, info = weiszfeld_median(points, eps=eps, max_iter=200, verbose=False)
     assert info["converged"] is True
 
     dist = np.linalg.norm(points - got, axis=1)
@@ -456,9 +460,11 @@ def test_converged_carries_the_subgradient_certificate():
     r = float(np.linalg.norm(((far - got) / far_dist[:, None]).sum(axis=0)))
     w_total = float((1.0 / far_dist).sum())
 
-    # Measured: eta=0, r=1.260e-04, W=5.344e+05, bound=5.344e-04 -> passes.
-    # For the pre-fix answer: r=2317.70 against the same bound -> fails by
-    # seven orders of magnitude, so this assertion is not vacuous.
+    # Measured at these constants: eta=0, r=1.240e-01, W=5.344e+05,
+    # bound=5.344e-01 -> passes with ~4.3x margin. The pre-fix answer fails it:
+    # r=2317.70 against its own bound of 4.360 (W is larger there, because the
+    # planted pixel sits just outside the radius of the captured estimate), so
+    # this assertion is not vacuous.
     assert r <= eta + eps * w_total
 
 
@@ -487,7 +493,10 @@ def test_the_non_degenerate_path_is_bit_identical_to_the_old_rule():
 
 Run: `uv run pytest tests/unit/util/test_geometric_median.py -q -p no:randomly`
 
-Expected: the first two tests and `test_converged_carries_the_subgradient_certificate` **FAIL** (the import of `_coincidence_atol` will fail first — that is fine, it is the same signal). `test_every_point_identical_returns_that_point` and `test_the_non_degenerate_path_is_bit_identical_to_the_old_rule` are regression guards, not bug reproductions, and are expected to pass once the import resolves.
+Expected: a **collection error**, not a failure list —
+`ImportError: cannot import name '_coincidence_atol'`, `collected 0 items / 1 error`.
+
+**That is a weak red, and Step 3a below exists because of it.** A collection error proves a name is missing and nothing more: the five guards never execute. On a naive step order they would go from never-run straight to green, and a test observed only passing is not yet known to be a test. Do **not** treat this as evidence the guards work.
 
 - [ ] **Step 3: Add the coincidence radius**
 
@@ -532,6 +541,27 @@ def _coincidence_atol(x: np.ndarray) -> float:
     """
     return _COINCIDENCE_RTOL * max(float(np.linalg.norm(x)), 1.0)
 ```
+
+- [ ] **Step 3a: Watch the guards fail against the OLD solver**
+
+**Do not skip this, and do not merge it into Step 4.** Step 3 adds only the two
+new names; the update block is still the floored rule. So the import now
+resolves and the five guards run against the code they are meant to catch —
+the only moment in the whole plan when that is possible.
+
+Run: `uv run pytest tests/unit/util/test_geometric_median.py -q -p no:randomly`
+
+Expected: **`3 failed, 2 passed`**.
+
+| Test | Expected | Why |
+|---|---|---|
+| `test_a_point_exactly_on_the_estimate_does_not_capture_the_solve` | **FAIL** | Old rule returns the mean, `0.4010/0.4212/0.4509`, against the median `0.3515/0.3716/0.4013` — 21.9 code values. |
+| `test_a_point_just_off_the_estimate_does_not_capture_the_solve` | **FAIL** | Same magnitude, via the `1.11e-16` pixel. |
+| `test_converged_carries_the_subgradient_certificate` | **FAIL** | Old answer has `r = 2317.70` against **its own** bound of `4.3595` (`W = 4.36e6` there, not the post-fix `5.34e5`) — 531×. Every quantity on this change has a different value at each configuration; pair them carefully. |
+| `test_every_point_identical_returns_that_point` | **PASS** | Regression guard; the old rule already handles it. |
+| `test_the_non_degenerate_path_is_bit_identical_to_the_old_rule` | **PASS**, `iterations == 12` included | Trivially — at this stage the solver *is* the old rule. This is what proves `_old_floored_update` is a faithful transcription; if it fails here the bit-identity guard is worthless after the fix. |
+
+**Any deviation from that table is a defect in the test file, not in the solver — stop and say so.** This step has already caught one: the certificate test originally ran at `eps=1e-9, max_iter=5000` and **passed against the old solver**, because at a tight tolerance with enough iterations the floored rule escapes the capture after its first step and converges correctly (measured: 21 iterations, 0.000 code values of error). It only fails at the shipped `eps=1e-6, max_iter=200`. A guard aimed at the wrong configuration is indistinguishable from a guard that works, right up until it is needed.
 
 - [ ] **Step 4: Replace the update rule**
 
