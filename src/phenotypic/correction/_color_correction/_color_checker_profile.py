@@ -30,13 +30,13 @@ from phenotypic.sdk_._io_constants import (
     ensure_typed_json_suffix,
 )
 from phenotypic.sdk_.typing_ import NdArrayField, TuneSpec
+from phenotypic.util._robust_color_stats import robust_color_center
 
 from ._capture_metadata import CaptureMetadata
 from ._helpers import (
     center_and_pad_checker,
     compute_core_mask,
     compute_swatch_roi_mask,
-    geometric_median,
     median_filter_rgb,
     segment_chips_by_border_fill,
     trim_background_edges,
@@ -47,6 +47,12 @@ if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
 logger = logging.getLogger(__name__)
+
+#: Weiszfeld settings used to reduce one checker patch to a single colour.
+#: The tolerance is in sRGB ``[0, 1]`` units, and the cap sits well clear of
+#: the 25--109 iterations a patch actually needs to converge.
+GEOMEDIAN_MAX_ITER = 200
+GEOMEDIAN_TOL = 1e-6
 
 
 def _in_jupyter_notebook() -> bool:
@@ -589,8 +595,14 @@ class ColorCheckerProfile(BaseModel):
                 if core_pixels_srgb.size == 0:
                     continue
 
-                # Geometric median in sRGB space.
-                patch_srgb = geometric_median(core_pixels_srgb)
+                # Geometric median in sRGB space, from the same solver that
+                # backs MeasureColor's ColorLab_*GeoMedian columns, so a patch
+                # colour fitted here and a colour measured later agree.
+                patch_srgb = robust_color_center(
+                        core_pixels_srgb,
+                        max_iter=GEOMEDIAN_MAX_ITER,
+                        tol=GEOMEDIAN_TOL,
+                )
                 measured_srgb[name].append(
                         (patch_srgb, roi_idx, core_pixels_fraction, warnings)
                 )

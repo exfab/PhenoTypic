@@ -1184,24 +1184,27 @@ def weiszfeld_median(
 def geometric_median(
     points: np.ndarray,
     eps: float = 1e-6,
-    method: Literal["cohen", "weiszfeld"] = "cohen",
+    method: Literal["weiszfeld", "cohen"] = "weiszfeld",
     matrix_free: Optional[bool] = None,
     matrix_free_threshold: int = 100,
-    verbose: bool = True,
+    verbose: bool = False,
     **kwargs,
 ) -> Tuple[np.ndarray, Dict]:
     """
     Compute geometric median of a set of points.
 
-    Main interface supporting both Cohen et al. (2016) nearly-linear time
-    algorithm and classical Weiszfeld algorithm.
+    Main interface to the classical Weiszfeld algorithm. The Cohen et al.
+    (2016) nearly-linear-time routines are transcribed in this module but are
+    not wired up, so 'weiszfeld' is both the default and the only method that
+    runs.
 
     Args:
         points: Data points, shape (n, d)
         eps: Target accuracy for (1 + eps)-approximation
         method: Algorithm to use:
-            - 'cohen': Cohen et al. (2016) O(nd log³(n/ε)) algorithm [default]
-            - 'weiszfeld': Classical Weiszfeld O(?) algorithm
+            - 'weiszfeld': Classical Weiszfeld reweighting [default]
+            - 'cohen': Cohen et al. (2016) O(nd log³(n/ε)) algorithm --
+              NOT IMPLEMENTED, raises ValueError
         matrix_free: For Cohen method, whether to use matrix-free Hessian.
                     If None, automatically decides based on dimension.
         matrix_free_threshold: Dimension threshold for matrix-free mode
@@ -1219,23 +1222,22 @@ def geometric_median(
             - Additional method-specific statistics
 
     Raises:
-        ValueError: If method is invalid or points array has wrong shape
+        ValueError: If *method* is 'cohen' (not implemented), if *method* is
+            unrecognised, or if *points* has the wrong shape.
 
     Examples:
-        >>> # Cohen method (recommended for large problems)
-        >>> points = np.random.randn(10000, 50)
-        >>> median, info = geometric_median(points, method='cohen', eps=0.01)
-        >>> print(f"Converged: {info['converged']}")
-        >>> print(f"Objective: {info['objective']:.6f}")
+        Geometric median of a small point cloud:
 
-        >>> # Weiszfeld method (simple, good for small problems)
-        >>> points = np.random.randn(100, 3)
-        >>> median, info = geometric_median(points, method='weiszfeld', eps=1e-6)
-
-        >>> # Force matrix-free for high-dimensional problems
-        >>> points = np.random.randn(1000, 500)
-        >>> median, info = geometric_median(points, method='cohen',
-        ...                                 matrix_free=True, eps=0.1)
+        >>> import numpy as np
+        >>> rng = np.random.default_rng(0)
+        >>> points = rng.normal(size=(100, 3))
+        >>> median, info = geometric_median(points, eps=1e-6)
+        >>> median.shape
+        (3,)
+        >>> info['method']
+        'weiszfeld'
+        >>> bool(info['converged'])
+        True
 
     References:
         Cohen, M. B., Lee, Y. T., Miller, G., Pachocki, J., & Sidford, A. (2016).
@@ -1249,14 +1251,10 @@ def geometric_median(
         raise ValueError("Need at least one point")
 
     if method == "cohen":
-        raise ValueError("Method 'cohen' is not implemented yet.")
-
-        return accurate_median(
-            points,
-            epsilon=eps,
-            matrix_free=matrix_free,
-            matrix_free_threshold=matrix_free_threshold,
-            verbose=verbose,
+        raise ValueError(
+            "Method 'cohen' is not implemented yet; use method='weiszfeld' "
+            "(the default). The Cohen et al. (2016) routines in this module "
+            "are a transcription of the paper and are not reachable from here."
         )
     elif method == "weiszfeld":
         return weiszfeld_median(points, eps=eps, verbose=verbose, **kwargs)
