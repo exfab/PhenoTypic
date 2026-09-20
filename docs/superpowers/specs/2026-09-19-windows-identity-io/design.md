@@ -111,7 +111,7 @@ Three primitives are added:
 
 | Need | Mechanism | Rationale |
 |---|---|---|
-| `list_names()` | `GetFileInformationByHandleEx` with `FileFullDirectoryRestartInfo` / `FileFullDirectoryInfo` | The binding already exists. Preferred over `NtQueryDirectoryFileEx`, which requires Windows 10 1709 or later. Iterate the chunked buffer until `ERROR_NO_MORE_FILES`. |
+| `list_names()` | `GetFileInformationByHandleEx` with `FileFullDirectoryRestartInfo` / `FileFullDirectoryInfo` | The binding already exists. Preferred over `NtQueryDirectoryFileEx`, which requires Windows 10 1709 or later. (`FileFullDirectory*` itself needs Windows 8 / Server 2012; the named fallback `FileIdBothDirectory*` is Vista+.) Iterate the chunked buffer until `ERROR_NO_MORE_FILES`. |
 | link count | `FILE_STANDARD_INFO.NumberOfLinks`, same call | The Windows spelling of `st_nlink != 1` |
 | `open_regular_stream()` and `read_regular_with_stat()` | `msvcrt.open_osfhandle(handle, O_RDONLY)` then `os.fdopen(fd, "rb")` / `os.fstat(fd)` | Yields a real seekable file, so `send_file` and range requests work unchanged, and a real `os.stat_result` so both `store_publication_token` branches agree by construction. Ownership transfers to the fd; the backend must not also close the handle. |
 
@@ -146,7 +146,13 @@ API hid it); a five-minute probe is the cheap half of that lesson.
 Both backends refuse, identically:
 
 1. a non-canonical component — `""`, `.`, `..`, or one containing a separator;
-2. a symlink, junction or other reparse point anywhere on the walk;
+2. a symlink, junction or other reparse point anywhere on the walk **below the
+   held root**. `O_NOFOLLOW` and `FILE_OPEN_REPARSE_POINT` bind the final
+   component of each open, so intermediate components of the root's own path
+   are followed on both platforms — as they already are today
+   (`_cli_recompile_recovery.py:260`, `_tile_routes.py:95-98`). Stating the
+   narrower claim is deliberate: a reviewer reading the implementation against
+   this contract should not have to guess whether that gap is a defect;
 3. a non-directory where a directory is required, and the reverse;
 4. a regular file with a link count other than 1;
 5. a **child** entry whose identity changed since it was held (`reverify`);

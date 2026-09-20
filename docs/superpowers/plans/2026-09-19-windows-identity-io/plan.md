@@ -169,6 +169,12 @@ gh run list --branch diag/windows-identity-probe -L 1
 
 Expected: both `alpha.json` and `beta.json` listed (plus possibly `.`/`..`, which the backend must filter); the stream reports size 15, is seekable, and still reads after the directory handles close; `FileStandardInfo` reports `links 1`.
 
+Three more checks belong in the same probe, each load-bearing for a decision above:
+
+1. **Does `os.fstat` on an `open_osfhandle` fd return the same `st_ino` and `st_ctime_ns` as `os.stat(path)`?** B2 turns entirely on this — print both and compare. If they differ, the two `store_publication_token` branches disagree and every Browse tile request 409s.
+2. **Does the read-only mask succeed where the journal's write mask fails?** Create a file, deny write on its ACL with `icacls`, then try `open_regular_read` and `open_file`. This is B5's only real test.
+3. **Keep the listing probe going through `api.open_directory`**, i.e. a `FILE_SYNCHRONOUS_IO_NONALERT | FILE_OPEN_REPARSE_POINT` NT handle — not a plain `CreateFileW` handle. The probe already does; say so, so nobody "simplifies" it into probing the wrong thing.
+
 - [ ] **Step 4: Record the answers in the spec, delete the branch**
 
 Append a short "Probe results (YYYY-MM-DD)" section to the spec with the observed values. If listing failed with class 15/14, retry with `FileIdBothDirectoryRestartInfo(11)`/`FileIdBothDirectoryInfo(10)` and record which worked — Task 4 uses whichever the runner accepted.
@@ -406,6 +412,10 @@ def _select_backend():
     return None
 
 
+# Keep this call at the BOTTOM of the module. Each backend imports
+# ``HeldDirectory``/``IdentityRefused``/``validate_component`` from here at its
+# own module scope, so it may only use names defined ABOVE this line: when
+# ``_select_backend()`` runs, this module is still partially initialized.
 _BACKEND = _select_backend()
 
 
@@ -461,6 +471,11 @@ from ._identity_io import HeldDirectory, IdentityRefused, validate_component
 
 BACKEND_NAME = "posix"
 
+# ``os.stat`` is required by ``reverify``, which re-resolves a child's name
+# inside its held parent. The constant this replaces
+# (``_cli_recompile_recovery.py:219-222``) also required mkdir/unlink/rename
+# for a transition *writer* that no longer exists (`:246-250`); this facade is
+# read-only, so those are deliberately dropped and `os.stat` deliberately kept.
 SUPPORTED = (
     os.name == "posix"
     and hasattr(os, "O_DIRECTORY")
@@ -468,6 +483,7 @@ SUPPORTED = (
     and hasattr(os, "O_NONBLOCK")
     and os.listdir in os.supports_fd
     and os.open in os.supports_dir_fd
+    and os.stat in os.supports_dir_fd
 )
 
 _DIR_FLAGS = (
@@ -504,7 +520,7 @@ class _PosixHeldDirectory:
         self,
         path: Path,
         fd: int,
-        owned: bool,
+        owned: bool,  # retained for symmetry; _close always owns its own fd
         *,
         parent: "_PosixHeldDirectory | None" = None,
         name: str | None = None,
@@ -514,6 +530,7 @@ class _PosixHeldDirectory:
         self._owned = owned
         self._parent = parent
         self._name = name
+        self._closed = False
         identity = os.fstat(fd)
         if not stat.S_ISDIR(identity.st_mode):
             raise IdentityRefused(f"not a directory: {path}")
@@ -650,10 +667,13 @@ class _PosixHeldDirectory:
             raise IdentityRefused(f"identity changed: {self.path}")
 
     def _close(self) -> None:
+        """Close children leaf-first, then self. Idempotent."""
+        if self._closed:
+            return
+        self._closed = True
         for child in self._children:
             child._close()
-        if self._owned:
-            os.close(self._fd)
+        os.close(self._fd)
 
 
 @contextmanager
@@ -661,12 +681,20 @@ def open_identity_directory(path: Path) -> Iterator[HeldDirectory]:
     """Hold *path* by identity through a no-follow directory descriptor."""
     root = Path(os.path.abspath(os.fspath(path)))
     fd = os.open(root, _DIR_FLAGS)
+    held: _PosixHeldDirectory | None = None
     try:
-        held = _PosixHeldDirectory(root, fd, owned=False)
+        held = _PosixHeldDirectory(root, fd, owned=True)
         yield held
-        held._close()
     finally:
-        os.close(fd)
+        # In the ``finally``, not after the ``yield``: when the ``with`` body
+        # raises, the generator resumes *at* the yield and anything below it is
+        # skipped, leaking every child descriptor in ``_children``. In the
+        # Browse route that is one leak per failing request -- the path most
+        # exercised under load.
+        if held is not None:
+            held._close()
+        else:
+            os.close(fd)
 ```
 
 - [ ] **Step 5: Run the contract suite**
@@ -699,7 +727,14 @@ Mechanical move, done alone so a reviewer can see it is mechanical. The journal'
 
 - [ ] **Step 1: Move the structures, constants and class**
 
-Move from `_windows_metadata_journal.py` into `_identity_io_windows.py`, unchanged: `WindowsHandleInfo` (`:26`), the `_WindowsApi` protocol (`:42`), every `_FILE_*`/`_OBJ_*`/`_ERROR_*` constant (`:371-406`), the ctypes structures (`:405-460`), and `_CtypesWindowsApi` (`:466`). Leave `WindowsJournalSession` and everything journal-specific where it is.
+Move from `_windows_metadata_journal.py` into `_identity_io_windows.py`, unchanged: `WindowsHandleInfo` (`:26`), the `_WindowsApi` protocol (`:42`), every `_FILE_*`/`_OBJ_*`/`_ERROR_*` constant (`:371-406`), the ctypes structures (`:405-460`), `_CtypesWindowsApi` (`:466`), **and `WindowsJournalUnavailable` (`:23`)**. Leave `WindowsJournalSession` and everything journal-specific where it is.
+
+**The exception must travel with the class or the import is circular.**
+`_CtypesWindowsApi` raises `WindowsJournalUnavailable` at `:471`, `:479`,
+`:606` and `:685` — all inside the moved code. Leaving it behind gives
+`_windows_metadata_journal → _identity_io_windows → _windows_metadata_journal`.
+It is also in the journal's `__all__` (`:922`), so the re-export below is what
+keeps that surface intact.
 
 - [ ] **Step 2: Re-export from the journal so its imports keep working**
 
@@ -709,6 +744,7 @@ from ._identity_io_windows import (  # noqa: F401  (re-exported for callers)
     _FileRenameInfoHeader,
     _IoStatusBlock,
     WindowsHandleInfo,
+    WindowsJournalUnavailable,
     _WindowsApi,
 )
 ```
@@ -717,6 +753,10 @@ from ._identity_io_windows import (  # noqa: F401  (re-exported for callers)
 
 Run: `uv run pytest tests/unit/sdk_/test_windows_metadata_journal.py -q`
 Expected: PASS, same count as before the move (the in-memory model exercises this on Linux).
+
+Read the result carefully: a circular import surfaces as a **collection
+error**, not as a count mismatch, so "the numbers match" is not the check —
+"it collected at all, and the numbers match" is.
 
 - [ ] **Step 4: Commit**
 
@@ -741,7 +781,13 @@ git commit -m "refactor(sdk): move the Windows ctypes handle API into _identity_
 
 - [ ] **Step 1: Extend the in-memory model**
 
-Start from `_MemoryWindowsApi` in `tests/unit/sdk_/test_windows_metadata_journal.py:79` (which already refuses path-based child operations) and add what this backend needs: `list_names(handle)`, `link_count(handle)`, `is_directory(handle)`, and a `stream(handle)` returning `io.BytesIO`. Keep the refusal of path-based children — that is what makes the fake catch a backend that forgets to route through a held handle.
+Start from `_MemoryWindowsApi` in `tests/unit/sdk_/test_windows_metadata_journal.py:79` (which already refuses path-based child operations) and add what this backend needs: `list_names(handle)`, `link_count(handle)`, `is_directory(handle)`, `adopt_descriptor(handle)`, and a `stream(handle)` returning `io.BytesIO`. Keep the refusal of path-based children — that is what makes the fake catch a backend that forgets to route through a held handle.
+
+Three details, each of which otherwise makes the fake lane lie:
+
+1. **`share_delete` is asserted `False` today** in the fake's `open_anchor` (`:106`), `open_directory` (`:117`) and `open_file` (`:139`), because the journal opens that way. This backend always passes `share_delete=True`, so every fake-lane test errors on that assert. Make the expected value a constructor argument rather than deleting the assert — it pins the journal's stricter sharing, which this design deliberately does not inherit.
+2. **`memory_api_factory(path)` scans the real tree at construction** and models it in memory. That is what makes `test_listing_spans_multiple_buffer_fills` meaningful, and it only works because those 2,000 files are written *before* the hold opens.
+3. **Three tests cannot run in the fake lane at all**, because they mutate the real tree after the hold is taken and an in-memory model cannot observe it: `test_a_swapped_directory_fails_reverification` (`os.rename`), `test_a_streamed_member_does_not_lock_the_file` (`write_bytes`), and `test_a_multi_link_file_is_refused` (`os.link` — the fake has no hard-link concept, so a link count would be invented rather than modelled). Restrict those three to the `native` lane explicitly, and say so in each test's docstring: a lane that silently does not exercise a refusal is the same false-green shape this plan is trying to avoid elsewhere.
 
 - [ ] **Step 2: Write the failing parameterization**
 
@@ -793,13 +839,30 @@ class _WindowsHeldDirectory:
         self._owned = owned
         self._parent = parent
         self._name = name
+        self._closed = False
         info = api.handle_info(handle)
         if info.attributes & _FILE_ATTRIBUTE_REPARSE_POINT:
             raise IdentityRefused(f"reparse point: {path}")
         if len(info.file_id) != 16 or not any(info.file_id):
             raise IdentityRefused(f"no stable identity: {path}")
+        # ``open_anchor`` uses CreateFileW with FILE_FLAG_BACKUP_SEMANTICS
+        # (``_windows_metadata_journal.py:614-625``), which SUCCEEDS on a
+        # regular file. POSIX refuses that twice (``O_DIRECTORY`` and the
+        # ``S_ISDIR`` check), so without this the two backends disagree on
+        # ``open_identity_directory(<a file>)``.
+        if not api.is_directory(handle):
+            raise IdentityRefused(f"not a directory: {path}")
         self._identity = info.identity
         self._children: list[_WindowsHeldDirectory] = []
+
+    def _close(self) -> None:
+        """Close children leaf-first, then self. Idempotent."""
+        if self._closed:
+            return
+        self._closed = True
+        for child in self._children:
+            child._close()
+        self._api.close(self._handle)
 
     def child_directory(self, name: str) -> HeldDirectory:
         validate_component(name)
@@ -914,7 +977,24 @@ Add the module-level entry point, mirroring the POSIX one:
 
 ```python
 BACKEND_NAME = "windows"
-SUPPORTED = os.name == "nt"
+
+# Bind at import, not per call. ``_CtypesWindowsApi()`` raises
+# ``WindowsJournalUnavailable`` from ``__init__`` when a symbol fails to bind
+# (:471, :479). Constructing it inside ``open_identity_directory`` would leave
+# ``identity_io_available()`` True and ``active_backend_name()`` "windows"
+# while every call raised -- Task 8's assertion would pass while nothing
+# worked, and consumers would see an uncaught RuntimeError instead of the
+# designed refusal (``_cli_recompile_recovery.py:446-453`` catches only
+# KeyError/OSError/TypeError/ValueError/JSONDecodeError, ``:519`` only
+# OSError/ValueError).
+try:
+    _API: "_CtypesWindowsApi | None" = (
+        _CtypesWindowsApi() if os.name == "nt" else None
+    )
+except WindowsJournalUnavailable:
+    _API = None
+
+SUPPORTED = _API is not None
 
 
 def _extended_length(path: Path) -> str:
@@ -934,14 +1014,23 @@ def _extended_length(path: Path) -> str:
 def open_identity_directory(path: Path, *, api=None) -> Iterator[HeldDirectory]:
     """Hold *path* by identity through NT handles."""
     root = Path(os.path.abspath(os.fspath(path)))
-    resolved_api = api if api is not None else _CtypesWindowsApi()
+    held: _WindowsHeldDirectory | None = None
+    # Reuse the module-level instance; it holds only bound function pointers
+    # and no per-call state (``_bind``, :485-594). The journal constructs its
+    # own (:93), so a Windows process holds two -- wasteful, not a problem,
+    # and worth saying so because a reader will wonder.
+    resolved_api = api if api is not None else _API
     handle = resolved_api.open_anchor(_extended_length(root), share_delete=True)
     try:
-        held = _WindowsHeldDirectory(root, handle, resolved_api, owned=False)
+        held = _WindowsHeldDirectory(root, handle, resolved_api, owned=True)
         yield held
-        held._close()
     finally:
-        resolved_api.close(handle)
+        # Same rule as the POSIX entry point: closing after the ``yield`` is
+        # skipped whenever the ``with`` body raises, leaking every child handle.
+        if held is not None:
+            held._close()
+        else:
+            resolved_api.close(handle)
 ```
 
 Note the sharing mode: every open passes `share_delete=True`, and `_nt_open` already adds `FILE_SHARE_READ | FILE_SHARE_WRITE`. A read-only reader must never lock a store against a running CLI.
@@ -982,6 +1071,10 @@ def link_count(self, handle: int) -> int:
 
 def file_size(self, handle: int) -> int:
     return int(self._standard_info(handle).EndOfFile)
+
+
+def is_directory(self, handle: int) -> bool:
+    return bool(self._standard_info(handle).Directory)
 ```
 
 Two more methods, and the first is a correctness fix rather than an addition.
@@ -1028,7 +1121,19 @@ def adopt_descriptor(self, handle: int) -> int:
 - [ ] **Step 6: Run both lanes**
 
 Run: `uv run pytest tests/unit/sdk_/test_identity_io_contract.py -q`
-Expected: PASS for `native` and `fake-windows`. `list_names` and `open_regular_stream` are still unimplemented on Windows — mark those two tests `xfail(strict=True)` for the fake lane only, and Tasks 4 and 5 remove the markers.
+Expected: PASS for `native` and `fake-windows`, with **one** strict xfail.
+
+Only `test_listing_excludes_dot_entries` exists to mark at this point; the stream tests are not written until Task 5 Step 1. And the lane comes from a fixture `params`, so a plain `@pytest.mark.xfail` decorator marks *both* lanes and `pytest.param("fake-windows", marks=...)` marks the *whole* lane. Per-test-per-lane needs `applymarker` inside the test body:
+
+```python
+def test_listing_excludes_dot_entries(backend, request, tree: Path) -> None:
+    if request.node.callspec.params["backend"] == "fake-windows":
+        request.applymarker(pytest.mark.xfail(strict=True, reason="Task 4"))
+    with backend(tree / "store") as held:
+        assert sorted(held.list_names()) == ["nested", "root.json"]
+```
+
+`strict=True` is deliberate: Task 4 Step 1 removes the marker and the test must already be failing for that sequencing to mean anything.
 
 - [ ] **Step 7: Commit**
 
@@ -1141,6 +1246,13 @@ git commit -m "feat(sdk): list a held directory on Windows"
 **Interfaces:**
 - Consumes: Task 3's `_open_regular`.
 - Produces: `HeldDirectory.open_regular_stream(name) -> BinaryIO`, valid after the hold closes.
+
+- [ ] **Step 0: Establish the mypy baseline for Windows-only code**
+
+`msvcrt` and `os.O_BINARY` are guarded behind `sys.platform == "win32"` in typeshed, and the per-commit gate runs mypy on Linux. Find out what the repo already tolerates before writing code that depends on the answer:
+
+Run: `uv run mypy src/phenotypic/sdk_/_windows_metadata_journal.py`
+That file calls `ctypes.WinDLL` at `:474-475`, which typeshed guards the same way, and carries no `type: ignore` and no `sys.platform` guard anywhere. So either mypy tolerates the pattern here or that file is already red. Record which in the plan. If it is clean, this task needs nothing; if not, put the Windows-only code under `if sys.platform == "win32":`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1352,9 +1464,17 @@ def test_the_removed_posix_only_parameter_is_refused(tmp_path: Path) -> None:
         store_publication_token(tmp_path, root_dir_fd=3)
 ```
 
-And in `test_tile_routes.py`, replace the `_SAFE_STORE_IO` monkeypatch in
-`test_store_member_route_refuses_on_a_platform_without_safe_store_io` with one
-that makes the facade report no backend:
+In `test_tile_routes.py`, **delete `requires_safe_store_io` (`:20-23`) and all
+8 of its uses.** Retargeting it at `identity_io_available()` would convert a
+Windows bind failure into 8 silent skips — a second false-green vector beside
+B7, and this time one that goes genuinely green while serving nothing. Both
+platforms now have a backend; the gate is Task 8's platform assertion, which
+has no skip. (Deleting the constant without deleting the decorator breaks
+collection with `AttributeError`, so this is not optional.)
+
+Then replace the `_SAFE_STORE_IO` monkeypatch in
+`test_store_member_route_refuses_on_a_platform_without_safe_store_io` (`:204`)
+with one that makes the facade report no backend:
 
 ```python
     monkeypatch.setattr(_identity_io, "_BACKEND", None)
@@ -1391,9 +1511,22 @@ Update the docstring's `Args:` block: the descriptor sentence becomes "Optional 
 
 - [ ] **Step 4: Port the route**
 
-Replace `_SAFE_STORE_IO` (`:57`) with `identity_io_available()`; keep `_UnsafeStoreAccess` (`:53`) and its 422, with the message reworded to name the capability rather than the platform: `"this platform cannot safely serve Zarr store members"` stays accurate and needs no change. `_open_store_root` returns the context manager; `_open_regular_store_member` walks `parts[:-1]` with `child_directory` and returns `open_regular_stream(parts[-1])`; `_read_store_json` uses `read_regular_bytes(name, max_bytes=_MAX_STORE_METADATA_BYTES)`.
+Replace `_SAFE_STORE_IO` (`:57`) with `identity_io_available()`. Keep `_UnsafeStoreAccess` (`:53`) and its 422 — the message, `"this platform cannot safely serve Zarr store members"`, stays accurate and needs no change.
+
+**Write the guard rather than implying it.** `IdentityIoUnavailable` is a `RuntimeError`, and the route catches `_UnsafeStoreAccess` first but `(OSError, RuntimeError, TypeError, ValueError)` → 404 right after (`_tile_routes.py:377-382`). Letting the facade's exception escape turns the documented 422 into a 404, and the Task 7 Step 1 test fails for a reason nobody reads as "clause order":
+
+```python
+def _open_store_root(store: Path):
+    if not identity_io_available():
+        raise _UnsafeStoreAccess(
+            "this platform cannot safely serve Zarr store members"
+        )
+    return open_identity_directory(store)
+``` `_open_store_root` returns the context manager; `_open_regular_store_member` walks `parts[:-1]` with `child_directory` and returns `open_regular_stream(parts[-1])`; `_read_store_json` uses `read_regular_bytes(name, max_bytes=_MAX_STORE_METADATA_BYTES)`.
 
 The route's structure changes in one important way: the hold must wrap everything up to and including the `send_file` call, and the stream must be the only thing that outlives it (`response.call_on_close(handle.close)` already does that).
+
+Cache held children inside the hold — a `dict[tuple[str, ...], HeldDirectory]`, which is what `WindowsJournalSession._directories` already is (`_windows_metadata_journal.py:91`, `:176-179`). `_read_store_json` runs once per series and once per label inside `_image_store_prefixes` (`_tile_routes.py:147`, `:196`, `:209`), each time re-walking from the root. It is bounded per request rather than a leak, but the cache is cheaper and matches the shape this code now sits beside.
 
 - [ ] **Step 5: Run the route and consumer suites**
 
@@ -1466,6 +1599,12 @@ from phenotypic.sdk_ import _identity_io
 
 
 def test_the_expected_backend_is_active_on_this_platform() -> None:
+    """Fails loudly if a ctypes symbol failed to bind at import.
+
+    This works only because the Windows backend binds its API at import time
+    and sets ``SUPPORTED`` from the result. Bound lazily per call, this test
+    would pass while every call raised.
+    """
     expected = {"posix": "posix", "nt": "windows"}[os.name]
     assert _identity_io.active_backend_name() == expected
     assert _identity_io.identity_io_available() is True
@@ -1538,7 +1677,7 @@ def test_the_pr_lane_runs_platform_io_on_windows() -> None:
     assert commands and all("-m platform_io" in line for line in commands)
 ```
 
-Document the marker in `tests/CLAUDE.md`'s marker table: runs everywhere by default, and additionally on a Windows PR job.
+Document the marker in `tests/CLAUDE.md`'s marker table: runs everywhere by default, and additionally on a Windows PR job. Add one sentence about the interaction: a command-line `-m platform_io` **replaces** `addopts`' `-m 'not slow'` (`pyproject.toml:222`) rather than composing with it, so a test marked both `slow` and `platform_io` runs on the Windows lane while being excluded on Linux. Harmless today, surprising later.
 
 - [ ] **Step 5: Run, commit**
 
