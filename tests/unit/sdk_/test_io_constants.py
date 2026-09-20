@@ -1781,3 +1781,69 @@ def test_dir_zarr_is_the_directory_name_zarr_store_path_uses(tmp_path) -> None:
     assert dataset_zarr_dir(tmp_path, "ds") == (
         dataset_results_dir(tmp_path, "ds") / DIR_ZARR
     )
+
+
+def _published_store(root: Path) -> Path:
+    """Write the smallest store that declares the root-last publication."""
+    store = root / "plate.zarr"
+    store.mkdir()
+    (store / "zarr.json").write_text(
+        '{"attributes":{"phenotypic":{'
+        '"publication_protocol":"root-last-immutable-v1"}}}',
+        encoding="utf-8",
+    )
+    return store
+
+
+def test_store_publication_token_takes_a_held_directory(tmp_path: Path) -> None:
+    from phenotypic.sdk_ import _identity_io, store_publication_token
+
+    store = _published_store(tmp_path)
+    with _identity_io.open_identity_directory(store) as held:
+        assert store_publication_token(store, root_directory=held) is not None
+
+
+def test_both_token_branches_agree_for_one_store(tmp_path: Path) -> None:
+    """If they ever disagree, every Browse tile request 409s forever.
+
+    The route validates with the path branch and serves under the held branch
+    (``_tile_routes.py``), comparing the two tokens. The digest folds
+    ``st_mtime_ns``/``st_ctime_ns``/``st_ino``, so agreement is a property of
+    both branches taking a real ``os.stat_result`` of the same file -- not
+    something either branch can be checked for alone.
+    """
+    from phenotypic.sdk_ import _identity_io, store_publication_token
+
+    store = _published_store(tmp_path)
+    by_path = store_publication_token(store)
+    with _identity_io.open_identity_directory(store) as held:
+        by_hold = store_publication_token(store, root_directory=held)
+    assert by_path == by_hold is not None
+
+
+def test_a_hard_linked_root_yields_no_token_rather_than_raising(
+    tmp_path: Path,
+) -> None:
+    """``IdentityRefused`` must not escape: it would turn a 404 into a 409.
+
+    The held branch's backend refuses a multi-link member, where the function
+    has always answered ``None`` ("use the conservative fallback").
+    """
+    from phenotypic.sdk_ import _identity_io, store_publication_token
+
+    store = _published_store(tmp_path)
+    try:
+        os.link(store / "zarr.json", store / "zarr.json.link")
+    except (AttributeError, NotImplementedError, OSError):
+        pytest.skip("platform or filesystem does not support hard links")
+
+    with _identity_io.open_identity_directory(store) as held:
+        assert store_publication_token(store, root_directory=held) is None
+
+
+def test_the_removed_posix_only_parameter_is_refused(tmp_path: Path) -> None:
+    """The break is deliberate and must be visible, not silently ignored."""
+    from phenotypic.sdk_ import store_publication_token
+
+    with pytest.raises(TypeError):
+        store_publication_token(tmp_path, root_dir_fd=3)

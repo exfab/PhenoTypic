@@ -72,7 +72,6 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import os
 import re
 import stat as stat_module
 from dataclasses import dataclass
@@ -90,6 +89,7 @@ if TYPE_CHECKING:
 
     from phenotypic._core._grid_image import GridImage as _GridImage
     from phenotypic._core._image import Image as _Image
+    from phenotypic.sdk_._identity_io import HeldDirectory
 
 logger = logging.getLogger(__name__)
 
@@ -1907,7 +1907,7 @@ def store_revision_identity(path: Path) -> str:
 def store_publication_token(
     store: Path,
     *,
-    root_dir_fd: int | None = None,
+    root_directory: HeldDirectory | None = None,
 ) -> str | None:
     """Return the root-last token for a PhenoTypic-published store.
 
@@ -1920,41 +1920,50 @@ def store_publication_token(
 
     Args:
         store: Published store path. Used for ordinary path-based inspection.
-        root_dir_fd: Optional held descriptor for the store root. When given,
-            ``zarr.json`` is opened relative to that identity with
-            ``O_NOFOLLOW`` so a route can keep validation and serving bound to
-            one directory generation.
+        root_directory: Optional held directory for the store root. When given,
+            ``zarr.json`` is read through that held identity so a route can
+            keep validation and serving bound to one directory generation.
 
     Returns:
         The publication token, or ``None`` when the protocol is not declared.
+
+    .. versionchanged:: 0.19.0
+       ``root_dir_fd`` (a POSIX file descriptor) is replaced by
+       ``root_directory``, a held directory from
+       :mod:`phenotypic.sdk_._identity_io`. Passing ``root_dir_fd`` now
+       raises :class:`TypeError`. The descriptor form could not be
+       supported on Windows, where the store route needs the same
+       identity binding.
     """
     from phenotypic.sdk_.ngff_ import STORE_ROOT_JSON
 
     root = Path(store) / STORE_ROOT_JSON
     try:
-        if root_dir_fd is None:
+        if root_directory is None:
             before = root.lstat()
             if not stat_module.S_ISREG(before.st_mode):
                 return None
             raw = root.read_bytes()
             after = root.lstat()
         else:
-            flags = os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW
-            root_fd = os.open(STORE_ROOT_JSON, flags, dir_fd=root_dir_fd)
+            from phenotypic.sdk_._identity_io import IdentityRefused
+
             try:
-                before = os.fstat(root_fd)
-                if (
-                    not stat_module.S_ISREG(before.st_mode)
-                    or before.st_nlink != 1
-                ):
-                    return None
-                chunks: list[bytes] = []
-                while chunk := os.read(root_fd, 1024 * 1024):
-                    chunks.append(chunk)
-                raw = b"".join(chunks)
-                after = os.fstat(root_fd)
-            finally:
-                os.close(root_fd)
+                raw, after = root_directory.read_regular_with_stat(
+                    STORE_ROOT_JSON
+                )
+            except IdentityRefused:
+                # Matches the ``except OSError: return None`` arm below: no
+                # token means "use the conservative fallback", not "fail".
+                # A hard-linked or non-regular root yielded ``None`` before
+                # this branch was ported, and the Browse route turns that
+                # into a 404 -- letting the refusal escape would make it a
+                # 409 instead.
+                return None
+            # The backend compared its own before/after stat of the same open
+            # file and proved ``len(raw) == after.st_size``, so the guard
+            # below is already satisfied for this branch.
+            before = after
     except OSError:
         return None
     before_identity = (
