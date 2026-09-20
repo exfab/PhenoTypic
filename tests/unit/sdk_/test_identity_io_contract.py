@@ -11,6 +11,7 @@ Passing both lanes is the definition of a correct backend.
 from __future__ import annotations
 
 import os
+from unittest import mock
 from pathlib import Path
 from typing import Callable, ContextManager
 
@@ -152,10 +153,59 @@ def test_a_symlinked_entry_is_refused(
 def test_a_directory_is_refused_where_a_file_is_required(
     backend: BackendOpener, tree: Path
 ) -> None:
-    """Refusal 3."""
+    """Refusal 3, and it must be refusal 3 that fires.
+
+    Matching the message is not pedantry. A directory has ``st_nlink >= 2``,
+    so the multi-link guard refuses it first and this test passed with the
+    type check deleted -- found by mutation, not by reading. A directory on a
+    filesystem that reports ``st_nlink == 1`` (some network and FUSE mounts)
+    would then reach the read with nothing left to stop it.
+    """
     with backend(tree / "store") as held:
-        with pytest.raises(_identity_io.IdentityRefused):
+        with pytest.raises(
+            _identity_io.IdentityRefused, match="not a regular file"
+        ):
             held.read_regular_bytes("nested")
+
+
+def test_a_read_torn_by_a_concurrent_write_is_refused(tree: Path) -> None:
+    """The torn-read guard, which no lane reached until this test.
+
+    ``read_regular_with_stat`` stats the same open description before and
+    after the read so the publication token cannot be computed over two
+    different generations of a file. Nothing in the suite provoked that, so
+    the branch was dead weight a reader would assume was covered -- it is
+    simulated here by making the second stat disagree with the first.
+    """
+    from phenotypic.sdk_ import _identity_io_posix
+
+    real_fstat = os.fstat
+    calls = {"n": 0}
+
+    class _Grown:
+        """The same stat, reporting a larger file on the second look."""
+
+        def __init__(self, base: os.stat_result) -> None:
+            self._base = base
+
+        def __getattr__(self, name: str) -> object:
+            return getattr(self._base, name)
+
+        @property
+        def st_size(self) -> int:
+            return self._base.st_size + 1
+
+    def _fstat(fd: int) -> object:
+        calls["n"] += 1
+        result = real_fstat(fd)
+        return _Grown(result) if calls["n"] > 1 else result
+
+    with _identity_io.open_identity_directory(tree / "store") as held:
+        with mock.patch.object(_identity_io_posix.os, "fstat", _fstat):
+            with pytest.raises(
+                _identity_io.IdentityRefused, match="changed during the read"
+            ):
+                held.read_regular_with_stat("root.json")
 
 
 def test_a_file_is_refused_where_a_directory_is_required(
