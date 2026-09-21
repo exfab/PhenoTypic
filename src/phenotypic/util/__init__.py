@@ -5,6 +5,8 @@ A module for useful utility operations and functions that don't fit into a speci
 from ._geometric_median import geometric_median
 from ._measurement_outputs import generate_output_key, split_measurements
 from ._robust_color_stats import (
+    DEFAULT_MEDOID_CANDIDATES,
+    MedoidCandidates,
     MedoidResult,
     candidate_medoid,
     cone_to_hsv,
@@ -33,6 +35,8 @@ __all__ = [
     "medoid_ciede2000",
     "candidate_medoid",
     "MedoidResult",
+    "MedoidCandidates",
+    "DEFAULT_MEDOID_CANDIDATES",
     "delta_e2000_spread",
     "hsv_to_cone",
     "cone_to_hsv",

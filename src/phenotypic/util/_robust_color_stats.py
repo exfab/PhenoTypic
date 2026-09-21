@@ -7,9 +7,10 @@ See docs/superpowers/specs/2026-06-10-robust-lab-color-measures-design.md.
 """
 from __future__ import annotations
 
-from typing import NamedTuple
+from typing import Annotated, NamedTuple
 
 import numpy as np
+from pydantic import Field
 
 from phenotypic.util._geometric_median import geometric_median as _geometric_median
 
@@ -19,6 +20,11 @@ _EPS = 1e-12
 #: ~60x cheaper than the exhaustive form and returned the identical pixel on
 #: every tile-like cloud tested; see the spec's Stage E.
 DEFAULT_MEDOID_CANDIDATES = 256
+
+#: The one validated type for an operation's ``medoid_candidates`` field, so
+#: ``MeasureColor`` and ``CalibrateColorRpcc`` -- the same knob on the same
+#: estimator -- reject a non-positive count identically, at construction.
+MedoidCandidates = Annotated[int, Field(ge=1)]
 
 #: Weiszfeld settings for the seed geometric median, matching the constants
 #: ``ColorCheckerProfile`` uses so the two paths agree.

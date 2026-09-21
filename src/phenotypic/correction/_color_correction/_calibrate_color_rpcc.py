@@ -38,6 +38,7 @@ from pydantic import Field, PrivateAttr, field_validator, model_validator
 
 from ...abc_ import ImageCorrector
 from ...sdk_.typing_ import TuneSpec
+from ...util import MedoidCandidates
 from ._checker_detect import fit_lattice, refine
 from ._checker_identity import (
     assign_placement,
@@ -156,7 +157,7 @@ class CalibrateColorRpcc(ImageCorrector):
     lattice_prior: list[CheckerLattice] | None = None
     refine_method: OperationRefineMethod = "rigid"
     core_trim: Annotated[float, TuneSpec(0.2, 0.6)] = 0.4
-    medoid_candidates: int = DEFAULT_MEDOID_CANDIDATES
+    medoid_candidates: MedoidCandidates = DEFAULT_MEDOID_CANDIDATES
     outlier_sigma: Annotated[float, TuneSpec(1.5, 4.0)] = 2.0
     min_patches: int = 20
     qc_limits: QcLimits = QcLimits()

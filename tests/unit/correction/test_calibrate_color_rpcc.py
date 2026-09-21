@@ -34,6 +34,24 @@ def test_serialisation_round_trips_the_rectangles() -> None:
     assert restored.rois == operation.rois
 
 
+def test_medoid_candidates_must_be_positive_at_construction() -> None:
+    """Rejected when the operation is built, not on the first tile at apply time.
+
+    ``MeasureColor.medoid_candidates`` is the same knob on the same estimator,
+    so both share one validated type.
+    """
+    from phenotypic.measure import MeasureColor
+
+    with pytest.raises(ValueError, match="medoid_candidates"):
+        CalibrateColorRpcc(rois=[[0, 0, 10, 10]], medoid_candidates=0)
+    with pytest.raises(ValueError, match="medoid_candidates"):
+        MeasureColor(medoid_candidates=0)
+    assert (
+        CalibrateColorRpcc.model_fields["medoid_candidates"].metadata
+        == MeasureColor.model_fields["medoid_candidates"].metadata
+    )
+
+
 def test_degree_is_a_plain_integer_with_no_auto_mode() -> None:
     """Fixed for the whole run; never adapted to what a frame detected."""
     assert CalibrateColorRpcc(rois=[[0, 0, 10, 10]]).degree == 3

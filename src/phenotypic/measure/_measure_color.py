@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import logging
 
-from pydantic import Field, model_validator
+from pydantic import model_validator
 from scipy import ndimage
 
 from phenotypic.abc_ import MeasureFeatures
@@ -22,6 +22,7 @@ from phenotypic.util import (
     hsv_to_cone,
     cone_to_hsv,
     lab_to_srgb_hex,
+    MedoidCandidates,
 )
 from phenotypic.util._robust_color_stats import (
     DEFAULT_MEDOID_CANDIDATES,
@@ -92,7 +93,7 @@ class MeasureColor(MeasureFeatures):
     include_xy: bool = False
     geomedian_max_iter: int = 50
     geomedian_tol: float = 1e-4
-    medoid_candidates: int = Field(default=DEFAULT_MEDOID_CANDIDATES, ge=1)
+    medoid_candidates: MedoidCandidates = DEFAULT_MEDOID_CANDIDATES
 
     @model_validator(mode="before")
     @classmethod
