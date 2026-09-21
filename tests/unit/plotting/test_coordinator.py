@@ -417,3 +417,51 @@ def test_qc_reference_uses_instance_id_when_output_id_is_custom(tmp_path) -> Non
     assert (
         plots_dir(tmp_path) / "custom-grid-output" / "default.png"
     ).exists()
+
+
+def test_a_multi_page_plotly_image_plot_writes_exactly_one_bundle(tmp_path) -> None:
+    """The gigabyte trap: one plotly.min.js per RUN, never per directory.
+
+    Every figure elsewhere in this file is matplotlib, so no bundle is ever
+    written and this default was untested. Measured before the fix: three
+    images produced three 4.8 MB copies, one per image directory --
+    extrapolating to 7.45 GB on a 1,536-image plate, while emitting a
+    correct-looking relative src in every page.
+
+    Asserts the count across the WHOLE tree rather than the absence of a copy
+    in one place: a per-directory bundle is still "a bundle that exists", so
+    only a global count distinguishes hoisted from duplicated.
+    """
+    import plotly.graph_objects as go
+    from pydantic import BaseModel
+
+    from phenotypic import ImagePipeline
+    from phenotypic.abc_.plotting import PlotImage, PlotOutput, PlotPage, figure
+    from phenotypic.detect import OtsuDetector
+    from phenotypic.plotting._pipeline import PlotCoordinator
+
+    class _MultiPagePlotly(BaseModel, PlotImage):
+        @figure(title="unused", backend="plotly", primary=True)
+        def _never(self, image):  # pragma: no cover - inspect() overrides
+            raise AssertionError
+
+        def inspect(self, subject=None, *, for_save=False, **overrides):
+            return PlotOutput(pages=(
+                PlotPage(key="first", figure=go.Figure(), label="First"),
+                PlotPage(key="second", figure=go.Figure(), label="Second"),
+            ))
+
+    pipeline = ImagePipeline(ops={"d": OtsuDetector()}, plots=[_MultiPagePlotly()])
+    coordinator = PlotCoordinator(pipeline, tmp_path)
+    for stem in ("img-A", "img-B", "img-C"):
+        coordinator.emit_image(object(), dataset="ds", image_stem=stem)
+
+    bundles = sorted(tmp_path.rglob("plotly.min.js"))
+    assert len(bundles) == 1, (
+        f"expected one hoisted bundle, found {len(bundles)}: "
+        f"{[str(b.relative_to(tmp_path)) for b in bundles]}"
+    )
+    assert bundles[0].parent == tmp_path / "deliverables" / "plots"
+
+    pages = sorted(tmp_path.rglob("*.html"))
+    assert len(pages) == 6, f"expected 6 pages, found {len(pages)}"

@@ -338,6 +338,7 @@ class PlotCoordinator:
             directory,
             plot_id=binding.id,
             plot_class=type(binding.plot).__name__,
+            plots_base=self._plots_base,
             publication_guard=self._publication_guard,
             commit_guard=self._commit_guard,
         )
@@ -363,6 +364,7 @@ class PlotCoordinator:
                 base / output_stem,
                 plot_id=binding.id,
                 plot_class=type(binding.plot).__name__,
+                plots_base=self._plots_base,
                 publication_guard=self._publication_guard,
                 commit_guard=self._commit_guard,
             )
