@@ -411,3 +411,100 @@ def test_roi_lab_uses_the_image_illuminant() -> None:
     np.testing.assert_allclose(
             lab, image.color.Lab[roi.row_slice, roi.col_slice], atol=1e-9
     )
+
+
+# ---------------------------------------------------------------------------
+# The fit consumes each tile's delta-E 2000 medoid pixel
+# ---------------------------------------------------------------------------
+def _exhaustive_medoid(lab: np.ndarray, chunk: int = 64) -> int:
+    """Index of the pixel with least total delta-E 2000 to all others.
+
+    Independent of ``candidate_medoid``: scores every pixel, no candidate
+    restriction, no geometric-median seed.
+    """
+    import colour
+
+    totals = np.empty(len(lab))
+    for start in range(0, len(lab), chunk):
+        block = lab[start:start + chunk]
+        totals[start:start + chunk] = np.asarray(
+                colour.difference.delta_E_CIE2000(block[:, None, :], lab[None, :, :])
+        ).sum(axis=1)
+    return int(totals.argmin())
+
+
+def test_the_fit_consumes_each_tiles_medoid_pixel(monkeypatch) -> None:
+    """A partly covered tile must be fitted on its medoid, not a blend.
+
+    The orange tile has a grey occluder over the left ~35 % of it (about a
+    quarter of its measured core).  What reaches ``fit_from_patch_colors``
+    for that patch must be exactly the sRGB of the exhaustive delta-E 2000
+    medoid of the core pixels -- a real, uncontaminated pixel.  The control
+    shows the occluder matters: the core's mean lands farther from the
+    medoid than any unoccluded pixel does, so noise cannot explain it.
+    """
+    import colour
+
+    from phenotypic.correction._color_correction._color_checker_profile import (
+        ColorCheckerProfile,
+    )
+
+    seen: dict[str, np.ndarray] = {}
+    original = ColorCheckerProfile.fit_from_patch_colors
+
+    def spy(self, measured, patch_names=None):
+        seen.update({k: np.asarray(v, dtype=float) for k, v in measured.items()})
+        return original(self, measured, patch_names)
+
+    monkeypatch.setattr(ColorCheckerProfile, "fit_from_patch_colors", spy)
+
+    band, row, col = 0, 0, 1  # orange: far from the grey occluder
+    arr = render_frame()
+    y0, x0 = TOP + row * PITCH, 85
+    occluded_to = x0 + int(0.35 * TILE)
+    # Per-channel noise of ~6/255, so a per-channel median is not itself a
+    # pixel of the tile and cannot pass for the medoid by coincidence.
+    tile = arr[y0:y0 + TILE, x0:x0 + TILE].astype(float)
+    tile += np.random.default_rng(1).normal(0, 6, tile.shape)
+    arr[y0:y0 + TILE, x0:x0 + TILE] = tile.clip(0, 255).round().astype(np.uint8)
+    arr[y0:y0 + TILE, x0:occluded_to] = 128  # grey occluder
+    image = Image(arr=arr)
+    operation = frozen_op(on_qc_fail="warn")
+
+    quietly(operation, image)
+
+    name = _band_patch(band, row, col)
+    assert name in operation.diagnostics["patch_census"]["accepted"]
+
+    roi = operation.rois[band]
+    lab, srgb = operation._roi_views(image, roi)
+    lattice = CheckerLattice(**operation.diagnostics["lattices"][band])
+    (_, _, by0, by1, bx0, bx1), = [
+        b for b in lattice.boxes(core=operation.core_trim, rot=lattice.rot)
+        if (b[0], b[1]) == (row, col)
+    ]
+    ys, ye, xs, xe = int(by0), int(by1), int(bx0), int(bx1)
+    core_lab = lab[ys:ye, xs:xe].reshape(-1, 3)
+    core_srgb = srgb[ys:ye, xs:xe].reshape(-1, 3)
+
+    medoid_srgb = core_srgb[_exhaustive_medoid(core_lab)]
+    np.testing.assert_allclose(seen[name], medoid_srgb, atol=1e-12)
+
+    # The fitted value is a pixel of this tile's own core box, not a blend.
+    assert (np.abs(core_srgb - seen[name]).max(axis=1) < 1e-12).any()
+
+    # Control: the occluder is in the core and would have moved a mean.  How
+    # far the clean pixels' mean sits from the medoid is the noise floor of a
+    # mean; the occluded core's mean must land at least twice that far out.
+    # ROI 0 starts at column 0, so ROI and image columns coincide.
+    columns = np.broadcast_to(np.arange(xs, xe), (ye - ys, xe - xs)).reshape(-1)
+    clean = columns >= occluded_to
+    assert 0 < (~clean).sum() < clean.sum()  # a minority of the core
+    medoid_lab = core_lab[_exhaustive_medoid(core_lab)]
+
+    def distance_of_mean(rows: np.ndarray) -> float:
+        mean_lab = colour.XYZ_to_Lab(colour.sRGB_to_XYZ(rows.mean(axis=0)))
+        return float(colour.difference.delta_E_CIE2000(mean_lab, medoid_lab))
+
+    noise_floor = distance_of_mean(core_srgb[clean])
+    assert distance_of_mean(core_srgb) > 2 * noise_floor
