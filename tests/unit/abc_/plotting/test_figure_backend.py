@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 import pytest
 from matplotlib.figure import Figure as MplFigure
 
-from phenotypic.abc_.plotting import PhtPlot, figure
+from phenotypic.abc_.plotting import Control, PhtPlot, figure
 
 
 def test_backend_is_required() -> None:
@@ -118,3 +118,54 @@ def test_the_mpl_theme_is_live_while_the_figure_is_built() -> None:
     assert _Mpl.observed_cycle == phenotypic_rc()["axes.prop_cycle"]
     # ...and scoped: the caller's global rcParams are untouched.
     assert before == after
+
+
+class _AllMpl(PhtPlot):
+    @figure(title="One", backend="mpl", primary=True)
+    def one(self, subject):
+        return MplFigure()
+
+
+class _Mixed(PhtPlot):
+    @figure(title="P", backend="plotly", primary=True)
+    def p(self, subject):
+        return go.Figure()
+
+    @figure(title="M", backend="mpl")
+    def m(self, subject):
+        return MplFigure()
+
+
+def test_report_refuses_an_all_matplotlib_provider() -> None:
+    with pytest.raises(TypeError, match="cannot compose matplotlib"):
+        _AllMpl().report(object())
+
+
+def test_report_refuses_a_mixed_provider() -> None:
+    with pytest.raises(TypeError, match="cannot compose matplotlib"):
+        _Mixed().report(object())
+
+
+def test_inspect_still_works_on_a_matplotlib_provider() -> None:
+    """The limitation is composition, not rendering."""
+    assert isinstance(_AllMpl().inspect(object()), MplFigure)
+
+
+class _MplWithControls(PhtPlot):
+    """B6: this provider never reaches _compose_control_free_figure."""
+
+    @figure(
+        title="Controlled",
+        backend="mpl",
+        primary=True,
+        controls={"sigma": Control(label="s", kind="float", default=1.0,
+                                   bounds=(0.0, 2.0))},
+    )
+    def controlled(self, subject, *, sigma: float = 1.0):
+        return MplFigure()
+
+
+def test_report_refuses_a_matplotlib_provider_that_declares_controls() -> None:
+    """Guards the notebook-dashboard path, which bypasses the composer."""
+    with pytest.raises(TypeError, match="cannot compose matplotlib"):
+        _MplWithControls().report(object())

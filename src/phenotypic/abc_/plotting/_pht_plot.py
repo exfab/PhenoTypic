@@ -468,6 +468,8 @@ class PhtPlot:
 
         Raises:
             RuntimeError: If no figure methods are declared.
+            TypeError: If any visible figure declares ``backend="mpl"``.
+                Composing matplotlib figures is not supported.
             ValueError: If the base report receives overrides. Concrete plots
                 may override this method to expose report-specific parameters.
         """
@@ -480,6 +482,17 @@ class PhtPlot:
         if not specs:
             raise RuntimeError(
                 f"{type(self).__name__} declares no @figure methods"
+            )
+        mpl_specs = [spec.name for spec in specs if spec.backend == "mpl"]
+        # Placed here rather than in _compose_control_free_figure: a provider
+        # with controls never reaches the composer (it goes to
+        # build_notebook_dashboard), so a guard down there misses that path.
+        if mpl_specs:
+            raise TypeError(
+                f"{type(self).__name__}.report(): cannot compose matplotlib "
+                f"figures ({', '.join(sorted(mpl_specs))}). Composition is "
+                "Plotly-only. Use inspect() for a single figure, or override "
+                "report() with a plot-specific implementation."
             )
         if any(spec.controls for spec in specs):
             from phenotypic.sdk_.viz.notebook._adapter import (
