@@ -130,7 +130,9 @@ class CalibrateColorRpcc(ImageCorrector):
         medoid_candidates: Candidate-set size for the deterministic medoid.
         outlier_sigma: Patches beyond ``mean + sigma * sd`` delta-E are
             rejected before fitting.
-        min_patches: Accepted patches below which the frame is flagged.
+        min_patches: Accepted patches below which a worse fit is warned
+            about.  It warns only; it never changes the degree or refuses
+            the frame.
         qc_limits: Gate thresholds.
         on_qc_fail: ``"raise"``, ``"warn"`` (correct anyway) or ``"skip"``
             (return the image uncorrected with the record attached).

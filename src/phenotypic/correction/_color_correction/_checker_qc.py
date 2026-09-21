@@ -49,7 +49,9 @@ class QcLimits(BaseModel):
         max_anchor_disagreement_px: Spread between the horizontal shifts two
             different anchor columns imply.  A reference-free internal
             consistency check: the columns of one rigid card must agree.
-        min_ecc: ECC correlation floor, checked only for ``refine="ecc"``.
+        min_ecc: ECC correlation floor, checked only when a caller supplies an
+            ECC confidence.  ``CalibrateColorRpcc`` does not offer ECC
+            refinement, so it never trips there.
         min_placement_margin: Identity margin below which the card is refused.
         warn_placement_margin: Margin below which it is used but warned about.
         max_hungarian_disagreement: Tiles a free assignment may label
@@ -222,6 +224,7 @@ def evaluate_roi(
                 "worst_tile_impurity"    : worst_impurity,
                 "worst_robust_shift"     : worst_shift,
                 "worst_clipped"          : worst_clipped,
+                "empty_tiles"            : int(empty_tiles),
             },
     )
 

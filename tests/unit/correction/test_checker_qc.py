@@ -37,6 +37,7 @@ def test_every_signal_is_recorded_even_when_nothing_trips() -> None:
         "shift_px", "anchor_disagreement_px", "ecc_confidence",
         "placement_margin", "hungarian_disagreement", "mean_impurity",
         "worst_tile_impurity", "worst_robust_shift", "worst_clipped",
+        "empty_tiles",
     }
 
 
@@ -50,6 +51,7 @@ def test_every_signal_is_recorded_even_when_nothing_trips() -> None:
             ({"impurities": np.full(12, 0.3)}, "covering it"),
             ({"robust_shifts": np.full(12, 4.0)}, "moved a tile"),
             ({"clipped": np.full(12, 0.9)}, "sensor limit"),
+            ({"empty_tiles": 2}, "outside the ROI"),
         ],
 )
 def test_each_fault_is_refused_with_a_message_naming_it(overrides, fragment) -> None:
