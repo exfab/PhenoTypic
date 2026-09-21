@@ -7,7 +7,13 @@ adapters belong to the private :mod:`phenotypic.plotting._pipeline` package.
 """
 
 from ._lifecycle import PlotAnalysis, PlotImage, PlotMeas, PlotQc
-from ._output import FigureLike, PlotOutput, PlotPage, canonical_group_key
+from ._output import (
+    FigureLike,
+    PlotOutput,
+    PlotPage,
+    canonical_group_key,
+    figure_backend_of,
+)
 from ._pht_plot import BoundFigures, Control, FigureSpec, PhtPlot, figure
 
 __all__ = [
@@ -24,4 +30,5 @@ __all__ = [
     "PlotQc",
     "canonical_group_key",
     "figure",
+    "figure_backend_of",
 ]

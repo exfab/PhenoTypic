@@ -7,6 +7,8 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any, Mapping, cast
 
+from phenotypic.abc_.plotting import figure_backend_of
+
 
 class FigureAdapter:
     """Save and render supported Plotly and Matplotlib figures."""
@@ -128,10 +130,16 @@ class FigureAdapter:
 
     @staticmethod
     def backend_name(figure: Any) -> str:
-        """Return the stable backend name for a supported figure."""
-        if FigureAdapter._is_plotly(figure):
+        """Return the stable backend name for a supported figure.
+
+        The published manifest spells the matplotlib backend ``"matplotlib"``
+        while the ``@figure`` decorator spells it ``"mpl"``. This is the one
+        place the two vocabularies meet; the wire format is not changed here.
+        """
+        backend = figure_backend_of(figure)
+        if backend == "plotly":
             return "plotly"
-        if FigureAdapter._is_matplotlib(figure):
+        if backend == "mpl":
             return "matplotlib"
         raise TypeError(
             "unsupported figure type "
@@ -140,17 +148,11 @@ class FigureAdapter:
 
     @staticmethod
     def _is_plotly(figure: Any) -> bool:
-        return (
-            type(figure).__module__.startswith("plotly.")
-            and type(figure).__name__ == "Figure"
-        )
+        return figure_backend_of(figure) == "plotly"
 
     @staticmethod
     def _is_matplotlib(figure: Any) -> bool:
-        return (
-            type(figure).__module__.startswith("matplotlib.")
-            and type(figure).__name__ == "Figure"
-        )
+        return figure_backend_of(figure) == "mpl"
 
 
 __all__ = ["FigureAdapter"]
