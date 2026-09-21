@@ -163,14 +163,26 @@ the spec's missing-tile warnings are for.
 
 ## 5. Provenance
 
-| number | source |
+Every file named here is in `evidence/` beside this document, so a claim can be
+checked rather than taken on faith. `evidence/README.md` maps each file to the
+section it backs.
+
+| Section | Files in `evidence/` |
 |---|---|
-| §1, §2 | patch-importance session — `patch_importance_loo.csv`, `patch_importance_summary.csv`, `patch_reduction_sweep.csv`, `patch_reduction_summary.csv`, `patch_removal_permutations.csv` (seed 1729) |
-| §3 | `degree_policy_between_frame.csv`, `degree_effect_per_patch.csv`, computed from `patch_measurements.npz` |
+| §1, §2 | [`patch_importance_loo.csv`](evidence/patch_importance_loo.csv), [`patch_importance_summary.csv`](evidence/patch_importance_summary.csv), [`patch_reduction_sweep.csv.gz`](evidence/patch_reduction_sweep.csv.gz), [`patch_reduction_summary.csv`](evidence/patch_reduction_summary.csv), [`patch_removal_permutations.csv`](evidence/patch_removal_permutations.csv) (seed 1729) |
+| §3 | [`degree_policy_between_frame.csv`](evidence/degree_policy_between_frame.csv), [`degree_effect_per_patch.csv`](evidence/degree_effect_per_patch.csv), computed from [`patch_measurements.npz`](evidence/patch_measurements.npz) |
 | conditioning, rank | `../../logic_validation_scripts/2026-09-21-in-frame-checker-color-correction/checker_color_correction.py`, claim C4 |
-| transfer figures | per-image profile grid, `per_image_profile_grid.csv` |
+| transfer figures | [`per_image_profile_grid.csv`](evidence/per_image_profile_grid.csv) (the 4×4 plate-frame block only; the chart-profile row is not in it) |
+| estimator background | [`estimator_comparison_per_tile.csv`](evidence/estimator_comparison_per_tile.csv), [`profile_fit_diagnostics.csv`](evidence/profile_fit_diagnostics.csv), [`geometric_median_tolerance_sweep.csv`](evidence/geometric_median_tolerance_sweep.csv), [`estimator_findings.md`](evidence/estimator_findings.md), [`patch_count_findings.md`](evidence/patch_count_findings.md) |
+
+The prototype these results were produced against is in `reference/`, with a
+note on what was ported and what was deliberately left behind.
 
 The fast fit/eval substrate used for §1–§2 reproduces the full
 `ColorCorrector` + `MeasureColor` pipeline to 0.020 ΔE00 mean / 0.071 worst
 across all 16 frame pairs, and its RPCC call matches
 `colour.characterisation.matrix_colour_correction_Finlayson2015` to 5.5×10⁻⁹.
+
+**These figures describe the earlier notebook extraction, not
+`CalibrateColorRpcc`.** The operation's own measured accuracy, and the gap to
+the 1.95 quoted above, are in Task 7 of the implementation plan.

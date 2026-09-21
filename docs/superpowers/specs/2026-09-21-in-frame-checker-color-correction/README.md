@@ -63,7 +63,7 @@ Numbers below are the measured values the design leans on. They came from the
 four plate frames across three sessions plus one calibration chip) and are
 context for those frames, not universal constants.
 
-**Detection** (`SnP-ColorCorrection/chipdetect/`). Seven lattice-refinement
+**Detection** ([`reference/chipdetect.py`](reference/chipdetect.py)). Seven lattice-refinement
 methods were benchmarked on synthetic displacements and on real cross-session
 pairs. Capture range and cost per band:
 
@@ -610,7 +610,7 @@ pattern in `measure/` and `enhance/`.
 | Plotly diagnostics | `ColorCheckerProfile.report` |
 | EXIF compatibility | `CaptureMetadata` |
 
-Port from `SnP-ColorCorrection/chipdetect/`: the lattice model, the rigid and ECC
+Port from [`reference/`](reference/) (copied from `SnP-ColorCorrection/chipdetect/`): the lattice model, the rigid and ECC
 refinements, the Hungarian identity assignment with orientation hypotheses, the
 impurity / robust-shift / clipping statistics, and the QC limits. Leave behind:
 the rig-specific constants in `chiprig.py`, the linear-RGB-into-`rgb2lab`
@@ -709,6 +709,10 @@ derives the correction and applies it; `ColorCorrector` only applies one.
 - Prior sessions: colour-correction overview and validation; automated chip
   detection; geometric median vs ΔE2000 medoid; patch importance and detection
   robustness.
-- Prototype: `/Users/alex/Projects/SnP-ColorCorrection/chipdetect/`
-  (`chipdetect.py`, `chiprig.py`, `rig_prior.json`).
+- Prototype: `reference/` in this folder — `chipdetect.py`, `chiprig.py`,
+  `rig_prior.json` and the prototype's own write-ups, copied unmodified from
+  `SnP-ColorCorrection/chipdetect/`. `reference/README.md` records what was
+  ported, what was left behind and what changed in the port.
+- Measurements: `evidence/` in this folder, with `evidence/README.md`
+  mapping each file to the claim it backs.
 - Related spec: `docs/superpowers/specs/2026-09-19-weiszfeld-coincident-point-singularity/`.

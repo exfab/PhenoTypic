@@ -1,0 +1,5 @@
+margin_threshold,clean_rejected,wrong_caught,silent_mislabel
+0.1,0.0,0.6481,0.1151
+0.15,0.0,0.8232,0.0578
+0.2,0.0,0.9236,0.025
+0.25,0.0,0.9777,0.0073

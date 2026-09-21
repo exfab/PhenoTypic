@@ -1,0 +1,25 @@
+frame,roi,hypothesis_set,margin,winner,tiles_correct
+d000220_300_021,left,rig_specific_8,0.8633,"rows(1, 2)",12
+d000220_300_021,left,adjacent_12,0.6008,"rows(1, 2)",12
+d000220_300_021,left,general_24,0.2973,"rows(1, 2)",12
+d000220_300_021,right,rig_specific_8,0.8197,"rows(3, 4)",12
+d000220_300_021,right,adjacent_12,0.4758,"rows(3, 4)",12
+d000220_300_021,right,general_24,0.3247,"rows(3, 4)",12
+d000220_300_022,left,rig_specific_8,0.8722,"rows(1, 2)",12
+d000220_300_022,left,adjacent_12,0.6054,"rows(1, 2)",12
+d000220_300_022,left,general_24,0.3027,"rows(1, 2)",12
+d000220_300_022,right,rig_specific_8,0.8278,"rows(3, 4)",12
+d000220_300_022,right,adjacent_12,0.4835,"rows(3, 4)",12
+d000220_300_022,right,general_24,0.3302,"rows(3, 4)",12
+d000220_300_038,left,rig_specific_8,0.8732,"rows(1, 2)",12
+d000220_300_038,left,adjacent_12,0.6061,"rows(1, 2)",12
+d000220_300_038,left,general_24,0.3062,"rows(1, 2)",12
+d000220_300_038,right,rig_specific_8,0.8302,"rows(3, 4)",12
+d000220_300_038,right,adjacent_12,0.4876,"rows(3, 4)",12
+d000220_300_038,right,general_24,0.334,"rows(3, 4)",12
+d000320_300_003,left,rig_specific_8,0.8663,"rows(1, 2)",12
+d000320_300_003,left,adjacent_12,0.5949,"rows(1, 2)",12
+d000320_300_003,left,general_24,0.2937,"rows(1, 2)",12
+d000320_300_003,right,rig_specific_8,0.8142,"rows(3, 4)",12
+d000320_300_003,right,adjacent_12,0.479,"rows(3, 4)",12
+d000320_300_003,right,general_24,0.3257,"rows(3, 4)",12
