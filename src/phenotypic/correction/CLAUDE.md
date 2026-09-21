@@ -69,11 +69,11 @@ on the calibration chip).
 
 `_color_correction/` splits the calibration pipeline one stage per file:
 `_checker_roi` (rectangles and lattices, no image access) → `_checker_detect`
-(plateau counting, lattice fit, rigid/ECC refinement) → `_checker_identity`
-(placement enumeration and scoring) → `_checker_measure` (core trimming,
-deterministic ΔE2000 medoid, contamination statistics) → `_checker_qc` (gate)
-→ `_calibrate_color_rpcc` (orchestration). `_color_checker_profile` owns the
-solver both entry points share.
+(plateau counting, lattice fit, rigid refinement; ECC as a building block
+only) → `_checker_identity` (placement enumeration and scoring) →
+`_checker_measure` (core trimming, deterministic ΔE2000 medoid, contamination
+statistics) → `_checker_qc` (gate) → `_calibrate_color_rpcc` (orchestration).
+`_color_checker_profile` owns the solver both entry points share.
 
 Design spec and evidence:
 `docs/superpowers/specs/2026-09-21-in-frame-checker-color-correction/`.

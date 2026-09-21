@@ -34,11 +34,11 @@ import warnings
 from typing import TYPE_CHECKING, Annotated, Any, Literal, Sequence, overload
 
 import numpy as np
-from pydantic import Field, PrivateAttr, field_validator
+from pydantic import Field, PrivateAttr, field_validator, model_validator
 
 from ...abc_ import ImageCorrector
 from ...sdk_.typing_ import TuneSpec
-from ._checker_detect import RefineMethod, fit_lattice, refine
+from ._checker_detect import fit_lattice, refine
 from ._checker_identity import (
     assign_placement,
     chart_grid,
@@ -61,6 +61,11 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 OnQcFail = Literal["raise", "warn", "skip"]
+
+#: Refinement methods the operation offers.  ``"ecc"`` is deliberately absent:
+#: it registers against a stored reference band, which would have to ride in
+#: every serialised pipeline (see the spec's Detection section).
+OperationRefineMethod = Literal["rigid", "frozen"]
 
 
 class CalibrateColorRpcc(ImageCorrector):
@@ -103,10 +108,9 @@ class CalibrateColorRpcc(ImageCorrector):
             patches are present.
         lattice_prior: Per-ROI lattices from an earlier frame.  When given,
             they are refined onto this frame rather than re-fitted.
-        refine_method: ``"rigid"`` (reference-free, default), ``"ecc"``
-            (widest range, needs ``reference_bands``) or ``"frozen"``.
-        reference_bands: Per-ROI Lab bands the prior was fitted on, required
-            by ``refine_method="ecc"``.
+        refine_method: ``"rigid"`` (reference-free, default) or
+            ``"frozen"``.  ECC registration is not offered: it needs a
+            reference band shipped with every serialised pipeline.
         core_trim: Fraction trimmed from each tile box before measuring.
             ``0.4`` keeps the central 60 % of each axis, which is where the
             detector's residual error is absorbed.
@@ -133,8 +137,7 @@ class CalibrateColorRpcc(ImageCorrector):
     degree: int = 3
     grid: tuple[int, int] | None = None
     lattice_prior: list[CheckerLattice] | None = None
-    refine_method: RefineMethod = "rigid"
-    reference_bands: list[Any] | None = Field(default=None, exclude=True)
+    refine_method: OperationRefineMethod = "rigid"
     core_trim: Annotated[float, TuneSpec(0.2, 0.6)] = 0.4
     medoid_candidates: int = DEFAULT_MEDOID_CANDIDATES
     outlier_sigma: Annotated[float, TuneSpec(1.5, 4.0)] = 2.0
@@ -164,6 +167,22 @@ class CalibrateColorRpcc(ImageCorrector):
         if degree not in (1, 2, 3, 4):
             raise ValueError(f"degree must be 1-4; got {degree}.")
         return degree
+
+    @model_validator(mode="after")
+    def _validate_lattice_prior_length(self) -> CalibrateColorRpcc:
+        """One prior per ROI, in ROI order.
+
+        Checked here so a short list fails when the operation is built,
+        naming the field, rather than deep inside ``_operate`` as an
+        ``IndexError`` on whichever image happened to be first.
+        """
+        if self.lattice_prior is not None and len(self.lattice_prior) != len(self.rois):
+            raise ValueError(
+                    f"lattice_prior has {len(self.lattice_prior)} entries but there "
+                    f"are {len(self.rois)} rois; supply exactly one per ROI, in the "
+                    "same order."
+            )
+        return self
 
     @property
     def diagnostics(self) -> dict[str, Any]:
@@ -228,20 +247,14 @@ class CalibrateColorRpcc(ImageCorrector):
             lab, srgb = self._roi_views(image, roi)
 
             if self.lattice_prior is not None:
-                reference = (
-                    self.reference_bands[index]
-                    if self.reference_bands is not None
-                    else None
-                )
                 refined = refine(
                         lab, self.lattice_prior[index], method=self.refine_method,
-                        reference_lab=reference, anchor_col=roi.anchor_col,
+                        anchor_col=roi.anchor_col,
                 )
                 lattice, shift = refined.lattice, float(np.hypot(refined.dy, refined.dx))
-                ecc = refined.confidence if self.refine_method == "ecc" else None
             else:
                 lattice = fit_lattice(lab, grid=self.grid)
-                shift, ecc = 0.0, None
+                shift = 0.0
             lattices.append(lattice)
 
             if roi.expect_tiles is not None and lattice.n_tiles != roi.expect_tiles:
@@ -279,7 +292,7 @@ class CalibrateColorRpcc(ImageCorrector):
                     anchor_disagreement_px=self._anchor_disagreement(
                             lab, index, lattice
                     ),
-                    ecc_confidence=ecc,
+                    ecc_confidence=None,
                     placement_margin=identity.margin,
                     hungarian_disagreement=(
                         identity.n_tiles - identity.hungarian_agreement
