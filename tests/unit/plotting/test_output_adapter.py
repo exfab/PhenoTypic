@@ -77,7 +77,7 @@ def test_matplotlib_pages_publish_with_collision_safe_names(tmp_path) -> None:
         )
     )
     manifest = publish_plot_output(output, tmp_path, plot_id="demo")
-    files = [entry["file"] for entry in manifest["pages"]]
+    files = [entry["files"]["png"] for entry in manifest["pages"]]
     assert len(files) == 2
     assert len({name.casefold() for name in files}) == 2
     assert all((tmp_path / name).exists() for name in files)
@@ -103,7 +103,7 @@ def test_hash_suffix_is_rechecked_for_page_filename_collision(tmp_path) -> None:
 
     manifest = publish_plot_output(output, tmp_path, plot_id="collision")
 
-    files = [page["file"] for page in manifest["pages"]]
+    files = [page["files"]["png"] for page in manifest["pages"]]
     assert len(files) == 3
     assert len({name.casefold() for name in files}) == 3
     assert all((tmp_path / name).exists() for name in files)
@@ -123,6 +123,8 @@ def test_unsupported_page_fails_without_suppressing_sibling(tmp_path) -> None:
 def test_concurrent_plot_publications_do_not_mix_generations(
     tmp_path, monkeypatch
 ) -> None:
+    from phenotypic.plotting._pipeline import _writer
+
     class _FakeFigure:
         def __init__(self, generation: str) -> None:
             self.generation = generation
@@ -132,7 +134,13 @@ def test_concurrent_plot_publications_do_not_mix_generations(
         path.write_text(figure.generation, encoding="utf-8")
 
     monkeypatch.setattr(FigureAdapter, "save_png", save_png)
-    monkeypatch.setattr(FigureAdapter, "backend_name", lambda _figure: "fake")
+    # Classify _FakeFigure as matplotlib so this stays a PNG-only test. The
+    # writer no longer calls FigureAdapter.backend_name -- _render_page asks
+    # figure_backend_of, which would classify _FakeFigure as None and divert
+    # every page to "failed", leaving manifest["pages"] empty and testing
+    # nothing. Patching the writer's own binding works only because
+    # figure_backend_of is imported at module level there.
+    monkeypatch.setattr(_writer, "figure_backend_of", lambda _figure: "mpl")
     monkeypatch.setattr(FigureAdapter, "close", lambda _figure: None)
 
     def output(generation: str) -> PlotOutput:
@@ -167,7 +175,7 @@ def test_concurrent_plot_publications_do_not_mix_generations(
     assert len(generations) == 1
     generation = generations.pop()
     assert {
-        (tmp_path / page["file"]).read_text(encoding="utf-8")
+        (tmp_path / page["files"]["png"]).read_text(encoding="utf-8")
         for page in manifest["pages"]
     } == {generation}
 
@@ -288,3 +296,92 @@ def test_a_partial_rendering_failure_is_not_lost(tmp_path, monkeypatch) -> None:
     assert record.is_file(), "S3: the writer must write .failures.jsonl"
     entry = json.loads(record.read_text().splitlines()[0])
     assert entry["error"] == "RuntimeError: raster exploded"
+
+
+def test_every_page_failing_yields_an_explanatory_manifest(tmp_path, monkeypatch) -> None:
+    """A zero-page manifest must say why, not merely assert nothing."""
+    import plotly.graph_objects as go
+
+    from phenotypic.abc_.plotting import PlotOutput, PlotPage
+    from phenotypic.plotting._pipeline import _writer, publish_plot_output
+
+    def _boom(*args, **kwargs):
+        raise RuntimeError("renderer exploded")
+
+    monkeypatch.setattr(_writer.FigureAdapter, "save_html", _boom)
+    monkeypatch.setattr(_writer.FigureAdapter, "save_png", _boom)
+
+    output = PlotOutput(pages=(
+        PlotPage(key="a", figure=go.Figure(), label="A"),
+    ))
+    manifest = publish_plot_output(output, tmp_path / "p", plot_id="p")
+
+    assert manifest["schema_version"] == 2
+    assert manifest["pages"] == []
+    assert len(manifest["failed"]) == 1
+    assert manifest["failed"][0]["key"] == "a"
+    # Exact, for the same reason as the partial-failure test: a substring is
+    # satisfied by a doubled "RuntimeError: RuntimeError: " prefix too. The
+    # value is machine-independent -- errors[0] is always the HTML failure,
+    # whether or not this machine also attempted a PNG.
+    assert manifest["failed"][0]["error"] == "RuntimeError: renderer exploded"
+
+
+def test_renderers_records_why_png_is_missing(tmp_path, monkeypatch) -> None:
+    import plotly.graph_objects as go
+
+    from phenotypic.abc_.plotting import PlotOutput, PlotPage
+    from phenotypic.plotting._pipeline import _backends, publish_plot_output
+
+    monkeypatch.setattr(_backends, "chrome_available", lambda: False)
+    output = PlotOutput(pages=(
+        PlotPage(key="a", figure=go.Figure(), label="A"),
+    ))
+    manifest = publish_plot_output(output, tmp_path / "p", plot_id="p")
+
+    assert manifest["renderers"]["html"] == "available"
+    assert "chrome" in manifest["renderers"]["png"].lower()
+
+
+def test_a_mixed_backend_directory_reports_png_as_partial(
+    tmp_path, monkeypatch
+) -> None:
+    """One Plotly page and one matplotlib page in one directory, no Chrome.
+
+    Neither "available" nor "unavailable" is true of this directory: the
+    matplotlib page has a PNG and the Plotly page does not. ``renderers`` is
+    the key a reader consults *instead of* walking every page, so it has to
+    say so rather than pick whichever answer the last branch wrote.
+
+    The per-page ``files`` map is correct in every case and is asserted here
+    too, because it is what distinguishes a reporting bug from a publication
+    bug.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    from matplotlib.figure import Figure
+
+    import plotly.graph_objects as go
+
+    from phenotypic.abc_.plotting import PlotOutput, PlotPage
+    from phenotypic.plotting._pipeline import _backends, publish_plot_output
+
+    monkeypatch.setattr(_backends, "chrome_available", lambda: False)
+
+    plots_base = tmp_path / "plots"
+    output = PlotOutput(pages=(
+        PlotPage(key="interactive", figure=go.Figure(), label="Interactive"),
+        PlotPage(key="raster", figure=Figure(), label="Raster"),
+    ))
+    manifest = publish_plot_output(
+        output, plots_base / "mixed", plot_id="mixed", plots_base=plots_base
+    )
+
+    assert manifest["renderers"] == {
+        "html": "available",
+        "png": "partial: chrome not found",
+    }
+    by_key = {page["key"]: page for page in manifest["pages"]}
+    assert by_key["interactive"]["files"] == {"html": "Interactive.html"}
+    assert by_key["raster"]["files"] == {"png": "Raster.png"}
+    assert manifest["failed"] == []

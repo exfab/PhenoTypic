@@ -248,6 +248,17 @@ def _publish_plot_output_locked(
     commit_guard: CommitGuard | None,
 ) -> dict[str, Any]:
     """Publish one plot generation while its directory lock is held."""
+    # Function-scope import, deliberately unlike `figure_backend_of` at module
+    # level: tests patch `_backends.chrome_available`, the DEFINING module's
+    # attribute, so the name must be resolved when this runs rather than bound
+    # unpatched at import time. See the note at this module's imports.
+    from ._backends import chrome_available
+
+    # Probed once, eagerly (spec §2, "The capability check"). With Chrome
+    # absent this is identical to probing lazily -- one probe per process, then
+    # memoised. With Chrome present it moves the first-launch cost onto the
+    # first publish rather than the first figure, which is knowingly taken.
+    png_ok = chrome_available()
     used: dict[str, str] = {}
     pages: list[dict[str, Any]] = []
     failed: list[dict[str, Any]] = []
@@ -326,11 +337,36 @@ def _publish_plot_output_locked(
             entry["partial"] = [_format_error(exc) for exc in errors]
         pages.append(entry)
 
+    # `figure_backend_of` is asked a second time here. Matplotlib figures were
+    # closed during the page loop, but `type()` inspection stays valid on a
+    # closed figure, so this is safe.
+    renderers: dict[str, str] = {}
+    backends = {
+        figure_backend_of(page.figure) for page in output.pages
+    }
+    has_plotly = "plotly" in backends
+    has_mpl = "mpl" in backends
+    if has_plotly:
+        renderers["html"] = "available"
+    if has_plotly and has_mpl and not png_ok:
+        # Mixed directory, no Chrome: the matplotlib pages have a PNG and the
+        # Plotly pages do not, so neither "available" nor "unavailable" is
+        # true of the directory. `renderers` is the key a reader consults
+        # INSTEAD of walking every page, so an overstatement here is worse
+        # than an absence -- it stops them looking further.
+        renderers["png"] = "partial: chrome not found"
+    elif has_plotly and not png_ok:
+        renderers["png"] = "unavailable: chrome not found"
+    elif has_plotly or has_mpl:
+        renderers["png"] = "available"
+
     manifest = {
-        "schema_version": 1,
+        "schema_version": 2,
         "plot_id": plot_id,
         "class": plot_class or plot_id,
+        "renderers": renderers,
         "pages": pages,
+        "failed": failed,
     }
     manifest_path = directory / "manifest.json"
     temporary_manifest = directory / f".manifest.{uuid.uuid4().hex}.tmp"
