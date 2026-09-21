@@ -118,3 +118,14 @@ def test_lab_to_srgb_hex_format():
 
 def test_lab_to_srgb_hex_nan_returns_empty():
     assert lab_to_srgb_hex(np.array([np.nan, 0.0, 0.0])) == ""
+
+
+def test_candidate_medoid_is_exported_from_util():
+    """One implementation, shared: util exports it and the checker path re-imports it."""
+    from phenotypic.correction._color_correction import _checker_measure
+    from phenotypic.util import MedoidResult, candidate_medoid
+
+    assert candidate_medoid is _checker_measure.candidate_medoid
+    assert MedoidResult is _checker_measure.MedoidResult
+    result = candidate_medoid(np.array([[50.0, 0.0, 0.0], [52.0, 1.0, -1.0], [51.0, 0.5, 0.0]]))
+    assert isinstance(result, MedoidResult)

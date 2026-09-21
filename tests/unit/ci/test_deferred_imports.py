@@ -143,7 +143,7 @@ DEFERRED_SITES: dict[str, dict[str, tuple[str, ...]]] = {
         "PathCollection": (),
         "Quiver": (),
     },
-    "util/_robust_color_stats.py": {"colour": ("lab_to_srgb_hex", "medoid_ciede2000")},
+    "util/_robust_color_stats.py": {"colour": ("_delta_e", "lab_to_srgb_hex", "medoid_ciede2000")},
 }
 
 

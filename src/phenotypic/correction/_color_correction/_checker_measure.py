@@ -16,34 +16,15 @@ found by scoring only the pixels nearest the tile's Lab geometric median.  See
 
 from __future__ import annotations
 
-from typing import NamedTuple
-
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from ...util._robust_color_stats import robust_color_center
-
-#: Candidates scored against every pixel by :func:`candidate_medoid`.  256 is
-#: ~60x cheaper than the exhaustive form and returned the identical pixel on
-#: every tile-like cloud tested; see the spec's Stage E.
-DEFAULT_MEDOID_CANDIDATES = 256
-
-#: Weiszfeld settings for the seed geometric median, matching the constants
-#: ``ColorCheckerProfile`` uses so the two paths agree.
-GEOMEDIAN_MAX_ITER = 200
-GEOMEDIAN_TOL = 1e-6
-
-#: A winner this deep into the candidate set means the cloud is not unimodal
-#: around its geometric median, so the true medoid may lie outside the set and
-#: the search is re-run once against a four-times-larger set.
-#:
-#: The guard is a safety net at the default candidate count, not at any count.
-#: Measured on a deliberately bimodal cloud (900 pixels at one colour, 300 at
-#: another 30 a\* away): at ``k >= 256`` it fires and recovers the exhaustive
-#: medoid, but at ``k <= 64`` the winner sits at rank 3 -- comfortably inside
-#: the set -- while being the wrong pixel, so nothing fires. Do not lower
-#: ``candidates`` below the default expecting the guard to compensate.
-CANDIDATE_EDGE_FRACTION = 0.8
+from ...util._robust_color_stats import (
+    DEFAULT_MEDOID_CANDIDATES,
+    MedoidResult as MedoidResult,
+    _delta_e,
+    candidate_medoid,
+)
 
 #: delta-E 2000 beyond which a pixel counts as contamination rather than noise.
 IMPURITY_DELTA_E = 6.0
@@ -51,111 +32,6 @@ IMPURITY_DELTA_E = 6.0
 #: Spatial median-filter width applied before the contamination statistics, so
 #: they reflect an occluder crossing the tile rather than sensor noise.
 CONTAMINATION_SMOOTH = 9
-
-
-def _delta_e(lab_a: np.ndarray, lab_b: np.ndarray) -> np.ndarray:
-    """delta-E 2000 between broadcastable ``(..., 3)`` Lab arrays."""
-    import colour
-
-    return np.asarray(colour.difference.delta_E_CIE2000(lab_a, lab_b))
-
-
-class MedoidResult(NamedTuple):
-    """Outcome of a candidate-restricted medoid search.
-
-    Attributes:
-        index: Row of the winning pixel in the input array.
-        lab: The winning pixel's Lab coordinate.
-        rank: The winner's position within the candidate set, 0 being the
-            pixel closest to the geometric median.
-        total_delta_e: The winner's total delta-E 2000 to every input pixel.
-        widened: ``True`` when the first search put the winner near the edge
-            of the candidate set and the search was re-run with a larger one.
-    """
-
-    index: int
-    lab: np.ndarray
-    rank: int
-    total_delta_e: float
-    widened: bool
-
-
-def candidate_medoid(
-        lab_points: np.ndarray,
-        k: int = DEFAULT_MEDOID_CANDIDATES,
-        chunk_size: int = 64,
-) -> MedoidResult:
-    """The delta-E 2000 medoid of *lab_points*, found deterministically.
-
-    Scores only the *k* pixels nearest the cloud's Lab geometric median, each
-    against **every** pixel, and returns the best.  Cost is ``O(k * n)`` rather
-    than the exhaustive ``O(n^2)``, and no pixel is ever sampled at random.
-
-    Why not :func:`~phenotypic.util.medoid_ciede2000`: it selects the medoid
-    from a seeded subsample of 1000 pixels, and re-drawing that seed moves the
-    answer by ~0.12 delta-E 2000 (worst 0.81) -- larger than the difference
-    between the medoid and the geometric median it is chosen over.  Raising the
-    cap does not fix it affordably: selection is quadratic, costing ~41 s per
-    24-tile frame at a 4000-pixel cap, while the seed spread only falls from
-    ~0.32 to ~0.25 delta-E 2000.  Restricting the candidates instead removes
-    the randomness entirely and reproduces the exhaustive medoid exactly on
-    unimodal tile clouds.
-
-    Args:
-        lab_points: ``(N, 3)`` CIE Lab pixels.
-        k: Number of candidates to score.  Widened once, automatically, if the
-            winner lands past :data:`CANDIDATE_EDGE_FRACTION` of the set.
-        chunk_size: Candidates scored per block, bounding peak memory to
-            ``O(chunk_size * N)`` instead of ``O(k * N)``.
-
-    Returns:
-        A :class:`MedoidResult`.  For an empty input the index is ``-1`` and
-        the coordinate is all-NaN; for a single pixel it is that pixel.
-
-    Raises:
-        ValueError: If *lab_points* is not 2-D, or *k* is not positive.
-    """
-    points = np.asarray(lab_points, dtype=np.float64)
-    if points.ndim != 2 or points.shape[-1] != 3:
-        raise ValueError(f"lab_points must be (N, 3); got {points.shape}.")
-    if k < 1:
-        raise ValueError(f"k must be a positive candidate count; got {k}.")
-
-    n = points.shape[0]
-    if n == 0:
-        return MedoidResult(-1, np.full(3, np.nan), -1, float("nan"), False)
-    if n == 1:
-        return MedoidResult(0, points[0].copy(), 0, 0.0, False)
-
-    seed = robust_color_center(
-            points, max_iter=GEOMEDIAN_MAX_ITER, tol=GEOMEDIAN_TOL
-    )
-    order = np.argsort(np.linalg.norm(points - seed, axis=1), kind="stable")
-
-    attempts = (min(k, n), min(max(4 * k, k), n))
-    widened = False
-    for attempt_no, attempt_k in enumerate(attempts):
-        candidate_idx = order[:attempt_k]
-        totals = np.empty(attempt_k, dtype=np.float64)
-        for start in range(0, attempt_k, chunk_size):
-            block = points[candidate_idx[start : start + chunk_size]]
-            totals[start : start + chunk_size] = _delta_e(
-                    block[:, None, :], points[None, :, :]
-            ).sum(axis=1)
-        rank = int(totals.argmin())
-        at_edge = rank >= CANDIDATE_EDGE_FRACTION * attempt_k
-        last_attempt = attempt_no == len(attempts) - 1
-        # Always return on the final attempt: a cloud that is still at the
-        # edge of a widened set has no better answer available here, and
-        # falling through would be a crash rather than a degraded result.
-        if not at_edge or attempt_k >= n or last_attempt:
-            winner = int(candidate_idx[rank])
-            return MedoidResult(
-                    winner, points[winner].copy(), rank, float(totals[rank]), widened
-            )
-        widened = True
-
-    raise AssertionError("unreachable")  # pragma: no cover
 
 
 def extract_patch(array: np.ndarray, box: tuple[float, float, float, float]) -> np.ndarray:
