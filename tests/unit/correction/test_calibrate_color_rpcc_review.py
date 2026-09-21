@@ -269,6 +269,8 @@ def test_a_clipped_column_does_not_refuse_an_in_range_shift() -> None:
 
     signals = operation.qc[0].signals
     assert signals["shift_px"] == pytest.approx(25.0, abs=3.0)
+    assert signals["anchor_columns_voting"] == 1
+    assert any("could not run" in w for w in operation.qc[0].warnings)
     assert not any("rigid card cannot" in flag for flag in operation.qc[0].flags), (
         f"refused at disagreement {signals['anchor_disagreement_px']:.1f} px"
     )

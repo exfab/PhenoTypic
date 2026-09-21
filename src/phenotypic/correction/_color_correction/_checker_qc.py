@@ -118,6 +118,7 @@ def evaluate_roi(
         clipped: np.ndarray,
         limits: QcLimits,
         empty_tiles: int = 0,
+        anchor_columns_voting: int | None = None,
 ) -> QcRecord:
     """Score one ROI against *limits*.
 
@@ -135,6 +136,10 @@ def evaluate_roi(
         clipped: Per-tile clipped fractions.
         limits: Thresholds to apply.
         empty_tiles: Tiles whose box fell outside the ROI and measured nothing.
+        anchor_columns_voting: Columns that took part in the
+            anchor-disagreement check, or ``None`` when there was no prior to
+            check against.  Fewer than two means the check could not run,
+            which is warned about so it is not mistaken for a pass.
 
     Returns:
         A :class:`QcRecord`.
@@ -166,6 +171,11 @@ def evaluate_roi(
         flags.append(
                 f"columns imply displacements {anchor_disagreement_px:.1f} px "
                 "apart; a rigid card cannot do that"
+        )
+    if anchor_columns_voting is not None and anchor_columns_voting < 2:
+        warns.append(
+                f"only {anchor_columns_voting} column(s) lie wholly inside the "
+                "ROI, so the anchor-disagreement check could not run"
         )
     if ecc_confidence is not None and ecc_confidence < limits.min_ecc:
         flags.append(
@@ -225,6 +235,7 @@ def evaluate_roi(
                 "worst_robust_shift"     : worst_shift,
                 "worst_clipped"          : worst_clipped,
                 "empty_tiles"            : int(empty_tiles),
+                "anchor_columns_voting"  : anchor_columns_voting,
             },
     )
 

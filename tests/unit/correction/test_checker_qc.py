@@ -37,7 +37,7 @@ def test_every_signal_is_recorded_even_when_nothing_trips() -> None:
         "shift_px", "anchor_disagreement_px", "ecc_confidence",
         "placement_margin", "hungarian_disagreement", "mean_impurity",
         "worst_tile_impurity", "worst_robust_shift", "worst_clipped",
-        "empty_tiles",
+        "empty_tiles", "anchor_columns_voting",
     }
 
 

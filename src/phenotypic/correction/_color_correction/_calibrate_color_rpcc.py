@@ -326,13 +326,13 @@ class CalibrateColorRpcc(ImageCorrector):
                 continue
             identity = assign_placement(observed, candidates, ref_linear)
 
+            disagreement, voting = self._anchor_disagreement(lab, index, lattice)
             record = evaluate_roi(
                     roi_index=index,
                     label=roi.label,
                     shift_px=shift,
-                    anchor_disagreement_px=self._anchor_disagreement(
-                            lab, index, lattice
-                    ),
+                    anchor_disagreement_px=disagreement,
+                    anchor_columns_voting=voting,
                     ecc_confidence=None,
                     placement_margin=identity.margin,
                     hungarian_disagreement=(
@@ -447,32 +447,37 @@ class CalibrateColorRpcc(ImageCorrector):
 
     def _anchor_disagreement(
             self, lab, roi_index: int, lattice: CheckerLattice
-    ) -> float | None:
+    ) -> tuple[float | None, int | None]:
         """Spread between the shifts different anchor columns imply.
 
         A reference-free internal consistency check: the columns of one rigid
         card must agree about where it moved.  Only columns lying wholly
         inside the ROI on this frame vote -- a column the border clips
         tracks the shift at about half rate, and letting it vote refuses an
-        in-range move as an inconsistency.  ``None`` when fewer than two
-        columns qualify, or when there is no prior to refine.
+        in-range move as an inconsistency.
+
+        Returns:
+            ``(spread, voting)``: the spread in pixels, or ``None`` when fewer
+            than two columns qualify; and the number of voting columns, so an
+            unavailable check is visible rather than looking like a pass.
+            Both are ``None`` when there is no prior to refine.
         """
         from ._checker_detect import refine_rigid
 
         if self.lattice_prior is None:
-            return None
+            return None, None
         width = lab.shape[1]
         inside = [
             index for index, column in enumerate(lattice.columns)
             if column.x0 >= 0 and column.x1 <= width
         ]
         if len(inside) < 2:
-            return None
+            return None, len(inside)
         prior = self.lattice_prior[roi_index]
         estimates = [
             refine_rigid(lab, prior, anchor_col=index).dx for index in inside
         ]
-        return float(max(estimates) - min(estimates))
+        return float(max(estimates) - min(estimates)), len(inside)
 
     def _build_diagnostics(
             self, chart_illuminant, census, patch_names, tiles, lattices,
