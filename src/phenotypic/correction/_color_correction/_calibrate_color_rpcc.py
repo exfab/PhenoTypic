@@ -226,7 +226,11 @@ class CalibrateColorRpcc(ImageCorrector):
         from phenotypic._core._image import Image as _Image
 
         sub = image.rgb[roi.row_slice, roi.col_slice]
-        wrapped = _Image(arr=np.ascontiguousarray(sub), gamma=image.gamma)
+        wrapped = _Image(
+                arr=np.ascontiguousarray(sub),
+                gamma=image.gamma,
+                illuminant=image.illuminant,
+        )
         return wrapped.color.Lab[:], wrapped.rgb.normed()
 
     def _measure_roi(self, lab, srgb, lattice, roi_index):
@@ -427,17 +431,26 @@ class CalibrateColorRpcc(ImageCorrector):
         """Spread between the shifts different anchor columns imply.
 
         A reference-free internal consistency check: the columns of one rigid
-        card must agree about where it moved. Only meaningful when a prior is
-        being refined and the card has more than one column.
+        card must agree about where it moved.  Only columns lying wholly
+        inside the ROI on this frame vote -- a column the border clips
+        tracks the shift at about half rate, and letting it vote refuses an
+        in-range move as an inconsistency.  ``None`` when fewer than two
+        columns qualify, or when there is no prior to refine.
         """
         from ._checker_detect import refine_rigid
 
-        if self.lattice_prior is None or len(lattice.columns) < 2:
+        if self.lattice_prior is None:
+            return None
+        width = lab.shape[1]
+        inside = [
+            index for index, column in enumerate(lattice.columns)
+            if column.x0 >= 0 and column.x1 <= width
+        ]
+        if len(inside) < 2:
             return None
         prior = self.lattice_prior[roi_index]
         estimates = [
-            refine_rigid(lab, prior, anchor_col=index).dx
-            for index in range(len(prior.columns))
+            refine_rigid(lab, prior, anchor_col=index).dx for index in inside
         ]
         return float(max(estimates) - min(estimates))
 
