@@ -27,6 +27,56 @@ broke anything else and concluded it was contained. Both missed it; the first
 
 Tasks 11 and 12 are therefore sequenced **inside** Task 2, between Steps 5 and 6.
 
+## Correction: commit `afdb77d4` says 44 @figure sites; the tree had 45
+
+The substantive claim in that message — **exactly one site lacks `backend=`, and
+it is the deliberate one** — was true then and is true now. The *total* is wrong
+by one, and the reason is worth more than the fix.
+
+That count came from an AST walk written to *correct* a grep, and it carried its
+own silent-skip:
+
+```python
+try:
+    tree = ast.parse(f.read_text())
+except SyntaxError:
+    continue          # <- swallowed 44 files without saying so
+```
+
+The heredoc ran under the node's **system `python3`, which is 3.6.8**, not the
+project's 3.12. Re-running the identical script under both, on the same clean
+tree:
+
+| Interpreter | sites found | files silently skipped |
+|---|---|---|
+| system `python3` 3.6.8 | **48** | **44** |
+| `.venv/bin/python` 3.12.10 | **49** | 0 |
+
+3.6 cannot parse modern syntax used across this tree — including
+`measure/_measure_symzones.py`, which holds one of the 27 `src/` sites. So the
+script printed a confident number while having read only part of the tree, and
+its success output was **indistinguishable from its no-op output**: nothing in
+"44 applications, 1 bare" reveals that 44 files were never opened.
+
+Per-revision totals, derived independently off git objects rather than the
+working tree:
+
+| Revision | total | missing `backend=` |
+|---|---|---|
+| `2b11e6c8~1` | 38 | 38 |
+| `72f2ab3e` | 38 | 0 |
+| `afdb77d4` | **45** | 1 |
+| `c449cbd2` … `HEAD` | **49** | 1 |
+
+**The transferable lesson is not "AST beats grep".** It is that any sweep which
+can skip an input must report what it skipped. The grep this walk replaced was
+wrong for one reason (line-oriented tool, syntax question); the walk was wrong
+for another (silent `except: continue`). Both printed a number with no way to
+tell a complete answer from a partial one.
+
+Always run a tree-wide parse with `.venv/bin/python`, and count and print the
+skips.
+
 ## Global Constraints
 
 - **`uv` is the sole runner.** Never bare `python` or `pip`. Every command is `uv run …`.
