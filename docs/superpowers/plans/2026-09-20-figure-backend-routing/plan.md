@@ -649,11 +649,37 @@ def test_report_refuses_a_matplotlib_provider_that_declares_controls() -> None:
 - [ ] **Step 2: Run it and confirm it fails**
 
 Run: `uv run pytest tests/unit/abc_/plotting/test_figure_backend.py -k report -v`
-Expected: all three FAIL — the two composer cases with `AttributeError: 'Figure'
-object has no attribute 'layout'` from inside theming, and the controls case with
-the same error raised from `build_notebook_dashboard`. None of them is the
-`TypeError` asked for. Add `Control` to the file's imports from
+Expected: `3 failed, 8 deselected`. Add `Control` to the file's imports from
 `phenotypic.abc_.plotting`.
+
+**The three failure modes are all different, and none is the one an earlier draft
+predicted.** That draft said all three raise `AttributeError: 'Figure' object has
+no attribute 'layout'` — true only while `apply_theme` ran unconditionally. Task 2
+removed that, so matplotlib figures now flow through unthemed and fail later, in
+three distinct places. Measured:
+
+| Provider | Failure |
+|---|---|
+| `_AllMpl` (1 spec, no controls) | **`DID NOT RAISE`** — it *works* |
+| `_Mixed` (2 specs) | `AttributeError: 'Figure' object has no attribute 'data'` — `make_subplots` iterating `rendered.data` |
+| `_MplWithControls` (1 spec + controls) | `ValueError: The fig parameter must be a dict or Figure` — from `plotly.io._utils`, inside `build_notebook_dashboard` |
+
+That these differ *is the evidence Task 2 worked*. Three identical `layout` errors
+would mean the theming branch had not taken effect.
+
+**`_AllMpl` working is a real behaviour change, and the guard removes it
+deliberately.** `_compose_control_free_figure` short-circuits a single spec at
+`_pht_plot.py:508-509` and returns the rendered figure without composing, so after
+Task 2 a lone matplotlib figure round-trips through `report()` successfully —
+verified to return `matplotlib.figure.Figure`.
+
+**Decision (user, at execution):** raise for **any** `mpl` spec, per spec §1, even
+this working case. Predictability was preferred over preserving one case that works
+only incidentally, because there is no composition to perform. The cost is that
+`report()` on a single-figure matplotlib provider gains an error where it
+previously returned a figure; `inspect()` is the supported call and is unaffected.
+The narrower alternative — raise only when `len(specs) > 1` or any spec declares
+controls — was considered and declined.
 
 - [ ] **Step 3: Add the guard**
 
