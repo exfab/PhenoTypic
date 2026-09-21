@@ -43,7 +43,7 @@
 | `src/phenotypic/plotting/_pipeline/_coordinator.py` | Record failures; narrow `emit_qc`'s `try`; both-rendering image path. |
 | `src/phenotypic/sdk_/_io_constants.py` | `plot_failures_jsonl_path`, `plotlyjs_bundle_path`. |
 | `src/phenotypic/_cli/_cli_validation.py` | Call the preflight. |
-| `src/phenotypic/_cli/_cli_staged_workers.py:526` | Drop `strict=True`. |
+| `src/phenotypic/_cli/_cli_staged_workers.py:587` | Drop `strict=True`. |
 
 ---
 
@@ -657,6 +657,35 @@ instead of failing inside Plotly. inspect() is unaffected."
 - Consumes: nothing.
 - Produces:
   - `chrome_available() -> bool` — memoised per process.
+
+**Two notes before writing this module.**
+
+**S10 — a deliberate deviation from spec §2.** The spec has workers probing
+*lazily*, the first PNG write serving as the probe. The plan instead calls the
+memoised `chrome_available()` eagerly at the top of `_publish_plot_output_locked`.
+With Chrome absent the two are identical (one probe per process, then free). With
+Chrome present it moves an unmeasured first-launch cost onto the first publish
+rather than the first figure — which is exactly what Step 6 measures and gates on.
+The spec's §5 row *"worker-side lazy probe: later pages skip PNG without
+re-attempting"* maps onto `test_the_probe_is_memoised`.
+
+The once-per-process announcement is emitted only from `validate_pipeline`, in the
+submitting process; workers log at `DEBUG`. A local `--njobs` run that never
+reaches `validate_pipeline` gets no console announcement and relies on the
+manifest's `renderers` key — which is, per §3, the record that was supposed to
+matter anyway.
+
+**S12 — the spec's 0.59 s is cold-import cost, not probe cost.** Measured here:
+0.59 s in a fresh interpreter; 0.03 s, 0.02 s, 35.5 ms and 11.7 ms once
+`plotly.io` is loaded. Two different quantities. Every process that reaches
+publication has already imported plotly, so the failure path is effectively free —
+which strengthens the case for this placement. Use the warm number for steady
+state; the cold one only for a first-call-in-a-fresh-process claim.
+
+**Reuse the existing skip marker.** Any test needing a real raster imports
+`requires_kaleido_chrome` from `tests/unit/cli/_kaleido_utils.py` — cross-package
+import already works (`tests/unit/measure/test_symmetric_zones_figure.py` does it).
+Do not add a second skip mechanism.
   - `reset_chrome_probe() -> None` — clears the memo; tests only.
   - `ensure_plotlyjs_bundle(plots_base: Path) -> Path` — writes `<plots_base>/plotly.min.js` once, returns its path.
   - `plotlyjs_src_for(page_dir: Path, bundle: Path) -> str` — relative `src` string.
@@ -753,16 +782,26 @@ Expected: FAIL — `ModuleNotFoundError: No module named 'phenotypic.plotting._p
 
 In `src/phenotypic/sdk_/_io_constants.py`, after `plots_dir` (line 1105-1107):
 
+**S6 — key this on `plots_base`, not `output_dir`.** The coordinator's
+`_plots_base` is not always `plots_dir(output_dir)`: the GUI passes
+`layout.plots_dir` from a portable bundle (`_gui/_plot_refresh.py:132`,
+`_io_constants.py:2765`), which has no `deliverables/` segment. An
+`output_dir`-keyed helper cannot serve the call sites, and would ship uncalled —
+satisfying the letter of the no-hand-joined-names rule and not the rule.
+
 ```python
-def plotlyjs_bundle_path(output_dir: Path) -> Path:
-    """Return ``<output>/deliverables/plots/plotly.min.js``.
+def plotlyjs_bundle_path(plots_base: Path) -> Path:
+    """Return ``<plots_base>/plotly.min.js``.
+
+    Keyed on the resolved plots directory rather than the output root, because
+    the GUI's portable bundle layout has no ``deliverables/`` segment.
 
     One bundle per run, shared by every published HTML page regardless of
     depth. Plotly's own ``include_plotlyjs="directory"`` writes a 4.8 MB copy
     into every directory it touches, and a multi-page image plot gets one
     directory per image -- gigabytes on a real run.
     """
-    return plots_dir(output_dir) / PLOTLYJS_BUNDLE
+    return plots_base / PLOTLYJS_BUNDLE
 ```
 
 and beside `DIR_PLOTS` (line 806):
@@ -808,10 +847,15 @@ def chrome_available() -> bool:
     """Return whether Plotly can rasterise here, probing at most once.
 
     Kaleido shells out to Chrome for PNG export. The probe renders a minimal
-    figure because that exercises exactly what publication will do -- a check
-    for a browser binary answers a different, weaker question, and
-    ``choreographer``'s discovery helper does not match its documented
-    signature.
+    figure because that exercises exactly what publication will do. A check for
+    a browser binary answers a weaker question -- present but broken or
+    sandboxed Chrome passes it and still cannot produce a PNG.
+
+    Note this repo already has such a binary check:
+    ``Chromium.find_browser(skip_local=False)`` in
+    ``tests/unit/cli/_kaleido_utils.py``, behind ``requires_kaleido_chrome``.
+    That is the right probe for *skipping a test* and the wrong one for
+    *deciding what to publish*; the two coexist deliberately.
 
     Returns:
         ``True`` if a PNG can be produced, ``False`` otherwise. Never raises.
@@ -1483,7 +1527,7 @@ tests/unit/plotting/test_output_adapter.py does."
 **Files:**
 - Modify: `src/phenotypic/plotting/_pipeline/_backends.py` (add `preflight_plot_backends`)
 - Modify: `src/phenotypic/_cli/_cli_validation.py:21-54`
-- Test: `tests/unit/plotting/test_backends.py` (append), `tests/unit/cli/test_cli_validation.py` (append; create if absent)
+- Test: `tests/unit/plotting/test_backends.py` (append). **No CLI test file** — see Step 5.
 
 **Interfaces:**
 - Consumes: `chrome_available` (Task 4), `FigureSpec.backend` (Task 2).
@@ -1651,8 +1695,16 @@ Add `import logging` and `logger = logging.getLogger(__name__)` at module scope 
 
 - [ ] **Step 5: Run the tests**
 
-Run: `uv run pytest tests/unit/plotting/test_backends.py -v && uv run pytest tests/unit/cli/ -k valid -v`
+Run: `uv run pytest tests/unit/plotting/test_backends.py -v`
 Expected: PASS.
+
+**S9 — do not chain a second `pytest` here.** The earlier draft ran
+`&& uv run pytest tests/unit/cli/ -k valid -v`. There is no
+`tests/unit/cli/test_cli_validation.py` in this tree and no step creates one, so
+`-k valid` can select nothing; pytest then exits **5** ("no tests ran") and the
+`&&` chain reports failure after a green first suite. The preflight's behaviour is
+covered by `test_backends.py`; the CLI wiring is covered by Task 10's end-to-end
+run.
 
 - [ ] **Step 6: Commit**
 
@@ -1773,10 +1825,20 @@ PLOT_FAILURES_JSONL: Final[str] = ".failures.jsonl"
 and after `plotlyjs_bundle_path`:
 
 ```python
-def plot_failures_jsonl_path(output_dir: Path) -> Path:
-    """Return ``<output>/deliverables/plots/.failures.jsonl``."""
-    return plots_dir(output_dir) / PLOT_FAILURES_JSONL
+def plot_failures_jsonl_path(plots_base: Path) -> Path:
+    """Return ``<plots_base>/.failures.jsonl``.
+
+    Keyed on the resolved plots directory for the same reason as
+    :func:`plotlyjs_bundle_path` -- see its note.
+    """
+    return plots_base / PLOT_FAILURES_JSONL
 ```
+
+**Both helpers must actually be called.** `ensure_plotlyjs_bundle` uses
+`plotlyjs_bundle_path(plots_base)` instead of `plots_base / PLOTLYJS_BUNDLE`, and
+`record_plot_failure` uses `plot_failures_jsonl_path(plots_base)`. A helper that
+ships uncalled is dead surface, and the reviewer named it the clearest piece of
+unnecessary API in this change.
 
 Export both from `sdk_/__init__.py`.
 
@@ -1888,7 +1950,7 @@ would turn the soft failure it describes into a hard one."
 
 **Files:**
 - Modify: `src/phenotypic/plotting/_pipeline/_coordinator.py` (5 `except` blocks; `emit_qc` try boundary; `_publish_image_value`)
-- Modify: `src/phenotypic/_cli/_cli_staged_workers.py:526-532`
+- Modify: `src/phenotypic/_cli/_cli_staged_workers.py:583-588`
 - Test: `tests/unit/plotting/test_coordinator.py` (append)
 
 **Interfaces:**
@@ -2200,7 +2262,7 @@ says which renderer failed, the second says which image.
 
 - [ ] **Step 7: Remove the strict asymmetry**
 
-In `src/phenotypic/_cli/_cli_staged_workers.py`, delete the `strict=True,` line from the `emit_image(...)` call at ~`:531`. All three call sites are then uniformly best-effort, which is safe because Task 7 moved the systemic cause upstream.
+In `src/phenotypic/_cli/_cli_staged_workers.py`, delete the `strict=True,` line at `:587` (the `emit_image(` call opens at `:583`). All three call sites are then uniformly best-effort, which is safe because Task 7 moved the systemic cause upstream.
 
 - [ ] **Step 8: Run the tests**
 
