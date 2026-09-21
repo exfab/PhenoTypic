@@ -99,12 +99,12 @@ EXPECTED = [f"patch{i}" for i in range(24)]
 
 
 def test_a_full_card_warns_about_nothing() -> None:
-    assert warn_on_patch_census(EXPECTED, EXPECTED, 3, QcLimits()) == []
+    assert warn_on_patch_census(EXPECTED, EXPECTED, 3, 20) == []
 
 
 def test_missing_patches_are_named() -> None:
     with pytest.warns(UserWarning, match="patch23"):
-        issued = warn_on_patch_census(EXPECTED[:23], EXPECTED, 2, QcLimits())
+        issued = warn_on_patch_census(EXPECTED[:23], EXPECTED, 2, 20)
 
     assert any("not found" in message for message in issued)
 
@@ -112,18 +112,18 @@ def test_missing_patches_are_named() -> None:
 def test_cyan_is_called_out_separately() -> None:
     expected = EXPECTED[:23] + ["cyan"]
     with pytest.warns(UserWarning, match="most saturated patch"):
-        warn_on_patch_census(expected[:23], expected, 2, QcLimits())
+        warn_on_patch_census(expected[:23], expected, 2, 20)
 
 
 def test_a_thin_card_warns_about_the_accuracy_floor() -> None:
     with pytest.warns(UserWarning, match="practical accuracy floor"):
-        warn_on_patch_census(EXPECTED[:12], EXPECTED, 2, QcLimits())
+        warn_on_patch_census(EXPECTED[:12], EXPECTED, 2, 20)
 
 
 def test_below_min_patches_warns_without_changing_the_degree() -> None:
     """A short card never silently lowers the model."""
     with pytest.warns(UserWarning, match="below 20"):
-        issued = warn_on_patch_census(EXPECTED[:18], EXPECTED, 3, QcLimits())
+        issued = warn_on_patch_census(EXPECTED[:18], EXPECTED, 3, 20)
 
     assert not any("degree" in message for message in issued)
 
@@ -132,9 +132,9 @@ def test_a_rank_insufficient_fit_is_refused_not_demoted() -> None:
     """Arithmetic, not policy: that fit has no unique solution, and its
     minimum-norm answer reports a spurious near-zero residual."""
     with pytest.raises(ValueError, match="no unique solution"):
-        warn_on_patch_census(EXPECTED[:12], EXPECTED, 3, QcLimits())
+        warn_on_patch_census(EXPECTED[:12], EXPECTED, 3, 20)
 
 
 def test_degree_two_still_fits_twelve_patches() -> None:
     with pytest.warns(UserWarning):
-        warn_on_patch_census(EXPECTED[:12], EXPECTED, 2, QcLimits())
+        warn_on_patch_census(EXPECTED[:12], EXPECTED, 2, 20)

@@ -60,7 +60,6 @@ class QcLimits(BaseModel):
             measured colour.
         max_clipped: Fraction of a tile's pixels that may sit at the sensor
             floor or ceiling.
-        min_patches: Accepted patches below which the frame is flagged.
     """
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
@@ -75,7 +74,6 @@ class QcLimits(BaseModel):
     max_tile_impurity: float = 0.05
     max_robust_shift: float = 1.5
     max_clipped: float = 0.20
-    min_patches: int = 20
 
 
 class QcRecord(BaseModel):
@@ -220,11 +218,43 @@ def evaluate_roi(
     )
 
 
+#: Columns in the root-polynomial expansion of each degree (Finlayson et al.
+#: 2015). A fit with fewer patches than terms has no unique solution.
+ROOT_POLYNOMIAL_TERMS: dict[int, int] = {1: 3, 2: 6, 3: 13, 4: 22}
+
+
+def require_rank(n_patches: int, degree: int, stage: str = "were accepted") -> None:
+    """Refuse a fit with fewer patches than the expansion has terms.
+
+    Called twice: on the accepted count before fitting, and on the count
+    that survives outlier rejection, because rejection can take a
+    rank-sufficient set below the line.
+
+    Args:
+        n_patches: Patches that would enter the solve.
+        degree: The configured polynomial degree.
+        stage: How the count was arrived at, for the message.
+
+    Raises:
+        ValueError: If *n_patches* is below the term count for *degree*.
+    """
+    terms = ROOT_POLYNOMIAL_TERMS.get(degree)
+    if terms is not None and n_patches < terms:
+        raise ValueError(
+                f"A degree-{degree} root-polynomial fit needs at least {terms} "
+                f"patches but only {n_patches} {stage}. The fit would have no "
+                "unique solution, and its minimum-norm answer reports a "
+                "near-zero in-sample residual that is an artifact of exact "
+                "interpolation rather than accuracy. Re-shoot the card, or "
+                "configure a lower degree for the whole batch."
+        )
+
+
 def warn_on_patch_census(
         accepted: list[str],
         expected: list[str],
         degree: int,
-        limits: QcLimits,
+        min_patches: int,
 ) -> list[str]:
     """Warn about missing patches without ever changing the model.
 
@@ -232,7 +262,7 @@ def warn_on_patch_census(
         accepted: Patch names that survived detection and outlier rejection.
         expected: Every patch the chart has.
         degree: The configured polynomial degree.
-        limits: Supplies ``min_patches``.
+        min_patches: Accepted patches below which a worse fit is warned about.
 
     Returns:
         The warning messages issued, so they can be recorded in diagnostics.
@@ -244,19 +274,10 @@ def warn_on_patch_census(
     """
     from ._checker_identity import CHART_SHAPES  # noqa: F401  (documented link)
 
-    terms = {1: 3, 2: 6, 3: 13, 4: 22}.get(degree)
     issued: list[str] = []
     missing = [name for name in expected if name not in accepted]
 
-    if terms is not None and len(accepted) < terms:
-        raise ValueError(
-                f"A degree-{degree} root-polynomial fit needs at least {terms} "
-                f"patches but only {len(accepted)} were accepted. The fit would "
-                "have no unique solution, and its minimum-norm answer reports a "
-                "near-zero in-sample residual that is an artifact of exact "
-                "interpolation rather than accuracy. Re-shoot the card, or "
-                "configure a lower degree for the whole batch."
-        )
+    require_rank(len(accepted), degree)
 
     if missing:
         issued.append(
@@ -277,10 +298,10 @@ def warn_on_patch_census(
                 f"{ACCURACY_FLOOR_PATCHES}-patch practical accuracy floor for "
                 "either degree - rank sufficiency is not accuracy."
         )
-    elif len(accepted) < limits.min_patches:
+    elif len(accepted) < min_patches:
         issued.append(
                 f"Only {len(accepted)} patches were accepted (below "
-                f"{limits.min_patches}); expect a noticeably worse fit."
+                f"{min_patches}); expect a noticeably worse fit."
         )
 
     for message in issued:

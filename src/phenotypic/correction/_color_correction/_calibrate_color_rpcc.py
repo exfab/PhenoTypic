@@ -49,7 +49,13 @@ from ._checker_measure import (
     extract_patch,
     measure_tile,
 )
-from ._checker_qc import QcLimits, QcRecord, evaluate_roi, warn_on_patch_census
+from ._checker_qc import (
+    QcLimits,
+    QcRecord,
+    evaluate_roi,
+    require_rank,
+    warn_on_patch_census,
+)
 from ._checker_roi import CheckerLattice, CheckerRoi, coerce_rois
 from ._color_checker_profile import ColorCheckerProfile
 from ._color_corrector import ColorCorrector
@@ -351,8 +357,7 @@ class CalibrateColorRpcc(ImageCorrector):
 
         accepted = list(measured.keys())
         census = warn_on_patch_census(
-                accepted, patch_names, self.degree,
-                self.qc_limits.model_copy(update={"min_patches": self.min_patches}),
+                accepted, patch_names, self.degree, self.min_patches,
         )
 
         profile = ColorCheckerProfile(
@@ -363,6 +368,12 @@ class CalibrateColorRpcc(ImageCorrector):
         )
         profile.fit_from_patch_colors(
                 {name: np.asarray(value) for name, value in measured.items()}
+        )
+        fitted = profile.diagnostics
+        require_rank(
+                fitted["n_patches_detected"] - fitted["n_patches_rejected"],
+                self.degree,
+                stage="remain after outlier rejection",
         )
         self.fitted_profile = profile
         self._diagnostics = self._build_diagnostics(
