@@ -57,8 +57,13 @@ class MeasureColor(MeasureFeatures):
         geomedian_max_iter: Weiszfeld iteration cap for the L*a*b* geometric
             median. Default ``50``.
         geomedian_tol: Weiszfeld convergence tolerance. Default ``1e-4``.
-        medoid_candidates: Number of candidate pixels -- those nearest the
-            colony's L*a*b* geometric median -- scored for the ΔE2000 medoid.
+        medoid_candidates: Number of candidate pixels scored for the ΔE2000
+            medoid: those nearest the colony's L*a*b* geometric median, found
+            by a tightly converged Weiszfeld run of the medoid search's own
+            (200 iterations, tolerance ``1e-6``). That centre is not the
+            reported ``*GeoMedian`` value, which uses the looser
+            ``geomedian_max_iter``/``geomedian_tol``; those two parameters do
+            not affect the medoid.
             Each candidate is scored against **every** colony pixel, so cost is
             linear in colony size and no pixel is sampled at random: the same
             colony always yields the same medoid. If the winner lands near the
