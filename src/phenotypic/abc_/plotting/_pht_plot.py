@@ -106,6 +106,7 @@ class FigureSpec:
     Attributes:
         title: Human-readable figure title.
         section: Grouping tag used by report adapters.
+        backend: Declared rendering backend, ``"plotly"`` or ``"mpl"``.
         controls: Mapping from method keyword to its control.
         description: Optional renderer-neutral explanatory content.
         primary: Whether this is the default :meth:`PhtPlot.inspect` figure.
@@ -118,6 +119,7 @@ class FigureSpec:
 
     title: str
     section: str
+    backend: Literal["plotly", "mpl"]
     controls: dict[str, Control]
     description: Any
     primary: bool
@@ -128,9 +130,39 @@ class FigureSpec:
     order: int
 
 
+def _require_backend(figure_value: Any, declared: str, fn: Callable[..., Any]) -> None:
+    """Raise unless ``figure_value`` matches the backend its method declared.
+
+    Args:
+        figure_value: Whatever the decorated method returned.
+        declared: The backend named in the ``@figure`` declaration.
+        fn: The decorated function, named in the error.
+
+    Raises:
+        TypeError: If the return does not match the declaration.
+    """
+    from ._output import figure_backend_of
+
+    actual = figure_backend_of(figure_value)
+    if actual == declared:
+        return
+    other = "mpl" if declared == "plotly" else "plotly"
+    expected = (
+        "plotly.graph_objects.Figure" if declared == "plotly"
+        else "matplotlib.figure.Figure"
+    )
+    raise TypeError(
+        f"@figure({fn.__name__!r}): declared backend {declared!r} but the "
+        f"method returned {type(figure_value).__module__}."
+        f"{type(figure_value).__qualname__}. "
+        f"Declare backend={other!r}, or return a {expected}."
+    )
+
+
 def figure(
     *,
     title: str,
+    backend: Literal["plotly", "mpl"],
     section: str = "default",
     controls: dict[str, Control] | None = None,
     description: Any = None,
@@ -145,6 +177,10 @@ def figure(
 
     Args:
         title: Human-readable figure title.
+        backend: Rendering backend this method returns, ``"plotly"`` or
+            ``"mpl"``. Required: the backend decides how the figure is themed
+            (Plotly themes the result, matplotlib themes the construction), so
+            there is no default that is right for both.
         section: Grouping tag used by report adapters.
         controls: Mapping from method keyword to renderer-neutral control.
         description: Optional renderer-neutral explanatory content.
@@ -154,8 +190,13 @@ def figure(
         A decorator for a Plotly figure-building method.
 
     Raises:
-        ValueError: If a control key does not name a method parameter.
+        ValueError: If ``backend`` is not ``"plotly"`` or ``"mpl"``, or if a
+            control key does not name a method parameter.
     """
+    if backend not in ("plotly", "mpl"):
+        raise ValueError(
+            f"@figure: unknown backend {backend!r}; expected 'plotly' or 'mpl'"
+        )
     declared_controls = dict(controls) if controls else {}
 
     def decorator(
@@ -187,12 +228,28 @@ def figure(
 
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> "go.Figure":
-            from phenotypic.sdk_.viz.figures._theme import apply_theme
+            if backend == "plotly":
+                from phenotypic.sdk_.viz.figures._theme import apply_theme
 
-            return apply_theme(fn(*args, **kwargs))
+                built = fn(*args, **kwargs)
+                _require_backend(built, "plotly", fn)
+                return apply_theme(built)
+
+            # The matplotlib theme is rcParams, which must be live WHILE the
+            # figure is constructed. There is no post-pass equivalent of
+            # apply_theme; applying it afterwards would silently do nothing.
+            from phenotypic.sdk_.viz.figures._mpl_theme import (
+                phenotypic_mpl_context,
+            )
+
+            with phenotypic_mpl_context():
+                built = fn(*args, **kwargs)
+            _require_backend(built, "mpl", fn)
+            return built
 
         wrapper.__figure_spec__ = FigureSpec(  # type: ignore[attr-defined]
             title=title,
+            backend=backend,
             section=section,
             controls=declared_controls,
             description=description,
