@@ -70,7 +70,14 @@ def record_plot_failure(
         plots_base: Resolved ``deliverables/plots`` directory.
         binding_id: Stable plot binding id.
         plot_class: Producer class name.
-        lifecycle: ``"image"``, ``"measurements"``, ``"analysis"``, or ``"qc"``.
+        lifecycle: Where the failure happened. ``"image"``,
+            ``"measurements"``, ``"analysis"`` and ``"qc"`` are the
+            coordinator's four emit points -- *when* a plot was being
+            refreshed. ``"page"`` is the writer's own level and is orthogonal
+            to them: one page of a multi-page output failed to render, inside
+            whichever of the four was running. The writer does not know which,
+            which is why it is a fifth value rather than a subdivision of the
+            other four.
         error: The exception that was swallowed.
         dataset: Dataset name, for the image lifecycle only.
         image_stem: Image stem, for the image lifecycle only.

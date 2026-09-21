@@ -2291,6 +2291,27 @@ and for the four aggregate handlers, e.g. in `_emit_aggregate`:
             self._record_failure(binding, exc, lifecycle=lifecycle)
 ```
 
+- [ ] **Step 4b: `"qc dependency"` is not a valid lifecycle value**
+
+`emit_dependent_qc` calls `_emit_aggregate(..., lifecycle="qc dependency")`
+(`_coordinator.py:303`). **Today that string only reaches a log format
+argument**, so it is harmless. This task makes `lifecycle` a **JSON field value**
+in `.failures.jsonl`, at which point it becomes:
+
+- outside the documented closed set (`image`, `measurements`, `analysis`, `qc`,
+  `page`), and
+- the only value containing a **space**, so anything grouping or filtering the
+  record by lifecycle has to special-case it.
+
+Found by an AST sweep of every `lifecycle=` constant in `src/`, which returned
+exactly four: `page`, `measurements`, `qc`, `qc dependency`.
+
+**Pass `lifecycle="qc"` from `emit_dependent_qc`** — the *when* is the same, and
+the distinction it was drawing (a dependency refresh rather than a full rebuild)
+belongs in the log line it already has, not in the durable record's closed set.
+If that distinction must survive into the record, add a separate field rather
+than widening this one.
+
 - [ ] **Step 5: Bind `binding` before the `try` (B3)**
 
 **Decision on record:** the spec contradicted itself here — §3 argued the prelude
