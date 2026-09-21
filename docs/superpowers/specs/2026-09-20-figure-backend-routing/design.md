@@ -68,7 +68,7 @@ worked.
 | # | Finding | Evidence | Section |
 |---|---|---|---|
 | F1 | `@figure` assumes Plotly; a matplotlib return raises an error naming neither the decorator nor the backend | `_pht_plot.py:192`, `_theme.py:227` | §1 |
-| F2 | Missing Chrome makes every Plotly PNG export fail, discovered per-figure and late, leaving a plot directory that looks published but is empty | `plotly.io._kaleido` → `ChromeNotFoundError`; reproduced — 0.59 s cold, ~12–35 ms warm | §2 |
+| F2 | Missing Chrome makes every Plotly PNG export fail, discovered per-figure and late, leaving a plot directory that looks published but is empty | `plotly.io._kaleido` → `ChromeNotFoundError`; reproduced — probe costs 0.14 s once per process | §2 |
 | F3 | `strict=True` on the staged GPU worker but not the two ordinary CLI sites: the same broken plot fails one run loudly and leaves the other green | `_cli_staged_workers.py:526` vs `_cli_process_single.py:348,450` | §3 |
 | F4 | `emit_qc` dereferences `binding` in an `except` handler that can run before `binding` is assigned | `_coordinator.py:226` (try), `:239` (assign), `:261` (read) | §3 |
 | F5 | Every page failing still writes a durable `manifest.json` asserting zero pages | `_writer.py:149` (`continue`) vs `:160-177` (unconditional write) | §3 |
@@ -227,17 +227,25 @@ existing file, which is the behaviour being reproduced.)
 `plotly.io.to_image(go.Figure(), format="png", width=8, height=8)` returning `True`
 on success and `False` on `RuntimeError` / `ChromeNotFoundError`.
 
-**Cost, corrected.** An earlier draft of this section quoted "0.59 s to fail" as
-*the* figure. That is the **cold** number — a fresh interpreter, dominated by
-importing `plotly.io`. Measured **warm**, with plotly already loaded: 0.03 s,
-0.02 s, 35.5 ms, 11.7 ms. Those are two different quantities. Every process that
-reaches publication has already imported plotly, so the steady-state failure path
-is effectively free, which *strengthens* this section's argument rather than
-weakening it.
+**Cost, measured properly.** Earlier drafts of this section quoted 0.59 s, then a
+"warm" 0.02–0.03 s. Both were conflating three different quantities. Measured
+across three fresh processes, decomposed:
 
-The **success**-path cost remains unmeasured — Chrome is not installed on this
-cluster — and the plan gates on measuring it before the probe sits on a hot path;
-a first-launch cost of a few seconds across a 2500-task array is not free.
+| | |
+|---|---|
+| importing the module (pulls in plotly) | **~2.0 s** |
+| the probe itself, first call | **0.14 s** (0.14 / 0.14 / 0.15) |
+| a repeat call | 1.2 µs — but the verdict is memoised, so this never happens in production |
+
+So the number that matters is **0.14 s, once per process**, on top of a plotly
+import that any process reaching publication pays anyway. The earlier figures
+measured the import, the first `to_image` in a process, and a repeat `to_image`
+after kaleido had already initialised — and quoted them as if they were the same
+thing.
+
+The **success** path is still unmeasured: Chrome is not installed on this cluster,
+so every measurement above is the failure path. The plan gates on measuring it
+before the probe sits anywhere hot.
 
 **On `choreographer`.** An earlier draft said the library was "evaluated and
 rejected" because `get_browser_path` did not match its documented signature. True

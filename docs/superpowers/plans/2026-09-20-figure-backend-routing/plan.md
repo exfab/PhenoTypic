@@ -813,12 +813,25 @@ reaches `validate_pipeline` gets no console announcement and relies on the
 manifest's `renderers` key — which is, per §3, the record that was supposed to
 matter anyway.
 
-**S12 — the spec's 0.59 s is cold-import cost, not probe cost.** Measured here:
-0.59 s in a fresh interpreter; 0.03 s, 0.02 s, 35.5 ms and 11.7 ms once
-`plotly.io` is loaded. Two different quantities. Every process that reaches
-publication has already imported plotly, so the failure path is effectively free —
-which strengthens the case for this placement. Use the warm number for steady
-state; the cold one only for a first-call-in-a-fresh-process claim.
+**Cost, measured properly.** Earlier drafts of this section quoted 0.59 s, then a
+"warm" 0.02–0.03 s. Both were conflating three different quantities. Measured
+across three fresh processes, decomposed:
+
+| | |
+|---|---|
+| importing the module (pulls in plotly) | **~2.0 s** |
+| the probe itself, first call | **0.14 s** (0.14 / 0.14 / 0.15) |
+| a repeat call | 1.2 µs — but the verdict is memoised, so this never happens in production |
+
+So the number that matters is **0.14 s, once per process**, on top of a plotly
+import that any process reaching publication pays anyway. The earlier figures
+measured the import, the first `to_image` in a process, and a repeat `to_image`
+after kaleido had already initialised — and quoted them as if they were the same
+thing.
+
+The **success** path is still unmeasured: Chrome is not installed on this cluster,
+so every measurement above is the failure path. The plan gates on measuring it
+before the probe sits anywhere hot.
 
 **Reuse the existing skip marker.** Any test needing a real raster imports
 `requires_kaleido_chrome` from `tests/unit/cli/_kaleido_utils.py` — cross-package
