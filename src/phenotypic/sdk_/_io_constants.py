@@ -808,6 +808,9 @@ DIR_PLOTS: Final[str] = "plots"
 #: Shared Plotly bundle for published HTML pages: ``<plots>/plotly.min.js``.
 PLOTLYJS_BUNDLE: Final[str] = "plotly.min.js"
 
+#: Durable record of swallowed plot failures: ``<plots>/.failures.jsonl``.
+PLOT_FAILURES_JSONL: Final[str] = ".failures.jsonl"
+
 #: Mid-run chunk parquet subdirectory: ``<progress>/chunks/``.
 DIR_CHUNKS: Final[str] = "chunks"
 
@@ -1122,6 +1125,15 @@ def plotlyjs_bundle_path(plots_base: Path) -> Path:
     directory per image -- gigabytes on a real run.
     """
     return plots_base / PLOTLYJS_BUNDLE
+
+
+def plot_failures_jsonl_path(plots_base: Path) -> Path:
+    """Return ``<plots_base>/.failures.jsonl``.
+
+    Keyed on the resolved plots directory for the same reason as
+    :func:`plotlyjs_bundle_path` -- see its note.
+    """
+    return plots_base / PLOT_FAILURES_JSONL
 
 
 def event_log_path(output_dir: Path) -> Path:

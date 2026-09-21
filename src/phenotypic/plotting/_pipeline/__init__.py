@@ -47,6 +47,7 @@ from ._bindings import (
     serialize_plot_binding,
 )
 from ._coordinator import PlotCoordinator, QcPlotSubject
+from ._failures import record_plot_failure
 from ._writer import (
     PlotPublicationBlocked,
     publish_plot_output,
@@ -86,6 +87,7 @@ __all__ = [
     "publish_analysis_manifest_entry",
     "publish_plot_output",
     "read_analysis_manifest",
+    "record_plot_failure",
     "recover_analysis_publication",
     "reset_chrome_probe",
     "safe_path_component",
