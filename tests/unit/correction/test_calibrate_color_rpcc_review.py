@@ -289,6 +289,26 @@ def test_an_expect_tiles_mismatch_is_skipped_under_skip() -> None:
     assert operation.fitted_profile is None
 
 
+def test_a_patch_collision_is_skipped_under_skip() -> None:
+    """A partly occluded card whose surviving row resembles another ROI's.
+
+    ROI 1's row 0 is painted in ROI 0's row-0 colours and the rest is flat
+    grey, so its best placement is a guess that lands on ROI 0's patches.
+    The collision used to raise past the policy; it is a flag on ROI 1.
+    """
+    grey = np.array([0.3, 0.3, 0.3])
+    overrides = {(1, 0, c): SRGB[_band_patch(0, 0, c)] for c in (0, 1)}
+    overrides.update({(1, r, c): grey for r in range(1, 6) for c in (0, 1)})
+    operation = frozen_op(on_qc_fail="skip")
+    source = Image(arr=render_frame(overrides=overrides))
+
+    out = quietly(operation, source)
+
+    np.testing.assert_array_equal(out.rgb[:], source.rgb[:])
+    assert not operation.qc[1].ok
+    assert any("ROI 0 already claimed" in flag for flag in operation.qc[1].flags)
+
+
 def test_an_roi_with_no_card_is_skipped_under_skip() -> None:
     rng = np.random.default_rng(0)
     flat = rng.normal(120, 2, (BAND_H, 480, 3)).clip(0, 255).astype(np.uint8)

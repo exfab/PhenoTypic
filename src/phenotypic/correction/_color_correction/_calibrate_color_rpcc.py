@@ -143,10 +143,9 @@ class CalibrateColorRpcc(ImageCorrector):
 
     Raises:
         ValueError: If any ROI fails the gate under ``on_qc_fail="raise"``,
-            if the patches that reach the fit cannot support ``degree`` (under
-            any policy), or if two ROIs claim the same chart patch.
-            ``apply()`` re-raises every failure as ``RuntimeError`` with the
-            ``ValueError`` as its root cause.
+            or if the patches that reach the fit cannot support ``degree``
+            (under any policy).  ``apply()`` re-raises every failure as
+            ``RuntimeError`` with the ``ValueError`` as its root cause.
     """
 
     rois: list[CheckerRoi] = Field(min_length=1)
@@ -267,6 +266,7 @@ class CalibrateColorRpcc(ImageCorrector):
         chart_illuminant = colour.CCS_COLOURCHECKERS[self.checker_type].illuminant
 
         measured: dict[str, tuple[float, float, float]] = {}
+        claimed_by: dict[str, int] = {}  # patch name -> ROI that measured it
         records: list[QcRecord] = []
         tiles_out: list[dict[str, Any]] = []
         lattices: list[CheckerLattice] = []
@@ -349,18 +349,24 @@ class CalibrateColorRpcc(ImageCorrector):
             # Measurements are collected whatever the gate said; the
             # ``on_qc_fail`` policy below decides whether they are used.
             # Dropping them here would make "warn" behave like "skip".
-            for tile in tiles:
-                if not tile.n_pixels:
-                    continue
-                name = identity.placement.names[tile.row][tile.col]
-                if name in measured:
-                    raise ValueError(
-                            f"Two ROIs both identified a patch as {name!r}. Each "
-                            "card region must cover a different part of the chart; "
-                            "check the rectangles, or the placement margins in "
-                            "`qc` if they overlap."
-                    )
-                measured[name] = tile.srgb
+            names = {
+                identity.placement.names[tile.row][tile.col]: tile.srgb
+                for tile in tiles if tile.n_pixels
+            }
+            collided = [name for name in names if name in measured]
+            if collided:
+                # A guessed placement can land on another ROI's patches, so
+                # this is a property of the frame: flag it and let the policy
+                # decide, rather than raising past it.
+                others = sorted({claimed_by[name] for name in collided})
+                record.flags.append(
+                        f"identified patch(es) {', '.join(collided)} that ROI "
+                        f"{', '.join(map(str, others))} already claimed; "
+                        "overlapping rectangles, or a guessed placement"
+                )
+            else:
+                measured.update(names)
+                claimed_by.update(dict.fromkeys(names, index))
             for message in record.warnings:
                 warnings.warn(
                         f"ROI {index} ({roi.label or 'unlabelled'}): {message}",
