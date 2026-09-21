@@ -53,6 +53,10 @@ def test_plotly_declared_method_returning_matplotlib_raises() -> None:
     assert "wrong" in message           # names the method
     assert "'plotly'" in message        # names the declaration
     assert "matplotlib.figure.Figure" in message   # names what came back
+    # T2: the REMEDY half. Every assertion above is satisfied by the diagnosis
+    # alone, so `other = declared` left this test green -- telling the author to
+    # declare the backend they already declared.
+    assert "Declare backend='mpl'" in message
 
 
 def test_mpl_declared_method_returning_plotly_raises() -> None:
@@ -61,6 +65,9 @@ def test_mpl_declared_method_returning_plotly_raises() -> None:
     message = str(excinfo.value)
     assert "'mpl'" in message
     assert "plotly" in message
+    # T2, mirror: "plotly" above matches the actual-type clause and says
+    # nothing about the remedy.
+    assert "Declare backend='plotly'" in message
 
 
 def test_a_non_figure_return_raises_the_same_error() -> None:

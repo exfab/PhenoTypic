@@ -15,6 +15,8 @@ import weakref
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Literal
 
+from ._output import FigureLike, figure_backend_of
+
 if TYPE_CHECKING:  # pragma: no cover - typing only
     import plotly.graph_objects as go
 
@@ -124,7 +126,7 @@ class FigureSpec:
     description: Any
     primary: bool
     name: str
-    method: Callable[..., "go.Figure"]
+    method: Callable[..., FigureLike]
     wants_subject: bool
     subject_param: str | None
     order: int
@@ -141,8 +143,6 @@ def _require_backend(figure_value: Any, declared: str, fn: Callable[..., Any]) -
     Raises:
         TypeError: If the return does not match the declaration.
     """
-    from ._output import figure_backend_of
-
     actual = figure_backend_of(figure_value)
     if actual == declared:
         return
@@ -167,7 +167,7 @@ def figure(
     controls: dict[str, Control] | None = None,
     description: Any = None,
     primary: bool = False,
-) -> Callable[[Callable[..., "go.Figure"]], Callable[..., "go.Figure"]]:
+) -> Callable[[Callable[..., FigureLike]], Callable[..., FigureLike]]:
     """Mark a method as a figure builder and lazily apply the house theme.
 
     A figure method may accept a subject as its first positional parameter.
@@ -200,8 +200,8 @@ def figure(
     declared_controls = dict(controls) if controls else {}
 
     def decorator(
-        fn: Callable[..., "go.Figure"],
-    ) -> Callable[..., "go.Figure"]:
+        fn: Callable[..., FigureLike],
+    ) -> Callable[..., FigureLike]:
         signature = inspect.signature(fn)
         params = [
             parameter
@@ -227,7 +227,7 @@ def figure(
                 break
 
         @functools.wraps(fn)
-        def wrapper(*args: Any, **kwargs: Any) -> "go.Figure":
+        def wrapper(*args: Any, **kwargs: Any) -> FigureLike:
             if backend == "plotly":
                 from phenotypic.sdk_.viz.figures._theme import apply_theme
 
@@ -304,7 +304,7 @@ class BoundFigures:
         """Return provider figures in definition order."""
         return self._provider.iter_figures()
 
-    def render(self, spec: FigureSpec, **control_values: Any) -> "go.Figure":
+    def render(self, spec: FigureSpec, **control_values: Any) -> FigureLike:
         """Render a figure for the supplied control values.
 
         Args:
@@ -408,8 +408,13 @@ class PhtPlot:
         spec: FigureSpec,
         subject: Any = None,
         **control_values: Any,
-    ) -> "go.Figure":
-        """Render one figure spec with its resolved subject and controls."""
+    ) -> FigureLike:
+        """Render one figure spec with its resolved subject and controls.
+
+        Returns whichever backend the spec declares; ``_compose_control_free_figure``
+        is the Plotly-only consumer and keeps its narrower annotation, because
+        :meth:`report` refuses an ``mpl`` spec before reaching it.
+        """
         method = getattr(self, spec.name)
         if spec.wants_subject:
             return method(self._resolve_subject(subject), **control_values)
@@ -468,8 +473,12 @@ class PhtPlot:
 
         Raises:
             RuntimeError: If no figure methods are declared.
-            TypeError: If any visible figure declares ``backend="mpl"``.
-                Composing matplotlib figures is not supported.
+            TypeError: If any visible figure declares ``backend="mpl"`` --
+                **including a single figure, which needs no composition.** The
+                refusal is uniform by choice: a lone matplotlib figure did round
+                -trip through here successfully, and that path was withdrawn for
+                predictability. :meth:`inspect` is the supported call and is
+                unaffected. Do not "fix" this by short-circuiting a single spec.
             ValueError: If the base report receives overrides. Concrete plots
                 may override this method to expose report-specific parameters.
         """
