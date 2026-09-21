@@ -111,6 +111,7 @@ DEFERRED_SITES: dict[str, dict[str, tuple[str, ...]]] = {
     "enhance/_flatten_illumination.py": {"cv2": ("_filter",)},
     "enhance/_subtract_opening.py": {"cv2": ("_operate",)},
     "refine/_extract_colony_core.py": {"cv2": ("_build_ellipse_kernel", "_extract_single_core")},
+    "measure/_measure_color.py": {"colour": ("_robust_lab_row",)},
     "measure/_measure_texture.py": {"mahotas": ("_mahotas",), "mh": ()},
     "detect/_filamentous_fungi_detector.py": {
         "ReconnectConfig": ("_reconnect_config",),

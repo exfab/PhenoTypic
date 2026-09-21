@@ -17,17 +17,14 @@ from phenotypic.abc_ import MeasureFeatures
 from phenotypic.schema import MeasurementInfo, OBJECT
 from phenotypic.schema import ColorXYZ, Colorxy, ColorLab, ColorHSV
 from phenotypic.util import (
-    robust_color_center,
+    DEFAULT_MEDOID_CANDIDATES,
+    MedoidCandidates,
+    candidate_medoid,
+    cone_to_hsv,
     delta_e2000_spread,
     hsv_to_cone,
-    cone_to_hsv,
     lab_to_srgb_hex,
-    MedoidCandidates,
-)
-from phenotypic.util._robust_color_stats import (
-    DEFAULT_MEDOID_CANDIDATES,
-    _delta_e,
-    candidate_medoid,
+    robust_color_center,
 )
 
 logger = logging.getLogger(__name__)
@@ -173,6 +170,8 @@ class MeasureColor(MeasureFeatures):
         return {col: [row[col] for row in rows] for col in columns}
 
     def _robust_lab_row(self, lab_px: np.ndarray) -> dict:
+        import colour
+
         gm = robust_color_center(
             lab_px, max_iter=self.geomedian_max_iter, tol=self.geomedian_tol
         )
@@ -180,7 +179,9 @@ class MeasureColor(MeasureFeatures):
         # neighbour sharing the bounding box never enters the medoid search.
         medoid = candidate_medoid(lab_px, k=self.medoid_candidates).lab
         deltas = (
-            _delta_e(np.broadcast_to(medoid, lab_px.shape), lab_px)
+            np.asarray(colour.difference.delta_E_CIE2000(
+                    np.broadcast_to(medoid, lab_px.shape), lab_px
+            ))
             if lab_px.shape[0] else np.empty(0)
         )
         de_median, de_mean, de_p95 = delta_e2000_spread(deltas)
