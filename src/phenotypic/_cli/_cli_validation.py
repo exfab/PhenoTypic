@@ -8,6 +8,7 @@ before running large batch processing jobs.
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any, Tuple, Optional, TYPE_CHECKING
 
@@ -16,6 +17,13 @@ if TYPE_CHECKING:
 
 from phenotypic import ImagePipeline
 from ._cli_types import ExecutionConfig
+
+logger = logging.getLogger(__name__)
+
+#: Plot-backend warnings already logged by this process. ``--dry-run``
+#: validates the same pipeline twice (the main path, then ``full_validation``),
+#: and the announcement is meant to appear once.
+_ANNOUNCED_PLOT_WARNINGS: set[str] = set()
 
 
 def validate_pipeline(
@@ -43,7 +51,22 @@ def validate_pipeline(
         # Check that pipeline has operations or measurements
         if not pipeline._ops and not pipeline._meas:
             return False, "Pipeline has no operations or measurements"
-        
+
+        # Backends are checked here rather than per figure during the run: on
+        # SLURM this is the submitting process, so a pipeline that will not
+        # rasterise says so before the array is submitted. For a single-page
+        # image plot this warning is the only record of why no PNG exists.
+        # PlotBackendUnavailable falls through to the ``except Exception``
+        # below and becomes a validation error.
+        from phenotypic.plotting._pipeline._backends import (
+            preflight_plot_backends,
+        )
+
+        for line in preflight_plot_backends(pipeline):
+            if line not in _ANNOUNCED_PLOT_WARNINGS:
+                _ANNOUNCED_PLOT_WARNINGS.add(line)
+                logger.warning(line)
+
         return True, None
         
     except FileNotFoundError:

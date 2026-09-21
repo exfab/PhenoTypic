@@ -31,9 +31,11 @@ from ._analysis_registry import (
     AnalysisResult,
 )
 from ._backends import (
+    PlotBackendUnavailable,
     chrome_available,
     ensure_plotlyjs_bundle,
     plotlyjs_src_for,
+    preflight_plot_backends,
     reset_chrome_probe,
 )
 from ._bindings import (
@@ -68,6 +70,7 @@ __all__ = [
     "FigureAdapter",
     "MeasurementInput",
     "PipelineObjectRef",
+    "PlotBackendUnavailable",
     "PlotBinding",
     "PlotCoordinator",
     "PlotInput",
@@ -84,6 +87,7 @@ __all__ = [
     "named_analysis_paths",
     "normalize_plot_bindings",
     "plotlyjs_src_for",
+    "preflight_plot_backends",
     "publish_analysis_manifest_entry",
     "publish_plot_output",
     "read_analysis_manifest",

@@ -10,6 +10,7 @@ import logging
 import os
 import uuid
 from pathlib import Path
+from typing import Any
 
 from phenotypic.sdk_._file_locking import exclusive_path_lock
 
@@ -158,9 +159,109 @@ def plotlyjs_src_for(page_dir: Path, bundle: Path) -> str:
     return Path(os.path.relpath(bundle, page_dir)).as_posix()
 
 
+class PlotBackendUnavailable(RuntimeError):
+    """A declared figure backend cannot be used at all."""
+
+
+def preflight_plot_backends(pipeline: Any) -> list[str]:
+    """Check what the configured plots can render, before any image work.
+
+    Missing Chrome is **not** an error: Plotly publishes HTML regardless, so
+    the run is complete either way and the caller is told what it will not get.
+    A declared backend whose library will not import IS an error -- that plot
+    cannot publish at all.
+
+    Bindings fall into three groups by the backends their visible ``@figure``
+    methods declare. A binding that declares none -- most plots that override
+    ``inspect`` directly -- has a backend decided only at render time, so it is
+    named conditionally in the Chrome warning and never fails the import check.
+
+    :func:`chrome_available` is called only when some binding declares
+    ``plotly`` or declares nothing; a pipeline that can only produce
+    matplotlib output never launches a browser.
+
+    Args:
+        pipeline: Pipeline whose normalized plot bindings are inspected.
+
+    Returns:
+        Human-readable warning lines, empty when everything is available.
+
+    Raises:
+        PlotBackendUnavailable: If a declared backend's library is missing.
+    """
+    plotly_ids: list[str] = []
+    mpl_ids: list[str] = []
+    undeclared_ids: list[str] = []
+    for binding in pipeline.get_plots():
+        backends = _declared_backends(binding.plot)
+        if "plotly" in backends:
+            plotly_ids.append(binding.id)
+        if "mpl" in backends:
+            mpl_ids.append(binding.id)
+        if not backends:
+            undeclared_ids.append(binding.id)
+
+    _require_importable("matplotlib", "mpl", mpl_ids)
+    _require_importable("plotly", "plotly", plotly_ids)
+
+    if not (plotly_ids or undeclared_ids) or chrome_available():
+        return []
+    parts = ["Chrome is not available;"]
+    if plotly_ids:
+        parts.append(
+            f"{len(plotly_ids)} Plotly plots will publish HTML only, without "
+            f"PNG: {', '.join(plotly_ids)}."
+        )
+    if undeclared_ids:
+        parts.append(
+            f"{len(undeclared_ids)} {'more ' if plotly_ids else ''}plots "
+            "declare no figure backend and will publish HTML only, without "
+            f"PNG, if they return Plotly: {', '.join(undeclared_ids)}."
+        )
+    parts.append("Install it for raster output with:  plotly_get_chrome")
+    return [" ".join(parts)]
+
+
+def _declared_backends(plot: Any) -> set[str]:
+    """Return the backends *plot*'s visible ``@figure`` methods declare."""
+    iter_figures = getattr(plot, "iter_figures", None)
+    if callable(iter_figures):
+        return {spec.backend for spec in iter_figures()}
+    # A QC-recipe binding holds its QcRecipeEntry: the PlotQc instance exists
+    # only once the QC runner has analyzed the check. normalize_plot_bindings
+    # admits no other non-PhtPlot, and requires ``cls`` to subclass PlotQc.
+    # Same shadowing rule as PhtPlot.iter_figures, without the ordering.
+    backends: set[str] = set()
+    shadowed: set[str] = set()
+    for klass in plot.cls.__mro__:
+        for name, attr in vars(klass).items():
+            if name in shadowed:
+                continue
+            shadowed.add(name)
+            spec = getattr(attr, "__figure_spec__", None)
+            if spec is not None:
+                backends.add(spec.backend)
+    return backends
+
+
+def _require_importable(module: str, backend: str, binding_ids: list[str]) -> None:
+    """Raise :class:`PlotBackendUnavailable` if *binding_ids* need a missing *module*."""
+    if not binding_ids:
+        return
+    try:
+        __import__(module)
+    except ImportError as exc:
+        raise PlotBackendUnavailable(
+            f"{len(binding_ids)} configured plots declare backend={backend!r} "
+            f"but {module} is not importable: {', '.join(binding_ids)}"
+        ) from exc
+
+
 __all__ = [
+    "PlotBackendUnavailable",
     "chrome_available",
     "ensure_plotlyjs_bundle",
     "plotlyjs_src_for",
+    "preflight_plot_backends",
     "reset_chrome_probe",
 ]
