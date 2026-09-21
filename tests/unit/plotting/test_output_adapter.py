@@ -379,7 +379,7 @@ def test_a_mixed_backend_directory_reports_png_as_partial(
 
     assert manifest["renderers"] == {
         "html": "available",
-        "png": "partial: chrome not found",
+        "png": "available: matplotlib only; chrome not found",
     }
     by_key = {page["key"]: page for page in manifest["pages"]}
     assert by_key["interactive"]["files"] == {"html": "Interactive.html"}

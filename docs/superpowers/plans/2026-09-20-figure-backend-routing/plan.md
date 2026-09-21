@@ -77,6 +77,17 @@ tell a complete answer from a partial one.
 Always run a tree-wide parse with `.venv/bin/python`, and count and print the
 skips.
 
+## Deferred: `lifecycle` should be a `Literal`
+
+`lifecycle` is the only documented closed set in `plotting/_pipeline` typed as a
+bare `str`. Two gates have now found values outside it on the same parameter —
+`"page"` (C3) and `"qc dependency"` (C3, via C5's wiring). A
+`Literal["image", "measurements", "analysis", "qc", "page"]` would have made
+both **type errors rather than review findings**, and the project already uses
+`Literal` for closed sets (see the `adding-an-operation` skill). Not a gate
+condition; worth doing once C5 has introduced every value, so the `Literal` is
+written against the complete set rather than a guess at it.
+
 ## Global Constraints
 
 - **`uv` is the sole runner.** Never bare `python` or `pip`. Every command is `uv run …`.
@@ -2305,6 +2316,14 @@ in `.failures.jsonl`, at which point it becomes:
 
 Found by an AST sweep of every `lifecycle=` constant in `src/`, which returned
 exactly four: `page`, `measurements`, `qc`, `qc dependency`.
+
+**Fix it at the CALL SITE, `_coordinator.py:303` — not in the handler.** This is
+the part that is easy to miss. `_emit_aggregate` takes `lifecycle` as a
+*parameter*, and Step 4's snippet for its handler forwards it unchanged:
+`self._record_failure(binding, exc, lifecycle=lifecycle)`. So an implementer
+working through the five handlers **never sees the string** — it is supplied
+25 lines away, at a line this plan does not otherwise ask you to touch.
+(Found by the C3 gate, which traced the forwarding rather than the literal.)
 
 **Pass `lifecycle="qc"` from `emit_dependent_qc`** — the *when* is the same, and
 the distinction it was drawing (a dependency refresh rather than a full rebuild)

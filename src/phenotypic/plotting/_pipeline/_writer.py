@@ -361,12 +361,15 @@ def _publish_plot_output_locked(
     if has_plotly:
         renderers["html"] = "available"
     if has_plotly and has_mpl and not png_ok():
-        # Mixed directory, no Chrome: the matplotlib pages have a PNG and the
-        # Plotly pages do not, so neither "available" nor "unavailable" is
-        # true of the directory. `renderers` is the key a reader consults
-        # INSTEAD of walking every page, so an overstatement here is worse
-        # than an absence -- it stops them looking further.
-        renderers["png"] = "partial: chrome not found"
+        # `renderers` answers a CAPABILITY question -- what this machine could
+        # render for this directory -- not an OUTCOME question about what
+        # landed on disk. `files` and `failed` carry outcomes. The two were
+        # mixed in an earlier draft of this comment ("the matplotlib pages
+        # have a PNG and the Plotly pages do not"), which is how a reader ends
+        # up unable to tell which question a value answers, and "fixes" one
+        # branch to match another. Mixed directory, no Chrome: PNG capability
+        # exists, but only for the matplotlib backend.
+        renderers["png"] = "available: matplotlib only; chrome not found"
     elif has_plotly and not png_ok():
         renderers["png"] = "unavailable: chrome not found"
     elif has_plotly or has_mpl:

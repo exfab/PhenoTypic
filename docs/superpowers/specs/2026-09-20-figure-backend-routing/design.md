@@ -288,9 +288,31 @@ sym, PlotDiagnostics, LogGrowthModel.
 Install it for raster output with:  plotly_get_chrome
 ```
 
-Naming the binding ids keeps it actionable. The manifest carries the same fact
-durably (§3) so the announcement is not the only record — a log line nobody reads
-is exactly the silence this spec exists to remove.
+Naming the binding ids keeps it actionable.
+
+**Scope of the durable record — narrowed by decision, 2026-09-21.** An earlier
+draft said the manifest "carries the same fact durably, so the announcement is
+not the only record". That is true for multi-page and aggregate plots, whose
+directories get a manifest with a `renderers` key. It is **not** true for the
+single-page image path, which writes no manifest: a Chrome-less
+`plots/<id>/<dataset>/` holds HTML pages, no PNGs, and nothing on disk saying
+why. `.failures.jsonl` does not cover it either, because an unattempted
+renderer is not a failure — `_render_page` never tries the PNG when
+`chrome_available()` is false, so there is no exception to record.
+
+**Decision: the durable record covers *failures*, not *capabilities*.** Missing
+Chrome is a property of the machine, identical for every plot in the run, so
+recording it once per image directory would be repetition rather than
+information. For the flat image path, the once-per-process announcement above is
+the record, and it names every affected binding.
+
+This was chosen knowingly over two alternatives: a manifest on the flat path
+(consistent, but adds per-directory overhead the flat path exists to avoid), and
+a single run-level capability file at the plots root. The C3 gate noted that the
+first is cheaper than it looks — `backend == "plotly" and files == {"html"} and
+not errors` identifies the Chrome-absent case exactly, from what `_render_page`
+already returns, with no signature change. The decision does not rest on that
+cost.
 
 ## §3 — Failures that look like failures
 

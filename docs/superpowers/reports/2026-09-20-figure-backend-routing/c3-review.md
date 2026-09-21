@@ -47,10 +47,13 @@ Two things qualify the verdict:
    signature problem and C5 cannot fix it by calling `_render_page` differently.
    It needs a decision. Details below.
 
-One live defect was found during this gate and fixed before the report: neither
-production caller passed `plots_base`, so `plotly.min.js` was written per page
-directory — **7.45 GB extrapolated to a 1,536-image plate**, measured. Fixed in
-`0e06cb6a` with a whole-tree count guard.
+Two defects were found during this gate and fixed before the report. The live
+one: neither production caller passed `plots_base`, so `plotly.min.js` was
+written per page directory — **7.45 GB extrapolated to a 1,536-image plate**,
+measured. Fixed in `0e06cb6a` with a whole-tree count guard. The documentation
+one: `record_plot_failure`'s `lifecycle` closed set excluded a value the writer
+passes, fixed in `5dbdf503`, which also surfaced a second out-of-set value
+(`"qc dependency"`) that becomes live the moment C5 wires the recorder in.
 
 ---
 
@@ -113,10 +116,41 @@ caller's exception into an f-string outside any handler, which is the hazard
 `_format_error` exists to contain and which `_writer.py`'s own module-level
 import comment calls out by name. Use `_format_error(errors[0])`.
 
-### What C5 does with `backend`
+### What C5 does with `backend` — it is worth more than the plan thinks
 
-Plan Step 6 discards it (`_backend`). That is fine — nothing on the flat path
-consumes it. It is, however, the visible edge of the real gap.
+Plan Step 6 discards it (`_backend`), and for the plan's own purposes that costs
+nothing: `backend is None` implies `files == {}`, which the plan's
+`if not files: raise` already covers. So the discard is safe.
+
+But `backend` is **the piece that makes the silent-no-PNG case detectable**, and
+C5 is the only place that can detect it. Given the two guard conditions in
+`_render_page` — HTML attempted iff `backend == "plotly"`, PNG attempted iff
+`backend == "mpl" or chrome_available()` — the return triple is already
+sufficient:
+
+```python
+backend == "plotly" and files == {"html"} and not errors   # ⟺ Chrome was absent
+```
+
+That is exact, not heuristic. If `files == {"html"}` then the HTML write
+succeeded, so any exception in `errors` could only have come from the PNG
+attempt; `errors` being empty therefore means the PNG block never ran, and for a
+Plotly figure the only way that happens is `chrome_available()` returning False.
+Every neighbouring case is separated cleanly:
+
+| `backend` | `files` | `errors` | means |
+|---|---|---|---|
+| `"plotly"` | `{html}` | `[]` | **Chrome absent — PNG never attempted, nothing recorded** |
+| `"plotly"` | `{html}` | `[exc]` | PNG attempted and failed — recorded |
+| `"plotly"` | `{html, png}` | `[]` | complete |
+| `"mpl"` | `{png}` | `[]` | complete — matplotlib has no HTML form |
+| any | `{}` | any | total failure — plan's `raise` fires |
+
+**This matters for the decision below.** It means option (b) — have C5 record
+the capability verdict on the flat path — needs **no change to `_render_page`'s
+signature and no fourth return element**. C5 can derive the verdict from what it
+is already handed. That makes (b) substantially cheaper than it looks, and it is
+the reason the contract as shipped is adequate even though the gap is real.
 
 ### Is anything in `_render_page` assuming a manifest will follow?
 
@@ -161,13 +195,15 @@ C3 defect — but it is the thing that will bite, and it needs a decision before
 C5 writes the step:
 
 - **(a)** the flat path writes a small sidecar manifest per dataset directory;
-- **(b)** `_render_page` returns the capability verdict as a fourth element, and
-  C5 records it; or
+- **(b)** C5 derives the verdict from the triple it is already handed — see
+  **What C5 does with `backend`** above; this needs no signature change; or
 - **(c)** you accept that spec §2's once-per-process announcement is the only
   record for image plots, and narrow §3's "The manifest carries the same fact
   durably" so it does not claim more than the code does.
 
-(c) is legitimate and cheapest, but it is a spec change, so it is yours.
+(c) is legitimate and cheapest, but it is a spec change, so it is yours. (b) is
+cheaper than it first appeared, now that the triple turns out to determine the
+verdict exactly.
 
 **2. Minor — the filenames written by the flat path are recorded nowhere.**
 
@@ -188,6 +224,21 @@ and `PlotPublicationBlocked` subclasses `RuntimeError`. So after C6 removes
 `strict=True`, a blocked image publication is caught and recorded as a routine
 plot failure, not treated as void. That is pre-existing for this path, not
 introduced here, but the docstring now asserts otherwise for a caller it names.
+
+### C5 checklist, from this gate
+
+1. Pass `error=exc`, **not** `error=RuntimeError(message)` — the plan's snippet
+   predates the `list[str]` → `list[BaseException]` change.
+2. Use `_format_error(errors[0])` in the final `raise`, not f-string
+   interpolation of an exception outside a handler.
+3. Change `lifecycle="qc dependency"` at `_coordinator.py:303` to `"qc"`. The
+   plan does not route you through this line; the bad value arrives by parameter
+   forwarding into the handler you *are* editing.
+4. Decide (a) / (b) / (c) on the flat path's capability verdict before writing
+   Step 6, not after. (b) needs no signature change.
+5. `plots_base=self._plots_base` on both `publish_plot_output` calls is
+   **already done** (`0e06cb6a`) — Step 6's first instruction is satisfied; do
+   not re-apply or assume it is missing.
 
 ---
 
@@ -238,14 +289,52 @@ the trap came from callers not passing the argument at all, which is what
 stray `""` to `directory` instead of propagating a `str` where a `Path` is
 expected.)
 
-### 3. `record_plot_failure(lifecycle="page")` violates its own docstring's closed set
+### 3. `record_plot_failure(lifecycle="page")` violated its own docstring's closed set *(fixed in `5dbdf503`)*
 
-`_failures.py:73` documents `lifecycle: "image", "measurements", "analysis", or
-"qc"`. The writer passes `"page"` (`_writer.py:307`). Spec §3's record example
-lists the same four. Either the fifth value is intended and the docstring and
-spec should say so, or the writer should use `"page"`'s nearest documented
-sibling. This is the C2-gate shape exactly: a prose-stated closed set that the
-code walks out of, with nothing checking.
+`_failures.py:73` documented `lifecycle: "image", "measurements", "analysis", or
+"qc"`; the writer passes `"page"` (`_writer.py:323`). Spec §3's record example
+lists the same four. The C2-gate shape exactly: a prose-stated closed set that
+the code walks out of, with nothing checking.
+
+Resolved as a genuinely **orthogonal** value rather than a fifth peer, which is
+the right call: the four are the coordinator's emit points (*when* a plot was
+being refreshed), while `"page"` is the writer's own level — one page of a
+multi-page output failed, inside whichever of the four was running, and the
+writer cannot know which.
+
+#### The generalisation: `"qc dependency"`, and why C5 will not see it coming
+
+An AST sweep of every `lifecycle=` constant found a fourth value in use:
+`"qc dependency"` at `_coordinator.py:303`. Not a live defect — the coordinator
+calls `record_plot_failure` nowhere yet (`grep -c` returns 0), so it currently
+reaches only a `logger.warning` format argument. C5 wires the recorder in, at
+which point it becomes a JSON field value outside the closed set and the only
+one containing a space.
+
+**The part worth adding is how it will arrive.** `_emit_aggregate` takes
+`lifecycle` as a **parameter** (`:323`) and its handler (`:328`) is one of the
+five C5 edits. Plan Task 9 Step 4's snippet for that handler is
+`self._record_failure(binding, exc, lifecycle=lifecycle)` — it forwards the
+parameter. So a C5 implementer working through the five handlers **never sees
+the string `"qc dependency"`**: it is supplied 25 lines away at the
+`emit_dependent_qc` call site, which the plan does not ask them to touch. The
+fix belongs at `:303`, not in the handler being edited. Recommend passing
+`"qc"` there and keeping the dependency distinction in the log line, where it
+already lives and where a space is harmless.
+
+Two related facts for C5, from the same sweep:
+
+- **`"analysis"` and `"image"` have no `lifecycle=` call site at all today.**
+  The only three are `"measurements"` (`:115`), `"qc"` (`:258`) and
+  `"qc dependency"` (`:303`); `emit_image` and `emit_analyses` have their own
+  handlers (`:104`, `:177`) and supply no lifecycle string. C5 introduces both
+  values as literals. So the documented set is presently aspirational in two of
+  its four members — worth knowing before trusting it as a description.
+- **`_emit_aggregate`'s handler swallows without re-raising**, so a failure
+  inside it never reaches `emit_qc`'s handler at `:259`. After C5 that means one
+  record per failure, not two — but it also means `:259` fires *only* for
+  prelude failures, which is precisely the F4 window Task 9 Step 5 is about.
+  Worth confirming during C6 rather than assuming.
 
 ### 4. `_render_page` docstring names a caller that does not exist
 
@@ -266,12 +355,22 @@ first line will copy a page without its bundle and get a blank div.
 
 ### 6. `8a08bb67`: "Five test repairs, three of them mechanical `'file'` → `'files'`"
 
-Five tests were repaired — that part holds. The rename count does not. By AST
-parse of the repaired files, the `["files"]["png"]` reads land in **four** tests
-(`test_output_adapter.py:80, :106, :178` and
-`test_plot_meas_time_series.py:334`), and only **two** of the five repairs are
-rename-only (the other three also needed a patch change). Neither reading gives
-three.
+Five tests were repaired — that part holds. The rename count does not.
+
+By AST parse of the repaired files, the `["files"]["png"]` reads land in
+**four** tests (`test_output_adapter.py:80, :106, :178` and
+`test_plot_meas_time_series.py:334`). An independent AST diff of the two
+revisions, run by the lead, gives the same split from the other direction:
+`test_output_adapter.py` has 3 changed tests, **2 rename-only**
+(`collision_safe_names`, `hash_suffix_rechecked`) and 1 not (the concurrency
+test); `test_plot_meas_time_series.py` has 2 changed, neither rename-only.
+
+So: five repairs, **two** purely mechanical, **four** containing the rename.
+Neither reading gives three. The third rename lives in a test that also took the
+`chrome_available` change, so calling it mechanical is wrong on either count.
+
+The commit is three back and this repo has no interactive rebase, so it is not
+being amended; this is the correction of record.
 
 *(For contrast, `e6f58f16`'s corresponding claim — "three assertions still read
 the ... `"file"` key and one reads the `"renderers"` map" — **is exactly right**:
@@ -297,6 +396,15 @@ unusually good *as explanations* and unusually unreliable *as claims*; the
 density of load-bearing prose is itself the risk. Finding 1 is the one that
 mattered — 7.45 GB — and it was a docstring sentence stating the opposite of the
 code two files away.
+
+Two of these have now recurred on the *same parameter* across two gates
+(`record_plot_failure`'s handler scope in C2, its `lifecycle` set here), which
+suggests the module is not merely unlucky. The cheap structural answer, if one
+is wanted: `lifecycle` is the only documented closed set in this package that is
+a bare `str`. A `Literal` annotation would have made both the `"page"` and the
+`"qc dependency"` findings a type error rather than a review finding, and the
+project already has the convention for it (`adding-an-operation`, closed value
+sets). That is a C5-or-later suggestion, not a gate condition.
 
 ---
 
@@ -327,16 +435,46 @@ is minor; but spec §2 accounted for the eager probe on the grounds that it buys
 the user an early verdict, and here it buys nothing. `chrome_available() if
 has_plotly else False`, computed after the loop, is equivalent.
 
-**D4 — `renderers` mixes capability and outcome semantics.** Not a wrong value
-in any reachable case (see below), but the two branches are justified on
-incompatible grounds. The spec calls `renderers` "the capability verdict"; the
-`partial` branch's comment justifies itself by *outcome* ("the matplotlib pages
-have a PNG and the Plotly pages do not"). Under the outcome reading,
-`html: "available"` is an overstatement whenever every HTML write failed — and
-that comment's own standard ("an overstatement here is worse than an absence —
-it stops them looking further") condemns it. Under the capability reading it is
-fine and `partial` is the odd one. Pick one and say which in the docstring. Low
-severity: `failed` and `partial` carry the truth in every such case.
+**D4 — `renderers` is answering two different questions at once, and the map
+cannot be both.**
+
+Spec §3 defines it as a **capability** verdict: "`renderers` records the
+capability verdict per published directory". The comment beside the `partial`
+branch defends that branch on **outcome** grounds: "the matplotlib pages have a
+PNG and the Plotly pages do not, so neither 'available' nor 'unavailable' is
+true of the directory".
+
+Those are different claims about the world, and each branch is correct under one
+reading and wrong under the other:
+
+- **Under capability**, `renderers` describes *what this machine can render*.
+  `html: "available"` is then true whenever a Plotly figure is present, whether
+  or not any HTML file was written — and `"partial: chrome not found"` is the
+  odd one out, because capability does not vary across a directory; it is a
+  property of the process. It is really a statement about *which figures in here
+  needed Chrome*, which is an outcome.
+- **Under outcome**, `renderers` describes *what is on disk*. `partial` is then
+  exactly right — and `html: "available"` becomes false whenever every HTML
+  write failed (a full disk, an `ArtifactLockTimeout` from
+  `ensure_plotlyjs_bundle`). The `partial` comment's own standard is what
+  convicts it: *"an overstatement here is worse than an absence — it stops them
+  looking further."* That standard, applied to `html`, condemns the branch three
+  lines above it.
+
+So the defect is not a wrong value — every reachable combination is defensible
+under *some* reading, and `failed` / `partial` carry the literal truth in every
+case where they diverge. The defect is that a reader cannot know which question
+they are getting an answer to, and the two branches were written by someone
+answering different ones. That is precisely the condition under which a later
+change "fixes" one branch to match the other and silently breaks a consumer of
+the first.
+
+**Recommendation:** commit to capability (it is what the spec says, and it is
+the only reading under which the map is cheap to compute correctly), replace
+`"partial: chrome not found"` with something that does not smuggle in an
+outcome — `"available: matplotlib only; chrome not found"` — and state the
+chosen reading in the manifest's own documentation. Low severity, but it should
+be settled before C5 adds a second producer of this vocabulary on the flat path.
 
 ---
 
@@ -457,3 +595,14 @@ real; one of them is unreachable at the moment it is described.
   contention shape changed even though the locking did not.
 - **`0e06cb6a`'s guard was mutation-checked by the lead, not by me.** I read the
   test and the reported failure message; I did not run the mutation.
+- **The `8a08bb67` rename count is corroborated, not merely repeated.** My AST
+  parse counted `["files"]["png"]` reads in the post-repair files; the lead's
+  AST diff counted changed tests between the two revisions. They were run
+  independently and agree (four tests carry the rename, two repairs are
+  rename-only). Both are static; neither ran the tests.
+- **`5dbdf503`'s claims I did verify directly**: the `lifecycle=` sweep returns
+  four constants (`"page"`, `"measurements"`, `"qc"`, `"qc dependency"`), and
+  `grep -c record_plot_failure src/phenotypic/plotting/_pipeline/_coordinator.py`
+  returns 0, so `"qc dependency"` is confirmed inert today. The claim that C5
+  makes it live follows from plan Task 9 Step 4 as written, which is a statement
+  about the plan, not a measurement.
