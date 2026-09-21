@@ -1839,6 +1839,78 @@ def test_the_revision_identity_matches_what_a_holder_measures(
     assert from_probe == from_route
 
 
+def test_a_refused_store_root_does_not_fall_back_to_a_path_measurement(
+    tmp_path: Path,
+) -> None:
+    """A refusal is the contract firing, not an environment without a backend.
+
+    ``published_token_through_a_hold`` falls back to the path measurement when
+    the store cannot be held -- correct for "this platform has no backend", and
+    a fail-open for "the hold rejected *this root*". ``IdentityRefused``
+    subclasses ``ValueError``, so an ``except (OSError, ValueError)`` swallowed
+    a refused root and then measured the very link the hold exists to reject,
+    handing the caller a token for a store it had refused to open.
+    """
+    from phenotypic.sdk_._identity_io import IdentityRefused
+    from phenotypic.sdk_._io_constants import published_token_through_a_hold
+
+    (tmp_path / "real").mkdir()
+    real = _published_store(tmp_path / "real")
+    link = tmp_path / "link.zarr"
+    try:
+        link.symlink_to(real, target_is_directory=True)
+    except (AttributeError, NotImplementedError, OSError):
+        raise AssertionError(
+            "this filesystem cannot create the symlink this guard needs; the "
+            "check must fail rather than skip, or the fail-open goes unnoticed"
+        ) from None
+
+    with pytest.raises(IdentityRefused):
+        published_token_through_a_hold(link)
+
+
+def test_the_revision_identity_measures_through_a_hold_not_by_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Agreement cannot prove this off Windows, so pin the mechanism.
+
+    ``test_the_revision_identity_matches_what_a_holder_measures`` above
+    compares the two values -- but a path measurement and a handle measurement
+    return the *same* digest on Linux and macOS. They diverge only on Windows,
+    which no pull-request lane runs (``run-pytest-full.yml`` is
+    ``schedule``/``workflow_dispatch``). So swapping the internal hold back to
+    ``store_publication_token(store)`` leaves every value-comparing test green
+    and silently restores the 409-forever bug exactly where CI cannot see it;
+    that mutation was verified to survive. Assert the hold itself: the store
+    root is opened by identity while the revision is measured.
+    """
+    from phenotypic.sdk_ import _identity_io, store_revision_identity
+
+    if not _identity_io.identity_io_available():
+        raise AssertionError(
+            "identity-bound I/O must be available wherever this suite runs; "
+            "without a backend this guard would pass without checking anything"
+        )
+
+    store = _published_store(tmp_path)
+    held: list[Path] = []
+    real_open = _identity_io.open_identity_directory
+
+    def _spy(path, *args, **kwargs):
+        held.append(Path(path))
+        return real_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(_identity_io, "open_identity_directory", _spy)
+
+    revision = store_revision_identity(store)
+
+    assert revision
+    assert store in held, (
+        "store_revision_identity measured the store without holding its root; "
+        "the route compares against a held token and would 409 forever"
+    )
+
+
 def test_both_token_branches_agree_for_one_store(tmp_path: Path) -> None:
     """If they ever disagree, every Browse tile request 409s forever.
 

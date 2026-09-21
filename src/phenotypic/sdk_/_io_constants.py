@@ -69,6 +69,7 @@ See also
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import json
 import logging
@@ -1866,8 +1867,14 @@ def published_token_through_a_hold(store: Path) -> str | None:
 
     Falls back to the path measurement where no backend exists, which is the
     same value every platform produced before identity-bound I/O existed.
+
+    Raises:
+        IdentityRefused: If the root exists but the hold refuses it -- a
+            non-canonical component, or a link where a directory is required.
+            That refusal is the contract firing and must not be downgraded.
     """
     from phenotypic.sdk_._identity_io import (
+        IdentityRefused,
         identity_io_available,
         open_identity_directory,
     )
@@ -1877,10 +1884,27 @@ def published_token_through_a_hold(store: Path) -> str | None:
     try:
         with open_identity_directory(store) as held:
             return store_publication_token(store, root_directory=held)
-    except (OSError, ValueError):
-        # A store that cannot be held is not a store whose token we can
-        # bind; the path measurement still answers, and a genuinely broken
-        # store fails later in the same way it always did.
+    except IdentityRefused:
+        # Fail closed. This is not "cannot hold in this environment" -- it is
+        # the hold rejecting *this root*, for a reason it exists to reject.
+        raise
+    except OSError as exc:
+        # ``O_NOFOLLOW`` refusing a link standing where the store root must be
+        # surfaces as an ordinary ``OSError``: ``ENOTDIR`` on macOS, ``ELOOP``
+        # on Linux. Falling through to the path measurement would then follow
+        # the very link the hold just refused and hand back a valid-looking
+        # token for it, so normalise that case into the contract's own refusal
+        # instead. Anything else -- a missing or unreadable directory -- keeps
+        # the historical fallback: the path measurement still answers, and a
+        # genuinely broken store fails later exactly as it always did.
+        if (
+            isinstance(exc, NotADirectoryError)
+            or exc.errno == errno.ELOOP
+            or store.is_symlink()
+        ):
+            raise IdentityRefused(
+                f"store root is not a directory the hold will open: {store}"
+            ) from exc
         return store_publication_token(store)
 
 

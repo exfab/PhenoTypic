@@ -36,6 +36,7 @@ from phenotypic.sdk_ import store_publication_token
 from phenotypic.sdk_._io_constants import published_token_through_a_hold
 from phenotypic.sdk_._identity_io import (
     HeldDirectory,
+    IdentityRefused,
     identity_io_available,
     open_identity_directory,
 )
@@ -347,6 +348,14 @@ def register(
             # here would reintroduce the Windows disagreement in a new place
             # -- it already moved once, from the member check to this one.
             publication = published_token_through_a_hold(source)
+        except IdentityRefused as exc:
+            # The hold refused this root. Do not fall through to a path
+            # measurement: that is the substitution the hold exists to reject.
+            # 422 (not 409) -- nothing changed, the store is unserveable.
+            raise _UnsafeStoreAccess(
+                "store root refused by identity-bound I/O; Browse will not "
+                "serve a store whose root it cannot hold"
+            ) from exc
         except OSError as exc:
             raise SourceProbeError("unstable store root") from exc
         if publication is None:
@@ -371,6 +380,8 @@ def register(
                 "token; Browse refuses an unsafe multi-request image view",
                 422,
             )
+        except _UnsafeStoreAccess as exc:
+            return _error(str(exc), 422)
         except FileNotFoundError:
             return _error("invalid or unknown image store", 404)
         except SourceProbeError:
