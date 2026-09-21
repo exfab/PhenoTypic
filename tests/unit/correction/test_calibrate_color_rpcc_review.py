@@ -173,18 +173,46 @@ def test_rank_is_checked_after_outlier_rejection() -> None:
     wrong = {(1, row, 1): green for row in (1, 2, 3)}
     operation = frozen_op(degree=4, on_qc_fail="warn")
 
-    try:
+    with pytest.raises(RuntimeError, match="only 21 remain after outlier rejection"):
         quietly(operation, Image(arr=render_frame(overrides=wrong)))
-    except Exception as exc:  # noqa: BLE001 - apply() re-wraps as RuntimeError
-        assert "degree-4 root-polynomial fit needs at least 22" in str(exc)
-        return
 
-    diagnostics = operation.fitted_profile.diagnostics
-    assert diagnostics["n_patches_rejected"] >= 3, (
+    assert operation.fitted_profile is None
+
+
+def test_census_accepted_excludes_outlier_rejected_patches() -> None:
+    """``accepted`` is what reached the fit, not what was measured.
+
+    The same three green neutrals as above, at degree 3, where 21 patches
+    still clear the 13-term rank line and the fit runs.
+    """
+    green = np.array([0.1, 0.95, 0.1])
+    wrong = {(1, row, 1): green for row in (1, 2, 3)}
+    operation = frozen_op(degree=3, on_qc_fail="warn")
+
+    quietly(operation, Image(arr=render_frame(overrides=wrong)))
+
+    fitted = operation.fitted_profile.diagnostics
+    assert fitted["n_patches_rejected"] >= 3, (
         "fixture precondition: the swapped tiles must be rejected as outliers"
     )
-    kept = diagnostics["n_patches_detected"] - diagnostics["n_patches_rejected"]
-    assert kept >= 22, f"a degree-4 fit ran on {kept} patches for 22 terms"
+    accepted = operation.diagnostics["patch_census"]["accepted"]
+    for row in (1, 2, 3):
+        assert _band_patch(1, row, 1) not in accepted
+    assert len(accepted) == (
+        fitted["n_patches_detected"] - fitted["n_patches_rejected"]
+    )
+
+
+def test_a_frame_with_every_roi_refused_names_the_refusals_not_the_rank() -> None:
+    """With nothing measured, the error is the refusals, not a degree advice."""
+    rng = np.random.default_rng(0)
+    flat = rng.normal(120, 2, (BAND_H, 480, 3)).clip(0, 255).astype(np.uint8)
+    operation = CalibrateColorRpcc(
+            rois=band_rois(), grid=(6, 2), on_qc_fail="warn",
+    )
+
+    with pytest.raises(RuntimeError, match="No ROI produced usable tiles"):
+        quietly(operation, Image(arr=flat))
 
 
 # ---------------------------------------------------------------------------

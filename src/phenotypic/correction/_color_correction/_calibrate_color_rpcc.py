@@ -377,9 +377,7 @@ class CalibrateColorRpcc(ImageCorrector):
         self.qc = records
         failed = [record for record in records if not record.ok]
         if failed:
-            summary = "; ".join(
-                    f"ROI {r.roi_index}: {', '.join(r.flags)}" for r in failed
-            )
+            summary = self._flag_summary(failed)
             if self.on_qc_fail == "raise":
                 raise ValueError(f"Colour-checker quality gate failed. {summary}")
             warnings.warn(
@@ -393,10 +391,15 @@ class CalibrateColorRpcc(ImageCorrector):
                 )
                 return image
 
-        accepted = list(measured.keys())
-        census = warn_on_patch_census(
-                accepted, patch_names, self.degree, self.min_patches,
-        )
+        if not measured:
+            # Every ROI was refused (under "warn"). A rank message here would
+            # advise a lower degree, but no degree fits zero patches; the
+            # refusals are the cause.
+            summary = self._flag_summary(records) or "no ROI recorded a flag"
+            raise ValueError(
+                    f"No ROI produced usable tiles, so there is nothing to fit. {summary}"
+            )
+        require_rank(len(measured), self.degree, stage="were measured")
 
         profile = ColorCheckerProfile(
                 checker_type=self.checker_type,
@@ -407,11 +410,13 @@ class CalibrateColorRpcc(ImageCorrector):
         profile.fit_from_patch_colors(
                 {name: np.asarray(value) for name, value in measured.items()}
         )
-        fitted = profile.diagnostics
-        require_rank(
-                fitted["n_patches_detected"] - fitted["n_patches_rejected"],
-                self.degree,
-                stage="remain after outlier rejection",
+        # ``accepted`` means patches that reached the fit: outlier rejection
+        # removes some, and the census must count them as missing.
+        rejected = profile.diagnostics["rejected_patches"]
+        accepted = [name for name in measured if name not in rejected]
+        require_rank(len(accepted), self.degree, stage="remain after outlier rejection")
+        census = warn_on_patch_census(
+                accepted, patch_names, self.degree, self.min_patches,
         )
         self.fitted_profile = profile
         self._diagnostics = self._build_diagnostics(
@@ -426,6 +431,13 @@ class CalibrateColorRpcc(ImageCorrector):
     def _refusal(index: int, roi: CheckerRoi, *flags: str) -> QcRecord:
         """A record for an ROI that failed before it could be measured."""
         return QcRecord(roi_index=index, label=roi.label, flags=list(flags))
+
+    @staticmethod
+    def _flag_summary(records: list[QcRecord]) -> str:
+        """``ROI i: flag, flag; ROI j: ...`` for every record carrying flags."""
+        return "; ".join(
+                f"ROI {r.roi_index}: {', '.join(r.flags)}" for r in records if r.flags
+        )
 
     def _anchor_disagreement(
             self, lab, roi_index: int, lattice: CheckerLattice
