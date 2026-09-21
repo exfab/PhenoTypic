@@ -84,6 +84,7 @@ class DetectModesPlotter(BasePlotter, PhtPlot):
 
     @figure(
         title="Detection Mode Comparison",
+        backend="plotly",
         section="detect_modes",
     )
     def detect_modes(self) -> go.Figure:

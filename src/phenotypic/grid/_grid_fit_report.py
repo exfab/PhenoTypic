@@ -253,7 +253,7 @@ class GridFitReport(PhtPlot):
 
     # -- section "timing" ---------------------------------------------------
 
-    @figure(title="Step Timing", section=_SECTION_TIMING)
+    @figure(title="Step Timing", backend="plotly", section=_SECTION_TIMING)
     def fig_timing_waterfall(self) -> go.Figure:
         """Per-step pipeline timing as a horizontal bar chart.
 
@@ -291,7 +291,7 @@ class GridFitReport(PhtPlot):
 
     # -- section "objects" --------------------------------------------------
 
-    @figure(title="Object Size Distribution", section=_SECTION_OBJECTS)
+    @figure(title="Object Size Distribution", backend="plotly", section=_SECTION_OBJECTS)
     def fig_object_size_dist(self) -> go.Figure:
         """Histogram of object bounding-box areas with the expected cell size.
 
@@ -346,7 +346,7 @@ class GridFitReport(PhtPlot):
 
     # -- section "grid" -----------------------------------------------------
 
-    @figure(title="Centroids with Grid Overlay", section=_SECTION_GRID)
+    @figure(title="Centroids with Grid Overlay", backend="plotly", section=_SECTION_GRID)
     def fig_center_scatter(self) -> go.Figure:
         """Scatter of weighted object centroids overlaid with grid edges.
 
@@ -399,7 +399,7 @@ class GridFitReport(PhtPlot):
 
     # -- section "axis" -----------------------------------------------------
 
-    @figure(title="Adjacent-Center Spacing", section=_SECTION_AXIS)
+    @figure(title="Adjacent-Center Spacing", backend="plotly", section=_SECTION_AXIS)
     def fig_successive_diffs(self) -> go.Figure:
         """Distribution of successive center diffs per axis with pitch markers.
 
@@ -486,7 +486,7 @@ class GridFitReport(PhtPlot):
             fig.update_xaxes(range=[0, 1.05 * upper])
         return fig
 
-    @figure(title="Axis Occupancy", section=_SECTION_AXIS)
+    @figure(title="Axis Occupancy", backend="plotly", section=_SECTION_AXIS)
     def fig_axis_occupancy(self) -> go.Figure:
         """Per-cell detection counts per axis with empty-cell highlighting.
 
@@ -532,7 +532,7 @@ class GridFitReport(PhtPlot):
 
     # -- section "summary" --------------------------------------------------
 
-    @figure(title="Summary", section=_SECTION_SUMMARY)
+    @figure(title="Summary", backend="plotly", section=_SECTION_SUMMARY)
     def fig_summary_table(self) -> go.Figure:
         """Grid-fit summary as a two-column ``go.Table``.
 
