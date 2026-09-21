@@ -115,6 +115,7 @@ def evaluate_roi(
         robust_shifts: np.ndarray,
         clipped: np.ndarray,
         limits: QcLimits,
+        empty_tiles: int = 0,
 ) -> QcRecord:
     """Score one ROI against *limits*.
 
@@ -131,12 +132,19 @@ def evaluate_roi(
         robust_shifts: Per-tile colour displacement under trimming.
         clipped: Per-tile clipped fractions.
         limits: Thresholds to apply.
+        empty_tiles: Tiles whose box fell outside the ROI and measured nothing.
 
     Returns:
         A :class:`QcRecord`.
     """
     flags: list[str] = []
     warns: list[str] = []
+
+    if empty_tiles:
+        flags.append(
+                f"{empty_tiles} tile box(es) fall outside the ROI and measured "
+                "nothing; the lattice does not fit this rectangle"
+        )
 
     mean_impurity = float(np.nanmean(impurities)) if impurities.size else float("nan")
     worst_impurity = float(np.nanmax(impurities)) if impurities.size else float("nan")

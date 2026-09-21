@@ -168,6 +168,24 @@ def test_a_blank_card_is_refused_rather_than_guessed_at(cards) -> None:
     assert result.margin < MIN_PLACEMENT_MARGIN
 
 
+def test_a_missing_tile_is_left_out_rather_than_poisoning_the_score(cards) -> None:
+    """A NaN tile (a box outside the ROI) must not vote or normalise.
+
+    Luminance is normalised by the block's brightest tile, so one NaN used to
+    turn every feature NaN and crash the Hungarian corroboration.
+    """
+    block = cards["blocks"][0].astype(float).copy()
+    candidates = placements(chart_grid(cards["names"]), block.shape[:2])
+    clean = assign_placement(block, candidates, cards["ref_linear"])
+
+    block[-1, :] = np.nan
+    result = assign_placement(block, candidates, cards["ref_linear"])
+
+    assert np.isfinite(result.margin)
+    assert result.placement == clean.placement
+    assert result.n_tiles == block.shape[0] * block.shape[1] - block.shape[1]
+
+
 def test_hungarian_corroborates_but_never_decides(cards) -> None:
     """A free assignment agrees on clean cards; it is reported, not obeyed."""
     grid = chart_grid(cards["names"])

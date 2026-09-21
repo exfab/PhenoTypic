@@ -306,11 +306,18 @@ class CalibrateColorRpcc(ImageCorrector):
             # Index explicitly by (row, col): CheckerLattice.boxes() yields
             # column-major, so reshaping the flat list would transpose the
             # card and mislabel every patch.
-            observed = np.empty((lattice.nrows, len(lattice.columns), 3))
+            observed = np.full((lattice.nrows, len(lattice.columns), 3), np.nan)
             for tile in tiles:
-                observed[tile.row, tile.col] = colour.cctf_decoding(
-                        np.clip(tile.srgb, 0, 1), function="sRGB"
-                )
+                if tile.n_pixels:
+                    observed[tile.row, tile.col] = colour.cctf_decoding(
+                            np.clip(tile.srgb, 0, 1), function="sRGB"
+                    )
+            empty = sum(1 for tile in tiles if not tile.n_pixels)
+            if empty == len(tiles):
+                records.append(self._refusal(
+                        index, roi, "every tile box falls outside the ROI"
+                ))
+                continue
             identity = assign_placement(observed, candidates, ref_linear)
 
             record = evaluate_roi(
@@ -329,6 +336,7 @@ class CalibrateColorRpcc(ImageCorrector):
                     robust_shifts=np.array([t.robust_shift for t in tiles]),
                     clipped=np.array([t.clipped for t in tiles]),
                     limits=self.qc_limits,
+                    empty_tiles=empty,
             )
             records.append(record)
 
@@ -336,6 +344,8 @@ class CalibrateColorRpcc(ImageCorrector):
             # ``on_qc_fail`` policy below decides whether they are used.
             # Dropping them here would make "warn" behave like "skip".
             for tile in tiles:
+                if not tile.n_pixels:
+                    continue
                 name = identity.placement.names[tile.row][tile.col]
                 if name in measured:
                     raise ValueError(

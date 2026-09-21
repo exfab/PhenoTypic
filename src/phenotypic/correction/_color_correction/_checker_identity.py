@@ -233,13 +233,18 @@ def assign_placement(
         )
     n_rows, n_cols = observed.shape[:2]
     flat_observed = observed.reshape(-1, 3)
-    obs_features = identity_features(flat_observed)
+    # A tile whose box missed the ROI measured nothing. Excluding it only
+    # from the vote is not enough: luminance is normalised by the block's
+    # brightest tile, so a NaN anywhere would make every feature NaN.
+    finite = np.isfinite(flat_observed).all(axis=1)
+    obs_features = np.full_like(flat_observed, np.nan)
+    obs_features[finite] = identity_features(flat_observed[finite])
 
     mask = (
         np.ones(n_rows * n_cols, dtype=bool)
         if voting is None
         else np.asarray(voting, dtype=bool).reshape(-1)
-    )
+    ) & finite
     if not mask.any():
         raise ValueError("No tiles are allowed to vote.")
 
@@ -260,7 +265,8 @@ def assign_placement(
                     f"Placement {placement.name!r} names patch {exc} which the "
                     "reference chart does not have."
             ) from None
-        ref_features = identity_features(reference)
+        ref_features = np.full_like(reference, np.nan)
+        ref_features[finite] = identity_features(reference[finite])
         distance = np.linalg.norm(
                 obs_features[mask] - ref_features[mask], axis=1
         ).mean()
@@ -276,7 +282,7 @@ def assign_placement(
             runner_up=runner_up,
             margin=runner_up - best_score,
             hungarian_agreement=_hungarian_agreement(
-                    obs_features, best, reference_linear
+                    obs_features, best, reference_linear, finite
             ),
             n_tiles=int(mask.sum()),
     )
@@ -286,19 +292,22 @@ def _hungarian_agreement(
         obs_features: np.ndarray,
         placement: Placement,
         reference_linear: Mapping[str, np.ndarray],
+        rows: np.ndarray,
 ) -> int:
     """Tiles a free assignment labels the same way as *placement*.
 
     Corroboration only.  This must never decide identity: a free permutation
     relabels an occluded tile onto whatever reference happens to fit it.
+    Only tiles flagged in *rows* take part.
     """
     from scipy.optimize import linear_sum_assignment
 
     names = [name for row in placement.names for name in row]
+    names = [name for name, keep in zip(names, rows) if keep]
     reference = np.vstack([reference_linear[name] for name in names])
     ref_features = identity_features(reference)
     cost = np.linalg.norm(
-            obs_features[:, None, :] - ref_features[None, :, :], axis=2
+            obs_features[rows][:, None, :] - ref_features[None, :, :], axis=2
     )
-    rows, cols = linear_sum_assignment(cost)
-    return int(sum(1 for r, c in zip(rows, cols) if r == c))
+    assigned_rows, assigned_cols = linear_sum_assignment(cost)
+    return int(sum(1 for r, c in zip(assigned_rows, assigned_cols) if r == c))
