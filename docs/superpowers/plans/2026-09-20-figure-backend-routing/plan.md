@@ -2178,3 +2178,62 @@ The captured baseline is 11,106 tests with 81 pre-existing failures, all outside
 - [ ] **Step 6: Report**
 
 Post the failure list by name, not a total. State no number that a command did not just print this turn.
+
+---
+
+## Execution: clusters, models, gates
+
+Derived from the per-task `Files` / `Interfaces` blocks. This is a view of the
+plan, not a separate artifact — if a task's files change, fix this table.
+
+### Dependency DAG (file-level)
+
+```
+C1  T1,T2,T3   abc_/plotting/{_output,_pht_plot,__init__}.py, _pipeline/_adapter.py
+C2  T4,T8      _pipeline/{_backends,_failures,__init__}.py, sdk_/{_io_constants,__init__}.py
+C3  T5,T6      _pipeline/{_adapter,_writer}.py                  needs C1, C2
+C4  T7         _pipeline/_backends.py, _cli/_cli_validation.py  needs C2
+C5  T9         _pipeline/_coordinator.py, _cli/_cli_staged_workers.py  needs C2, C3
+C6  T10        tests/integration/plotting/                      needs C1-C5
+C7  T11        6 src modules                                    needs C1-C3 merged
+C8  T12        2 test modules                                   needs C1-C3 merged
+C9  T13        docs/, abc_/CLAUDE.md                            needs C1-C6
+```
+
+### Clusters
+
+| # | Tasks | Shape | Model | Why |
+|---|---|---|---|---|
+| C1 | T1–T3 | Keystone + Leaf | Opus, high | The declaration itself. T3 is a 6-line guard in the file T2 just rewrote — folding it in avoids a second context load of `_pht_plot.py`. |
+| C2 | T4, T8 | Keystone ×2 | Opus, high | Two new self-contained modules that both extend `_io_constants.py`. Shared file forces one cluster; both carry subtle contracts (memoisation, lock semantics, never-raise). |
+| C3 | T5, T6 | Keystone | Opus, high | Both rewrite the same function in `_writer.py`. Splitting would mean a mid-function commit that cannot be green. |
+| C4 | T7 | **Seam** | Opus, high | Changes CLI validation behaviour for every run. Isolated for its own gate despite being small — risk is not size. |
+| C5 | T9 | **Seam** | Opus, high | Five exception handlers, a `try` boundary move, and a cross-file `strict=` removal. The highest-risk wiring in the change. |
+| C6 | T10 | Verification | Opus, high | Proves C1–C5 compose. Doubles as the phase gate. |
+| C7 | T11 | **Sweep** | Sonnet, medium | 27 mechanical annotations, verified by import + a zero-count grep. |
+| C8 | T12 | **Sweep** | Sonnet, medium | 11 mechanical annotations. |
+| C9 | T13 | Leaf (judgment) | Opus, high | Prose and a three-case rule the audit found stated wrongly. Not mechanical. |
+
+### Gates
+
+- **Pre-dispatch:** `plan-reviewer` over the plan. Resolve criticals before any code.
+- **Per cluster:** orchestrator reads the diff and runs the cluster's own tests.
+- **Deep, after C5:** `implementation-test-reviewer` over the combined C1–C5 diff —
+  the phase added tests, so the question is whether they can fail, not whether
+  they pass.
+- **After C9:** one `code-simplifier` pass, quality only.
+- **End:** T14 full sharded regression as a Slurm job.
+
+### Parallelism: none taken, deliberately
+
+C1∥C2 and C7∥C8 have zero file overlap and are genuine candidates. Both are
+declined:
+
+- The DAG is near-linear — C3 needs both C1 and C2 — so parallelising the one
+  early pair saves a single cluster of wall-clock against the cost of a second
+  worktree and a merge.
+- Same-worktree parallelism is the failure the `orchestrate-subagent` skill
+  names directly: one agent runs verification while another is mid-edit, and the
+  resulting transient failure costs more to diagnose than the time saved.
+
+C7∥C8 are mechanical and fast; sequencing them costs minutes.
