@@ -57,6 +57,7 @@ import pickle
 import shutil
 import stat
 import struct
+import sys
 import tempfile
 from collections.abc import Iterable, Mapping
 from contextlib import ExitStack, contextmanager
@@ -163,12 +164,18 @@ _HDF_SUFFIXES = frozenset({".h5", ".hdf5", ".hdf"})
 _SUPERSEDED_STATUS_PREFIX = "status.superseded-"
 _REJECTED_STATUS_PREFIX = "status.rejected-"
 _RENAME_NOREPLACE = 1
-try:
-    _RENAMEAT2: Any = getattr(
-        ctypes.CDLL(None, use_errno=True), "renameat2", None
-    )
-except OSError:
-    _RENAMEAT2 = None
+_RENAMEAT2: Any = None
+if sys.platform.startswith("linux"):
+    # ``renameat2`` is a Linux-only syscall; ``ctypes.CDLL(None)`` (dlopen the
+    # process's own symbol table) is itself POSIX-only and raises ``TypeError``
+    # on Windows rather than ``OSError``, so this is gated by platform instead
+    # of relying on the CDLL call to fail cleanly everywhere.
+    try:
+        _RENAMEAT2 = getattr(
+            ctypes.CDLL(None, use_errno=True), "renameat2", None
+        )
+    except OSError:
+        _RENAMEAT2 = None
 
 
 def _libc_renameat2() -> Any:

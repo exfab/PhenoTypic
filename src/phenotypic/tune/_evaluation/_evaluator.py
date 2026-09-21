@@ -385,11 +385,19 @@ class Evaluator(BaseModel):
             # before measuring — ``measure`` alone only runs measurement ops on
             # whatever object state already exists, so a raw (undetected) image
             # would yield zero objects. ``inplace=False`` works on a copy so the
-            # shared calibration image stays pristine across trials and rungs.
-            measurements = candidate.apply_and_measure(
-                image, inplace=False, apply_post=False
-            )
-            for term, value in scorer.score_image(image, measurements).items():
+            # shared calibration image stays pristine across trials and rungs;
+            # ``apply`` (not ``apply_and_measure``) so that copy — the one
+            # carrying the detected ``objmap`` — is captured and scored, not the
+            # untouched original ``image`` (which ``apply_and_measure`` never
+            # returns, since it only hands back the measurement DataFrame).
+            #
+            # The copy is deliberately *not* retained past this call: a scorer
+            # keys its per-image state on a stable attribute of the image (the
+            # ``name`` the copy carries over), never on ``id()``, which is only
+            # unique among objects that are alive at the same time.
+            processed = candidate.apply(image=image, inplace=False)
+            measurements = candidate.measure(image=processed, apply_post=False)
+            for term, value in scorer.score_image(processed, measurements).items():
                 per_term.setdefault(term, []).append(float(value))
         except Exception:
             return True
