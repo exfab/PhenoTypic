@@ -805,6 +805,9 @@ DIR_OVERLAYS: Final[str] = "overlays"
 #: Configured plot outputs: ``<output>/deliverables/plots/``.
 DIR_PLOTS: Final[str] = "plots"
 
+#: Shared Plotly bundle for published HTML pages: ``<plots>/plotly.min.js``.
+PLOTLYJS_BUNDLE: Final[str] = "plotly.min.js"
+
 #: Mid-run chunk parquet subdirectory: ``<progress>/chunks/``.
 DIR_CHUNKS: Final[str] = "chunks"
 
@@ -1105,6 +1108,20 @@ def deliverables_dir(output_dir: Path) -> Path:
 def plots_dir(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/plots/``."""
     return deliverables_dir(output_dir) / DIR_PLOTS
+
+
+def plotlyjs_bundle_path(plots_base: Path) -> Path:
+    """Return ``<plots_base>/plotly.min.js``.
+
+    Keyed on the resolved plots directory rather than the output root, because
+    the GUI's portable bundle layout has no ``deliverables/`` segment.
+
+    One bundle per run, shared by every published HTML page regardless of
+    depth. Plotly's own ``include_plotlyjs="directory"`` writes a 4.8 MB copy
+    into every directory it touches, and a multi-page image plot gets one
+    directory per image -- gigabytes on a real run.
+    """
+    return plots_base / PLOTLYJS_BUNDLE
 
 
 def event_log_path(output_dir: Path) -> Path:

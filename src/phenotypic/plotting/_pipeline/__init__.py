@@ -30,6 +30,12 @@ from ._analysis_registry import (
     AnalysisRegistry,
     AnalysisResult,
 )
+from ._backends import (
+    chrome_available,
+    ensure_plotlyjs_bundle,
+    plotlyjs_src_for,
+    reset_chrome_probe,
+)
 from ._bindings import (
     AnalysisInput,
     MeasurementInput,
@@ -68,16 +74,20 @@ __all__ = [
     "QcPlotSubject",
     "analysis_manifest_path",
     "build_analysis_manifest_entry",
+    "chrome_available",
     "deserialize_plot_bindings",
+    "ensure_plotlyjs_bundle",
     "file_sha256",
     "named_analysis_csv_path",
     "named_analysis_parquet_path",
     "named_analysis_paths",
     "normalize_plot_bindings",
+    "plotlyjs_src_for",
     "publish_analysis_manifest_entry",
     "publish_plot_output",
     "read_analysis_manifest",
     "recover_analysis_publication",
+    "reset_chrome_probe",
     "safe_path_component",
     "serialize_plot_binding",
     "validate_analysis_id",
