@@ -133,7 +133,6 @@ def test_medoid_uses_only_the_objects_own_pixels(ring_around_foreign_colony):
 
     lab = image.color.Lab[:]
     ring_lab = lab[objmap == 1].astype(np.float64)
-    foreign_lab = lab[objmap == 2].astype(np.float64)
     expected = _exhaustive_de2000_medoid(ring_lab)
 
     df = MeasureColor().measure(image)
@@ -141,7 +140,93 @@ def test_medoid_uses_only_the_objects_own_pixels(ring_around_foreign_colony):
     measured = np.array([row[str(col)] for col in _MEDOID_COLUMNS], dtype=np.float64)
 
     np.testing.assert_allclose(measured, expected, rtol=0, atol=1e-9)
-    assert not np.any(np.all(np.isclose(foreign_lab, measured, rtol=0, atol=1e-6), axis=1))
+
+
+def _sorted_rows(points: np.ndarray) -> np.ndarray:
+    """Rows in lexicographic order, so two pixel multisets compare with ``==``."""
+    points = np.asarray(points, dtype=np.float64)
+    return points[np.lexsort(points.T[::-1])]
+
+
+def test_measure_color_calls_the_shared_medoid_on_each_objects_own_pixels(
+    ring_around_foreign_colony, monkeypatch
+):
+    """Pins requirement 1 and 2 at the call site, not through the output.
+
+    One call per label, with the operation's candidate count, and with exactly
+    that label's pixels -- no background, no neighbour sharing the bounding box.
+    """
+    from phenotypic.measure import _measure_color
+
+    real = _measure_color.candidate_medoid
+    calls: list[tuple[np.ndarray, int]] = []
+
+    def spy(lab_px, k=256, *args, **kwargs):
+        calls.append((np.array(lab_px, dtype=np.float64, copy=True), k))
+        return real(lab_px, k, *args, **kwargs)
+
+    monkeypatch.setattr(_measure_color, "candidate_medoid", spy)
+    image = ring_around_foreign_colony
+    op = MeasureColor(medoid_candidates=97)
+    op.measure(image)
+
+    objmap = image.objmap[:]
+    lab = image.color.Lab[:]
+    labels = [label for label in np.unique(objmap) if label != 0]
+    assert len(calls) == len(labels) == 2
+    for label, (lab_px, k) in zip(labels, calls):
+        assert k == op.medoid_candidates
+        np.testing.assert_array_equal(_sorted_rows(lab_px), _sorted_rows(lab[objmap == label]))
+
+
+@pytest.fixture(scope="module")
+def two_lobe_colony():
+    """One object, 900 px of a tan and 300 px of a redder tan, ~23 ΔE76 apart.
+
+    On a two-lobe cloud the exhaustive ΔE2000 medoid is not the pixel nearest
+    the geometric median (the ring fixture's isotropic noise puts both on the
+    same pixel), so this is where the shared estimator can be told apart from
+    a nearest-to-centre shortcut. The seed is fixed: the control assertion in
+    the test proves this draw discriminates.
+    """
+    rng = np.random.default_rng(1)
+    n_px, n_minor = 1200, 300
+    minor = np.zeros(n_px, dtype=bool)
+    minor[rng.permutation(n_px)[:n_minor]] = True
+    pixels = np.where(minor[:, None], [0.75, 0.45, 0.35], [0.60, 0.50, 0.35])
+    pixels = np.clip(pixels + rng.normal(0.0, 0.006, (n_px, 3)), 0.0, 1.0)
+
+    rgb = np.full((50, 50, 3), 0.05)
+    objmap = np.zeros((50, 50), dtype=np.uint16)
+    block = (slice(5, 35), slice(5, 45))
+    rgb[block] = pixels.reshape(30, 40, 3)
+    objmap[block] = 1
+    image = Image(rgb)
+    image.objmap[:] = objmap
+    return image
+
+
+def test_medoid_is_the_shared_estimator_not_the_pixel_nearest_the_centre(two_lobe_colony):
+    from phenotypic.util import candidate_medoid, robust_color_center
+    from phenotypic.util._robust_color_stats import GEOMEDIAN_MAX_ITER, GEOMEDIAN_TOL
+
+    image = two_lobe_colony
+    object_px = image.color.Lab[:][image.objmap[:] == 1].astype(np.float64)
+    expected = candidate_medoid(object_px).lab
+
+    # Control: the fixture discriminates. The shared estimator agrees with the
+    # independent exhaustive medoid, and neither is the pixel nearest the
+    # geometric median -- tight (the candidate seed) or loose (the reported
+    # GeoMedian columns).
+    np.testing.assert_array_equal(expected, _exhaustive_de2000_medoid(object_px))
+    for max_iter, tol in ((GEOMEDIAN_MAX_ITER, GEOMEDIAN_TOL), (50, 1e-4)):
+        centre = robust_color_center(object_px, max_iter=max_iter, tol=tol)
+        nearest = object_px[int(np.argmin(np.linalg.norm(object_px - centre, axis=1)))]
+        assert not np.array_equal(nearest, expected)
+
+    df = MeasureColor().measure(image)
+    measured = np.array([df[str(col)].iloc[0] for col in _MEDOID_COLUMNS], dtype=np.float64)
+    np.testing.assert_allclose(measured, expected, rtol=0, atol=1e-9)
 
 
 def test_medoid_is_deterministic(ring_around_foreign_colony, detected_image):
