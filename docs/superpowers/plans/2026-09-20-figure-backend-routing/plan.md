@@ -1436,6 +1436,11 @@ without threading it leaves the inner default silently wrong).
 Replace the per-page body with:
 
 ```python
+    # NOT `plots_base or directory`. Defaulting to the page directory writes a
+    # 4.8 MB bundle into EVERY directory -- one per image for a multi-page image
+    # plot -- which is the gigabyte trap this design exists to avoid, and it
+    # does so while emitting a correct-looking relative src. The C5 test asserts
+    # exactly one plotly.min.js exists in the whole output tree.
     base = plots_base if plots_base is not None else directory
 
     for page in output.pages:

@@ -19,9 +19,20 @@ logger = logging.getLogger(__name__)
 _CHROME: bool | None = None
 
 #: Smallest size a complete bundle can plausibly have, used to detect a
-#: truncated or half-written file rather than trusting mere existence. A bare
-#: ``is_file()`` check would accept the zero-byte remnant of an interrupted
-#: write as a finished bundle, and every page pointed at it would load nothing.
+#: truncated file rather than trusting mere existence.
+#:
+#: Note what this does NOT guard: :func:`ensure_plotlyjs_bundle` writes to a
+#: temporary sibling and ``os.replace``s it, which is atomic, so *this* function
+#: cannot leave a half-written bundle behind. The floor guards what it did not
+#: write -- a file truncated by a full filesystem, copied in by hand, produced
+#: by a different tool, or left by an older implementation. An earlier version
+#: of this comment justified the floor by "the zero-byte remnant of an
+#: interrupted write", which ``os.replace`` makes impossible here.
+#:
+#: Measured 2026-09-21: ``len(get_plotlyjs())`` is 4,847,452 chars /
+#: 4,847,499 utf-8 bytes on plotly 6.6.0 -- 4.85x this floor. The comparison is
+#: against ``st_size``, i.e. BYTES, which is the correct side: the bundle is not
+#: pure ASCII, so chars and bytes differ by 47.
 _MIN_BUNDLE_BYTES = 1_000_000
 
 
@@ -40,7 +51,17 @@ def chrome_available() -> bool:
     *deciding what to publish*; the two coexist deliberately.
 
     Returns:
-        ``True`` if a PNG can be produced, ``False`` otherwise. Never raises.
+        ``True`` if a PNG can be produced, ``False`` otherwise.
+
+    Never raises -- but note that is a weaker guarantee than always returning
+    promptly. kaleido 1.2.0 bounds the *render* (``Kaleido.__init__`` defaults
+    ``timeout=90``; ``calc_fig`` wraps it in ``asyncio.wait_for``), so a cleanly
+    failing browser costs at most ~90 s. Everything *before* the render is
+    unbounded: ``_get_kaleido_tab`` is a bare queue await and browser launch
+    sits outside that wait. A present-but-hung Chrome is therefore the one input
+    whose termination is unproven -- and it is exactly the input this probe was
+    chosen over a binary check to catch. This runs on the submitting process
+    during CLI validation, so a hang blocks submission rather than failing it.
     """
     global _CHROME
     if _CHROME is not None:
@@ -76,6 +97,13 @@ def ensure_plotlyjs_bundle(plots_base: Path) -> Path:
 
     Returns:
         Path to the bundle.
+
+    Raises:
+        ArtifactLockTimeout: If the bundle lock cannot be acquired. This is
+            **not** swallowed: a caller that cannot obtain the bundle cannot
+            write a page that references it, so failing here is correct. Note
+            this makes the function unsuitable for use inside an ``except``
+            block that must not raise.
     """
     from phenotypic.sdk_ import plotlyjs_bundle_path
 
@@ -116,6 +144,16 @@ def plotlyjs_src_for(page_dir: Path, bundle: Path) -> str:
 
     Returns:
         A relative POSIX path such as ``"../../plotly.min.js"``.
+
+    Note:
+        Both arguments must be anchored the same way -- both absolute or both
+        relative. ``os.path.relpath`` is purely lexical, so it resolves a
+        relative argument against the *process cwd*, and a mixed pair yields a
+        path that is both wrong and dependent on where the process was
+        launched. Every caller descends from ``PlotCoordinator._plots_base``
+        and so is consistently anchored; this note exists because nothing in
+        the signature enforces it. Cross-mount pairs are fine -- lexical means
+        no filesystem is consulted.
     """
     return Path(os.path.relpath(bundle, page_dir)).as_posix()
 

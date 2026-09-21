@@ -75,9 +75,14 @@ def record_plot_failure(
         dataset: Dataset name, for the image lifecycle only.
         image_stem: Image stem, for the image lifecycle only.
     """
-    from phenotypic.sdk_ import plot_failures_jsonl_path
-
     try:
+        # Inside the handler, not above it. A lazy import can fail -- a circular
+        # import, a partially-initialised package during interpreter shutdown --
+        # and "every step is inside the one handler" was false while this sat
+        # outside. That sentence is the generalisation drawn from this module's
+        # own two defects; it should not be the third.
+        from phenotypic.sdk_ import plot_failures_jsonl_path
+
         entry: dict[str, str] = {
             "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "binding_id": binding_id,
