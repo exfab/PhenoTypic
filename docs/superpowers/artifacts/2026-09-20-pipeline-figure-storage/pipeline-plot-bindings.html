@@ -1,0 +1,946 @@
+<title>Pipeline Plot Bindings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --navy: #003660;
+    --blue: #1b75bc;
+    --gold: #febc11;
+    --gold-text: #a87a00;
+    --bg: #fbfef8;
+    --surface: #ffffff;
+    --border: #dde3ed;
+    --rule: #e8ecf2;
+    --muted: #8892a4;
+    --body: #2e3a4e;
+    --heading: #003660;
+    --code-bg: #edf2f7;
+    --blue-wash: rgba(27, 117, 188, 0.04);
+    --blue-wash-2: rgba(27, 117, 188, 0.08);
+    --green: #009e73;
+    --green-text: #006b4f;
+    --orange: #e69f00;
+    --orange-text: #9a6b00;
+    --vermilion: #d55e00;
+    --sky: #56b4e9;
+    --sky-text: #0b6e9e;
+    --purple-text: #8b3d6e;
+
+    --font-display: 'Comfortaa', -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    --font-body: 'Comfortaa', -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    --font-chart: 'IBM Plex Sans', -apple-system, "Segoe UI", Arial, sans-serif;
+
+    --radius-sm: 3px;
+    --radius: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 3px rgba(0, 54, 96, 0.07), 0 1px 2px rgba(0, 54, 96, 0.04);
+    --shadow: 0 4px 12px rgba(0, 54, 96, 0.08), 0 1px 3px rgba(0, 54, 96, 0.05);
+  }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--body);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 62rem;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 0 4rem;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    color: var(--heading);
+    font-weight: 600;
+    text-wrap: balance;
+    margin: 0;
+  }
+  h1 { font-size: 2.35rem; line-height: 1.1; letter-spacing: -0.02em; font-weight: 700; }
+  h2 { font-size: 1.4rem; line-height: 1.25; letter-spacing: -0.01em; }
+  h3 { font-size: 1.0625rem; line-height: 1.3; }
+  p { margin: 0 0 0.9rem; max-width: 68ch; }
+  a { color: var(--blue); }
+
+  .overline {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 0.6rem;
+  }
+
+  code, .mono { font-family: var(--font-mono); font-size: 0.85em; }
+  p code, li code, td code, th code, dd code, dt code {
+    background: var(--code-bg);
+    padding: 0.1em 0.38em;
+    border-radius: var(--radius-sm);
+    color: var(--navy);
+  }
+
+  /* ---------- masthead ---------- */
+  header.mast {
+    border-bottom: 3px solid var(--navy);
+    padding-block: 3rem 1.75rem;
+  }
+  .mast .kicker {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold-text);
+    margin-bottom: 0.9rem;
+  }
+  .lede {
+    font-size: 1.0625rem;
+    max-width: 66ch;
+    margin-top: 1.1rem;
+  }
+
+  /* ---------- verdict strip ---------- */
+  .verdicts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-block: 2rem;
+  }
+  .verdict { background: var(--surface); padding: 1.1rem 1.15rem; }
+  .verdict .q {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 0.45rem;
+  }
+  .verdict .a {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.0625rem;
+    color: var(--heading);
+    line-height: 1.25;
+    display: block;
+    margin-bottom: 0.35rem;
+  }
+  .verdict .note { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+  .verdict.yes { border-left: 3px solid var(--green); }
+  .verdict.qualified { border-left: 3px solid var(--orange); }
+  .verdict.naming { border-left: 3px solid var(--blue); }
+
+  section { padding-block: 2.5rem 0; }
+  section > h2 + p { margin-top: 0.55rem; }
+
+  .rule-hr { border: 0; border-top: 1px solid var(--rule); margin: 2.75rem 0 0; }
+
+  /* ---------- code ---------- */
+  pre {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.55;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--blue);
+    border-radius: var(--radius-sm);
+    padding: 0.95rem 1.05rem;
+    overflow-x: auto;
+    margin: 0 0 1rem;
+    color: var(--body);
+  }
+  pre.terminal {
+    background: var(--navy);
+    color: #dbe7f2;
+    border-color: var(--navy);
+    border-left-color: var(--gold);
+  }
+  pre.terminal .c { color: #9fb6c9; }
+  pre.terminal .ok { color: #7fd6b8; }
+  pre.terminal .warn { color: #f5c46a; }
+  .cap {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin: -0.55rem 0 1.5rem;
+    line-height: 1.45;
+  }
+  .cap b { color: var(--body); font-weight: 500; }
+
+  /* ---------- tables ---------- */
+  .tablewrap { overflow-x: auto; margin-bottom: 0.5rem; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 34rem; }
+  th {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    padding: 0.5rem 0.75rem 0.5rem 0;
+    border-bottom: 1.5px solid var(--navy);
+    vertical-align: bottom;
+    white-space: nowrap;
+  }
+  td {
+    padding: 0.62rem 0.75rem 0.62rem 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  tbody tr:hover { background: rgba(27, 117, 188, 0.03); }
+  td.mono, th.mono { font-family: var(--font-mono); font-size: 12px; }
+  .src { font-family: var(--font-mono); font-size: 11.5px; color: var(--sky-text); white-space: nowrap; }
+
+  /* ---------- pills ---------- */
+  .pill {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.14em 0.5em;
+    border-radius: var(--radius-pill, 9999px);
+    border: 1px solid;
+    white-space: nowrap;
+  }
+  .pill.img { color: var(--sky-text); border-color: var(--sky); background: rgba(86, 180, 233, 0.09); }
+  .pill.meas { color: var(--green-text); border-color: var(--green); background: rgba(0, 158, 115, 0.09); }
+  .pill.ana { color: var(--purple-text); border-color: #cc79a7; background: rgba(204, 121, 167, 0.1); }
+  .pill.qc { color: var(--orange-text); border-color: var(--orange); background: rgba(230, 159, 0, 0.1); }
+  .pill.none { color: var(--vermilion); border-color: var(--vermilion); background: rgba(213, 94, 0, 0.08); }
+
+  /* ---------- diagram ---------- */
+  figure.diagram { margin: 1.25rem 0 0.4rem; }
+  .diagramscroll { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+  .diagramscroll svg { display: block; min-width: 720px; width: 100%; height: auto; }
+
+  /* ---------- callouts ---------- */
+  .callout {
+    background: var(--blue-wash);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--gold);
+    border-radius: var(--radius-sm);
+    padding: 1rem 1.15rem;
+    margin: 1.25rem 0;
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .lbl {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gold-text);
+    display: block;
+    margin-bottom: 0.4rem;
+  }
+
+  /* ---------- findings ---------- */
+  ol.findings { list-style: none; counter-reset: f; padding: 0; margin: 1.25rem 0 0; }
+  ol.findings > li {
+    counter-increment: f;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.05rem 1.15rem 1.05rem 3.2rem;
+    position: relative;
+    margin-bottom: 0.85rem;
+    box-shadow: var(--shadow-sm);
+  }
+  ol.findings > li::before {
+    content: counter(f, decimal-leading-zero);
+    position: absolute;
+    left: 1.15rem;
+    top: 1.05rem;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gold-text);
+  }
+  ol.findings h3 { margin-bottom: 0.35rem; }
+  ol.findings p { font-size: 13.5px; margin-bottom: 0.55rem; }
+  ol.findings p:last-child { margin-bottom: 0; }
+  .sev {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-left: 0.5rem;
+    vertical-align: 0.15em;
+  }
+  .sev.trap { color: var(--vermilion); }
+  .sev.doc { color: var(--sky-text); }
+  .sev.env { color: var(--orange-text); }
+
+  /* ---------- tree ---------- */
+  .tree {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.75;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 1rem 1.15rem;
+    overflow-x: auto;
+    margin-bottom: 0.5rem;
+  }
+  .tree .dim { color: var(--muted); }
+  .tree .hl { color: var(--navy); font-weight: 600; }
+  .tree .ann { color: var(--gold-text); }
+
+  footer.colophon {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--rule);
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  footer.colophon code { background: var(--code-bg); padding: 0.1em 0.35em; border-radius: var(--radius-sm); }
+
+  dl.evidence { margin: 1rem 0 0; }
+  dl.evidence dt {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--navy);
+    font-weight: 500;
+    margin-top: 0.85rem;
+  }
+  dl.evidence dd { margin: 0.15rem 0 0; font-size: 13.5px; }
+
+  @media (max-width: 600px) {
+    h1 { font-size: 1.85rem; }
+    .wrap { padding-inline: 16px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <div class="kicker">PhenoTypic · source trace · 2026-09-20</div>
+    <h1>Pipeline Plot Bindings</h1>
+    <p class="lede">
+      How a configured figure producer is attached to an <code>ImagePipeline</code>, resolved into a
+      binding, serialized without being copied, dispatched at its lifecycle, and published to
+      <code>deliverables/plots/</code> — traced through the source and verified by running it.
+    </p>
+  </header>
+
+  <div class="verdicts">
+    <div class="verdict naming">
+      <span class="q">The parameter</span>
+      <span class="a">It is <code>plots</code>, not <code>figures</code></span>
+      <span class="note"><code>figures</code> is a different thing: a method on <code>PhtPlot</code> that binds a
+      subject for a renderer. The pipeline slot is <code>plots</code>.</span>
+    </div>
+    <div class="verdict yes">
+      <span class="q">MeasureFeatures → plots</span>
+      <span class="a">Yes, and two ship that way</span>
+      <span class="note"><code>MeasureSymZones</code> and <code>MeasureOrientationZones</code> are measurers
+      <em>and</em> <code>PlotImage</code> providers. Binding keys on the <code>meas</code> slot.</span>
+    </div>
+    <div class="verdict qualified">
+      <span class="q">ImageOperation → plots</span>
+      <span class="a">Yes structurally — none ship</span>
+      <span class="note">The <code>ops</code> slot is in the identity registry and the GPU splitter has a
+      guard for it, but no shipped operation mixes in a lifecycle.</span>
+    </div>
+  </div>
+
+  <section>
+    <p class="overline">The one correction worth making first</p>
+    <h2>An operation is not "stored into" the figures param — it is referenced from it</h2>
+    <p>
+      The mental model matters because it is what the whole design is built around. Putting an object
+      into <code>plots</code> does <strong>not</strong> put a second copy of that object into the pipeline.
+      Normalization walks an identity registry of everything already in <code>ops</code>, <code>meas</code>,
+      <code>post</code>, <code>filters</code>, <code>model</code> and <code>qc</code>, and if the object
+      you passed <em>is</em> (by <code>is</code>, not <code>==</code>) one of those, the binding records a
+      <em>reference</em> to that slot and key instead.
+    </p>
+    <div class="callout">
+      <span class="lbl">Why identity and not equality</span>
+      <p>
+        Every operation is a pydantic model. Two distinct <code>OtsuDetector()</code> instances compare
+        equal and dump to identical parameter dictionaries — equality could not tell "the measurer already
+        in the pipeline" from "a second, unrelated measurer configured the same way." The comment at
+        <span class="src">_bindings.py:119-121</span> calls this out as load-bearing, and
+        <code>_identity_ref</code> (<span class="src">_bindings.py:357</span>) does a
+        <code>candidate is plot</code> scan.
+      </p>
+    </div>
+  </section>
+
+  <hr class="rule-hr">
+
+  <section>
+    <p class="overline">Anatomy</p>
+    <h2>Four contracts, in the order a figure passes through them</h2>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Contract</th><th>Where</th><th>What it is</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">PhtPlot</td>
+            <td class="src">abc_/plotting/_pht_plot.py:265</td>
+            <td>A fieldless, constructor-free methods-only mixin. No pydantic fields, no schema change —
+              which is exactly why an existing operation model can gain it without altering its
+              serialization.</td>
+          </tr>
+          <tr>
+            <td class="mono">@figure</td>
+            <td class="src">abc_/plotting/_pht_plot.py:131</td>
+            <td>Decorates a method as a figure builder, records a <code>FigureSpec</code>
+              (title, section, controls, primary, definition order) on it, and wraps the call in
+              <code>apply_theme</code>.</td>
+          </tr>
+          <tr>
+            <td class="mono">Lifecycle mixin</td>
+            <td class="src">abc_/plotting/_lifecycle.py</td>
+            <td>Exactly one of <code>PlotImage</code>, <code>PlotMeas</code>, <code>PlotAnalysis</code>,
+              <code>PlotQc</code>. Chooses <em>when</em> the figure is refreshed, and nothing else.
+              <code>PlotImage</code> alone sets <code>_weakly_bind_subject</code>.</td>
+          </tr>
+          <tr>
+            <td class="mono">PlotOutput / PlotPage</td>
+            <td class="src">abc_/plotting/_output.py</td>
+            <td>The multi-page return value. A bare figure is normalized to a single page keyed
+              <code>"default"</code>; that single-default case is the only one that gets the flat
+              <code>&lt;stem&gt;-&lt;hash&gt;.png</code> filename on the image path.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="cap"><b>Note on the lifecycle count.</b> "Exactly one" is enforced, not advisory —
+      zero lifecycles and two lifecycles both raise. Verified below.</p>
+  </section>
+
+  <hr class="rule-hr">
+
+  <section>
+    <p class="overline">The path</p>
+    <h2>Configuration to disk</h2>
+    <figure class="diagram">
+      <div class="diagramscroll">
+        <svg viewBox="0 0 980 470" role="img" aria-label="Flow from pipeline construction through binding normalization, serialization, lifecycle dispatch, and publication to disk." xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#1b75bc"></path>
+            </marker>
+            <marker id="arwg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#8892a4"></path>
+            </marker>
+          </defs>
+          <style>
+            .bx { fill: #ffffff; stroke: #dde3ed; stroke-width: 1.2; }
+            .bx-a { fill: rgba(27,117,188,0.06); stroke: #1b75bc; stroke-width: 1.4; }
+            .bx-g { fill: rgba(254,188,17,0.10); stroke: #febc11; stroke-width: 1.4; }
+            .ttl { font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; font-weight: 600; fill: #003660; }
+            .sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; fill: #8892a4; }
+            .bdy { font-family: 'IBM Plex Sans', sans-serif; font-size: 11.5px; fill: #2e3a4e; }
+            .lbl { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; fill: #8892a4; letter-spacing: 0.04em; }
+            .stg { font-family: 'JetBrains Mono', monospace; font-size: 10px; fill: #a87a00; letter-spacing: 0.12em; }
+            .ln { stroke: #1b75bc; stroke-width: 1.4; fill: none; }
+            .ln-g { stroke: #8892a4; stroke-width: 1.2; fill: none; stroke-dasharray: 4 3; }
+          </style>
+
+          <text class="stg" x="16" y="24">1 · CONFIGURE</text>
+          <rect class="bx" x="16" y="34" width="206" height="118" rx="8"></rect>
+          <text class="ttl" x="32" y="56">ImagePipeline(...)</text>
+          <text class="sub" x="32" y="74">ops / meas / post / filters</text>
+          <text class="sub" x="32" y="89">model / qc</text>
+          <text class="sub" x="32" y="112" fill="#1b75bc">plots=[ obj, PlotBinding ]</text>
+          <text class="bdy" x="32" y="134">pydantic field, exclude=True</text>
+          <text class="lbl" x="32" y="148">_image_pipeline_core.py:222</text>
+
+          <path class="ln" d="M 222 93 L 268 93" marker-end="url(#arw)"></path>
+
+          <text class="stg" x="276" y="24">2 · NORMALIZE</text>
+          <rect class="bx-a" x="276" y="34" width="236" height="118" rx="8"></rect>
+          <text class="ttl" x="292" y="56">normalize_plot_bindings</text>
+          <text class="bdy" x="292" y="76">identity scan over the slot registry</text>
+          <text class="bdy" x="292" y="93">→ ref binding, else inline binding</text>
+          <text class="bdy" x="292" y="110">validates lifecycle · id · collisions</text>
+          <text class="lbl" x="292" y="132">_bindings.py:113</text>
+          <text class="lbl" x="292" y="145">model_validator, runs after all slots</text>
+
+          <path class="ln" d="M 512 93 L 556 93" marker-end="url(#arw)"></path>
+
+          <text class="stg" x="564" y="24">3 · PERSIST</text>
+          <rect class="bx" x="564" y="34" width="400" height="118" rx="8"></rect>
+          <text class="ttl" x="580" y="56">pipeline.json → "plots": [ … ]</text>
+          <text class="bdy" x="580" y="78">ref  → {"id","ref":{"slot","key"}}  · no copy of the object</text>
+          <text class="bdy" x="580" y="97">inline → {"id","inline":{module, qualname, params}}</text>
+          <text class="bdy" x="580" y="116">from_json restores refs last, so identity is shared again</text>
+          <text class="lbl" x="580" y="140">_bindings.py:252 · _serializable_pipeline.py:393-398</text>
+
+          <path class="ln-g" d="M 764 152 L 764 182" marker-end="url(#arwg)"></path>
+
+          <text class="stg" x="16" y="206">4 · DISPATCH</text>
+          <rect class="bx" x="16" y="216" width="948" height="128" rx="8"></rect>
+          <text class="ttl" x="32" y="240">PlotCoordinator — one emit per lifecycle</text>
+          <text class="lbl" x="32" y="256">plotting/_pipeline/_coordinator.py</text>
+
+          <rect class="bx" x="32" y="268" width="218" height="60" rx="6" stroke="#56b4e9"></rect>
+          <text class="ttl" x="46" y="288" fill="#0b6e9e">emit_image</text>
+          <text class="bdy" x="46" y="305">after one image is measured</text>
+          <text class="lbl" x="46" y="320">_cli_process_single · staged worker</text>
+
+          <rect class="bx" x="262" y="268" width="218" height="60" rx="6" stroke="#009e73"></rect>
+          <text class="ttl" x="276" y="288" fill="#006b4f">emit_measurements</text>
+          <text class="bdy" x="276" y="305">post-applied mirror updated</text>
+          <text class="lbl" x="276" y="320">_cli_output_manager · GUI refresh</text>
+
+          <rect class="bx" x="492" y="268" width="218" height="60" rx="6" stroke="#cc79a7"></rect>
+          <text class="ttl" x="506" y="288" fill="#8b3d6e">emit_analyses</text>
+          <text class="bdy" x="506" y="305">named analysis table updated</text>
+          <text class="lbl" x="506" y="320">registry-resolved input</text>
+
+          <rect class="bx" x="722" y="268" width="226" height="60" rx="6" stroke="#e69f00"></rect>
+          <text class="ttl" x="736" y="288" fill="#9a6b00">emit_qc / emit_dependent_qc</text>
+          <text class="bdy" x="736" y="305">QC rebuild or input change</text>
+          <text class="lbl" x="736" y="320">QcPlotSubject payload</text>
+
+          <path class="ln" d="M 490 344 L 490 372" marker-end="url(#arw)"></path>
+
+          <text class="stg" x="16" y="396">5 · PUBLISH</text>
+          <rect class="bx-g" x="16" y="406" width="948" height="54" rx="8"></rect>
+          <text class="ttl" x="32" y="428">publish_plot_output — lock, temp file, os.replace, manifest last</text>
+          <text class="bdy" x="32" y="448">deliverables/plots/&lt;binding id&gt;/[&lt;dataset&gt;/&lt;stem&gt;-&lt;hash&gt;/]&lt;page&gt;.png + manifest.json</text>
+          <text class="lbl" x="700" y="448">_writer.py:54</text>
+        </svg>
+      </div>
+      <figcaption class="cap"><b>Stage 3 is the load-bearing one.</b> Because a pipeline-owned object
+        serializes as a slot reference rather than as its own parameters, a round trip cannot silently
+        fork the measurer into two objects that drift apart.</figcaption>
+    </figure>
+  </section>
+
+  <hr class="rule-hr">
+
+  <section>
+    <p class="overline">Verified behaviour</p>
+    <h2>A measurer in both slots, round-tripped</h2>
+    <p>
+      The same <code>MeasureSymZones</code> instance was passed to <code>meas</code> and to
+      <code>plots</code>. Output is verbatim from the run:
+    </p>
+<pre class="terminal"><span class="c">$ uv run python figdemo.py</span>
+BINDING id='sym' ref=PipelineObjectRef(slot='meas', key='sym') input=None plot_is_sym=<span class="ok">True</span>
+JSON plots: [{"id": "sym", "ref": {"slot": "meas", "key": "sym"}}]
+JSON top-level keys: ['desc','filters','meas','model','name','pipe_cfgs','plots','post','reset','version']
+ROUNDTRIP shared identity: <span class="ok">True</span> | ref: slot='meas' key='sym'
+
+<span class="c"># a standalone plot model instead — serialized inline, with its settings</span>
+INLINE: [{"id": "PlotDiagnostics", "inline": {"module": "phenotypic.plotting._image_plots",
+          "qualname": "PlotDiagnostics", "params": {}}}]
+
+<span class="c"># a plain operation with no plot capability</span>
+REJECT bare op -&gt; <span class="warn">TypeError</span> plots entries must inherit PhtPlot or be PlotBinding
+                              instances; got OtsuDetector</pre>
+    <p class="cap"><b>Read the first two lines together.</b> The binding id defaulted to
+      <code>sym</code> — the <em>slot key</em>, not the class name — and the JSON carries a
+      <code>ref</code>, not a parameter dump.</p>
+
+    <h3 style="margin-top:1.8rem">And the same, for an operation in the <code>ops</code> slot</h3>
+    <p>
+      To answer the <code>ImageOperation</code> half of the question directly, a detector subclass was
+      given <code>PlotImage</code> and a <code>@figure</code> method:
+    </p>
+<pre class="terminal"><span class="c">class PlottyDetector(OtsuDetector, PlotImage):</span>
+<span class="c">    @figure(title="objects", primary=True)</span>
+<span class="c">    def f(self, image): return go.Figure(go.Bar(x=["n"], y=[image.num_objects]))</span>
+
+OPS-SLOT binding: detect slot='ops' key='detect' | identity: <span class="ok">True</span>
+json: [{"id": "detect", "ref": {"slot": "ops", "key": "detect"}}]
+EXPLICIT: detector-overlay <span class="ok">True</span>   <span class="c"># PlotBinding(id=..., ref=PipelineObjectRef(slot="ops", key="detect"))</span></pre>
+    <p class="cap"><b>Nothing special was needed.</b> The <code>ops</code> slot is in the registry at
+      <span class="src">_image_pipeline_core.py:690-708</span>, so an operation binds exactly like a
+      measurer. The explicit <code>PlotBinding</code> form is how you override the default id.</p>
+  </section>
+
+  <hr class="rule-hr">
+
+  <section>
+    <p class="overline">The gate</p>
+    <h2>Every rule normalization enforces</h2>
+    <p>All of these raise at construction — inside the pipeline's <code>model_validator</code>, so a
+      misconfigured plot fails when the pipeline is built, not hours later at publication time.</p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Rule</th><th>Raises</th><th>Message / source</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Entry must be <code>PhtPlot</code> or <code>PlotBinding</code></td>
+            <td class="mono">TypeError</td>
+            <td><span class="mono">"plots entries must inherit PhtPlot…"</span><br><span class="src">_bindings.py:162</span></td>
+          </tr>
+          <tr>
+            <td>Exactly one lifecycle mixin</td>
+            <td class="mono">ValueError</td>
+            <td><span class="mono">found ['none']</span> and <span class="mono">found ['PlotImage','PlotMeas']</span> both rejected<br><span class="src">_bindings.py:209</span></td>
+          </tr>
+          <tr>
+            <td>A <code>ref</code> must resolve in the registry</td>
+            <td class="mono">ValueError</td>
+            <td><span class="mono">"references missing pipeline object …"</span><br><span class="src">_bindings.py:149-153</span></td>
+          </tr>
+          <tr>
+            <td>Binding id is one safe path component</td>
+            <td class="mono">ValueError</td>
+            <td>Rejects a separator, bare <code>.</code>/<code>..</code>, and empty.
+              Verified: <code>a.b</code> and <code>a b</code> are both <em>accepted</em> —
+              sanitization happens later<br><span class="src">_bindings.py:91-100</span></td>
+          </tr>
+          <tr>
+            <td>Ids unique</td>
+            <td class="mono">ValueError</td>
+            <td><span class="mono">duplicate plot binding ids: ['x']</span><br><span class="src">_bindings.py:230</span></td>
+          </tr>
+          <tr>
+            <td>Ids unique <em>after</em> filesystem sanitization, case-folded</td>
+            <td class="mono">ValueError</td>
+            <td><span class="mono">ids collide after filesystem sanitization: [['a b','a-b']]</span><br><span class="src">_bindings.py:246</span></td>
+          </tr>
+          <tr>
+            <td><code>input=</code> only on <code>PlotAnalysis</code> / <code>PlotQc</code></td>
+            <td class="mono">ValueError</td>
+            <td>Those two default to <code>MeasurementInput()</code>; <code>PlotMeas</code> and
+              <code>PlotImage</code> reject an input<br><span class="src">_bindings.py:214-224</span></td>
+          </tr>
+          <tr>
+            <td>A QC <code>ref</code> must name a class implementing only <code>PlotQc</code></td>
+            <td class="mono">ValueError</td>
+            <td>QC refs point at config entries, not live checks — the runner resolves them<br><span class="src">_bindings.py:173-199</span></td>
+          </tr>
+          <tr>
+            <td>A nested pipeline-as-operation may not carry plots</td>
+            <td class="mono">ValueError</td>
+            <td><span class="mono">"nested plot execution is not supported"</span><br><span class="src">_image_pipeline_core.py:332-336</span></td>
+          </tr>
+          <tr>
+            <td>Inline plot must be importable and a pydantic model</td>
+            <td class="mono">ValueError / TypeError</td>
+            <td>A <code>&lt;locals&gt;</code> class is refused at serialize time<br><span class="src">_bindings.py:258-269</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="cap"><b>Two of these were confirmed by triggering them</b> — the lifecycle count (both
+      directions), the duplicate id, and the post-sanitization collision — rather than read off the
+      source.</p>
+  </section>
+
+  <hr class="rule-hr">
+
+  <section>
+    <p class="overline">Runtime</p>
+    <h2>Who calls which emit, and where</h2>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Lifecycle</th><th>Subject handed to <code>inspect()</code></th><th>Call sites</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="pill img">PlotImage</span></td>
+            <td>the <code>Image</code>, held <strong>weakly</strong> when bound through
+              <code>BoundFigures</code></td>
+            <td class="src">_cli_process_single.py:348 (forward)<br>_cli_process_single.py:450 (re-measure)<br>_cli_staged_workers.py:526 (staged GPU)</td>
+          </tr>
+          <tr>
+            <td><span class="pill meas">PlotMeas</span></td>
+            <td>the post-applied measurements mirror, as a pandas frame</td>
+            <td class="src">_cli_output_manager.py:1221<br>_gui/_plot_refresh.py:38</td>
+          </tr>
+          <tr>
+            <td><span class="pill ana">PlotAnalysis</span></td>
+            <td>a named analysis table from <code>AnalysisRegistry</code>, or the mirror; skipped when
+              the producer already holds fitted state</td>
+            <td class="src">_cli_output_manager.py:1241<br>_gui/_plot_refresh.py:40,53,87</td>
+          </tr>
+          <tr>
+            <td><span class="pill qc">PlotQc</span></td>
+            <td>a <code>QcPlotSubject</code> — input table, input ref, analyzed check, QC DuckDB path,
+              frozen review state</td>
+            <td class="src">_cli_output_manager.py:1272<br>_gui/_plot_refresh.py:113</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <span class="lbl">The staged-GPU constraint on ops-slot plots</span>
+      <p>
+        <code>split_pipeline_at_gpu</code> refuses a plot whose <code>ref.slot == "ops"</code> when that
+        key is the GPU detector or sits before it: <em>"staged plotting supports only post-GPU operations,
+        measurers, aggregate slots, and inline plots"</em>
+        (<span class="src">_cli_pipeline_split.py:53-63</span>). That guard only exists because ops-slot
+        plot bindings are a supported concept — it is the clearest evidence in the tree that binding an
+        <code>ImageOperation</code> is intended, not incidental.
+      </p>
+    </div>
+  </section>
+
+  <hr class="rule-hr">
+
+  <section>
+    <p class="overline">Output</p>
+    <h2>What actually lands on disk</h2>
+    <p>
+      A two-page <code>PlotImage</code> provider was run through <code>PlotCoordinator.emit_image</code>
+      with <code>dataset="ds 1"</code>. This tree is the real listing:
+    </p>
+    <div class="tree">
+deliverables/
+└── plots/
+    └── <span class="hl">MplTwoPage</span>/                      <span class="ann">← binding id (class name; a slot key when ref'd)</span>
+        └── <span class="hl">ds-1</span>/                        <span class="ann">← safe_path_component("ds 1")</span>
+            └── <span class="hl">plate_01-7e9f968494db</span>/    <span class="ann">← stem + sha256(dataset\0stem)[:12]</span>
+                ├── Colony-count.png     <span class="dim">9326 B</span>
+                ├── Half.png             <span class="dim">8472 B</span>
+                ├── manifest.json        <span class="dim">381 B</span>
+                └── .publication.lock    <span class="dim">0 B</span>
+    </div>
+    <p class="cap"><b>The hash suffix is not decoration.</b> <code>safe_path_component</code> is
+      deliberately many-to-one and filesystems may compare case-insensitively, so two different source
+      images could sanitize to the same name and overwrite each other. Hashing the <em>unsanitized</em>
+      pair prevents that while keeping re-run paths stable (<span class="src">_coordinator.py:393-402</span>).</p>
+<pre>{
+  "schema_version": 1,
+  "plot_id": "MplTwoPage",
+  "class": "MplTwoPage",
+  "pages": [
+    { "key": "count", "label": "Colony count", "file": "Colony-count.png",
+      "backend": "matplotlib", "metadata": {} },
+    { "key": "half",  "label": "Half",         "file": "Half.png",
+      "backend": "matplotlib", "metadata": {} }
+  ]
+}</pre>
+    <p class="cap"><b>The manifest is written last, and replaced atomically.</b> A page that fails to
+      save is logged and omitted while its siblings continue, so the manifest only ever lists pages that
+      are durable on disk.</p>
+
+    <h3 style="margin-top:1.8rem">The single-page shortcut</h3>
+    <p>
+      When an image plot returns exactly one page keyed <code>"default"</code> — which is what
+      normalizing a bare figure produces (<code>plotting/_pipeline/_output.py:10</code>) — the coordinator skips the directory-and-manifest form and
+      writes a flat <code>&lt;stem&gt;-&lt;hash&gt;.png</code> beside its dataset folder
+      (<span class="src">_coordinator.py:360-380</span>). Aggregate lifecycles never take this path;
+      they always get a directory and a manifest.
+    </p>
+  </section>
+
+  <hr class="rule-hr">
+
+  <section>
+    <p class="overline">Inventory</p>
+    <h2>Every plot provider that ships today</h2>
+    <p>Enumerated at runtime by walking <code>PhtPlot.__subclasses__()</code> after importing
+      <code>detect</code>, <code>enhance</code>, <code>measure</code>, <code>refine</code>,
+      <code>grid</code>, <code>correction</code>, <code>post</code>, <code>analysis</code>,
+      <code>plotting</code> and <code>qc</code>.</p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Class</th><th>Lifecycle</th><th>Pipeline role</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">MeasureSymZones</td><td><span class="pill img">PlotImage</span></td><td><strong>MeasureFeatures</strong> — binds on the <code>meas</code> slot</td></tr>
+          <tr><td class="mono">MeasureOrientationZones</td><td><span class="pill img">PlotImage</span></td><td><strong>MeasureFeatures</strong> — binds on the <code>meas</code> slot</td></tr>
+          <tr><td class="mono">PlotDiagnostics</td><td><span class="pill img">PlotImage</span></td><td>standalone model → inline binding</td></tr>
+          <tr><td class="mono">PlotDetectModes</td><td><span class="pill img">PlotImage</span></td><td>standalone model → inline binding</td></tr>
+          <tr><td class="mono">PlotMeasTimeSeries</td><td><span class="pill meas">PlotMeas</span></td><td>standalone model → inline binding</td></tr>
+          <tr><td class="mono">PlotColonyMetricOverTime</td><td><span class="pill meas">PlotMeas</span></td><td>standalone model → inline binding</td></tr>
+          <tr><td class="mono">LogGrowthModel</td><td><span class="pill ana">PlotAnalysis</span></td><td>ModelFitter — binds on the <code>model</code> slot</td></tr>
+          <tr><td class="mono">LinearLagModel</td><td><span class="pill ana">PlotAnalysis</span></td><td>ModelFitter — binds on the <code>model</code> slot</td></tr>
+          <tr><td class="mono">LinearCapAndLagModel</td><td><span class="pill ana">PlotAnalysis</span></td><td>ModelFitter — binds on the <code>model</code> slot</td></tr>
+          <tr><td class="mono">ExpectedVsDetectedCount</td><td><span class="pill qc">PlotQc</span></td><td>QualityCheck — binds on the <code>qc</code> slot by <code>instance_id</code></td></tr>
+          <tr><td class="mono">GridOccupancy</td><td><span class="pill qc">PlotQc</span></td><td>QualityCheck — <code>qc</code> slot</td></tr>
+          <tr><td class="mono">ReplicateAgreement</td><td><span class="pill qc">PlotQc</span></td><td>QualityCheck — <code>qc</code> slot</td></tr>
+          <tr><td class="mono">_OrientationZonesReport</td><td><span class="pill img">PlotImage</span></td><td>private report helper, not configured directly</td></tr>
+          <tr><td class="mono">DetectModesPlotter</td><td><span class="pill none">no lifecycle</span></td><td><strong>Not bindable.</strong> Imported only inside method bodies</td></tr>
+          <tr><td class="mono">ColorCorrectionReport</td><td><span class="pill none">no lifecycle</span></td><td><strong>Not bindable.</strong> Notebook-only report</td></tr>
+          <tr><td class="mono">GridFitReport</td><td><span class="pill none">no lifecycle</span></td><td><strong>Not bindable.</strong> Notebook-only report</td></tr>
+          <tr><td class="mono">DiagnosticsPlotter</td><td><span class="pill none">no lifecycle</span></td><td><strong>Not bindable.</strong> Diagnostics plotter (the <code>Image.plot</code> accessor it served was removed)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="cap"><b>No shipped <code>ImageOperation</code> appears here at all.</b> The
+      <code>ops</code>-slot path is exercised only by the splitter guard and by tests — which is why the
+      recipe below is worth stating explicitly. <code>MeasureFeatures</code>, incidentally, is
+      <em>not</em> a subclass of <code>ImageOperation</code>; they are sibling ABCs.</p>
+  </section>
+
+  <hr class="rule-hr">
+
+  <section>
+    <p class="overline">Recipe</p>
+    <h2>Making an operation plot-capable</h2>
+    <p>Four additions, none of which touch the operation's parameters or its serialized shape:</p>
+<pre>import plotly.graph_objects as go
+from phenotypic.abc_.plotting import PlotImage, figure
+from phenotypic.detect import OtsuDetector
+
+
+class PlottyDetector(OtsuDetector, PlotImage):          <span style="color:#8892a4"># 1 · one lifecycle mixin</span>
+
+    @figure(title="Detected objects", primary=True)      <span style="color:#8892a4"># 2 · a @figure method</span>
+    def object_count(self, image):                       <span style="color:#8892a4">#     first positional = subject</span>
+        return go.Figure(go.Bar(x=["objects"], y=[image.num_objects]))
+
+
+op = PlottyDetector()
+pipeline = ImagePipeline(
+    ops={"detect": op},                                  <span style="color:#8892a4"># 3 · normal slot</span>
+    plots=[op],                                          <span style="color:#8892a4"># 4 · THE SAME OBJECT</span>
+)
+<span style="color:#8892a4"># → binding id "detect", ref {"slot": "ops", "key": "detect"}</span></pre>
+    <p>
+      To control the output folder name rather than inherit the slot key, pass an explicit binding
+      instead of the bare object:
+    </p>
+<pre>from phenotypic.plotting._pipeline import PlotBinding, PipelineObjectRef
+
+plots=[PlotBinding(id="detector-overlay",
+                   ref=PipelineObjectRef(slot="ops", key="detect"))]</pre>
+    <p class="cap"><b>Both forms were run.</b> The second resolves <code>binding.plot is
+      pipeline.ops["detect"]</code> → <code>True</code>. Note that <code>PlotBinding</code> and
+      <code>PipelineObjectRef</code> live in the <em>private</em>
+      <code>phenotypic.plotting._pipeline</code> package — only the contracts in
+      <code>phenotypic.abc_.plotting</code> and the models in <code>phenotypic.plotting</code> are
+      public.</p>
+  </section>
+
+  <hr class="rule-hr">
+
+  <section>
+    <p class="overline">Sharp edges</p>
+    <h2>Five things the source says that the docs do not</h2>
+    <ol class="findings">
+      <li>
+        <h3>A matplotlib figure cannot be returned from an <code>@figure</code> method<span class="sev trap">trap</span></h3>
+        <p>
+          <code>FigureAdapter</code> handles both backends, and the how-to page says "Plotly and
+          Matplotlib figures are both accepted by the CLI publisher" — true of the
+          <em>publisher</em>. But the <code>@figure</code> wrapper unconditionally calls
+          <code>apply_theme(...)</code> (<span class="src">_pht_plot.py:192</span>), and
+          <code>apply_theme</code> sets <code>fig.layout.template</code> with no backend guard
+          (<span class="src">sdk_/viz/figures/_theme.py:227</span>).
+        </p>
+        <p>
+          Observed: <span class="mono" style="color:#d55e00">AttributeError: 'Figure' object has no
+          attribute 'layout'</span>. A matplotlib figure reaches the writer only by overriding
+          <code>inspect()</code> and bypassing the decorator — which is how the tree demo above was
+          made to work.
+        </p>
+      </li>
+      <li>
+        <h3>The binding id defaults to the <em>slot key</em>, not the class name<span class="sev doc">doc drift</span></h3>
+        <p>
+          <code>docs/source/extending/pages/custom_plotter.md</code> states the CLI writes below
+          <code>deliverables/plots/&lt;ClassName&gt;/</code>. That holds for an inline plot only. For a
+          pipeline-owned object the default id is <code>ref.key</code>
+          (<span class="src">_bindings.py:165-171</span>) — the measurer registered as
+          <code>meas={"sym": …}</code> publishes to <code>plots/sym/</code>, not
+          <code>plots/MeasureSymZones/</code>. Confirmed in the run above.
+          <strong>But the <code>model</code> slot is keyless by construction</strong>
+          (<code>PipelineObjectRef</code> forbids a key on it), so <code>ref.key</code> is
+          <code>None</code> there and the class name wins after all — a bound
+          <code>LogGrowthModel</code> really does publish to
+          <code>plots/LogGrowthModel/</code>. The doc is right for that one case,
+          which is why the error survived.
+        </p>
+      </li>
+      <li>
+        <h3>Plot failures are swallowed on the ordinary CLI path and raised on the staged one<span class="sev trap">asymmetry</span></h3>
+        <p>
+          <code>emit_image</code> takes <code>strict: bool = False</code> and logs a warning otherwise.
+          <code>_cli_staged_workers.py:526</code> passes <code>strict=True</code>;
+          <code>_cli_process_single.py:348</code> and <code>:450</code> do not. The same broken plot
+          therefore fails a staged GPU run loudly and leaves an ordinary run green with a
+          <code>logger.warning</code> as the only trace. Every aggregate emit path is unconditionally
+          best-effort.
+        </p>
+      </li>
+      <li>
+        <h3>Plotly PNG export needs Chrome, which is absent in this environment<span class="sev env">environment</span></h3>
+        <p>
+          The publisher calls <code>plotly.write_image</code>, and Kaleido v1+ shells out to Chrome. On
+          this checkout that raises <span class="mono">ChromeNotFoundError → RuntimeError: Kaleido
+          requires Google Chrome to be installed</span>. Combined with the previous finding, a Plotly
+          plot configured on an ordinary CLI run here publishes <em>no images</em> and reports
+          <em>success</em> — and on the multi-page and aggregate paths it is worse than
+          nothing: the writer catches per page and then writes
+          <code>manifest.json</code> unconditionally, so a durable manifest asserting
+          zero pages is left behind. Fix is <code>plotly_get_chrome</code> (or
+          <code>kaleido.get_chrome_sync()</code>), once, per environment.
+        </p>
+      </li>
+      <li>
+        <h3><code>plots</code> has no GUI builder surface<span class="sev doc">gap</span></h3>
+        <p>
+          Grepping <code>src/phenotypic/_gui/builder/</code> for the slot returns nothing: the builder
+          composes <code>ops</code>, <code>meas</code>, <code>post</code>, <code>filters</code>,
+          <code>model</code> and <code>qc</code>, but a plot binding can only be added
+          programmatically or by hand-editing <code>pipeline.json</code>. The GUI <em>consumes</em>
+          bindings — <code>_gui/_plot_refresh.py</code> re-emits them after a mirror edit, an analysis
+          run or a QC rebuild — it just does not author them.
+        </p>
+      </li>
+    </ol>
+  </section>
+
+  <hr class="rule-hr">
+
+  <section>
+    <p class="overline">Provenance</p>
+    <h2>How each claim here was checked</h2>
+    <dl class="evidence">
+      <dt>Read in full</dt>
+      <dd><code>abc_/plotting/{_pht_plot,_lifecycle,_output,__init__}.py</code> ·
+        <code>plotting/_pipeline/{_bindings,_coordinator,_writer,_adapter,_output,__init__}.py</code> ·
+        <code>_gui/_plot_refresh.py</code> · <code>_cli/_cli_pipeline_split.py</code> ·
+        <code>docs/source/extending/pages/custom_plotter.md</code></dd>
+
+      <dt>Read in part</dt>
+      <dd><code>_core/_pipeline_parts/_image_pipeline_core.py</code> (fields, validators, registry,
+        set/get) · <code>_core/_pipeline_parts/_serializable_pipeline.py</code> (deserialize order) ·
+        <code>_cli/{_cli_process_single,_cli_staged_workers,_cli_output_manager}.py</code> at their
+        call sites · <code>sdk_/viz/figures/_theme.py</code></dd>
+
+      <dt>Executed</dt>
+      <dd>Five scripts under <code>uv run</code> on <code>r27</code> inside Slurm job 28962174: slot-key
+        vs inline binding and JSON round trip; runtime subclass enumeration; the lifecycle-count,
+        duplicate-id and sanitization-collision rejections; an <code>ops</code>-slot binding on a
+        <code>PlotImage</code> detector; and a real two-page publication to a temp tree. Every quoted
+        console line and the file tree are verbatim from those runs.</dd>
+
+      <dt>Not exercised</dt>
+      <dd>No CLI run and no GUI session. The <code>PlotAnalysis</code> and <code>PlotQc</code> dispatch
+        paths, the <code>AnalysisRegistry</code> resolution, the <code>publication_guard</code>
+        compare-and-set, and the QC-recipe reference resolution are traced from source only — their
+        call sites are cited but their behaviour is not demonstrated here.</dd>
+    </dl>
+  </section>
+
+  <footer class="colophon">
+    Traced against branch <code>fix/aged-out-job-active-check</code> at <code>91491bfd</code>.
+    Line numbers are of that working tree and will drift.
+    Companion source: <code>docs/superpowers/artifacts/2026-09-20-pipeline-figure-storage/</code>.
+  </footer>
+
+</div>
