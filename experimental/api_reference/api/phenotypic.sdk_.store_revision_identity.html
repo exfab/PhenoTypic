@@ -1281,7 +1281,7 @@
 <h1>phenotypic.sdk_.store_revision_identity<a class="headerlink" href="#phenotypic-sdk-store-revision-identity" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="phenotypic.sdk_.store_revision_identity">
-<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">store_revision_identity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#store_revision_identity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.store_revision_identity" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">store_revision_identity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">root_directory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">HeldDirectory</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#store_revision_identity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.store_revision_identity" title="Link to this definition">#</a></dt>
 <dd><p>Return a stable revision identity for one OME-Zarr store.</p>
 <p>PhenoTypic-published immutable generations use the explicit root-last
 publication token and touch only <code class="docutils literal notranslate"><span class="pre">zarr.json</span></code>. Generic third-party stores
@@ -1291,7 +1291,13 @@ an unstable snapshot. It intentionally does not read chunk contents: CLI
 work and completion use a separate content-digest contract.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>) – Existing <code class="docutils literal notranslate"><span class="pre">*.ome.zarr</span></code> directory.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>Path</em>) – Existing <code class="docutils literal notranslate"><span class="pre">*.ome.zarr</span></code> directory.</p></li>
+<li><p><strong>root_directory</strong> (<em>HeldDirectory</em><em> | </em><em>None</em>) – Optional held directory for the store root. When
+omitted, the store is held internally so the token is measured
+through a handle – the same way a consumer holding the store
+measures it, so the two cannot disagree.</p></li>
+</ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A versioned SHA-256 metadata identity.</p>

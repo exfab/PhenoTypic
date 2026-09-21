@@ -670,10 +670,10 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">errno</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">stat</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">stat_module</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
@@ -691,6 +691,7 @@
 
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span> <span class="k">as</span> <span class="n">_GridImage</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span> <span class="k">as</span> <span class="n">_Image</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_._identity_io</span><span class="w"> </span><span class="kn">import</span> <span class="n">HeldDirectory</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
@@ -2688,9 +2689,65 @@
 
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">published_token_through_a_hold</span><span class="p">(</span><span class="n">store</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the publication token measured through a held directory.</span>
+
+<span class="sd">    Both sides of Browse&#39;s freshness check must measure the store the same</span>
+<span class="sd">    way. The route holds the store root and asks for the token through that</span>
+<span class="sd">    handle; if the revision it compares against were measured by path, the two</span>
+<span class="sd">    could disagree -- and they do on Windows, where a directory-entry query can</span>
+<span class="sd">    report an older ``st_mtime_ns`` than an open-handle query for the same</span>
+<span class="sd">    file. The symptom is a 409 on a store nobody touched. Observed on</span>
+<span class="sd">    windows-latest in run 35497611719, two tests, reproducibly.</span>
+
+<span class="sd">    Falls back to the path measurement where no backend exists, which is the</span>
+<span class="sd">    same value every platform produced before identity-bound I/O existed.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        IdentityRefused: If the root exists but the hold refuses it -- a</span>
+<span class="sd">            non-canonical component, or a link where a directory is required.</span>
+<span class="sd">            That refusal is the contract firing and must not be downgraded.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_._identity_io</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+        <span class="n">IdentityRefused</span><span class="p">,</span>
+        <span class="n">identity_io_available</span><span class="p">,</span>
+        <span class="n">open_identity_directory</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">identity_io_available</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">store_publication_token</span><span class="p">(</span><span class="n">store</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">open_identity_directory</span><span class="p">(</span><span class="n">store</span><span class="p">)</span> <span class="k">as</span> <span class="n">held</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">store_publication_token</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="n">root_directory</span><span class="o">=</span><span class="n">held</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">IdentityRefused</span><span class="p">:</span>
+        <span class="c1"># Fail closed. This is not &quot;cannot hold in this environment&quot; -- it is</span>
+        <span class="c1"># the hold rejecting *this root*, for a reason it exists to reject.</span>
+        <span class="k">raise</span>
+    <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="c1"># ``O_NOFOLLOW`` refusing a link standing where the store root must be</span>
+        <span class="c1"># surfaces as an ordinary ``OSError``: ``ENOTDIR`` on macOS, ``ELOOP``</span>
+        <span class="c1"># on Linux. Falling through to the path measurement would then follow</span>
+        <span class="c1"># the very link the hold just refused and hand back a valid-looking</span>
+        <span class="c1"># token for it, so normalise that case into the contract&#39;s own refusal</span>
+        <span class="c1"># instead. Anything else -- a missing or unreadable directory -- keeps</span>
+        <span class="c1"># the historical fallback: the path measurement still answers, and a</span>
+        <span class="c1"># genuinely broken store fails later exactly as it always did.</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="ne">NotADirectoryError</span><span class="p">)</span>
+            <span class="ow">or</span> <span class="n">exc</span><span class="o">.</span><span class="n">errno</span> <span class="o">==</span> <span class="n">errno</span><span class="o">.</span><span class="n">ELOOP</span>
+            <span class="ow">or</span> <span class="n">store</span><span class="o">.</span><span class="n">is_symlink</span><span class="p">()</span>
+        <span class="p">):</span>
+            <span class="k">raise</span> <span class="n">IdentityRefused</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;store root is not a directory the hold will open: </span><span class="si">{</span><span class="n">store</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+        <span class="k">return</span> <span class="n">store_publication_token</span><span class="p">(</span><span class="n">store</span><span class="p">)</span>
+
+
 <div class="viewcode-block" id="store_revision_identity">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.store_revision_identity.html#phenotypic.sdk_.store_revision_identity">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">store_revision_identity</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a class="viewcode-back" href="../../../api_reference/core/store_layout.html#phenotypic.sdk_.store_revision_identity">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">store_revision_identity</span><span class="p">(</span>
+    <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">root_directory</span><span class="p">:</span> <span class="s2">&quot;HeldDirectory | None&quot;</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a stable revision identity for one OME-Zarr store.</span>
 
 <span class="sd">    PhenoTypic-published immutable generations use the explicit root-last</span>
@@ -2702,6 +2759,10 @@
 
 <span class="sd">    Args:</span>
 <span class="sd">        path: Existing ``*.ome.zarr`` directory.</span>
+<span class="sd">        root_directory: Optional held directory for the store root. When</span>
+<span class="sd">            omitted, the store is held internally so the token is measured</span>
+<span class="sd">            through a handle -- the same way a consumer holding the store</span>
+<span class="sd">            measures it, so the two cannot disagree.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        A versioned SHA-256 metadata identity.</span>
@@ -2716,7 +2777,11 @@
     <span class="n">store</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">is_zarr_store_name</span><span class="p">(</span><span class="n">store</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;not an OME-Zarr store directory: </span><span class="si">{</span><span class="n">store</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">published</span> <span class="o">=</span> <span class="n">store_publication_token</span><span class="p">(</span><span class="n">store</span><span class="p">)</span>
+    <span class="n">published</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">store_publication_token</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="n">root_directory</span><span class="o">=</span><span class="n">root_directory</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">root_directory</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">else</span> <span class="n">published_token_through_a_hold</span><span class="p">(</span><span class="n">store</span><span class="p">)</span>
+    <span class="p">)</span>
     <span class="k">if</span> <span class="n">published</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">published</span>
     <span class="n">first</span> <span class="o">=</span> <span class="n">_store_revision_snapshot</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="n">root_json</span><span class="o">=</span><span class="n">STORE_ROOT_JSON</span><span class="p">)</span>
@@ -2743,11 +2808,11 @@
 
 
 <div class="viewcode-block" id="store_publication_token">
-<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.store_publication_token.html#phenotypic.sdk_.store_publication_token">[docs]</a>
+<a class="viewcode-back" href="../../../api_reference/core/store_layout.html#phenotypic.sdk_.store_publication_token">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">store_publication_token</span><span class="p">(</span>
     <span class="n">store</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
-    <span class="n">root_dir_fd</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">root_directory</span><span class="p">:</span> <span class="n">HeldDirectory</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the root-last token for a PhenoTypic-published store.</span>
 
@@ -2760,41 +2825,50 @@
 
 <span class="sd">    Args:</span>
 <span class="sd">        store: Published store path. Used for ordinary path-based inspection.</span>
-<span class="sd">        root_dir_fd: Optional held descriptor for the store root. When given,</span>
-<span class="sd">            ``zarr.json`` is opened relative to that identity with</span>
-<span class="sd">            ``O_NOFOLLOW`` so a route can keep validation and serving bound to</span>
-<span class="sd">            one directory generation.</span>
+<span class="sd">        root_directory: Optional held directory for the store root. When given,</span>
+<span class="sd">            ``zarr.json`` is read through that held identity so a route can</span>
+<span class="sd">            keep validation and serving bound to one directory generation.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        The publication token, or ``None`` when the protocol is not declared.</span>
+
+<span class="sd">    .. versionchanged:: 0.19.0</span>
+<span class="sd">       ``root_dir_fd`` (a POSIX file descriptor) is replaced by</span>
+<span class="sd">       ``root_directory``, a held directory from</span>
+<span class="sd">       :mod:`phenotypic.sdk_._identity_io`. Passing ``root_dir_fd`` now</span>
+<span class="sd">       raises :class:`TypeError`. The descriptor form could not be</span>
+<span class="sd">       supported on Windows, where the store route needs the same</span>
+<span class="sd">       identity binding.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.ngff_</span><span class="w"> </span><span class="kn">import</span> <span class="n">STORE_ROOT_JSON</span>
 
     <span class="n">root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">store</span><span class="p">)</span> <span class="o">/</span> <span class="n">STORE_ROOT_JSON</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">root_dir_fd</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">root_directory</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">before</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">lstat</span><span class="p">()</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">stat_module</span><span class="o">.</span><span class="n">S_ISREG</span><span class="p">(</span><span class="n">before</span><span class="o">.</span><span class="n">st_mode</span><span class="p">):</span>
                 <span class="k">return</span> <span class="kc">None</span>
             <span class="n">raw</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">read_bytes</span><span class="p">()</span>
             <span class="n">after</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">lstat</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">flags</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">O_RDONLY</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">O_NONBLOCK</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">O_NOFOLLOW</span>
-            <span class="n">root_fd</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">STORE_ROOT_JSON</span><span class="p">,</span> <span class="n">flags</span><span class="p">,</span> <span class="n">dir_fd</span><span class="o">=</span><span class="n">root_dir_fd</span><span class="p">)</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_._identity_io</span><span class="w"> </span><span class="kn">import</span> <span class="n">IdentityRefused</span>
+
             <span class="k">try</span><span class="p">:</span>
-                <span class="n">before</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">fstat</span><span class="p">(</span><span class="n">root_fd</span><span class="p">)</span>
-                <span class="k">if</span> <span class="p">(</span>
-                    <span class="ow">not</span> <span class="n">stat_module</span><span class="o">.</span><span class="n">S_ISREG</span><span class="p">(</span><span class="n">before</span><span class="o">.</span><span class="n">st_mode</span><span class="p">)</span>
-                    <span class="ow">or</span> <span class="n">before</span><span class="o">.</span><span class="n">st_nlink</span> <span class="o">!=</span> <span class="mi">1</span>
-                <span class="p">):</span>
-                    <span class="k">return</span> <span class="kc">None</span>
-                <span class="n">chunks</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">bytes</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-                <span class="k">while</span> <span class="n">chunk</span> <span class="o">:=</span> <span class="n">os</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">root_fd</span><span class="p">,</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">):</span>
-                    <span class="n">chunks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
-                <span class="n">raw</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span>
-                <span class="n">after</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">fstat</span><span class="p">(</span><span class="n">root_fd</span><span class="p">)</span>
-            <span class="k">finally</span><span class="p">:</span>
-                <span class="n">os</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">root_fd</span><span class="p">)</span>
+                <span class="n">raw</span><span class="p">,</span> <span class="n">after</span> <span class="o">=</span> <span class="n">root_directory</span><span class="o">.</span><span class="n">read_regular_with_stat</span><span class="p">(</span>
+                    <span class="n">STORE_ROOT_JSON</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="n">IdentityRefused</span><span class="p">:</span>
+                <span class="c1"># Matches the ``except OSError: return None`` arm below: no</span>
+                <span class="c1"># token means &quot;use the conservative fallback&quot;, not &quot;fail&quot;.</span>
+                <span class="c1"># A hard-linked or non-regular root yielded ``None`` before</span>
+                <span class="c1"># this branch was ported, and the Browse route turns that</span>
+                <span class="c1"># into a 404 -- letting the refusal escape would make it a</span>
+                <span class="c1"># 409 instead.</span>
+                <span class="k">return</span> <span class="kc">None</span>
+            <span class="c1"># The backend compared its own before/after stat of the same open</span>
+            <span class="c1"># file and proved ``len(raw) == after.st_size``, so the guard</span>
+            <span class="c1"># below is already satisfied for this branch.</span>
+            <span class="n">before</span> <span class="o">=</span> <span class="n">after</span>
     <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
         <span class="k">return</span> <span class="kc">None</span>
     <span class="n">before_identity</span> <span class="o">=</span> <span class="p">(</span>

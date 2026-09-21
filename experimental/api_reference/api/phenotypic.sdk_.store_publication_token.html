@@ -1281,7 +1281,7 @@
 <h1>phenotypic.sdk_.store_publication_token<a class="headerlink" href="#phenotypic-sdk-store-publication-token" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="phenotypic.sdk_.store_publication_token">
-<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">store_publication_token</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">store</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">root_dir_fd</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#store_publication_token"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.store_publication_token" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">store_publication_token</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">store</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">root_directory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">HeldDirectory</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#store_publication_token"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.store_publication_token" title="Link to this definition">#</a></dt>
 <dd><p>Return the root-last token for a PhenoTypic-published store.</p>
 <p>PhenoTypic promotes an immutable store by replacing <code class="docutils literal notranslate"><span class="pre">zarr.json</span></code> last.
 Its root bytes and file identity therefore identify the complete
@@ -1292,11 +1292,10 @@ generic third-party store has no such publication contract and returns
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>store</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>) – Published store path. Used for ordinary path-based inspection.</p></li>
-<li><p><strong>root_dir_fd</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Optional held descriptor for the store root. When given,
-<code class="docutils literal notranslate"><span class="pre">zarr.json</span></code> is opened relative to that identity with
-<code class="docutils literal notranslate"><span class="pre">O_NOFOLLOW</span></code> so a route can keep validation and serving bound to
-one directory generation.</p></li>
+<li><p><strong>store</strong> (<em>Path</em>) – Published store path. Used for ordinary path-based inspection.</p></li>
+<li><p><strong>root_directory</strong> (<em>HeldDirectory</em><em> | </em><em>None</em>) – Optional held directory for the store root. When given,
+<code class="docutils literal notranslate"><span class="pre">zarr.json</span></code> is read through that held identity so a route can
+keep validation and serving bound to one directory generation.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1306,6 +1305,14 @@ one directory generation.</p></li>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
 </dd>
 </dl>
+<div class="versionchanged">
+<p><span class="versionmodified changed">Changed in version 0.19.0: </span><code class="docutils literal notranslate"><span class="pre">root_dir_fd</span></code> (a POSIX file descriptor) is replaced by
+<code class="docutils literal notranslate"><span class="pre">root_directory</span></code>, a held directory from
+<code class="xref py py-mod docutils literal notranslate"><span class="pre">phenotypic.sdk_._identity_io</span></code>. Passing <code class="docutils literal notranslate"><span class="pre">root_dir_fd</span></code> now
+raises <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#TypeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeError</span></code></a>. The descriptor form could not be
+supported on Windows, where the store route needs the same
+identity binding.</p>
+</div>
 </dd></dl>
 
 </section>

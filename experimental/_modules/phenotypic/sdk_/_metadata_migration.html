@@ -765,18 +765,26 @@
 <span class="n">_SUPERSEDED_STATUS_PREFIX</span> <span class="o">=</span> <span class="s2">&quot;status.superseded-&quot;</span>
 <span class="n">_REJECTED_STATUS_PREFIX</span> <span class="o">=</span> <span class="s2">&quot;status.rejected-&quot;</span>
 <span class="n">_RENAME_NOREPLACE</span> <span class="o">=</span> <span class="mi">1</span>
-<span class="n">_RENAMEAT2</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span>
-<span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;linux&quot;</span><span class="p">):</span>
-    <span class="c1"># ``renameat2`` is a Linux-only syscall; ``ctypes.CDLL(None)`` (dlopen the</span>
-    <span class="c1"># process&#39;s own symbol table) is itself POSIX-only and raises ``TypeError``</span>
-    <span class="c1"># on Windows rather than ``OSError``, so this is gated by platform instead</span>
-    <span class="c1"># of relying on the CDLL call to fail cleanly everywhere.</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_load_renameat2</span><span class="p">(</span><span class="n">platform</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return libc ``renameat2``, or ``None`` where it cannot exist.</span>
+
+<span class="sd">    ``renameat2`` is Linux-only, and ``ctypes.CDLL(None)`` -- &quot;the running</span>
+<span class="sd">    process&quot; -- is POSIX-only: on Windows it raises ``TypeError`` rather than</span>
+<span class="sd">    ``OSError``, which crashed this module&#39;s import and with it every Windows</span>
+<span class="sd">    test session. Probe only on Linux; elsewhere the no-clobber rename fails</span>
+<span class="sd">    closed in :func:`_libc_renameat2`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">platform</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;linux&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">_RENAMEAT2</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span>
-            <span class="n">ctypes</span><span class="o">.</span><span class="n">CDLL</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_errno</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="s2">&quot;renameat2&quot;</span><span class="p">,</span> <span class="kc">None</span>
-        <span class="p">)</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">ctypes</span><span class="o">.</span><span class="n">CDLL</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">use_errno</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="s2">&quot;renameat2&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
-        <span class="n">_RENAMEAT2</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="n">_RENAMEAT2</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="n">_load_renameat2</span><span class="p">()</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_libc_renameat2</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
@@ -3629,8 +3637,11 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_fsync_file</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Flush a prepared file before it becomes eligible for publication.&quot;&quot;&quot;</span>
-    <span class="k">with</span> <span class="n">path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Flush a prepared file before it becomes eligible for publication.</span>
+
+<span class="sd">    Read-write on Windows, where ``fsync`` of a read-only handle is ``EBADF``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;rb&quot;</span> <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;posix&quot;</span> <span class="k">else</span> <span class="s2">&quot;r+b&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
         <span class="n">os</span><span class="o">.</span><span class="n">fsync</span><span class="p">(</span><span class="n">handle</span><span class="o">.</span><span class="n">fileno</span><span class="p">())</span>
 
 

@@ -1776,6 +1776,95 @@ pathology the spec flags for the GUI’s discovery path.</p>
 </dd></dl>
 
 </section>
+<section id="publication-identity">
+<h2>Publication identity<a class="headerlink" href="#publication-identity" title="Link to this heading">#</a></h2>
+<p>A published store’s generation is identified by its root, not by walking its
+chunks: the promote writes <code class="docutils literal notranslate"><span class="pre">zarr.json</span></code> last, so that file’s bytes and
+identity name the whole generation. Both functions below live in
+<code class="docutils literal notranslate"><span class="pre">phenotypic.sdk_</span></code> rather than <code class="docutils literal notranslate"><span class="pre">ngff_</span></code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>Measure a store one way within one comparison.</strong> Both functions accept a
+held directory from <code class="docutils literal notranslate"><span class="pre">phenotypic.sdk_._identity_io</span></code>, and the identity they
+return is <em>not</em> interchangeable with a path-based measurement on every
+platform: on Windows a directory-entry query can report an older
+<code class="docutils literal notranslate"><span class="pre">st_mtime_ns</span></code> than an open-handle query for the same file. A consumer
+that validates with one and serves under the other reports a store nobody
+touched as changed. Browse learned this as a 409 on every tile request.</p>
+</div>
+<dl class="py function">
+<dt class="sig sig-object py" id="phenotypic.sdk_.store_publication_token">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">store_publication_token</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">store</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">root_directory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">HeldDirectory</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#store_publication_token"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.store_publication_token" title="Link to this definition">#</a></dt>
+<dd><p>Return the root-last token for a PhenoTypic-published store.</p>
+<p>PhenoTypic promotes an immutable store by replacing <code class="docutils literal notranslate"><span class="pre">zarr.json</span></code> last.
+Its root bytes and file identity therefore identify the complete
+generation without touching every chunk on GPFS. Inode and ctime close
+the gap where a byte-identical replacement preserves the old mtime. A
+generic third-party store has no such publication contract and returns
+<code class="docutils literal notranslate"><span class="pre">None</span></code> so the caller uses the conservative recursive snapshot fallback.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>store</strong> (<em>Path</em>) – Published store path. Used for ordinary path-based inspection.</p></li>
+<li><p><strong>root_directory</strong> (<em>HeldDirectory</em><em> | </em><em>None</em>) – Optional held directory for the store root. When given,
+<code class="docutils literal notranslate"><span class="pre">zarr.json</span></code> is read through that held identity so a route can
+keep validation and serving bound to one directory generation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The publication token, or <code class="docutils literal notranslate"><span class="pre">None</span></code> when the protocol is not declared.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+<div class="versionchanged">
+<p><span class="versionmodified changed">Changed in version 0.19.0: </span><code class="docutils literal notranslate"><span class="pre">root_dir_fd</span></code> (a POSIX file descriptor) is replaced by
+<code class="docutils literal notranslate"><span class="pre">root_directory</span></code>, a held directory from
+<code class="xref py py-mod docutils literal notranslate"><span class="pre">phenotypic.sdk_._identity_io</span></code>. Passing <code class="docutils literal notranslate"><span class="pre">root_dir_fd</span></code> now
+raises <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#TypeError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypeError</span></code></a>. The descriptor form could not be
+supported on Windows, where the store route needs the same
+identity binding.</p>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="phenotypic.sdk_.store_revision_identity">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">store_revision_identity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">root_directory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">HeldDirectory</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#store_revision_identity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.sdk_.store_revision_identity" title="Link to this definition">#</a></dt>
+<dd><p>Return a stable revision identity for one OME-Zarr store.</p>
+<p>PhenoTypic-published immutable generations use the explicit root-last
+publication token and touch only <code class="docutils literal notranslate"><span class="pre">zarr.json</span></code>. Generic third-party stores
+have no publication invariant, so the conservative fallback hashes framed
+relative paths, member types, sizes, and nanosecond mtimes twice to reject
+an unstable snapshot. It intentionally does not read chunk contents: CLI
+work and completion use a separate content-digest contract.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>Path</em>) – Existing <code class="docutils literal notranslate"><span class="pre">*.ome.zarr</span></code> directory.</p></li>
+<li><p><strong>root_directory</strong> (<em>HeldDirectory</em><em> | </em><em>None</em>) – Optional held directory for the store root. When
+omitted, the store is held internally so the token is measured
+through a handle – the same way a consumer holding the store
+measures it, so the two cannot disagree.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A versioned SHA-256 metadata identity.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#OSError" title="(in Python v3.14)"><strong>OSError</strong></a> – If the store is unstable or contains a symlink or another
+    non-regular member.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">path</span></code> is not named as an OME-Zarr store.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
 <section id="durability">
 <h2>Durability<a class="headerlink" href="#durability" title="Link to this heading">#</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">fsync</span></code> before promote is a tri-state: unset auto-detects (on under SLURM,
@@ -1918,6 +2007,11 @@ handle for flushing and relies on NTFS journaling instead.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.ngff_.new_part_path"><code class="docutils literal notranslate"><span class="pre">new_part_path()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.ngff_.promote_store"><code class="docutils literal notranslate"><span class="pre">promote_store()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.ngff_.sweep_orphan_parts"><code class="docutils literal notranslate"><span class="pre">sweep_orphan_parts()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#publication-identity">Publication identity</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.store_publication_token"><code class="docutils literal notranslate"><span class="pre">store_publication_token()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.sdk_.store_revision_identity"><code class="docutils literal notranslate"><span class="pre">store_revision_identity()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#durability">Durability</a><ul class="visible nav section-nav flex-column">

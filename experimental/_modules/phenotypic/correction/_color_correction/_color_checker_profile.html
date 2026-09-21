@@ -631,13 +631,13 @@
     <span class="n">ensure_typed_json_suffix</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">NdArrayField</span><span class="p">,</span> <span class="n">TuneSpec</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.util._robust_color_stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">robust_color_center</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._capture_metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">CaptureMetadata</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._helpers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">center_and_pad_checker</span><span class="p">,</span>
     <span class="n">compute_core_mask</span><span class="p">,</span>
     <span class="n">compute_swatch_roi_mask</span><span class="p">,</span>
-    <span class="n">geometric_median</span><span class="p">,</span>
     <span class="n">median_filter_rgb</span><span class="p">,</span>
     <span class="n">segment_chips_by_border_fill</span><span class="p">,</span>
     <span class="n">trim_background_edges</span><span class="p">,</span>
@@ -648,6 +648,19 @@
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="c1">#: Weiszfeld settings used to reduce one checker patch to a single colour.</span>
+<span class="c1">#: The tolerance is in sRGB ``[0, 1]`` units, and the update rule makes the</span>
+<span class="c1">#: distance to the true median ``O(tol)``: at ``1e-6`` the solve lands about</span>
+<span class="c1">#: 1/4000 of an 8-bit code value away (``1/255 ~= 3.9e-3``), three orders of</span>
+<span class="c1">#: magnitude inside quantisation noise. That margin is the point -- the</span>
+<span class="c1">#: previous ``1e-3`` stopped while the iterate was still moving, which cost</span>
+<span class="c1">#: 0.109 code values on a clean patch and up to 21.9 on one containing a</span>
+<span class="c1">#: pixel coincident with the running estimate. The iteration cap is not the</span>
+<span class="c1">#: binding constraint: a swatch-shaped point cloud reaches this tolerance in</span>
+<span class="c1">#: at most ~66 iterations, and the cap only bounds a pathological input.</span>
+<span class="n">GEOMEDIAN_MAX_ITER</span> <span class="o">=</span> <span class="mi">200</span>
+<span class="n">GEOMEDIAN_TOL</span> <span class="o">=</span> <span class="mf">1e-6</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_in_jupyter_notebook</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
@@ -1201,8 +1214,14 @@
                 <span class="k">if</span> <span class="n">core_pixels_srgb</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
                     <span class="k">continue</span>
 
-                <span class="c1"># Geometric median in sRGB space.</span>
-                <span class="n">patch_srgb</span> <span class="o">=</span> <span class="n">geometric_median</span><span class="p">(</span><span class="n">core_pixels_srgb</span><span class="p">)</span>
+                <span class="c1"># Geometric median in sRGB space, from the same solver that</span>
+                <span class="c1"># backs MeasureColor&#39;s ColorLab_*GeoMedian columns, so a patch</span>
+                <span class="c1"># colour fitted here and a colour measured later agree.</span>
+                <span class="n">patch_srgb</span> <span class="o">=</span> <span class="n">robust_color_center</span><span class="p">(</span>
+                        <span class="n">core_pixels_srgb</span><span class="p">,</span>
+                        <span class="n">max_iter</span><span class="o">=</span><span class="n">GEOMEDIAN_MAX_ITER</span><span class="p">,</span>
+                        <span class="n">tol</span><span class="o">=</span><span class="n">GEOMEDIAN_TOL</span><span class="p">,</span>
+                <span class="p">)</span>
                 <span class="n">measured_srgb</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
                         <span class="p">(</span><span class="n">patch_srgb</span><span class="p">,</span> <span class="n">roi_idx</span><span class="p">,</span> <span class="n">core_pixels_fraction</span><span class="p">,</span> <span class="n">warnings</span><span class="p">)</span>
                 <span class="p">)</span>

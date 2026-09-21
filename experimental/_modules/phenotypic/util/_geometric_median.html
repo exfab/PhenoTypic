@@ -607,6 +607,10 @@
 <span class="sd">    Proceedings of STOC 2016, pp. 9-21.</span>
 <span class="sd">    arXiv:1606.05225</span>
 
+<span class="sd">    Vardi, Y., &amp; Zhang, C.-H. (2000). The multivariate L1-median and</span>
+<span class="sd">    associated data depth. PNAS, 97(4), 1423-1426.</span>
+<span class="sd">    https://doi.org/10.1073/pnas.97.4.1423</span>
+
 <span class="sd">Key Implementation Notes:</span>
 <span class="sd">    - Uses proper convergence checks on ACTUAL objective f(x), not penalized ft(x)</span>
 <span class="sd">    - Applies practical tolerances while maintaining theoretical structure</span>
@@ -1692,16 +1696,125 @@
 <span class="sd">&quot;&quot;&quot;</span>
 
 
+<span class="n">_COINCIDENCE_RTOL</span> <span class="o">=</span> <span class="mf">1e-12</span>
+<span class="sd">&quot;&quot;&quot;Radius inside which a data point counts as *on* the estimate.</span>
+
+<span class="sd">**Read the clamp first: for most callers here this radius is a constant.**</span>
+<span class="sd">``_coincidence_atol`` is ``1e-12 * max(||x||, 1)``, so below unit norm the</span>
+<span class="sd">``max`` clamps and the radius is a flat **1e-12 absolute**. Measured, it is</span>
+<span class="sd">exactly ``1e-12`` at ``[0,0,0]``, ``[0.5,0,0]`` and ``[0.35,0.37,0.40]``</span>
+<span class="sd">alike. ``ColorCheckerProfile`` works entirely in sRGB ``[0,1]``, so across</span>
+<span class="sd">that whole range the rule is not scale-relative at all. The relative half</span>
+<span class="sd">only begins above unit norm -- ``1.73e-12`` at ``[1,1,1]``, ``5.48e-11`` at</span>
+<span class="sd">L*a*b* ``[50,10,20]``.</span>
+
+<span class="sd">Where it *is* relative, the reason is floating-point, not statistical:</span>
+<span class="sd">``1e-12 * ||x||`` is a few thousand ULPs at ``x``, so the test asks &quot;is this</span>
+<span class="sd">point indistinguishable from the iterate at double precision?&quot; -- which is</span>
+<span class="sd">exactly the question ``1/d`` blows up on. That is why it scales with ``||x||``</span>
+<span class="sd">rather than with the data&#39;s spread.</span>
+
+<span class="sd">Coincidence must be a radius rather than an equality test. A point at</span>
+<span class="sd">``1.11e-16`` from the estimate is not equal to it, but ``1/d`` still gives it</span>
+<span class="sd">~1e15 of weight and it captures the update exactly as the old ``1e-10``</span>
+<span class="sd">distance floor did -- measured at 21.9 8-bit code values of error.</span>
+
+<span class="sd">The value is bounded on both sides and both bounds are tested</span>
+<span class="sd">(``tests/unit/util/test_geometric_median.py``). Too small degenerates to an</span>
+<span class="sd">equality test and reopens the defect; too large swallows real data points into</span>
+<span class="sd">the coincident set and returns something nearer the mean, which is the same</span>
+<span class="sd">defect wearing a different hat. It is far below anything real at either scale:</span>
+<span class="sd">8-bit pixels are ``1/255 ~= 3.9e-3`` apart, and L*a*b* spacing is larger still.</span>
+
+<span class="sd">One consequence of the clamp worth stating, since ``geometric_median`` is a</span>
+<span class="sd">public export: the solver has a **1e-12 absolute** resolution floor near the</span>
+<span class="sd">origin, so a caller working at a coordinate scale below ~1e-11 sees every</span>
+<span class="sd">point swallowed into the coincident set and gets the mean back. That is within</span>
+<span class="sd">the cloud&#39;s own diameter of the truth, so it is harmless -- but it is part of</span>
+<span class="sd">the contract.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_coincidence_atol</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Absolute radius for the coincidence test at estimate ``x``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x: Current estimate, shape (d,).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The distance at or below which a point is treated as lying on ``x``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_COINCIDENCE_RTOL</span> <span class="o">*</span> <span class="nb">max</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">x</span><span class="p">)),</span> <span class="mf">1.0</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_weiszfeld_result</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">iterations</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">f_initial</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">converged</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the ``(x, info)`` pair returned by :func:`weiszfeld_median`.</span>
+
+<span class="sd">    Every exit from the solver reports the same fields, so they are built in</span>
+<span class="sd">    one place. ``f_initial`` is only used for the printed improvement line and</span>
+<span class="sd">    is skipped when it is zero (a cloud of identical points), where the ratio</span>
+<span class="sd">    would be ``0/0`` -- today that prints ``Improvement: nan%`` and raises a</span>
+<span class="sd">    numpy invalid-value warning.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x: The estimate being returned, shape (d,).</span>
+<span class="sd">        points: Data points, shape (n, d).</span>
+<span class="sd">        iterations: Number of iterations actually performed.</span>
+<span class="sd">        f_initial: Objective at the starting estimate.</span>
+<span class="sd">        converged: Whether the solver reached a fixed point.</span>
+<span class="sd">        verbose: Whether to print the summary.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``(x, info)`` exactly as :func:`weiszfeld_median` documents it.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">objective</span> <span class="o">=</span> <span class="n">compute_geometric_median_objective</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">converged</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Converged after </span><span class="si">{</span><span class="n">iterations</span><span class="si">}</span><span class="s2"> iterations&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠ Maximum iterations reached&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Final: f(x) = </span><span class="si">{</span><span class="n">objective</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">converged</span> <span class="ow">and</span> <span class="n">f_initial</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Improvement: </span><span class="si">{</span><span class="p">((</span><span class="n">f_initial</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">objective</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">f_initial</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">100</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">&quot;iterations&quot;</span><span class="p">:</span> <span class="n">iterations</span><span class="p">,</span>
+        <span class="s2">&quot;objective&quot;</span><span class="p">:</span> <span class="n">objective</span><span class="p">,</span>
+        <span class="s2">&quot;initial_objective&quot;</span><span class="p">:</span> <span class="n">f_initial</span><span class="p">,</span>
+        <span class="s2">&quot;converged&quot;</span><span class="p">:</span> <span class="n">converged</span><span class="p">,</span>
+        <span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="s2">&quot;weiszfeld&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">weiszfeld_median</span><span class="p">(</span>
     <span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-6</span><span class="p">,</span> <span class="n">max_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Classical Weiszfeld algorithm for geometric median.</span>
 
-<span class="sd">    Reference: Weiszfeld (1937) - for comparison only</span>
+<span class="sd">    Reference: Weiszfeld (1937), with the coincident-point handling of</span>
+<span class="sd">    Vardi &amp; Zhang (2000).</span>
 
-<span class="sd">    Iterative reweighting: x^(k+1) = Σ w_i a^(i) / Σ w_i</span>
-<span class="sd">    where w_i = 1/||x^(k) - a^(i)||_2</span>
+<span class="sd">    Iterative reweighting: x^(k+1) = Σ w_i a^(i) / Σ w_i where</span>
+<span class="sd">    w_i = 1/||x^(k) - a^(i)||_2. Points lying on x^(k) are excluded from that</span>
+<span class="sd">    sum and the step is damped toward them by γ = min(1, η/r), which is what</span>
+<span class="sd">    keeps a data point on the estimate from capturing the iteration. With no</span>
+<span class="sd">    coincident point (η = 0) this is the classical update, and bit-identical</span>
+<span class="sd">    to the pre-2026-09 floored rule -- except where a distance falls in</span>
+<span class="sd">    ``(1e-12*max(||x||,1), 1e-10]``, which the old rule floored and this one</span>
+<span class="sd">    does not. No colorimetric caller produces such a distance, but that band</span>
+<span class="sd">    is the honest scope of &quot;unchanged&quot;.</span>
+
+<span class="sd">    Convergence reports ``r &lt;= η + eps*W`` (W = Σ 1/||a - x|| over the</span>
+<span class="sd">    non-coincident points), which is exact optimality when γ = 1 and an</span>
+<span class="sd">    eps-scaled subgradient slack otherwise -- the same slack the classical</span>
+<span class="sd">    rule has always carried.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        points: Data points, shape (n, d)</span>
@@ -1730,48 +1843,61 @@
     <span class="k">for</span> <span class="n">iteration</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iter</span><span class="p">):</span>
         <span class="n">x_old</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
-        <span class="c1"># Compute weights: w_i = 1/||x - a^(i)||_2</span>
+        <span class="c1"># Vardi &amp; Zhang (2000): split the points lying *on* the estimate out of</span>
+        <span class="c1"># the reweighting. 1/d is undefined there, and flooring d does not</span>
+        <span class="c1"># define it -- it hands those points ~1e10 of weight and pins the</span>
+        <span class="c1"># estimate to them, which is the defect this replaces.</span>
         <span class="n">distances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">points</span> <span class="o">-</span> <span class="n">x</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-        <span class="n">distances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">distances</span><span class="p">,</span> <span class="mf">1e-10</span><span class="p">)</span>
-        <span class="n">weights</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">distances</span>
+        <span class="n">on_estimate</span> <span class="o">=</span> <span class="n">distances</span> <span class="o">&lt;=</span> <span class="n">_coincidence_atol</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">eta</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">on_estimate</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
 
-        <span class="c1"># Weighted update</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">points</span> <span class="o">*</span> <span class="n">weights</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+        <span class="n">far</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="o">~</span><span class="n">on_estimate</span><span class="p">]</span>
+        <span class="n">far_distances</span> <span class="o">=</span> <span class="n">distances</span><span class="p">[</span><span class="o">~</span><span class="n">on_estimate</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">far</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># Every point coincides with the estimate, so it is the median.</span>
+            <span class="k">return</span> <span class="n">_weiszfeld_result</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">iteration</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">f_initial</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">verbose</span>
+            <span class="p">)</span>
+
+        <span class="n">weights</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">far_distances</span>
+        <span class="n">reweighted</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">far</span> <span class="o">*</span> <span class="n">weights</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">eta</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># No coincidence: exactly the classical Weiszfeld update.</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">reweighted</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># r is the norm of the non-coincident part of the subgradient.</span>
+            <span class="c1"># 0 lies in the subdifferential iff r &lt;= eta, i.e. iff gamma == 1 --</span>
+            <span class="c1"># so gamma == 1 gives a zero step that is an optimality</span>
+            <span class="c1"># certificate, not a stall. (The `r == 0.0` guard is required:</span>
+            <span class="c1"># `eta / r` raises ZeroDivisionError there, it does not yield inf.)</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">far</span> <span class="o">-</span> <span class="n">x</span><span class="p">)</span> <span class="o">/</span> <span class="n">far_distances</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">r</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">_weiszfeld_result</span><span class="p">(</span>
+                    <span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">iteration</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">f_initial</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">verbose</span>
+                <span class="p">)</span>
+            <span class="n">gamma</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">eta</span> <span class="o">/</span> <span class="n">r</span><span class="p">)</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">gamma</span><span class="p">)</span> <span class="o">*</span> <span class="n">reweighted</span> <span class="o">+</span> <span class="n">gamma</span> <span class="o">*</span> <span class="n">x</span>
 
         <span class="c1"># Check convergence</span>
         <span class="n">change</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">x_old</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">change</span> <span class="o">&lt;</span> <span class="n">eps</span><span class="p">:</span>
-            <span class="n">objective</span> <span class="o">=</span> <span class="n">compute_geometric_median_objective</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Converged after </span><span class="si">{</span><span class="n">iteration</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2"> iterations&quot;</span><span class="p">)</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Final: f(x) = </span><span class="si">{</span><span class="n">objective</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="nb">print</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;  Improvement: </span><span class="si">{</span><span class="p">((</span><span class="n">f_initial</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">objective</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">f_initial</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">100</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">%&quot;</span>
-                <span class="p">)</span>
-            <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="p">{</span>
-                <span class="s2">&quot;iterations&quot;</span><span class="p">:</span> <span class="n">iteration</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
-                <span class="s2">&quot;objective&quot;</span><span class="p">:</span> <span class="n">objective</span><span class="p">,</span>
-                <span class="s2">&quot;initial_objective&quot;</span><span class="p">:</span> <span class="n">f_initial</span><span class="p">,</span>
-                <span class="s2">&quot;converged&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-                <span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="s2">&quot;weiszfeld&quot;</span><span class="p">,</span>
-            <span class="p">}</span>
+            <span class="k">return</span> <span class="n">_weiszfeld_result</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">iteration</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">f_initial</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">verbose</span>
+            <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">verbose</span> <span class="ow">and</span> <span class="p">(</span><span class="n">iteration</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">100</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">objective</span> <span class="o">=</span> <span class="n">compute_geometric_median_objective</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">)</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Iteration </span><span class="si">{</span><span class="n">iteration</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">: f(x)=</span><span class="si">{</span><span class="n">objective</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-    <span class="n">objective</span> <span class="o">=</span> <span class="n">compute_geometric_median_objective</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠ Maximum iterations reached&quot;</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Final: f(x) = </span><span class="si">{</span><span class="n">objective</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-    <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="p">{</span>
-        <span class="s2">&quot;iterations&quot;</span><span class="p">:</span> <span class="n">max_iter</span><span class="p">,</span>
-        <span class="s2">&quot;objective&quot;</span><span class="p">:</span> <span class="n">objective</span><span class="p">,</span>
-        <span class="s2">&quot;initial_objective&quot;</span><span class="p">:</span> <span class="n">f_initial</span><span class="p">,</span>
-        <span class="s2">&quot;converged&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="s2">&quot;weiszfeld&quot;</span><span class="p">,</span>
-    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">_weiszfeld_result</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">max_iter</span><span class="p">,</span> <span class="n">f_initial</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="n">verbose</span><span class="p">)</span>
 
 
 <span class="c1"># =============================================================================</span>
@@ -1784,24 +1910,32 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">geometric_median</span><span class="p">(</span>
     <span class="n">points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-6</span><span class="p">,</span>
-    <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;cohen&quot;</span><span class="p">,</span> <span class="s2">&quot;weiszfeld&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;cohen&quot;</span><span class="p">,</span>
+    <span class="n">method</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;weiszfeld&quot;</span><span class="p">,</span> <span class="s2">&quot;cohen&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;weiszfeld&quot;</span><span class="p">,</span>
     <span class="n">matrix_free</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">matrix_free_threshold</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
-    <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Compute geometric median of a set of points.</span>
 
-<span class="sd">    Main interface supporting both Cohen et al. (2016) nearly-linear time</span>
-<span class="sd">    algorithm and classical Weiszfeld algorithm.</span>
+<span class="sd">    Main interface to the classical Weiszfeld algorithm. The Cohen et al.</span>
+<span class="sd">    (2016) nearly-linear-time routines are transcribed in this module but are</span>
+<span class="sd">    not wired up, so &#39;weiszfeld&#39; is both the default and the only method that</span>
+<span class="sd">    runs.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        points: Data points, shape (n, d)</span>
 <span class="sd">        eps: Target accuracy for (1 + eps)-approximation</span>
+
+<span class="sd">            Note: points within ``1e-12 * max(||x||, 1)`` of the running estimate</span>
+<span class="sd">            are treated as coincident with it. For data at a coordinate scale below</span>
+<span class="sd">            ~1e-11 this collapses the whole cloud into that set and returns the</span>
+<span class="sd">            mean.</span>
 <span class="sd">        method: Algorithm to use:</span>
-<span class="sd">            - &#39;cohen&#39;: Cohen et al. (2016) O(nd log³(n/ε)) algorithm [default]</span>
-<span class="sd">            - &#39;weiszfeld&#39;: Classical Weiszfeld O(?) algorithm</span>
+<span class="sd">            - &#39;weiszfeld&#39;: Classical Weiszfeld reweighting [default]</span>
+<span class="sd">            - &#39;cohen&#39;: Cohen et al. (2016) O(nd log³(n/ε)) algorithm --</span>
+<span class="sd">              NOT IMPLEMENTED, raises ValueError</span>
 <span class="sd">        matrix_free: For Cohen method, whether to use matrix-free Hessian.</span>
 <span class="sd">                    If None, automatically decides based on dimension.</span>
 <span class="sd">        matrix_free_threshold: Dimension threshold for matrix-free mode</span>
@@ -1819,23 +1953,22 @@
 <span class="sd">            - Additional method-specific statistics</span>
 
 <span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If method is invalid or points array has wrong shape</span>
+<span class="sd">        ValueError: If *method* is &#39;cohen&#39; (not implemented), if *method* is</span>
+<span class="sd">            unrecognised, or if *points* has the wrong shape.</span>
 
 <span class="sd">    Examples:</span>
-<span class="sd">        &gt;&gt;&gt; # Cohen method (recommended for large problems)</span>
-<span class="sd">        &gt;&gt;&gt; points = np.random.randn(10000, 50)</span>
-<span class="sd">        &gt;&gt;&gt; median, info = geometric_median(points, method=&#39;cohen&#39;, eps=0.01)</span>
-<span class="sd">        &gt;&gt;&gt; print(f&quot;Converged: {info[&#39;converged&#39;]}&quot;)</span>
-<span class="sd">        &gt;&gt;&gt; print(f&quot;Objective: {info[&#39;objective&#39;]:.6f}&quot;)</span>
+<span class="sd">        Geometric median of a small point cloud:</span>
 
-<span class="sd">        &gt;&gt;&gt; # Weiszfeld method (simple, good for small problems)</span>
-<span class="sd">        &gt;&gt;&gt; points = np.random.randn(100, 3)</span>
-<span class="sd">        &gt;&gt;&gt; median, info = geometric_median(points, method=&#39;weiszfeld&#39;, eps=1e-6)</span>
-
-<span class="sd">        &gt;&gt;&gt; # Force matrix-free for high-dimensional problems</span>
-<span class="sd">        &gt;&gt;&gt; points = np.random.randn(1000, 500)</span>
-<span class="sd">        &gt;&gt;&gt; median, info = geometric_median(points, method=&#39;cohen&#39;,</span>
-<span class="sd">        ...                                 matrix_free=True, eps=0.1)</span>
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; rng = np.random.default_rng(0)</span>
+<span class="sd">        &gt;&gt;&gt; points = rng.normal(size=(100, 3))</span>
+<span class="sd">        &gt;&gt;&gt; median, info = geometric_median(points, eps=1e-6)</span>
+<span class="sd">        &gt;&gt;&gt; median.shape</span>
+<span class="sd">        (3,)</span>
+<span class="sd">        &gt;&gt;&gt; info[&#39;method&#39;]</span>
+<span class="sd">        &#39;weiszfeld&#39;</span>
+<span class="sd">        &gt;&gt;&gt; bool(info[&#39;converged&#39;])</span>
+<span class="sd">        True</span>
 
 <span class="sd">    References:</span>
 <span class="sd">        Cohen, M. B., Lee, Y. T., Miller, G., Pachocki, J., &amp; Sidford, A. (2016).</span>
@@ -1849,14 +1982,10 @@
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Need at least one point&quot;</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;cohen&quot;</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Method &#39;cohen&#39; is not implemented yet.&quot;</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">accurate_median</span><span class="p">(</span>
-            <span class="n">points</span><span class="p">,</span>
-            <span class="n">epsilon</span><span class="o">=</span><span class="n">eps</span><span class="p">,</span>
-            <span class="n">matrix_free</span><span class="o">=</span><span class="n">matrix_free</span><span class="p">,</span>
-            <span class="n">matrix_free_threshold</span><span class="o">=</span><span class="n">matrix_free_threshold</span><span class="p">,</span>
-            <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Method &#39;cohen&#39; is not implemented yet; use method=&#39;weiszfeld&#39; &quot;</span>
+            <span class="s2">&quot;(the default). The Cohen et al. (2016) routines in this module &quot;</span>
+            <span class="s2">&quot;are a transcription of the paper and are not reachable from here.&quot;</span>
         <span class="p">)</span>
     <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;weiszfeld&quot;</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">weiszfeld_median</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="n">eps</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>

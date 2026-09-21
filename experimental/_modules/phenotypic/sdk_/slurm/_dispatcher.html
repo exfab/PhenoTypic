@@ -750,7 +750,9 @@
 <span class="s2">&quot;&quot;&quot;</span>
 
     <span class="n">output_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">output_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">script_content</span><span class="p">)</span>
+    <span class="c1"># Explicit UTF-8 and LF: the locale default (cp1252 on Windows) cannot</span>
+    <span class="c1"># encode a non-ASCII output path, and bash rejects CRLF line endings.</span>
+    <span class="n">output_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">script_content</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="n">output_path</span><span class="o">.</span><span class="n">chmod</span><span class="p">(</span><span class="mo">0o755</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">output_path</span></div>

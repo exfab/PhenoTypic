@@ -626,7 +626,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span><span class="p">,</span> <span class="n">PurePosixPath</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span><span class="p">,</span> <span class="n">PurePosixPath</span><span class="p">,</span> <span class="n">PureWindowsPath</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Final</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">NamedTuple</span><span class="p">,</span> <span class="n">Sequence</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">uuid</span><span class="w"> </span><span class="kn">import</span> <span class="n">uuid4</span>
 
@@ -1581,7 +1581,8 @@
     <span class="k">if</span> <span class="ow">not</span> <span class="n">raw</span> <span class="ow">or</span> <span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span> <span class="ow">in</span> <span class="n">raw</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid NGFF </span><span class="si">{</span><span class="n">role</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">raw</span><span class="si">!r}</span><span class="s2">: expected a non-empty POSIX path&quot;</span><span class="p">)</span>
     <span class="n">posix_path</span> <span class="o">=</span> <span class="n">PurePosixPath</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">posix_path</span><span class="o">.</span><span class="n">is_absolute</span><span class="p">()</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span>
+    <span class="c1"># ``PurePosixPath`` reads ``C:/x`` as relative; on Windows it is not.</span>
+    <span class="k">if</span> <span class="n">posix_path</span><span class="o">.</span><span class="n">is_absolute</span><span class="p">()</span> <span class="ow">or</span> <span class="n">PureWindowsPath</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span><span class="o">.</span><span class="n">drive</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span>
         <span class="n">part</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="s2">&quot;..&quot;</span><span class="p">}</span> <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">posix_path</span><span class="o">.</span><span class="n">parts</span>
     <span class="p">):</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
@@ -2318,8 +2319,14 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_fsync_path</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;``fsync`` one already-existing file or directory.&quot;&quot;&quot;</span>
-    <span class="n">handle</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">long_path</span><span class="p">(</span><span class="n">path</span><span class="p">),</span> <span class="n">os</span><span class="o">.</span><span class="n">O_RDONLY</span><span class="p">)</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;``fsync`` one already-existing file or directory.</span>
+
+<span class="sd">    Windows implements ``fsync`` as ``FlushFileBuffers``, which fails with</span>
+<span class="sd">    ``EBADF`` on a read-only handle, so files are opened read-write there.</span>
+<span class="sd">    Directories are only ever flushed on POSIX, where read-only is required.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">flags</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">O_RDONLY</span> <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;posix&quot;</span> <span class="k">else</span> <span class="n">os</span><span class="o">.</span><span class="n">O_RDWR</span>
+    <span class="n">handle</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">long_path</span><span class="p">(</span><span class="n">path</span><span class="p">),</span> <span class="n">flags</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">os</span><span class="o">.</span><span class="n">fsync</span><span class="p">(</span><span class="n">handle</span><span class="p">)</span>
     <span class="k">finally</span><span class="p">:</span>
