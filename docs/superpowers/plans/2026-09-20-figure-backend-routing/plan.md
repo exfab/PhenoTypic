@@ -2763,6 +2763,28 @@ Use the **`run-phenotypic-test`** skill and the **`slurm-job`** skill. The suite
 
 Do NOT use `-n auto` (it reads the node's core count, not the allocation's) and do NOT use `-x` (it truncates a run that then gets recorded as a baseline). Set `QT_QPA_PLATFORM=offscreen`.
 
+- [ ] **Step 4b: Know which failures are environmental before you start**
+
+Measured during the C2 gate, so the final regression does not spend time
+re-diagnosing it: **`pytest-qt` is not installed**, in this worktree *or* in the
+main checkout. Every `qtbot`-taking test errors at setup with
+`fixture 'qtbot' not found` — two in `tests/unit/sdk_/test_label_editor_widget.py`
+alone. The project's own setup line calls for it:
+
+```
+uv sync --group dev --group test-qt --group docs --extra gui --extra napari
+```
+
+This is pre-existing and machine-wide, not introduced by this change. Either sync
+the full dev environment before the regression run, or expect these and subtract
+them — but decide *before* the run, because a `qtbot` error looks like a
+collection failure and is easy to attribute to whatever changed last.
+
+Note also that the Qt suite needs `QT_QPA_PLATFORM=offscreen` for a different
+reason (a missing one aborts the interpreter with no summary). Setting it does
+**not** fix the missing fixture; they are two separate requirements that produce
+superficially similar-looking breakage.
+
 - [ ] **Step 5: Compare against the recorded baseline**
 
 The captured baseline is 11,106 tests with 81 pre-existing failures, all outside `sdk_`, `_cli`, and `gui`. Any *new* failure is attributable to this change.
