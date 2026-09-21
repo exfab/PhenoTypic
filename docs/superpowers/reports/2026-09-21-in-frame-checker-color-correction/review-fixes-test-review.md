@@ -375,7 +375,7 @@ failures are the `FilFinderDetector` smoke tests (optional topology
 
 | ID | Outcome |
 |---|---|
-| M1 | **Partly fixed.** `anchor_columns_voting` is now a signal, and a warning fires when fewer than two columns vote, so a check that could not run no longer looks like a pass. The guard test asserts both. **Still open, needs a user decision:** restoring the check on clipped 2-column cards means estimating a clipped column's shift from its unclipped inner edge, which is a detection-algorithm change. The reviewer's 26 px negative control is not added, because it would fail until that decision is made. |
+| M1 | **Partly fixed.** `anchor_columns_voting` is now a signal, and a warning fires when fewer than two columns vote, so a check that could not run no longer looks like a pass. The guard test asserts both. **Closed by user decision (2026-09-21):** accept the warning, and correct the spec rather than add a detection method. The spec's QC table and a new note under the geometry gates now describe the anchor-column check as it actually works, and record that the original method-spread gate left with ECC. The inner-edge estimator and the reviewer's 26 px negative control are not pursued. |
 | M2 | Fixed. A collision is now a flag on the later ROI, whose tiles are not used, and `on_qc_fail` decides. Tested under `skip` with the reviewer's fixture. |
 | M3 | Fixed. `accepted` excludes patches rejected as outliers; the census warns about them as missing; `patch_census()` counts what was fitted. |
 | L1 | Fixed. When every ROI is refused, the error reads "No ROI produced usable tiles…" and names the refusals. |

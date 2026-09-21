@@ -437,7 +437,8 @@ from the 40-band subset.
 | signal | limit | what it catches | action |
 |---|---|---|---|
 | displacement from prior | > 30 px | rig moved or prior stale | refuse |
-| spread between refinement methods | > 8 px (reference) / 12 px (reference-free) | detector disagreement | refuse |
+| spread between anchor columns (see note below) | > 12 px | columns of one rigid card disagree about where it moved | refuse |
+| fewer than two columns wholly inside the ROI | < 2 | the anchor-column check above could not run | warn |
 | placement margin | < 0.20 | card missing, flipped, wrong, or too occluded to place | refuse |
 | placement margin | < 0.25 | placement weaker than any clean card observed (baseline 0.294–0.334) | warn |
 | free-Hungarian disagreement with the winning placement | > 2 of 12 tiles | those tiles do not look like the patch the geometry implies | warn |
@@ -446,6 +447,24 @@ from the 40-band subset.
 | worst tile impurity | > 0.05 | localised contamination | warn |
 | robust colour shift from contamination | > 1.5 ΔE | contamination actually moved the value | refuse |
 | clipped-pixel fraction | > 0.20 | channel pinned at the sensor limit — unrecoverable | refuse |
+
+**Anchor-column spread replaces the method spread (2026-09-21).** This gate
+originally compared two refinement *methods* on the same ROI: 8 px when one of
+them used a reference band, 12 px when both were reference-free. That check
+cannot be built as shipped. ECC, the only reference-based method, is not
+offered by the operation (see §Detection), and no second reference-free method
+was ported. What runs instead is a consistency check inside the rigid method:
+the shift is measured once per column, each time anchoring on that column, and
+the spread between the estimates must stay within 12 px, because the columns of
+one rigid card must agree about where it moved. Only columns lying wholly
+inside the ROI vote. A column clipped by the frame border tracks the shift at
+about half rate (§Detection), and letting it vote refused in-range moves: a
+25 px shift read as 12.5 px of disagreement. On a two-column half-card whose
+outer column is clipped, only one column votes and the check cannot run. The
+gate then records `anchor_columns_voting` and warns rather than passing
+silently. Restoring the check on clipped cards would mean measuring a clipped
+column's shift from its unclipped inner edge, a method this spec has not
+evaluated.
 
 The impurity signals answer *is something there*; the robust shift answers *did
 it move the answer*, and only the second is grounds to reject. Fault injection
