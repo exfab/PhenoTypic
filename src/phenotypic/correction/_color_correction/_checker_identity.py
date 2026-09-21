@@ -236,7 +236,7 @@ def assign_placement(
     # A tile whose box missed the ROI measured nothing. Excluding it only
     # from the vote is not enough: luminance is normalised by the block's
     # brightest tile, so a NaN anywhere would make every feature NaN.
-    finite = np.isfinite(flat_observed).all(axis=1)
+    finite = np.asarray(np.isfinite(flat_observed).all(axis=1), dtype=bool)
     obs_features = np.full_like(flat_observed, np.nan)
     obs_features[finite] = identity_features(flat_observed[finite])
 
