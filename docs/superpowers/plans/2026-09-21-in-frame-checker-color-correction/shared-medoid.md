@@ -31,6 +31,14 @@
   | 40 000 | 115.4 ms | 1 184 ms | 10.3× |
 
   Cost is linear in object size, and the old method was flat above 1000 px. Small and medium colonies get faster; very large ones get slower. That trade fits the project's "accuracy over speed" rule, but it is a real cost on plates of large colonies.
+- **Peak memory per object** (`tracemalloc`, macOS arm64, unimodal Lab cloud; review finding F2):
+
+  | object pixels | old `medoid_ciede2000` | `candidate_medoid`, fixed 64-candidate blocks | `candidate_medoid`, byte-budgeted blocks (shipped) |
+  |---|---|---|---|
+  | 20 000 | 0.03 GB | 0.34 GB | 0.25 GiB |
+  | 100 000 | 0.03 GB | 1.6 GiB | 0.25 GiB |
+
+  colour's ΔE2000 allocates ~265 B per candidate-pixel pair, so 64 candidates against every pixel grew without bound (~17 GB extrapolated at 10⁶ px, paid by every `--njobs` worker at once). The block size is now `max(1, min(64, 256 MiB // (N · 265 B)))` (`MEDOID_MEMORY_BUDGET_BYTES`, `MEDOID_BYTES_PER_PAIR`), so peak stays near 256 MiB up to about 10⁶ object pixels. Past that the floor is a single `(1, N)` row, ~265 B per pixel: ~1 GB for a 4-megapixel whole-plate object. The result is bit-identical for every block size. Memory is still higher than the old flat ~30 MB, the price of scoring against every pixel.
 - **Fields.** `MeasureColor.medoid_max_pixels` and `MeasureColor.random_seed` stop meaning anything, and `medoid_candidates: int = 256` replaces them.
   - Saved pipelines that set the old fields must still load. A `mode="before"` validator drops them with a `DeprecationWarning`, because `extra="forbid"` would otherwise reject them.
 - **`phenotypic.util.medoid_ciede2000` stays exported and unchanged.** It is public API. It is simply no longer used by `MeasureColor`.

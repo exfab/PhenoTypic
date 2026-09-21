@@ -37,6 +37,21 @@ GEOMEDIAN_TOL = 1e-6
 #: ``candidates`` below the default expecting the guard to compensate.
 CANDIDATE_EDGE_FRACTION = 0.8
 
+#: Byte budget for one block of :func:`candidate_medoid`'s ΔE2000 scoring.
+#: Sizing the block from it, rather than from a fixed candidate count, keeps a
+#: very large object (a merged lawn, a whole-plate mis-detection) from
+#: allocating gigabytes of CIEDE2000 temporaries.
+MEDOID_MEMORY_BUDGET_BYTES = 256 * 2**20
+
+#: Peak bytes allocated per candidate-pixel pair while scoring one block.
+#: colour's CIEDE2000 materialises many ``(block, N)`` float64 temporaries.
+#: Measured with ``tracemalloc`` on a 20 000-pixel unimodal L*a*b* cloud
+#: (macOS arm64, numpy 2, colour-science 0.4): peak over ``chunk_size * N`` is
+#: 264.6 B at ``chunk_size=64`` and 266.5 B at 16, the difference between the
+#: two giving a slope of 264.0 B/pair plus ~0.8 MB of per-call overhead.
+#: Rounded up to 265 so the block errs small.
+MEDOID_BYTES_PER_PAIR = 265
+
 
 def robust_color_center(
     points: np.ndarray, max_iter: int = 50, tol: float = 1e-4
@@ -159,7 +174,7 @@ class MedoidResult(NamedTuple):
 def candidate_medoid(
         lab_points: np.ndarray,
         k: int = DEFAULT_MEDOID_CANDIDATES,
-        chunk_size: int = 64,
+        chunk_size: int | None = None,
 ) -> MedoidResult:
     """The delta-E 2000 medoid of *lab_points*, found deterministically.
 
@@ -182,20 +197,29 @@ def candidate_medoid(
         k: Number of candidates to score.  Widened once, automatically, if the
             winner lands past :data:`CANDIDATE_EDGE_FRACTION` of the set.
         chunk_size: Candidates scored per block, bounding peak memory to
-            ``O(chunk_size * N)`` instead of ``O(k * N)``.
+            ``O(chunk_size * N)`` instead of ``O(k * N)``.  ``None`` (the
+            default) sizes the block from :data:`MEDOID_MEMORY_BUDGET_BYTES`:
+            ``max(1, min(64, budget // (N * MEDOID_BYTES_PER_PAIR)))``.  The
+            result is bit-identical for every block size -- each candidate's
+            total is summed over the same full row -- so this bounds memory and
+            nothing else.  Below one candidate per block the floor is one
+            ``(1, N)`` row, ~265 B per pixel.
 
     Returns:
         A :class:`MedoidResult`.  For an empty input the index is ``-1`` and
         the coordinate is all-NaN; for a single pixel it is that pixel.
 
     Raises:
-        ValueError: If *lab_points* is not 2-D, or *k* is not positive.
+        ValueError: If *lab_points* is not 2-D, or *k* or *chunk_size* is
+            not positive.
     """
     points = np.asarray(lab_points, dtype=np.float64)
     if points.ndim != 2 or points.shape[-1] != 3:
         raise ValueError(f"lab_points must be (N, 3); got {points.shape}.")
     if k < 1:
         raise ValueError(f"k must be a positive candidate count; got {k}.")
+    if chunk_size is not None and chunk_size < 1:
+        raise ValueError(f"chunk_size must be positive; got {chunk_size}.")
 
     n = points.shape[0]
     if n == 0:
@@ -207,6 +231,10 @@ def candidate_medoid(
             points, max_iter=GEOMEDIAN_MAX_ITER, tol=GEOMEDIAN_TOL
     )
     order = np.argsort(np.linalg.norm(points - seed, axis=1), kind="stable")
+    if chunk_size is None:
+        chunk_size = max(
+                1, min(64, MEDOID_MEMORY_BUDGET_BYTES // (n * MEDOID_BYTES_PER_PAIR))
+        )
 
     attempts = (min(k, n), min(max(4 * k, k), n))
     widened = False

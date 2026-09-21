@@ -129,3 +129,69 @@ def test_candidate_medoid_is_exported_from_util():
     assert MedoidResult is _checker_measure.MedoidResult
     result = candidate_medoid(np.array([[50.0, 0.0, 0.0], [52.0, 1.0, -1.0], [51.0, 0.5, 0.0]]))
     assert isinstance(result, MedoidResult)
+
+
+def _bimodal_lab_cloud() -> np.ndarray:
+    """900 px at one colour and 300 px 30 a* away: exercises the widened pass too."""
+    rng = np.random.default_rng(11)
+    major = np.array([50.0, 0.0, 0.0]) + rng.normal(0, 0.6, (900, 3))
+    minor = np.array([50.0, 30.0, 0.0]) + rng.normal(0, 0.6, (300, 3))
+    return np.vstack([major, minor])
+
+
+@pytest.mark.parametrize(
+    "lab",
+    [
+        _bimodal_lab_cloud(),
+        np.array([55.0, 5.0, 20.0]) + np.random.default_rng(3).normal(0, 2.0, (2000, 3)),
+    ],
+    ids=["bimodal-widened", "unimodal"],
+)
+def test_candidate_medoid_is_chunk_size_invariant(lab):
+    """Chunking bounds memory and nothing else: every field is bit-identical."""
+    from phenotypic.util import candidate_medoid
+
+    results = {cs: candidate_medoid(lab, chunk_size=cs) for cs in (1, 7, 64, None)}
+    reference = results[64]
+    for cs, result in results.items():
+        assert result.index == reference.index, cs
+        assert result.rank == reference.rank, cs
+        assert result.widened == reference.widened, cs
+        assert result.total_delta_e == reference.total_delta_e, cs  # exact, not approx
+        assert np.array_equal(result.lab, reference.lab), cs
+
+
+def test_candidate_medoid_peak_memory_is_bounded():
+    """Peak memory stays near the byte budget however large the object is.
+
+    Before the budget, ``chunk_size=64`` scored 64 candidates against all N
+    pixels at once: ~265 B per candidate-pixel pair in colour's ΔE2000
+    temporaries, i.e. ~1.7 GB at N = 100 000.
+
+    Allowance above the budget, from the non-chunk allocations: the (N, 3)
+    ``points - seed`` difference (24 B/px), its norms and their argsort (16
+    B/px) -- measured together with the Weiszfeld seed at ~40 B/px (peak minus
+    the pair term at ``chunk_size=1``), i.e. ~4 MB here. Measured peak after
+    the budget: ~256 MiB. The scoring block is sized with a bytes-per-pair
+    constant measured on macOS; 2x the budget leaves room for that constant to
+    run higher on another platform or numpy build while still failing the old
+    ~1.6 GiB peak by a factor of 3.
+    """
+    import tracemalloc
+
+    from phenotypic.util import candidate_medoid
+    from phenotypic.util._robust_color_stats import MEDOID_MEMORY_BUDGET_BYTES
+
+    n = 100_000
+    lab = np.array([55.0, 5.0, 20.0]) + np.random.default_rng(0).normal(0, 2.0, (n, 3))
+    candidate_medoid(lab[:10])  # import colour outside the traced window
+
+    tracemalloc.start()
+    try:
+        candidate_medoid(lab)
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+
+    bound = 2 * MEDOID_MEMORY_BUDGET_BYTES
+    assert peak < bound, f"peak {peak / 2**20:.0f} MiB exceeds {bound / 2**20:.0f} MiB"
