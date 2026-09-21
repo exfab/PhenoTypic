@@ -74,6 +74,31 @@ valid root and reads as absent rather than partial.
 .. autofunction:: promote_store
 .. autofunction:: sweep_orphan_parts
 
+Publication identity
+--------------------
+
+A published store's generation is identified by its root, not by walking its
+chunks: the promote writes ``zarr.json`` last, so that file's bytes and
+identity name the whole generation. Both functions below live in
+``phenotypic.sdk_`` rather than ``ngff_``.
+
+.. warning::
+
+   **Measure a store one way within one comparison.** Both functions accept a
+   held directory from ``phenotypic.sdk_._identity_io``, and the identity they
+   return is *not* interchangeable with a path-based measurement on every
+   platform: on Windows a directory-entry query can report an older
+   ``st_mtime_ns`` than an open-handle query for the same file. A consumer
+   that validates with one and serves under the other reports a store nobody
+   touched as changed. Browse learned this as a 409 on every tile request.
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: store_publication_token
+.. autofunction:: store_revision_identity
+
+.. currentmodule:: phenotypic.sdk_.ngff_
+
 Durability
 ----------
 
