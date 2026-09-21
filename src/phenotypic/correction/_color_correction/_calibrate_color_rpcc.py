@@ -269,7 +269,9 @@ class CalibrateColorRpcc(ImageCorrector):
         claimed_by: dict[str, int] = {}  # patch name -> ROI that measured it
         records: list[QcRecord] = []
         tiles_out: list[dict[str, Any]] = []
-        lattices: list[CheckerLattice] = []
+        # One entry per ROI, None where no lattice was found, so that
+        # lattices[i] always describes ROI i.
+        lattices: list[CheckerLattice | None] = []
 
         for index, roi in enumerate(self.rois):
             lab, srgb = self._roi_views(image, roi)
@@ -287,6 +289,7 @@ class CalibrateColorRpcc(ImageCorrector):
                     # No card in the rectangle is a property of this frame,
                     # not of the configuration: the policy decides.
                     records.append(self._refusal(index, roi, f"lattice not found: {exc}"))
+                    lattices.append(None)
                     continue
                 shift = 0.0
             lattices.append(lattice)
@@ -500,7 +503,10 @@ class CalibrateColorRpcc(ImageCorrector):
                 "warnings": census,
             },
             "tiles"    : tiles,
-            "lattices" : [lattice.model_dump() for lattice in lattices],
+            "lattices" : [
+                lattice.model_dump() if lattice is not None else None
+                for lattice in lattices
+            ],
             "qc"       : [record.model_dump() for record in self.qc],
         }
 
