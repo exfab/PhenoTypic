@@ -67,17 +67,13 @@ def render_frame(
         dx: int = 0,
         dy: int = 0,
         gain: float = GAIN,
-        rotate_deg: float = 0.0,
         overrides: dict[tuple[int, int, int], np.ndarray] | None = None,
         seed: int = 0,
 ) -> np.ndarray:
     """A uint8 sRGB frame with two card bands at the left and right edges.
 
     ``overrides`` maps ``(band, row, col)`` to a replacement sRGB colour.
-    ``rotate_deg`` rotates each band about its own centre after rendering.
     """
-    from scipy.ndimage import rotate
-
     width = 2 * band_w + GAP
     rng = np.random.default_rng(seed)
     frame = np.full((BAND_H, width, 3), 0.55)
@@ -92,8 +88,6 @@ def render_frame(
                 x0 = col_x[col] + dx
                 ys, xs = max(0, y0), max(0, x0)
                 region[ys:y0 + TILE, xs:x0 + TILE] = FLOOR + colour * gain
-        if rotate_deg:
-            region = rotate(region, rotate_deg, reshape=False, order=1, mode="nearest")
         frame[:, left:left + band_w] = region
     frame = np.clip(frame + rng.normal(0, 0.004, frame.shape), 0, 1)
     return (frame * 255).round().astype(np.uint8)
@@ -166,55 +160,6 @@ def test_an_empty_tile_never_turns_the_fit_into_nan() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 2. The rotation ECC recovers must be applied to the measurement boxes
-# ---------------------------------------------------------------------------
-def test_a_rotated_card_is_measured_on_rotated_boxes() -> None:
-    """Every tile on a card rotated 5 degrees must read its own colour.
-
-    The baseline is the same card, unrotated, measured on a frozen lattice.
-    Ignoring the recovered rotation walks the outer tiles' core boxes off
-    their patches and onto the card background.
-    """
-    import colour
-
-    band_w, col_x = 200, (50, 110)
-    prior = band_prior(col_x=col_x)
-    rois = band_rois(band_w)
-
-    baseline = CalibrateColorRpcc(
-            rois=rois, lattice_prior=[prior, prior], refine_method="frozen",
-    )
-    quietly(baseline, Image(arr=render_frame(band_w=band_w, col_x=col_x)))
-    expected = {
-        (t["roi_index"], t["row"], t["col"]): t["lab"]
-        for t in baseline.diagnostics["tiles"]
-    }
-
-    reference = Image(arr=render_frame(band_w=band_w, col_x=col_x))
-    bands = [
-        reference.color.Lab[CheckerRoi.from_bbox(r).row_slice,
-                            CheckerRoi.from_bbox(r).col_slice]
-        for r in rois
-    ]
-    rotated = CalibrateColorRpcc(
-            rois=rois, lattice_prior=[prior, prior], refine_method="ecc",
-            reference_bands=bands, on_qc_fail="warn",
-    )
-    quietly(
-            rotated,
-            Image(arr=render_frame(band_w=band_w, col_x=col_x, rotate_deg=5.0)),
-    )
-
-    errors = {
-        key: float(colour.difference.delta_E_CIE2000(t["lab"], expected[key]))
-        for t in rotated.diagnostics["tiles"]
-        for key in [(t["roi_index"], t["row"], t["col"])]
-    }
-    worst = max(errors, key=lambda key: errors[key])
-    assert errors[worst] < 3.0, f"tile {worst} read {errors[worst]:.1f} dE00 off"
-
-
-# ---------------------------------------------------------------------------
 # 3. Rank sufficiency must be checked on the patches the fit actually uses
 # ---------------------------------------------------------------------------
 def test_rank_is_checked_after_outlier_rejection() -> None:
@@ -258,28 +203,21 @@ def test_patch_census_records_a_failing_frame_instead_of_crashing() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 5. reference_bands must survive the serialisation workers rebuild from
+# 5. (and 2) ECC is not offered, so there is no reference band to lose
 # ---------------------------------------------------------------------------
-def test_reference_bands_survive_a_model_dump_round_trip() -> None:
-    bands = [np.zeros((BAND_H, 140, 3)), np.ones((BAND_H, 140, 3))]
-    operation = frozen_op(refine_method="ecc", reference_bands=bands)
+def test_ecc_is_not_offered_by_the_operation() -> None:
+    """Dropped 2026-09-21: a reference band would ride in every pipeline JSON.
 
-    restored = CalibrateColorRpcc.model_validate(operation.model_dump())
-
-    assert restored.reference_bands is not None
-    for original, back in zip(bands, restored.reference_bands):
-        np.testing.assert_array_equal(np.asarray(back), original)
-
-
-def test_reference_bands_survive_a_json_round_trip() -> None:
-    bands = [np.zeros((4, 5, 3)), np.full((4, 5, 3), 2.5)]
-    operation = frozen_op(refine_method="ecc", reference_bands=bands)
-
-    restored = CalibrateColorRpcc.from_json(operation.to_json())
-
-    assert restored.reference_bands is not None
-    for original, back in zip(bands, restored.reference_bands):
-        np.testing.assert_array_equal(np.asarray(back), original)
+    Finding 5 (bands lost on rebuild) and the operation-level half of
+    finding 2 (rotation ignored) both disappear with it; the rotation bug in
+    ``refine_ecc``/``boxes`` is guarded in ``test_checker_detect.py``.
+    """
+    assert "reference_bands" not in CalibrateColorRpcc.model_fields
+    prior = band_prior()
+    with pytest.raises(ValueError):
+        CalibrateColorRpcc(
+                rois=band_rois(), lattice_prior=[prior, prior], refine_method="ecc",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -389,15 +327,6 @@ def test_the_operation_min_patches_is_honoured() -> None:
 def test_a_short_lattice_prior_is_rejected_at_construction() -> None:
     with pytest.raises(ValueError, match="lattice_prior"):
         CalibrateColorRpcc(rois=band_rois(), lattice_prior=[band_prior()])
-
-
-def test_short_reference_bands_are_rejected_at_construction() -> None:
-    prior = band_prior()
-    with pytest.raises(ValueError, match="reference_bands"):
-        CalibrateColorRpcc(
-                rois=band_rois(), lattice_prior=[prior, prior],
-                refine_method="ecc", reference_bands=[np.zeros((4, 4, 3))],
-        )
 
 
 # ---------------------------------------------------------------------------

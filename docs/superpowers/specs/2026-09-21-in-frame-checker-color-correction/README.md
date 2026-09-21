@@ -208,11 +208,17 @@ Two entry points, selected by whether a prior is supplied:
   - `"rigid"` *(default)* — measure the displacement on the unclipped inner
     column only and translate the whole lattice by it. ±45 px vertical, ±30 px
     horizontal, no reference image needed, 0.357 s/ROI.
-  - `"ecc"` — OpenCV ECC euclidean registration against a stored reference band.
-    Widest range (±60 / ±40) and reports a correlation that doubles as a
-    confidence signal, but requires shipping the reference band alongside the
-    prior.
   - `"frozen"` — trust the prior unchanged. For rigs that never move; still QC'd.
+
+  **`"ecc"` is not offered by the operation** (decided 2026-09-21, after code
+  review). ECC registers against a stored *reference band* — the Lab pixels of
+  each ROI on the frame the prior was fitted from, ~2150×340×3 floats per band —
+  which would have to be serialised into every pipeline JSON and per-image
+  provenance journal (~40 MB per band as JSON). Its only gains over `"rigid"`
+  are range (±60 / ±40 vs ±45 / ±30) and a correlation score, and measured rig
+  motion (≤9.7 px, ≤0.084°) sits well inside rigid's range. `refine_ecc` stays
+  in `_checker_detect` as a building block; re-adding it to the operation means
+  first settling how a reference band is stored.
 
 Output: a `CheckerLattice` per ROI (per-column `x0/x1/start/pitch/duty`, plus
 `dy`, `dx`, `rot`, `confidence`).
@@ -432,7 +438,6 @@ from the 40-band subset.
 |---|---|---|---|
 | displacement from prior | > 30 px | rig moved or prior stale | refuse |
 | spread between refinement methods | > 8 px (reference) / 12 px (reference-free) | detector disagreement | refuse |
-| ECC correlation (`refine="ecc"` only) | < 0.90 | registration failed | refuse |
 | placement margin | < 0.20 | card missing, flipped, wrong, or too occluded to place | refuse |
 | placement margin | < 0.25 | placement weaker than any clean card observed (baseline 0.294–0.334) | warn |
 | free-Hungarian disagreement with the winning placement | > 2 of 12 tiles | those tiles do not look like the patch the geometry implies | warn |
@@ -508,8 +513,7 @@ class CalibrateColorRpcc(ImageCorrector):
 
     # -- detection ---------------------------------------------------------
     lattice_prior: list[CheckerLattice] | None = None
-    refine: Literal["rigid", "ecc", "frozen"] = "rigid"
-    reference_bands: list[NdArrayField] | None = None   # required for refine="ecc"
+    refine: Literal["rigid", "frozen"] = "rigid"   # no "ecc": see §Detection
 
     # -- measurement -------------------------------------------------------
     core_trim: float = 0.4

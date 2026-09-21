@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Decision (2026-09-21, user):** `refine_method="ecc"` and `reference_bands` are **removed from the operation** rather than made serialisable — see the spec's §Detection note. That retires finding 5 and the operation-level half of finding 2; the `refine_ecc`/`boxes` rotation bug is still fixed at the building-block level (Task 5).
+
 **Goal:** Fix the eleven verified findings from the 2026-09-21 code review of `CalibrateColorRpcc`, turning every test in `tests/unit/correction/test_calibrate_color_rpcc_review.py` green without regressing the existing correction suite.
 
 **Architecture:** No new modules. Most of the change is in the orchestrator, `_calibrate_color_rpcc.py`. `_operate` is restructured so that every per-ROI failure becomes a `QcRecord` flag and goes through `on_qc_fail`, and every piece of per-run state is reset on entry. Three stage modules also get targeted fixes: `_checker_identity` learns to ignore non-finite tiles, `_checker_roi` and `_checker_detect` agree on one rotation convention and pivot, and `_checker_qc` gains a rank check that can run after outlier rejection.
@@ -10,7 +12,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-21-in-frame-checker-color-correction/README.md` (the operation interface, around line 498; the missing-tile warnings table, around line 390).
 **Findings:** `docs/superpowers/reports/2026-09-21-in-frame-checker-color-correction/code-review.md`. It records the verified mechanism for each finding, which differs from the reviewer's account for #1 and #2.
-**Failing tests (already written):** `tests/unit/correction/test_calibrate_color_rpcc_review.py`. At the start there are 14 failing and 2 passing: the fixture control and the `min_patches` pin.
+**Failing tests (already written):** `tests/unit/correction/test_calibrate_color_rpcc_review.py`. After the ECC decision there are 11 failing and 2 passing: the fixture control and the `min_patches` pin.
 
 ## Global Constraints
 
@@ -41,81 +43,90 @@
 
 ---
 
-### Task 1: Per-ROI inputs survive serialisation and are validated at construction (findings 5, 10)
+### Task 1: Remove ECC from the operation; validate `lattice_prior` length (findings 5, 10)
 
 **Files:**
-- Modify: `src/phenotypic/correction/_color_correction/_calibrate_color_rpcc.py` (imports, the `reference_bands` field at line 137, and a new validator after `_validate_degree`)
+- Modify: `src/phenotypic/correction/_color_correction/_calibrate_color_rpcc.py` (imports, `Args:` docstring lines 106-109, fields at lines 136-137, new validator after `_validate_degree`, the refine block at lines 230-244)
+- Modify: `src/phenotypic/correction/CLAUDE.md:72` (`rigid/ECC refinement` → `rigid refinement; ECC as a building block only`)
 - Test: `tests/unit/correction/test_calibrate_color_rpcc_review.py` (already written)
 
 **Interfaces:**
-- Produces: `CalibrateColorRpcc.reference_bands: list[np.ndarray] | None`, serialised as nested lists; construction raises `ValueError` naming the field when a per-ROI list length differs from `len(rois)`, or when `refine_method="ecc"` has a prior but no bands.
-
-**Decision to confirm with the user before starting:** the spec declares `reference_bands: list[NdArrayField]`. That puts the band pixels into every `to_json()`, and so into every per-image provenance journal. A real band (2150 × 340 × 3 float64) comes to about 2.2 M numbers, roughly 40 MB of JSON per band. This task implements the spec as written. If that size is unacceptable, stop and choose between storing a path to a `.npy` file and storing only the single-channel float32 registration image (`_registration_image` output), which is about 3× smaller.
+- Produces: `CalibrateColorRpcc.refine_method: Literal["rigid", "frozen"]`; no `reference_bands` field; construction raises `ValueError` naming `lattice_prior` when its length differs from `len(rois)`. `evaluate_roi` still accepts `ecc_confidence`; the operation now always passes `None`. `_checker_detect.RefineMethod`, `refine` and `refine_ecc` are **not** changed — they remain building blocks.
 
 - [ ] **Step 1: Confirm the tests fail**
 
-Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/correction/test_calibrate_color_rpcc_review.py -p no:cacheprovider -q -o addopts="" -k "reference_bands or construction"`
-Expected: 4 FAILED (`assert None is not None` ×2, `DID NOT RAISE` ×2).
+Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/correction/test_calibrate_color_rpcc_review.py -p no:cacheprovider -q -o addopts="" -k "ecc_is_not_offered or short_lattice_prior"`
+Expected: 2 FAILED (`assert 'reference_bands' not in ...`; `DID NOT RAISE`).
 
-- [ ] **Step 2: Make `reference_bands` a serialised array list**
-
-In the imports:
+- [ ] **Step 2: Narrow the field and delete `reference_bands`**. In the imports, add `model_validator` to the pydantic import and replace `from ._checker_detect import RefineMethod, fit_lattice, refine` with `from ._checker_detect import fit_lattice, refine`. Below `OnQcFail`, add:
 
 ```python
-from pydantic import Field, PrivateAttr, field_validator, model_validator
-
-from ...abc_ import ImageCorrector
-from ...sdk_.typing_ import NdArrayField, TuneSpec
+#: Refinement methods the operation offers.  ``"ecc"`` is deliberately absent:
+#: it registers against a stored reference band, which would have to ride in
+#: every serialised pipeline (see the spec's Detection section).
+OperationRefineMethod = Literal["rigid", "frozen"]
 ```
 
-Replace the field:
+Replace the two fields:
 
 ```python
-    reference_bands: list[NdArrayField] | None = None
+    refine_method: OperationRefineMethod = "rigid"
 ```
 
-- [ ] **Step 3: Add the per-ROI validator** directly after `_validate_degree`
+(delete the `reference_bands` line). In `Args:`, replace the `refine_method` and `reference_bands` entries with:
+
+```python
+        refine_method: ``"rigid"`` (reference-free, default) or
+            ``"frozen"``.  ECC registration is not offered: it needs a
+            reference band shipped with every serialised pipeline.
+```
+
+- [ ] **Step 3: Simplify the refine call** in `_operate`:
+
+```python
+            if self.lattice_prior is not None:
+                refined = refine(
+                        lab, self.lattice_prior[index], method=self.refine_method,
+                        anchor_col=roi.anchor_col,
+                )
+                lattice, shift = refined.lattice, float(np.hypot(refined.dy, refined.dx))
+            else:
+                lattice = fit_lattice(lab, grid=self.grid)
+                shift = 0.0
+```
+
+and pass `ecc_confidence=None,` to `evaluate_roi`. (Task 3 later wraps the `fit_lattice` call; keep this shape.)
+
+- [ ] **Step 4: Add the length validator** directly after `_validate_degree`
 
 ```python
     @model_validator(mode="after")
-    def _validate_per_roi_inputs(self) -> CalibrateColorRpcc:
-        """One prior and one reference band per ROI, in ROI order.
+    def _validate_lattice_prior_length(self) -> CalibrateColorRpcc:
+        """One prior per ROI, in ROI order.
 
-        Checked here so that a short list fails when the operation is built,
+        Checked here so a short list fails when the operation is built,
         naming the field, rather than deep inside ``_operate`` as an
         ``IndexError`` on whichever image happened to be first.
         """
-        n_rois = len(self.rois)
-        for name in ("lattice_prior", "reference_bands"):
-            value = getattr(self, name)
-            if value is not None and len(value) != n_rois:
-                raise ValueError(
-                        f"{name} has {len(value)} entries but there are {n_rois} "
-                        "rois; supply exactly one per ROI, in the same order."
-                )
-        if (
-                self.refine_method == "ecc"
-                and self.lattice_prior is not None
-                and self.reference_bands is None
-        ):
+        if self.lattice_prior is not None and len(self.lattice_prior) != len(self.rois):
             raise ValueError(
-                    "refine_method='ecc' needs reference_bands, the ROI bands the "
-                    "lattice_prior was fitted on. Use refine_method='rigid' if no "
-                    "reference band is stored."
+                    f"lattice_prior has {len(self.lattice_prior)} entries but there "
+                    f"are {len(self.rois)} rois; supply exactly one per ROI, in the "
+                    "same order."
             )
         return self
 ```
 
-- [ ] **Step 4: Run the tests and the existing operation tests**
+- [ ] **Step 5: Run the tests**
 
-Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/correction/test_calibrate_color_rpcc_review.py tests/unit/correction/test_calibrate_color_rpcc.py tests/smoke/test_serialization.py -p no:cacheprovider -q -o addopts="" -n 4 -k "reference_bands or construction or CalibrateColorRpcc or rois or degree or serialis"`
-Expected: the 4 target tests PASS, and nothing that passed before now fails.
+Run: `... tests/unit/correction/test_calibrate_color_rpcc_review.py tests/unit/correction/test_calibrate_color_rpcc.py tests/smoke/test_serialization.py tests/smoke/test_operation.py -n 4`
+Expected: the 2 target tests PASS; no test that passed before now fails.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/phenotypic/correction/_color_correction/_calibrate_color_rpcc.py
-git commit -m "fix(color): serialise reference_bands and validate per-ROI list lengths"
+git add src/phenotypic/correction/_color_correction/_calibrate_color_rpcc.py src/phenotypic/correction/CLAUDE.md
+git commit -m "refactor(color): drop ECC refinement from CalibrateColorRpcc; validate lattice_prior length"
 ```
 
 ---
@@ -253,17 +264,11 @@ Expected: 4 FAILED.
             lab, srgb = self._roi_views(image, roi)
 
             if self.lattice_prior is not None:
-                reference = (
-                    self.reference_bands[index]
-                    if self.reference_bands is not None
-                    else None
-                )
                 refined = refine(
                         lab, self.lattice_prior[index], method=self.refine_method,
-                        reference_lab=reference, anchor_col=roi.anchor_col,
+                        anchor_col=roi.anchor_col,
                 )
                 lattice, shift = refined.lattice, float(np.hypot(refined.dy, refined.dx))
-                ecc = refined.confidence if self.refine_method == "ecc" else None
             else:
                 try:
                     lattice = fit_lattice(lab, grid=self.grid)
@@ -272,7 +277,7 @@ Expected: 4 FAILED.
                     # not of the configuration: the policy decides.
                     records.append(self._refusal(index, roi, f"lattice not found: {exc}"))
                     continue
-                shift, ecc = 0.0, None
+                shift = 0.0
             lattices.append(lattice)
 
             refusals: list[str] = []
@@ -576,8 +581,8 @@ def test_ecc_refinement_places_boxes_on_a_rotated_band() -> None:
 
 - [ ] **Step 3: Run the three tests to confirm they fail**
 
-Run: `... tests/unit/correction/test_checker_roi.py tests/unit/correction/test_checker_detect.py tests/unit/correction/test_calibrate_color_rpcc_review.py -k "opencv or rotated"`
-Expected: 3 FAILED. The review test shows `tile (1, 3, 0) read 63.1 dE00 off`.
+Run: `... tests/unit/correction/test_checker_roi.py tests/unit/correction/test_checker_detect.py -k "opencv or rotated"`
+Expected: 2 FAILED (the direction test and the ECC placement test).
 
 - [ ] **Step 4: Flip the sense in `CheckerLattice.boxes`**. Replace the two lines computing `ny`/`nx`:
 
@@ -608,12 +613,12 @@ In both the `CheckerLattice` class docstring (`rot:`) and `boxes` (`rot:`), chan
     return RefineResult(lattice, dy, dx, rot, float(correlation), "ecc")
 ```
 
-- [ ] **Step 6: Apply the rotation when measuring**. In `_measure_roi`, replace `lattice.boxes(core=self.core_trim)` with `lattice.boxes(core=self.core_trim, rot=lattice.rot)`.
+- [ ] **Step 6: Apply the rotation when measuring**. In `_measure_roi`, replace `lattice.boxes(core=self.core_trim)` with `lattice.boxes(core=self.core_trim, rot=lattice.rot)`. With ECC gone the operation only sees a non-zero `rot` from a hand-built `frozen` prior, but the boxes must honour whatever the lattice says.
 
 - [ ] **Step 7: Run the tests**
 
 Run: `... tests/unit/correction/test_checker_roi.py tests/unit/correction/test_checker_detect.py tests/unit/correction/test_calibrate_color_rpcc_review.py`
-Expected: the 3 target tests PASS, and `test_ecc_refinement_recovers_displacement_when_opencv_is_present` (a pure translation, rot ≈ 0) still PASSES.
+Expected: the 2 target tests PASS, and `test_ecc_refinement_recovers_displacement_when_opencv_is_present` (a pure translation, rot ≈ 0) still PASSES.
 
 - [ ] **Step 8: Commit**
 
@@ -712,7 +717,7 @@ Expected: no new errors relative to the start of the plan. Record the starting m
 - [ ] **Step 3: Check line endings** for every edited CRLF file: `for f in <files>; do echo $f $(grep -c $'\r' $f) $(wc -l < $f); done`. The two numbers must match on every line.
 
 - [ ] **Step 4: Mutation spot-check.** Revert each of these one-liners in turn, run its test, confirm it fails, then restore the line:
-  - `rot=lattice.rot` in `_measure_roi` (Task 5) → `test_a_rotated_card_is_measured_on_rotated_boxes`
+  - the flipped `ny`/`nx` lines in `CheckerLattice.boxes` (Task 5) → `test_rotation_turns_plus_x_toward_plus_y_like_opencv`
   - `& finite` in `assign_placement` (Task 4) → `test_a_missing_tile_is_left_out_rather_than_poisoning_the_score`
   - the post-rejection `require_rank` call (Task 2) → `test_rank_is_checked_after_outlier_rejection`
 

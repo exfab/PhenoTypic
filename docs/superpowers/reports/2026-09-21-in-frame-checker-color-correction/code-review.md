@@ -112,3 +112,14 @@ Confirmed: on a D50 image, the ROI Lab differs from `image.color.Lab` by up to
   low-contrast column falls below `COLUMN_THRESHOLD_FRACTION`. The fixture uses a
   prior instead. That is consistent with the spec's advice to supply `grid`, but
   there is no synthetic end-to-end test of the bootstrap path.
+
+## Decision after verification (2026-09-21)
+
+The user chose to **remove `refine_method="ecc"` and `reference_bands` from the
+operation** rather than make the bands serialisable, which would cost about
+40 MB of JSON per band in every pipeline and every provenance journal. That
+retires finding 5, the `reference_bands` half of finding 10, and the
+operation-level half of finding 2. Their guards in the review test file are
+replaced by `test_ecc_is_not_offered_by_the_operation`. The rotation bug in
+`refine_ecc`/`CheckerLattice.boxes` is still fixed, and is guarded by
+detect-level unit tests (plan Task 5).
