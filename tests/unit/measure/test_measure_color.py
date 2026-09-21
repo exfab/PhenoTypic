@@ -1,3 +1,7 @@
+import json
+import os
+import subprocess
+import sys
 import warnings
 
 import numpy as np
@@ -170,15 +174,74 @@ def test_medoid_is_deterministic(ring_around_foreign_colony, detected_image):
     np.testing.assert_allclose(ring_medoid(shuffled), ring_medoid(original), rtol=0, atol=1e-9)
 
 
-def test_legacy_medoid_fields_still_load():
-    with pytest.warns(DeprecationWarning, match="medoid_max_pixels, random_seed"):
-        op = MeasureColor.model_validate({"medoid_max_pixels": 300, "random_seed": 3})
+_LEGACY_PARAMS = {"medoid_max_pixels": 300, "random_seed": 3}
+
+
+def _legacy_params_json() -> str:
+    """A saved ``MeasureColor`` from before the deterministic medoid."""
+    params = json.loads(MeasureColor().to_json())
+    params["params"].pop("medoid_candidates")
+    params["params"].update(_LEGACY_PARAMS)
+    return json.dumps(params)
+
+
+def _load_legacy_via_model_validate() -> MeasureColor:
+    return MeasureColor.model_validate(dict(_LEGACY_PARAMS))
+
+
+def _load_legacy_via_from_json() -> MeasureColor:
+    return MeasureColor.from_json(_legacy_params_json())
+
+
+def _load_legacy_via_pipeline_from_json() -> MeasureColor:
+    """The path a saved pipeline takes: a legacy ``MeasureColor`` in ``meas``."""
+    from phenotypic import ImagePipeline
+
+    payload = json.loads(ImagePipeline(ops=[OtsuDetector()], meas=[MeasureColor()]).to_json())
+    entry = payload["meas"]["MeasureColor"]["params"]
+    entry.pop("medoid_candidates")
+    entry.update(_LEGACY_PARAMS)
+    pipeline = ImagePipeline.from_json(json.dumps(payload))
+    (op,) = pipeline.meas.values()
+    return op
+
+
+@pytest.mark.parametrize(
+    "load_legacy",
+    [_load_legacy_via_model_validate, _load_legacy_via_from_json, _load_legacy_via_pipeline_from_json],
+    ids=["model_validate", "from_json", "ImagePipeline.from_json"],
+)
+def test_legacy_medoid_fields_still_load(load_legacy):
+    with pytest.warns(FutureWarning, match="medoid_max_pixels, random_seed"):
+        op = load_legacy()
+    assert isinstance(op, MeasureColor)
     assert op.medoid_candidates == 256
     assert not hasattr(op, "medoid_max_pixels")
     assert not hasattr(op, "random_seed")
 
 
-def test_current_fields_load_without_a_deprecation_warning():
+def test_legacy_medoid_warning_is_visible_under_default_filters():
+    """A user running a saved pipeline must see the warning, not just pytest.
+
+    pytest enables DeprecationWarning display and ``pytest.warns`` captures any
+    category, so the in-process test cannot tell a warning Python's default
+    filters would hide. A fresh interpreter with no ``-W`` and no
+    ``PYTHONWARNINGS`` can.
+    """
+    script = (
+        "from phenotypic.measure import MeasureColor\n"
+        f"MeasureColor.from_json({_legacy_params_json()!r})\n"
+    )
+    env = {k: v for k, v in os.environ.items() if k != "PYTHONWARNINGS"}
+    completed = subprocess.run(
+        [sys.executable, "-c", script], env=env, capture_output=True, text=True, timeout=300
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert "MeasureColor ignores medoid_max_pixels, random_seed" in completed.stderr, completed.stderr
+
+
+def test_current_fields_load_without_a_legacy_warning():
     with warnings.catch_warnings():
+        warnings.simplefilter("error", FutureWarning)
         warnings.simplefilter("error", DeprecationWarning)
         MeasureColor.model_validate({"medoid_candidates": 64})

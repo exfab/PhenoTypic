@@ -40,7 +40,7 @@
 
   colour's ΔE2000 allocates ~265 B per candidate-pixel pair, so 64 candidates against every pixel grew without bound (~17 GB extrapolated at 10⁶ px, paid by every `--njobs` worker at once). The block size is now `max(1, min(64, 256 MiB // (N · 265 B)))` (`MEDOID_MEMORY_BUDGET_BYTES`, `MEDOID_BYTES_PER_PAIR`), so peak stays near 256 MiB up to about 10⁶ object pixels. Past that the floor is a single `(1, N)` row, ~265 B per pixel: ~1 GB for a 4-megapixel whole-plate object. The result is bit-identical for every block size. Memory is still higher than the old flat ~30 MB, the price of scoring against every pixel.
 - **Fields.** `MeasureColor.medoid_max_pixels` and `MeasureColor.random_seed` stop meaning anything, and `medoid_candidates: int = 256` replaces them.
-  - Saved pipelines that set the old fields must still load. A `mode="before"` validator drops them with a `DeprecationWarning`, because `extra="forbid"` would otherwise reject them.
+  - Saved pipelines that set the old fields must still load. A `mode="before"` validator drops them with a `FutureWarning`, because `extra="forbid"` would otherwise reject them. It is a `FutureWarning`, not a `DeprecationWarning`, so it is visible outside pytest: the warning is attributed to pydantic's frame, and Python's default filters show a `DeprecationWarning` only when it is attributed to `__main__` (review finding F1).
 - **`phenotypic.util.medoid_ciede2000` stays exported and unchanged.** It is public API. It is simply no longer used by `MeasureColor`.
 - **`tests/migration` goldens:** any scenario that measures colour will move. That suite is already red, and `tests/CLAUDE.md` forbids regenerating goldens to go green. Do not touch them. Record the expected drift in the PR description.
 
@@ -84,12 +84,12 @@
 
 **Interfaces:**
 - Consumes: `phenotypic.util.candidate_medoid` (Task 1).
-- Produces: `MeasureColor.medoid_candidates: int = 256`. The fields `medoid_max_pixels` and `random_seed` are removed but still accepted on load, with a `DeprecationWarning`.
+- Produces: `MeasureColor.medoid_candidates: int = 256`. The fields `medoid_max_pixels` and `random_seed` are removed but still accepted on load, with a `FutureWarning`.
 
 - [ ] **Step 1: Write the tests first.**
   - `test_medoid_uses_only_the_objects_own_pixels`: two labels whose bounding boxes overlap, where label 2's pixels are a very different Lab colour and sit inside label 1's bbox. Assert that label 1's medoid equals the **exhaustive** ΔE2000 medoid of label 1's pixels alone. Write the exhaustive medoid inline in the test, independent of `candidate_medoid`. Also assert that it is not any pixel of label 2.
   - `test_medoid_is_deterministic`: two fresh `MeasureColor()` runs on the same image give identical medoid columns.
-  - `test_legacy_medoid_fields_still_load`: `MeasureColor.model_validate({"medoid_max_pixels": 300, "random_seed": 3})` warns `DeprecationWarning` and builds with `medoid_candidates == 256`.
+  - `test_legacy_medoid_fields_still_load`: `MeasureColor.model_validate({"medoid_max_pixels": 300, "random_seed": 3})` warns `FutureWarning` and builds with `medoid_candidates == 256`.
   - Replace lines 50–53 (the `medoid_max_pixels`/`random_seed` round-trip) with a `medoid_candidates=64` round-trip.
 
   Run them and confirm the new tests fail.
@@ -124,7 +124,7 @@
                           f"MeasureColor ignores {', '.join(legacy)}: the ΔE2000 "
                           "medoid is now deterministic (candidate_medoid). Use "
                           "medoid_candidates to size the candidate set.",
-                          DeprecationWarning, stacklevel=2,
+                          FutureWarning, stacklevel=2,
                   )
                   data = {k: v for k, v in data.items() if k not in legacy}
           return data

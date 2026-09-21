@@ -69,7 +69,8 @@ class MeasureColor(MeasureFeatures):
             four times as many candidates. Lowering this below the default
             weakens that safeguard. Default ``256``. The removed
             ``medoid_max_pixels`` and ``random_seed`` fields are ignored with a
-            ``DeprecationWarning`` when a saved pipeline still sets them.
+            ``FutureWarning`` -- shown by default, unlike a
+            ``DeprecationWarning`` -- when a saved pipeline still sets them.
 
     Examples:
         Measure robust colorimetric statistics for a detected plate:
@@ -99,8 +100,11 @@ class MeasureColor(MeasureFeatures):
         """Accept pipelines saved before the medoid became deterministic.
 
         ``medoid_max_pixels`` and ``random_seed`` configured a random
-        subsample that no longer exists.  Dropping them (with a warning)
-        keeps old JSON loadable under ``extra="forbid"``.
+        subsample that no longer exists.  Dropping them keeps old JSON
+        loadable under ``extra="forbid"``.  The warning is a
+        ``FutureWarning`` because it is aimed at the user rerunning a saved
+        pipeline: Python's default filters hide a ``DeprecationWarning`` not
+        raised from ``__main__``, and this one is attributed to pydantic.
         """
         if isinstance(data, dict):
             legacy = [k for k in ("medoid_max_pixels", "random_seed") if k in data]
@@ -109,7 +113,7 @@ class MeasureColor(MeasureFeatures):
                         f"MeasureColor ignores {', '.join(legacy)}: the ΔE2000 "
                         "medoid is now deterministic (candidate_medoid). Use "
                         "medoid_candidates to size the candidate set.",
-                        DeprecationWarning, stacklevel=2,
+                        FutureWarning, stacklevel=2,
                 )
                 data = {k: v for k, v in data.items() if k not in legacy}
         return data
