@@ -50,7 +50,7 @@ def record_plot_failure(
 ) -> None:
     """Append one failure to ``<plots_base>/.failures.jsonl``.
 
-    **Never raises.** This is called from ``except`` blocks whose whole purpose
+    **Never raises an** :class:`Exception`. Called from ``except`` blocks whose purpose
     is to keep a plot failure from ending a run; letting the recorder throw
     would turn the soft failure it is describing into a hard one. **Every**
     step is inside the one handler, not only the filesystem ones -- creating
@@ -59,6 +59,12 @@ def record_plot_failure(
     entry runs the caller's exception through ``__str__``. That last one is
     the reason the boundary is drawn around the whole body rather than around
     the I/O: a "formatting cannot fail" assumption is how this raised.
+
+    A :class:`BaseException` still propagates. An ``error`` whose ``__str__``
+    raises :class:`KeyboardInterrupt` escapes, and that is deliberate --
+    widening the catch would swallow Ctrl-C and :class:`SystemExit`, which is
+    worse than the hole it closes. Note the signature already accepts
+    ``BaseException``, so this gap is known rather than accidental.
 
     Args:
         plots_base: Resolved ``deliverables/plots`` directory.
@@ -85,7 +91,15 @@ def record_plot_failure(
             entry["image_stem"] = image_stem
 
         plots_base.mkdir(parents=True, exist_ok=True)
-        line = json.dumps(entry, sort_keys=True) + "\n"
+        # default=str: a field that is not JSON-native must degrade, not
+        # destroy the entry. These fields are TYPED str but arrive from
+        # callers -- a Path, a numpy scalar or bytes makes dumps raise
+        # INSIDE this handler, and the whole record vanishes silently.
+        # Measured: np.str_ survives (it subclasses str), np.int64 and
+        # Path and bytes did not. Same shape as the __str__ defect, one
+        # layer out -- serialising the entry was outside the set of
+        # things believed able to fail.
+        line = json.dumps(entry, sort_keys=True, default=str) + "\n"
         record = plot_failures_jsonl_path(plots_base)
         with exclusive_path_lock(plots_base / ".failures.lock"):
             with record.open("a", encoding="utf-8") as handle:

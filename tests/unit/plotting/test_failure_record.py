@@ -57,6 +57,42 @@ def test_aggregate_entries_omit_image_identity(tmp_path: Path) -> None:
     assert "image_stem" not in entry
 
 
+def test_a_non_json_native_field_degrades_rather_than_losing_the_record(
+    tmp_path: Path,
+) -> None:
+    """D1: the fields are typed str but arrive from callers.
+
+    json.dumps raises on a Path, a numpy scalar or bytes -- and it raises
+    INSIDE the never-raises handler, so without default=str the whole entry is
+    swallowed and the record vanishes. That is the failure this module exists
+    to prevent, reached through its own safety net.
+
+    The load-bearing assertion is that the record EXISTS. "Returned normally"
+    is satisfied by a recorder that silently dropped everything, which is
+    exactly how this defect survived the original suite.
+    """
+    import numpy as np
+
+    record_plot_failure(
+        tmp_path,
+        binding_id="sym",
+        plot_class="C",
+        lifecycle="image",
+        error=ValueError("x"),
+        dataset=Path("plate_a"),          # type: ignore[arg-type]
+        image_stem=np.int64(3),           # type: ignore[arg-type]
+    )
+
+    record = tmp_path / ".failures.jsonl"
+    assert record.is_file(), "the record was silently lost"
+
+    entry = json.loads(record.read_text().splitlines()[0])
+    assert entry["binding_id"] == "sym"
+    assert entry["dataset"] == "plate_a"
+    assert entry["image_stem"] == "3"
+    assert entry["error"] == "ValueError: x"
+
+
 def test_recording_never_raises(tmp_path: Path) -> None:
     """A failure in the failure recorder must not escalate a soft failure."""
     unwritable = tmp_path / "nope"
