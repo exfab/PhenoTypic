@@ -10,6 +10,23 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-20-figure-backend-routing/design.md` (read it alongside this plan; the deferred alternative is in `DEFERRED.md` beside it)
 
+## Execution note — one defect found by running, not by reviewing
+
+**A required parameter added to a decorator that executes at class-definition time
+cannot have its call-site annotation deferred.** There is no green intermediate
+state: the unannotated sites break `import` of the package that defines those
+classes, and here a conftest plugin that walks all packages turned that into
+"pytest cannot configure at all".
+
+This differs from a required parameter on an ordinary function, where the break is
+confined to the callers' own tests and *can* be swept afterwards. The plan
+originally deferred the sweep on exactly that (correct, but inapplicable) analogy,
+and a pre-dispatch review asked specifically whether the deliberate red window
+broke anything else and concluded it was contained. Both missed it; the first
+`pytest` run did not.
+
+Tasks 11 and 12 are therefore sequenced **inside** Task 2, between Steps 5 and 6.
+
 ## Global Constraints
 
 - **`uv` is the sole runner.** Never bare `python` or `pip`. Every command is `uv run …`.
@@ -492,7 +509,32 @@ Run: `uv run pytest tests/unit/ci/test_deferred_imports.py -v`
 Expected: PASS.
 
 Run: `uv run pytest tests/unit/abc_/plotting/ -v`
-Expected: `test_pht_plot.py` now FAILS at collection — its 9 `@figure` sites have no `backend`. **This is correct and expected.** Do not fix them here; Task 11 does, and fixing them now would hide whether Task 11 is complete.
+Expected: **fully green.**
+
+**Corrected during execution — the original expectation here was wrong, and so was
+the sequencing behind it.** This step used to predict `test_pht_plot.py` failing at
+collection, with the annotation sweep deferred to Tasks 11/12 on the reasoning that
+"annotating against a signature that is still moving means annotating twice."
+
+That reasoning does not survive contact with a **decorator**. `@figure` executes at
+class-definition time, so a required argument on it breaks `import
+phenotypic.plotting` outright — and a conftest plugin walks every package, so
+pytest fails in `_prepareconfig`, before collection. Measured in this worktree at
+that moment:
+
+```
+uv run python -c "import phenotypic"            -> ok     (lazy, unaffected)
+uv run python -c "import phenotypic.plotting"   -> TypeError: missing 'backend'
+uv run pytest --collect-only tests/unit/plotting -> same TypeError, nothing collected
+```
+
+There is no green intermediate state between the signature change and the sweep, so
+**Tasks 11 and 12 are pulled forward to run between Step 5 and Step 6** (see the
+revised Execution section). By the time this step runs, every `@figure` site in
+`src/` and `tests/` is annotated and the directory must be green.
+
+A red `test_pht_plot.py` here now means the sweep is incomplete, not that the plan
+predicted it.
 
 - [ ] **Step 8: Commit**
 
@@ -2622,8 +2664,7 @@ C3  T5,T6      _pipeline/{_adapter,_writer}.py                  needs C1, C2
 C4  T7         _pipeline/_backends.py, _cli/_cli_validation.py  needs C2
 C5  T9         _pipeline/_coordinator.py, _cli/_cli_staged_workers.py  needs C2, C3
 C6  T10        tests/integration/plotting/                      needs C1-C5
-C7  T11        6 src modules                                    needs C1-C3 merged
-C8  T12        2 test modules                                   needs C1-C3 merged
+C1a T11,T12    6 src modules + 2 test modules                   INSIDE C1, between T2 S5 and S6
 C9  T13        docs/, abc_/CLAUDE.md                            needs C1-C6
 ```
 
@@ -2637,8 +2678,8 @@ C9  T13        docs/, abc_/CLAUDE.md                            needs C1-C6
 | C4 | T7 | **Seam** | Opus, high | Changes CLI validation behaviour for every run. Isolated for its own gate despite being small — risk is not size. |
 | C5 | T9 | **Seam** | Opus, high | Five exception handlers, a `try` boundary move, and a cross-file `strict=` removal. The highest-risk wiring in the change. |
 | C6 | T10 | Verification | Opus, high | Proves C1–C5 compose. Doubles as the phase gate. |
-| C7 | T11 | **Sweep** | Sonnet, medium | 27 mechanical annotations, verified by import + a zero-count grep. |
-| C8 | T12 | **Sweep** | Sonnet, medium | 11 mechanical annotations. |
+| ~~C7~~ | ~~T11~~ | **Sweep** | Sonnet, medium | **Pulled into C1 during execution.** 27 mechanical annotations. A required argument on a class-definition-time decorator leaves no green state before the sweep, so it cannot follow the signature change — see the Execution note at the top. |
+| ~~C8~~ | ~~T12~~ | **Sweep** | Sonnet, medium | **Pulled into C1** for the same reason. Test-side annotations. |
 | C9 | T13 | Leaf (judgment) | Opus, high | Prose and a three-case rule the audit found stated wrongly. Not mechanical. |
 
 ### Gates
