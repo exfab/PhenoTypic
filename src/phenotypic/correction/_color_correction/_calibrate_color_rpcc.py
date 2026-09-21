@@ -238,7 +238,7 @@ class CalibrateColorRpcc(ImageCorrector):
                     row=row, col=col, roi_index=roi_index,
                     candidates=self.medoid_candidates,
             )
-            for row, col, y0, y1, x0, x1 in lattice.boxes(core=self.core_trim)
+            for row, col, y0, y1, x0, x1 in lattice.boxes(core=self.core_trim, rot=lattice.rot)
         ]
 
     def _operate(self, image: Image) -> Image:

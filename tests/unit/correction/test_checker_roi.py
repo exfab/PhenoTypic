@@ -135,6 +135,24 @@ def test_lattice_round_trips_through_serialisation() -> None:
     assert CheckerLattice.model_validate(lat.model_dump()) == lat
 
 
+def test_rotation_turns_plus_x_toward_plus_y_like_opencv() -> None:
+    """A tile right of the centroid moves down under a positive rotation.
+
+    That is OpenCV's sense (image y points down); ECC's recovered angle is
+    applied through this, so the two must agree.
+    """
+    lattice = CheckerLattice(
+            columns=[
+                ColumnLattice(x0=0, x1=10, start=0.0, pitch=10.0, duty=1.0),
+                ColumnLattice(x0=90, x1=100, start=0.0, pitch=10.0, duty=1.0),
+            ],
+            nrows=1,
+    )
+    right = [b for b in lattice.boxes(rot=0.1) if b[1] == 1][0]
+
+    assert (right[2] + right[3]) / 2 > 5.0 + 1.0
+
+
 # ---------------------------------------------------------------------------
 # Coercion on the operation
 # ---------------------------------------------------------------------------

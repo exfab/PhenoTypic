@@ -619,10 +619,18 @@ def refine_ecc(
     except cv2.error:
         return RefineResult(prior, 0.0, 0.0, 0.0, 0.0, "ecc")
 
-    dy, dx = float(warp[1, 2]), float(warp[0, 2])
     rot = float(np.arctan2(warp[1, 0], warp[0, 0]))
+    # ECC maps a reference point p to R p + t, pivoting on the ROI origin;
+    # the lattice rotates about its own centroid. Its translation is
+    # therefore where the warp sends that centroid, not t -- otherwise a
+    # pure rotation is reported as a displacement and the boxes land off
+    # their tiles.
+    cy, cx = np.mean(prior.centers(), axis=0)
+    moved_x = warp[0, 0] * cx + warp[0, 1] * cy + warp[0, 2]
+    moved_y = warp[1, 0] * cx + warp[1, 1] * cy + warp[1, 2]
+    dy, dx = float(moved_y - cy), float(moved_x - cx)
     lattice = prior.translated(dy=dy, dx=dx)
-    lattice = lattice.model_copy(update={"rot": rot})
+    lattice = lattice.model_copy(update={"rot": prior.rot + rot})
     return RefineResult(lattice, dy, dx, rot, float(correlation), "ecc")
 
 

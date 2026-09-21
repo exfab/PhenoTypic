@@ -39,7 +39,7 @@ def synthetic_band(dy: float = 0.0, dx: float = 0.0, noise: float = 0.4) -> np.n
     # tight a margin makes a large shift push the first tile out of the
     # analysed window, which limits capture range for the fixture rather than
     # for the method.
-    start = 80.0
+    start = 80.0
     for col_index, (x0, x1) in enumerate(COLUMNS):
         for row in range(NROWS):
             y0 = start + dy + row * PITCH
@@ -256,6 +256,29 @@ def test_ecc_refinement_recovers_displacement_when_opencv_is_present() -> None:
 
     assert result.dy == pytest.approx(18.0, abs=2.0)
     assert result.confidence > 0.9
+
+
+def test_ecc_refinement_places_boxes_on_a_rotated_band() -> None:
+    """Every refined box on a 4-degree-rotated band covers its own patch.
+
+    Self-checking: each box's median colour in the rotated band must match
+    the same tile's colour in the unrotated band.
+    """
+    from scipy.ndimage import rotate
+
+    band = synthetic_band(noise=0.0)
+    turned = rotate(band, 4.0, reshape=False, order=1, mode="nearest")
+    prior = reference_lattice()
+
+    result = refine(turned, prior, method="ecc", reference_lab=band)
+
+    before = prior.boxes(core=0.4)
+    after = result.lattice.boxes(core=0.4, rot=result.lattice.rot)
+    for (_, _, *b0), (_, _, *b1) in zip(before, after):
+        want = np.median(band[int(b0[0]):int(b0[1]), int(b0[2]):int(b0[3])].reshape(-1, 3), axis=0)
+        got = np.median(turned[int(b1[0]):int(b1[1]), int(b1[2]):int(b1[3])].reshape(-1, 3), axis=0)
+        assert np.linalg.norm(got - want) < 2.0
+    assert np.hypot(result.dy, result.dx) < 3.0  # rotated about its own centre
 
 
 def test_ecc_refinement_rejects_a_mismatched_reference() -> None:

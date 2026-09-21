@@ -194,8 +194,8 @@ class CheckerLattice(BaseModel):
         nrows: Number of tiles down each column.
         dy: Vertical displacement applied by refinement, in pixels.
         dx: Horizontal displacement applied by refinement, in pixels.
-        rot: Rotation applied by refinement, in radians about the lattice
-            centroid.
+        rot: Rotation in radians about the lattice centroid; positive turns
+            +x toward +y, as OpenCV's warps do.
     """
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
@@ -228,7 +228,8 @@ class CheckerLattice(BaseModel):
                 each axis, i.e. 36 % of the area, which is what keeps the
                 measurement off the gutters when the lattice is a few pixels
                 out.
-            rot: Rotation in radians about the lattice centroid.
+            rot: Rotation in radians about the lattice centroid; positive
+                turns +x toward +y, as OpenCV's warps do.
 
         Returns:
             One tuple per tile, column-major: all rows of column 0, then all
@@ -253,8 +254,10 @@ class CheckerLattice(BaseModel):
             for box in placed:
                 my, mx = (box[0] + box[1]) / 2 - cy, (box[2] + box[3]) / 2 - cx
                 half_h, half_w = (box[1] - box[0]) / 2, (box[3] - box[2]) / 2
-                ny = my * cos_r - mx * sin_r + cy
-                nx = my * sin_r + mx * cos_r + cx
+                # OpenCV's sense (image y points down): positive rot turns
+                # +x toward +y, matching the angle refine_ecc recovers.
+                ny = mx * sin_r + my * cos_r + cy
+                nx = mx * cos_r - my * sin_r + cx
                 box[0], box[1] = ny - half_h, ny + half_h
                 box[2], box[3] = nx - half_w, nx + half_w
 
