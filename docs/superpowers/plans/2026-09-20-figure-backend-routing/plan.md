@@ -33,7 +33,18 @@ Tasks 11 and 12 are therefore sequenced **inside** Task 2, between Steps 5 and 6
 - **`abc_/plotting/_pht_plot.py` and `abc_/plotting/_output.py` import only the standard library at runtime.** Every plotly/matplotlib import goes inside the function that uses it. Guarded by `tests/unit/ci/test_deferred_imports.py`.
 - **Never `ruff check --fix` without explicit paths.** Bare invocation rewrites the whole repo.
 - **Backend vocabulary is two words in two places, deliberately:** the decorator and `figure_backend_of` use `"plotly"` / `"mpl"`; the published manifest's per-page `"backend"` value stays `"plotly"` / `"matplotlib"`, because that is what `FigureAdapter.backend_name` already writes and what `tests/unit/plotting/test_output_adapter.py:86` asserts. `backend_name` performs the one mapping. Do not unify them in this change.
-- **Per-task testing only.** Run the directly-touched test files (~1 min). Do NOT run the full suite between tasks — it is ~65 min and belongs in Task 14 as one sharded Slurm job. See the `run-phenotypic-test` skill.
+- **Per-task testing only.** Run the directly-touched test files. Do NOT run the full suite between tasks — it is ~65 min and belongs in Task 14 as one sharded Slurm job. See the `run-phenotypic-test` skill.
+- **Pass `-n` explicitly on any run wider than a single file.** Measured during
+  execution: `tests/unit/measure/` plus three sibling directories ran
+  **single-threaded for 11+ minutes at 98% of one core** while seven cores of the
+  allocation sat idle. Use
+  `-n "$SLURM_CPUS_PER_TASK"` (8 here, confirmed equal to
+  `len(os.sched_getaffinity(0))`).
+  **Never `-n auto`** — it reads the node's core count, not the allocation's, and
+  manufactures timeout failures. A single test file needs no `-n`.
+- **Never run two pytest suites concurrently on this allocation.** They contend
+  for the same cores and produce timeout failures that are artefacts of the
+  contention rather than of the change under test.
 - **Commit after every task.** Explicit paths in `git add`; never `git add -A` (this is a shared worktree tree).
 
 ---
@@ -2526,8 +2537,24 @@ Mechanical. Every site was already Plotly; none changes behaviour."
 
 - [ ] **Step 1: Confirm the count**
 
-Run: `grep -rn "@figure(" --include=*.py tests/ | grep -vc "backend="`
-Expected: `11`. Note `tests/unit/abc_/plotting/test_figure_backend.py` is excluded from this count because its own sites already declare a backend.
+Run: `grep -rn "@figure(" --include=*.py tests/ | grep -v test_figure_backend.py | grep -vc "backend="`
+Expected: `11` — 9 in `test_pht_plot.py`, 2 in `test_notebook_adapter.py`.
+
+**The exclusion must be in the command, not just the prose.** Without
+`grep -v test_figure_backend.py` this returns **12**, because that file contains
+one deliberately bare site:
+
+```python
+tests/unit/abc_/plotting/test_figure_backend.py:16
+    @figure(title="No backend")  # type: ignore[call-arg]
+```
+
+That is `test_backend_is_required`, wrapped in
+`pytest.raises(TypeError, match="backend")`. **Annotating it would destroy the
+only test that proves the argument is genuinely required**, turning a
+discriminating test into one that passes unconditionally. Leave it bare. After
+this sweep the repo-wide count of unannotated `tests/` sites is exactly **1**, and
+that 1 is correct.
 
 - [ ] **Step 2: Annotate**
 
