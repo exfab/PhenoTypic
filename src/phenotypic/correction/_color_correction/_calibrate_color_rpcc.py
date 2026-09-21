@@ -74,6 +74,13 @@ OnQcFail = Literal["raise", "warn", "skip"]
 OperationRefineMethod = Literal["rigid", "frozen"]
 
 
+def _root_cause(exc: BaseException) -> BaseException:
+    """The innermost exception in a ``raise ... from`` chain."""
+    while exc.__cause__ is not None:
+        exc = exc.__cause__
+    return exc
+
+
 class CalibrateColorRpcc(ImageCorrector):
     """Fit and apply a root-polynomial correction from this frame's own chart.
 
@@ -133,8 +140,11 @@ class CalibrateColorRpcc(ImageCorrector):
         ``fitted_profile`` and ``qc`` are populated on the operation.
 
     Raises:
-        ValueError: If no ROI survives the gate under ``on_qc_fail="raise"``,
-            or if the accepted patch count cannot support ``degree``.
+        ValueError: If any ROI fails the gate under ``on_qc_fail="raise"``,
+            if the patches that reach the fit cannot support ``degree`` (under
+            any policy), or if two ROIs claim the same chart patch.
+            ``apply()`` re-raises every failure as ``RuntimeError`` with the
+            ``ValueError`` as its root cause.
     """
 
     rois: list[CheckerRoi] = Field(min_length=1)
@@ -237,6 +247,12 @@ class CalibrateColorRpcc(ImageCorrector):
 
         from ._color_checker_profile import _load_reference_data
 
+        # One instance may process many images; nothing from the last one may
+        # survive into this one's result, least of all on the skip path.
+        self.fitted_profile = None
+        self.qc = []
+        self._diagnostics = {}
+
         ref_lab, ref_linear, _wp = _load_reference_data(
                 self.checker_type, self.target_illuminant
         )
@@ -259,16 +275,32 @@ class CalibrateColorRpcc(ImageCorrector):
                 )
                 lattice, shift = refined.lattice, float(np.hypot(refined.dy, refined.dx))
             else:
-                lattice = fit_lattice(lab, grid=self.grid)
+                try:
+                    lattice = fit_lattice(lab, grid=self.grid)
+                except ValueError as exc:
+                    # No card in the rectangle is a property of this frame,
+                    # not of the configuration: the policy decides.
+                    records.append(self._refusal(index, roi, f"lattice not found: {exc}"))
+                    continue
                 shift = 0.0
             lattices.append(lattice)
 
+            refusals: list[str] = []
             if roi.expect_tiles is not None and lattice.n_tiles != roi.expect_tiles:
-                raise ValueError(
-                        f"ROI {index} ({roi.label or 'unlabelled'}) was declared to "
-                        f"hold {roi.expect_tiles} tiles but {lattice.n_tiles} were "
-                        "detected."
+                refusals.append(
+                        f"declared to hold {roi.expect_tiles} tiles but "
+                        f"{lattice.n_tiles} were detected"
                 )
+            candidates = placements(grid, (lattice.nrows, len(lattice.columns)))
+            if len(candidates) < 2:
+                refusals.append(
+                        f"a {lattice.nrows}x{len(lattice.columns)} tile block cannot "
+                        f"sit on a {len(grid)}x{len(grid[0])} chart in more than one "
+                        "way; patch identity would be assumed, not measured"
+                )
+            if refusals:
+                records.append(self._refusal(index, roi, *refusals))
+                continue
 
             tiles = self._measure_roi(lab, srgb, lattice, index)
             # Index explicitly by (row, col): CheckerLattice.boxes() yields
@@ -278,16 +310,6 @@ class CalibrateColorRpcc(ImageCorrector):
             for tile in tiles:
                 observed[tile.row, tile.col] = colour.cctf_decoding(
                         np.clip(tile.srgb, 0, 1), function="sRGB"
-                )
-
-            candidates = placements(grid, (lattice.nrows, len(lattice.columns)))
-            if len(candidates) < 2:
-                raise ValueError(
-                        f"ROI {index} holds a "
-                        f"{lattice.nrows}x{len(lattice.columns)} tile block, which "
-                        f"cannot sit on a {len(grid)}x{len(grid[0])} chart in more "
-                        "than one way. Patch identity would be assumed, not "
-                        "measured."
                 )
             identity = assign_placement(observed, candidates, ref_linear)
 
@@ -351,7 +373,7 @@ class CalibrateColorRpcc(ImageCorrector):
             if self.on_qc_fail == "skip":
                 self._diagnostics = self._build_diagnostics(
                         chart_illuminant, [], patch_names, tiles_out, lattices,
-                        skipped=True,
+                        accepted=[], skipped=True,
                 )
                 return image
 
@@ -378,10 +400,16 @@ class CalibrateColorRpcc(ImageCorrector):
         self.fitted_profile = profile
         self._diagnostics = self._build_diagnostics(
                 chart_illuminant, census, patch_names, tiles_out, lattices,
+                accepted=accepted,
         )
         return ColorCorrector(
                 profile=profile, output_illuminant=self.target_illuminant
         ).apply(image, inplace=True)
+
+    @staticmethod
+    def _refusal(index: int, roi: CheckerRoi, *flags: str) -> QcRecord:
+        """A record for an ROI that failed before it could be measured."""
+        return QcRecord(roi_index=index, label=roi.label, flags=list(flags))
 
     def _anchor_disagreement(
             self, lab, roi_index: int, lattice: CheckerLattice
@@ -405,7 +433,7 @@ class CalibrateColorRpcc(ImageCorrector):
 
     def _build_diagnostics(
             self, chart_illuminant, census, patch_names, tiles, lattices,
-            skipped: bool = False,
+            accepted: list[str], skipped: bool = False,
     ) -> dict[str, Any]:
         """Assemble the per-run diagnostics record."""
         import numpy as _np
@@ -420,7 +448,7 @@ class CalibrateColorRpcc(ImageCorrector):
             },
             "patch_census": {
                 "expected": patch_names,
-                "accepted": [t["patch"] for t in tiles],
+                "accepted": accepted,
                 "warnings": census,
             },
             "tiles"    : tiles,
@@ -453,8 +481,14 @@ class CalibrateColorRpcc(ImageCorrector):
             operation = cls(rois=list(rois), on_qc_fail="warn", **kwargs)
             try:
                 operation.apply(image)
-            except ValueError as exc:  # pragma: no cover - surveying, not fitting
-                logger.info("patch_census: %s failed (%s)", image.name, exc)
+            except RuntimeError as exc:
+                # apply() wraps every failure as RuntimeError; a ValueError at
+                # the root is this frame failing to calibrate, which is what a
+                # census counts. Anything else is a bug and propagates.
+                cause = _root_cause(exc)
+                if not isinstance(cause, ValueError):
+                    raise
+                logger.info("patch_census: %s failed (%s)", image.name, cause)
                 per_image[image.name] = 0
                 continue
             accepted = operation.diagnostics["patch_census"]["accepted"]
