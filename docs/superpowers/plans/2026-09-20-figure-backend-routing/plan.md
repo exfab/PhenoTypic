@@ -1691,6 +1691,18 @@ tests/unit/plotting/test_output_adapter.py does."
 
 ## Task 7: Preflight from CLI validation
 
+> **Superseded by `926fa3fc` — read that commit, not the code below.** This
+> task's `Interfaces` block and its Step 3 code describe a preflight that reads
+> backends from `iter_figures()` only. **10 of 17 concrete plot classes declare
+> no `@figure` backend** and override `inspect()` directly — including
+> `PlotDetectModes`, whose missing PNGs on a Chrome-less single-page path have
+> no other record under the §3 decision. The shipped implementation also reads
+> QC-recipe bindings via `entry.cls`, memoises the announcement against
+> `--dry-run`'s double validation, and raises for unimportable plotly. The code
+> below is kept as the record of what was planned, not as a description of what
+> exists.
+
+
 **Files:**
 - Modify: `src/phenotypic/plotting/_pipeline/_backends.py` (add `preflight_plot_backends`)
 - Modify: `src/phenotypic/_cli/_cli_validation.py:21-54`

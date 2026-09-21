@@ -9,15 +9,7 @@ from phenotypic.plotting._pipeline._backends import (
     chrome_available,
     ensure_plotlyjs_bundle,
     plotlyjs_src_for,
-    reset_chrome_probe,
 )
-
-
-@pytest.fixture(autouse=True)
-def _clear_probe():
-    reset_chrome_probe()
-    yield
-    reset_chrome_probe()
 
 
 def test_the_bundle_is_written_once(tmp_path: Path) -> None:
