@@ -362,7 +362,28 @@ manifest without cross-referencing anything.
   `"failed"` instead.
 
 The version bump is nearly free: **no production code reads the plot manifest.**
-Its only consumers are `publish_plot_output`'s own return value and
+
+**Correction — an earlier draft named the wrong set of test consumers.** It said
+the only ones were `publish_plot_output`'s return value and
+`tests/unit/plotting/test_output_adapter.py`. There is a third, found by C3's
+implementer: `tests/unit/plotting/test_plot_meas_time_series.py` reads
+`page["file"]` at `:321` **and** embeds an ordering assertion inside a
+`save_png` monkeypatch at `:132`. `PlotMeasTimeSeries` builds Plotly figures, so
+after Task 5 that patch is never invoked on a Chrome-less machine and the test
+**goes green while asserting nothing** — the failure mode this spec's own §3
+exists to remove, landing in a test rather than in output.
+
+How the wrong claim was reached is worth recording: the grep behind it searched
+`src/` for manifest readers and, separately, listed `tests/` files matching
+"manifest". `test_plot_meas_time_series.py` **appeared in that second listing**
+and was not opened. A file named in your own evidence and not followed up is
+indistinguishable, in the written result, from a file that was never there.
+
+Both tests are repaired in Task 6 Step 1 by forcing `chrome_available` true so
+the PNG renderer still runs, which keeps them exercising what they were written
+to exercise rather than weakening them.
+
+For the record, the real consumers are `publish_plot_output`'s own return value,
 `tests/unit/plotting/test_output_adapter.py`, which reads `manifest["pages"]`
 (`:80`, `:106`) and the persisted `"backend"` set (`:86`). Those assertions are
 updated in this change; nothing else in the tree touches it.
