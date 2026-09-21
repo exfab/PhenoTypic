@@ -32,7 +32,15 @@ from unit.resources.TestHelper import timeit
 # ---------------------------------------------------------------------------
 
 # Operations that cannot be instantiated with an empty constructor
-_SKIP_OPS = {"ColorCorrector", "ManualGridFinder", "GridApply"}
+#: Operations that cannot be bare-constructed: each needs an argument with
+#: no sensible default (a fitted profile, a grid, the rectangles where the
+#: colour chart appears).
+_SKIP_OPS = {
+    "CalibrateColorRpcc",
+    "ColorCorrector",
+    "GridApply",
+    "ManualGridFinder",
+}
 
 _all_operations = [
     (qualname, obj)

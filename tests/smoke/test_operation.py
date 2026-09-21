@@ -18,6 +18,10 @@ image_ops = [
     for qualname, obj in ops
     if (("Grid" not in qualname) or ("phenotypic.abc_" not in qualname))
     and "ColorCorrector" not in qualname
+    # CalibrateColorRpcc requires `rois` -- the rectangles where the colour
+    # chart appears -- and there is no sensible default, so like
+    # ColorCorrector it cannot be bare-constructed.
+    and "CalibrateColorRpcc" not in qualname
     # GridApply requires an `image_op` (the operation run on each grid
     # section); like ColorCorrector it cannot be bare-constructed, so
     # it is excluded from the defaults-only smoke contract.
