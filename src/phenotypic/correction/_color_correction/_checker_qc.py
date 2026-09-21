@@ -14,10 +14,12 @@ with different models puts a reproducible bias into the contrast between them.
 from __future__ import annotations
 
 import warnings
-from typing import Any
+from typing import Annotated, Any
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
+
+from ...sdk_.typing_ import TuneSpec
 
 from ._checker_identity import (
     MAX_HUNGARIAN_DISAGREEMENT,
@@ -66,16 +68,19 @@ class QcLimits(BaseModel):
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
-    max_shift_px: float = 30.0
-    max_anchor_disagreement_px: float = 12.0
-    min_ecc: float = 0.90
-    min_placement_margin: float = MIN_PLACEMENT_MARGIN
-    warn_placement_margin: float = WARN_PLACEMENT_MARGIN
-    max_hungarian_disagreement: int = MAX_HUNGARIAN_DISAGREEMENT
-    max_mean_impurity: float = 0.05
-    max_tile_impurity: float = 0.05
-    max_robust_shift: float = 1.5
-    max_clipped: float = 0.20
+    # Gate thresholds, calibrated on the reference band set.  Never tuned:
+    # an optimiser scoring fit error would loosen every one of them, since
+    # refusing a frame can only ever lower the number of fits it sees.
+    max_shift_px: Annotated[float, TuneSpec(tunable=False)] = 30.0
+    max_anchor_disagreement_px: Annotated[float, TuneSpec(tunable=False)] = 12.0
+    min_ecc: Annotated[float, TuneSpec(tunable=False)] = 0.90
+    min_placement_margin: Annotated[float, TuneSpec(tunable=False)] = MIN_PLACEMENT_MARGIN
+    warn_placement_margin: Annotated[float, TuneSpec(tunable=False)] = WARN_PLACEMENT_MARGIN
+    max_hungarian_disagreement: Annotated[int, TuneSpec(tunable=False)] = MAX_HUNGARIAN_DISAGREEMENT
+    max_mean_impurity: Annotated[float, TuneSpec(tunable=False)] = 0.05
+    max_tile_impurity: Annotated[float, TuneSpec(tunable=False)] = 0.05
+    max_robust_shift: Annotated[float, TuneSpec(tunable=False)] = 1.5
+    max_clipped: Annotated[float, TuneSpec(tunable=False)] = 0.20
 
 
 class QcRecord(BaseModel):
@@ -93,7 +98,8 @@ class QcRecord(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    roi_index: int
+    # A record of what was measured, not a setting.
+    roi_index: Annotated[int, TuneSpec(tunable=False)]
     label: str | None = None
     flags: list[str] = []
     warnings: list[str] = []

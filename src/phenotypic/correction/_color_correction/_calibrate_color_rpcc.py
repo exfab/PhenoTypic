@@ -152,14 +152,17 @@ class CalibrateColorRpcc(ImageCorrector):
     rois: list[CheckerRoi] = Field(min_length=1)
     checker_type: str = "ColorChecker24 - After November 2014"
     target_illuminant: str = "D65"
-    degree: int = 3
+    # Fixed across a run by design: tuning it per batch is the per-frame
+    # adaptation the module forbids (see correction/CLAUDE.md).
+    degree: Annotated[int, TuneSpec(tunable=False)] = 3
     grid: tuple[int, int] | None = None
     lattice_prior: list[CheckerLattice] | None = None
     refine_method: OperationRefineMethod = "rigid"
     core_trim: Annotated[float, TuneSpec(0.2, 0.6)] = 0.4
     medoid_candidates: MedoidCandidates = DEFAULT_MEDOID_CANDIDATES
     outlier_sigma: Annotated[float, TuneSpec(1.5, 4.0)] = 2.0
-    min_patches: int = 20
+    # Only decides when to warn; it changes no output, so there is nothing to tune.
+    min_patches: Annotated[int, TuneSpec(tunable=False)] = 20
     qc_limits: QcLimits = QcLimits()
     on_qc_fail: OnQcFail = "raise"
 

@@ -21,11 +21,13 @@ the surrounding algorithm.
 from __future__ import annotations
 
 import math
-from typing import Any, Iterable, Sequence
+from typing import Annotated, Any, Iterable, Sequence
 
 import numpy as np
 
 from pydantic import BaseModel, ConfigDict, model_validator
+
+from ...sdk_.typing_ import TuneSpec
 
 #: Coordinate order of the bounding-box shorthand, quoted in every error
 #: raised by :meth:`CheckerRoi.from_bbox`.  It matches
@@ -56,11 +58,12 @@ class CheckerRoi(BaseModel):
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
+    # Numeric fields here describe the rig, not a knob: never tuned.
     row: tuple[int, int]
     col: tuple[int, int]
     label: str | None = None
-    expect_tiles: int | None = None
-    anchor_col: int | None = None
+    expect_tiles: Annotated[int | None, TuneSpec(tunable=False)] = None
+    anchor_col: Annotated[int | None, TuneSpec(tunable=False)] = None
 
     @model_validator(mode="after")
     def _validate_rectangle(self) -> CheckerRoi:
@@ -179,11 +182,12 @@ class ColumnLattice(BaseModel):
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
-    x0: int
-    x1: int
-    start: float
-    pitch: float
-    duty: float
+    # Detected geometry, written by fit_lattice/refine: data, never tuned.
+    x0: Annotated[int, TuneSpec(tunable=False)]
+    x1: Annotated[int, TuneSpec(tunable=False)]
+    start: Annotated[float, TuneSpec(tunable=False)]
+    pitch: Annotated[float, TuneSpec(tunable=False)]
+    duty: Annotated[float, TuneSpec(tunable=False)]
 
 
 class CheckerLattice(BaseModel):
@@ -200,11 +204,12 @@ class CheckerLattice(BaseModel):
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
+    # Detected geometry and the refinement applied to it: never tuned.
     columns: list[ColumnLattice]
-    nrows: int
-    dy: float = 0.0
-    dx: float = 0.0
-    rot: float = 0.0
+    nrows: Annotated[int, TuneSpec(tunable=False)]
+    dy: Annotated[float, TuneSpec(tunable=False)] = 0.0
+    dx: Annotated[float, TuneSpec(tunable=False)] = 0.0
+    rot: Annotated[float, TuneSpec(tunable=False)] = 0.0
 
     @property
     def n_tiles(self) -> int:
