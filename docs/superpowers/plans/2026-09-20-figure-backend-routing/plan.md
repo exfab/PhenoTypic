@@ -326,9 +326,18 @@ class _Mpl(PhtPlot):
 
 
 def test_a_plotly_figure_is_themed_after_construction() -> None:
+    """The assertion must FAIL if apply_theme is skipped.
+
+    `fig.layout.template is not None` is true of any go.Figure, themed or
+    not -- measured: `[Q7] untheme template is None? False`. The font family
+    is the discriminator: None when raw, the DESIGN.md stack when themed.
+    """
+    from phenotypic.sdk_.viz.figures import FONT_FAMILY
+
+    assert go.Figure().layout.template.layout.font.family is None  # control
     fig = _Plotly().inspect(object())
-    assert "phenotypic" in str(fig.layout.template.layout.font.family or "") or \
-        fig.layout.template is not None
+    assert fig.layout.template.layout.font.family is not None
+    assert FONT_FAMILY
 
 
 def test_the_mpl_theme_is_live_while_the_figure_is_built() -> None:
@@ -549,19 +558,55 @@ def test_report_refuses_a_mixed_provider() -> None:
 def test_inspect_still_works_on_a_matplotlib_provider() -> None:
     """The limitation is composition, not rendering."""
     assert isinstance(_AllMpl().inspect(object()), MplFigure)
+
+
+class _MplWithControls(PhtPlot):
+    """B6: this provider never reaches _compose_control_free_figure."""
+
+    @figure(
+        title="Controlled",
+        backend="mpl",
+        primary=True,
+        controls={"sigma": Control(label="s", kind="float", default=1.0,
+                                   bounds=(0.0, 2.0))},
+    )
+    def controlled(self, subject, *, sigma: float = 1.0):
+        return MplFigure()
+
+
+def test_report_refuses_a_matplotlib_provider_that_declares_controls() -> None:
+    """Guards the notebook-dashboard path, which bypasses the composer."""
+    with pytest.raises(TypeError, match="cannot compose matplotlib"):
+        _MplWithControls().report(object())
 ```
 
 - [ ] **Step 2: Run it and confirm it fails**
 
 Run: `uv run pytest tests/unit/abc_/plotting/test_figure_backend.py -k report -v`
-Expected: FAIL — `AttributeError` from inside `make_subplots`/`rendered.data`, not the `TypeError` asked for.
+Expected: all three FAIL — the two composer cases with `AttributeError: 'Figure'
+object has no attribute 'layout'` from inside theming, and the controls case with
+the same error raised from `build_notebook_dashboard`. None of them is the
+`TypeError` asked for. Add `Control` to the file's imports from
+`phenotypic.abc_.plotting`.
 
 - [ ] **Step 3: Add the guard**
 
-In `_pht_plot.py`, insert at the start of `_compose_control_free_figure`, immediately after `specs = self.iter_figures()`:
+**B6 — put the guard in `report()`, NOT in `_compose_control_free_figure`.**
+Measured: a provider declaring controls routes through `build_notebook_dashboard`
+and never reaches the composer (`[Q9d] composer reached by: ['_OneMpl', '_TwoMpl']`
+-- the controls provider is absent), while `[Q9c]` shows that path fails with the
+same `AttributeError`. A guard in the composer would leave the notebook path
+uncovered, which is a spec requirement with no coverage.
+
+In `_pht_plot.py`, insert in **`report()`**, immediately after
+`specs = self.iter_figures()` and its empty check, BEFORE the
+`if any(spec.controls for spec in specs):` branch:
 
 ```python
         mpl_specs = [spec.name for spec in specs if spec.backend == "mpl"]
+        # Placed here rather than in _compose_control_free_figure: a provider
+        # with controls never reaches the composer (it goes to
+        # build_notebook_dashboard), so a guard down there misses that path.
         if mpl_specs:
             raise TypeError(
                 f"{type(self).__name__}.report(): cannot compose matplotlib "
@@ -891,16 +936,26 @@ Measured first-call cost: <FILL IN FROM STEP 6>."
 
 ---
 
-## Task 5: Publish HTML alongside PNG
+## Task 5: Publish HTML alongside PNG, from one shared renderer
+
+**Revised after the pre-dispatch review (B1, S1–S4, S11).** The single-page image
+path in `_coordinator.py:370-380` does **not** call `publish_plot_output` — it
+writes a PNG directly. So rendering logic that lives only inside
+`_publish_plot_output_locked` never reaches the commonest image plot. This task
+therefore extracts the per-page rendering into `_render_page`, which Task 9 calls
+from the image path too.
 
 **Files:**
 - Modify: `src/phenotypic/plotting/_pipeline/_adapter.py` (add `save_html`)
-- Modify: `src/phenotypic/plotting/_pipeline/_writer.py:100-180`
+- Modify: `src/phenotypic/plotting/_pipeline/_writer.py`
 - Test: `tests/unit/plotting/test_output_adapter.py` (append)
 
 **Interfaces:**
-- Consumes: `chrome_available`, `ensure_plotlyjs_bundle`, `plotlyjs_src_for` (Task 4); `figure_backend_of` (Task 1).
-- Produces: `FigureAdapter.save_html(figure, path, *, plotlyjs_src: str) -> None`; `_publish_plot_output_locked` writing both renderings.
+- Consumes: `chrome_available`, `ensure_plotlyjs_bundle`, `plotlyjs_src_for` (Task 4); `record_plot_failure` (Task 8); `figure_backend_of` (Task 1).
+- Produces:
+  - `FigureAdapter.save_html(figure, path, *, plotlyjs_src: str) -> None`
+  - `_render_page(figure, directory, stem, *, plots_base, plot_id, publication_guard, commit_guard) -> tuple[dict[str, str], list[str], str | None]` returning `(files, errors, backend)`. **Task 9 calls this**; keep the signature exactly.
+  - `publish_plot_output(..., plots_base: Path | None = None)`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -922,7 +977,6 @@ def test_a_plotly_page_publishes_html_without_chrome(tmp_path, monkeypatch) -> N
 
     page = manifest["pages"][0]
     assert page["files"] == {"html": "Only.html"}
-    assert "png" not in page["files"]
     assert (tmp_path / "sym" / "Only.html").is_file()
     assert not (tmp_path / "sym" / "Only.png").exists()
 
@@ -936,9 +990,7 @@ def test_the_html_references_the_hoisted_bundle(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(_backends, "chrome_available", lambda: False)
 
     plots_base = tmp_path / "plots"
-    output = PlotOutput(pages=(
-        PlotPage(key="only", figure=go.Figure(), label="Only"),
-    ))
+    output = PlotOutput(pages=(PlotPage(key="only", figure=go.Figure(), label="Only"),))
     publish_plot_output(
         output, plots_base / "sym", plot_id="sym", plots_base=plots_base
     )
@@ -958,19 +1010,54 @@ def test_a_matplotlib_page_publishes_png_only(tmp_path) -> None:
     from phenotypic.abc_.plotting import PlotOutput, PlotPage
     from phenotypic.plotting._pipeline import publish_plot_output
 
-    output = PlotOutput(pages=(
-        PlotPage(key="only", figure=Figure(), label="Only"),
-    ))
+    output = PlotOutput(pages=(PlotPage(key="only", figure=Figure(), label="Only"),))
     manifest = publish_plot_output(output, tmp_path / "m", plot_id="m")
 
     assert manifest["pages"][0]["files"] == {"png": "Only.png"}
     assert manifest["renderers"] == {"png": "available"}
+
+
+def test_a_partial_rendering_failure_is_not_lost(tmp_path, monkeypatch) -> None:
+    """S2: HTML succeeds, PNG fails -- the PNG failure must still be recorded.
+
+    Without this the page lands in "pages" with one file and the other
+    renderer's failure vanishes: best-effort silently meaning silent, one
+    level below where §3 fixed it.
+    """
+    import json
+
+    import plotly.graph_objects as go
+
+    from phenotypic.abc_.plotting import PlotOutput, PlotPage
+    from phenotypic.plotting._pipeline import _backends, _writer, publish_plot_output
+
+    monkeypatch.setattr(_backends, "chrome_available", lambda: True)
+
+    def _png_explodes(*args, **kwargs):
+        raise RuntimeError("raster exploded")
+
+    monkeypatch.setattr(_writer.FigureAdapter, "save_png", _png_explodes)
+
+    plots_base = tmp_path / "plots"
+    output = PlotOutput(pages=(PlotPage(key="only", figure=go.Figure(), label="Only"),))
+    manifest = publish_plot_output(
+        output, plots_base / "sym", plot_id="sym", plots_base=plots_base
+    )
+
+    page = manifest["pages"][0]
+    assert page["files"] == {"html": "Only.html"}          # HTML still published
+    assert any("raster exploded" in err for err in page["partial"])
+
+    record = plots_base / ".failures.jsonl"
+    assert record.is_file(), "S3: the writer must write .failures.jsonl"
+    entry = json.loads(record.read_text().splitlines()[0])
+    assert "raster exploded" in entry["error"]
 ```
 
 - [ ] **Step 2: Run it and confirm it fails**
 
-Run: `uv run pytest tests/unit/plotting/test_output_adapter.py -k "html or png_only" -v`
-Expected: FAIL — `KeyError: 'files'` (the manifest still uses `"file"`), and `publish_plot_output` has no `plots_base` parameter.
+Run: `uv run pytest tests/unit/plotting/test_output_adapter.py -k "html or png_only or partial" -v`
+Expected: FAIL — `KeyError: 'files'`, and `publish_plot_output` has no `plots_base` parameter.
 
 - [ ] **Step 3: Add `save_html` to the adapter**
 
@@ -1002,128 +1089,22 @@ In `src/phenotypic/plotting/_pipeline/_adapter.py`, after `save_png`:
         figure.write_html(path, include_plotlyjs=plotlyjs_src)
 ```
 
-- [ ] **Step 4: Emit both renderings in the writer**
+- [ ] **Step 4: Import the predicate at MODULE level in `_writer.py`**
 
-In `src/phenotypic/plotting/_pipeline/_writer.py`, add `plots_base: Path | None = None` to both `publish_plot_output` and `_publish_plot_output_locked` signatures (keyword-only, after `plot_class`), documented as:
-
-```
-        plots_base: Resolved ``deliverables/plots`` directory, used to locate
-            the shared Plotly bundle. Defaults to *directory* itself, which is
-            correct for a direct call that publishes into a flat tree.
-```
-
-Replace the per-page body (currently lines ~110-158) with:
+**S4 — this is load-bearing, not style.** Add to the imports at the top of
+`_writer.py` (it already imports `PlotOutput` from that package):
 
 ```python
-    from ._backends import (
-        chrome_available,
-        ensure_plotlyjs_bundle,
-        plotlyjs_src_for,
-    )
-    from phenotypic.abc_.plotting import figure_backend_of
-
-    base = plots_base if plots_base is not None else directory
-    png_ok = chrome_available()
-
-    for page in output.pages:
-        label = page.label or page.key
-        try:
-            stem = safe_path_component(label)
-        except Exception:
-            stem = "page"
-        base_stem = stem
-        folded = stem.casefold()
-        attempt = 0
-        while folded in used and used[folded] != page.key:
-            digest_input = (
-                page.key if attempt == 0 else f"{page.key}:{attempt}"
-            )
-            digest = hashlib.sha256(digest_input.encode("utf-8")).hexdigest()[:8]
-            stem = f"{base_stem}-{digest}"
-            folded = stem.casefold()
-            attempt += 1
-        used[folded] = page.key
-
-        backend = figure_backend_of(page.figure)
-        if backend is None:
-            failed.append({
-                "key": page.key,
-                "label": page.label,
-                "error": (
-                    "TypeError: unsupported figure type "
-                    f"{type(page.figure).__module__}."
-                    f"{type(page.figure).__qualname__}"
-                ),
-            })
-            continue
-
-        files: dict[str, str] = {}
-        page_error: str | None = None
-
-        # HTML first: it needs no Chrome, so a page that can be published at
-        # all is published before anything that might fail is attempted.
-        if backend == "plotly":
-            try:
-                bundle = ensure_plotlyjs_bundle(base)
-                src = plotlyjs_src_for(directory, bundle)
-                _atomic_write(
-                    directory / f"{stem}.html",
-                    lambda dest: FigureAdapter.save_html(
-                        page.figure, dest, plotlyjs_src=src
-                    ),
-                    publication_guard=publication_guard,
-                    commit_guard=commit_guard,
-                )
-                files["html"] = f"{stem}.html"
-            except PlotPublicationBlocked:
-                FigureAdapter.close(page.figure)
-                raise
-            except Exception as exc:  # noqa: BLE001 - plots are best-effort
-                page_error = f"{type(exc).__name__}: {exc}"
-                logger.warning(
-                    "Plot %s page %s failed during HTML save: %s",
-                    plot_id, page.key, exc,
-                )
-
-        if backend == "mpl" or png_ok:
-            try:
-                _atomic_write(
-                    directory / f"{stem}.png",
-                    lambda dest: FigureAdapter.save_png(page.figure, dest),
-                    publication_guard=publication_guard,
-                    commit_guard=commit_guard,
-                )
-                files["png"] = f"{stem}.png"
-            except PlotPublicationBlocked:
-                FigureAdapter.close(page.figure)
-                raise
-            except Exception as exc:  # noqa: BLE001 - plots are best-effort
-                page_error = f"{type(exc).__name__}: {exc}"
-                logger.warning(
-                    "Plot %s page %s failed during PNG save: %s",
-                    plot_id, page.key, exc,
-                )
-
-        FigureAdapter.close(page.figure)
-
-        if not files:
-            failed.append({
-                "key": page.key,
-                "label": page.label,
-                "error": page_error or "no renderer produced a file",
-            })
-            continue
-
-        pages.append({
-            "key": page.key,
-            "label": page.label,
-            "files": files,
-            "backend": "matplotlib" if backend == "mpl" else "plotly",
-            "metadata": dict(page.metadata),
-        })
+from phenotypic.abc_.plotting import figure_backend_of
 ```
 
-Add `failed: list[dict[str, Any]] = []` beside the existing `pages: list[...] = []`, and add this helper at module scope:
+A function-scope import would leave no module attribute for a test to patch, and
+Task 6 Step 1's repair of the concurrency guard depends on patching
+`_writer.figure_backend_of`.
+
+- [ ] **Step 5: Add `_atomic_write` and `_render_page`**
+
+At module scope in `_writer.py`:
 
 ```python
 def _atomic_write(
@@ -1142,29 +1123,213 @@ def _atomic_write(
             os.replace(temporary, destination)
     finally:
         temporary.unlink(missing_ok=True)
+
+
+def _render_page(
+    figure: Any,
+    directory: Path,
+    stem: str,
+    *,
+    plots_base: Path,
+    plot_id: str,
+    publication_guard: Callable[[], bool] | None = None,
+    commit_guard: CommitGuard | None = None,
+) -> tuple[dict[str, str], list[str], str | None]:
+    """Render one figure to every format its backend supports.
+
+    This is the single definition of "what files does a page produce". It is
+    called from :func:`_publish_plot_output_locked` for multi-page and aggregate
+    output, and from ``PlotCoordinator._publish_image_value`` for the flat
+    single-page image path -- which does not go through the writer at all, and
+    would otherwise never gain HTML.
+
+    HTML is attempted first: it needs no Chrome, so a page that can be published
+    at all is on disk before anything that might fail is tried.
+
+    Args:
+        figure: The figure to render.
+        directory: Directory the page files are written into.
+        stem: Filename stem, without extension.
+        plots_base: Resolved ``deliverables/plots`` directory, for the bundle.
+        plot_id: Binding id, for diagnostics.
+        publication_guard: Optional GUI compare-and-set predicate.
+        commit_guard: Optional commit guard.
+
+    Returns:
+        ``(files, errors, backend)`` -- a mapping of format to filename for
+        everything that published, a list of formatted error strings for
+        everything that did not, and the figure's backend (``None`` if
+        unsupported, in which case *files* is empty).
+
+    Raises:
+        PlotPublicationBlocked: If a guard rejects the write. Never swallowed --
+            it means the output snapshot changed and this whole publication is
+            void.
+    """
+    from ._backends import chrome_available, ensure_plotlyjs_bundle, plotlyjs_src_for
+
+    backend = figure_backend_of(figure)
+    if backend is None:
+        return {}, [
+            "TypeError: unsupported figure type "
+            f"{type(figure).__module__}.{type(figure).__qualname__}"
+        ], None
+
+    files: dict[str, str] = {}
+    errors: list[str] = []
+
+    if backend == "plotly":
+        try:
+            bundle = ensure_plotlyjs_bundle(plots_base)
+            src = plotlyjs_src_for(directory, bundle)
+            _atomic_write(
+                directory / f"{stem}.html",
+                lambda dest: FigureAdapter.save_html(figure, dest, plotlyjs_src=src),
+                publication_guard=publication_guard,
+                commit_guard=commit_guard,
+            )
+            files["html"] = f"{stem}.html"
+        except PlotPublicationBlocked:
+            raise
+        except Exception as exc:  # noqa: BLE001 - plots are best-effort
+            errors.append(f"{type(exc).__name__}: {exc}")
+            logger.warning(
+                "Plot %s page %s failed during HTML save: %s", plot_id, stem, exc
+            )
+
+    if backend == "mpl" or chrome_available():
+        try:
+            _atomic_write(
+                directory / f"{stem}.png",
+                lambda dest: FigureAdapter.save_png(figure, dest),
+                publication_guard=publication_guard,
+                commit_guard=commit_guard,
+            )
+            files["png"] = f"{stem}.png"
+        except PlotPublicationBlocked:
+            # S11: a blocked PNG must not leave a published HTML sibling behind
+            # asserting a page that this publication no longer owns.
+            if "html" in files:
+                (directory / files["html"]).unlink(missing_ok=True)
+            raise
+        except Exception as exc:  # noqa: BLE001 - plots are best-effort
+            errors.append(f"{type(exc).__name__}: {exc}")
+            logger.warning(
+                "Plot %s page %s failed during PNG save: %s", plot_id, stem, exc
+            )
+
+    return files, errors, backend
 ```
 
-- [ ] **Step 5: Run the tests**
+The `lambda`s capture `figure`/`src` and are invoked synchronously inside the same
+call, so there is no late-binding hazard. `FigureAdapter.close` is **not** called
+here — the caller owns the figure's lifetime, and `save_png` already closes a
+matplotlib figure in its own `finally` (double-close is safe: verified
+`[Q1c] savefig+close+close OK`).
+
+- [ ] **Step 6: Use it in the writer loop**
+
+Add `plots_base: Path | None = None` to both `publish_plot_output` and
+`_publish_plot_output_locked` (keyword-only, after `plot_class`), **and forward it
+in the delegating call at `_writer.py:86-93`** (S1 — adding it to both signatures
+without threading it leaves the inner default silently wrong).
+
+Replace the per-page body with:
+
+```python
+    base = plots_base if plots_base is not None else directory
+
+    for page in output.pages:
+        label = page.label or page.key
+        try:
+            stem = safe_path_component(label)
+        except Exception:
+            stem = "page"
+        base_stem = stem
+        folded = stem.casefold()
+        attempt = 0
+        while folded in used and used[folded] != page.key:
+            digest_input = page.key if attempt == 0 else f"{page.key}:{attempt}"
+            digest = hashlib.sha256(digest_input.encode("utf-8")).hexdigest()[:8]
+            stem = f"{base_stem}-{digest}"
+            folded = stem.casefold()
+            attempt += 1
+        used[folded] = page.key
+
+        try:
+            files, errors, backend = _render_page(
+                page.figure, directory, stem,
+                plots_base=base,
+                plot_id=plot_id,
+                publication_guard=publication_guard,
+                commit_guard=commit_guard,
+            )
+        except PlotPublicationBlocked:
+            FigureAdapter.close(page.figure)
+            raise
+        FigureAdapter.close(page.figure)
+
+        # S3: every swallowed error gets a durable record, not just a log line.
+        for message in errors:
+            record_plot_failure(
+                base,
+                binding_id=plot_id,
+                plot_class=plot_class or plot_id,
+                lifecycle="page",
+                error=RuntimeError(message),
+            )
+
+        if not files:
+            failed.append({
+                "key": page.key,
+                "label": page.label,
+                "error": errors[0] if errors else "no renderer produced a file",
+            })
+            continue
+
+        entry: dict[str, Any] = {
+            "key": page.key,
+            "label": page.label,
+            "files": files,
+            "backend": "matplotlib" if backend == "mpl" else "plotly",
+            "metadata": dict(page.metadata),
+        }
+        if errors:
+            # S2: one renderer failed while the other succeeded. The page is
+            # published AND the failure is on the record.
+            entry["partial"] = errors
+        pages.append(entry)
+```
+
+Add `failed: list[dict[str, Any]] = []` beside the existing `pages` list, and
+`from ._failures import record_plot_failure` at module level.
+
+- [ ] **Step 7: Run the tests**
 
 Run: `uv run pytest tests/unit/plotting/test_output_adapter.py -v`
-Expected: the new tests PASS. Pre-existing tests reading `manifest["pages"][…]["file"]` (`:80`, `:106`) FAIL — Task 6 updates them and the manifest together.
+Expected: the four new tests PASS. Pre-existing tests at `:80`, `:106` and
+**`:124-172`** FAIL — Task 6 repairs all three. Do not "fix" them here.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add src/phenotypic/plotting/_pipeline/_adapter.py src/phenotypic/plotting/_pipeline/_writer.py tests/unit/plotting/test_output_adapter.py
-git commit -m "feat(plotting): publish Plotly pages as HTML, PNG when Chrome exists
+git commit -m "feat(plotting): render every page through one shared _render_page
 
-A Plotly page now always publishes interactive HTML and additionally a
-PNG when chrome_available(). Matplotlib pages publish PNG only. HTML is
-attempted first because it cannot fail for lack of a browser, so a page
-that can be published at all is on disk before anything that might fail.
+A Plotly page publishes interactive HTML always and a PNG when Chrome is
+available; matplotlib publishes PNG only. HTML is attempted first
+because it cannot fail for lack of a browser.
 
-Per-page writes share one _atomic_write helper rather than repeating the
-temp-then-replace dance per format."
+The rendering is extracted rather than inlined in the writer loop,
+because the flat single-page image path in _coordinator.py never calls
+publish_plot_output at all -- logic living only in the writer would miss
+the commonest image plot entirely. Task 9 calls _render_page from there.
+
+A partial failure (one renderer of two) is now recorded in the page's
+'partial' key and in .failures.jsonl instead of being logged and
+dropped, and a blocked PNG removes its published HTML sibling rather
+than leaving an orphan."
 ```
-
----
 
 ## Task 6: Manifest `schema_version: 2`
 
@@ -1223,14 +1388,40 @@ def test_renderers_records_why_png_is_missing(tmp_path, monkeypatch) -> None:
     assert "chrome" in manifest["renderers"]["png"].lower()
 ```
 
-Then update the two pre-existing assertions:
-- `:80` — `files = [entry["file"] for entry in manifest["pages"]]` becomes `files = [entry["files"]["png"] for entry in manifest["pages"]]`
+Then repair **three** pre-existing assertions, not two:
+
+- `:80` — `files = [entry["file"] for entry in manifest["pages"]]` becomes
+  `files = [entry["files"]["png"] for entry in manifest["pages"]]`
 - `:106` — same substitution.
+- **`:124-172`, `test_concurrent_plot_publications_do_not_mix_generations`** — this
+  is the writer's only concurrency guard and Task 5 breaks it in a way that is NOT
+  a `"file"` → `"files"` rename. It patches `FigureAdapter.backend_name`, which
+  `_render_page` no longer calls; its local `_FakeFigure` then fails
+  `figure_backend_of`'s `type(figure).__name__ == "Figure"` check, is classified
+  `None`, and is diverted to `failed` — so `manifest["pages"]` is `[]` and the test
+  dies at `generations.pop()` with `KeyError`, never reaching `:169`.
+  Measured: `[Q11] backend_of(_FakeFigure) -> None`.
+
+  **Fix:** patch the writer's view of the predicate instead, which keeps the test
+  PNG-only and unchanged in spirit. Add beside the existing patches at `:133-137`:
+
+  ```python
+      monkeypatch.setattr(_writer, "figure_backend_of", lambda _figure: "mpl")
+  ```
+
+  and update its `page["file"]` read at `:169` to `page["files"]["png"]`. This
+  works only because Task 5 Step 4 imports `figure_backend_of` at **module** level
+  in `_writer.py`; a function-scope import would leave nothing to patch.
 
 - [ ] **Step 2: Run it and confirm it fails**
 
 Run: `uv run pytest tests/unit/plotting/test_output_adapter.py -v`
-Expected: FAIL — `assert 1 == 2` on `schema_version`, and `KeyError: 'renderers'`.
+Expected: FAIL — `assert 1 == 2` on `schema_version`, `KeyError: 'renderers'`, and
+`KeyError` from `generations.pop()` in the concurrency test.
+
+**This is the last step at which a red `test_output_adapter.py` is expected.** From
+Step 4 onward the whole file must be green; do not carry a red test past this task
+on the grounds that the plan mentioned it.
 
 - [ ] **Step 3: Build the manifest**
 
@@ -1733,42 +1924,87 @@ def test_a_raising_figure_leaves_the_run_green_and_is_recorded(tmp_path) -> None
     assert "figure exploded" in entries[0]["error"]
 
 
-def test_emit_qc_prelude_failure_does_not_escape_or_misname(tmp_path, monkeypatch) -> None:
-    """The handler used to read `binding` before it was assigned."""
+def test_emit_qc_prelude_failure_is_recorded_and_the_loop_continues(tmp_path) -> None:
+    """B3: the prelude is the ONLY window where F4's bug lives.
+
+    The first draft of this test patched MeasurementInput.__init__, which is
+    called at _coordinator.py:240 -- one line AFTER the binding assignment at
+    :239. It therefore passed on the unfixed code and proved nothing. The
+    prelude is :227-238, and modules.get at :233 is the way in.
+    """
+    import json
+
     import pandas as pd
+    import plotly.graph_objects as go
     from pydantic import BaseModel
 
-    import plotly.graph_objects as go
     from phenotypic import ImagePipeline
     from phenotypic.abc_.plotting import PlotQc, figure
     from phenotypic.detect import OtsuDetector
     from phenotypic.plotting._pipeline import AnalysisRegistry, PlotCoordinator
-    from phenotypic.plotting._pipeline import _coordinator as coordinator_module
 
-    class _Qc(BaseModel, PlotQc):
-        @figure(title="T", backend="plotly", primary=True)
+    class _FirstQc(BaseModel, PlotQc):
+        @figure(title="First", backend="plotly", primary=True)
         def t(self, subject):
             return go.Figure()
 
-    pipeline = ImagePipeline(ops={"d": OtsuDetector()}, plots=[_Qc()])
+    class _SecondQc(BaseModel, PlotQc):
+        @figure(title="Second", backend="plotly", primary=True)
+        def t(self, subject):
+            return go.Figure()
 
-    def _raise_in_prelude(*args, **kwargs):
-        raise RuntimeError("prelude exploded")
-
-    monkeypatch.setattr(
-        coordinator_module.MeasurementInput, "__init__", _raise_in_prelude
+    pipeline = ImagePipeline(
+        ops={"d": OtsuDetector()}, plots=[_FirstQc(), _SecondQc()]
     )
 
-    # Must not raise UnboundLocalError (or anything else) out of emit_qc.
+    class _RaisingOnce(dict):
+        """Raises inside the prelude for the first binding only."""
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.calls = 0
+
+        def get(self, key, default=None):
+            self.calls += 1
+            if self.calls == 1:
+                raise RuntimeError("prelude exploded")
+            return super().get(key, default)
+
+    # Non-empty: `modules = successful_modules or {}` at :223 discards a falsy
+    # mapping, which would skip the injection entirely.
+    modules = _RaisingOnce({"unused": object()})
+
     PlotCoordinator(pipeline, tmp_path).emit_qc(
-        pd.DataFrame(), AnalysisRegistry(tmp_path / "deliverables")
+        pd.DataFrame(),
+        AnalysisRegistry(tmp_path / "deliverables"),
+        successful_modules=modules,
     )
-```
+
+    record = tmp_path / "deliverables" / "plots" / ".failures.jsonl"
+    entries = [json.loads(line) for line in record.read_text().splitlines()]
+
+    # The failure is recorded against the binding that actually failed...
+    assert len(entries) == 1
+    assert entries[0]["binding_id"] == "_FirstQc", (
+        "must not be attributed to a previous or later binding"
+    )
+    assert "prelude exploded" in entries[0]["error"]
+
+    # ...and the SECOND binding still emitted, which is the half that the
+    # `binding = None` shape exists to preserve.
+    assert (tmp_path / "deliverables" / "plots" / "_SecondQc").is_dir()
+
 
 - [ ] **Step 2: Run it and confirm it fails**
 
 Run: `uv run pytest tests/unit/plotting/test_coordinator.py -k "green or prelude" -v`
-Expected: FAIL — no `.failures.jsonl` is written; `UnboundLocalError` escapes `emit_qc`.
+Expected: FAIL. On today's code the prelude failure reaches the handler at `:259`
+with `binding` **unbound on the first iteration**, so an `UnboundLocalError` is
+raised *from inside the exception handler*, replaces the original `RuntimeError`,
+and escapes `emit_qc` — `_SecondQc` never emits and no record is written.
+
+Confirm the test can actually fail before trusting it: this assertion set must go
+red here, not merely green later.
 
 - [ ] **Step 3: Add a recording helper to the coordinator**
 
@@ -1824,35 +2060,124 @@ and for the four aggregate handlers, e.g. in `_emit_aggregate`:
             self._record_failure(binding, exc, lifecycle=lifecycle)
 ```
 
-- [ ] **Step 5: Narrow `emit_qc`'s try**
+- [ ] **Step 5: Bind `binding` before the `try` (B3)**
 
-The prelude at `_coordinator.py:227-238` is dict and attribute access whose failure is a programming error, not a plot failure. Move the `try:` so it opens at the `model_copy` line, leaving the prelude (including the `continue` at `:238`) outside it. The handler then cannot run with `binding` unbound. Structure:
+**Decision on record:** the spec contradicted itself here — §3 argued the prelude
+failure should propagate (narrow the `try`), §5's test row said the loop continues.
+**The user chose §5.** A prelude failure is recorded and the remaining QC bindings
+still emit.
+
+Initialise `binding = None` before the `try`, keep the prelude inside it, and guard
+the handler's use:
 
 ```python
         for configured in self._pipeline.get_plots():
-            ref = configured.ref
-            is_qc_ref = ref is not None and ref.slot == "qc"
-            module_key = configured.id
-            if is_qc_ref:
-                assert ref is not None and ref.key is not None
-                module_key = ref.key
-            module = modules.get(module_key)
-            plot = configured.plot
-            if is_qc_ref and module is not None:
-                plot = module.check
-            if not isinstance(plot, PlotQc):
-                continue
-
-            binding = configured.model_copy(update={"plot": plot})
+            binding = None
             try:
+                ref = configured.ref
+                is_qc_ref = ref is not None and ref.slot == "qc"
+                module_key = configured.id
+                if is_qc_ref:
+                    assert ref is not None and ref.key is not None
+                    module_key = ref.key
+                module = modules.get(module_key)
+                plot = configured.plot
+                if is_qc_ref and module is not None:
+                    plot = module.check
+                if not isinstance(plot, PlotQc):
+                    continue
+
+                binding = configured.model_copy(update={"plot": plot})
                 ...  # input_ref, table, subject, _emit_aggregate as before
-            except Exception as exc:  # noqa: BLE001
-                self._record_failure(binding, exc, lifecycle="qc")
+            except Exception as exc:  # noqa: BLE001 - plot output is best-effort
+                self._record_failure_for(
+                    binding_id=binding.id if binding is not None else configured.id,
+                    plot_class=type(
+                        binding.plot if binding is not None else configured.plot
+                    ).__name__,
+                    error=exc,
+                    lifecycle="qc",
+                )
 ```
 
-- [ ] **Step 6: Pass `plots_base` through the image path**
+`binding = None` is reassigned at the top of **every** iteration, which is what
+stops the stale-previous-binding misattribution; the `configured.id` fallback is
+what stops the unbound crash. Both halves are needed — the test asserts the
+recorded id is `_FirstQc` precisely to catch an implementation that keeps the
+previous iteration's value.
 
-In `_publish_image_value`, add `plots_base=self._plots_base` to the `publish_plot_output(...)` call, and in `_publish_aggregate` likewise. Without it the shared bundle is written into each page directory, defeating Task 4.
+Add a `_record_failure_for(*, binding_id, plot_class, error, lifecycle, dataset=None, image_stem=None)`
+sibling to `_record_failure` that takes the id directly rather than a binding
+object; `_record_failure` becomes a thin wrapper over it.
+
+**Recorded cost of this choice** (raised by the pre-dispatch review, accepted
+knowingly): keeping the prelude inside the `try` means a genuine programming error
+in it — a bad `assert`, a missing attribute — is swallowed and recorded as a plot
+failure rather than surfacing. The alternative made the unbound case structurally
+impossible instead of merely handled. If that swallowing ever hides a real defect,
+the narrow-the-`try` shape is the fix, and it is recorded in `DEFERRED.md`.
+
+- [ ] **Step 6: Route the flat image path through `_render_page` (B1)**
+
+**This is the step that makes the whole change reach image plots.**
+`_publish_image_value` has two branches: multi-page goes to `publish_plot_output`
+(`:361-368`), and a single `"default"` page — which is what `normalize_plot_output`
+produces for a bare figure, so *every* one of the 27 annotated sites — takes
+`:370-380` and calls `FigureAdapter.save_png` **directly**. Nothing in Tasks 5 or 6
+reaches it.
+
+First, add `plots_base=self._plots_base` to the `publish_plot_output(...)` call in
+the multi-page branch and in `_publish_aggregate`.
+
+Then replace the flat branch (`:370-380`) with:
+
+```python
+        self._require_publication()
+        base.mkdir(parents=True, exist_ok=True)
+        files, errors, _backend = _render_page(
+            output.pages[0].figure,
+            base,
+            output_stem,
+            plots_base=self._plots_base,
+            plot_id=binding.id,
+            publication_guard=self._publication_guard,
+            commit_guard=self._commit_guard,
+        )
+        FigureAdapter.close(output.pages[0].figure)
+        for message in errors:
+            record_plot_failure(
+                self._plots_base,
+                binding_id=binding.id,
+                plot_class=type(binding.plot).__name__,
+                lifecycle="image",
+                error=RuntimeError(message),
+                dataset=dataset,
+                image_stem=image_stem,
+            )
+        if not files:
+            raise RuntimeError(
+                f"plot {binding.id!r} produced no file for "
+                f"{dataset}/{image_stem}: {errors[0] if errors else 'no renderer'}"
+            )
+```
+
+Import `_render_page` and `record_plot_failure` from `._writer` / `._failures` at
+the top of `_coordinator.py`.
+
+**Do NOT route this branch through `publish_plot_output` instead.** Two costs that
+are invisible from the call site: it takes `exclusive_path_lock` on
+`directory / ".publication.lock"`, and here the directory is
+`plots/<id>/<dataset>/` — shared by every image in the dataset, so a 1,536-image
+plate run would serialise on one interprocess lock that this path takes today not
+at all. And it names files from `page.label or page.key`, so with the default
+page's key of `"default"` every image in the dataset would collide on
+`default.png`. The `<stem>-<hash>` naming exists precisely to prevent that, and
+`test_image_plot_output_name_is_stable_for_reruns` pins it.
+
+The raise at the end keeps `strict=True` meaningful for the staged path and is
+caught by `emit_image`'s handler otherwise — so the failure is recorded once by
+`_render_page`'s errors and once by the handler. That is intentional: the first
+says which renderer failed, the second says which image.
 
 - [ ] **Step 7: Remove the strict asymmetry**
 
@@ -1999,10 +2324,20 @@ Expected: `27`. The 28th raw hit is an error-message string at `_pht_plot.py:174
 
 - [ ] **Step 2: Annotate each site**
 
-Add `backend="plotly"` immediately after `title=...` in every one of the 27 decorations. Example:
+Add `backend="plotly"` immediately after the `title=` argument in every one of the
+27 decorations. **Only 8 sites are single-line; 19 are multi-line.** Both forms:
 
 ```python
+    # single-line (8 sites, all but two in grid/_grid_fit_report.py)
     @figure(title="Noise profile", backend="plotly", section="noise")
+
+    # multi-line (19 sites) -- add backend as its own line; do NOT reflow
+    @figure(
+            title="Symmetric-radius overlay",
+            backend="plotly",
+            primary=True,
+            controls={"base_layer": BASE_LAYER},
+    )
 ```
 
 **Every one of these is Plotly today — verified by the audit, which confirmed all 27 return Plotly figures.** If any site turns out to return a matplotlib figure, **stop and report it as a finding**. Do not annotate it `backend="mpl"` to make it pass: that would convert a bug this change exists to surface into a silently accepted behaviour.
@@ -2026,8 +2361,19 @@ Expected: six `ok` lines. A `TypeError: figure() missing 1 required keyword-only
 
 - [ ] **Step 4: Confirm no site was left behind**
 
-Run: `grep -rn "@figure(" --include=*.py src/ | grep -v "_pht_plot.py" | grep -vc "backend="`
-Expected: `0`.
+**19 of the 27 sites are multi-line** decorations whose `@figure(` line carries no
+arguments at all, so a grep that only reads that one line reports 19 failures on a
+perfect sweep. Read the whole decorator instead:
+
+Run: `grep -rn -A6 "@figure(" --include=*.py src/ | grep -v "_pht_plot.py" | grep -c 'backend='`
+Expected: `27`.
+
+Step 3 (importing all six modules) is the **real** guard — a missed site raises
+`TypeError: figure() missing 1 required keyword-only argument: 'backend'` naming
+the file and line. This step is a convenience cross-check.
+
+**Do not reflow a multi-line decorator onto one line to satisfy a grep.** Two of
+the `measure/` decorations would then exceed the configured line length.
 
 - [ ] **Step 5: Run the affected tests**
 

@@ -58,3 +58,44 @@ the change exists to remove, one layer lower.
   making the undecorated path load-bearing rather than theoretical; or
 - a backend mismatch is recorded below the decorator in real use; or
 - `PlotPage` is being changed for another reason and the field is nearly free.
+
+---
+
+# Deferred — narrowing `emit_qc`'s `try` boundary
+
+Recorded 2026-09-20, from the pre-dispatch plan review.
+
+## The choice that was made
+
+`emit_qc`'s handler read `binding.id` while `binding` was assigned ten lines into
+the `try`, so a prelude failure raised `UnboundLocalError` **from inside the
+handler** on the first iteration and named the *previous* plot on any later one.
+
+Two shapes fix it. The spec argued for both in different sections — §3 for
+narrowing the `try` so the prelude sits outside it, §5's test row for keeping the
+loop going. **The user chose the second:** `binding = None` before the `try`, the
+prelude inside it, the handler guarded with a `configured.id` fallback.
+
+## What that costs, stated plainly
+
+The prelude is pure dict and attribute access. A failure there is a programming
+error — a bad `assert`, a missing attribute, a malformed QC entry — not a plot
+failure. Keeping it inside the `try` means such an error is **swallowed and
+recorded as a plot failure**, which is the behaviour §3 objected to.
+
+The narrow-the-`try` shape makes the unbound case *structurally impossible* rather
+than merely handled, and lets a programming error surface as one. The chosen shape
+handles it correctly but keeps the swallow.
+
+## Reconsider when
+
+- A real defect is traced to a prelude failure that `.failures.jsonl` recorded as
+  a plot failure and nobody looked at; or
+- QC bindings gain enough prelude complexity that "pure dict and attribute access"
+  stops being true; or
+- the `configured.id` fallback is ever observed in a record, which means the
+  prelude failed and the binding identity was a guess.
+
+The change is small and local: move `try:` to just after the `model_copy`, delete
+the `binding = None` line and the fallback, and invert the test's assertion from
+"the loop continued" to `pytest.raises(RuntimeError)`.
