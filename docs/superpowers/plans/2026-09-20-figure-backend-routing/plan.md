@@ -2891,6 +2891,17 @@ C9  T13        docs/, abc_/CLAUDE.md                            needs C1-C6
 - **Deep, after C5:** `implementation-test-reviewer` over the combined C1–C5 diff —
   the phase added tests, so the question is whether they can fail, not whether
   they pass.
+- **C5 gate — three checks carried forward from earlier gates.** Verify each by
+  reading the diff, not by trusting the commit message:
+  1. The `"qc dependency"` fix landed at **`_coordinator.py:303`**, the call site.
+     A fix in `_emit_aggregate`'s handler would look correct and change nothing,
+     because that handler only forwards the `lifecycle` it is passed. (C3 gate.)
+  2. The flat path passes `error=exc`, not `error=RuntimeError(message)`. The
+     wrapped form records the wrong class name for `_render_page`'s own
+     `TypeError` and comes out right by coincidence for a `RuntimeError`. (C3 gate.)
+  3. A multi-page Plotly image plot still writes exactly one `plotly.min.js` in the
+     whole tree — the guard in `test_coordinator.py` must still exist and still
+     fail when `plots_base` is dropped. (C3 gate; 7.45 GB if it regresses.)
 - **After C9:** one `code-simplifier` pass, quality only.
 - **End:** T14 full sharded regression as a Slurm job.
 
