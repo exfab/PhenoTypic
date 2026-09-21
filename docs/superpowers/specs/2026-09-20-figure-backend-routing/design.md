@@ -28,8 +28,11 @@ reporting would leave the second half of the trap in place.
   rather than built here.
 - **Changing what a plot *is*.** No new lifecycle, no change to binding
   normalization, serialization, or the publication transaction.
-- **Installing Chrome.** This spec makes its absence loud and early; it does not
-  provision it.
+- **Installing Chrome.** This spec makes its absence a recorded, announced
+  capability limit rather than a failure — Plotly output still publishes, as HTML.
+  It does not provision Chrome.
+- **HTML output for matplotlib.** matplotlib has no native HTML export and mpld3 is
+  not a dependency worth taking here. Matplotlib bindings publish PNG only.
 
 ## Background
 
@@ -65,7 +68,7 @@ worked.
 | # | Finding | Evidence | Section |
 |---|---|---|---|
 | F1 | `@figure` assumes Plotly; a matplotlib return raises an error naming neither the decorator nor the backend | `_pht_plot.py:192`, `_theme.py:227` | §1 |
-| F2 | Missing Chrome makes every Plotly PNG export fail, discovered per-figure and late | `plotly.io._kaleido` → `ChromeNotFoundError`; reproduced, 0.59 s to fail | §2 |
+| F2 | Missing Chrome makes every Plotly PNG export fail, discovered per-figure and late, leaving a plot directory that looks published but is empty | `plotly.io._kaleido` → `ChromeNotFoundError`; reproduced, 0.59 s to fail | §2 |
 | F3 | `strict=True` on the staged GPU worker but not the two ordinary CLI sites: the same broken plot fails one run loudly and leaves the other green | `_cli_staged_workers.py:526` vs `_cli_process_single.py:348,450` | §3 |
 | F4 | `emit_qc` dereferences `binding` in an `except` handler that can run before `binding` is assigned | `_coordinator.py:226` (try), `:239` (assign), `:261` (read) | §3 |
 | F5 | Every page failing still writes a durable `manifest.json` asserting zero pages | `_writer.py:149` (`continue`) vs `:160-177` (unconditional write) | §3 |
@@ -94,10 +97,12 @@ def figure(
 `FigureSpec` gains `backend: Literal["plotly", "mpl"]`.
 
 **`backend` is required.** Omitting it is a `TypeError` at class-definition time.
-This breaks every provider written against the current signature, including custom
-providers outside this repo and the example in `custom_plotter.md` — accepted
-deliberately: a default would preserve exactly the silent-default behaviour this
-change exists to remove, and the break is loud, immediate, and one word to fix.
+This breaks every provider written against the current signature, in this repo and
+outside it — accepted deliberately: a default would preserve exactly the
+silent-default behaviour this change exists to remove, and the break is loud,
+immediate, and one word to fix. (The example in `custom_plotter.md` is *not* among
+the breakages; it overrides `inspect()` and never uses the decorator, which §4
+treats as its own problem.)
 
 ### Wrapper
 
@@ -167,51 +172,92 @@ not a silent one; composing matplotlib figures is out of scope.
 `inspect()` is unaffected — it renders a single spec and returns whatever that
 spec's backend produces.
 
-## §2 — Preflight the declared backends
+## §2 — Two renderings, and a Chrome capability check
 
-### Function
+Plotly figures serialize to standalone HTML with no Kaleido and no Chrome in the
+path. That changes what F2 is: a machine without Chrome is not a machine that
+cannot publish plots, it is a machine that cannot publish *rasters*. So the fix is
+not a louder failure, it is a second rendering that always succeeds.
 
-`preflight_plot_backends(pipeline) -> None` in `plotting/_pipeline/`, raising a new
-`PlotBackendUnavailable(RuntimeError)`.
+**Plotly bindings publish HTML always, and PNG additionally when Chrome is
+available. Matplotlib bindings publish PNG only** — matplotlib has no native HTML
+export, and mpld3 is a dependency not worth taking for this.
 
-It collects the distinct backends declared across every binding's `iter_figures()`
-specs. A provider that overrides `inspect()` and declares no specs contributes
-nothing and is skipped — it has made no declaration to check.
+### Why HTML is not a downgrade
 
-- `mpl` present → assert `matplotlib` imports. Cheap.
-- `plotly` present → probe **once per process**, memoised on the module:
-  `plotly.io.to_image(go.Figure(), format="png", width=8, height=8)`.
+Nothing consumes the published plot files programmatically. The only three
+references in the tree are the GUI's own *writer* (`_gui/_plot_refresh.py:132`) and
+two documentation strings describing the tree to the user
+(`_cli_interactive.py:132`, `_cli_readme_generator.py:106`). `deliverables/plots/`
+is a human-facing artifact, and for a human reading a 1536-colony scatter an
+interactive figure with zoom, pan and hover is better than a flat raster. PNG was
+never chosen over HTML; it is what `FigureAdapter` happened to implement.
 
-The probe is the authoritative check because it exercises exactly what
-`FigureAdapter.save_png` will do. Measured cost on this cluster: **0.59 s to fail**
-when Chrome is absent. It runs only when the pipeline actually declares a
-Plotly-backed binding, so a plot-free pipeline pays nothing.
+### One shared `plotly.min.js`, hoisted
 
-`choreographer.browsers.chromium.get_browser_path` was evaluated and rejected: its
-signature does not match its documented form (`browser_which() missing 1 required
-positional argument`), and it is a transitive private dependency.
+`include_plotlyjs` accepts a string that is emitted verbatim as the script `src`.
+Measured behaviour:
 
-### Message
+| `include_plotlyjs` | Page size | Side effects |
+|---|---|---|
+| `True` | 4.9 MB | self-contained, unusable per image |
+| `"cdn"` | 49 KB | needs network when viewed |
+| `"directory"` | 49 KB | writes `plotly.min.js` beside the page, `src="plotly.min.js"` |
+| `"../../plotly.min.js"` | 49 KB | writes nothing; `src` emitted verbatim |
+
+`"directory"` is wrong here: a multi-page `PlotImage` gets one directory per image,
+so it would write 4.8 MB of identical JS per image — gigabytes on a real run.
+
+**Write the bundle once** at `<output>/deliverables/plots/plotly.min.js` from
+`plotly.offline.get_plotlyjs()` (4,847,452 chars, verified), and give each page a
+`src` computed with `os.path.relpath(js_path, page_dir)`. The three layouts resolve
+to `../`, `../../` and `../../../` respectively, but the relpath call means no
+layout knowledge is hard-coded.
+
+Total JS cost per run: 4.8 MB, independent of image count and page count.
+
+Write the bundle under the same `exclusive_path_lock` used for publication, skipping
+it when already present with the expected size — concurrent SLURM workers otherwise
+race on first creation. (Plotly's own `"directory"` mode does not rewrite an
+existing file, which is the behaviour being reproduced.)
+
+### The capability check
+
+`chrome_available() -> bool` in `plotting/_pipeline/`, memoised per process:
+`plotly.io.to_image(go.Figure(), format="png", width=8, height=8)` returning `True`
+on success and `False` on `RuntimeError` / `ChromeNotFoundError`. Measured: **0.59 s
+to fail** when Chrome is absent. The success-path cost is **not measured here** —
+Chrome is not installed on this cluster — and the plan must measure it before the
+probe is placed on a hot path; a first-launch cost of a few seconds multiplied
+across a 2500-task array is not free.
+
+Because of that, the probe runs in two places with different strategies:
+
+- **Submitting process** — probed eagerly inside
+  `_cli_validation.validate_pipeline` (`_cli_validation.py:21`), once, so the user
+  learns *before* a long run whether they will get rasters.
+- **Workers** — probed lazily. The first PNG write attempt *is* the probe: on the
+  Chrome error it memoises `False`, records the reason once, and every later page
+  in that process skips PNG without retrying. A working environment then pays
+  nothing at all, because the first real figure was going to be rendered anyway.
+
+`preflight_plot_backends` survives, but its only remaining hard failure is a
+declared `mpl` backend with matplotlib not importable. Missing Chrome no longer
+fails validation.
+
+### Announcement
+
+Once per process, at `WARNING`:
 
 ```
-PlotBackendUnavailable: 3 configured plots need the Plotly PNG backend, which
-cannot render here: sym, PlotDiagnostics, LogGrowthModel.
-Kaleido requires Google Chrome. Install it with:  plotly_get_chrome
+Chrome is not available; 3 Plotly plots will publish HTML only, without PNG:
+sym, PlotDiagnostics, LogGrowthModel.
+Install it for raster output with:  plotly_get_chrome
 ```
 
-Naming the binding ids is what makes it actionable — the reader learns which plots
-to drop if they would rather proceed without Chrome.
-
-### Seam
-
-Call it from `_cli_validation.validate_pipeline` (`_cli_validation.py:21`), which
-already loads the pipeline, already runs once before any image work **in the
-submitting process**, already has a `(bool, message)` channel that renders as a
-clean CLI error rather than a traceback, and already honours `skip_validation` for
-users who want the bypass.
-
-Preflighting there means a SLURM run fails before submitting the array, not after
-a thousand tasks have each logged the same warning.
+Naming the binding ids keeps it actionable. The manifest carries the same fact
+durably (§3) so the announcement is not the only record — a log line nobody reads
+is exactly the silence this spec exists to remove.
 
 ## §3 — Failures that look like failures
 
@@ -252,14 +298,41 @@ asserts nothing was produced, with no record of why.
 publish: `{"key", "label", "error"}` where `error` is
 `f"{type(exc).__name__}: {exc}"`.
 
-Purely additive. Verified: **no production code reads the plot manifest.** Its only
-consumers are `publish_plot_output`'s own return value and
-`tests/unit/plotting/test_output_adapter.py`, which reads `manifest["pages"]` and
-is unaffected. `schema_version` stays `1` — no field changed meaning, none was
-removed.
-
 A consumer looking at an empty plot directory now learns the reason from the
 manifest without cross-referencing anything.
+
+### Manifest shape, at `schema_version: 2`
+
+§2 makes a page potentially two files, so the per-page `"file"` string becomes a
+`"files"` map. That changes a field's meaning, so the version bumps:
+
+```json
+{
+  "schema_version": 2,
+  "plot_id": "sym",
+  "class": "MeasureSymZones",
+  "renderers": {"html": "available", "png": "unavailable: chrome not found"},
+  "pages": [
+    {"key": "count", "label": "Colony count", "backend": "plotly",
+     "files": {"html": "Colony-count.html", "png": "Colony-count.png"},
+     "metadata": {}}
+  ],
+  "failed": []
+}
+```
+
+- `"renderers"` records the capability verdict **per published directory**, which
+  is what makes a PNG-less plot directory self-explaining rather than merely empty.
+  A matplotlib binding records `{"png": "available"}` and no `html` key.
+- `"files"` omits `png` when Chrome was unavailable, and omits `html` for a
+  matplotlib backend. A page with an empty `"files"` is a failure and belongs in
+  `"failed"` instead.
+
+The version bump is nearly free: **no production code reads the plot manifest.**
+Its only consumers are `publish_plot_output`'s own return value and
+`tests/unit/plotting/test_output_adapter.py`, which reads `manifest["pages"]`
+(`:80`, `:106`) and the persisted `"backend"` set (`:86`). Those assertions are
+updated in this change; nothing else in the tree touches it.
 
 ### The durable failure record
 
@@ -350,9 +423,13 @@ tests in §5.
   - an inline plot → the **class name**.
 - State that `PlotOutput` pages land under
   `plots/<id>/<dataset>/<stem>-<hash>/`, and a single `"default"` page under
-  `plots/<id>/<dataset>/<stem>-<hash>.png`.
-- Document the preflight, `.failures.jsonl`, and the `report()` limitation on
-  matplotlib providers.
+  `plots/<id>/<dataset>/<stem>-<hash>.{html,png}`.
+- **Document the two renderings**: a Plotly binding publishes interactive `.html`
+  always and `.png` when Chrome is available; a matplotlib binding publishes
+  `.png` only. Say where `plotly.min.js` lives and that it is one file per run,
+  so a user copying a plot directory elsewhere knows to bring it.
+- Document `.failures.jsonl`, the manifest's `"renderers"` and `"failed"` keys,
+  and the `report()` limitation on matplotlib providers.
 
 ### Other documentation
 
@@ -371,8 +448,14 @@ New tests, each pinned to the finding it guards:
 | A `backend="mpl"` method asserts `matplotlib.rcParams["axes.prop_cycle"]` is themed **inside its own body**, and the returned figure is not post-processed | §1 — the only test that catches treating the two themes symmetrically |
 | `report()` raises on an all-`mpl` and on a mixed provider | §1 |
 | `figure_backend_of` agrees with `FigureAdapter.backend_name` across Plotly, matplotlib, and an unsupported object | §1 dedupe |
-| Preflight raises `PlotBackendUnavailable` naming binding ids when the probe fails; passes when only `mpl` is declared; probes once across repeated calls | F2 |
-| Preflight does not probe for a pipeline with no plot bindings | F2 cost |
+| A Plotly binding publishes `.html` with **no Chrome available**, and the run is green | F2 — the core inversion |
+| With Chrome unavailable, the manifest records `renderers.png` as unavailable and `files` carries `html` only | F2 + §3 |
+| An `mpl` binding publishes `.png` only, and records no `html` renderer | §2 matrix |
+| `plotly.min.js` is written **once** per run at `deliverables/plots/`, and each page's `src` resolves to it from its own depth (aggregate, single-page image, multi-page image) | §2 — the gigabyte trap |
+| A second page written into the same directory does not rewrite the bundle | §2 concurrency |
+| `chrome_available()` probes once per process across repeated calls | §2 cost |
+| Worker-side lazy probe: after the first Chrome failure, later pages skip PNG without re-attempting | §2 cost |
+| `preflight_plot_backends` still raises for a declared `mpl` backend with matplotlib absent, and no longer raises for missing Chrome | §2 |
 | `emit_qc` with a prelude that raises: remaining QC bindings still emit, and no `UnboundLocalError` escapes | F4 |
 | A raising figure leaves the run green **and** writes exactly one `.failures.jsonl` line with the right binding id | F3 + record |
 | A failure inside the recorder itself does not propagate | record |
@@ -390,11 +473,19 @@ an inline run.
   that uses the decorator. The published example is *not* affected — it overrides
   `inspect()` — which is exactly why §4 rewrites it. This is the accepted cost of
   the required-argument decision.
-- **Behavioural:** a CLI run whose pipeline declares a Plotly plot now fails during
-  validation on a machine without Chrome, where it previously ran and quietly
-  produced no plots. This is the intended change; `--skip-validation` bypasses it.
-- **Additive:** `.failures.jsonl`, the manifest `"failed"` array,
-  `figure_backend_of`, `plot_failures_jsonl_path`.
+- **Behavioural:** a Plotly binding now publishes `.html` in addition to `.png`, and
+  publishes `.html` *instead of* `.png` where Chrome is unavailable — where it
+  previously produced nothing and said so only in a log. No run that succeeded
+  before now fails; runs that silently produced empty plot directories now produce
+  usable ones.
+- **Output-shape:** `deliverables/plots/` gains `.html` pages and one
+  `plotly.min.js` (4.8 MB) per run. Anything downstream that globs `plots/**/*.png`
+  and assumes that is everything will now be seeing a subset — no such consumer
+  exists in-tree, but a user's own script might.
+- **Format:** the plot `manifest.json` moves to `schema_version: 2`; `"file"` becomes
+  `"files"`. One test reads it; nothing in `src/` does.
+- **Additive:** `.failures.jsonl`, the manifest `"failed"` and `"renderers"` keys,
+  `figure_backend_of`, `chrome_available`, `plot_failures_jsonl_path`.
 - **Unchanged:** binding normalization, serialization, the publication transaction,
   `FigureAdapter` dispatch, every lifecycle, every existing output path.
 
@@ -404,8 +495,12 @@ an inline run.
 |---|---|---|
 | `backend` default | Required, no default | A default reproduces the silent-default behaviour being removed. The break is loud and one word to fix. |
 | How far the declaration reaches | Decorator-local | `FigureAdapter` also serves figures that never met the decorator — a legitimate, tested path. Strict-everywhere deferred. |
-| Failed-plot policy | Preflight hard, per-figure soft | An unusable backend is a precondition; a single bad figure is an accident. Treating them alike either kills good runs or hides systemic breakage. |
-| Manifest `"failed"` array | In | Zero production readers, so it is free; and a zero-page manifest that explains itself is the whole point of §3. |
+| Failed-plot policy | Per-figure soft, recorded | A single bad figure is an accident and must not kill a long run; the durable record is what stops "soft" from meaning "silent". |
+| Plotly output format | HTML always, PNG when Chrome is available | HTML needs no Chrome, so a missing browser stops being a failure. Nothing consumes these files programmatically, and an interactive figure is the better artifact for the human who does. |
+| Matplotlib output format | PNG only | No native HTML export; mpld3 is not worth adding for this. |
+| Where the format choice lives | Publication layer, not `@figure` | `backend` is a property of the figure — which library built it. Format is a property of the publication. Putting format on the decorator would fix a deployment choice at authoring time. |
+| `plotly.min.js` placement | One hoisted copy per run | `include_plotlyjs="directory"` writes 4.8 MB per directory, and a multi-page image plot gets a directory per image — gigabytes. The string form takes a relative `src` and writes nothing. |
+| Manifest `"failed"` + `"renderers"`, at v2 | In | Zero production readers, so the version bump is free; and a plot directory that explains its own missing PNGs is the whole point of §3. |
 | GUI builder authoring | Out, filed as an issue | Largest item here and independent of everything else. |
 
 ## Out of scope
