@@ -49,11 +49,15 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 #: Weiszfeld settings used to reduce one checker patch to a single colour.
-#: The tolerance is in sRGB ``[0, 1]`` units -- roughly a quarter of an 8-bit
-#: code value (1/255 ~= 3.9e-3), so the solve settles well inside quantisation
-#: noise. The iteration cap is not the binding constraint: a swatch-shaped
-#: point cloud reaches this tolerance in well under 20 iterations, and the cap
-#: only bounds a pathological input.
+#: The tolerance is in sRGB ``[0, 1]`` units, and the update rule makes the
+#: distance to the true median ``O(tol)``: at ``1e-6`` the solve lands about
+#: 1/4000 of an 8-bit code value away (``1/255 ~= 3.9e-3``), three orders of
+#: magnitude inside quantisation noise. That margin is the point -- the
+#: previous ``1e-3`` stopped while the iterate was still moving, which cost
+#: 0.109 code values on a clean patch and up to 21.9 on one containing a
+#: pixel coincident with the running estimate. The iteration cap is not the
+#: binding constraint: a swatch-shaped point cloud reaches this tolerance in
+#: at most ~66 iterations, and the cap only bounds a pathological input.
 GEOMEDIAN_MAX_ITER = 200
 GEOMEDIAN_TOL = 1e-6
 
