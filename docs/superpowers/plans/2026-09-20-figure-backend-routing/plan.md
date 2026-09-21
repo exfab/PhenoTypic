@@ -1474,13 +1474,13 @@ Replace the per-page body with:
         FigureAdapter.close(page.figure)
 
         # S3: every swallowed error gets a durable record, not just a log line.
-        for message in errors:
+        for exc in errors:
             record_plot_failure(
                 base,
                 binding_id=plot_id,
                 plot_class=plot_class or plot_id,
                 lifecycle="page",
-                error=RuntimeError(message),
+                error=exc,  # NOT RuntimeError(message) -- see below
             )
 
         if not files:
@@ -2421,6 +2421,16 @@ Then replace the flat branch (`:370-380`) with:
 
 Import `_render_page` and `record_plot_failure` from `._writer` / `._failures` at
 the top of `_coordinator.py`.
+
+**`errors` holds exceptions, not strings.** C3 changed `_render_page`'s second
+return element from `list[str]` to `list[BaseException]`. An earlier draft of
+this step wrapped each one as `error=RuntimeError(message)`, which for the
+`TypeError` that `_render_page` manufactures for an unsupported figure would
+record **the wrong class name** in the durable record. For a `RuntimeError` it
+comes out right by coincidence — which is exactly what would let it survive a
+casual test. Pass `error=exc`, and format with `_format_error(errors[0])` in the
+raise rather than f-string-interpolating an exception outside any handler. This
+is the doubled-prefix defect `e6f58f16` removed, one caller over.
 
 **Do NOT route this branch through `publish_plot_output` instead.** Two costs that
 are invisible from the call site: it takes `exclusive_path_lock` on

@@ -57,7 +57,11 @@ class FigureAdapter:
 
     @staticmethod
     def save_html(figure: Any, path: Path, *, plotlyjs_src: str) -> None:
-        """Write one Plotly figure as a standalone interactive HTML page.
+        """Write one Plotly figure as an interactive HTML page.
+
+        **Not standalone**: the page references ``plotlyjs_src`` rather than
+        embedding the library, so it needs that file alongside it to render.
+        Embedding would cost 4.8 MB per page.
 
         No Kaleido and no Chrome are involved. ``plotlyjs_src`` is emitted
         verbatim as the script src, so the 4.8 MB bundle is referenced rather

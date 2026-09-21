@@ -465,3 +465,10 @@ def test_a_multi_page_plotly_image_plot_writes_exactly_one_bundle(tmp_path) -> N
 
     pages = sorted(tmp_path.rglob("*.html"))
     assert len(pages) == 6, f"expected 6 pages, found {len(pages)}"
+
+    # D2: the failure record is hoisted for the same reason as the bundle, and
+    # was equally unguarded. Spec §3 puts it at deliverables/plots/, not one
+    # per page directory -- a per-directory record is still "a record that
+    # exists", so again only a whole-tree count distinguishes the two.
+    records = sorted(tmp_path.rglob(".failures.jsonl"))
+    assert records == [], f"nothing failed here, yet: {records}"

@@ -97,9 +97,11 @@ def _render_page(
 
     This is the single definition of "what files does a page produce". It is
     called from :func:`_publish_plot_output_locked` for multi-page and aggregate
-    output, and from ``PlotCoordinator._publish_image_value`` for the flat
-    single-page image path -- which does not go through the writer at all, and
-    would otherwise never gain HTML.
+    output. It exists as a separate function so that
+    ``PlotCoordinator._publish_image_value`` **will** call it for the flat
+    single-page image path -- which does not go through the writer at all and
+    would otherwise never gain HTML. That second caller does not exist yet; it
+    is added with the coordinator wiring.
 
     HTML is attempted first: it needs no Chrome, so a page that can be published
     at all is on disk before anything that might fail is tried.
@@ -258,7 +260,17 @@ def _publish_plot_output_locked(
     # absent this is identical to probing lazily -- one probe per process, then
     # memoised. With Chrome present it moves the first-launch cost onto the
     # first publish rather than the first figure, which is knowingly taken.
-    png_ok = chrome_available()
+    # Probed lazily: every use of png_ok is under `has_plotly`, so an
+    # all-matplotlib publication would otherwise launch a browser for a value
+    # it cannot use. _render_page's own `backend == "mpl" or chrome_available()`
+    # short-circuits for the same reason.
+    _png_ok: bool | None = None
+
+    def png_ok() -> bool:
+        nonlocal _png_ok
+        if _png_ok is None:
+            _png_ok = chrome_available()
+        return _png_ok
     used: dict[str, str] = {}
     pages: list[dict[str, Any]] = []
     failed: list[dict[str, Any]] = []
@@ -348,14 +360,14 @@ def _publish_plot_output_locked(
     has_mpl = "mpl" in backends
     if has_plotly:
         renderers["html"] = "available"
-    if has_plotly and has_mpl and not png_ok:
+    if has_plotly and has_mpl and not png_ok():
         # Mixed directory, no Chrome: the matplotlib pages have a PNG and the
         # Plotly pages do not, so neither "available" nor "unavailable" is
         # true of the directory. `renderers` is the key a reader consults
         # INSTEAD of walking every page, so an overstatement here is worse
         # than an absence -- it stops them looking further.
         renderers["png"] = "partial: chrome not found"
-    elif has_plotly and not png_ok:
+    elif has_plotly and not png_ok():
         renderers["png"] = "unavailable: chrome not found"
     elif has_plotly or has_mpl:
         renderers["png"] = "available"
