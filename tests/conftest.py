@@ -9,6 +9,7 @@ Postgres URL / the SLURM client is available.
 
 import os
 import shutil
+import sys
 from pathlib import Path
 
 import pytest
@@ -62,14 +63,45 @@ _load_dotenv()
 #: so the default suite needs no database.
 PG_URL_ENV = "PHENOTYPIC_TEST_PG_URL"
 
+#: Fixtures only pytest-playwright provides. ``pyproject.toml`` excludes the
+#: plugin on Windows, where a test requesting one would otherwise ERROR with
+#: ``fixture 'page' not found`` instead of skipping.
+PLAYWRIGHT_FIXTURES = frozenset(
+    {"page", "browser", "browser_name", "browser_type", "launch_browser", "new_context", "playwright"}
+)
+
+
+def _missing_playwright_fixture(item: pytest.Item) -> str | None:
+    """Return a requested Playwright fixture that nothing defines, if any.
+
+    Windows only, deliberately. ``pyproject.toml`` drops pytest-playwright
+    solely on ``sys_platform == 'win32'``, so everywhere else the plugin is
+    always installed and a missing ``page`` means something is genuinely
+    broken -- a dependency-resolution regression, a half-built env. Skipping
+    that would report green while every browser test silently vanished,
+    including the ones behind the required ``e2e-tests`` gate. Let it ERROR.
+    """
+    if sys.platform != "win32":
+        return None
+    fixture_info = getattr(item, "_fixtureinfo", None)
+    if fixture_info is None:
+        return None
+    for name in PLAYWRIGHT_FIXTURES.intersection(fixture_info.names_closure):
+        if not fixture_info.name2fixturedefs.get(name):
+            return name
+    return None
+
 
 def pytest_collection_modifyitems(config, items):
-    """Autoskip ``postgres`` tests without a DB URL and ``slurm`` tests without sbatch.
+    """Autoskip tests whose external requirement is absent.
 
     ``@pytest.mark.postgres`` tests skip unless ``$PHENOTYPIC_TEST_PG_URL`` is set
     (via the environment or ``.env``); ``@pytest.mark.slurm`` tests skip unless the
-    SLURM client (``sbatch``) is on ``PATH`` — so CI and slurm-less local runs
-    never fail on either.
+    SLURM client (``sbatch``) is on ``PATH``; and browser tests skip **on
+    Windows only**, where ``pyproject.toml`` omits pytest-playwright -- so CI,
+    Windows, and slurm-less local runs never fail on any of them. Off Windows a
+    missing Playwright fixture still ERRORs, because there it means the env is
+    broken rather than unsupported.
 
     Args:
         config: The pytest config (unused; required by the hook signature).
@@ -90,6 +122,13 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip_pg)
         if skip_slurm is not None and "slurm" in item.keywords:
             item.add_marker(skip_slurm)
+        missing = _missing_playwright_fixture(item)
+        if missing is not None:
+            item.add_marker(
+                pytest.mark.skip(
+                    reason=f"requires pytest-playwright (fixture {missing!r})"
+                )
+            )
 
 
 @pytest.hookimpl(optionalhook=True)

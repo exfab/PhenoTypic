@@ -164,18 +164,26 @@ _HDF_SUFFIXES = frozenset({".h5", ".hdf5", ".hdf"})
 _SUPERSEDED_STATUS_PREFIX = "status.superseded-"
 _REJECTED_STATUS_PREFIX = "status.rejected-"
 _RENAME_NOREPLACE = 1
-_RENAMEAT2: Any = None
-if sys.platform.startswith("linux"):
-    # ``renameat2`` is a Linux-only syscall; ``ctypes.CDLL(None)`` (dlopen the
-    # process's own symbol table) is itself POSIX-only and raises ``TypeError``
-    # on Windows rather than ``OSError``, so this is gated by platform instead
-    # of relying on the CDLL call to fail cleanly everywhere.
+
+
+def _load_renameat2(platform: str = sys.platform) -> Any:
+    """Return libc ``renameat2``, or ``None`` where it cannot exist.
+
+    ``renameat2`` is Linux-only, and ``ctypes.CDLL(None)`` -- "the running
+    process" -- is POSIX-only: on Windows it raises ``TypeError`` rather than
+    ``OSError``, which crashed this module's import and with it every Windows
+    test session. Probe only on Linux; elsewhere the no-clobber rename fails
+    closed in :func:`_libc_renameat2`.
+    """
+    if not platform.startswith("linux"):
+        return None
     try:
-        _RENAMEAT2 = getattr(
-            ctypes.CDLL(None, use_errno=True), "renameat2", None
-        )
+        return getattr(ctypes.CDLL(None, use_errno=True), "renameat2", None)
     except OSError:
-        _RENAMEAT2 = None
+        return None
+
+
+_RENAMEAT2: Any = _load_renameat2()
 
 
 def _libc_renameat2() -> Any:
@@ -3013,8 +3021,11 @@ def _new_temp_path(source: Path) -> Path:
 
 
 def _fsync_file(path: Path) -> None:
-    """Flush a prepared file before it becomes eligible for publication."""
-    with path.open("rb") as handle:
+    """Flush a prepared file before it becomes eligible for publication.
+
+    Read-write on Windows, where ``fsync`` of a read-only handle is ``EBADF``.
+    """
+    with path.open("rb" if os.name == "posix" else "r+b") as handle:
         os.fsync(handle.fileno())
 
 

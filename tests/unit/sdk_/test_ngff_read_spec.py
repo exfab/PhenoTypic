@@ -215,6 +215,9 @@ def _hostile_series_path(
     )
     if attack == "absolute":
         return (outside / "gray").as_posix()
+    if attack == "drive":
+        # Absolute on Windows though ``PurePosixPath`` reads it as relative.
+        return "C:/outside.ome.zarr/gray"
     if attack == "traversal":
         return "../outside.ome.zarr/gray"
     link = store / "escape"
@@ -222,7 +225,7 @@ def _hostile_series_path(
     return "escape"
 
 
-@pytest.mark.parametrize("attack", ["absolute", "traversal", "symlink"])
+@pytest.mark.parametrize("attack", ["absolute", "drive", "traversal", "symlink"])
 def test_explicit_series_cannot_escape_store_boundary(
     tmp_path: Path, attack: str
 ) -> None:
@@ -237,7 +240,7 @@ def test_explicit_series_cannot_escape_store_boundary(
         ngff_.read_ngff_image_spec(store, series=hostile)
 
 
-@pytest.mark.parametrize("attack", ["absolute", "traversal", "symlink"])
+@pytest.mark.parametrize("attack", ["absolute", "drive", "traversal", "symlink"])
 def test_declared_series_cannot_escape_store_boundary(
     tmp_path: Path, attack: str
 ) -> None:

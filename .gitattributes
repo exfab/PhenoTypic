@@ -1,0 +1,4 @@
+# Vendored upstream copies are byte-pinned (sha256 in SOURCE.md, file:line
+# citations in specs). Never let a Windows checkout rewrite their line endings.
+tests/fixtures/ngff/** -text
+docs/superpowers/specs/*/refs/** -text
