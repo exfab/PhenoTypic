@@ -68,7 +68,7 @@ worked.
 | # | Finding | Evidence | Section |
 |---|---|---|---|
 | F1 | `@figure` assumes Plotly; a matplotlib return raises an error naming neither the decorator nor the backend | `_pht_plot.py:192`, `_theme.py:227` | §1 |
-| F2 | Missing Chrome makes every Plotly PNG export fail, discovered per-figure and late, leaving a plot directory that looks published but is empty | `plotly.io._kaleido` → `ChromeNotFoundError`; reproduced, 0.59 s to fail | §2 |
+| F2 | Missing Chrome makes every Plotly PNG export fail, discovered per-figure and late, leaving a plot directory that looks published but is empty | `plotly.io._kaleido` → `ChromeNotFoundError`; reproduced — 0.59 s cold, ~12–35 ms warm | §2 |
 | F3 | `strict=True` on the staged GPU worker but not the two ordinary CLI sites: the same broken plot fails one run loudly and leaves the other green | `_cli_staged_workers.py:526` vs `_cli_process_single.py:348,450` | §3 |
 | F4 | `emit_qc` dereferences `binding` in an `except` handler that can run before `binding` is assigned | `_coordinator.py:226` (try), `:239` (assign), `:261` (read) | §3 |
 | F5 | Every page failing still writes a durable `manifest.json` asserting zero pages | `_writer.py:149` (`continue`) vs `:160-177` (unconditional write) | §3 |
@@ -225,21 +225,46 @@ existing file, which is the behaviour being reproduced.)
 
 `chrome_available() -> bool` in `plotting/_pipeline/`, memoised per process:
 `plotly.io.to_image(go.Figure(), format="png", width=8, height=8)` returning `True`
-on success and `False` on `RuntimeError` / `ChromeNotFoundError`. Measured: **0.59 s
-to fail** when Chrome is absent. The success-path cost is **not measured here** —
-Chrome is not installed on this cluster — and the plan must measure it before the
-probe is placed on a hot path; a first-launch cost of a few seconds multiplied
-across a 2500-task array is not free.
+on success and `False` on `RuntimeError` / `ChromeNotFoundError`.
+
+**Cost, corrected.** An earlier draft of this section quoted "0.59 s to fail" as
+*the* figure. That is the **cold** number — a fresh interpreter, dominated by
+importing `plotly.io`. Measured **warm**, with plotly already loaded: 0.03 s,
+0.02 s, 35.5 ms, 11.7 ms. Those are two different quantities. Every process that
+reaches publication has already imported plotly, so the steady-state failure path
+is effectively free, which *strengthens* this section's argument rather than
+weakening it.
+
+The **success**-path cost remains unmeasured — Chrome is not installed on this
+cluster — and the plan gates on measuring it before the probe sits on a hot path;
+a first-launch cost of a few seconds across a 2500-task array is not free.
+
+**On `choreographer`.** An earlier draft said the library was "evaluated and
+rejected" because `get_browser_path` did not match its documented signature. True
+of that one function, false as a claim about the library: this repo already uses
+`Chromium.find_browser(skip_local=False)` in `tests/unit/cli/_kaleido_utils.py:23`,
+described there as "the same code path kaleido 1.x uses internally", behind a
+`requires_kaleido_chrome` marker that four test modules consume.
+
+The render probe is still right, for a better reason than the one given:
+`find_browser` answers *"is a browser binary present"*, and publication needs
+*"can a PNG actually be produced"* — a present-but-broken or sandboxed Chrome
+splits those. So the two coexist deliberately: the binary check for skipping a
+test, the render probe for deciding what to publish. New tests reuse the existing
+marker rather than adding a second skip mechanism.
 
 Because of that, the probe runs in two places with different strategies:
 
 - **Submitting process** — probed eagerly inside
   `_cli_validation.validate_pipeline` (`_cli_validation.py:21`), once, so the user
   learns *before* a long run whether they will get rasters.
-- **Workers** — probed lazily. The first PNG write attempt *is* the probe: on the
-  Chrome error it memoises `False`, records the reason once, and every later page
-  in that process skips PNG without retrying. A working environment then pays
-  nothing at all, because the first real figure was going to be rendered anyway.
+- **Workers** — probed lazily *in principle*. The implementation simplifies this:
+  it calls the memoised `chrome_available()` eagerly at the top of
+  `_publish_plot_output_locked`. With Chrome absent the two are identical — one
+  probe per process, then free. With Chrome present, the eager form moves the
+  first-launch cost onto the first publish rather than the first figure. That is
+  the cost Task 4 Step 6 measures and gates on, so the simplification is taken
+  knowingly rather than by accident.
 
 `preflight_plot_backends` survives, but its only remaining hard failure is a
 declared `mpl` backend with matplotlib not importable. Missing Chrome no longer
