@@ -1,0 +1,414 @@
+"""Regression guards for the 2026-09-21 code review of ``CalibrateColorRpcc``.
+
+One test per finding in
+``docs/superpowers/reports/2026-09-21-in-frame-checker-color-correction/code-review.md``,
+numbered to match.  Each was written to fail against the reviewed code, before
+any fix, so that it is known to be able to fail.
+
+The frames are synthetic and rig-shaped: two vertical bands, each holding a
+6x2 block of real ColorChecker24 colours (a transposed half-card), with the
+lattice supplied as a prior -- the production path.  ``fit_lattice`` cannot
+bootstrap on this fixture (a low-contrast column falls below its column
+threshold), which is unrelated to any finding and is why no test here fits a
+lattice from scratch unless that is the thing under test.
+"""
+
+from __future__ import annotations
+
+import warnings
+
+import numpy as np
+import pytest
+
+from phenotypic import Image
+from phenotypic.correction import CalibrateColorRpcc, CheckerRoi
+from phenotypic.correction._color_correction._checker_qc import QcLimits
+from phenotypic.correction._color_correction._checker_roi import (
+    CheckerLattice,
+    ColumnLattice,
+)
+
+CHECKER = "ColorChecker24 - After November 2014"
+PITCH, TILE, TOP = 60, 48, 80
+BAND_H = 2 * TOP + 6 * PITCH
+GAP = 200
+#: Keeps every patch off the uint8 floor, so the clipped-pixel gate stays quiet
+#: on a clean frame (black and cyan otherwise have a channel at 0).
+FLOOR, GAIN = 0.04, 0.85
+
+
+def _patch_srgb() -> tuple[list[str], dict[str, np.ndarray]]:
+    import colour
+
+    from phenotypic.correction._color_correction._color_checker_profile import (
+        _load_reference_data,
+    )
+
+    ref_lab, ref_linear, _ = _load_reference_data(CHECKER, "D65")
+    names = list(ref_lab)
+    return names, {
+        name: colour.cctf_encoding(np.clip(ref_linear[name], 0, 1), function="sRGB")
+        for name in names
+    }
+
+
+NAMES, SRGB = _patch_srgb()
+
+
+def _band_patch(band: int, row: int, col: int) -> str:
+    """Band *band* holds chart rows ``2*band`` and ``2*band+1``, transposed."""
+    return NAMES[(2 * band + col) * 6 + row]
+
+
+def render_frame(
+        *,
+        band_w: int = 140,
+        col_x: tuple[int, int] = (25, 85),
+        dx: int = 0,
+        dy: int = 0,
+        gain: float = GAIN,
+        rotate_deg: float = 0.0,
+        overrides: dict[tuple[int, int, int], np.ndarray] | None = None,
+        seed: int = 0,
+) -> np.ndarray:
+    """A uint8 sRGB frame with two card bands at the left and right edges.
+
+    ``overrides`` maps ``(band, row, col)`` to a replacement sRGB colour.
+    ``rotate_deg`` rotates each band about its own centre after rendering.
+    """
+    from scipy.ndimage import rotate
+
+    width = 2 * band_w + GAP
+    rng = np.random.default_rng(seed)
+    frame = np.full((BAND_H, width, 3), 0.55)
+    for band, left in ((0, 0), (1, width - band_w)):
+        region = np.full((BAND_H, band_w, 3), 0.12)
+        for row in range(6):
+            for col in range(2):
+                colour = (overrides or {}).get(
+                        (band, row, col), SRGB[_band_patch(band, row, col)]
+                )
+                y0 = TOP + dy + row * PITCH
+                x0 = col_x[col] + dx
+                ys, xs = max(0, y0), max(0, x0)
+                region[ys:y0 + TILE, xs:x0 + TILE] = FLOOR + colour * gain
+        if rotate_deg:
+            region = rotate(region, rotate_deg, reshape=False, order=1, mode="nearest")
+        frame[:, left:left + band_w] = region
+    frame = np.clip(frame + rng.normal(0, 0.004, frame.shape), 0, 1)
+    return (frame * 255).round().astype(np.uint8)
+
+
+def band_rois(band_w: int = 140) -> list[list[int]]:
+    width = 2 * band_w + GAP
+    return [[0, 0, BAND_H, band_w], [0, width - band_w, BAND_H, width]]
+
+
+def band_prior(
+        col_x: tuple[int, int] = (25, 85), nrows: int = 6
+) -> CheckerLattice:
+    return CheckerLattice(
+            columns=[
+                ColumnLattice(
+                        x0=x, x1=x + TILE, start=float(TOP), pitch=float(PITCH),
+                        duty=TILE / PITCH,
+                )
+                for x in col_x
+            ],
+            nrows=nrows,
+    )
+
+
+def frozen_op(**kwargs) -> CalibrateColorRpcc:
+    prior = band_prior()
+    kwargs.setdefault("rois", band_rois())
+    kwargs.setdefault("lattice_prior", [prior, prior])
+    kwargs.setdefault("refine_method", "frozen")
+    return CalibrateColorRpcc(**kwargs)
+
+
+def quietly(operation: CalibrateColorRpcc, image: Image) -> Image:
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        return operation.apply(image)
+
+
+def test_the_fixture_calibrates_cleanly() -> None:
+    """Control: every other test here perturbs this frame, so it must pass."""
+    operation = frozen_op()
+
+    quietly(operation, Image(arr=render_frame()))
+
+    assert all(record.ok for record in operation.qc)
+    assert len(operation.diagnostics["patch_census"]["accepted"]) == 24
+    assert np.isfinite(operation.fitted_profile.correction_matrix).all()
+
+
+# ---------------------------------------------------------------------------
+# 1. A tile that measured nothing must not reach identity scoring or the fit
+# ---------------------------------------------------------------------------
+def test_an_empty_tile_never_turns_the_fit_into_nan() -> None:
+    """A prior whose last row falls outside a shorter ROI yields empty tiles.
+
+    Their NaN colour used to pass every gate (``NaN < x`` is False) and poison
+    the placement margin, the outlier threshold and the matrix.
+    """
+    rois = band_rois()
+    rois[0][2] = TOP + 5 * PITCH + 5  # ROI 0 now ends inside row 5's box
+    operation = frozen_op(rois=rois, on_qc_fail="warn")
+
+    quietly(operation, Image(arr=render_frame()))
+
+    assert np.isfinite(operation.qc[0].signals["placement_margin"])
+    assert np.isfinite(operation.fitted_profile.correction_matrix).all()
+    for name in (_band_patch(0, 5, 0), _band_patch(0, 5, 1)):
+        assert name not in operation.diagnostics["patch_census"]["accepted"]
+
+
+# ---------------------------------------------------------------------------
+# 2. The rotation ECC recovers must be applied to the measurement boxes
+# ---------------------------------------------------------------------------
+def test_a_rotated_card_is_measured_on_rotated_boxes() -> None:
+    """Every tile on a card rotated 5 degrees must read its own colour.
+
+    The baseline is the same card, unrotated, measured on a frozen lattice.
+    Ignoring the recovered rotation walks the outer tiles' core boxes off
+    their patches and onto the card background.
+    """
+    import colour
+
+    band_w, col_x = 200, (50, 110)
+    prior = band_prior(col_x=col_x)
+    rois = band_rois(band_w)
+
+    baseline = CalibrateColorRpcc(
+            rois=rois, lattice_prior=[prior, prior], refine_method="frozen",
+    )
+    quietly(baseline, Image(arr=render_frame(band_w=band_w, col_x=col_x)))
+    expected = {
+        (t["roi_index"], t["row"], t["col"]): t["lab"]
+        for t in baseline.diagnostics["tiles"]
+    }
+
+    reference = Image(arr=render_frame(band_w=band_w, col_x=col_x))
+    bands = [
+        reference.color.Lab[CheckerRoi.from_bbox(r).row_slice,
+                            CheckerRoi.from_bbox(r).col_slice]
+        for r in rois
+    ]
+    rotated = CalibrateColorRpcc(
+            rois=rois, lattice_prior=[prior, prior], refine_method="ecc",
+            reference_bands=bands, on_qc_fail="warn",
+    )
+    quietly(
+            rotated,
+            Image(arr=render_frame(band_w=band_w, col_x=col_x, rotate_deg=5.0)),
+    )
+
+    errors = {
+        key: float(colour.difference.delta_E_CIE2000(t["lab"], expected[key]))
+        for t in rotated.diagnostics["tiles"]
+        for key in [(t["roi_index"], t["row"], t["col"])]
+    }
+    worst = max(errors, key=lambda key: errors[key])
+    assert errors[worst] < 3.0, f"tile {worst} read {errors[worst]:.1f} dE00 off"
+
+
+# ---------------------------------------------------------------------------
+# 3. Rank sufficiency must be checked on the patches the fit actually uses
+# ---------------------------------------------------------------------------
+def test_rank_is_checked_after_outlier_rejection() -> None:
+    """Degree 4 needs 22 patches.  24 measured minus 3 outliers is 21.
+
+    Three neutrals painted saturated green: the only override set found that
+    the ``mean + 2 sd`` rule rejects in full on this fixture, because the
+    neutrals' baseline delta-E is small and uniform.
+    """
+    green = np.array([0.1, 0.95, 0.1])
+    wrong = {(1, row, 1): green for row in (1, 2, 3)}
+    operation = frozen_op(degree=4, on_qc_fail="warn")
+
+    try:
+        quietly(operation, Image(arr=render_frame(overrides=wrong)))
+    except Exception as exc:  # noqa: BLE001 - apply() re-wraps as RuntimeError
+        assert "degree-4 root-polynomial fit needs at least 22" in str(exc)
+        return
+
+    diagnostics = operation.fitted_profile.diagnostics
+    assert diagnostics["n_patches_rejected"] >= 3, (
+        "fixture precondition: the swapped tiles must be rejected as outliers"
+    )
+    kept = diagnostics["n_patches_detected"] - diagnostics["n_patches_rejected"]
+    assert kept >= 22, f"a degree-4 fit ran on {kept} patches for 22 terms"
+
+
+# ---------------------------------------------------------------------------
+# 4. patch_census must survive a frame that cannot be calibrated
+# ---------------------------------------------------------------------------
+def test_patch_census_records_a_failing_frame_instead_of_crashing() -> None:
+    rng = np.random.default_rng(0)
+    flat = rng.normal(120, 2, (BAND_H, 480, 3)).clip(0, 255).astype(np.uint8)
+    blank = Image(arr=flat, name="blank")
+
+    census = CalibrateColorRpcc.patch_census(
+            [blank], rois=band_rois(), grid=(6, 2)
+    )
+
+    assert census["per_image"] == {"blank": 0}
+
+
+# ---------------------------------------------------------------------------
+# 5. reference_bands must survive the serialisation workers rebuild from
+# ---------------------------------------------------------------------------
+def test_reference_bands_survive_a_model_dump_round_trip() -> None:
+    bands = [np.zeros((BAND_H, 140, 3)), np.ones((BAND_H, 140, 3))]
+    operation = frozen_op(refine_method="ecc", reference_bands=bands)
+
+    restored = CalibrateColorRpcc.model_validate(operation.model_dump())
+
+    assert restored.reference_bands is not None
+    for original, back in zip(bands, restored.reference_bands):
+        np.testing.assert_array_equal(np.asarray(back), original)
+
+
+def test_reference_bands_survive_a_json_round_trip() -> None:
+    bands = [np.zeros((4, 5, 3)), np.full((4, 5, 3), 2.5)]
+    operation = frozen_op(refine_method="ecc", reference_bands=bands)
+
+    restored = CalibrateColorRpcc.from_json(operation.to_json())
+
+    assert restored.reference_bands is not None
+    for original, back in zip(bands, restored.reference_bands):
+        np.testing.assert_array_equal(np.asarray(back), original)
+
+
+# ---------------------------------------------------------------------------
+# 6. A border-clipped column must not vote in the anchor-disagreement check
+# ---------------------------------------------------------------------------
+def test_a_clipped_column_does_not_refuse_an_in_range_shift() -> None:
+    """Column 0 sits flush with the frame edge; the card moves 25 px left.
+
+    25 px is inside ``max_shift_px`` (30).  The clipped column sees only
+    about half the shift, and letting it vote made the columns look like
+    they disagreed by more than 12 px.
+    """
+    col_x = (0, 100)
+    prior = band_prior(col_x=col_x)
+    operation = CalibrateColorRpcc(
+            rois=[[0, 0, BAND_H, 180]], lattice_prior=[prior],
+            refine_method="rigid", degree=2, on_qc_fail="warn",
+    )
+
+    quietly(operation, Image(arr=render_frame(band_w=180, col_x=col_x, dx=-25)))
+
+    signals = operation.qc[0].signals
+    assert signals["shift_px"] == pytest.approx(25.0, abs=3.0)
+    assert not any("rigid card cannot" in flag for flag in operation.qc[0].flags), (
+        f"refused at disagreement {signals['anchor_disagreement_px']:.1f} px"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 7. Detection failures must go through the on_qc_fail policy
+# ---------------------------------------------------------------------------
+def test_an_expect_tiles_mismatch_is_skipped_under_skip() -> None:
+    rois = [CheckerRoi.from_bbox(r, expect_tiles=10) for r in band_rois()]
+    operation = frozen_op(rois=rois, on_qc_fail="skip")
+    source = Image(arr=render_frame())
+
+    out = quietly(operation, source)
+
+    np.testing.assert_array_equal(out.rgb[:], source.rgb[:])
+    assert not operation.qc[0].ok
+    assert operation.fitted_profile is None
+
+
+def test_an_roi_with_no_card_is_skipped_under_skip() -> None:
+    rng = np.random.default_rng(0)
+    flat = rng.normal(120, 2, (BAND_H, 480, 3)).clip(0, 255).astype(np.uint8)
+    source = Image(arr=flat)
+    operation = CalibrateColorRpcc(
+            rois=band_rois(), grid=(6, 2), on_qc_fail="skip",
+    )
+
+    out = quietly(operation, source)
+
+    np.testing.assert_array_equal(out.rgb[:], source.rgb[:])
+    assert operation.qc and not all(record.ok for record in operation.qc)
+
+
+# ---------------------------------------------------------------------------
+# 8. A skipped frame must not report the previous frame's profile
+# ---------------------------------------------------------------------------
+def test_a_skipped_frame_clears_the_previous_profile() -> None:
+    operation = frozen_op(on_qc_fail="skip")
+    quietly(operation, Image(arr=render_frame()))
+    assert operation.fitted_profile is not None  # precondition
+
+    quietly(operation, Image(arr=render_frame(gain=1.6)))  # saturated card
+
+    assert not all(record.ok for record in operation.qc)  # precondition
+    assert operation.fitted_profile is None
+    assert operation.diagnostics["patch_census"]["accepted"] == []
+
+
+# ---------------------------------------------------------------------------
+# 9. A user's qc_limits.min_patches must not be silently overwritten
+# ---------------------------------------------------------------------------
+def test_min_patches_has_one_home() -> None:
+    """The spec puts ``min_patches`` on the operation; a second copy on
+    ``QcLimits`` was silently overwritten by it.  One knob, so nothing can be
+    ignored."""
+    with pytest.raises(ValueError):
+        QcLimits(min_patches=10)
+
+
+def test_the_operation_min_patches_is_honoured() -> None:
+    """18 patches, ``min_patches=10``: no below-minimum warning."""
+    rois = band_rois()
+    rois[1][2] = TOP + 3 * PITCH + 5  # ROI 1 keeps three rows
+    operation = CalibrateColorRpcc(
+            rois=rois,
+            lattice_prior=[band_prior(), band_prior(nrows=3)],
+            refine_method="frozen",
+            min_patches=10,
+    )
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        operation.apply(Image(arr=render_frame()))
+
+    assert len(operation.diagnostics["patch_census"]["accepted"]) == 18
+    messages = [str(w.message) for w in caught]
+    assert not any("noticeably worse fit" in m for m in messages), messages
+
+
+# ---------------------------------------------------------------------------
+# 10. Per-ROI lists must match the ROI count at construction
+# ---------------------------------------------------------------------------
+def test_a_short_lattice_prior_is_rejected_at_construction() -> None:
+    with pytest.raises(ValueError, match="lattice_prior"):
+        CalibrateColorRpcc(rois=band_rois(), lattice_prior=[band_prior()])
+
+
+def test_short_reference_bands_are_rejected_at_construction() -> None:
+    prior = band_prior()
+    with pytest.raises(ValueError, match="reference_bands"):
+        CalibrateColorRpcc(
+                rois=band_rois(), lattice_prior=[prior, prior],
+                refine_method="ecc", reference_bands=[np.zeros((4, 4, 3))],
+        )
+
+
+# ---------------------------------------------------------------------------
+# 11. ROI Lab must be the image's own Lab, under the image's illuminant
+# ---------------------------------------------------------------------------
+def test_roi_lab_uses_the_image_illuminant() -> None:
+    image = Image(arr=render_frame(), illuminant="D50")
+    roi = CheckerRoi.from_bbox(band_rois()[0])
+
+    lab, _srgb = frozen_op()._roi_views(image, roi)
+
+    np.testing.assert_allclose(
+            lab, image.color.Lab[roi.row_slice, roi.col_slice], atol=1e-9
+    )
