@@ -9,6 +9,10 @@ Reference:
     Proceedings of STOC 2016, pp. 9-21.
     arXiv:1606.05225
 
+    Vardi, Y., & Zhang, C.-H. (2000). The multivariate L1-median and
+    associated data depth. PNAS, 97(4), 1423-1426.
+    https://doi.org/10.1073/pnas.97.4.1423
+
 Key Implementation Notes:
     - Uses proper convergence checks on ACTUAL objective f(x), not penalized ft(x)
     - Applies practical tolerances while maintaining theoretical structure
@@ -1094,16 +1098,125 @@ NOT part of Cohen et al., included for benchmarking.
 """
 
 
+_COINCIDENCE_RTOL = 1e-12
+"""Radius inside which a data point counts as *on* the estimate.
+
+**Read the clamp first: for most callers here this radius is a constant.**
+``_coincidence_atol`` is ``1e-12 * max(||x||, 1)``, so below unit norm the
+``max`` clamps and the radius is a flat **1e-12 absolute**. Measured, it is
+exactly ``1e-12`` at ``[0,0,0]``, ``[0.5,0,0]`` and ``[0.35,0.37,0.40]``
+alike. ``ColorCheckerProfile`` works entirely in sRGB ``[0,1]``, so across
+that whole range the rule is not scale-relative at all. The relative half
+only begins above unit norm -- ``1.73e-12`` at ``[1,1,1]``, ``5.48e-11`` at
+L*a*b* ``[50,10,20]``.
+
+Where it *is* relative, the reason is floating-point, not statistical:
+``1e-12 * ||x||`` is a few thousand ULPs at ``x``, so the test asks "is this
+point indistinguishable from the iterate at double precision?" -- which is
+exactly the question ``1/d`` blows up on. That is why it scales with ``||x||``
+rather than with the data's spread.
+
+Coincidence must be a radius rather than an equality test. A point at
+``1.11e-16`` from the estimate is not equal to it, but ``1/d`` still gives it
+~1e15 of weight and it captures the update exactly as the old ``1e-10``
+distance floor did -- measured at 21.9 8-bit code values of error.
+
+The value is bounded on both sides and both bounds are tested
+(``tests/unit/util/test_geometric_median.py``). Too small degenerates to an
+equality test and reopens the defect; too large swallows real data points into
+the coincident set and returns something nearer the mean, which is the same
+defect wearing a different hat. It is far below anything real at either scale:
+8-bit pixels are ``1/255 ~= 3.9e-3`` apart, and L*a*b* spacing is larger still.
+
+One consequence of the clamp worth stating, since ``geometric_median`` is a
+public export: the solver has a **1e-12 absolute** resolution floor near the
+origin, so a caller working at a coordinate scale below ~1e-11 sees every
+point swallowed into the coincident set and gets the mean back. That is within
+the cloud's own diameter of the truth, so it is harmless -- but it is part of
+the contract.
+"""
+
+
+def _coincidence_atol(x: np.ndarray) -> float:
+    """Absolute radius for the coincidence test at estimate ``x``.
+
+    Args:
+        x: Current estimate, shape (d,).
+
+    Returns:
+        The distance at or below which a point is treated as lying on ``x``.
+    """
+    return _COINCIDENCE_RTOL * max(float(np.linalg.norm(x)), 1.0)
+
+
+def _weiszfeld_result(
+    x: np.ndarray,
+    points: np.ndarray,
+    iterations: int,
+    f_initial: float,
+    converged: bool,
+    verbose: bool,
+) -> Tuple[np.ndarray, Dict]:
+    """Build the ``(x, info)`` pair returned by :func:`weiszfeld_median`.
+
+    Every exit from the solver reports the same fields, so they are built in
+    one place. ``f_initial`` is only used for the printed improvement line and
+    is skipped when it is zero (a cloud of identical points), where the ratio
+    would be ``0/0`` -- today that prints ``Improvement: nan%`` and raises a
+    numpy invalid-value warning.
+
+    Args:
+        x: The estimate being returned, shape (d,).
+        points: Data points, shape (n, d).
+        iterations: Number of iterations actually performed.
+        f_initial: Objective at the starting estimate.
+        converged: Whether the solver reached a fixed point.
+        verbose: Whether to print the summary.
+
+    Returns:
+        ``(x, info)`` exactly as :func:`weiszfeld_median` documents it.
+    """
+    objective = compute_geometric_median_objective(x, points)
+    if verbose:
+        if converged:
+            print(f"✓ Converged after {iterations} iterations")
+        else:
+            print("⚠ Maximum iterations reached")
+        print(f"  Final: f(x) = {objective:.6f}")
+        if converged and f_initial > 0.0:
+            print(f"  Improvement: {((f_initial - objective) / f_initial) * 100:.2f}%")
+    return x, {
+        "iterations": iterations,
+        "objective": objective,
+        "initial_objective": f_initial,
+        "converged": converged,
+        "method": "weiszfeld",
+    }
+
+
 def weiszfeld_median(
     points: np.ndarray, eps: float = 1e-6, max_iter: int = 1000, verbose: bool = True
 ) -> Tuple[np.ndarray, Dict]:
     """
     Classical Weiszfeld algorithm for geometric median.
 
-    Reference: Weiszfeld (1937) - for comparison only
+    Reference: Weiszfeld (1937), with the coincident-point handling of
+    Vardi & Zhang (2000).
 
-    Iterative reweighting: x^(k+1) = Σ w_i a^(i) / Σ w_i
-    where w_i = 1/||x^(k) - a^(i)||_2
+    Iterative reweighting: x^(k+1) = Σ w_i a^(i) / Σ w_i where
+    w_i = 1/||x^(k) - a^(i)||_2. Points lying on x^(k) are excluded from that
+    sum and the step is damped toward them by γ = min(1, η/r), which is what
+    keeps a data point on the estimate from capturing the iteration. With no
+    coincident point (η = 0) this is the classical update, and bit-identical
+    to the pre-2026-09 floored rule -- except where a distance falls in
+    ``(1e-12*max(||x||,1), 1e-10]``, which the old rule floored and this one
+    does not. No colorimetric caller produces such a distance, but that band
+    is the honest scope of "unchanged".
+
+    Convergence reports ``r <= η + eps*W`` (W = Σ 1/||a - x|| over the
+    non-coincident points), which is exact optimality when γ = 1 and an
+    eps-scaled subgradient slack otherwise -- the same slack the classical
+    rule has always carried.
 
     Args:
         points: Data points, shape (n, d)
@@ -1132,48 +1245,61 @@ def weiszfeld_median(
     for iteration in range(max_iter):
         x_old = x.copy()
 
-        # Compute weights: w_i = 1/||x - a^(i)||_2
+        # Vardi & Zhang (2000): split the points lying *on* the estimate out of
+        # the reweighting. 1/d is undefined there, and flooring d does not
+        # define it -- it hands those points ~1e10 of weight and pins the
+        # estimate to them, which is the defect this replaces.
         distances = np.linalg.norm(points - x, axis=1)
-        distances = np.maximum(distances, 1e-10)
-        weights = 1.0 / distances
+        on_estimate = distances <= _coincidence_atol(x)
+        eta = int(on_estimate.sum())
 
-        # Weighted update
-        x = np.sum(points * weights[:, np.newaxis], axis=0) / np.sum(weights)
+        far = points[~on_estimate]
+        far_distances = distances[~on_estimate]
+
+        if far.size == 0:
+            # Every point coincides with the estimate, so it is the median.
+            return _weiszfeld_result(
+                x, points, iteration + 1, f_initial, True, verbose
+            )
+
+        weights = 1.0 / far_distances
+        reweighted = (
+            np.sum(far * weights[:, np.newaxis], axis=0) / np.sum(weights)
+        )
+
+        if eta == 0:
+            # No coincidence: exactly the classical Weiszfeld update.
+            x = reweighted
+        else:
+            # r is the norm of the non-coincident part of the subgradient.
+            # 0 lies in the subdifferential iff r <= eta, i.e. iff gamma == 1 --
+            # so gamma == 1 gives a zero step that is an optimality
+            # certificate, not a stall. (The `r == 0.0` guard is required:
+            # `eta / r` raises ZeroDivisionError there, it does not yield inf.)
+            r = float(
+                np.linalg.norm(
+                    np.sum((far - x) / far_distances[:, np.newaxis], axis=0)
+                )
+            )
+            if r == 0.0:
+                return _weiszfeld_result(
+                    x, points, iteration + 1, f_initial, True, verbose
+                )
+            gamma = min(1.0, eta / r)
+            x = (1.0 - gamma) * reweighted + gamma * x
 
         # Check convergence
         change = np.linalg.norm(x - x_old)
         if change < eps:
-            objective = compute_geometric_median_objective(x, points)
-            if verbose:
-                print(f"✓ Converged after {iteration + 1} iterations")
-                print(f"  Final: f(x) = {objective:.6f}")
-                print(
-                    f"  Improvement: {((f_initial - objective) / f_initial) * 100:.2f}%"
-                )
-            return x, {
-                "iterations": iteration + 1,
-                "objective": objective,
-                "initial_objective": f_initial,
-                "converged": True,
-                "method": "weiszfeld",
-            }
+            return _weiszfeld_result(
+                x, points, iteration + 1, f_initial, True, verbose
+            )
 
         if verbose and (iteration + 1) % 100 == 0:
             objective = compute_geometric_median_objective(x, points)
             print(f"  Iteration {iteration + 1}: f(x)={objective:.6f}")
 
-    objective = compute_geometric_median_objective(x, points)
-    if verbose:
-        print("⚠ Maximum iterations reached")
-        print(f"  Final: f(x) = {objective:.6f}")
-
-    return x, {
-        "iterations": max_iter,
-        "objective": objective,
-        "initial_objective": f_initial,
-        "converged": False,
-        "method": "weiszfeld",
-    }
+    return _weiszfeld_result(x, points, max_iter, f_initial, False, verbose)
 
 
 # =============================================================================
@@ -1184,24 +1310,32 @@ def weiszfeld_median(
 def geometric_median(
     points: np.ndarray,
     eps: float = 1e-6,
-    method: Literal["cohen", "weiszfeld"] = "cohen",
+    method: Literal["weiszfeld", "cohen"] = "weiszfeld",
     matrix_free: Optional[bool] = None,
     matrix_free_threshold: int = 100,
-    verbose: bool = True,
+    verbose: bool = False,
     **kwargs,
 ) -> Tuple[np.ndarray, Dict]:
     """
     Compute geometric median of a set of points.
 
-    Main interface supporting both Cohen et al. (2016) nearly-linear time
-    algorithm and classical Weiszfeld algorithm.
+    Main interface to the classical Weiszfeld algorithm. The Cohen et al.
+    (2016) nearly-linear-time routines are transcribed in this module but are
+    not wired up, so 'weiszfeld' is both the default and the only method that
+    runs.
 
     Args:
         points: Data points, shape (n, d)
         eps: Target accuracy for (1 + eps)-approximation
+
+            Note: points within ``1e-12 * max(||x||, 1)`` of the running estimate
+            are treated as coincident with it. For data at a coordinate scale below
+            ~1e-11 this collapses the whole cloud into that set and returns the
+            mean.
         method: Algorithm to use:
-            - 'cohen': Cohen et al. (2016) O(nd log³(n/ε)) algorithm [default]
-            - 'weiszfeld': Classical Weiszfeld O(?) algorithm
+            - 'weiszfeld': Classical Weiszfeld reweighting [default]
+            - 'cohen': Cohen et al. (2016) O(nd log³(n/ε)) algorithm --
+              NOT IMPLEMENTED, raises ValueError
         matrix_free: For Cohen method, whether to use matrix-free Hessian.
                     If None, automatically decides based on dimension.
         matrix_free_threshold: Dimension threshold for matrix-free mode
@@ -1219,23 +1353,22 @@ def geometric_median(
             - Additional method-specific statistics
 
     Raises:
-        ValueError: If method is invalid or points array has wrong shape
+        ValueError: If *method* is 'cohen' (not implemented), if *method* is
+            unrecognised, or if *points* has the wrong shape.
 
     Examples:
-        >>> # Cohen method (recommended for large problems)
-        >>> points = np.random.randn(10000, 50)
-        >>> median, info = geometric_median(points, method='cohen', eps=0.01)
-        >>> print(f"Converged: {info['converged']}")
-        >>> print(f"Objective: {info['objective']:.6f}")
+        Geometric median of a small point cloud:
 
-        >>> # Weiszfeld method (simple, good for small problems)
-        >>> points = np.random.randn(100, 3)
-        >>> median, info = geometric_median(points, method='weiszfeld', eps=1e-6)
-
-        >>> # Force matrix-free for high-dimensional problems
-        >>> points = np.random.randn(1000, 500)
-        >>> median, info = geometric_median(points, method='cohen',
-        ...                                 matrix_free=True, eps=0.1)
+        >>> import numpy as np
+        >>> rng = np.random.default_rng(0)
+        >>> points = rng.normal(size=(100, 3))
+        >>> median, info = geometric_median(points, eps=1e-6)
+        >>> median.shape
+        (3,)
+        >>> info['method']
+        'weiszfeld'
+        >>> bool(info['converged'])
+        True
 
     References:
         Cohen, M. B., Lee, Y. T., Miller, G., Pachocki, J., & Sidford, A. (2016).
@@ -1249,14 +1382,10 @@ def geometric_median(
         raise ValueError("Need at least one point")
 
     if method == "cohen":
-        raise ValueError("Method 'cohen' is not implemented yet.")
-
-        return accurate_median(
-            points,
-            epsilon=eps,
-            matrix_free=matrix_free,
-            matrix_free_threshold=matrix_free_threshold,
-            verbose=verbose,
+        raise ValueError(
+            "Method 'cohen' is not implemented yet; use method='weiszfeld' "
+            "(the default). The Cohen et al. (2016) routines in this module "
+            "are a transcription of the paper and are not reachable from here."
         )
     elif method == "weiszfeld":
         return weiszfeld_median(points, eps=eps, verbose=verbose, **kwargs)

@@ -15,6 +15,7 @@ import numpy as np
 from scipy.ndimage import binary_fill_holes, label, median_filter
 from scipy.optimize import linear_sum_assignment
 
+
 _SRGB_CS = colour.RGB_COLOURSPACES["sRGB"]
 
 
@@ -369,58 +370,6 @@ def center_and_pad_checker(
         rgb = median_filter_rgb(rgb, size=filter_size)
 
     return rgb
-
-
-# ---------------------------------------------------------------------------
-# Geometric median (Weiszfeld algorithm)
-# ---------------------------------------------------------------------------
-
-
-def geometric_median(
-    points: np.ndarray,
-    eps: float = 1e-3,
-    max_iter: int = 20,
-) -> np.ndarray:
-    """Compute the geometric median of a point set via Weiszfeld's algorithm.
-
-    The geometric median minimises the sum of Euclidean distances to all
-    points.  This is a simple iterative re-weighting implementation suitable
-    for small-to-moderate point sets such as the pixels within a single
-    colour-checker swatch.
-
-    Args:
-        points: Array of shape ``(N, D)`` with *N* points in *D* dimensions.
-        eps: Convergence tolerance.  Iteration stops when the update norm
-            drops below *eps*, or when the current estimate coincides with a
-            data point.
-        max_iter: Maximum number of Weiszfeld iterations.
-
-    Returns:
-        1-D array of shape ``(D,)`` — the geometric median.
-    """
-    points = np.asarray(points, dtype=np.float64)
-    if points.ndim == 1:
-        return points.copy()
-    if points.shape[0] == 1:
-        return points[0].copy()
-
-    guess = points.mean(axis=0)
-
-    for _ in range(max_iter):
-        distances = np.linalg.norm(points - guess, axis=1)
-
-        # If the guess coincides with a data point, return it.
-        if np.any(distances < eps):
-            return points[distances.argmin()].copy()
-
-        weights = 1.0 / np.clip(distances, eps, None)
-        new_guess = np.average(points, axis=0, weights=weights)
-
-        if np.linalg.norm(new_guess - guess) < eps:
-            return new_guess
-        guess = new_guess
-
-    return guess
 
 
 # ---------------------------------------------------------------------------
