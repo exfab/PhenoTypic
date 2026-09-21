@@ -23,9 +23,9 @@ class ColorLab(DescriptiveTrait):
     B_STAR_GEOMEDIAN = Entry("b*GeoMedian", "b* of the ΔE76 (Euclidean) geometric-median center color of the object")
 
     # -- ΔE2000 medoid center (real pixel, perceptually-corrected) --
-    L_STAR_MEDOID = Entry("L*Medoid", "L* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)")
-    A_STAR_MEDOID = Entry("a*Medoid", "a* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)")
-    B_STAR_MEDOID = Entry("b*Medoid", "b* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)")
+    L_STAR_MEDOID = Entry("L*Medoid", "L* of the ΔE2000 medoid center color: a real object pixel, the one with the smallest total ΔE2000 to every pixel of the object. Found deterministically (no random sampling) among the candidate pixels nearest the object's L*a*b* geometric median, which recovers the exhaustive medoid on a unimodal colour cloud; only the object's own pixels are used, never a neighbouring object's")
+    A_STAR_MEDOID = Entry("a*Medoid", "a* of the ΔE2000 medoid center color: a real object pixel, the one with the smallest total ΔE2000 to every pixel of the object. Found deterministically (no random sampling) among the candidate pixels nearest the object's L*a*b* geometric median, which recovers the exhaustive medoid on a unimodal colour cloud; only the object's own pixels are used, never a neighbouring object's")
+    B_STAR_MEDOID = Entry("b*Medoid", "b* of the ΔE2000 medoid center color: a real object pixel, the one with the smallest total ΔE2000 to every pixel of the object. Found deterministically (no random sampling) among the candidate pixels nearest the object's L*a*b* geometric median, which recovers the exhaustive medoid on a unimodal colour cloud; only the object's own pixels are used, never a neighbouring object's")
 
     # -- ΔE2000 within-colony consistency, measured from the medoid --
     DELTA_E2000_MEDIAN = Entry("DeltaE2000MedianFromMedoid", "Median ΔE2000 of object pixels from the ΔE2000 medoid center (robust perceptual MAD)")
