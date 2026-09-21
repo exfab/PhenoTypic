@@ -265,7 +265,9 @@ def assign_placement(
                     f"Placement {placement.name!r} names patch {exc} which the "
                     "reference chart does not have."
             ) from None
-        ref_features = np.full_like(reference, np.nan)
+        # float64 whatever the reference dtype: full_like would inherit an
+        # integer dtype, turning the NaN fill into INT_MIN.
+        ref_features = np.full(reference.shape, np.nan)
         ref_features[finite] = identity_features(reference[finite])
         distance = np.linalg.norm(
                 obs_features[mask] - ref_features[mask], axis=1

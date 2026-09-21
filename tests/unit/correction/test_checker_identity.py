@@ -186,6 +186,26 @@ def test_a_missing_tile_is_left_out_rather_than_poisoning_the_score(cards) -> No
     assert result.n_tiles == block.shape[0] * block.shape[1] - block.shape[1]
 
 
+def test_an_integer_reference_scores_like_a_float_one(cards) -> None:
+    """Reference features must be float whatever the reference dtype.
+
+    Filling them with ``full_like`` inherited an integer dtype, which turned
+    the NaN fill into ``INT_MIN`` and truncated every feature to 0 or 1.
+    The float reference holds the integer one's exact values, so the maths
+    is identical in float64 and the margins must agree to rounding.
+    """
+    candidates = placements(chart_grid(cards["names"]), (6, 2))
+    as_int = {k: (v * 255).astype(np.int64) for k, v in cards["ref_linear"].items()}
+    as_float = {k: v.astype(np.float64) for k, v in as_int.items()}
+    block = cards["blocks"][0]
+
+    from_int = assign_placement(block, candidates, as_int)
+    from_float = assign_placement(block, candidates, as_float)
+
+    assert from_int.margin == pytest.approx(from_float.margin, abs=1e-9)
+    assert from_int.placement == from_float.placement
+
+
 def test_hungarian_corroborates_but_never_decides(cards) -> None:
     """A free assignment agrees on clean cards; it is reported, not obeyed."""
     grid = chart_grid(cards["names"])
