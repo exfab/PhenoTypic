@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 import os
 import re
-import stat
 import time
+from contextlib import AbstractContextManager
 from pathlib import Path
 from typing import BinaryIO
 
@@ -33,6 +33,13 @@ from phenotypic._gui.browse._source_probe import SourceProbeError
 from phenotypic._gui.browse._source_item import is_source_store
 from phenotypic._gui.shell._sandbox import SandboxRoot
 from phenotypic.sdk_ import store_publication_token
+from phenotypic.sdk_._io_constants import published_token_through_a_hold
+from phenotypic.sdk_._identity_io import (
+    HeldDirectory,
+    IdentityRefused,
+    identity_io_available,
+    open_identity_directory,
+)
 
 _TILE_NAME_RE = re.compile(r"^\d+_\d+\.png$")
 _TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]+$")
@@ -54,13 +61,6 @@ class _UnsafeStoreAccess(RuntimeError):
     """The platform cannot bind store access to held directory identities."""
 
 
-_SAFE_STORE_IO = (
-    os.name == "posix"
-    and hasattr(os, "O_DIRECTORY")
-    and hasattr(os, "O_NOFOLLOW")
-    and hasattr(os, "O_NONBLOCK")
-    and os.open in os.supports_dir_fd
-)
 _MAX_STORE_METADATA_BYTES = 16 * 1024 * 1024
 
 
@@ -88,76 +88,74 @@ def _store_member_parts(member: str) -> tuple[str, ...]:
     return parts
 
 
-def _open_store_root(store: Path) -> int:
-    """Open a store directory without following a swapped root symlink."""
-    if not _SAFE_STORE_IO:
+def _open_store_root(
+    store: Path,
+) -> AbstractContextManager[HeldDirectory]:
+    """Hold a store directory without following a swapped root symlink.
+
+    The platform guard stays here rather than relying on the facade's own
+    :class:`~phenotypic.sdk_._identity_io.IdentityIoUnavailable`. That is a
+    ``RuntimeError``, and the route's next ``except`` arm maps ``RuntimeError``
+    to 404 -- letting it through would silently turn the documented 422 into a
+    404.
+    """
+    if not identity_io_available():
         raise _UnsafeStoreAccess(
             "this platform cannot safely serve Zarr store members"
         )
-    root_fd = os.open(
-        store,
-        os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
-    )
-    try:
-        if not stat.S_ISDIR(os.fstat(root_fd).st_mode):
-            raise OSError("store root is not a directory")
-    except BaseException:
-        os.close(root_fd)
-        raise
-    return root_fd
+    return open_identity_directory(store)
+
+
+class _HeldStore:
+    """One held store root plus the child directories walked beneath it.
+
+    ``_read_store_json`` runs once per declared series and once per label, each
+    time from the root, so the same prefixes are re-walked several times per
+    request. Caching the held children keeps every open relative to a directory
+    this process already holds and bounds the walking to one pass; the hold
+    closes them leaf-first when the request's ``with`` block exits.
+    """
+
+    def __init__(self, root: HeldDirectory) -> None:
+        self._directories: dict[tuple[str, ...], HeldDirectory] = {(): root}
+
+    def directory(self, parts: tuple[str, ...]) -> HeldDirectory:
+        """Return the held directory at *parts*, opening what is not held."""
+        held = self._directories[()]
+        for depth, component in enumerate(parts, start=1):
+            prefix = parts[:depth]
+            child = self._directories.get(prefix)
+            if child is None:
+                child = held.child_directory(component)
+                self._directories[prefix] = child
+            held = child
+        return held
 
 
 def _open_regular_store_member(
-    root_fd: int,
+    hold: _HeldStore,
     parts: tuple[str, ...],
 ) -> BinaryIO:
-    """Open a regular member through held, no-follow directory descriptors."""
-    directory_fd = os.dup(root_fd)
-    member_fd: int | None = None
+    """Open a regular member through held, no-follow directory identities."""
+    return hold.directory(parts[:-1]).open_regular_stream(parts[-1])
+
+
+def _read_store_json(hold: _HeldStore, parts: tuple[str, ...]) -> dict:
+    """Read one bounded JSON metadata member through held identities."""
     try:
-        directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
-        for component in parts[:-1]:
-            child_fd = os.open(
-                component,
-                directory_flags,
-                dir_fd=directory_fd,
-            )
-            if not stat.S_ISDIR(os.fstat(child_fd).st_mode):
-                os.close(child_fd)
-                raise OSError("store path component is not a directory")
-            os.close(directory_fd)
-            directory_fd = child_fd
-        member_fd = os.open(
-            parts[-1],
-            os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW,
-            dir_fd=directory_fd,
+        raw = hold.directory(parts[:-1]).read_regular_bytes(
+            parts[-1], max_bytes=_MAX_STORE_METADATA_BYTES
         )
-        identity = os.fstat(member_fd)
-        if not stat.S_ISREG(identity.st_mode) or identity.st_nlink != 1:
-            raise OSError("store member is not a single-link regular file")
-        stream = os.fdopen(member_fd, "rb")
-        member_fd = None
-        return stream
-    finally:
-        if member_fd is not None:
-            os.close(member_fd)
-        os.close(directory_fd)
-
-
-def _read_store_json(root_fd: int, parts: tuple[str, ...]) -> dict:
-    """Read one bounded JSON metadata member through anchored descriptors."""
-    try:
-        with _open_regular_store_member(root_fd, parts) as handle:
-            size = os.fstat(handle.fileno()).st_size
-            if size > _MAX_STORE_METADATA_BYTES:
-                raise ValueError("store metadata is too large")
-            payload = json.load(handle)
+        payload = json.loads(raw)
     except (
         json.JSONDecodeError,
         OSError,
         RecursionError,
         TypeError,
         UnicodeError,
+        # ``IdentityRefused`` is a ``ValueError``, so an over-large member, a
+        # symlinked component and a hard-linked member all land here -- the
+        # same "malformed" answer the descriptor code gave them.
         ValueError,
     ) as exc:
         raise _UnreadableImageStore("store metadata is malformed") from exc
@@ -167,7 +165,7 @@ def _read_store_json(root_fd: int, parts: tuple[str, ...]) -> dict:
 
 
 def _is_ngff_image_group(
-    root_fd: int,
+    hold: _HeldStore,
     parts: tuple[str, ...],
     *,
     require_image_label: bool,
@@ -176,7 +174,7 @@ def _is_ngff_image_group(
     from phenotypic.sdk_ import ngff_
 
     try:
-        payload = _read_store_json(root_fd, (*parts, ngff_.STORE_ROOT_JSON))
+        payload = _read_store_json(hold, (*parts, ngff_.STORE_ROOT_JSON))
         if payload.get("zarr_format") != 3 or payload.get("node_type") != "group":
             return False
         attributes = payload.get("attributes")
@@ -198,7 +196,7 @@ def _is_ngff_image_group(
         if not dataset_parts:
             return False
         array = _read_store_json(
-            root_fd,
+            hold,
             (*parts, *dataset_parts, ngff_.STORE_ROOT_JSON),
         )
         return array.get("zarr_format") == 3 and array.get("node_type") == "array"
@@ -206,11 +204,11 @@ def _is_ngff_image_group(
         return False
 
 
-def _image_store_prefixes(root_fd: int) -> frozenset[tuple[str, ...]]:
+def _image_store_prefixes(hold: _HeldStore) -> frozenset[tuple[str, ...]]:
     """Return validated declared image paths, excluding reserved namespaces."""
     from phenotypic.sdk_ import ngff_
 
-    root = _read_store_json(root_fd, (ngff_.STORE_ROOT_JSON,))
+    root = _read_store_json(hold, (ngff_.STORE_ROOT_JSON,))
     try:
         attributes = root["attributes"]
         block = attributes[ngff_.PhenotypicAttr.ROOT]
@@ -247,7 +245,7 @@ def _image_store_prefixes(root_fd: int) -> frozenset[tuple[str, ...]]:
             if any(part in reserved or part.startswith(".") for part in parts):
                 continue
             if _is_ngff_image_group(
-                root_fd,
+                hold,
                 parts,
                 require_image_label=require_image_label,
             ):
@@ -344,7 +342,20 @@ def register(
         if not is_source_store(source):
             raise FileNotFoundError
         try:
-            publication = store_publication_token(source)
+            # Through a hold, like every other measurement of this store.
+            # The revision this is compared against comes from
+            # ``store_revision_identity``, which holds; measuring by path
+            # here would reintroduce the Windows disagreement in a new place
+            # -- it already moved once, from the member check to this one.
+            publication = published_token_through_a_hold(source)
+        except IdentityRefused as exc:
+            # The hold refused this root. Do not fall through to a path
+            # measurement: that is the substitution the hold exists to reject.
+            # 422 (not 409) -- nothing changed, the store is unserveable.
+            raise _UnsafeStoreAccess(
+                "store root refused by identity-bound I/O; Browse will not "
+                "serve a store whose root it cannot hold"
+            ) from exc
         except OSError as exc:
             raise SourceProbeError("unstable store root") from exc
         if publication is None:
@@ -369,71 +380,74 @@ def register(
                 "token; Browse refuses an unsafe multi-request image view",
                 422,
             )
+        except _UnsafeStoreAccess as exc:
+            return _error(str(exc), 422)
         except FileNotFoundError:
             return _error("invalid or unknown image store", 404)
         except SourceProbeError:
             return _error("source image changed", 409)
 
         try:
-            root_fd = _open_store_root(source.source_path)
+            store_root = _open_store_root(source.source_path)
         except _UnsafeStoreAccess as exc:
             return _error(str(exc), 422)
-        except (OSError, RuntimeError, TypeError, ValueError):
-            return _error("store member not found", 404)
         try:
-            try:
-                publication = store_publication_token(
-                    source.source_path,
-                    root_dir_fd=root_fd,
-                )
-            except OSError:
-                return _error("source image changed", 409)
-            if publication != source.store_revision:
-                return _error("source image changed", 409)
-            try:
-                image_prefixes = _image_store_prefixes(root_fd)
-            except _UnreadableImageStore as exc:
-                return _error(str(exc), 422)
-            if not _is_authorized_image_member(parts, image_prefixes):
-                return _error("invalid store member", 404)
-            try:
-                handle = _open_regular_store_member(root_fd, parts)
-            except (OSError, RuntimeError, TypeError, ValueError):
-                return _error("store member not found", 404)
-            try:
+            # The hold wraps everything up to and including ``send_file``. The
+            # member stream owns its own descriptor and is the only thing that
+            # outlives the hold; ``call_on_close`` closes it.
+            with store_root as root:
+                hold = _HeldStore(root)
                 try:
                     publication = store_publication_token(
                         source.source_path,
-                        root_dir_fd=root_fd,
+                        root_directory=root,
                     )
                 except OSError:
-                    handle.close()
                     return _error("source image changed", 409)
                 if publication != source.store_revision:
-                    handle.close()
                     return _error("source image changed", 409)
-                size = os.fstat(handle.fileno()).st_size
-                response = send_file(
-                    handle,
-                    conditional=False,
-                    download_name=parts[-1],
-                )
-                response.content_length = size
-                response.make_conditional(
-                    request,
-                    accept_ranges=True,
-                    complete_length=size,
-                )
-                response.headers["Cache-Control"] = _IMMUTABLE_CACHE
-                response.call_on_close(handle.close)
-                return response
-            except BaseException:
-                handle.close()
-                raise
+                try:
+                    image_prefixes = _image_store_prefixes(hold)
+                except _UnreadableImageStore as exc:
+                    return _error(str(exc), 422)
+                if not _is_authorized_image_member(parts, image_prefixes):
+                    return _error("invalid store member", 404)
+                try:
+                    handle = _open_regular_store_member(hold, parts)
+                except (OSError, RuntimeError, TypeError, ValueError):
+                    return _error("store member not found", 404)
+                try:
+                    try:
+                        publication = store_publication_token(
+                            source.source_path,
+                            root_directory=root,
+                        )
+                    except OSError:
+                        handle.close()
+                        return _error("source image changed", 409)
+                    if publication != source.store_revision:
+                        handle.close()
+                        return _error("source image changed", 409)
+                    size = os.fstat(handle.fileno()).st_size
+                    response = send_file(
+                        handle,
+                        conditional=False,
+                        download_name=parts[-1],
+                    )
+                    response.content_length = size
+                    response.make_conditional(
+                        request,
+                        accept_ranges=True,
+                        complete_length=size,
+                    )
+                    response.headers["Cache-Control"] = _IMMUTABLE_CACHE
+                    response.call_on_close(handle.close)
+                    return response
+                except BaseException:
+                    handle.close()
+                    raise
         except (OSError, RuntimeError, TypeError, UnicodeError, ValueError):
             return _error("store member not found", 404)
-        finally:
-            os.close(root_fd)
 
     @asset_bp.get("/<token>/<revision>/zarr/")
     def empty_zarr_member(token: str, revision: str) -> Response:

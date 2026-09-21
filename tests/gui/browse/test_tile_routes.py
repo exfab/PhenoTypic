@@ -13,14 +13,10 @@ from phenotypic._gui.browse import _source_render as sr
 from phenotypic._gui.browse import _tile_routes
 from phenotypic._gui.browse._source_probe import probe_source
 from phenotypic._gui.shell._sandbox import SandboxRoot
+from phenotypic.sdk_ import _identity_io
+from phenotypic.sdk_ import _io_constants
 
-#: Serving a store member needs directory-fd-anchored, no-follow opens. Where the
-#: platform lacks them (Windows) the route refuses with 422 by design, pinned by
-#: ``test_store_member_route_refuses_on_a_platform_without_safe_store_io``.
-requires_safe_store_io = pytest.mark.skipif(
-    not _tile_routes._SAFE_STORE_IO,
-    reason="this platform cannot anchor store reads to directory fds",
-)
+pytestmark = pytest.mark.platform_io
 
 
 def _write_fake_ngff_image_group(store: Path, member: str) -> None:
@@ -131,7 +127,6 @@ def test_revisioned_asset_rejects_stale_revision(app_and_root):
     assert response.get_json() == {"error": "source image changed"}
 
 
-@requires_safe_store_io
 def test_published_plain_zarr_store_is_served_as_generation_addressed_bytes(
     monkeypatch, tmp_path
 ) -> None:
@@ -195,13 +190,16 @@ def test_published_plain_zarr_store_is_served_as_generation_addressed_bytes(
 def test_store_member_route_refuses_on_a_platform_without_safe_store_io(
     monkeypatch, tmp_path
 ) -> None:
-    """The Windows branch, reachable from any OS: a published store is refused.
+    """A platform with no identity-IO backend refuses a published store.
 
-    Without directory-fd-anchored, no-follow opens the route cannot prove a
-    member stays inside the store, so it returns 422 rather than serving.
+    Both shipped platforms have a backend, so this is reachable only by
+    unbinding one. It pins the 422: ``IdentityIoUnavailable`` is a
+    ``RuntimeError``, and the route's next ``except`` arm maps ``RuntimeError``
+    to 404, so the guard inside ``_open_store_root`` is what keeps the
+    documented refusal distinguishable from "not found".
     """
     monkeypatch.setattr(tempfile, "gettempdir", lambda: str(tmp_path))
-    monkeypatch.setattr(_tile_routes, "_SAFE_STORE_IO", False)
+    monkeypatch.setattr(_identity_io, "_BACKEND", None)
     sandbox_root = tmp_path / "sandbox"
     store = sandbox_root / "plate.zarr"
     chunk = store / "rgb" / "0" / "c" / "0"
@@ -230,7 +228,6 @@ def test_store_member_route_refuses_on_a_platform_without_safe_store_io(
     assert "cannot safely serve" in response.get_json()["error"]
 
 
-@requires_safe_store_io
 def test_published_store_range_does_not_materialize_the_member(
     monkeypatch, tmp_path
 ) -> None:
@@ -272,7 +269,6 @@ def test_published_store_range_does_not_materialize_the_member(
     assert response.data == b"2345"
 
 
-@requires_safe_store_io
 def test_published_store_route_exposes_only_declared_image_roots(
     tmp_path,
 ) -> None:
@@ -314,7 +310,6 @@ def test_published_store_route_exposes_only_declared_image_roots(
     assert table.status_code == 404
 
 
-@requires_safe_store_io
 def test_store_declaration_cannot_authorize_reserved_tables_root(
     tmp_path,
 ) -> None:
@@ -358,7 +353,6 @@ def test_store_declaration_cannot_authorize_reserved_tables_root(
     assert response.data != b"private-table"
 
 
-@requires_safe_store_io
 def test_store_declaration_cannot_authorize_an_arbitrary_directory(
     tmp_path,
 ) -> None:
@@ -391,7 +385,6 @@ def test_store_declaration_cannot_authorize_an_arbitrary_directory(
     assert response.data != b"not-an-image-group"
 
 
-@requires_safe_store_io
 def test_label_declaration_requires_an_ngff_image_label_group(
     tmp_path,
 ) -> None:
@@ -517,7 +510,6 @@ def test_malformed_store_member_fails_closed(
     assert response.status_code in {400, 404}
 
 
-@requires_safe_store_io
 def test_published_store_route_maps_unstable_root_to_conflict(
     monkeypatch, tmp_path
 ) -> None:
@@ -550,17 +542,24 @@ def test_published_store_route_maps_unstable_root_to_conflict(
     )
 
     def unstable_publication(
-        _store: Path, *, root_dir_fd: int | None = None
+        _store: Path, *, root_directory: object | None = None
     ) -> str:
-        del root_dir_fd
+        del root_directory
         observed = next(observations)
         if isinstance(observed, OSError):
             raise observed
         assert observed is not None
         return observed
 
+    # Both lookup paths: the route holds the store for the member check and
+    # calls the imported name directly, while the revision check funnels
+    # through the sdk_ helper that opens its own hold. Patching only one
+    # leaves an observation unconsumed and the route answers 200.
     monkeypatch.setattr(
         _tile_routes, "store_publication_token", unstable_publication
+    )
+    monkeypatch.setattr(
+        _io_constants, "store_publication_token", unstable_publication
     )
 
     response = app.server.test_client().get(
@@ -600,6 +599,32 @@ def test_mutable_third_party_store_fails_closed_without_asset_rescan(
 
     assert response.status_code == 422
     assert "publication token" in response.get_json()["error"]
+
+
+def test_every_token_measurement_in_the_route_goes_through_a_hold() -> None:
+    """The invariant, not one pair of it -- this bug already moved once.
+
+    Browse compares a store's publication token measured in several places.
+    On Windows a directory-entry query can report an older ``st_mtime_ns``
+    than an open-handle query for the same file, so any site measuring by
+    path while another measures by handle answers 409 "source image changed"
+    for a store nobody touched.
+
+    Converting two of the four sites did not fix it -- it moved the mismatch
+    from the member check to the revision check, and a different pair of
+    tests failed (runs 35497611719 and 35506072940). Pinning one pair would
+    let the next conversion move it again, so this asserts the property every
+    site must have: no bare ``store_publication_token(<path>)`` call, and no
+    bare ``store_revision_identity`` outside the sdk_ helper that holds.
+    """
+    source = Path(_tile_routes.__file__).read_text(encoding="utf-8")
+
+    assert "store_publication_token(source)" not in source, (
+        "a path-measured token reached the route again"
+    )
+    held_calls = source.count("root_directory=")
+    assert held_calls >= 2, f"expected the held-branch calls to remain: {held_calls}"
+    assert "published_token_through_a_hold(source)" in source
 
 
 def test_malformed_token_404(app_and_root):

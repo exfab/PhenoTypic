@@ -1947,10 +1947,11 @@ def test_transition_fifo_evidence_is_rejected_without_blocking(
 
     So the number was measuring CPython shutdown, not the property. The
     property is *"a FIFO does not block recovery indefinitely"*, and the call
-    satisfies it by three orders of magnitude: ``_read_regular_file_at``
-    opens with ``O_NONBLOCK | O_NOFOLLOW`` and rejects the FIFO on ``fstat``
-    before reading a byte. 30 s is far above the teardown cost and far below
-    any blocking open, which would never return at all.
+    satisfies it by three orders of magnitude: the POSIX backend's
+    ``read_regular_bytes`` (``sdk_/_identity_io_posix.py``) opens with
+    ``O_NONBLOCK | O_NOFOLLOW`` and rejects the FIFO on ``fstat`` before
+    reading a byte. 30 s is far above the teardown cost and far below any
+    blocking open, which would never return at all.
     """
     from phenotypic._cli._cli_recompile_recovery import (
         recompile_table_transition_path,
@@ -2005,25 +2006,78 @@ def test_transition_fifo_evidence_is_rejected_without_blocking(
     assert completed.read_text(encoding="utf-8") == "{}"
 
 
-def test_transition_recovery_fails_closed_without_safe_directory_primitives(
-    tmp_path: Path,
-) -> None:
-    """Recovery refuses access when identity-bound primitives are unavailable."""
+def test_transition_recovery_runs_wherever_identity_io_is_available() -> None:
+    """The gate is the facade's capability, not the operating system name.
+
+    The deleted constant was a POSIX-only ``dir_fd`` probe, so recompile
+    refused to run at all on Windows. Asserting its *absence* is what stops
+    the gate quietly reappearing here: a reinstated module-level constant
+    would make the refusal platform-shaped again while every test below
+    still passed on Linux.
+    """
     import phenotypic._cli._cli_recompile_recovery as recovery
+
+    assert not hasattr(recovery, "_IDENTITY_BOUND_DIRECTORY_OPERATIONS"), (
+        "the platform gate moved to phenotypic.sdk_._identity_io"
+    )
+
+
+def test_transition_recovery_fails_closed_without_safe_directory_primitives(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Recovery refuses access when identity-bound primitives are unavailable.
+
+    Fail-closed survives the port to the facade: with no backend selected,
+    ``open_identity_directory`` raises ``IdentityIoUnavailable`` -- a
+    ``RuntimeError``, like the gate it replaced -- which neither of this
+    function's ``except`` arms catches, so no transition byte is read.
+    """
+    import phenotypic._cli._cli_recompile_recovery as recovery
+    from phenotypic.sdk_ import _identity_io
 
     output_dir = tmp_path / "out"
     output_dir.mkdir()
-    with (
-        patch.object(
-            recovery,
-            "_IDENTITY_BOUND_DIRECTORY_OPERATIONS",
-            False,
-        ),
-        pytest.raises(RuntimeError, match="cannot safely access"),
-    ):
+    monkeypatch.setattr(_identity_io, "_BACKEND", None)
+    with pytest.raises(_identity_io.IdentityIoUnavailable):
         recovery.recoverable_recompile_measurement_sources(
             output_dir,
             ["ds"],
+        )
+
+
+def test_single_transition_check_fails_closed_without_identity_io(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The other caller refuses too, rather than answering ``False``.
+
+    ``recoverable_recompile_table_transition`` is the second caller of
+    ``_open_transition_directory``, and it catches ``(KeyError, OSError,
+    TypeError, ValueError, JSONDecodeError)`` -> ``False``. ``RuntimeError``
+    is deliberately not in that tuple, so ``IdentityIoUnavailable``
+    propagates.
+
+    **Why this proposition is worth its own test.** If the refusal were ever
+    folded into that arm, the answer would become ``False`` -- which this
+    function spells *"no durable evidence authorizes these bytes"*, not
+    *"this platform cannot read the evidence safely"*. The caller would then
+    proceed on a tree it never managed to inspect, with nothing raised and
+    nothing logged. A fail-closed guarantee decaying into a silent wrong
+    answer is the exact failure this port exists to avoid, and it is
+    invisible to every other test in this file.
+    """
+    import phenotypic._cli._cli_recompile_recovery as recovery
+    from phenotypic.sdk_ import _identity_io
+
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    store = zarr_store_path(output_dir, "ds", "img")
+    monkeypatch.setattr(_identity_io, "_BACKEND", None)
+    with pytest.raises(_identity_io.IdentityIoUnavailable):
+        recovery.recoverable_recompile_table_transition(
+            output_dir,
+            "ds",
+            "img",
+            store,
         )
 
 

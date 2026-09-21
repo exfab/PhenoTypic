@@ -14,6 +14,8 @@ from pathlib import Path
 
 import polars as pl
 
+import pytest
+
 from phenotypic._cli._cli_chunk_writer import flush_unchunked_measurements
 from phenotypic._cli._cli_output_manager import aggregate_measurements
 from phenotypic._cli._cli_recompile_slurm_scripts import build_recompile_tasks
@@ -25,6 +27,11 @@ from phenotypic.sdk_ import (
     dataset_measurements_dir,
     master_measurements_parquet_path,
 )
+
+#: Windows-relevant I/O: also collected by the tests-windows-platform-io
+#: PR job (`-m platform_io`), which SELECTS marked tests and deselects
+#: everything else -- an unmarked suite simply does not run there.
+pytestmark = pytest.mark.platform_io
 
 DATASET = "plate_a"
 

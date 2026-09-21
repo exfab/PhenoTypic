@@ -85,12 +85,9 @@ def test_process_output_is_full_cli_input_and_browse_store_asset(
     response = app.server.test_client().get(
         f"/assets/{token}/{revision.cache_key}/zarr/zarr.json"
     )
-    if not _tile_routes._SAFE_STORE_IO:
-        # Windows: Browse refuses store members by design (no fd-anchored
-        # no-follow opens); the CLI half above is still exercised.
-        assert response.status_code == 422
-        assert _tree_bytes(process_output) == process_before
-        return
+    # No platform branch: both POSIX and Windows now hold the store root by
+    # identity through ``phenotypic.sdk_._identity_io``, so Browse serves the
+    # member everywhere rather than refusing with 422 on Windows.
     assert response.status_code == 200
     assert response.data == (store / "zarr.json").read_bytes()
     assert _tree_bytes(process_output) == process_before

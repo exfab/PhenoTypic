@@ -163,3 +163,19 @@ def test_pr_workflow_installs_chromium_for_browser_shards() -> None:
         r"if: matrix\.shard\.playwright\s*\n\s*run: uv run playwright install --with-deps chromium",
         workflow,
     ), "run-pytest.yml must install Chromium in the step gated by `if: matrix.shard.playwright`"
+
+
+def test_the_pr_lane_runs_platform_io_on_windows() -> None:
+    """Windows-only I/O regressed for weeks behind a nightly-only lane."""
+    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    job = workflow["jobs"]["tests-windows-platform-io"]
+
+    assert job["runs-on"] == "windows-latest"
+    commands = [
+        line.strip()
+        for step in job["steps"]
+        if isinstance(step.get("run"), str)
+        for line in step["run"].splitlines()
+        if line.strip().startswith("pytest ")
+    ]
+    assert commands and all("-m platform_io" in line for line in commands)

@@ -16,9 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import re
-import stat
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
@@ -34,6 +32,11 @@ from phenotypic.sdk_ import (
     image_record_path,
     progress_dir,
     zarr_store_path,
+)
+from phenotypic.sdk_._identity_io import (
+    HeldDirectory,
+    IdentityRefused,
+    open_identity_directory,
 )
 from phenotypic.sdk_._measurement_tables import (
     _valid_embedded_measurement_contract,
@@ -210,27 +213,6 @@ def _marker_measurement_fingerprint(
     return size, sha256
 
 
-_IDENTITY_BOUND_DIRECTORY_OPERATIONS = (
-    os.name == "posix"
-    and hasattr(os, "O_DIRECTORY")
-    and hasattr(os, "O_NOFOLLOW")
-    and hasattr(os, "O_NONBLOCK")
-    and os.listdir in os.supports_fd
-    and all(
-        operation in os.supports_dir_fd
-        for operation in (os.open, os.mkdir, os.stat, os.unlink, os.rename)
-    )
-)
-
-
-def _require_identity_bound_directory_operations() -> None:
-    """Fail closed unless directory-relative no-follow I/O is available."""
-    if not _IDENTITY_BOUND_DIRECTORY_OPERATIONS:
-        raise RuntimeError(
-            "This platform cannot safely access recompile transition directories"
-        )
-
-
 def _validate_transition_component(component: str) -> None:
     """Reject non-canonical transition path components."""
     if component in {"", ".", ".."} or Path(component).name != component:
@@ -241,40 +223,42 @@ def _validate_transition_component(component: str) -> None:
 def _open_transition_directory(
     output_root: Path,
     dataset_name: str,
-) -> Iterator[tuple[Path, int]]:
-    """Hold an identity-bound descriptor for the transition directory.
+) -> Iterator[tuple[Path, HeldDirectory]]:
+    """Hold the transition directory by identity, through the facade.
 
     **Read-only.** It used to take ``create=`` and ``mkdir`` the directory
     for ``begin_recompile_table_transition``; that writer is gone, so
     every remaining caller is reading evidence a previous release left and a
     missing directory is simply ``FileNotFoundError``.
+
+    **The platform question belongs to the facade, not here.** This used to
+    gate on a POSIX-only ``dir_fd`` probe, so ``--mode recompile`` refused to
+    run at all on Windows. ``open_identity_directory`` raises
+    :class:`~phenotypic.sdk_._identity_io.IdentityIoUnavailable` -- a
+    ``RuntimeError``, exactly as the deleted gate did -- when no backend
+    supports the platform, so fail-closed survives the widening unchanged.
+
+    ``IdentityRefused`` is re-raised as the module's existing ``ValueError``
+    vocabulary so that both callers' narrow ``except`` arms still fire. It is
+    already a ``ValueError``; the re-raise is for the message, not the type.
     """
-    _require_identity_bound_directory_operations()
     canonical_output = Path(output_root).resolve(strict=True)
     root = _transition_root(canonical_output, dataset_name)
     try:
         relative = root.relative_to(canonical_output)
     except ValueError as exc:
         raise ValueError("Transition directory escapes output root") from exc
-    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
-    directory_fd = os.open(canonical_output, flags)
-    try:
+    with open_identity_directory(canonical_output) as output_held:
+        current = output_held
         try:
             for component in relative.parts:
                 _validate_transition_component(component)
-                child_fd = os.open(component, flags, dir_fd=directory_fd)
-                os.close(directory_fd)
-                directory_fd = child_fd
-            identity = os.fstat(directory_fd)
-            if not stat.S_ISDIR(identity.st_mode):
-                raise ValueError("Transition directory is not canonical")
+                current = current.child_directory(component)
         except FileNotFoundError:
             raise
-        except OSError as exc:
+        except IdentityRefused as exc:
             raise ValueError("Transition directory is not canonical") from exc
-        yield root, directory_fd
-    finally:
-        os.close(directory_fd)
+        yield root, current
 
 
 def _transition_receipt_name(stem: str) -> str:
@@ -282,25 +266,6 @@ def _transition_receipt_name(stem: str) -> str:
     if Path(stem).name != stem or stem in {"", ".", ".."}:
         raise ValueError("Transition image stem is not canonical")
     return f"{stem}.json"
-
-
-def _read_regular_file_at(directory_fd: int, name: str) -> bytes:
-    """Read a single-link regular file relative to a held directory."""
-    if Path(name).name != name or name in {"", ".", ".."}:
-        raise ValueError("Transition file is not canonical")
-    file_fd = os.open(
-        name,
-        os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW,
-        dir_fd=directory_fd,
-    )
-    try:
-        identity = os.fstat(file_fd)
-        if not stat.S_ISREG(identity.st_mode) or identity.st_nlink != 1:
-            raise ValueError("Transition file is not canonical")
-        with os.fdopen(file_fd, "rb", closefd=False) as stream:
-            return stream.read()
-    finally:
-        os.close(file_fd)
 
 
 def _transition_staged_name(
@@ -381,11 +346,9 @@ def recoverable_recompile_table_transition(
         with _open_transition_directory(
             output_root,
             dataset_name,
-        ) as (root, directory_fd):
+        ) as (root, held):
             receipt_name = _transition_receipt_name(stem)
-            transition = json.loads(
-                _read_regular_file_at(directory_fd, receipt_name)
-            )
+            transition = json.loads(held.read_regular_bytes(receipt_name))
             store = Path(store_path)
             if store.is_symlink():
                 return False
@@ -412,7 +375,7 @@ def recoverable_recompile_table_transition(
                 transition,
             )
             prepared_fingerprint = _fingerprint_bytes(
-                _read_regular_file_at(directory_fd, prepared_name)
+                held.read_regular_bytes(prepared_name)
             )
             table_fingerprint = (table.stat().st_size, _sha256(table))
             if (
@@ -508,10 +471,10 @@ def recoverable_recompile_measurement_sources(
             with _open_transition_directory(
                 output_root,
                 dataset_name,
-            ) as (_root, directory_fd):
+            ) as (_root, held):
                 receipt_names = sorted(
                     name
-                    for name in os.listdir(directory_fd)
+                    for name in held.list_names()
                     if name.endswith(".json")
                 )
         except FileNotFoundError:
