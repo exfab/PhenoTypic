@@ -61,7 +61,7 @@ the change exists to remove, one layer lower.
 
 ---
 
-# Deferred — narrowing `emit_qc`'s `try` boundary
+# Deferred — distinguish invariant violations from plot failures in `emit_qc`
 
 Recorded 2026-09-20, from the pre-dispatch plan review.
 
@@ -87,10 +87,20 @@ The narrow-the-`try` shape makes the unbound case *structurally impossible* rath
 than merely handled, and lets a programming error surface as one. The chosen shape
 handles it correctly but keeps the swallow.
 
+## The argument on the other side
+
+`emit_qc` iterates **every** configured plot rather than a pre-filtered list, so
+under the narrow-`try` shape one malformed binding kills every plot after it. That
+is the same argument §3 makes for per-figure softness, one level up — which is what
+makes this a defensible trade rather than a concession.
+
 ## Reconsider when
 
-- A real defect is traced to a prelude failure that `.failures.jsonl` recorded as
-  a plot failure and nobody looked at; or
+- `.failures.jsonl` ever records a prelude-shaped failure in real use — an
+  `AssertionError` from `:231`, an `AttributeError` on `module.check` — filed as
+  though a figure misbehaved while the run stayed green; or
+- the `configured.id` fallback appears in a record, which means the binding
+  identity in that row was a guess; or
 - QC bindings gain enough prelude complexity that "pure dict and attribute access"
   stops being true; or
 - the `configured.id` fallback is ever observed in a record, which means the

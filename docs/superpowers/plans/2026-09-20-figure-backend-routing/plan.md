@@ -332,12 +332,16 @@ def test_a_plotly_figure_is_themed_after_construction() -> None:
     not -- measured: `[Q7] untheme template is None? False`. The font family
     is the discriminator: None when raw, the DESIGN.md stack when themed.
     """
-    from phenotypic.sdk_.viz.figures import FONT_FAMILY
+    from phenotypic.sdk_.viz.figures import FONT_FAMILY_MONO
 
-    assert go.Figure().layout.template.layout.font.family is None  # control
+    # Control: an untouched figure carries no base font family at all.
+    assert go.Figure().layout.template.layout.font.family is None
+
     fig = _Plotly().inspect(object())
-    assert fig.layout.template.layout.font.family is not None
-    assert FONT_FAMILY
+    # FONT_FAMILY_MONO, not FONT_FAMILY: _theme.py:171 sets the template's BASE
+    # font to the mono stack per DESIGN.md "02", and applies FONT_FAMILY to
+    # titles and legend separately (:174, :180, :187, :189). Measured.
+    assert fig.layout.template.layout.font.family == FONT_FAMILY_MONO
 
 
 def test_the_mpl_theme_is_live_while_the_figure_is_built() -> None:
@@ -1924,7 +1928,7 @@ def test_a_raising_figure_leaves_the_run_green_and_is_recorded(tmp_path) -> None
     assert "figure exploded" in entries[0]["error"]
 
 
-def test_emit_qc_prelude_failure_is_recorded_and_the_loop_continues(tmp_path) -> None:
+def test_emit_qc_prelude_failure_names_the_right_binding(tmp_path) -> None:
     """B3: the prelude is the ONLY window where F4's bug lives.
 
     The first draft of this test patched MeasurementInput.__init__, which is
@@ -1957,8 +1961,16 @@ def test_emit_qc_prelude_failure_is_recorded_and_the_loop_continues(tmp_path) ->
         ops={"d": OtsuDetector()}, plots=[_FirstQc(), _SecondQc()]
     )
 
-    class _RaisingOnce(dict):
-        """Raises inside the prelude for the first binding only."""
+    class _RaisingOnSecond(dict):
+        """Raises inside the prelude for the SECOND binding only.
+
+        Raising on the FIRST would make the misnaming assertion tautological:
+        with no prior iteration there is no stale `binding` to be misattributed
+        to, so `binding_id == "_FirstQc"` would pass whether the handler reads
+        `configured.id` or a leftover value. Raising on the second is what
+        makes a missing `binding = None` reset detectable -- the record would
+        then say "_FirstQc" for a failure in "_SecondQc".
+        """
 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
@@ -1966,13 +1978,13 @@ def test_emit_qc_prelude_failure_is_recorded_and_the_loop_continues(tmp_path) ->
 
         def get(self, key, default=None):
             self.calls += 1
-            if self.calls == 1:
+            if self.calls == 2:
                 raise RuntimeError("prelude exploded")
             return super().get(key, default)
 
     # Non-empty: `modules = successful_modules or {}` at :223 discards a falsy
     # mapping, which would skip the injection entirely.
-    modules = _RaisingOnce({"unused": object()})
+    modules = _RaisingOnSecond({"unused": object()})
 
     PlotCoordinator(pipeline, tmp_path).emit_qc(
         pd.DataFrame(),
@@ -1983,16 +1995,17 @@ def test_emit_qc_prelude_failure_is_recorded_and_the_loop_continues(tmp_path) ->
     record = tmp_path / "deliverables" / "plots" / ".failures.jsonl"
     entries = [json.loads(line) for line in record.read_text().splitlines()]
 
-    # The failure is recorded against the binding that actually failed...
+    # The failure is recorded against the binding that actually failed -- NOT
+    # against _FirstQc, whose binding object is still live from iteration 1 if
+    # the implementation forgets to reset it. This is F4's quiet half.
     assert len(entries) == 1
-    assert entries[0]["binding_id"] == "_FirstQc", (
-        "must not be attributed to a previous or later binding"
+    assert entries[0]["binding_id"] == "_SecondQc", (
+        "a stale binding from the previous iteration was misattributed"
     )
     assert "prelude exploded" in entries[0]["error"]
 
-    # ...and the SECOND binding still emitted, which is the half that the
-    # `binding = None` shape exists to preserve.
-    assert (tmp_path / "deliverables" / "plots" / "_SecondQc").is_dir()
+    # ...and the FIRST binding, which ran before the failure, still published.
+    assert (tmp_path / "deliverables" / "plots" / "_FirstQc").is_dir()
 
 
 - [ ] **Step 2: Run it and confirm it fails**
@@ -2106,9 +2119,15 @@ what stops the unbound crash. Both halves are needed — the test asserts the
 recorded id is `_FirstQc` precisely to catch an implementation that keeps the
 previous iteration's value.
 
-Add a `_record_failure_for(*, binding_id, plot_class, error, lifecycle, dataset=None, image_stem=None)`
-sibling to `_record_failure` that takes the id directly rather than a binding
-object; `_record_failure` becomes a thin wrapper over it.
+Add a `_record_failure_by_name(*, binding_id, plot_class, error, lifecycle, dataset=None, image_stem=None)`
+sibling that takes the identity directly; `_record_failure(binding, …)` becomes a
+thin wrapper reading `binding.id` / `type(binding.plot).__name__`.
+
+The split is required, not cosmetic: in the `binding is None` case there is no
+`binding.plot` to type-name, and `configured.plot` is the **pre-`model_copy`**
+object — for a QC *reference* binding that is the recipe entry, not the check that
+would have emitted (`_coordinator.py:235-236` substitutes `module.check`). Passing
+`configured.plot` would record a plausible-looking wrong class name.
 
 **Recorded cost of this choice** (raised by the pre-dispatch review, accepted
 knowingly): keeping the prelude inside the `try` means a genuine programming error
