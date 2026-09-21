@@ -157,6 +157,8 @@ def test_an_empty_tile_never_turns_the_fit_into_nan() -> None:
     assert np.isfinite(operation.fitted_profile.correction_matrix).all()
     for name in (_band_patch(0, 5, 0), _band_patch(0, 5, 1)):
         assert name not in operation.diagnostics["patch_census"]["accepted"]
+    assert operation.qc[0].signals["empty_tiles"] == 2
+    assert any("outside the ROI" in flag for flag in operation.qc[0].flags)
 
 
 # ---------------------------------------------------------------------------
@@ -309,6 +311,24 @@ def test_a_patch_collision_is_skipped_under_skip() -> None:
     np.testing.assert_array_equal(out.rgb[:], source.rgb[:])
     assert not operation.qc[1].ok
     assert any("ROI 0 already claimed" in flag for flag in operation.qc[1].flags)
+
+
+def test_an_roi_whose_every_box_misses_is_skipped_under_skip() -> None:
+    """A prior entirely outside its ROI measures nothing at all.
+
+    Without its own refusal, identity scoring raises ``No tiles are allowed
+    to vote``, a ``ValueError`` that would bypass the policy.
+    """
+    operation = frozen_op(
+            lattice_prior=[band_prior(col_x=(500, 560)), band_prior()],
+            on_qc_fail="skip",
+    )
+    source = Image(arr=render_frame())
+
+    out = quietly(operation, source)
+
+    np.testing.assert_array_equal(out.rgb[:], source.rgb[:])
+    assert operation.qc[0].flags == ["every tile box falls outside the ROI"]
 
 
 def test_an_roi_with_no_card_is_skipped_under_skip() -> None:
