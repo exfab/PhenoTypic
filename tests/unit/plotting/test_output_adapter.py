@@ -192,3 +192,99 @@ def test_canonical_group_keys_preserve_types_and_temporals() -> None:
 def test_canonical_group_key_rejects_nonfinite_float() -> None:
     with pytest.raises(ValueError, match="finite"):
         canonical_group_key([("value", float("inf"))])
+
+
+def test_a_plotly_page_publishes_html_without_chrome(tmp_path, monkeypatch) -> None:
+    import plotly.graph_objects as go
+
+    from phenotypic.abc_.plotting import PlotOutput, PlotPage
+    from phenotypic.plotting._pipeline import _backends, publish_plot_output
+
+    monkeypatch.setattr(_backends, "chrome_available", lambda: False)
+
+    output = PlotOutput(pages=(
+        PlotPage(key="only", figure=go.Figure(go.Scatter(y=[1, 2])), label="Only"),
+    ))
+    manifest = publish_plot_output(output, tmp_path / "sym", plot_id="sym")
+
+    page = manifest["pages"][0]
+    assert page["files"] == {"html": "Only.html"}
+    assert (tmp_path / "sym" / "Only.html").is_file()
+    assert not (tmp_path / "sym" / "Only.png").exists()
+
+
+def test_the_html_references_the_hoisted_bundle(tmp_path, monkeypatch) -> None:
+    import plotly.graph_objects as go
+
+    from phenotypic.abc_.plotting import PlotOutput, PlotPage
+    from phenotypic.plotting._pipeline import _backends, publish_plot_output
+
+    monkeypatch.setattr(_backends, "chrome_available", lambda: False)
+
+    plots_base = tmp_path / "plots"
+    output = PlotOutput(pages=(PlotPage(key="only", figure=go.Figure(), label="Only"),))
+    publish_plot_output(
+        output, plots_base / "sym", plot_id="sym", plots_base=plots_base
+    )
+
+    html = (plots_base / "sym" / "Only.html").read_text()
+    assert 'src="../plotly.min.js"' in html
+    assert (plots_base / "plotly.min.js").is_file()
+    # The 4.8 MB bundle must NOT be duplicated into the page directory.
+    assert not (plots_base / "sym" / "plotly.min.js").exists()
+
+
+def test_a_matplotlib_page_publishes_png_only(tmp_path) -> None:
+    import matplotlib
+    matplotlib.use("Agg")
+    from matplotlib.figure import Figure
+
+    from phenotypic.abc_.plotting import PlotOutput, PlotPage
+    from phenotypic.plotting._pipeline import publish_plot_output
+
+    output = PlotOutput(pages=(PlotPage(key="only", figure=Figure(), label="Only"),))
+    manifest = publish_plot_output(output, tmp_path / "m", plot_id="m")
+
+    assert manifest["pages"][0]["files"] == {"png": "Only.png"}
+    assert manifest["renderers"] == {"png": "available"}
+
+
+def test_a_partial_rendering_failure_is_not_lost(tmp_path, monkeypatch) -> None:
+    """S2: HTML succeeds, PNG fails -- the PNG failure must still be recorded.
+
+    Without this the page lands in "pages" with one file and the other
+    renderer's failure vanishes: best-effort silently meaning silent, one
+    level below where §3 fixed it.
+    """
+    import json
+
+    import plotly.graph_objects as go
+
+    from phenotypic.abc_.plotting import PlotOutput, PlotPage
+    from phenotypic.plotting._pipeline import _backends, _writer, publish_plot_output
+
+    monkeypatch.setattr(_backends, "chrome_available", lambda: True)
+
+    def _png_explodes(*args, **kwargs):
+        raise RuntimeError("raster exploded")
+
+    monkeypatch.setattr(_writer.FigureAdapter, "save_png", _png_explodes)
+
+    plots_base = tmp_path / "plots"
+    output = PlotOutput(pages=(PlotPage(key="only", figure=go.Figure(), label="Only"),))
+    manifest = publish_plot_output(
+        output, plots_base / "sym", plot_id="sym", plots_base=plots_base
+    )
+
+    page = manifest["pages"][0]
+    assert page["files"] == {"html": "Only.html"}          # HTML still published
+    # Exact, not a substring. A substring match is satisfied by
+    # "RuntimeError: RuntimeError: raster exploded", which is what an earlier
+    # draft wrote when _render_page returned pre-formatted strings that
+    # record_plot_failure then formatted again.
+    assert page["partial"] == ["RuntimeError: raster exploded"]
+
+    record = plots_base / ".failures.jsonl"
+    assert record.is_file(), "S3: the writer must write .failures.jsonl"
+    entry = json.loads(record.read_text().splitlines()[0])
+    assert entry["error"] == "RuntimeError: raster exploded"
