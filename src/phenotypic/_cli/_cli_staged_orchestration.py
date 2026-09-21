@@ -562,8 +562,66 @@ def update_job_dependency(job_id: str, dependencies: Sequence[str]) -> bool:
     return result.returncode == 0
 
 
+_TERMINAL_JOB_STATES = frozenset(
+    {
+        "BOOT_FAIL",
+        "CANCELLED",
+        "COMPLETED",
+        "DEADLINE",
+        "FAILED",
+        "NODE_FAIL",
+        "OUT_OF_MEMORY",
+        "TIMEOUT",
+    }
+)
+
+
+def _accounting_job_is_terminal(job_id: str) -> bool:
+    """Return ``True`` only on a *definitive* all-terminal ``sacct`` answer.
+
+    Consulted solely for a job slurmctld has already forgotten. Anything short
+    of unanimous -- no rows, a non-zero exit, a live or unrecognised state, a
+    missing or hung ``sacct`` -- returns ``False``, so the caller reports the
+    fail-safe ``None`` rather than unblocking on a guess. An array job yields
+    one row per task and every task must be terminal; ``sacct`` renders
+    cancellation as ``CANCELLED by <uid>``, so only the leading token matches.
+    """
+    try:
+        result = subprocess.run(
+            ["sacct", "-j", str(job_id), "-X", "-n", "-P", "--format=State"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+    if result.returncode != 0:
+        return False
+    states = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+    return bool(states) and all(
+        state.split()[0] in _TERMINAL_JOB_STATES for state in states
+    )
+
+
 def scheduler_job_is_active(job_id: str) -> bool | None:
-    """Return active/inactive, or ``None`` when SLURM cannot answer."""
+    """Return active/inactive, or ``None`` when SLURM cannot answer.
+
+    ``None`` is the fail-safe: the staged controller blocks on any answer that
+    is not ``False`` (INV-ONEWRITER), so an unknown scheduler state must never
+    be reported as inactive.
+
+    That makes one ``squeue`` failure worth telling apart from the rest.
+    slurmctld forgets finished jobs after ``MinJobAge``, after which
+    ``squeue --jobs <id>`` exits non-zero with ``Invalid job id specified`` --
+    a job that is *definitely over*, not unknown. Reading that as ``None`` left
+    the controller resubmitting itself forever against a finished stage-1
+    array. The accounting database still holds the job, so that one error falls
+    through to ``sacct``, and only an unambiguous all-terminal answer there
+    returns ``False``. Every other ``squeue`` failure -- an unreachable
+    controller, a missing binary, a timeout -- stays ``None`` and never
+    consults ``sacct``.
+    """
     try:
         result = subprocess.run(
             ["squeue", "--noheader", "--jobs", str(job_id), "--format=%T"],
@@ -575,6 +633,8 @@ def scheduler_job_is_active(job_id: str) -> bool | None:
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return None
     if result.returncode != 0:
+        if "Invalid job id" in (result.stderr or ""):
+            return False if _accounting_job_is_terminal(job_id) else None
         return None
     return any(line.strip() for line in result.stdout.splitlines())
 
