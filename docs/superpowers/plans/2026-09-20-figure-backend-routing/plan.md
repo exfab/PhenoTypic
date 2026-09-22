@@ -2252,10 +2252,13 @@ def test_emit_qc_prelude_failure_names_the_right_binding(tmp_path) -> None:
 - [ ] **Step 2: Run it and confirm it fails**
 
 Run: `uv run pytest tests/unit/plotting/test_coordinator.py -k "green or prelude" -v`
-Expected: FAIL. On today's code the prelude failure reaches the handler at `:259`
-with `binding` **unbound on the first iteration**, so an `UnboundLocalError` is
-raised *from inside the exception handler*, replaces the original `RuntimeError`,
-and escapes `emit_qc` — `_SecondQc` never emits and no record is written.
+Expected: FAIL. **As observed in execution (2026-09-21)** — the test raises on
+the *second* iteration (a first-iteration raise was a false green), so on
+today's code `binding` is still bound to `_FirstQc` when the handler runs: the
+log line names `_FirstQc`, no record is written, and the test fails with
+`FileNotFoundError` reading `.failures.jsonl`. The `UnboundLocalError` this step
+originally predicted is the first-iteration case, which the test no longer
+exercises.
 
 Confirm the test can actually fail before trusting it: this assertion set must go
 red here, not merely green later.
@@ -2386,7 +2389,7 @@ the handler's use:
 `binding = None` is reassigned at the top of **every** iteration, which is what
 stops the stale-previous-binding misattribution; the `configured.id` fallback is
 what stops the unbound crash. Both halves are needed — the test asserts the
-recorded id is `_FirstQc` precisely to catch an implementation that keeps the
+recorded id is `_SecondQc` (the plot that actually failed) precisely to catch an implementation that keeps the
 previous iteration's value.
 
 Add a `_record_failure_by_name(*, binding_id, plot_class, error, lifecycle, dataset=None, image_stem=None)`
@@ -2501,7 +2504,9 @@ lines in, while the handler read binding.id -- so a prelude failure
 raised UnboundLocalError FROM INSIDE the handler on the first iteration
 (escaping emit_qc entirely, making the one documented best-effort path
 not best-effort), and named the PREVIOUS plot on any later one. The
-prelude is now outside the try, where a programming error belongs.
+prelude stays inside the try (spec section 5); `binding` is reset every
+iteration and an unresolved failure is recorded under configured.id.
+(Superseded: the commit that landed is 2aa87a4f, with its own message.)
 
 Drops strict=True from the staged GPU worker so all three emit_image
 sites agree. Safe now that an unusable raster backend is detected at
