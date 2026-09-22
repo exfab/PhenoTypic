@@ -146,3 +146,16 @@ before `inspect` runs. Pre-existing and out of this change's scope. Since C5 it 
 at least *recorded* (lifecycle `analysis`), but the record blames id validation, not
 the class name the user chose — and `_Name` is exactly what someone writes in a
 notebook. Fix belongs with the analysis registry's id rules, not the plot writer.
+
+# Noted — `to_json(path)` renames the file, and `from_json` then misreports it (pre-existing)
+
+Found while verifying `custom_plotter.md` (Task 13), unrelated to this change.
+`ImagePipeline.to_json(filepath)` passes the path through `ensure_typed_json_suffix`
+(`_serializable_pipeline.py:106`), so `pipeline.json` is written as
+`pipeline.json.pht-pipe`. Reading the path the caller *gave* then fails: `from_json`
+treats a non-existent Path as JSON text and hands it to `json.loads`, and the CLI
+surfaces "Failed to load pipeline: TypeError: the JSON object must be str, bytes or
+bytearray, not PosixPath" — an error that names neither the missing file nor the
+rename. Fix belongs with the serialization helpers: `from_json` should raise
+`FileNotFoundError` for a Path that does not exist (optionally trying the typed
+suffix), rather than falling through to string parsing.
