@@ -23,8 +23,10 @@ Three things are asserted that no unit test can reach:
 
 The preview cache root is process-independent
 (``tempfile.gettempdir()/phenotypic/pipeline-preview``) and the hub WIPES it
-at builder-app construction, so the scope is seeded AFTER the server is up,
-under a session id unique to this module.
+at builder-app construction, so the scope is seeded AFTER the builder is
+built, under a session id unique to this module. "Server is up" is not
+enough: the hub builds the builder lazily, on the first ``/builder/``
+request, so a scope seeded before that request is deleted by it.
 
 Gated by ``PLAYWRIGHT=1`` via the module-level skip in ``conftest.py``.
 """
@@ -35,6 +37,7 @@ import io
 import os
 import shutil
 import subprocess
+import urllib.request
 import uuid
 from pathlib import Path
 from typing import Iterator
@@ -102,7 +105,14 @@ def preview_hub(tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
 
 @pytest.fixture(scope="module")
 def seeded_scope(preview_hub: str) -> Path:
-    """One preview scope, seeded after the hub wiped the cache root."""
+    """One preview scope, seeded after the hub wiped the cache root.
+
+    The builder is built -- and the cache root wiped -- on the first
+    ``/builder/`` request, not at server start, so force that build here
+    before writing anything.
+    """
+    with urllib.request.urlopen(f"{preview_hub}/builder/", timeout=60.0) as resp:
+        assert resp.status == 200, resp.status
     rows, cols = IMAGE_SHAPE
     rng = np.random.default_rng(7)
     image = Image(arr=rng.integers(0, 255, (rows, cols, 3), dtype=np.uint8))
