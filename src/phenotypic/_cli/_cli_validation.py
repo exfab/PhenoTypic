@@ -56,13 +56,19 @@ def validate_pipeline(
         # SLURM this is the submitting process, so a pipeline that will not
         # rasterise says so before the array is submitted. For a single-page
         # image plot this warning is the only record of why no PNG exists.
-        # PlotBackendUnavailable falls through to the ``except Exception``
-        # below and becomes a validation error.
+        # PlotBackendUnavailable is caught here rather than by the generic
+        # handler below: the pipeline loaded fine, and "Failed to load
+        # pipeline" would send the user to their JSON, not their environment.
         from phenotypic.plotting._pipeline._backends import (
+            PlotBackendUnavailable,
             preflight_plot_backends,
         )
 
-        for line in preflight_plot_backends(pipeline):
+        try:
+            warning_lines = preflight_plot_backends(pipeline)
+        except PlotBackendUnavailable as e:
+            return False, f"Plot backend unavailable: {e}"
+        for line in warning_lines:
             if line not in _ANNOUNCED_PLOT_WARNINGS:
                 _ANNOUNCED_PLOT_WARNINGS.add(line)
                 logger.warning(line)

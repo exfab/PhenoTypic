@@ -451,6 +451,10 @@ def test_a_multi_page_plotly_image_plot_writes_exactly_one_bundle(tmp_path) -> N
             return PlotOutput(pages=(
                 PlotPage(key="first", figure=go.Figure(), label="First"),
                 PlotPage(key="second", figure=go.Figure(), label="Second"),
+                # Fails in _render_page (unsupported figure), so a record is
+                # written -- which is what makes the hoisting check below
+                # able to fail.
+                PlotPage(key="broken", figure=object(), label="Broken"),
             ))
 
     pipeline = ImagePipeline(ops={"d": OtsuDetector()}, plots=[_MultiPagePlotly()])
@@ -471,9 +475,16 @@ def test_a_multi_page_plotly_image_plot_writes_exactly_one_bundle(tmp_path) -> N
     # D2: the failure record is hoisted for the same reason as the bundle, and
     # was equally unguarded. Spec §3 puts it at deliverables/plots/, not one
     # per page directory -- a per-directory record is still "a record that
-    # exists", so again only a whole-tree count distinguishes the two.
+    # exists", so again only a whole-tree location check distinguishes the
+    # two. One page per image fails, so there IS a record to locate; an
+    # earlier form asserted absence in a run where nothing failed, which
+    # passed whether or not the record was hoisted.
     records = sorted(tmp_path.rglob(".failures.jsonl"))
-    assert records == [], f"nothing failed here, yet: {records}"
+    assert records == [tmp_path / "deliverables" / "plots" / ".failures.jsonl"], (
+        records
+    )
+    entries = _failure_entries(tmp_path)
+    assert [entry["lifecycle"] for entry in entries] == ["page"] * 3
 
 
 def _failure_entries(tmp_path) -> list[dict]:
@@ -774,3 +785,331 @@ def test_a_flat_image_render_failure_records_the_real_exception_class(
         assert entry["plot_class"] == "_UnsupportedFigureImagePlot"
         assert entry["lifecycle"] == "image"
         assert (entry["dataset"], entry["image_stem"]) == ("ds", "plate-1")
+
+
+# --- F1: a refused guard voids the refresh; it is not a plot failure --------
+
+
+def _emit_image_flat(coordinator) -> None:
+    coordinator.emit_image(object(), dataset="ds", image_stem="plate-1")
+
+
+def _emit_measurements(coordinator) -> None:
+    coordinator.emit_measurements(pd.DataFrame())
+
+
+def _emit_analyses_refreshable(coordinator) -> None:
+    coordinator.emit_analyses(pd.DataFrame(), AnalysisRegistry())
+
+
+def _emit_qc_default(coordinator) -> None:
+    coordinator.emit_qc(pd.DataFrame(), AnalysisRegistry())
+
+
+_EVERY_EMIT_POINT = [
+    pytest.param(_ImagePlot, _emit_image_flat, id="emit_image-flat"),
+    pytest.param(_MultiImagePlot, _emit_image_flat, id="emit_image-multi-page"),
+    pytest.param(_MeasPlot, _emit_measurements, id="emit_measurements"),
+    # No leading underscore: see RaisingAnalysisPlot.
+    pytest.param(
+        RefreshableAnalysisPlot, _emit_analyses_refreshable, id="emit_analyses"
+    ),
+    pytest.param(_QcPlot, _emit_qc_default, id="emit_qc"),
+    pytest.param(_QcPlot, _emit_dependent_qc, id="emit_dependent_qc"),
+]
+
+
+@pytest.mark.parametrize(("plot_class", "emit"), _EVERY_EMIT_POINT)
+def test_a_refused_publication_guard_propagates_and_writes_nothing(
+    tmp_path, plot_class, emit
+) -> None:
+    """Probe A, through the coordinator.
+
+    The GUI's guard refuses when the output tree changed under it (a CLI run
+    in progress, say). Recording that as a plot failure wrote
+    ``.failures.jsonl`` and ``.failures.lock`` into the very tree the guard
+    had just said not to touch.
+    """
+    from phenotypic.plotting._pipeline import PlotPublicationBlocked
+
+    pipeline = ImagePipeline(plots=[PlotBinding(id="guarded", plot=plot_class())])
+    coordinator = PlotCoordinator(
+        pipeline, tmp_path, publication_guard=lambda: False
+    )
+
+    with pytest.raises(PlotPublicationBlocked):
+        emit(coordinator)
+
+    assert sorted(tmp_path.rglob("*")) == []
+
+
+class _FencingCommitGuard:
+    """A ``commit_guard`` that admits *allow* commits, then fences.
+
+    Shaped like the staged worker's guard: entering it raises the lifecycle
+    fence's own exception, which is NOT a ``PlotPublicationBlocked``.
+    """
+
+    def __init__(self, allow: int = 0) -> None:
+        self.allow = allow
+        self.entered = 0
+
+    def __call__(self):
+        from contextlib import contextmanager
+
+        from phenotypic._cli._cli_slurm_lifecycle import (
+            SlurmGenerationInactiveError,
+        )
+
+        @contextmanager
+        def _guard():
+            self.entered += 1
+            if self.entered > self.allow:
+                raise SlurmGenerationInactiveError("epoch superseded")
+            yield
+
+        return _guard()
+
+
+@pytest.mark.parametrize(
+    ("plot_class", "emit", "allow"),
+    [
+        pytest.param(_ImagePlot, _emit_image_flat, 0, id="flat-page"),
+        pytest.param(_MultiImagePlot, _emit_image_flat, 0, id="multi-page-page"),
+        # Two page commits succeed; the MANIFEST commit is the one fenced.
+        pytest.param(_MultiImagePlot, _emit_image_flat, 2, id="multi-page-manifest"),
+        pytest.param(_MeasPlot, _emit_measurements, 0, id="aggregate-page"),
+    ],
+)
+def test_a_fenced_commit_propagates_with_its_cause_and_records_nothing(
+    tmp_path, plot_class, emit, allow
+) -> None:
+    """Probe B: a superseded worker must stop, not log a plot failure.
+
+    The fence is found by walking ``__cause__``, which is how Stage 3 and the
+    full path recognise it behind whatever wraps it.
+    """
+    from phenotypic._cli._cli_slurm_lifecycle import (
+        slurm_generation_inactive_cause,
+    )
+    from phenotypic.plotting._pipeline import PlotPublicationBlocked
+
+    guard = _FencingCommitGuard(allow=allow)
+    pipeline = ImagePipeline(plots=[PlotBinding(id="fenced", plot=plot_class())])
+    coordinator = PlotCoordinator(pipeline, tmp_path, commit_guard=guard)
+
+    with pytest.raises(PlotPublicationBlocked) as raised:
+        emit(coordinator)
+
+    assert guard.entered == allow + 1
+    assert slurm_generation_inactive_cause(raised.value) is not None
+    assert list(tmp_path.rglob(".failures.jsonl")) == []
+    assert list(tmp_path.rglob("*.tmp")) == []
+
+
+def test_the_flat_path_commits_through_the_commit_guard(tmp_path) -> None:
+    """M1: one guarded commit per file the flat path writes."""
+    guard = _FencingCommitGuard(allow=10)
+    pipeline = ImagePipeline(plots=[PlotBinding(id="image", plot=_ImagePlot())])
+
+    PlotCoordinator(pipeline, tmp_path, commit_guard=guard).emit_image(
+        object(), dataset="ds", image_stem="plate-1"
+    )
+
+    assert len(list((plots_dir(tmp_path) / "image" / "ds").glob("*.png"))) == 1
+    assert guard.entered == 1
+
+
+def test_the_flat_path_rechecks_the_publication_guard_before_commit(
+    tmp_path,
+) -> None:
+    """M1: a guard that flips after the entry check still stops the write.
+
+    The flat path checks the guard once on entry. Only the check inside the
+    commit, which ``_render_page`` makes with the guard it is handed, can see
+    a snapshot that changed while the figure was rendering.
+    """
+    from phenotypic.plotting._pipeline import PlotPublicationBlocked
+
+    answers = iter([True])
+    pipeline = ImagePipeline(plots=[PlotBinding(id="image", plot=_ImagePlot())])
+    coordinator = PlotCoordinator(
+        pipeline, tmp_path, publication_guard=lambda: next(answers, False)
+    )
+
+    with pytest.raises(PlotPublicationBlocked):
+        coordinator.emit_image(object(), dataset="ds", image_stem="plate-1")
+
+    assert list(tmp_path.rglob("*.png")) == []
+    assert list(tmp_path.rglob(".failures.jsonl")) == []
+
+
+def test_a_strict_flat_failure_keeps_the_renderer_as_its_cause(tmp_path) -> None:
+    """``strict=True`` must still let a caller find the renderer's exception."""
+    pipeline = ImagePipeline(
+        plots=[PlotBinding(id="image", plot=_UnsupportedFigureImagePlot())]
+    )
+
+    with pytest.raises(RuntimeError, match="produced no file") as raised:
+        PlotCoordinator(pipeline, tmp_path).emit_image(
+            object(), dataset="ds", image_stem="plate-1", strict=True
+        )
+
+    assert isinstance(raised.value.__cause__, TypeError)
+
+
+# --- M2 / M3: a partial render is published, recorded once, and not raised --
+
+
+def test_a_partial_flat_render_publishes_what_it_can_and_records_once(
+    tmp_path, monkeypatch
+) -> None:
+    """HTML succeeds, PNG fails: the page is published and one record says why.
+
+    Only the everything-failed case was tested before, so recording only on
+    total failure, or raising on any error, both survived.
+    """
+    from phenotypic.plotting._pipeline import _backends
+    from phenotypic.plotting._pipeline._adapter import FigureAdapter
+
+    def _raster_fails(figure, path):
+        raise OSError("raster exploded")
+
+    monkeypatch.setattr(_backends, "chrome_available", lambda: True)
+    monkeypatch.setattr(FigureAdapter, "save_png", staticmethod(_raster_fails))
+    pipeline = ImagePipeline(
+        plots=[PlotBinding(id="image", plot=_SingleFigurePlotlyImagePlot())]
+    )
+
+    PlotCoordinator(pipeline, tmp_path).emit_image(
+        object(), dataset="ds", image_stem="plate-1"
+    )
+
+    directory = plots_dir(tmp_path) / "image" / "ds"
+    assert len(list(directory.glob("*.html"))) == 1
+    assert list(directory.glob("*.png")) == []
+    entries = _failure_entries(tmp_path)
+    assert [entry["error"] for entry in entries] == ["OSError: raster exploded"]
+
+
+# --- F2: a rerun must not leave the previous generation's sibling ----------
+
+
+class _SwitchableImagePlot(BaseModel, PlotImage):
+    """Returns a Plotly or a matplotlib figure, as the test chooses."""
+
+    backend: str = "plotly"
+
+    def inspect(self, subject=None, *, for_save=False, **overrides):
+        if self.backend == "plotly":
+            import plotly.graph_objects as go
+
+            return go.Figure()
+        return plt.figure()
+
+
+def _fake_png(figure, path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"\x89PNG fake")
+
+
+def test_a_rerun_without_chrome_removes_the_previous_png(
+    tmp_path, monkeypatch
+) -> None:
+    """Probe C: first run with Chrome, second without.
+
+    With no manifest on the flat path, a surviving PNG beside a fresh HTML is
+    indistinguishable from a matching pair -- it would be read as this run's.
+    """
+    from phenotypic.plotting._pipeline import _backends
+    from phenotypic.plotting._pipeline._adapter import FigureAdapter
+
+    plot = _SwitchableImagePlot(backend="plotly")
+    pipeline = ImagePipeline(plots=[PlotBinding(id="image", plot=plot)])
+    coordinator = PlotCoordinator(pipeline, tmp_path)
+    directory = plots_dir(tmp_path) / "image" / "ds"
+
+    monkeypatch.setattr(_backends, "chrome_available", lambda: True)
+    monkeypatch.setattr(FigureAdapter, "save_png", staticmethod(_fake_png))
+    coordinator.emit_image(object(), dataset="ds", image_stem="plate-1")
+    assert len(list(directory.glob("*.png"))) == 1, "premise: run 1 wrote a PNG"
+
+    monkeypatch.setattr(_backends, "chrome_available", lambda: False)
+    coordinator.emit_image(object(), dataset="ds", image_stem="plate-1")
+
+    assert list(directory.glob("*.png")) == []
+    assert len(list(directory.glob("*.html"))) == 1
+
+
+def test_a_rerun_as_matplotlib_removes_the_previous_html(
+    tmp_path, monkeypatch
+) -> None:
+    """The same, when the plot itself changed backend between runs."""
+    from phenotypic.plotting._pipeline import _backends
+
+    monkeypatch.setattr(_backends, "chrome_available", lambda: False)
+    plot = _SwitchableImagePlot(backend="plotly")
+    pipeline = ImagePipeline(plots=[PlotBinding(id="image", plot=plot)])
+    coordinator = PlotCoordinator(pipeline, tmp_path)
+    directory = plots_dir(tmp_path) / "image" / "ds"
+
+    coordinator.emit_image(object(), dataset="ds", image_stem="plate-1")
+    assert len(list(directory.glob("*.html"))) == 1, "premise: run 1 wrote HTML"
+
+    plot.backend = "mpl"
+    coordinator.emit_image(object(), dataset="ds", image_stem="plate-1")
+
+    assert list(directory.glob("*.html")) == []
+    assert len(list(directory.glob("*.png"))) == 1
+
+
+# --- M4 / M5 -----------------------------------------------------------------
+
+
+class _PlotlyMeasPlot(BaseModel, PlotMeas):
+    def inspect(self, subject=None, *, for_save=False, **overrides):
+        import plotly.graph_objects as go
+
+        return go.Figure()
+
+
+def test_a_plotly_aggregate_uses_the_one_hoisted_bundle(
+    tmp_path, monkeypatch
+) -> None:
+    """M4: the aggregate path, not only the image paths, hoists the bundle."""
+    from phenotypic.plotting._pipeline import _backends
+
+    monkeypatch.setattr(_backends, "chrome_available", lambda: False)
+    pipeline = ImagePipeline(
+        plots=[PlotBinding(id="measurements", plot=_PlotlyMeasPlot())]
+    )
+
+    PlotCoordinator(pipeline, tmp_path).emit_measurements(pd.DataFrame())
+
+    assert sorted(tmp_path.rglob("plotly.min.js")) == [
+        plots_dir(tmp_path) / "plotly.min.js"
+    ]
+    assert (plots_dir(tmp_path) / "measurements" / "default.html").exists()
+
+
+def test_the_flat_path_closes_its_matplotlib_figure(tmp_path) -> None:
+    """M5: a 1,536-image plate must not accumulate 1,536 open figures.
+
+    On the success path ``FigureAdapter.save_png`` already closes a
+    matplotlib figure in its own ``finally``, so asserting there cannot fail
+    whatever the coordinator does. The coordinator's close is load-bearing
+    only when ``save_png`` is never reached -- here, a publication guard that
+    refuses at the entry check, after ``inspect()`` has built the figure.
+    """
+    from phenotypic.plotting._pipeline import PlotPublicationBlocked
+
+    pipeline = ImagePipeline(plots=[PlotBinding(id="image", plot=_ImagePlot())])
+    coordinator = PlotCoordinator(
+        pipeline, tmp_path, publication_guard=lambda: False
+    )
+    before = set(plt.get_fignums())
+
+    with pytest.raises(PlotPublicationBlocked):
+        coordinator.emit_image(object(), dataset="ds", image_stem="plate-1")
+
+    assert set(plt.get_fignums()) == before

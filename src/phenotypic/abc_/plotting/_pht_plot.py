@@ -319,6 +319,21 @@ class BoundFigures:
         )
 
 
+def _select_primary_spec(specs: list[FigureSpec], owner: str) -> FigureSpec:
+    """Return the explicit primary figure or the only declared figure."""
+    if not specs:
+        raise RuntimeError(f"{owner} declares no @figure methods")
+    primaries = [spec for spec in specs if spec.primary]
+    if primaries:
+        return primaries[0]
+    if len(specs) == 1:
+        return specs[0]
+    raise RuntimeError(
+        f"{owner} has multiple @figure methods but none is "
+        "marked primary=True; cannot pick an inspect() figure"
+    )
+
+
 class PhtPlot:
     """Methods-only mixin for saveable figures and complete reports.
 
@@ -348,10 +363,22 @@ class PhtPlot:
         An undecorated override removes an inherited figure, while a decorated
         override retains the inherited figure's position.
         """
+        return type(self)._class_figures()
+
+    @classmethod
+    def _class_figures(cls) -> list[FigureSpec]:
+        """Return :meth:`iter_figures` for *cls*, without an instance.
+
+        The discovery depends only on the class, so it lives here and the
+        instance method delegates. The preflight needs it for a QC-recipe
+        binding, which holds a class that the QC runner has not yet
+        instantiated. An instance-level :meth:`iter_figures` override is, by
+        construction, not consulted.
+        """
         specs: dict[str, FigureSpec] = {}
         orders: dict[str, int] = {}
         shadowed: set[str] = set()
-        for index, klass in enumerate(type(self).__mro__):
+        for index, klass in enumerate(cls.__mro__):
             for name, attr in vars(klass).items():
                 if name in shadowed:
                     continue
@@ -359,21 +386,22 @@ class PhtPlot:
                 spec = getattr(attr, "__figure_spec__", None)
                 if spec is not None:
                     specs[name] = spec
-                    orders[name] = self._inherited_figure_order(
+                    orders[name] = cls._inherited_figure_order(
                         name, spec.order, klass, index
                     )
         return sorted(specs.values(), key=lambda spec: orders[spec.name])
 
+    @classmethod
     def _inherited_figure_order(
-        self,
+        cls,
         name: str,
         fallback: int,
         selected_class: type,
         selected_index: int,
     ) -> int:
         """Return the inherited definition slot for a selected override."""
-        if selected_class is type(self):
-            ancestors = type(self).__mro__[selected_index + 1 :]
+        if selected_class is cls:
+            ancestors = cls.__mro__[selected_index + 1 :]
         else:
             ancestors = selected_class.__mro__[1:]
 
@@ -388,20 +416,12 @@ class PhtPlot:
 
     def _primary_spec(self) -> FigureSpec:
         """Return the explicit primary figure or the only declared figure."""
-        specs = self.iter_figures()
-        if not specs:
-            raise RuntimeError(
-                f"{type(self).__name__} declares no @figure methods"
-            )
-        primaries = [spec for spec in specs if spec.primary]
-        if primaries:
-            return primaries[0]
-        if len(specs) == 1:
-            return specs[0]
-        raise RuntimeError(
-            f"{type(self).__name__} has multiple @figure methods but none is "
-            "marked primary=True; cannot pick an inspect() figure"
-        )
+        return _select_primary_spec(self.iter_figures(), type(self).__name__)
+
+    @classmethod
+    def _class_primary_spec(cls) -> FigureSpec:
+        """Return :meth:`_primary_spec` for *cls*, without an instance."""
+        return _select_primary_spec(cls._class_figures(), cls.__name__)
 
     def _render_spec(
         self,

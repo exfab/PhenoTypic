@@ -22,6 +22,7 @@ from ._failures import _format_error, record_plot_failure
 from ._output import normalize_plot_output
 from ._writer import (
     PlotPublicationBlocked,
+    _enter_commit,
     _render_page,
     publish_plot_output,
     safe_path_component,
@@ -107,6 +108,12 @@ class PlotCoordinator:
                     dataset=dataset,
                     image_stem=image_stem,
                 )
+            except PlotPublicationBlocked:
+                # A refused guard or fence voids the whole refresh: this
+                # process may no longer own the output. It is not a plot
+                # failure, so it is never recorded -- recording would write
+                # into the tree the guard just refused. Same in every handler.
+                raise
             except Exception as exc:  # noqa: BLE001 - plot output is best-effort
                 if strict:
                     raise
@@ -183,6 +190,8 @@ class PlotCoordinator:
                     else binding.plot.inspect(subject, for_save=True)
                 )
                 self._publish_aggregate(binding, value)
+            except PlotPublicationBlocked:
+                raise
             except Exception as exc:  # noqa: BLE001 - plot output is best-effort
                 self._record_failure(binding, exc, lifecycle="analysis")
         return tuple(dict.fromkeys(refreshed_analysis_ids))
@@ -269,6 +278,8 @@ class PlotCoordinator:
                     review_state=immutable_state,
                 )
                 self._emit_aggregate(binding, subject, lifecycle="qc")
+            except PlotPublicationBlocked:
+                raise
             except Exception as exc:  # noqa: BLE001 - plot output is best-effort
                 if binding is not None:
                     self._record_failure(binding, exc, lifecycle="qc")
@@ -327,6 +338,8 @@ class PlotCoordinator:
                 self._emit_aggregate(
                     binding, subject, lifecycle="qc", log_label="dependent QC"
                 )
+            except PlotPublicationBlocked:
+                raise
             except Exception as exc:  # noqa: BLE001 - plot output is best-effort
                 self._record_failure(
                     binding, exc, lifecycle="qc", log_label="dependent QC"
@@ -350,6 +363,8 @@ class PlotCoordinator:
         try:
             value = binding.plot.inspect(subject, for_save=True)
             self._publish_aggregate(binding, value)
+        except PlotPublicationBlocked:
+            raise
         except Exception as exc:  # noqa: BLE001 - plot output is best-effort
             self._record_failure(
                 binding, exc, lifecycle=lifecycle, log_label=log_label
@@ -457,18 +472,19 @@ class PlotCoordinator:
                 commit_guard=self._commit_guard,
             )
             return
-        # The flat single-page path: every bare figure lands here. Rendered
-        # directly rather than through `publish_plot_output`, which would take
-        # a `.publication.lock` on `base` -- shared by every image in the
-        # dataset -- and name the file from the page key, so every image would
-        # collide on `default.*`. No manifest is written here, so a Chrome-less
-        # machine leaves HTML and no PNG with nothing recording why: that is a
-        # missing capability, not a failure, and the CLI preflight announces it.
-        self._require_publication()
-        base.mkdir(parents=True, exist_ok=True)
+        # The flat single-page path: every bare figure lands here, as
+        # `<stem>-<hash>.{html,png}` directly under `base`. Routing it through
+        # `publish_plot_output` per image, as the multi-page branch above does,
+        # would work, but costs a directory and a `manifest.json` per image and
+        # changes the documented layout to `<stem>-<hash>/default.*`. No
+        # manifest is written here, so a Chrome-less machine leaves HTML and no
+        # PNG with nothing recording why: that is a missing capability, not a
+        # failure, and the CLI preflight announces it.
         figure = output.pages[0].figure
         try:
-            files, errors, _backend = _render_page(
+            self._require_publication()
+            base.mkdir(parents=True, exist_ok=True)
+            files, errors, backend = _render_page(
                 figure,
                 base,
                 output_stem,
@@ -479,6 +495,7 @@ class PlotCoordinator:
             )
         finally:
             FigureAdapter.close(figure)
+        self._remove_stale_sibling(base, output_stem, backend, files)
         # Recorded as raised: the class is the diagnostic, so never re-wrap.
         for error in errors:
             record_plot_failure(
@@ -493,12 +510,43 @@ class PlotCoordinator:
         if not files:
             # Recorded a second time by `emit_image`'s handler, deliberately:
             # the entry above names the renderer, this one the image. It also
-            # keeps `strict=True` meaningful for this path.
+            # keeps `strict=True` meaningful for this path, and `from` keeps
+            # the renderer's exception reachable for a strict caller.
             raise RuntimeError(
                 f"plot {binding.id!r} produced no file for "
                 f"{dataset}/{image_stem}: "
                 + (_format_error(errors[0]) if errors else "no renderer")
-            )
+            ) from (errors[0] if errors else None)
+
+    def _remove_stale_sibling(
+        self,
+        base: Path,
+        output_stem: str,
+        backend: str | None,
+        files: Mapping[str, str],
+    ) -> None:
+        """Remove the rendering this generation did not write.
+
+        With no manifest on this path, a file surviving from an earlier run
+        beside a fresh one reads as this run's: a PNG from a node that had
+        Chrome next to HTML from one that does not, or HTML left behind by a
+        plot that has since switched to matplotlib.
+        """
+        stale: list[str] = []
+        if backend == "plotly" and "png" not in files:
+            stale.append(f"{output_stem}.png")
+        if backend == "mpl":
+            stale.append(f"{output_stem}.html")
+        for name in stale:
+            path = base / name
+            if not path.exists():
+                continue
+            # `_enter_commit`, not `publication_commit`: a fenced removal must
+            # surface as PlotPublicationBlocked like every other commit here,
+            # or the handler would record the fence as a plot failure.
+            with _enter_commit(self._commit_guard):
+                self._require_publication()
+                path.unlink(missing_ok=True)
 
     def _require_publication(self) -> None:
         """Fail closed immediately before a custom image-plot write."""

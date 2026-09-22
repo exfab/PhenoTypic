@@ -171,10 +171,11 @@ def preflight_plot_backends(pipeline: Any) -> list[str]:
     A declared backend whose library will not import IS an error -- that plot
     cannot publish at all.
 
-    Bindings fall into three groups by the backends their visible ``@figure``
-    methods declare. A binding that declares none -- most plots that override
-    ``inspect`` directly -- has a backend decided only at render time, so it is
-    named conditionally in the Chrome warning and never fails the import check.
+    Bindings fall into three groups by the backend of the figure their
+    ``inspect()`` renders (see :func:`_declared_backends`). A binding whose
+    backend is not declared -- most plots that override ``inspect`` directly
+    -- has a backend decided only at render time, so it is named
+    conditionally in the Chrome warning and never fails the import check.
 
     :func:`chrome_available` is called only when some binding declares
     ``plotly`` or declares nothing; a pipeline that can only produce
@@ -193,12 +194,12 @@ def preflight_plot_backends(pipeline: Any) -> list[str]:
     mpl_ids: list[str] = []
     undeclared_ids: list[str] = []
     for binding in pipeline.get_plots():
-        backends = _declared_backends(binding.plot)
-        if "plotly" in backends:
+        backend = _declared_backends(binding.plot)
+        if backend == "plotly":
             plotly_ids.append(binding.id)
-        if "mpl" in backends:
+        elif backend == "mpl":
             mpl_ids.append(binding.id)
-        if not backends:
+        else:
             undeclared_ids.append(binding.id)
 
     _require_importable("matplotlib", "mpl", mpl_ids)
@@ -222,26 +223,49 @@ def preflight_plot_backends(pipeline: Any) -> list[str]:
     return [" ".join(parts)]
 
 
-def _declared_backends(plot: Any) -> set[str]:
-    """Return the backends *plot*'s visible ``@figure`` methods declare."""
-    iter_figures = getattr(plot, "iter_figures", None)
-    if callable(iter_figures):
-        return {spec.backend for spec in iter_figures()}
-    # A QC-recipe binding holds its QcRecipeEntry: the PlotQc instance exists
-    # only once the QC runner has analyzed the check. normalize_plot_bindings
-    # admits no other non-PhtPlot, and requires ``cls`` to subclass PlotQc.
-    # Same shadowing rule as PhtPlot.iter_figures, without the ordering.
-    backends: set[str] = set()
-    shadowed: set[str] = set()
-    for klass in plot.cls.__mro__:
-        for name, attr in vars(klass).items():
-            if name in shadowed:
-                continue
-            shadowed.add(name)
-            spec = getattr(attr, "__figure_spec__", None)
-            if spec is not None:
-                backends.add(spec.backend)
-    return backends
+def _declared_backends(plot: Any) -> str | None:
+    """Return the backend *plot*'s ``inspect()`` declares it renders, if any.
+
+    ``inspect()`` publishes ONE figure, so a binding is classified by that
+    figure alone -- not by the union of its ``@figure`` methods, which named a
+    plot with an mpl primary and a Plotly secondary as "HTML only, without
+    PNG" when it publishes a PNG. Three steps, in order:
+
+    1. The effective ``inspect`` itself carries ``@figure``: its declared
+       backend. ``MeasureSymZones`` and ``MeasureOrientationZones`` decorate
+       their override, so the override IS the declaration, enforced by the
+       wrapper at render time.
+    2. The effective ``inspect`` is :meth:`PhtPlot.inspect`: the primary
+       figure's backend, since that is what it renders. A class with no
+       selectable primary (none declared, or several and none marked) raises
+       from ``inspect`` anyway, and is undeclared here.
+    3. Any other override: ``None``. It renders what it chooses at run time,
+       whatever its ``@figure`` methods declare.
+
+    A QC-recipe binding holds its ``QcRecipeEntry``: the ``PlotQc`` instance
+    exists only once the QC runner has analyzed the check, so the same rule is
+    applied to ``entry.cls`` without instantiating it.
+    normalize_plot_bindings admits no other non-PhtPlot, and requires ``cls``
+    to subclass PlotQc.
+    """
+    from phenotypic.abc_.plotting import PhtPlot
+
+    if isinstance(plot, PhtPlot):
+        owner: Any = type(plot)
+        primary_spec = plot._primary_spec
+    else:
+        owner = plot.cls
+        primary_spec = owner._class_primary_spec
+    effective_inspect = owner.inspect
+    declared = getattr(effective_inspect, "__figure_spec__", None)
+    if declared is not None:
+        return declared.backend
+    if effective_inspect is not PhtPlot.inspect:
+        return None
+    try:
+        return primary_spec().backend
+    except RuntimeError:
+        return None
 
 
 def _require_importable(module: str, backend: str, binding_ids: list[str]) -> None:

@@ -8,8 +8,9 @@ import logging
 import os
 import re
 import uuid
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from typing import Any
 
 from phenotypic.sdk_._file_locking import exclusive_path_lock
@@ -41,6 +42,38 @@ _UNSAFE_COMPONENT = re.compile(r"[^A-Za-z0-9._-]+")
 
 class PlotPublicationBlocked(RuntimeError):
     """Raised when a late publication predicate rejects a plot write."""
+
+
+@contextmanager
+def _enter_commit(commit_guard: CommitGuard | None) -> Iterator[None]:
+    """Enter *commit_guard*, reporting a refusal as ``PlotPublicationBlocked``.
+
+    Only ENTERING the guard is translated. A guard that will not admit the
+    commit -- the staged worker's lifecycle fence
+    (``SlurmGenerationInactiveError``), or its lock timing out
+    (``ArtifactLockTimeout``) -- means this process cannot confirm it still
+    owns the output, so the write is void rather than a plot failure. The
+    original is kept as ``__cause__``, where ``slurm_generation_inactive_cause``
+    finds it, and this layer never imports the ``_cli`` exception.
+
+    The body is NOT translated: an ``os.replace`` that fails inside the guard is
+    a genuine write error and stays one.
+
+    Note what this costs on the CLI full path: a lock timeout used to lose one
+    plot while the image continued; it now fails the image, like any other
+    commit that cannot confirm ownership of the run.
+    """
+    with ExitStack() as stack:
+        try:
+            stack.enter_context(publication_commit(commit_guard))
+        except PlotPublicationBlocked:
+            raise
+        except Exception as exc:  # noqa: BLE001 - any refusal voids the write
+            raise PlotPublicationBlocked(
+                "Plot publication blocked because the commit guard refused: "
+                f"{_format_error(exc)}"
+            ) from exc
+        yield
 
 
 def safe_path_component(value: str) -> str:
@@ -76,7 +109,7 @@ def _atomic_write(
     temporary = destination.parent / f".{destination.name}.{uuid.uuid4().hex}.tmp"
     try:
         write(temporary)
-        with publication_commit(commit_guard):
+        with _enter_commit(commit_guard):
             _require_plot_publication(publication_guard)
             os.replace(temporary, destination)
     finally:
@@ -387,7 +420,7 @@ def _publish_plot_output_locked(
         temporary_manifest.write_text(
             json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
         )
-        with publication_commit(commit_guard):
+        with _enter_commit(commit_guard):
             _require_plot_publication(publication_guard)
             os.replace(temporary_manifest, manifest_path)
     finally:
