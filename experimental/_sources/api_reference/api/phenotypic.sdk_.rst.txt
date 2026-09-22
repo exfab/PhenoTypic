@@ -90,6 +90,8 @@
       datasets_needing_migration
       overlays_dir
       plots_dir
+      plot_failures_jsonl_path
+      plotlyjs_bundle_path
       curation_labels_parquet_path
       custom_categories_json_path
       default_output_dir_name

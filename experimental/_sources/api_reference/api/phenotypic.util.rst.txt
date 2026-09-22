@@ -21,6 +21,7 @@
       split_measurements
       robust_color_center
       medoid_ciede2000
+      candidate_medoid
       delta_e2000_spread
       hsv_to_cone
       cone_to_hsv
@@ -38,6 +39,7 @@
       :template: class.rst
       :nosignatures:
    
+      MedoidResult
       ImageMetricsCalculator
       NoiseMetrics
       ContrastMetrics

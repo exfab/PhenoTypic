@@ -598,7 +598,8 @@
   <h1>Source code for phenotypic.measure._measure_color</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
@@ -607,18 +608,21 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">model_validator</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ndimage</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureFeatures</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasurementInfo</span><span class="p">,</span> <span class="n">OBJECT</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorXYZ</span><span class="p">,</span> <span class="n">Colorxy</span><span class="p">,</span> <span class="n">ColorLab</span><span class="p">,</span> <span class="n">ColorHSV</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.util</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">robust_color_center</span><span class="p">,</span>
-    <span class="n">medoid_ciede2000</span><span class="p">,</span>
+    <span class="n">DEFAULT_MEDOID_CANDIDATES</span><span class="p">,</span>
+    <span class="n">MedoidCandidates</span><span class="p">,</span>
+    <span class="n">candidate_medoid</span><span class="p">,</span>
+    <span class="n">cone_to_hsv</span><span class="p">,</span>
     <span class="n">delta_e2000_spread</span><span class="p">,</span>
     <span class="n">hsv_to_cone</span><span class="p">,</span>
-    <span class="n">cone_to_hsv</span><span class="p">,</span>
     <span class="n">lab_to_srgb_hex</span><span class="p">,</span>
+    <span class="n">robust_color_center</span><span class="p">,</span>
 <span class="p">)</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
@@ -633,7 +637,10 @@
 
 <span class="sd">    - **CIE L*a*b*** -- ΔE76 geometric-median center, ΔE2000 medoid center,</span>
 <span class="sd">      ΔE2000 within-colony consistency (median/mean/P95 from the medoid),</span>
-<span class="sd">      ``LabTotalVariance``, and an sRGB hex swatch (plot-only).</span>
+<span class="sd">      ``LabTotalVariance``, and an sRGB hex swatch (plot-only). The medoid is</span>
+<span class="sd">      computed from the colony&#39;s own pixels only, deterministically -- the same</span>
+<span class="sd">      estimator ``CalibrateColorRpcc`` uses to read a colour-checker tile, so a</span>
+<span class="sd">      calibrated colour and a measured colony colour are the same statistic.</span>
 <span class="sd">    - **HSV** -- a cone-embedded robust center (circular-correct) and</span>
 <span class="sd">      ``HSVConeVariance``.</span>
 
@@ -650,9 +657,23 @@
 <span class="sd">        geomedian_max_iter: Weiszfeld iteration cap for the L*a*b* geometric</span>
 <span class="sd">            median. Default ``50``.</span>
 <span class="sd">        geomedian_tol: Weiszfeld convergence tolerance. Default ``1e-4``.</span>
-<span class="sd">        medoid_max_pixels: Subsample cap for the O(N^2) ΔE2000 medoid selection;</span>
-<span class="sd">            consistency scalars still use all pixels. Default ``1000``.</span>
-<span class="sd">        random_seed: Seed for reproducible medoid subsampling. Default ``0``.</span>
+<span class="sd">        medoid_candidates: Number of candidate pixels scored for the ΔE2000</span>
+<span class="sd">            medoid: those nearest the colony&#39;s L*a*b* geometric median, found</span>
+<span class="sd">            by a tightly converged Weiszfeld run of the medoid search&#39;s own</span>
+<span class="sd">            (200 iterations, tolerance ``1e-6``). That centre is not the</span>
+<span class="sd">            reported ``*GeoMedian`` value, which uses the looser</span>
+<span class="sd">            ``geomedian_max_iter``/``geomedian_tol``; those two parameters do</span>
+<span class="sd">            not affect the medoid.</span>
+<span class="sd">            Each candidate is scored against **every** colony pixel, so cost is</span>
+<span class="sd">            linear in colony size and no pixel is sampled at random: the same</span>
+<span class="sd">            colony always yields the same medoid. If the winner lands near the</span>
+<span class="sd">            edge of the candidate set (a colony whose colour cloud is not</span>
+<span class="sd">            unimodal, e.g. a sectored colony), the search is re-run once with</span>
+<span class="sd">            four times as many candidates. Lowering this below the default</span>
+<span class="sd">            weakens that safeguard. Default ``256``. The removed</span>
+<span class="sd">            ``medoid_max_pixels`` and ``random_seed`` fields are ignored with a</span>
+<span class="sd">            ``FutureWarning`` -- shown by default, unlike a</span>
+<span class="sd">            ``DeprecationWarning`` -- when a saved pipeline still sets them.</span>
 
 <span class="sd">    Examples:</span>
 <span class="sd">        Measure robust colorimetric statistics for a detected plate:</span>
@@ -674,8 +695,31 @@
     <span class="n">include_xy</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">geomedian_max_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span>
     <span class="n">geomedian_tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-4</span>
-    <span class="n">medoid_max_pixels</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span>
-    <span class="n">random_seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">medoid_candidates</span><span class="p">:</span> <span class="n">MedoidCandidates</span> <span class="o">=</span> <span class="n">DEFAULT_MEDOID_CANDIDATES</span>
+
+    <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_drop_legacy_medoid_fields</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Accept pipelines saved before the medoid became deterministic.</span>
+
+<span class="sd">        ``medoid_max_pixels`` and ``random_seed`` configured a random</span>
+<span class="sd">        subsample that no longer exists.  Dropping them keeps old JSON</span>
+<span class="sd">        loadable under ``extra=&quot;forbid&quot;``.  The warning is a</span>
+<span class="sd">        ``FutureWarning`` because it is aimed at the user rerunning a saved</span>
+<span class="sd">        pipeline: Python&#39;s default filters hide a ``DeprecationWarning`` not</span>
+<span class="sd">        raised from ``__main__``, and this one is attributed to pydantic.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">legacy</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;medoid_max_pixels&quot;</span><span class="p">,</span> <span class="s2">&quot;random_seed&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">data</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">legacy</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;MeasureColor ignores </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">legacy</span><span class="p">)</span><span class="si">}</span><span class="s2">: the ΔE2000 &quot;</span>
+                        <span class="s2">&quot;medoid is now deterministic (candidate_medoid). Use &quot;</span>
+                        <span class="s2">&quot;medoid_candidates to size the candidate set.&quot;</span><span class="p">,</span>
+                        <span class="ne">FutureWarning</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">legacy</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">data</span>
 
 <div class="viewcode-block" id="MeasureColor.get_measurement_infoclasses">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.measure.MeasureColor.html#phenotypic.measure.MeasureColor.get_measurement_infoclasses">[docs]</a>
@@ -734,11 +778,19 @@
         <span class="k">return</span> <span class="p">{</span><span class="n">col</span><span class="p">:</span> <span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">]</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_robust_lab_row</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lab_px</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">colour</span>
+
         <span class="n">gm</span> <span class="o">=</span> <span class="n">robust_color_center</span><span class="p">(</span>
             <span class="n">lab_px</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">geomedian_max_iter</span><span class="p">,</span> <span class="n">tol</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">geomedian_tol</span>
         <span class="p">)</span>
-        <span class="n">medoid</span><span class="p">,</span> <span class="n">deltas</span> <span class="o">=</span> <span class="n">medoid_ciede2000</span><span class="p">(</span>
-            <span class="n">lab_px</span><span class="p">,</span> <span class="n">max_pixels</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">medoid_max_pixels</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span>
+        <span class="c1"># lab_px is this label&#39;s pixels only (the caller masks the bbox), so a</span>
+        <span class="c1"># neighbour sharing the bounding box never enters the medoid search.</span>
+        <span class="n">medoid</span> <span class="o">=</span> <span class="n">candidate_medoid</span><span class="p">(</span><span class="n">lab_px</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">medoid_candidates</span><span class="p">)</span><span class="o">.</span><span class="n">lab</span>
+        <span class="n">deltas</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">colour</span><span class="o">.</span><span class="n">difference</span><span class="o">.</span><span class="n">delta_E_CIE2000</span><span class="p">(</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">broadcast_to</span><span class="p">(</span><span class="n">medoid</span><span class="p">,</span> <span class="n">lab_px</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="n">lab_px</span>
+            <span class="p">))</span>
+            <span class="k">if</span> <span class="n">lab_px</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="n">de_median</span><span class="p">,</span> <span class="n">de_mean</span><span class="p">,</span> <span class="n">de_p95</span> <span class="o">=</span> <span class="n">delta_e2000_spread</span><span class="p">(</span><span class="n">deltas</span><span class="p">)</span>
         <span class="n">total_var</span> <span class="o">=</span> <span class="p">(</span>

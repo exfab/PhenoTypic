@@ -635,10 +635,14 @@
 <code class="docutils literal notranslate"><span class="pre">phenotypic.abc_.plotting</span></code>. Add the same configured object to its normal pipeline
 slot and to <code class="docutils literal notranslate"><span class="pre">ImagePipeline(plots=[...])</span></code>; the serialized plot binding preserves that
 shared identity.</p>
+<section id="declare-figures-with-figure">
+<h2>Declare figures with <code class="docutils literal notranslate"><span class="pre">&#64;figure</span></code><a class="headerlink" href="#declare-figures-with-figure" title="Link to this heading">#</a></h2>
+<p>Write each figure as a method and mark it with the <code class="docutils literal notranslate"><span class="pre">&#64;figure</span></code> decorator. The
+histogram below shows how colony area is distributed across a plate:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">ConfigDict</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">PlotMeas</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">PlotMeas</span><span class="p">,</span> <span class="n">figure</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">PlotColonyArea</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">,</span> <span class="n">PlotMeas</span><span class="p">):</span>
@@ -646,27 +650,341 @@ shared identity.</p>
 
     <span class="n">area_column</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Size_Area&quot;</span>
 
+    <span class="nd">@figure</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Colony area&quot;</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;plotly&quot;</span><span class="p">,</span> <span class="n">primary</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">area_histogram</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">measurements</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">(</span>
+            <span class="n">go</span><span class="o">.</span><span class="n">Histogram</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">measurements</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">area_column</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">area_column</span><span class="p">)</span>
+        <span class="p">)</span>
+</pre></div>
+</div>
+<p>Pass an instance to <code class="docutils literal notranslate"><span class="pre">plots=</span></code> and the pipeline publishes it every time the
+measurement mirror is updated. In a notebook, call <code class="docutils literal notranslate"><span class="pre">inspect()</span></code> directly:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_synth_yeast_plate</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureShape</span><span class="p">,</span> <span class="n">MeasureSize</span>
+
+<span class="n">pipeline</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span>
+    <span class="n">ops</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;detect&quot;</span><span class="p">:</span> <span class="n">OtsuDetector</span><span class="p">()},</span>
+    <span class="n">meas</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="n">MeasureSize</span><span class="p">(),</span> <span class="s2">&quot;shape&quot;</span><span class="p">:</span> <span class="n">MeasureShape</span><span class="p">()},</span>
+    <span class="n">plots</span><span class="o">=</span><span class="p">[</span><span class="n">PlotColonyArea</span><span class="p">()],</span>
+<span class="p">)</span>
+
+<span class="n">plate</span> <span class="o">=</span> <span class="n">load_synth_yeast_plate</span><span class="p">()</span>
+<span class="n">measurements</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">apply_and_measure</span><span class="p">(</span><span class="n">plate</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">PlotColonyArea</span><span class="p">()</span><span class="o">.</span><span class="n">inspect</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The decorator does three things for each figure method:</p>
+<ul class="simple">
+<li><p><strong>It applies the house theme.</strong> A Plotly figure is themed after the method
+returns it. A matplotlib figure is built inside the PhenoTypic style context,
+because matplotlib styling has to be in effect while the figure is drawn.</p></li>
+<li><p><strong>It checks what the method returns.</strong> If a method declared
+<code class="docutils literal notranslate"><span class="pre">backend=&quot;plotly&quot;</span></code> returns a matplotlib figure, or the reverse, rendering
+raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>. A method that returns <code class="docutils literal notranslate"><span class="pre">None</span></code> or an array raises the same
+error. The figure is never converted and the check never falls back to the
+other backend.</p></li>
+<li><p><strong>It declares the backend before any figure is drawn,</strong> which is what lets
+the CLI check that backend before it processes a single plate (see
+Preflight, below).</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">backend</span></code> is required and has no default. Leaving it out raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code>
+when the class is defined. <code class="docutils literal notranslate"><span class="pre">inspect()</span></code> renders the figure marked
+<code class="docutils literal notranslate"><span class="pre">primary=True</span></code>, or the only figure if the class declares just one. <code class="docutils literal notranslate"><span class="pre">report()</span></code>
+composes every declared figure into one Plotly figure, or builds a notebook
+dashboard when a figure declares <code class="docutils literal notranslate"><span class="pre">controls</span></code>.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">PlotImage</span></code> for per-image output, <code class="docutils literal notranslate"><span class="pre">PlotMeas</span></code> for the post-applied measurement
+mirror, <code class="docutils literal notranslate"><span class="pre">PlotAnalysis</span></code> for a named analysis table, and <code class="docutils literal notranslate"><span class="pre">PlotQc</span></code> for QC-aware output.
+The pipeline calls <code class="docutils literal notranslate"><span class="pre">inspect(subject,</span> <span class="pre">for_save=True)</span></code>. The decorated method
+receives <code class="docutils literal notranslate"><span class="pre">for_save</span></code> only when it declares a parameter of that name, so declare
+one if the saved figure should differ from the interactive one, for example by
+showing every overlay trace instead of hiding some behind the legend.</p>
+<section id="matplotlib-figures">
+<h3>Matplotlib figures<a class="headerlink" href="#matplotlib-figures" title="Link to this heading">#</a></h3>
+<p>Declare <code class="docutils literal notranslate"><span class="pre">backend=&quot;mpl&quot;</span></code> and return a <code class="docutils literal notranslate"><span class="pre">matplotlib.figure.Figure</span></code>. Construct it
+explicitly rather than through <code class="docutils literal notranslate"><span class="pre">pyplot</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.figure</span><span class="w"> </span><span class="kn">import</span> <span class="n">Figure</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">ConfigDict</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">PlotMeas</span><span class="p">,</span> <span class="n">figure</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PlotColonyCircularity</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">,</span> <span class="n">PlotMeas</span><span class="p">):</span>
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">extra</span><span class="o">=</span><span class="s2">&quot;forbid&quot;</span><span class="p">)</span>
+
+    <span class="n">circularity_column</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Shape_Circularity&quot;</span>
+
+    <span class="nd">@figure</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Colony circularity&quot;</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;mpl&quot;</span><span class="p">,</span> <span class="n">primary</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">circularity_histogram</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">measurements</span><span class="p">):</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">Figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">measurements</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">circularity_column</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">(),</span> <span class="n">bins</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">circularity_column</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Colonies&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">fig</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">report()</span></code> cannot compose matplotlib figures. It raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> for any
+class that declares an <code class="docutils literal notranslate"><span class="pre">mpl</span></code> figure, even a class whose only figure is
+matplotlib. Call <code class="docutils literal notranslate"><span class="pre">inspect()</span></code>, which is unaffected, or override <code class="docutils literal notranslate"><span class="pre">report()</span></code> with a
+plot-specific implementation.</p>
+</section>
+<section id="decorating-an-inspect-override">
+<h3>Decorating an <code class="docutils literal notranslate"><span class="pre">inspect()</span></code> override<a class="headerlink" href="#decorating-an-inspect-override" title="Link to this heading">#</a></h3>
+<p>A class that needs its own <code class="docutils literal notranslate"><span class="pre">inspect()</span></code> signature can decorate the override
+itself. The override then declares its backend just as a figure method does,
+and it is themed and checked in the same way. <code class="docutils literal notranslate"><span class="pre">MeasureSymZones</span></code> decorates its
+<code class="docutils literal notranslate"><span class="pre">inspect()</span></code> this way. A smaller example plots colony area against circularity:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">ConfigDict</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">PlotMeas</span><span class="p">,</span> <span class="n">figure</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PlotAreaVsCircularity</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">,</span> <span class="n">PlotMeas</span><span class="p">):</span>
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">extra</span><span class="o">=</span><span class="s2">&quot;forbid&quot;</span><span class="p">)</span>
+
+    <span class="nd">@figure</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Area against circularity&quot;</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;plotly&quot;</span><span class="p">,</span> <span class="n">primary</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">inspect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">measurements</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">for_save</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">measurements</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;PlotAreaVsCircularity requires measurements&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">(</span>
+            <span class="n">go</span><span class="o">.</span><span class="n">Scatter</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">measurements</span><span class="p">[</span><span class="s2">&quot;Size_Area&quot;</span><span class="p">],</span>
+                <span class="n">y</span><span class="o">=</span><span class="n">measurements</span><span class="p">[</span><span class="s2">&quot;Shape_Circularity&quot;</span><span class="p">],</span>
+                <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;markers&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="escape-hatch-override-inspect-without-the-decorator">
+<h2>Escape hatch: override <code class="docutils literal notranslate"><span class="pre">inspect()</span></code> without the decorator<a class="headerlink" href="#escape-hatch-override-inspect-without-the-decorator" title="Link to this heading">#</a></h2>
+<p>When <code class="docutils literal notranslate"><span class="pre">inspect()</span></code> must return several pages, or compose figures in a way no
+single figure method can, override it and return a <code class="docutils literal notranslate"><span class="pre">PlotOutput</span></code> of
+deterministically keyed <code class="docutils literal notranslate"><span class="pre">PlotPage</span></code> entries. Import both output contracts from
+<code class="docutils literal notranslate"><span class="pre">phenotypic.abc_.plotting</span></code>. <code class="docutils literal notranslate"><span class="pre">phenotypic.plotting</span></code> contains only the
+ready-to-use plot models.</p>
+<p>An undecorated override bypasses what the decorator does: the figures it
+returns are not themed, their backend is not checked, and the CLI preflight
+classifies the plot as “undeclared”. You can keep most of that by building each
+page from decorated figure methods, as this two-page morphology report does:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">ConfigDict</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">PlotMeas</span><span class="p">,</span> <span class="n">PlotOutput</span><span class="p">,</span> <span class="n">PlotPage</span><span class="p">,</span> <span class="n">figure</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PlotColonyMorphology</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">,</span> <span class="n">PlotMeas</span><span class="p">):</span>
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">extra</span><span class="o">=</span><span class="s2">&quot;forbid&quot;</span><span class="p">)</span>
+
+    <span class="nd">@figure</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Colony area&quot;</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;plotly&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">area</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">measurements</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">(</span><span class="n">go</span><span class="o">.</span><span class="n">Histogram</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">measurements</span><span class="p">[</span><span class="s2">&quot;Size_Area&quot;</span><span class="p">]))</span>
+
+    <span class="nd">@figure</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Colony circularity&quot;</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;plotly&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">circularity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">measurements</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">(</span><span class="n">go</span><span class="o">.</span><span class="n">Histogram</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">measurements</span><span class="p">[</span><span class="s2">&quot;Shape_Circularity&quot;</span><span class="p">]))</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">inspect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">for_save</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">overrides</span><span class="p">):</span>
         <span class="k">del</span> <span class="n">for_save</span><span class="p">,</span> <span class="n">overrides</span>
         <span class="k">if</span> <span class="n">subject</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;PlotColonyArea requires measurements&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">(</span>
-            <span class="n">go</span><span class="o">.</span><span class="n">Histogram</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">subject</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">area_column</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">area_column</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;PlotColonyMorphology requires measurements&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">PlotOutput</span><span class="p">(</span>
+            <span class="n">pages</span><span class="o">=</span><span class="p">(</span>
+                <span class="n">PlotPage</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;area&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Colony area&quot;</span><span class="p">,</span> <span class="n">figure</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">area</span><span class="p">(</span><span class="n">subject</span><span class="p">)),</span>
+                <span class="n">PlotPage</span><span class="p">(</span>
+                    <span class="n">key</span><span class="o">=</span><span class="s2">&quot;circularity&quot;</span><span class="p">,</span>
+                    <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Colony circularity&quot;</span><span class="p">,</span>
+                    <span class="n">figure</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">circularity</span><span class="p">(</span><span class="n">subject</span><span class="p">),</span>
+                <span class="p">),</span>
+            <span class="p">)</span>
         <span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">overrides</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">inspect</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="o">**</span><span class="n">overrides</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Use <code class="docutils literal notranslate"><span class="pre">PlotImage</span></code> for per-image output, <code class="docutils literal notranslate"><span class="pre">PlotMeas</span></code> for the post-applied measurement
-mirror, <code class="docutils literal notranslate"><span class="pre">PlotAnalysis</span></code> for a named analysis table, and <code class="docutils literal notranslate"><span class="pre">PlotQc</span></code> for QC-aware output.
-<code class="docutils literal notranslate"><span class="pre">inspect()</span></code> returns the primary saveable figure. <code class="docutils literal notranslate"><span class="pre">report()</span></code> returns the complete
-interactive report. Plotly and Matplotlib figures are both accepted by the CLI
-publisher.</p>
-<p>The CLI writes plots below <code class="docutils literal notranslate"><span class="pre">deliverables/plots/&lt;ClassName&gt;/</span></code>. A multi-page plot may
-return <code class="docutils literal notranslate"><span class="pre">PlotOutput</span></code> with deterministically keyed <code class="docutils literal notranslate"><span class="pre">PlotPage</span></code> entries. Import both
-output contracts from <code class="docutils literal notranslate"><span class="pre">phenotypic.abc_.plotting</span></code>; <code class="docutils literal notranslate"><span class="pre">phenotypic.plotting</span></code> contains
-only the ready-to-use plot models.</p>
+<p>Because the pages come from decorated methods, each one is themed and
+backend-checked, and <code class="docutils literal notranslate"><span class="pre">report()</span></code> still composes them. A class that declares no
+<code class="docutils literal notranslate"><span class="pre">&#64;figure</span></code> methods at all must also override <code class="docutils literal notranslate"><span class="pre">report()</span></code>, because the inherited
+one raises <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code> when there is nothing to compose.</p>
+</section>
+<section id="where-plots-are-published">
+<h2>Where plots are published<a class="headerlink" href="#where-plots-are-published" title="Link to this heading">#</a></h2>
+<p>The CLI publishes every plot below <code class="docutils literal notranslate"><span class="pre">deliverables/plots/&lt;id&gt;/</span></code>, where <code class="docutils literal notranslate"><span class="pre">&lt;id&gt;</span></code> is
+the plot’s binding id. The id depends on how the plot entered <code class="docutils literal notranslate"><span class="pre">plots=</span></code>:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>The plot object is…</p></th>
+<th class="head"><p>Binding id</p></th>
+<th class="head"><p>Directory</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>owned by a keyed slot (<code class="docutils literal notranslate"><span class="pre">ops</span></code>, <code class="docutils literal notranslate"><span class="pre">meas</span></code>, <code class="docutils literal notranslate"><span class="pre">post</span></code>, <code class="docutils literal notranslate"><span class="pre">filters</span></code>, <code class="docutils literal notranslate"><span class="pre">qc</span></code>)</p></td>
+<td><p>the slot key</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">meas={&quot;sym&quot;:</span> <span class="pre">sym}</span></code> → <code class="docutils literal notranslate"><span class="pre">plots/sym/</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>the pipeline’s <code class="docutils literal notranslate"><span class="pre">model</span></code></p></td>
+<td><p>the class name</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">model=LogGrowthModel(...)</span></code> → <code class="docutils literal notranslate"><span class="pre">plots/LogGrowthModel/</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>not in any slot (inline)</p></td>
+<td><p>the class name</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">plots=[PlotColonyArea()]</span></code> → <code class="docutils literal notranslate"><span class="pre">plots/PlotColonyArea/</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The pipeline matches a plot to a slot by identity, so pass the same object to
+both:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureSymZones</span>
+
+<span class="n">sym</span> <span class="o">=</span> <span class="n">MeasureSymZones</span><span class="p">()</span>
+<span class="n">pipeline</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span>
+    <span class="n">ops</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;detect&quot;</span><span class="p">:</span> <span class="n">OtsuDetector</span><span class="p">()},</span>
+    <span class="n">meas</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;sym&quot;</span><span class="p">:</span> <span class="n">sym</span><span class="p">},</span>
+    <span class="n">plots</span><span class="o">=</span><span class="p">[</span><span class="n">sym</span><span class="p">],</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">model</span></code> slot is the exception among pipeline-owned objects. It holds one
+object with no key, so its binding falls back to the class name, as an inline
+plot’s does.</p>
+<p>Inside <code class="docutils literal notranslate"><span class="pre">plots/&lt;id&gt;/</span></code>, the layout depends on the lifecycle and on what
+<code class="docutils literal notranslate"><span class="pre">inspect()</span></code> returned:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Output</p></th>
+<th class="head"><p>Published as</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PlotImage</span></code>, one figure</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&lt;dataset&gt;/&lt;stem&gt;-&lt;hash&gt;.html</span></code> and <code class="docutils literal notranslate"><span class="pre">.png</span></code>, with no manifest</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PlotImage</span></code>, a multi-page <code class="docutils literal notranslate"><span class="pre">PlotOutput</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&lt;dataset&gt;/&lt;stem&gt;-&lt;hash&gt;/</span></code>, holding the pages and a <code class="docutils literal notranslate"><span class="pre">manifest.json</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PlotMeas</span></code>, <code class="docutils literal notranslate"><span class="pre">PlotAnalysis</span></code>, <code class="docutils literal notranslate"><span class="pre">PlotQc</span></code></p></td>
+<td><p>the pages and a <code class="docutils literal notranslate"><span class="pre">manifest.json</span></code>, directly in <code class="docutils literal notranslate"><span class="pre">plots/&lt;id&gt;/</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">&lt;hash&gt;</span></code> is derived from the original dataset and image name, so two plates
+whose names differ only in characters that are unsafe in a filename never
+overwrite each other. A page’s filename comes from its <code class="docutils literal notranslate"><span class="pre">label</span></code>, or its <code class="docutils literal notranslate"><span class="pre">key</span></code>
+when it has no label. A single figure returned from an aggregate plot is the
+page <code class="docutils literal notranslate"><span class="pre">default</span></code>, so <code class="docutils literal notranslate"><span class="pre">PlotColonyArea</span></code> publishes <code class="docutils literal notranslate"><span class="pre">plots/PlotColonyArea/default.html</span></code>.</p>
+<p>The tree also contains hidden <code class="docutils literal notranslate"><span class="pre">.lock</span></code> files, such as <code class="docutils literal notranslate"><span class="pre">.publication.lock</span></code> in
+each manifest directory and <code class="docutils literal notranslate"><span class="pre">.plotlyjs.lock</span></code> and <code class="docutils literal notranslate"><span class="pre">.failures.lock</span></code> at the
+plots root. They serialise concurrent writers, for example SLURM workers
+publishing into the same run, and are not plot output.</p>
+</section>
+<section id="two-renderings">
+<h2>Two renderings<a class="headerlink" href="#two-renderings" title="Link to this heading">#</a></h2>
+<p>A Plotly binding always publishes an interactive <code class="docutils literal notranslate"><span class="pre">.html</span></code> page. It publishes a
+<code class="docutils literal notranslate"><span class="pre">.png</span></code> as well when Kaleido can drive Chrome to rasterise the figure. A
+matplotlib binding publishes <code class="docutils literal notranslate"><span class="pre">.png</span></code> only, because matplotlib has no HTML export.</p>
+<p>Chrome (or Chromium) is an external dependency that <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">sync</span></code> does not install.
+Fetch one with <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">plotly_get_chrome</span></code>, or point the <code class="docutils literal notranslate"><span class="pre">BROWSER_PATH</span></code>
+environment variable at a browser you already have. Without it, Plotly plots
+still publish their HTML pages and the run completes.</p>
+<p>The HTML pages do not each embed Plotly’s JavaScript. The run writes one
+<code class="docutils literal notranslate"><span class="pre">plotly.min.js</span></code> at <code class="docutils literal notranslate"><span class="pre">deliverables/plots/plotly.min.js</span></code>, and every page loads it
+through a relative path such as <code class="docutils literal notranslate"><span class="pre">../../plotly.min.js</span></code>. If you copy a plot
+directory somewhere else, copy <code class="docutils literal notranslate"><span class="pre">plotly.min.js</span></code> too and keep it at the same
+relative position, or the pages will open blank.</p>
+<p>A rerun removes the other rendering of each page it publishes when that
+rendering is left over from an earlier run. A PNG written on a node that had
+Chrome is removed when the plot is rerun on a node without it, and an HTML page
+is removed when a plot switches to matplotlib. Otherwise the leftover would sit
+beside the new file as if this run had produced it. This applies to
+single-figure image plots and to every page a new manifest lists.</p>
+<p>The cleanup covers only those pages. If a page key from an earlier run no
+longer appears, or a page fails on the rerun, its old files stay on disk.
+In a manifest directory, trust <code class="docutils literal notranslate"><span class="pre">manifest.json</span></code> rather than a directory listing
+for what the latest run published.</p>
+</section>
+<section id="preflight">
+<h2>Preflight<a class="headerlink" href="#preflight" title="Link to this heading">#</a></h2>
+<p>Before any image work begins, CLI validation checks what the configured plots
+can render:</p>
+<ul class="simple">
+<li><p><strong>Chrome missing</strong> is not an error. Validation logs one warning that names
+the Plotly bindings that will publish HTML without PNG, and suggests
+<code class="docutils literal notranslate"><span class="pre">plotly_get_chrome</span></code> to install it. For single-figure image plots, which have no
+manifest, this warning is the only record of why no PNG exists.</p></li>
+<li><p><strong>A declared backend whose library cannot be imported</strong> fails validation
+with <code class="docutils literal notranslate"><span class="pre">Plot</span> <span class="pre">backend</span> <span class="pre">unavailable:</span> <span class="pre">…</span></code>, naming the bindings that declared it.
+Such a plot could not publish anything, so the run stops before it starts.</p></li>
+</ul>
+<p>Each binding is classified by the figure its <code class="docutils literal notranslate"><span class="pre">inspect()</span></code> renders. If <code class="docutils literal notranslate"><span class="pre">inspect</span></code>
+itself carries <code class="docutils literal notranslate"><span class="pre">&#64;figure</span></code>, that is its backend. Otherwise, if the class uses the
+inherited <code class="docutils literal notranslate"><span class="pre">inspect()</span></code>, its primary figure’s backend is used. An undecorated
+<code class="docutils literal notranslate"><span class="pre">inspect()</span></code> override is “undeclared”: its backend is known only once it
+renders, so the Chrome warning names it conditionally and the import check
+never fails it.</p>
+</section>
+<section id="the-plot-manifest">
+<h2>The plot manifest<a class="headerlink" href="#the-plot-manifest" title="Link to this heading">#</a></h2>
+<p>Every directory holding a <code class="docutils literal notranslate"><span class="pre">manifest.json</span></code> records what the latest publication
+wrote there. The manifest is at <code class="docutils literal notranslate"><span class="pre">schema_version:</span> <span class="pre">2</span></code>:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;schema_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;plot_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PlotColonyMorphology&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;class&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PlotColonyMorphology&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;renderers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;html&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;available&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;png&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;unavailable: chrome not found&quot;</span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;pages&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;area&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Colony area&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;backend&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;plotly&quot;</span><span class="p">,</span>
+<span class="w">     </span><span class="nt">&quot;files&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;html&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Colony-area.html&quot;</span><span class="p">},</span><span class="w"> </span><span class="nt">&quot;metadata&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{}}</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;failed&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">&quot;key&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;circularity&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;label&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Colony circularity&quot;</span><span class="p">,</span>
+<span class="w">     </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;OSError: [Errno 28] No space left on device&quot;</span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">renderers</span></code> records what this machine could render for the directory, not
+what landed on disk. A Plotly directory has <code class="docutils literal notranslate"><span class="pre">html:</span> <span class="pre">&quot;available&quot;</span></code> and a <code class="docutils literal notranslate"><span class="pre">png</span></code>
+verdict of <code class="docutils literal notranslate"><span class="pre">&quot;available&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;unavailable:</span> <span class="pre">chrome</span> <span class="pre">not</span> <span class="pre">found&quot;</span></code>. A matplotlib
+directory has only <code class="docutils literal notranslate"><span class="pre">png:</span> <span class="pre">&quot;available&quot;</span></code>. A directory that mixes both backends
+without Chrome reads <code class="docutils literal notranslate"><span class="pre">&quot;available:</span> <span class="pre">matplotlib</span> <span class="pre">only;</span> <span class="pre">chrome</span> <span class="pre">not</span> <span class="pre">found&quot;</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pages</span></code> lists each published page. <code class="docutils literal notranslate"><span class="pre">files</span></code> maps each format to the file it
+produced. It omits <code class="docutils literal notranslate"><span class="pre">png</span></code> when Chrome was unavailable and <code class="docutils literal notranslate"><span class="pre">html</span></code> for a
+matplotlib page. <code class="docutils literal notranslate"><span class="pre">backend</span></code> is <code class="docutils literal notranslate"><span class="pre">&quot;plotly&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;matplotlib&quot;</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">partial</span></code> appears on a page when one renderer failed but the other
+succeeded, for example when the HTML was written and the PNG export raised.
+It lists the errors.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">failed</span></code> lists each page that produced no file at all, with its <code class="docutils literal notranslate"><span class="pre">key</span></code>,
+<code class="docutils literal notranslate"><span class="pre">label</span></code> and <code class="docutils literal notranslate"><span class="pre">error</span></code>. When every page fails, the manifest still says why.</p></li>
+</ul>
+</section>
+<section id="the-failure-record">
+<h2>The failure record<a class="headerlink" href="#the-failure-record" title="Link to this heading">#</a></h2>
+<p>Plots are best-effort: one broken figure does not stop a run that produced good
+measurements. So that a missing plot is not also a silent one, every plot
+failure the run swallows appends one JSON line to
+<code class="docutils literal notranslate"><span class="pre">deliverables/plots/.failures.jsonl</span></code>:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="nt">&quot;binding_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sym&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;dataset&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;plate_a&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;error&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TypeError: ...&quot;</span><span class="p">,</span>
+<span class="w"> </span><span class="nt">&quot;image_stem&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;A01&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;lifecycle&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;image&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;plot_class&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;MeasureSymZones&quot;</span><span class="p">,</span>
+<span class="w"> </span><span class="nt">&quot;ts&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-09-20T18:04:11Z&quot;</span><span class="p">}</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">lifecycle</span></code> is one of <code class="docutils literal notranslate"><span class="pre">image</span></code>, <code class="docutils literal notranslate"><span class="pre">measurements</span></code>, <code class="docutils literal notranslate"><span class="pre">analysis</span></code> and <code class="docutils literal notranslate"><span class="pre">qc</span></code>, the four
+points at which a plot is refreshed. It is <code class="docutils literal notranslate"><span class="pre">page</span></code> when one page of a
+multi-page output failed to render, whichever of those four was running.
+<code class="docutils literal notranslate"><span class="pre">dataset</span></code> and <code class="docutils literal notranslate"><span class="pre">image_stem</span></code> appear only for image-lifecycle entries.
+<code class="docutils literal notranslate"><span class="pre">plot_class</span></code> is <code class="docutils literal notranslate"><span class="pre">&lt;unresolved&gt;</span></code> when a QC plot failed before its class could be
+determined.</p>
+<p>Some refusals are not plot failures. When the GUI’s snapshot check or a SLURM
+worker’s lifecycle fence refuses a publication, the process can no longer
+confirm that it owns the output, so the whole refresh is abandoned and nothing
+is written to <code class="docutils literal notranslate"><span class="pre">.failures.jsonl</span></code>.</p>
+</section>
 </section>
 
 
@@ -683,6 +1001,28 @@ only the ready-to-use plot models.</p>
                 <dialog id="pst-secondary-sidebar-modal"></dialog>
                 <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
 
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#declare-figures-with-figure">Declare figures with <code class="docutils literal notranslate"><span class="pre">@figure</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#matplotlib-figures">Matplotlib figures</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#decorating-an-inspect-override">Decorating an <code class="docutils literal notranslate"><span class="pre">inspect()</span></code> override</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#escape-hatch-override-inspect-without-the-decorator">Escape hatch: override <code class="docutils literal notranslate"><span class="pre">inspect()</span></code> without the decorator</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#where-plots-are-published">Where plots are published</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#two-renderings">Two renderings</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#preflight">Preflight</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-plot-manifest">The plot manifest</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-failure-record">The failure record</a></li>
+</ul>
+  </nav></div>
 
   <div class="sidebar-secondary-item">
   <div role="note" aria-label="source link">

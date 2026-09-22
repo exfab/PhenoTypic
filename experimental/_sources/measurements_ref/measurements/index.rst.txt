@@ -156,13 +156,13 @@ Measurements
      - b* of the ΔE76 (Euclidean) geometric-median center color of the object
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``ColorLab_L*Medoid``
-     - L* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)
+     - L* of the ΔE2000 medoid center color: a real object pixel, the one with the smallest total ΔE2000 to every pixel of the object. Found deterministically (no random sampling): the candidates are the object pixels nearest a tightly converged L*a*b* geometric median, each scored against every object pixel, which recovers the exhaustive medoid on a unimodal colour cloud. That candidate centre is computed separately and more tightly than the reported *GeoMedian columns, so it need not equal them. Only the object's own pixels are used, never a neighbouring object's
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``ColorLab_a*Medoid``
-     - a* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)
+     - a* of the ΔE2000 medoid center color: a real object pixel, the one with the smallest total ΔE2000 to every pixel of the object. Found deterministically (no random sampling): the candidates are the object pixels nearest a tightly converged L*a*b* geometric median, each scored against every object pixel, which recovers the exhaustive medoid on a unimodal colour cloud. That candidate centre is computed separately and more tightly than the reported *GeoMedian columns, so it need not equal them. Only the object's own pixels are used, never a neighbouring object's
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``ColorLab_b*Medoid``
-     - b* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)
+     - b* of the ΔE2000 medoid center color: a real object pixel, the one with the smallest total ΔE2000 to every pixel of the object. Found deterministically (no random sampling): the candidates are the object pixels nearest a tightly converged L*a*b* geometric median, each scored against every object pixel, which recovers the exhaustive medoid on a unimodal colour cloud. That candidate centre is computed separately and more tightly than the reported *GeoMedian columns, so it need not equal them. Only the object's own pixels are used, never a neighbouring object's
      - :bdg-ref-primary:`Tier 2 · Descriptive trait <measurement-tiers>`
    * - ``ColorLab_DeltaE2000MedianFromMedoid``
      - Median ΔE2000 of object pixels from the ΔE2000 medoid center (robust perceptual MAD)

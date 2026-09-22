@@ -1,0 +1,63 @@
+phenotypic.correction.ColumnLattice
+===================================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: ColumnLattice
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ColumnLattice.__init__
+      ~ColumnLattice.construct
+      ~ColumnLattice.copy
+      ~ColumnLattice.dict
+      ~ColumnLattice.from_orm
+      ~ColumnLattice.json
+      ~ColumnLattice.model_construct
+      ~ColumnLattice.model_copy
+      ~ColumnLattice.model_dump
+      ~ColumnLattice.model_dump_json
+      ~ColumnLattice.model_json_schema
+      ~ColumnLattice.model_parametrized_name
+      ~ColumnLattice.model_post_init
+      ~ColumnLattice.model_rebuild
+      ~ColumnLattice.model_validate
+      ~ColumnLattice.model_validate_json
+      ~ColumnLattice.model_validate_strings
+      ~ColumnLattice.parse_file
+      ~ColumnLattice.parse_obj
+      ~ColumnLattice.parse_raw
+      ~ColumnLattice.schema
+      ~ColumnLattice.schema_json
+      ~ColumnLattice.update_forward_refs
+      ~ColumnLattice.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ColumnLattice.model_computed_fields
+      ~ColumnLattice.model_config
+      ~ColumnLattice.model_extra
+      ~ColumnLattice.model_fields
+      ~ColumnLattice.model_fields_set
+      ~ColumnLattice.x0
+      ~ColumnLattice.x1
+      ~ColumnLattice.start
+      ~ColumnLattice.pitch
+      ~ColumnLattice.duty
+   
+   

@@ -63,7 +63,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="phenotypic.correction.ColorCorrector" href="phenotypic.correction.ColorCorrector.html" />
-    <link rel="prev" title="phenotypic.correction.CaptureMetadata" href="phenotypic.correction.CaptureMetadata.html" />
+    <link rel="prev" title="phenotypic.correction.CheckerRoi" href="phenotypic.correction.CheckerRoi.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="0.19.0" />
@@ -636,15 +636,21 @@
 </ul>
 </details></li>
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="phenotypic.correction.html">phenotypic.correction</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.CalibrateColorRpcc.html">phenotypic.correction.CalibrateColorRpcc</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.CaptureMetadata.html">phenotypic.correction.CaptureMetadata</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.CheckerLattice.html">phenotypic.correction.CheckerLattice</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.CheckerRoi.html">phenotypic.correction.CheckerRoi</a></li>
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">phenotypic.correction.ColorCheckerProfile</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.ColorCorrector.html">phenotypic.correction.ColorCorrector</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.ColorDenoise.html">phenotypic.correction.ColorDenoise</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.ColumnLattice.html">phenotypic.correction.ColumnLattice</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.DenoiseBlockMatch.html">phenotypic.correction.DenoiseBlockMatch</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.GridAligner.html">phenotypic.correction.GridAligner</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.CropImage.html">phenotypic.correction.CropImage</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.PadImage.html">phenotypic.correction.PadImage</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.BayesShrinkCorrector.html">phenotypic.correction.BayesShrinkCorrector</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.QcLimits.html">phenotypic.correction.QcLimits</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.QcRecord.html">phenotypic.correction.QcRecord</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.correction.VisuShrinkCorrector.html">phenotypic.correction.VisuShrinkCorrector</a></li>
 </ul>
 </details></li>
@@ -922,6 +928,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.datasets_needing_migration.html">phenotypic.sdk_.datasets_needing_migration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.overlays_dir.html">phenotypic.sdk_.overlays_dir</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.plots_dir.html">phenotypic.sdk_.plots_dir</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.plot_failures_jsonl_path.html">phenotypic.sdk_.plot_failures_jsonl_path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.plotlyjs_bundle_path.html">phenotypic.sdk_.plotlyjs_bundle_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.curation_labels_parquet_path.html">phenotypic.sdk_.curation_labels_parquet_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.custom_categories_json_path.html">phenotypic.sdk_.custom_categories_json_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.default_output_dir_name.html">phenotypic.sdk_.default_output_dir_name</a></li>
@@ -1201,11 +1209,13 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.split_measurements.html">phenotypic.util.split_measurements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.robust_color_center.html">phenotypic.util.robust_color_center</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.medoid_ciede2000.html">phenotypic.util.medoid_ciede2000</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.candidate_medoid.html">phenotypic.util.candidate_medoid</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.delta_e2000_spread.html">phenotypic.util.delta_e2000_spread</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.hsv_to_cone.html">phenotypic.util.hsv_to_cone</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.cone_to_hsv.html">phenotypic.util.cone_to_hsv</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.lab_to_srgb_hex.html">phenotypic.util.lab_to_srgb_hex</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.decode_well_position.html">phenotypic.util.decode_well_position</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.util.MedoidResult.html">phenotypic.util.MedoidResult</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.ImageMetricsCalculator.html">phenotypic.util.ImageMetricsCalculator</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.NoiseMetrics.html">phenotypic.util.NoiseMetrics</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.util.ContrastMetrics.html">phenotypic.util.ContrastMetrics</a></li>
@@ -1402,73 +1412,76 @@ on different optics.  See <a class="reference internal" href="phenotypic.correct
 <tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.fit" title="phenotypic.correction.ColorCheckerProfile.fit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit</span></code></a></p></td>
 <td><p>Fit the profile from checker-card ROIs stored at initialisation.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.from_json" title="phenotypic.correction.ColorCheckerProfile.from_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_json</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.fit_from_patch_colors" title="phenotypic.correction.ColorCheckerProfile.fit_from_patch_colors"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit_from_patch_colors</span></code></a></p></td>
+<td><p>Fit from patch colours measured elsewhere.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.from_json" title="phenotypic.correction.ColorCheckerProfile.from_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_json</span></code></a></p></td>
 <td><p>Reconstruct a profile from JSON written by <a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.to_json" title="phenotypic.correction.ColorCheckerProfile.to_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_json()</span></code></a>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.from_orm" title="phenotypic.correction.ColorCheckerProfile.from_orm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_orm</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.from_orm" title="phenotypic.correction.ColorCheckerProfile.from_orm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_orm</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.json" title="phenotypic.correction.ColorCheckerProfile.json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">json</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.json" title="phenotypic.correction.ColorCheckerProfile.json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">json</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.model_construct" title="phenotypic.correction.ColorCheckerProfile.model_construct"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_construct</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.model_construct" title="phenotypic.correction.ColorCheckerProfile.model_construct"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_construct</span></code></a></p></td>
 <td><p>Creates a new instance of the <cite>Model</cite> class with validated data.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.model_copy" title="phenotypic.correction.ColorCheckerProfile.model_copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_copy</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.model_copy" title="phenotypic.correction.ColorCheckerProfile.model_copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_copy</span></code></a></p></td>
 <td><p>!!! abstract &quot;Usage Documentation&quot;</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.model_dump" title="phenotypic.correction.ColorCheckerProfile.model_dump"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_dump</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.model_dump" title="phenotypic.correction.ColorCheckerProfile.model_dump"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_dump</span></code></a></p></td>
 <td><p>!!! abstract &quot;Usage Documentation&quot;</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.model_dump_json" title="phenotypic.correction.ColorCheckerProfile.model_dump_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_dump_json</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.model_dump_json" title="phenotypic.correction.ColorCheckerProfile.model_dump_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_dump_json</span></code></a></p></td>
 <td><p>!!! abstract &quot;Usage Documentation&quot;</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.model_json_schema" title="phenotypic.correction.ColorCheckerProfile.model_json_schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_json_schema</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.model_json_schema" title="phenotypic.correction.ColorCheckerProfile.model_json_schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_json_schema</span></code></a></p></td>
 <td><p>Generates a JSON schema for a model class.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.model_parametrized_name" title="phenotypic.correction.ColorCheckerProfile.model_parametrized_name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_parametrized_name</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.model_parametrized_name" title="phenotypic.correction.ColorCheckerProfile.model_parametrized_name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_parametrized_name</span></code></a></p></td>
 <td><p>Compute the class name for parametrizations of generic classes.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.model_post_init" title="phenotypic.correction.ColorCheckerProfile.model_post_init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_post_init</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.model_post_init" title="phenotypic.correction.ColorCheckerProfile.model_post_init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_post_init</span></code></a></p></td>
 <td><p>This function is meant to behave like a BaseModel method to initialise private attributes.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.model_rebuild" title="phenotypic.correction.ColorCheckerProfile.model_rebuild"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_rebuild</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.model_rebuild" title="phenotypic.correction.ColorCheckerProfile.model_rebuild"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_rebuild</span></code></a></p></td>
 <td><p>Try to rebuild the pydantic-core schema for the model.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.model_validate" title="phenotypic.correction.ColorCheckerProfile.model_validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_validate</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.model_validate" title="phenotypic.correction.ColorCheckerProfile.model_validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_validate</span></code></a></p></td>
 <td><p>Validate a pydantic model instance.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.model_validate_json" title="phenotypic.correction.ColorCheckerProfile.model_validate_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_validate_json</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.model_validate_json" title="phenotypic.correction.ColorCheckerProfile.model_validate_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_validate_json</span></code></a></p></td>
 <td><p>!!! abstract &quot;Usage Documentation&quot;</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.model_validate_strings" title="phenotypic.correction.ColorCheckerProfile.model_validate_strings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_validate_strings</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.model_validate_strings" title="phenotypic.correction.ColorCheckerProfile.model_validate_strings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_validate_strings</span></code></a></p></td>
 <td><p>Validate the given object with string data against the Pydantic model.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.parse_file" title="phenotypic.correction.ColorCheckerProfile.parse_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_file</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.parse_file" title="phenotypic.correction.ColorCheckerProfile.parse_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_file</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.parse_obj" title="phenotypic.correction.ColorCheckerProfile.parse_obj"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_obj</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.parse_obj" title="phenotypic.correction.ColorCheckerProfile.parse_obj"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_obj</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.parse_raw" title="phenotypic.correction.ColorCheckerProfile.parse_raw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_raw</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.parse_raw" title="phenotypic.correction.ColorCheckerProfile.parse_raw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_raw</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.report" title="phenotypic.correction.ColorCheckerProfile.report"><code class="xref py py-obj docutils literal notranslate"><span class="pre">report</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.report" title="phenotypic.correction.ColorCheckerProfile.report"><code class="xref py py-obj docutils literal notranslate"><span class="pre">report</span></code></a></p></td>
 <td><p>Build the Plotly color-correction diagnostic report.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.schema" title="phenotypic.correction.ColorCheckerProfile.schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.schema" title="phenotypic.correction.ColorCheckerProfile.schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.schema_json" title="phenotypic.correction.ColorCheckerProfile.schema_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema_json</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.schema_json" title="phenotypic.correction.ColorCheckerProfile.schema_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema_json</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.to_json" title="phenotypic.correction.ColorCheckerProfile.to_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_json</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.to_json" title="phenotypic.correction.ColorCheckerProfile.to_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_json</span></code></a></p></td>
 <td><p>Serialize this profile to JSON.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.update_forward_refs" title="phenotypic.correction.ColorCheckerProfile.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.update_forward_refs" title="phenotypic.correction.ColorCheckerProfile.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.validate" title="phenotypic.correction.ColorCheckerProfile.validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile.validate" title="phenotypic.correction.ColorCheckerProfile.validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -1695,6 +1708,34 @@ treated as a single ROI.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile" title="phenotypic.correction.ColorCheckerProfile">ColorCheckerProfile</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.correction.ColorCheckerProfile.fit_from_patch_colors">
+<span class="sig-name descname"><span class="pre">fit_from_patch_colors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measured</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">np.ndarray</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">np.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patch_names</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile" title="phenotypic.correction.ColorCheckerProfile"><span class="pre">ColorCheckerProfile</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/correction/_color_correction/_color_checker_profile.html#ColorCheckerProfile.fit_from_patch_colors"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.correction.ColorCheckerProfile.fit_from_patch_colors" title="Link to this definition">#</a></dt>
+<dd><p>Fit from patch colours measured elsewhere.</p>
+<p>The entry point for a detector that has already located and measured
+the chart – <a class="reference internal" href="phenotypic.correction.CalibrateColorRpcc.html#phenotypic.correction.CalibrateColorRpcc" title="phenotypic.correction.CalibrateColorRpcc"><code class="xref py py-class docutils literal notranslate"><span class="pre">CalibrateColorRpcc</span></code></a> uses it, so both paths share
+one solver, one outlier rule and one diagnostics schema.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>measured</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>np.ndarray</em><em>] </em><em>| </em><em>np.ndarray</em>) – Either a mapping of patch name to sRGB in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code>, or
+an <code class="docutils literal notranslate"><span class="pre">(N,</span> <span class="pre">3)</span></code> array with <em>patch_names</em> naming its rows.</p></li>
+<li><p><strong>patch_names</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>] </em><em>| </em><em>None</em>) – Row names, required only for the array form.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">self</span></code>, fitted.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If an array is given without names and its row count
+    does not match the chart.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#phenotypic.correction.ColorCheckerProfile" title="phenotypic.correction.ColorCheckerProfile">ColorCheckerProfile</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -2539,6 +2580,7 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCheckerProfile.to_json"><code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile.to_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCheckerProfile.from_json"><code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile.from_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCheckerProfile.fit"><code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile.fit()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCheckerProfile.fit_from_patch_colors"><code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile.fit_from_patch_colors()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCheckerProfile.report"><code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile.report()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCheckerProfile.__copy__"><code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile.__copy__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.ColorCheckerProfile.__deepcopy__"><code class="docutils literal notranslate"><span class="pre">ColorCheckerProfile.__deepcopy__()</span></code></a></li>

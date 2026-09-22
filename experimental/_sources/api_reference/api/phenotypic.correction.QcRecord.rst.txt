@@ -1,0 +1,64 @@
+phenotypic.correction.QcRecord
+==============================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: QcRecord
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~QcRecord.__init__
+      ~QcRecord.construct
+      ~QcRecord.copy
+      ~QcRecord.dict
+      ~QcRecord.from_orm
+      ~QcRecord.json
+      ~QcRecord.model_construct
+      ~QcRecord.model_copy
+      ~QcRecord.model_dump
+      ~QcRecord.model_dump_json
+      ~QcRecord.model_json_schema
+      ~QcRecord.model_parametrized_name
+      ~QcRecord.model_post_init
+      ~QcRecord.model_rebuild
+      ~QcRecord.model_validate
+      ~QcRecord.model_validate_json
+      ~QcRecord.model_validate_strings
+      ~QcRecord.parse_file
+      ~QcRecord.parse_obj
+      ~QcRecord.parse_raw
+      ~QcRecord.schema
+      ~QcRecord.schema_json
+      ~QcRecord.update_forward_refs
+      ~QcRecord.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~QcRecord.model_computed_fields
+      ~QcRecord.model_config
+      ~QcRecord.model_extra
+      ~QcRecord.model_fields
+      ~QcRecord.model_fields_set
+      ~QcRecord.ok
+      ~QcRecord.roi_index
+      ~QcRecord.label
+      ~QcRecord.flags
+      ~QcRecord.warnings
+      ~QcRecord.signals
+   
+   

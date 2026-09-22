@@ -21,15 +21,21 @@
       :template: class.rst
       :nosignatures:
    
+      CalibrateColorRpcc
       CaptureMetadata
+      CheckerLattice
+      CheckerRoi
       ColorCheckerProfile
       ColorCorrector
       ColorDenoise
+      ColumnLattice
       DenoiseBlockMatch
       GridAligner
       CropImage
       PadImage
       BayesShrinkCorrector
+      QcLimits
+      QcRecord
       VisuShrinkCorrector
    
    

@@ -605,11 +605,56 @@
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">NamedTuple</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.util._geometric_median</span><span class="w"> </span><span class="kn">import</span> <span class="n">geometric_median</span> <span class="k">as</span> <span class="n">_geometric_median</span>
 
 <span class="n">_EPS</span> <span class="o">=</span> <span class="mf">1e-12</span>
+
+<span class="c1">#: Candidates scored against every pixel by :func:`candidate_medoid`.  256 is</span>
+<span class="c1">#: ~60x cheaper than the exhaustive form and returned the identical pixel on</span>
+<span class="c1">#: every tile-like cloud tested; see the spec&#39;s Stage E.</span>
+<span class="n">DEFAULT_MEDOID_CANDIDATES</span> <span class="o">=</span> <span class="mi">256</span>
+
+<span class="c1">#: The one validated type for an operation&#39;s ``medoid_candidates`` field, so</span>
+<span class="c1">#: ``MeasureColor`` and ``CalibrateColorRpcc`` -- the same knob on the same</span>
+<span class="c1">#: estimator -- reject a non-positive count identically, at construction.</span>
+<span class="n">MedoidCandidates</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Field</span><span class="p">(</span><span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">)]</span>
+
+<span class="c1">#: Weiszfeld settings for the seed geometric median, matching the constants</span>
+<span class="c1">#: ``ColorCheckerProfile`` uses so the two paths agree.</span>
+<span class="n">GEOMEDIAN_MAX_ITER</span> <span class="o">=</span> <span class="mi">200</span>
+<span class="n">GEOMEDIAN_TOL</span> <span class="o">=</span> <span class="mf">1e-6</span>
+
+<span class="c1">#: A winner this deep into the candidate set means the cloud is not unimodal</span>
+<span class="c1">#: around its geometric median, so the true medoid may lie outside the set and</span>
+<span class="c1">#: the search is re-run once against a four-times-larger set.</span>
+<span class="c1">#:</span>
+<span class="c1">#: The guard is a safety net at the default candidate count, not at any count.</span>
+<span class="c1">#: Measured on a deliberately bimodal cloud (900 pixels at one colour, 300 at</span>
+<span class="c1">#: another 30 a\* away): at ``k &gt;= 256`` it fires and recovers the exhaustive</span>
+<span class="c1">#: medoid, but at ``k &lt;= 64`` the winner sits at rank 3 -- comfortably inside</span>
+<span class="c1">#: the set -- while being the wrong pixel, so nothing fires. Do not lower</span>
+<span class="c1">#: ``candidates`` below the default expecting the guard to compensate.</span>
+<span class="n">CANDIDATE_EDGE_FRACTION</span> <span class="o">=</span> <span class="mf">0.8</span>
+
+<span class="c1">#: Byte budget for one block of :func:`candidate_medoid`&#39;s ΔE2000 scoring.</span>
+<span class="c1">#: Sizing the block from it, rather than from a fixed candidate count, keeps a</span>
+<span class="c1">#: very large object (a merged lawn, a whole-plate mis-detection) from</span>
+<span class="c1">#: allocating gigabytes of CIEDE2000 temporaries.</span>
+<span class="n">MEDOID_MEMORY_BUDGET_BYTES</span> <span class="o">=</span> <span class="mi">256</span> <span class="o">*</span> <span class="mi">2</span><span class="o">**</span><span class="mi">20</span>
+
+<span class="c1">#: Peak bytes allocated per candidate-pixel pair while scoring one block.</span>
+<span class="c1">#: colour&#39;s CIEDE2000 materialises many ``(block, N)`` float64 temporaries.</span>
+<span class="c1">#: Measured with ``tracemalloc`` on a 20 000-pixel unimodal L*a*b* cloud</span>
+<span class="c1">#: (macOS arm64, numpy 2, colour-science 0.4): peak over ``chunk_size * N`` is</span>
+<span class="c1">#: 264.6 B at ``chunk_size=64`` and 266.5 B at 16, the difference between the</span>
+<span class="c1">#: two giving a slope of 264.0 B/pair plus ~0.8 MB of per-call overhead.</span>
+<span class="c1">#: Rounded up to 265 so the block errs small.</span>
+<span class="n">MEDOID_BYTES_PER_PAIR</span> <span class="o">=</span> <span class="mi">265</span>
 
 
 <div class="viewcode-block" id="robust_color_center">
@@ -706,6 +751,130 @@
     <span class="n">medoid</span> <span class="o">=</span> <span class="n">sample</span><span class="p">[</span><span class="n">row_sums</span><span class="o">.</span><span class="n">argmin</span><span class="p">()]</span>
     <span class="n">all_deltas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">colour</span><span class="o">.</span><span class="n">difference</span><span class="o">.</span><span class="n">delta_E_CIE2000</span><span class="p">(</span><span class="n">lab</span><span class="p">,</span> <span class="n">medoid</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">medoid</span><span class="p">,</span> <span class="n">all_deltas</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_delta_e</span><span class="p">(</span><span class="n">lab_a</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">lab_b</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;delta-E 2000 between broadcastable ``(..., 3)`` Lab arrays.&quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">colour</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">colour</span><span class="o">.</span><span class="n">difference</span><span class="o">.</span><span class="n">delta_E_CIE2000</span><span class="p">(</span><span class="n">lab_a</span><span class="p">,</span> <span class="n">lab_b</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="MedoidResult">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.util.MedoidResult.html#phenotypic.util.MedoidResult">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MedoidResult</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Outcome of a candidate-restricted medoid search.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        index: Row of the winning pixel in the input array.</span>
+<span class="sd">        lab: The winning pixel&#39;s Lab coordinate.</span>
+<span class="sd">        rank: The winner&#39;s position within the candidate set, 0 being the</span>
+<span class="sd">            pixel closest to the geometric median.</span>
+<span class="sd">        total_delta_e: The winner&#39;s total delta-E 2000 to every input pixel.</span>
+<span class="sd">        widened: ``True`` when the first search put the winner near the edge</span>
+<span class="sd">            of the candidate set and the search was re-run with a larger one.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">index</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">lab</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">rank</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">total_delta_e</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">widened</span><span class="p">:</span> <span class="nb">bool</span></div>
+
+
+
+<div class="viewcode-block" id="candidate_medoid">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.util.candidate_medoid.html#phenotypic.util.candidate_medoid">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">candidate_medoid</span><span class="p">(</span>
+        <span class="n">lab_points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">k</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">DEFAULT_MEDOID_CANDIDATES</span><span class="p">,</span>
+        <span class="n">chunk_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MedoidResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The delta-E 2000 medoid of *lab_points*, found deterministically.</span>
+
+<span class="sd">    Scores only the *k* pixels nearest the cloud&#39;s Lab geometric median, each</span>
+<span class="sd">    against **every** pixel, and returns the best.  Cost is ``O(k * n)`` rather</span>
+<span class="sd">    than the exhaustive ``O(n^2)``, and no pixel is ever sampled at random.</span>
+
+<span class="sd">    Why not :func:`~phenotypic.util.medoid_ciede2000`: it selects the medoid</span>
+<span class="sd">    from a seeded subsample of 1000 pixels, and re-drawing that seed moves the</span>
+<span class="sd">    answer by ~0.12 delta-E 2000 (worst 0.81) -- larger than the difference</span>
+<span class="sd">    between the medoid and the geometric median it is chosen over.  Raising the</span>
+<span class="sd">    cap does not fix it affordably: selection is quadratic, costing ~41 s per</span>
+<span class="sd">    24-tile frame at a 4000-pixel cap, while the seed spread only falls from</span>
+<span class="sd">    ~0.32 to ~0.25 delta-E 2000.  Restricting the candidates instead removes</span>
+<span class="sd">    the randomness entirely and reproduces the exhaustive medoid exactly on</span>
+<span class="sd">    unimodal tile clouds.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        lab_points: ``(N, 3)`` CIE Lab pixels.</span>
+<span class="sd">        k: Number of candidates to score.  Widened once, automatically, if the</span>
+<span class="sd">            winner lands past :data:`CANDIDATE_EDGE_FRACTION` of the set.</span>
+<span class="sd">        chunk_size: Candidates scored per block, bounding peak memory to</span>
+<span class="sd">            ``O(chunk_size * N)`` instead of ``O(k * N)``.  ``None`` (the</span>
+<span class="sd">            default) sizes the block from :data:`MEDOID_MEMORY_BUDGET_BYTES`:</span>
+<span class="sd">            ``max(1, min(64, budget // (N * MEDOID_BYTES_PER_PAIR)))``.  The</span>
+<span class="sd">            result is bit-identical for every block size -- each candidate&#39;s</span>
+<span class="sd">            total is summed over the same full row -- so this bounds memory and</span>
+<span class="sd">            nothing else.  Below one candidate per block the floor is one</span>
+<span class="sd">            ``(1, N)`` row, ~265 B per pixel.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A :class:`MedoidResult`.  For an empty input the index is ``-1`` and</span>
+<span class="sd">        the coordinate is all-NaN; for a single pixel it is that pixel.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If *lab_points* is not 2-D, or *k* or *chunk_size* is</span>
+<span class="sd">            not positive.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">lab_points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">points</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;lab_points must be (N, 3); got </span><span class="si">{</span><span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;k must be a positive candidate count; got </span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">chunk_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">chunk_size</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;chunk_size must be positive; got </span><span class="si">{</span><span class="n">chunk_size</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+
+    <span class="n">n</span> <span class="o">=</span> <span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">MedoidResult</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">),</span> <span class="kc">False</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">MedoidResult</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">points</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+    <span class="n">seed</span> <span class="o">=</span> <span class="n">robust_color_center</span><span class="p">(</span>
+            <span class="n">points</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="n">GEOMEDIAN_MAX_ITER</span><span class="p">,</span> <span class="n">tol</span><span class="o">=</span><span class="n">GEOMEDIAN_TOL</span>
+    <span class="p">)</span>
+    <span class="n">order</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">points</span> <span class="o">-</span> <span class="n">seed</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;stable&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">chunk_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">chunk_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
+                <span class="mi">1</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="n">MEDOID_MEMORY_BUDGET_BYTES</span> <span class="o">//</span> <span class="p">(</span><span class="n">n</span> <span class="o">*</span> <span class="n">MEDOID_BYTES_PER_PAIR</span><span class="p">))</span>
+        <span class="p">)</span>
+
+    <span class="n">attempts</span> <span class="o">=</span> <span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span> <span class="nb">min</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="n">k</span><span class="p">,</span> <span class="n">k</span><span class="p">),</span> <span class="n">n</span><span class="p">))</span>
+    <span class="n">widened</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">for</span> <span class="n">attempt_no</span><span class="p">,</span> <span class="n">attempt_k</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">attempts</span><span class="p">):</span>
+        <span class="n">candidate_idx</span> <span class="o">=</span> <span class="n">order</span><span class="p">[:</span><span class="n">attempt_k</span><span class="p">]</span>
+        <span class="n">totals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">attempt_k</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">start</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">attempt_k</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">):</span>
+            <span class="n">block</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">candidate_idx</span><span class="p">[</span><span class="n">start</span> <span class="p">:</span> <span class="n">start</span> <span class="o">+</span> <span class="n">chunk_size</span><span class="p">]]</span>
+            <span class="n">totals</span><span class="p">[</span><span class="n">start</span> <span class="p">:</span> <span class="n">start</span> <span class="o">+</span> <span class="n">chunk_size</span><span class="p">]</span> <span class="o">=</span> <span class="n">_delta_e</span><span class="p">(</span>
+                    <span class="n">block</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:],</span> <span class="n">points</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">rank</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">totals</span><span class="o">.</span><span class="n">argmin</span><span class="p">())</span>
+        <span class="n">at_edge</span> <span class="o">=</span> <span class="n">rank</span> <span class="o">&gt;=</span> <span class="n">CANDIDATE_EDGE_FRACTION</span> <span class="o">*</span> <span class="n">attempt_k</span>
+        <span class="n">last_attempt</span> <span class="o">=</span> <span class="n">attempt_no</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">attempts</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="c1"># Always return on the final attempt: a cloud that is still at the</span>
+        <span class="c1"># edge of a widened set has no better answer available here, and</span>
+        <span class="c1"># falling through would be a crash rather than a degraded result.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">at_edge</span> <span class="ow">or</span> <span class="n">attempt_k</span> <span class="o">&gt;=</span> <span class="n">n</span> <span class="ow">or</span> <span class="n">last_attempt</span><span class="p">:</span>
+            <span class="n">winner</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">candidate_idx</span><span class="p">[</span><span class="n">rank</span><span class="p">])</span>
+            <span class="k">return</span> <span class="n">MedoidResult</span><span class="p">(</span>
+                    <span class="n">winner</span><span class="p">,</span> <span class="n">points</span><span class="p">[</span><span class="n">winner</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">rank</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">totals</span><span class="p">[</span><span class="n">rank</span><span class="p">]),</span> <span class="n">widened</span>
+            <span class="p">)</span>
+        <span class="n">widened</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="s2">&quot;unreachable&quot;</span><span class="p">)</span>  <span class="c1"># pragma: no cover</span></div>
 
 
 

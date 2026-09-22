@@ -21,6 +21,7 @@ phenotypic.correction.ColorCheckerProfile
       ~ColorCheckerProfile.copy
       ~ColorCheckerProfile.dict
       ~ColorCheckerProfile.fit
+      ~ColorCheckerProfile.fit_from_patch_colors
       ~ColorCheckerProfile.from_json
       ~ColorCheckerProfile.from_orm
       ~ColorCheckerProfile.json

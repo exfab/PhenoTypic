@@ -1,0 +1,79 @@
+phenotypic.correction.CalibrateColorRpcc
+========================================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: CalibrateColorRpcc
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~CalibrateColorRpcc.__init__
+      ~CalibrateColorRpcc.apply
+      ~CalibrateColorRpcc.construct
+      ~CalibrateColorRpcc.copy
+      ~CalibrateColorRpcc.dict
+      ~CalibrateColorRpcc.from_json
+      ~CalibrateColorRpcc.from_orm
+      ~CalibrateColorRpcc.json
+      ~CalibrateColorRpcc.model_construct
+      ~CalibrateColorRpcc.model_copy
+      ~CalibrateColorRpcc.model_dump
+      ~CalibrateColorRpcc.model_dump_json
+      ~CalibrateColorRpcc.model_json_schema
+      ~CalibrateColorRpcc.model_parametrized_name
+      ~CalibrateColorRpcc.model_post_init
+      ~CalibrateColorRpcc.model_rebuild
+      ~CalibrateColorRpcc.model_validate
+      ~CalibrateColorRpcc.model_validate_json
+      ~CalibrateColorRpcc.model_validate_strings
+      ~CalibrateColorRpcc.parse_file
+      ~CalibrateColorRpcc.parse_obj
+      ~CalibrateColorRpcc.parse_raw
+      ~CalibrateColorRpcc.patch_census
+      ~CalibrateColorRpcc.schema
+      ~CalibrateColorRpcc.schema_json
+      ~CalibrateColorRpcc.to_json
+      ~CalibrateColorRpcc.update_forward_refs
+      ~CalibrateColorRpcc.validate
+      ~CalibrateColorRpcc.widget
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CalibrateColorRpcc.diagnostics
+      ~CalibrateColorRpcc.model_computed_fields
+      ~CalibrateColorRpcc.model_config
+      ~CalibrateColorRpcc.model_extra
+      ~CalibrateColorRpcc.model_fields
+      ~CalibrateColorRpcc.model_fields_set
+      ~CalibrateColorRpcc.rois
+      ~CalibrateColorRpcc.checker_type
+      ~CalibrateColorRpcc.target_illuminant
+      ~CalibrateColorRpcc.degree
+      ~CalibrateColorRpcc.grid
+      ~CalibrateColorRpcc.lattice_prior
+      ~CalibrateColorRpcc.refine_method
+      ~CalibrateColorRpcc.core_trim
+      ~CalibrateColorRpcc.medoid_candidates
+      ~CalibrateColorRpcc.outlier_sigma
+      ~CalibrateColorRpcc.min_patches
+      ~CalibrateColorRpcc.qc_limits
+      ~CalibrateColorRpcc.on_qc_fail
+      ~CalibrateColorRpcc.fitted_profile
+      ~CalibrateColorRpcc.qc
+   
+   

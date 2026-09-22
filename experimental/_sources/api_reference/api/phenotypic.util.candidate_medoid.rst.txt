@@ -1,0 +1,6 @@
+phenotypic.util.candidate\_medoid
+=================================
+
+.. currentmodule:: phenotypic.util
+
+.. autofunction:: candidate_medoid

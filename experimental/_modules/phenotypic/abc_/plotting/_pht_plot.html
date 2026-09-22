@@ -616,6 +616,8 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Literal</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">._output</span><span class="w"> </span><span class="kn">import</span> <span class="n">FigureLike</span><span class="p">,</span> <span class="n">figure_backend_of</span>
+
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>  <span class="c1"># pragma: no cover - typing only</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
 
@@ -712,6 +714,7 @@
 <span class="sd">    Attributes:</span>
 <span class="sd">        title: Human-readable figure title.</span>
 <span class="sd">        section: Grouping tag used by report adapters.</span>
+<span class="sd">        backend: Declared rendering backend, ``&quot;plotly&quot;`` or ``&quot;mpl&quot;``.</span>
 <span class="sd">        controls: Mapping from method keyword to its control.</span>
 <span class="sd">        description: Optional renderer-neutral explanatory content.</span>
 <span class="sd">        primary: Whether this is the default :meth:`PhtPlot.inspect` figure.</span>
@@ -724,15 +727,43 @@
 
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">section</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">backend</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;plotly&quot;</span><span class="p">,</span> <span class="s2">&quot;mpl&quot;</span><span class="p">]</span>
     <span class="n">controls</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Control</span><span class="p">]</span>
     <span class="n">description</span><span class="p">:</span> <span class="n">Any</span>
     <span class="n">primary</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">method</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="s2">&quot;go.Figure&quot;</span><span class="p">]</span>
+    <span class="n">method</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">FigureLike</span><span class="p">]</span>
     <span class="n">wants_subject</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="n">subject_param</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
     <span class="n">order</span><span class="p">:</span> <span class="nb">int</span></div>
 
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_require_backend</span><span class="p">(</span><span class="n">figure_value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">declared</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Raise unless ``figure_value`` matches the backend its method declared.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        figure_value: Whatever the decorated method returned.</span>
+<span class="sd">        declared: The backend named in the ``@figure`` declaration.</span>
+<span class="sd">        fn: The decorated function, named in the error.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        TypeError: If the return does not match the declaration.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">actual</span> <span class="o">=</span> <span class="n">figure_backend_of</span><span class="p">(</span><span class="n">figure_value</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">actual</span> <span class="o">==</span> <span class="n">declared</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="n">other</span> <span class="o">=</span> <span class="s2">&quot;mpl&quot;</span> <span class="k">if</span> <span class="n">declared</span> <span class="o">==</span> <span class="s2">&quot;plotly&quot;</span> <span class="k">else</span> <span class="s2">&quot;plotly&quot;</span>
+    <span class="n">expected</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;plotly.graph_objects.Figure&quot;</span> <span class="k">if</span> <span class="n">declared</span> <span class="o">==</span> <span class="s2">&quot;plotly&quot;</span>
+        <span class="k">else</span> <span class="s2">&quot;matplotlib.figure.Figure&quot;</span>
+    <span class="p">)</span>
+    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;@figure(</span><span class="si">{</span><span class="n">fn</span><span class="o">.</span><span class="vm">__name__</span><span class="si">!r}</span><span class="s2">): declared backend </span><span class="si">{</span><span class="n">declared</span><span class="si">!r}</span><span class="s2"> but the &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;method returned </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">figure_value</span><span class="p">)</span><span class="o">.</span><span class="vm">__module__</span><span class="si">}</span><span class="s2">.&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">figure_value</span><span class="p">)</span><span class="o">.</span><span class="vm">__qualname__</span><span class="si">}</span><span class="s2">. &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Declare backend=</span><span class="si">{</span><span class="n">other</span><span class="si">!r}</span><span class="s2">, or return a </span><span class="si">{</span><span class="n">expected</span><span class="si">}</span><span class="s2">.&quot;</span>
+    <span class="p">)</span>
 
 
 <div class="viewcode-block" id="figure">
@@ -740,11 +771,12 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">figure</span><span class="p">(</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">title</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">backend</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;plotly&quot;</span><span class="p">,</span> <span class="s2">&quot;mpl&quot;</span><span class="p">],</span>
     <span class="n">section</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;default&quot;</span><span class="p">,</span>
     <span class="n">controls</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Control</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">description</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">primary</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="s2">&quot;go.Figure&quot;</span><span class="p">]],</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="s2">&quot;go.Figure&quot;</span><span class="p">]]:</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">FigureLike</span><span class="p">]],</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">FigureLike</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Mark a method as a figure builder and lazily apply the house theme.</span>
 
 <span class="sd">    A figure method may accept a subject as its first positional parameter.</span>
@@ -754,22 +786,33 @@
 
 <span class="sd">    Args:</span>
 <span class="sd">        title: Human-readable figure title.</span>
+<span class="sd">        backend: Rendering backend this method returns, ``&quot;plotly&quot;`` or</span>
+<span class="sd">            ``&quot;mpl&quot;``. Required: the backend decides how the figure is themed</span>
+<span class="sd">            (Plotly themes the result, matplotlib themes the construction), so</span>
+<span class="sd">            there is no default that is right for both.</span>
 <span class="sd">        section: Grouping tag used by report adapters.</span>
 <span class="sd">        controls: Mapping from method keyword to renderer-neutral control.</span>
 <span class="sd">        description: Optional renderer-neutral explanatory content.</span>
 <span class="sd">        primary: Whether this is the default figure returned by ``inspect``.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        A decorator for a Plotly figure-building method.</span>
+<span class="sd">        A decorator for a method that builds a figure of the declared</span>
+<span class="sd">        ``backend``: a Plotly ``go.Figure`` for ``&quot;plotly&quot;``, a matplotlib</span>
+<span class="sd">        ``Figure`` for ``&quot;mpl&quot;``.</span>
 
 <span class="sd">    Raises:</span>
-<span class="sd">        ValueError: If a control key does not name a method parameter.</span>
+<span class="sd">        ValueError: If ``backend`` is not ``&quot;plotly&quot;`` or ``&quot;mpl&quot;``, or if a</span>
+<span class="sd">            control key does not name a method parameter.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">backend</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;plotly&quot;</span><span class="p">,</span> <span class="s2">&quot;mpl&quot;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;@figure: unknown backend </span><span class="si">{</span><span class="n">backend</span><span class="si">!r}</span><span class="s2">; expected &#39;plotly&#39; or &#39;mpl&#39;&quot;</span>
+        <span class="p">)</span>
     <span class="n">declared_controls</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">controls</span><span class="p">)</span> <span class="k">if</span> <span class="n">controls</span> <span class="k">else</span> <span class="p">{}</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">decorator</span><span class="p">(</span>
-        <span class="n">fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="s2">&quot;go.Figure&quot;</span><span class="p">],</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="s2">&quot;go.Figure&quot;</span><span class="p">]:</span>
+        <span class="n">fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">FigureLike</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">FigureLike</span><span class="p">]:</span>
         <span class="n">signature</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span>
         <span class="n">params</span> <span class="o">=</span> <span class="p">[</span>
             <span class="n">parameter</span>
@@ -795,13 +838,29 @@
                 <span class="k">break</span>
 
         <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span>
-        <span class="k">def</span><span class="w"> </span><span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;go.Figure&quot;</span><span class="p">:</span>
-            <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.viz.figures._theme</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_theme</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FigureLike</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">backend</span> <span class="o">==</span> <span class="s2">&quot;plotly&quot;</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.viz.figures._theme</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_theme</span>
 
-            <span class="k">return</span> <span class="n">apply_theme</span><span class="p">(</span><span class="n">fn</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">))</span>
+                <span class="n">built</span> <span class="o">=</span> <span class="n">fn</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="n">_require_backend</span><span class="p">(</span><span class="n">built</span><span class="p">,</span> <span class="s2">&quot;plotly&quot;</span><span class="p">,</span> <span class="n">fn</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">apply_theme</span><span class="p">(</span><span class="n">built</span><span class="p">)</span>
+
+            <span class="c1"># The matplotlib theme is rcParams, which must be live WHILE the</span>
+            <span class="c1"># figure is constructed. There is no post-pass equivalent of</span>
+            <span class="c1"># apply_theme; applying it afterwards would silently do nothing.</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.viz.figures._mpl_theme</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+                <span class="n">phenotypic_mpl_context</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="k">with</span> <span class="n">phenotypic_mpl_context</span><span class="p">():</span>
+                <span class="n">built</span> <span class="o">=</span> <span class="n">fn</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="n">_require_backend</span><span class="p">(</span><span class="n">built</span><span class="p">,</span> <span class="s2">&quot;mpl&quot;</span><span class="p">,</span> <span class="n">fn</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">built</span>
 
         <span class="n">wrapper</span><span class="o">.</span><span class="n">__figure_spec__</span> <span class="o">=</span> <span class="n">FigureSpec</span><span class="p">(</span>  <span class="c1"># type: ignore[attr-defined]</span>
             <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span>
+            <span class="n">backend</span><span class="o">=</span><span class="n">backend</span><span class="p">,</span>
             <span class="n">section</span><span class="o">=</span><span class="n">section</span><span class="p">,</span>
             <span class="n">controls</span><span class="o">=</span><span class="n">declared_controls</span><span class="p">,</span>
             <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span>
@@ -864,7 +923,7 @@
 
 <div class="viewcode-block" id="BoundFigures.render">
 <a class="viewcode-back" href="../../../../api_reference/core/visualization_plotting.html#phenotypic.abc_.plotting.BoundFigures.render">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="n">FigureSpec</span><span class="p">,</span> <span class="o">**</span><span class="n">control_values</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;go.Figure&quot;</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="n">FigureSpec</span><span class="p">,</span> <span class="o">**</span><span class="n">control_values</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FigureLike</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Render a figure for the supplied control values.</span>
 
 <span class="sd">        Args:</span>
@@ -879,6 +938,21 @@
         <span class="p">)</span></div>
 </div>
 
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_select_primary_spec</span><span class="p">(</span><span class="n">specs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">FigureSpec</span><span class="p">],</span> <span class="n">owner</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FigureSpec</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the explicit primary figure or the only declared figure.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">specs</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">owner</span><span class="si">}</span><span class="s2"> declares no @figure methods&quot;</span><span class="p">)</span>
+    <span class="n">primaries</span> <span class="o">=</span> <span class="p">[</span><span class="n">spec</span> <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">specs</span> <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">primary</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">primaries</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">primaries</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">specs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">specs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">owner</span><span class="si">}</span><span class="s2"> has multiple @figure methods but none is &quot;</span>
+        <span class="s2">&quot;marked primary=True; cannot pick an inspect() figure&quot;</span>
+    <span class="p">)</span>
 
 
 <div class="viewcode-block" id="PhtPlot">
@@ -914,10 +988,23 @@
 <span class="sd">        An undecorated override removes an inherited figure, while a decorated</span>
 <span class="sd">        override retains the inherited figure&#39;s position.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">_class_figures</span><span class="p">()</span></div>
+
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_class_figures</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">FigureSpec</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return :meth:`iter_figures` for *cls*, without an instance.</span>
+
+<span class="sd">        The discovery depends only on the class, so it lives here and the</span>
+<span class="sd">        instance method delegates. The preflight needs it for a QC-recipe</span>
+<span class="sd">        binding, which holds a class that the QC runner has not yet</span>
+<span class="sd">        instantiated. An instance-level :meth:`iter_figures` override is, by</span>
+<span class="sd">        construction, not consulted.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">specs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">FigureSpec</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">orders</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">shadowed</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">klass</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__mro__</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">klass</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__mro__</span><span class="p">):</span>
             <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">attr</span> <span class="ow">in</span> <span class="nb">vars</span><span class="p">(</span><span class="n">klass</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                 <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">shadowed</span><span class="p">:</span>
                     <span class="k">continue</span>
@@ -925,22 +1012,22 @@
                 <span class="n">spec</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="s2">&quot;__figure_spec__&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">spec</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="n">specs</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">spec</span>
-                    <span class="n">orders</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inherited_figure_order</span><span class="p">(</span>
+                    <span class="n">orders</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_inherited_figure_order</span><span class="p">(</span>
                         <span class="n">name</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">order</span><span class="p">,</span> <span class="n">klass</span><span class="p">,</span> <span class="n">index</span>
                     <span class="p">)</span>
-        <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">specs</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">spec</span><span class="p">:</span> <span class="n">orders</span><span class="p">[</span><span class="n">spec</span><span class="o">.</span><span class="n">name</span><span class="p">])</span></div>
+        <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">specs</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">spec</span><span class="p">:</span> <span class="n">orders</span><span class="p">[</span><span class="n">spec</span><span class="o">.</span><span class="n">name</span><span class="p">])</span>
 
-
+    <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_inherited_figure_order</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
+        <span class="bp">cls</span><span class="p">,</span>
         <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">fallback</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
         <span class="n">selected_class</span><span class="p">:</span> <span class="nb">type</span><span class="p">,</span>
         <span class="n">selected_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the inherited definition slot for a selected override.&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">selected_class</span> <span class="ow">is</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-            <span class="n">ancestors</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__mro__</span><span class="p">[</span><span class="n">selected_index</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">:]</span>
+        <span class="k">if</span> <span class="n">selected_class</span> <span class="ow">is</span> <span class="bp">cls</span><span class="p">:</span>
+            <span class="n">ancestors</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="vm">__mro__</span><span class="p">[</span><span class="n">selected_index</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">:]</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">ancestors</span> <span class="o">=</span> <span class="n">selected_class</span><span class="o">.</span><span class="vm">__mro__</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
 
@@ -955,28 +1042,25 @@
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_primary_spec</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FigureSpec</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the explicit primary figure or the only declared figure.&quot;&quot;&quot;</span>
-        <span class="n">specs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_figures</span><span class="p">()</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">specs</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> declares no @figure methods&quot;</span>
-            <span class="p">)</span>
-        <span class="n">primaries</span> <span class="o">=</span> <span class="p">[</span><span class="n">spec</span> <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">specs</span> <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">primary</span><span class="p">]</span>
-        <span class="k">if</span> <span class="n">primaries</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">primaries</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">specs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">specs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> has multiple @figure methods but none is &quot;</span>
-            <span class="s2">&quot;marked primary=True; cannot pick an inspect() figure&quot;</span>
-        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">_select_primary_spec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">iter_figures</span><span class="p">(),</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_class_primary_spec</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FigureSpec</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return :meth:`_primary_spec` for *cls*, without an instance.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">_select_primary_spec</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_class_figures</span><span class="p">(),</span> <span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_render_spec</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">spec</span><span class="p">:</span> <span class="n">FigureSpec</span><span class="p">,</span>
         <span class="n">subject</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="o">**</span><span class="n">control_values</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;go.Figure&quot;</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Render one figure spec with its resolved subject and controls.&quot;&quot;&quot;</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FigureLike</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Render one figure spec with its resolved subject and controls.</span>
+
+<span class="sd">        Returns whichever backend the spec declares; ``_compose_control_free_figure``</span>
+<span class="sd">        is the Plotly-only consumer and keeps its narrower annotation, because</span>
+<span class="sd">        :meth:`report` refuses an ``mpl`` spec before reaching it.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">method</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">wants_subject</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">method</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_resolve_subject</span><span class="p">(</span><span class="n">subject</span><span class="p">),</span> <span class="o">**</span><span class="n">control_values</span><span class="p">)</span>
@@ -1040,6 +1124,12 @@
 
 <span class="sd">        Raises:</span>
 <span class="sd">            RuntimeError: If no figure methods are declared.</span>
+<span class="sd">            TypeError: If any visible figure declares ``backend=&quot;mpl&quot;`` --</span>
+<span class="sd">                **including a single figure, which needs no composition.** The</span>
+<span class="sd">                refusal is uniform by choice: a lone matplotlib figure could</span>
+<span class="sd">                round-trip through here, and is refused anyway for</span>
+<span class="sd">                predictability. :meth:`inspect` is the supported call and is</span>
+<span class="sd">                unaffected. Do not &quot;fix&quot; this by short-circuiting a single spec.</span>
 <span class="sd">            ValueError: If the base report receives overrides. Concrete plots</span>
 <span class="sd">                may override this method to expose report-specific parameters.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -1052,6 +1142,17 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="n">specs</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> declares no @figure methods&quot;</span>
+            <span class="p">)</span>
+        <span class="n">mpl_specs</span> <span class="o">=</span> <span class="p">[</span><span class="n">spec</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">specs</span> <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">backend</span> <span class="o">==</span> <span class="s2">&quot;mpl&quot;</span><span class="p">]</span>
+        <span class="c1"># Placed here rather than in _compose_control_free_figure: a provider</span>
+        <span class="c1"># with controls never reaches the composer (it goes to</span>
+        <span class="c1"># build_notebook_dashboard), so a guard down there misses that path.</span>
+        <span class="k">if</span> <span class="n">mpl_specs</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">.report(): cannot compose matplotlib &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;figures (</span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">mpl_specs</span><span class="p">))</span><span class="si">}</span><span class="s2">). Composition is &quot;</span>
+                <span class="s2">&quot;Plotly-only. Use inspect() for a single figure, or override &quot;</span>
+                <span class="s2">&quot;report() with a plot-specific implementation.&quot;</span>
             <span class="p">)</span>
         <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">controls</span> <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">specs</span><span class="p">):</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.sdk_.viz.notebook._adapter</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>

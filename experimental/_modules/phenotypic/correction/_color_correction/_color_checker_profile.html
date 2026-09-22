@@ -1264,6 +1264,38 @@
         <span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
 
+<div class="viewcode-block" id="ColorCheckerProfile.fit_from_patch_colors">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.correction.ColorCheckerProfile.html#phenotypic.correction.ColorCheckerProfile.fit_from_patch_colors">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">fit_from_patch_colors</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">measured</span><span class="p">:</span> <span class="s2">&quot;dict[str, np.ndarray] | np.ndarray&quot;</span><span class="p">,</span>
+            <span class="n">patch_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;ColorCheckerProfile&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fit from patch colours measured elsewhere.</span>
+
+<span class="sd">        The entry point for a detector that has already located and measured</span>
+<span class="sd">        the chart -- :class:`CalibrateColorRpcc` uses it, so both paths share</span>
+<span class="sd">        one solver, one outlier rule and one diagnostics schema.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            measured: Either a mapping of patch name to sRGB in ``[0, 1]``, or</span>
+<span class="sd">                an ``(N, 3)`` array with *patch_names* naming its rows.</span>
+<span class="sd">            patch_names: Row names, required only for the array form.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``self``, fitted.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If an array is given without names and its row count</span>
+<span class="sd">                does not match the chart.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">measured</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">measured</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+            <span class="n">array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">measured</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fit_from_patch_colors</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">names</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fit_from_patch_colors</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">measured</span><span class="p">),</span> <span class="n">patch_names</span><span class="p">)</span></div>
+
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_fit_from_patch_colors</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>
             <span class="n">measured_rgb</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
@@ -1271,8 +1303,8 @@
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ColorCheckerProfile</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Fit from pre-measured patch colors.</span>
 
-<span class="sd">        Lower-level entry point for when patch RGB values have already been</span>
-<span class="sd">        extracted externally (e.g. from an automatic checker detector).</span>
+<span class="sd">        Private implementation behind :meth:`fit_from_patch_colors`, which is</span>
+<span class="sd">        the supported entry point and also accepts a name-to-colour mapping.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            measured_rgb: ``(N, 3)`` float array of measured sRGB values in</span>

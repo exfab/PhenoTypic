@@ -1464,6 +1464,12 @@
 <span class="c1">#: Configured plot outputs: ``&lt;output&gt;/deliverables/plots/``.</span>
 <span class="n">DIR_PLOTS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plots&quot;</span>
 
+<span class="c1">#: Shared Plotly bundle for published HTML pages: ``&lt;plots&gt;/plotly.min.js``.</span>
+<span class="n">PLOTLYJS_BUNDLE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;plotly.min.js&quot;</span>
+
+<span class="c1">#: Durable record of swallowed plot failures: ``&lt;plots&gt;/.failures.jsonl``.</span>
+<span class="n">PLOT_FAILURES_JSONL</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;.failures.jsonl&quot;</span>
+
 <span class="c1">#: Mid-run chunk parquet subdirectory: ``&lt;progress&gt;/chunks/``.</span>
 <span class="n">DIR_CHUNKS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;chunks&quot;</span>
 
@@ -1799,6 +1805,35 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">plots_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;output&gt;/deliverables/plots/``.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">deliverables_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">DIR_PLOTS</span></div>
+
+
+
+<div class="viewcode-block" id="plotlyjs_bundle_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.plotlyjs_bundle_path.html#phenotypic.sdk_.plotlyjs_bundle_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">plotlyjs_bundle_path</span><span class="p">(</span><span class="n">plots_base</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;plots_base&gt;/plotly.min.js``.</span>
+
+<span class="sd">    Keyed on the resolved plots directory rather than the output root, because</span>
+<span class="sd">    the GUI&#39;s portable bundle layout has no ``deliverables/`` segment.</span>
+
+<span class="sd">    One bundle per run, shared by every published HTML page regardless of</span>
+<span class="sd">    depth. Plotly&#39;s own ``include_plotlyjs=&quot;directory&quot;`` writes a 4.8 MB copy</span>
+<span class="sd">    into every directory it touches, and a multi-page image plot gets one</span>
+<span class="sd">    directory per image -- gigabytes on a real run.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">plots_base</span> <span class="o">/</span> <span class="n">PLOTLYJS_BUNDLE</span></div>
+
+
+
+<div class="viewcode-block" id="plot_failures_jsonl_path">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.plot_failures_jsonl_path.html#phenotypic.sdk_.plot_failures_jsonl_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">plot_failures_jsonl_path</span><span class="p">(</span><span class="n">plots_base</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;plots_base&gt;/.failures.jsonl``.</span>
+
+<span class="sd">    Keyed on the resolved plots directory for the same reason as</span>
+<span class="sd">    :func:`plotlyjs_bundle_path` -- see its note.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">plots_base</span> <span class="o">/</span> <span class="n">PLOT_FAILURES_JSONL</span></div>
 
 
 

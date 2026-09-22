@@ -607,9 +607,34 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">date</span><span class="p">,</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">TypeAlias</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">TypeAlias</span>
 
 <span class="n">FigureLike</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">Any</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">figure_backend_of</span><span class="p">(</span><span class="n">figure</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;plotly&quot;</span><span class="p">,</span> <span class="s2">&quot;mpl&quot;</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the rendering backend of ``figure``, or ``None`` if unknown.</span>
+
+<span class="sd">    Identification is by module string so this module stays standard-library</span>
+<span class="sd">    only at runtime -- importing plotly or matplotlib to answer the question</span>
+<span class="sd">    would defeat the lazy-import contract this package is held to.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        figure: Any object that might be a supported figure.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``&quot;plotly&quot;``, ``&quot;mpl&quot;``, or ``None`` for anything unrecognised. Never</span>
+<span class="sd">        raises: callers that need an error raise their own, with the context</span>
+<span class="sd">        only they have.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">module</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">figure</span><span class="p">)</span><span class="o">.</span><span class="vm">__module__</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">figure</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">!=</span> <span class="s2">&quot;Figure&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">module</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;plotly.&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;plotly&quot;</span>
+    <span class="k">if</span> <span class="n">module</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;matplotlib.&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;mpl&quot;</span>
+    <span class="k">return</span> <span class="kc">None</span>
 
 
 <div class="viewcode-block" id="PlotPage">
@@ -717,6 +742,7 @@
     <span class="s2">&quot;PlotOutput&quot;</span><span class="p">,</span>
     <span class="s2">&quot;PlotPage&quot;</span><span class="p">,</span>
     <span class="s2">&quot;canonical_group_key&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;figure_backend_of&quot;</span><span class="p">,</span>
 <span class="p">]</span>
 </pre></div>
 

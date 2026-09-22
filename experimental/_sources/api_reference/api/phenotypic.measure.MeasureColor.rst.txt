@@ -62,7 +62,6 @@ phenotypic.measure.MeasureColor
       ~MeasureColor.include_xy
       ~MeasureColor.geomedian_max_iter
       ~MeasureColor.geomedian_tol
-      ~MeasureColor.medoid_max_pixels
-      ~MeasureColor.random_seed
+      ~MeasureColor.medoid_candidates
    
    

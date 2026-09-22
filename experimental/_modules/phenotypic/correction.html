@@ -609,9 +609,15 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">._bayesshrink_corrector</span><span class="w"> </span><span class="kn">import</span> <span class="n">BayesShrinkCorrector</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._color_correction</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">CalibrateColorRpcc</span><span class="p">,</span>
     <span class="n">CaptureMetadata</span><span class="p">,</span>
+    <span class="n">CheckerLattice</span><span class="p">,</span>
+    <span class="n">CheckerRoi</span><span class="p">,</span>
     <span class="n">ColorCheckerProfile</span><span class="p">,</span>
     <span class="n">ColorCorrector</span><span class="p">,</span>
+    <span class="n">ColumnLattice</span><span class="p">,</span>
+    <span class="n">QcLimits</span><span class="p">,</span>
+    <span class="n">QcRecord</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._color_denoise</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorDenoise</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._denoise_block_match</span><span class="w"> </span><span class="kn">import</span> <span class="n">DenoiseBlockMatch</span>
@@ -621,15 +627,21 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">._image_padder</span><span class="w"> </span><span class="kn">import</span> <span class="n">PadImage</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;CalibrateColorRpcc&quot;</span><span class="p">,</span>
     <span class="s2">&quot;CaptureMetadata&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;CheckerLattice&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;CheckerRoi&quot;</span><span class="p">,</span>
     <span class="s2">&quot;ColorCheckerProfile&quot;</span><span class="p">,</span>
     <span class="s2">&quot;ColorCorrector&quot;</span><span class="p">,</span>
     <span class="s2">&quot;ColorDenoise&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;ColumnLattice&quot;</span><span class="p">,</span>
     <span class="s2">&quot;DenoiseBlockMatch&quot;</span><span class="p">,</span>
     <span class="s2">&quot;GridAligner&quot;</span><span class="p">,</span>
     <span class="s2">&quot;CropImage&quot;</span><span class="p">,</span>
     <span class="s2">&quot;PadImage&quot;</span><span class="p">,</span>
     <span class="s2">&quot;BayesShrinkCorrector&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;QcLimits&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;QcRecord&quot;</span><span class="p">,</span>
     <span class="s2">&quot;VisuShrinkCorrector&quot;</span><span class="p">,</span>
 <span class="p">]</span>
 

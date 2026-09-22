@@ -617,8 +617,8 @@
 </div>
 <section id="metadata-match">
 <span id="measurement-info-metadata-match"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.METADATA_MATCH.html"><span class="doc">METADATA_MATCH</span></a><a class="headerlink" href="#metadata-match" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id1">
-<caption><span class="caption-text">Category: <strong>QC</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id7">
+<caption><span class="caption-text">Category: <strong>QC</strong></span><a class="headerlink" href="#id7" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -636,8 +636,8 @@
 </section>
 <section id="bbox">
 <span id="measurement-info-bbox"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.BBOX.html"><span class="doc">BBOX</span></a><a class="headerlink" href="#bbox" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id2">
-<caption><span class="caption-text">Category: <strong>Bbox</strong></span><a class="headerlink" href="#id2" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id8">
+<caption><span class="caption-text">Category: <strong>Bbox</strong></span><a class="headerlink" href="#id8" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -691,8 +691,8 @@
 </section>
 <section id="colorcomposition">
 <span id="measurement-info-colorcomposition"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.ColorComposition.html"><span class="doc">ColorComposition</span></a><a class="headerlink" href="#colorcomposition" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id3">
-<caption><span class="caption-text">Category: <strong>ColorComposition</strong></span><a class="headerlink" href="#id3" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id9">
+<caption><span class="caption-text">Category: <strong>ColorComposition</strong></span><a class="headerlink" href="#id9" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -754,8 +754,8 @@
 </section>
 <section id="colorhsv">
 <span id="measurement-info-colorhsv"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.ColorHSV.html"><span class="doc">ColorHSV</span></a><a class="headerlink" href="#colorhsv" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id4">
-<caption><span class="caption-text">Category: <strong>ColorHSV</strong></span><a class="headerlink" href="#id4" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id10">
+<caption><span class="caption-text">Category: <strong>ColorHSV</strong></span><a class="headerlink" href="#id10" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -785,8 +785,8 @@
 </section>
 <section id="colorlab">
 <span id="measurement-info-colorlab"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.ColorLab.html"><span class="doc">ColorLab</span></a><a class="headerlink" href="#colorlab" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id5">
-<caption><span class="caption-text">Category: <strong>ColorLab</strong></span><a class="headerlink" href="#id5" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id11">
+<caption><span class="caption-text">Category: <strong>ColorLab</strong></span><a class="headerlink" href="#id11" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -807,15 +807,15 @@
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorLab_L*Medoid</span></code></p></td>
-<td><p>L* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)</p></td>
+<td><p>L* of the ΔE2000 medoid center color: a real object pixel, the one with the smallest total ΔE2000 to every pixel of the object. Found deterministically (no random sampling): the candidates are the object pixels nearest a tightly converged L*a*b* geometric median, each scored against every object pixel, which recovers the exhaustive medoid on a unimodal colour cloud. That candidate centre is computed separately and more tightly than the reported <a href="#id1"><span class="problematic" id="id2">*</span></a>GeoMedian columns, so it need not equal them. Only the object’s own pixels are used, never a neighbouring object’s</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorLab_a*Medoid</span></code></p></td>
-<td><p>a* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)</p></td>
+<td><p>a* of the ΔE2000 medoid center color: a real object pixel, the one with the smallest total ΔE2000 to every pixel of the object. Found deterministically (no random sampling): the candidates are the object pixels nearest a tightly converged L*a*b* geometric median, each scored against every object pixel, which recovers the exhaustive medoid on a unimodal colour cloud. That candidate centre is computed separately and more tightly than the reported <a href="#id3"><span class="problematic" id="id4">*</span></a>GeoMedian columns, so it need not equal them. Only the object’s own pixels are used, never a neighbouring object’s</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ColorLab_b*Medoid</span></code></p></td>
-<td><p>b* of the ΔE2000 medoid center color (real pixel minimizing total ΔE2000)</p></td>
+<td><p>b* of the ΔE2000 medoid center color: a real object pixel, the one with the smallest total ΔE2000 to every pixel of the object. Found deterministically (no random sampling): the candidates are the object pixels nearest a tightly converged L*a*b* geometric median, each scored against every object pixel, which recovers the exhaustive medoid on a unimodal colour cloud. That candidate centre is computed separately and more tightly than the reported <a href="#id5"><span class="problematic" id="id6">*</span></a>GeoMedian columns, so it need not equal them. Only the object’s own pixels are used, never a neighbouring object’s</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 2 · Descriptive trait</span></a></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ColorLab_DeltaE2000MedianFromMedoid</span></code></p></td>
@@ -844,8 +844,8 @@
 </section>
 <section id="colorxy">
 <span id="measurement-info-colorxy"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.Colorxy.html"><span class="doc">Colorxy</span></a><a class="headerlink" href="#colorxy" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id6">
-<caption><span class="caption-text">Category: <strong>Colorxy</strong></span><a class="headerlink" href="#id6" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id12">
+<caption><span class="caption-text">Category: <strong>Colorxy</strong></span><a class="headerlink" href="#id12" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -923,8 +923,8 @@
 </section>
 <section id="colorxyz">
 <span id="measurement-info-colorxyz"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.ColorXYZ.html"><span class="doc">ColorXYZ</span></a><a class="headerlink" href="#colorxyz" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id7">
-<caption><span class="caption-text">Category: <strong>ColorXYZ</strong></span><a class="headerlink" href="#id7" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id13">
+<caption><span class="caption-text">Category: <strong>ColorXYZ</strong></span><a class="headerlink" href="#id13" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1034,8 +1034,8 @@
 </section>
 <section id="curation">
 <span id="measurement-info-curation"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.CURATION.html"><span class="doc">CURATION</span></a><a class="headerlink" href="#curation" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id8">
-<caption><span class="caption-text">Category: <strong>Curation</strong></span><a class="headerlink" href="#id8" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id14">
+<caption><span class="caption-text">Category: <strong>Curation</strong></span><a class="headerlink" href="#id14" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1053,8 +1053,8 @@
 </section>
 <section id="linear-cap-and-lag-model">
 <span id="measurement-info-linear-cap-and-lag-model"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.LINEAR_CAP_AND_LAG_MODEL.html"><span class="doc">LINEAR_CAP_AND_LAG_MODEL</span></a><a class="headerlink" href="#linear-cap-and-lag-model" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id9">
-<caption><span class="caption-text">Category: <strong>LinearCapAndLagModel</strong></span><a class="headerlink" href="#id9" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id15">
+<caption><span class="caption-text">Category: <strong>LinearCapAndLagModel</strong></span><a class="headerlink" href="#id15" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1096,8 +1096,8 @@
 </section>
 <section id="edge-correction">
 <span id="measurement-info-edge-correction"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.EDGE_CORRECTION.html"><span class="doc">EDGE_CORRECTION</span></a><a class="headerlink" href="#edge-correction" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id10">
-<caption><span class="caption-text">Category: <strong>EdgeCorrection</strong></span><a class="headerlink" href="#id10" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id16">
+<caption><span class="caption-text">Category: <strong>EdgeCorrection</strong></span><a class="headerlink" href="#id16" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1119,8 +1119,8 @@
 </section>
 <section id="errorcategory">
 <span id="measurement-info-errorcategory"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.ErrorCategory.html"><span class="doc">ErrorCategory</span></a><a class="headerlink" href="#errorcategory" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id11">
-<caption><span class="caption-text">Category: <strong>ErrorCategory</strong></span><a class="headerlink" href="#id11" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id17">
+<caption><span class="caption-text">Category: <strong>ErrorCategory</strong></span><a class="headerlink" href="#id17" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1158,8 +1158,8 @@
 </section>
 <section id="grid">
 <span id="measurement-info-grid"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.GRID.html"><span class="doc">GRID</span></a><a class="headerlink" href="#grid" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id12">
-<caption><span class="caption-text">Category: <strong>Grid</strong></span><a class="headerlink" href="#id12" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id18">
+<caption><span class="caption-text">Category: <strong>Grid</strong></span><a class="headerlink" href="#id18" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1205,8 +1205,8 @@
 </section>
 <section id="grid-linreg-stats">
 <span id="measurement-info-grid-linreg-stats"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.GRID_LINREG_STATS.html"><span class="doc">GRID_LINREG_STATS</span></a><a class="headerlink" href="#grid-linreg-stats" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id13">
-<caption><span class="caption-text">Category: <strong>GridLinReg</strong></span><a class="headerlink" href="#id13" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id19">
+<caption><span class="caption-text">Category: <strong>GridLinReg</strong></span><a class="headerlink" href="#id19" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1248,8 +1248,8 @@
 </section>
 <section id="neighbor-dist">
 <span id="measurement-info-neighbor-dist"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.NEIGHBOR_DIST.html"><span class="doc">NEIGHBOR_DIST</span></a><a class="headerlink" href="#neighbor-dist" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id14">
-<caption><span class="caption-text">Category: <strong>GridSpatial</strong></span><a class="headerlink" href="#id14" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id20">
+<caption><span class="caption-text">Category: <strong>GridSpatial</strong></span><a class="headerlink" href="#id20" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1295,8 +1295,8 @@
 </section>
 <section id="grid-spread">
 <span id="measurement-info-grid-spread"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.GRID_SPREAD.html"><span class="doc">GRID_SPREAD</span></a><a class="headerlink" href="#grid-spread" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id15">
-<caption><span class="caption-text">Category: <strong>GridSpread</strong></span><a class="headerlink" href="#id15" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id21">
+<caption><span class="caption-text">Category: <strong>GridSpread</strong></span><a class="headerlink" href="#id21" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1314,8 +1314,8 @@
 </section>
 <section id="intensity">
 <span id="measurement-info-intensity"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.INTENSITY.html"><span class="doc">INTENSITY</span></a><a class="headerlink" href="#intensity" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id16">
-<caption><span class="caption-text">Category: <strong>Intensity</strong></span><a class="headerlink" href="#id16" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id22">
+<caption><span class="caption-text">Category: <strong>Intensity</strong></span><a class="headerlink" href="#id22" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1377,8 +1377,8 @@
 </section>
 <section id="linear-lag-model">
 <span id="measurement-info-linear-lag-model"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.LINEAR_LAG_MODEL.html"><span class="doc">LINEAR_LAG_MODEL</span></a><a class="headerlink" href="#linear-lag-model" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id17">
-<caption><span class="caption-text">Category: <strong>LinearLagModel</strong></span><a class="headerlink" href="#id17" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id23">
+<caption><span class="caption-text">Category: <strong>LinearLagModel</strong></span><a class="headerlink" href="#id23" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1413,8 +1413,8 @@
 </section>
 <section id="log-growth-model">
 <span id="measurement-info-log-growth-model"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.LOG_GROWTH_MODEL.html"><span class="doc">LOG_GROWTH_MODEL</span></a><a class="headerlink" href="#log-growth-model" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id18">
-<caption><span class="caption-text">Category: <strong>LogGrowthModel</strong></span><a class="headerlink" href="#id18" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id24">
+<caption><span class="caption-text">Category: <strong>LogGrowthModel</strong></span><a class="headerlink" href="#id24" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1456,8 +1456,8 @@
 </section>
 <section id="model-metrics">
 <span id="measurement-info-model-metrics"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.MODEL_METRICS.html"><span class="doc">MODEL_METRICS</span></a><a class="headerlink" href="#model-metrics" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id19">
-<caption><span class="caption-text">Category: <strong>ModelMetrics</strong></span><a class="headerlink" href="#id19" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id25">
+<caption><span class="caption-text">Category: <strong>ModelMetrics</strong></span><a class="headerlink" href="#id25" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1499,8 +1499,8 @@
 </section>
 <section id="object">
 <span id="measurement-info-object"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.OBJECT.html"><span class="doc">OBJECT</span></a><a class="headerlink" href="#object" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id20">
-<caption><span class="caption-text">Category: <strong>Object</strong></span><a class="headerlink" href="#id20" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id26">
+<caption><span class="caption-text">Category: <strong>Object</strong></span><a class="headerlink" href="#id26" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1518,8 +1518,8 @@
 </section>
 <section id="quality-check">
 <span id="measurement-info-quality-check"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.QUALITY_CHECK.html"><span class="doc">QUALITY_CHECK</span></a><a class="headerlink" href="#quality-check" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id21">
-<caption><span class="caption-text">Category: <strong>QC</strong></span><a class="headerlink" href="#id21" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id27">
+<caption><span class="caption-text">Category: <strong>QC</strong></span><a class="headerlink" href="#id27" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1545,8 +1545,8 @@
 </section>
 <section id="quality-count">
 <span id="measurement-info-quality-count"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.QUALITY_COUNT.html"><span class="doc">QUALITY_COUNT</span></a><a class="headerlink" href="#quality-count" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id22">
-<caption><span class="caption-text">Category: <strong>QC_Count</strong></span><a class="headerlink" href="#id22" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id28">
+<caption><span class="caption-text">Category: <strong>QC_Count</strong></span><a class="headerlink" href="#id28" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1572,8 +1572,8 @@
 </section>
 <section id="quality-icc">
 <span id="measurement-info-quality-icc"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.QUALITY_ICC.html"><span class="doc">QUALITY_ICC</span></a><a class="headerlink" href="#quality-icc" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id23">
-<caption><span class="caption-text">Category: <strong>QC_ICC</strong></span><a class="headerlink" href="#id23" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id29">
+<caption><span class="caption-text">Category: <strong>QC_ICC</strong></span><a class="headerlink" href="#id29" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1599,8 +1599,8 @@
 </section>
 <section id="quality-mad">
 <span id="measurement-info-quality-mad"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.QUALITY_MAD.html"><span class="doc">QUALITY_MAD</span></a><a class="headerlink" href="#quality-mad" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id24">
-<caption><span class="caption-text">Category: <strong>QC_MAD</strong></span><a class="headerlink" href="#id24" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id30">
+<caption><span class="caption-text">Category: <strong>QC_MAD</strong></span><a class="headerlink" href="#id30" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1626,8 +1626,8 @@
 </section>
 <section id="quality-occupancy">
 <span id="measurement-info-quality-occupancy"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.QUALITY_OCCUPANCY.html"><span class="doc">QUALITY_OCCUPANCY</span></a><a class="headerlink" href="#quality-occupancy" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id25">
-<caption><span class="caption-text">Category: <strong>QC_Occupancy</strong></span><a class="headerlink" href="#id25" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id31">
+<caption><span class="caption-text">Category: <strong>QC_Occupancy</strong></span><a class="headerlink" href="#id31" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1653,8 +1653,8 @@
 </section>
 <section id="quality-se">
 <span id="measurement-info-quality-se"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.QUALITY_SE.html"><span class="doc">QUALITY_SE</span></a><a class="headerlink" href="#quality-se" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id26">
-<caption><span class="caption-text">Category: <strong>QC_SE</strong></span><a class="headerlink" href="#id26" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id32">
+<caption><span class="caption-text">Category: <strong>QC_SE</strong></span><a class="headerlink" href="#id32" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1684,8 +1684,8 @@
 </section>
 <section id="quality-tukey">
 <span id="measurement-info-quality-tukey"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.QUALITY_TUKEY.html"><span class="doc">QUALITY_TUKEY</span></a><a class="headerlink" href="#quality-tukey" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id27">
-<caption><span class="caption-text">Category: <strong>QC_Tukey</strong></span><a class="headerlink" href="#id27" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id33">
+<caption><span class="caption-text">Category: <strong>QC_Tukey</strong></span><a class="headerlink" href="#id33" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1715,8 +1715,8 @@
 </section>
 <section id="quality-zmax">
 <span id="measurement-info-quality-zmax"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.QUALITY_ZMAX.html"><span class="doc">QUALITY_ZMAX</span></a><a class="headerlink" href="#quality-zmax" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id28">
-<caption><span class="caption-text">Category: <strong>QC_ZMax</strong></span><a class="headerlink" href="#id28" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id34">
+<caption><span class="caption-text">Category: <strong>QC_ZMax</strong></span><a class="headerlink" href="#id34" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1742,8 +1742,8 @@
 </section>
 <section id="radial-expansion">
 <span id="measurement-info-radial-expansion"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.RADIAL_EXPANSION.html"><span class="doc">RADIAL_EXPANSION</span></a><a class="headerlink" href="#radial-expansion" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id29">
-<caption><span class="caption-text">Category: <strong>RadialExpansion</strong></span><a class="headerlink" href="#id29" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id35">
+<caption><span class="caption-text">Category: <strong>RadialExpansion</strong></span><a class="headerlink" href="#id35" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1789,8 +1789,8 @@
 </section>
 <section id="shape">
 <span id="measurement-info-shape"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.SHAPE.html"><span class="doc">SHAPE</span></a><a class="headerlink" href="#shape" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id30">
-<caption><span class="caption-text">Category: <strong>Shape</strong></span><a class="headerlink" href="#id30" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id36">
+<caption><span class="caption-text">Category: <strong>Shape</strong></span><a class="headerlink" href="#id36" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1910,8 +1910,8 @@
 </section>
 <section id="size">
 <span id="measurement-info-size"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.SIZE.html"><span class="doc">SIZE</span></a><a class="headerlink" href="#size" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id31">
-<caption><span class="caption-text">Category: <strong>Size</strong></span><a class="headerlink" href="#id31" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id37">
+<caption><span class="caption-text">Category: <strong>Size</strong></span><a class="headerlink" href="#id37" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1933,8 +1933,8 @@
 </section>
 <section id="orientation-zone-diagnostic">
 <span id="measurement-info-orientation-zone-diagnostic"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.ORIENTATION_ZONE_DIAGNOSTIC.html"><span class="doc">ORIENTATION_ZONE_DIAGNOSTIC</span></a><a class="headerlink" href="#orientation-zone-diagnostic" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id32">
-<caption><span class="caption-text">Category: <strong>OrientZones</strong></span><a class="headerlink" href="#id32" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id38">
+<caption><span class="caption-text">Category: <strong>OrientZones</strong></span><a class="headerlink" href="#id38" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -2268,8 +2268,8 @@
 </section>
 <section id="orientation-zone-primary">
 <span id="measurement-info-orientation-zone-primary"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.ORIENTATION_ZONE_PRIMARY.html"><span class="doc">ORIENTATION_ZONE_PRIMARY</span></a><a class="headerlink" href="#orientation-zone-primary" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id33">
-<caption><span class="caption-text">Category: <strong>OrientZones</strong></span><a class="headerlink" href="#id33" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id39">
+<caption><span class="caption-text">Category: <strong>OrientZones</strong></span><a class="headerlink" href="#id39" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -2331,8 +2331,8 @@
 </section>
 <section id="symmetric-zones">
 <span id="measurement-info-symmetric-zones"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.SYMMETRIC_ZONES.html"><span class="doc">SYMMETRIC_ZONES</span></a><a class="headerlink" href="#symmetric-zones" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id34">
-<caption><span class="caption-text">Category: <strong>SymZones</strong></span><a class="headerlink" href="#id34" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id40">
+<caption><span class="caption-text">Category: <strong>SymZones</strong></span><a class="headerlink" href="#id40" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -2386,8 +2386,8 @@
 </section>
 <section id="texture">
 <span id="measurement-info-texture"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.TEXTURE.html"><span class="doc">TEXTURE</span></a><a class="headerlink" href="#texture" title="Link to this heading">#</a></h2>
-<div class="pst-scrollable-table-container"><table class="table" id="id35">
-<caption><span class="caption-text">Category: <strong>Texture</strong></span><a class="headerlink" href="#id35" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id41">
+<caption><span class="caption-text">Category: <strong>Texture</strong></span><a class="headerlink" href="#id41" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>

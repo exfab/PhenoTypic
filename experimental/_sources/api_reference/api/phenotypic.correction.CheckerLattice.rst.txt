@@ -1,0 +1,67 @@
+phenotypic.correction.CheckerLattice
+====================================
+
+.. currentmodule:: phenotypic.correction
+
+.. autoclass:: CheckerLattice
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~CheckerLattice.__init__
+      ~CheckerLattice.boxes
+      ~CheckerLattice.centers
+      ~CheckerLattice.construct
+      ~CheckerLattice.copy
+      ~CheckerLattice.dict
+      ~CheckerLattice.from_orm
+      ~CheckerLattice.json
+      ~CheckerLattice.model_construct
+      ~CheckerLattice.model_copy
+      ~CheckerLattice.model_dump
+      ~CheckerLattice.model_dump_json
+      ~CheckerLattice.model_json_schema
+      ~CheckerLattice.model_parametrized_name
+      ~CheckerLattice.model_post_init
+      ~CheckerLattice.model_rebuild
+      ~CheckerLattice.model_validate
+      ~CheckerLattice.model_validate_json
+      ~CheckerLattice.model_validate_strings
+      ~CheckerLattice.parse_file
+      ~CheckerLattice.parse_obj
+      ~CheckerLattice.parse_raw
+      ~CheckerLattice.schema
+      ~CheckerLattice.schema_json
+      ~CheckerLattice.translated
+      ~CheckerLattice.update_forward_refs
+      ~CheckerLattice.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CheckerLattice.model_computed_fields
+      ~CheckerLattice.model_config
+      ~CheckerLattice.model_extra
+      ~CheckerLattice.model_fields
+      ~CheckerLattice.model_fields_set
+      ~CheckerLattice.n_tiles
+      ~CheckerLattice.columns
+      ~CheckerLattice.nrows
+      ~CheckerLattice.dy
+      ~CheckerLattice.dx
+      ~CheckerLattice.rot
+   
+   

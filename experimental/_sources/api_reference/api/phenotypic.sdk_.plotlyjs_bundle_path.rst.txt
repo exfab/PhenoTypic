@@ -1,0 +1,6 @@
+phenotypic.sdk\_.plotlyjs\_bundle\_path
+=======================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: plotlyjs_bundle_path

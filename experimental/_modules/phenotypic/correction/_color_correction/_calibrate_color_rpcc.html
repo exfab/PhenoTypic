@@ -1,0 +1,1239 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.correction._color_correction._calibrate_color_rpcc &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../../_static/documentation_options.js?v=8a079089"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/correction/_color_correction/_calibrate_color_rpcc';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/experimental/_modules/phenotypic/correction/_color_correction/_calibrate_color_rpcc.html" />
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.19.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../../correction.html" class="nav-link">phenotypic.correction</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.correction._color_correction._calibrate_color_rpcc</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.correction._color_correction._calibrate_color_rpcc</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Fit a root-polynomial colour correction from the chart in this frame.</span>
+
+<span class="sd">:class:`CalibrateColorRpcc` is the end-to-end operation: given the rectangles</span>
+<span class="sd">where colour-checker cards appear in a plate image, it locates the tiles,</span>
+<span class="sd">works out which chart patch each one is, measures them, fits a profile and</span>
+<span class="sd">applies it.  :class:`ColorCorrector` by contrast only applies a profile that</span>
+<span class="sd">already exists.</span>
+
+<span class="sd">Fitting from the frame&#39;s own card is most of the accuracy, not a convenience.</span>
+<span class="sd">The root-polynomial expansion is positively homogeneous of degree 1, so a fit</span>
+<span class="sd">on a frame that happens to be dark absorbs the gain as a matrix scaled by 1/k</span>
+<span class="sd">-- a profile fitted elsewhere is exposure-invariant by construction and</span>
+<span class="sd">preserves the deficit.  A transferred chip profile measured 15.93 mean</span>
+<span class="sd">delta-E 2000 on the reference set&#39;s in-frame tiles against 1.95 for a</span>
+<span class="sd">per-image fit, both via the earlier notebook extraction.</span>
+
+<span class="sd">**What this implementation currently achieves is worse than that notebook</span>
+<span class="sd">figure.**  On the same three reference frames it measures 3.40, 2.88 and 4.74</span>
+<span class="sd">mean delta-E 2000 in-sample, and 4.37 to 11.35 held out on another frame.  The</span>
+<span class="sd">median per-patch error is 2.11 -- at the notebook&#39;s level -- so the mean is</span>
+<span class="sd">carried by a handful of tiles: purple, foliage and the four neutrals, which</span>
+<span class="sd">are also the tiles with the highest within-tile spread.  That points at core</span>
+<span class="sd">boxes straddling a patch edge rather than at the fit, with the deferred</span>
+<span class="sd">white-balance confound (whose signature is error concentrated in the neutrals)</span>
+<span class="sd">second.  One frame is corrected worse than it started.  Treat the numbers here</span>
+<span class="sd">as the current state, not a specification, and see the plan&#39;s Task 7 for the</span>
+<span class="sd">open diagnosis.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">overload</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">PrivateAttr</span><span class="p">,</span> <span class="n">field_validator</span><span class="p">,</span> <span class="n">model_validator</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">...abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageCorrector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">...sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">...util</span><span class="w"> </span><span class="kn">import</span> <span class="n">MedoidCandidates</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._checker_detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">fit_lattice</span><span class="p">,</span> <span class="n">refine</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._checker_identity</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">assign_placement</span><span class="p">,</span>
+    <span class="n">chart_grid</span><span class="p">,</span>
+    <span class="n">placements</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._checker_measure</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">DEFAULT_MEDOID_CANDIDATES</span><span class="p">,</span>
+    <span class="n">extract_patch</span><span class="p">,</span>
+    <span class="n">measure_tile</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._checker_qc</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">QcLimits</span><span class="p">,</span>
+    <span class="n">QcRecord</span><span class="p">,</span>
+    <span class="n">evaluate_roi</span><span class="p">,</span>
+    <span class="n">require_rank</span><span class="p">,</span>
+    <span class="n">warn_on_patch_census</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._checker_roi</span><span class="w"> </span><span class="kn">import</span> <span class="n">CheckerLattice</span><span class="p">,</span> <span class="n">CheckerRoi</span><span class="p">,</span> <span class="n">coerce_rois</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._color_checker_profile</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorCheckerProfile</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">._color_corrector</span><span class="w"> </span><span class="kn">import</span> <span class="n">ColorCorrector</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="n">OnQcFail</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;raise&quot;</span><span class="p">,</span> <span class="s2">&quot;warn&quot;</span><span class="p">,</span> <span class="s2">&quot;skip&quot;</span><span class="p">]</span>
+
+<span class="c1">#: Refinement methods the operation offers.  ``&quot;ecc&quot;`` is deliberately absent:</span>
+<span class="c1">#: it registers against a stored reference band, which would have to ride in</span>
+<span class="c1">#: every serialised pipeline (see the spec&#39;s Detection section).</span>
+<span class="n">OperationRefineMethod</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;rigid&quot;</span><span class="p">,</span> <span class="s2">&quot;frozen&quot;</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_root_cause</span><span class="p">(</span><span class="n">exc</span><span class="p">:</span> <span class="ne">BaseException</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="ne">BaseException</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The innermost exception in a ``raise ... from`` chain.&quot;&quot;&quot;</span>
+    <span class="k">while</span> <span class="n">exc</span><span class="o">.</span><span class="n">__cause__</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">exc</span> <span class="o">=</span> <span class="n">exc</span><span class="o">.</span><span class="n">__cause__</span>
+    <span class="k">return</span> <span class="n">exc</span>
+
+
+<div class="viewcode-block" id="CalibrateColorRpcc">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.correction.CalibrateColorRpcc.html#phenotypic.correction.CalibrateColorRpcc">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CalibrateColorRpcc</span><span class="p">(</span><span class="n">ImageCorrector</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fit and apply a root-polynomial correction from this frame&#39;s own chart.</span>
+
+<span class="sd">    Best For:</span>
+<span class="sd">        - Plate photographs with a colour-checker card mounted in the frame,</span>
+<span class="sd">          where every image can calibrate itself.</span>
+<span class="sd">        - Multi-session studies where a stored profile would carry a stale</span>
+<span class="sd">          exposure: a same-image fit absorbs the gain, a transferred one</span>
+<span class="sd">          cannot.</span>
+<span class="sd">        - Unattended batches, where the quality gate must refuse a frame</span>
+<span class="sd">          rather than emit a correction fitted to an obscured card.</span>
+
+<span class="sd">    Consider Also:</span>
+<span class="sd">        - :class:`ColorCorrector` when a fitted</span>
+<span class="sd">          :class:`ColorCheckerProfile` already exists and only needs applying.</span>
+<span class="sd">        - :class:`ColorCheckerProfile` directly when the chart is</span>
+<span class="sd">          free-standing and fully visible rather than part of the scene.</span>
+<span class="sd">        - :class:`DenoiseBlockMatch` afterwards: correction improves accuracy</span>
+<span class="sd">          while mildly amplifying per-pixel noise.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        rois: Rectangles to look inside, one per card region.  Required.</span>
+<span class="sd">            Accepts :class:`CheckerRoi` objects or plain</span>
+<span class="sd">            ``[row_min, col_min, row_max, col_max]`` sequences</span>
+<span class="sd">            (``regionprops`` bbox order), mixed freely.  The rectangle is all</span>
+<span class="sd">            that is declared: how many tiles it holds and which chart patch</span>
+<span class="sd">            each one is are recovered from the pixels.</span>
+<span class="sd">        checker_type: Key in ``colour.CCS_COLOURCHECKERS``.</span>
+<span class="sd">        target_illuminant: Working illuminant.  Reference values are</span>
+<span class="sd">            Bradford-adapted from the chart&#39;s own illuminant to this one</span>
+<span class="sd">            before any comparison.</span>
+<span class="sd">        degree: Root-polynomial degree.  **Fixed for every image in a run**;</span>
+<span class="sd">            never adapted to what a frame happened to detect.  Correcting two</span>
+<span class="sd">            frames of one experiment with different degrees puts a</span>
+<span class="sd">            reproducible bias into the contrast between them.</span>
+<span class="sd">        grid: Optional ``(nrows, ncols)`` of each card&#39;s tile block, used only</span>
+<span class="sd">            when fitting a lattice from scratch.  Says nothing about which</span>
+<span class="sd">            patches are present.</span>
+<span class="sd">        lattice_prior: Per-ROI lattices from an earlier frame.  When given,</span>
+<span class="sd">            they are refined onto this frame rather than re-fitted.</span>
+<span class="sd">        refine_method: ``&quot;rigid&quot;`` (reference-free, default) or</span>
+<span class="sd">            ``&quot;frozen&quot;``.  ECC registration is not offered: it needs a</span>
+<span class="sd">            reference band shipped with every serialised pipeline.</span>
+<span class="sd">        core_trim: Fraction trimmed from each tile box before measuring.</span>
+<span class="sd">            ``0.4`` keeps the central 60 % of each axis, which is where the</span>
+<span class="sd">            detector&#39;s residual error is absorbed.</span>
+<span class="sd">        medoid_candidates: Candidate-set size for the deterministic medoid.</span>
+<span class="sd">        outlier_sigma: Patches beyond ``mean + sigma * sd`` delta-E are</span>
+<span class="sd">            rejected before fitting.</span>
+<span class="sd">        min_patches: Accepted patches below which a worse fit is warned</span>
+<span class="sd">            about.  It warns only; it never changes the degree or refuses</span>
+<span class="sd">            the frame.</span>
+<span class="sd">        qc_limits: Gate thresholds.</span>
+<span class="sd">        on_qc_fail: ``&quot;raise&quot;``, ``&quot;warn&quot;`` (correct anyway) or ``&quot;skip&quot;``</span>
+<span class="sd">            (return the image uncorrected with the record attached).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Image: ``rgb`` corrected, with ``gray`` and ``detect_mat`` recomputed.</span>
+<span class="sd">        ``fitted_profile`` and ``qc`` are populated on the operation.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If any ROI fails the gate under ``on_qc_fail=&quot;raise&quot;``,</span>
+<span class="sd">            or if the patches that reach the fit cannot support ``degree``</span>
+<span class="sd">            (under any policy).  ``apply()`` re-raises every failure as</span>
+<span class="sd">            ``RuntimeError`` with the ``ValueError`` as its root cause.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">rois</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">CheckerRoi</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">min_length</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">checker_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;ColorChecker24 - After November 2014&quot;</span>
+    <span class="n">target_illuminant</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;D65&quot;</span>
+    <span class="c1"># Fixed across a run by design: tuning it per batch is the per-frame</span>
+    <span class="c1"># adaptation the module forbids (see correction/CLAUDE.md).</span>
+    <span class="n">degree</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">grid</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">lattice_prior</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">CheckerLattice</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">refine_method</span><span class="p">:</span> <span class="n">OperationRefineMethod</span> <span class="o">=</span> <span class="s2">&quot;rigid&quot;</span>
+    <span class="n">core_trim</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.4</span>
+    <span class="n">medoid_candidates</span><span class="p">:</span> <span class="n">MedoidCandidates</span> <span class="o">=</span> <span class="n">DEFAULT_MEDOID_CANDIDATES</span>
+    <span class="n">outlier_sigma</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">2.0</span>
+    <span class="c1"># Only decides when to warn; it changes no output, so there is nothing to tune.</span>
+    <span class="n">min_patches</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">20</span>
+    <span class="n">qc_limits</span><span class="p">:</span> <span class="n">QcLimits</span> <span class="o">=</span> <span class="n">QcLimits</span><span class="p">()</span>
+    <span class="n">on_qc_fail</span><span class="p">:</span> <span class="n">OnQcFail</span> <span class="o">=</span> <span class="s2">&quot;raise&quot;</span>
+
+    <span class="n">fitted_profile</span><span class="p">:</span> <span class="n">ColorCheckerProfile</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">qc</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">QcRecord</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">_diagnostics</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;rois&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_coerce_rois</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Accept bounding-box sequences alongside :class:`CheckerRoi`.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">CheckerRoi</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">value</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="n">coerce_rois</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">value</span>
+
+    <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;degree&quot;</span><span class="p">)</span>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_degree</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">degree</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reject a degree the expansion does not define.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">degree</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;degree must be 1-4; got </span><span class="si">{</span><span class="n">degree</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">degree</span>
+
+    <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_lattice_prior_length</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CalibrateColorRpcc</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;One prior per ROI, in ROI order.</span>
+
+<span class="sd">        Checked here so a short list fails when the operation is built,</span>
+<span class="sd">        naming the field, rather than deep inside ``_operate`` as an</span>
+<span class="sd">        ``IndexError`` on whichever image happened to be first.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_prior</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lattice_prior</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rois</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;lattice_prior has </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lattice_prior</span><span class="p">)</span><span class="si">}</span><span class="s2"> entries but there &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;are </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rois</span><span class="p">)</span><span class="si">}</span><span class="s2"> rois; supply exactly one per ROI, in the &quot;</span>
+                    <span class="s2">&quot;same order.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">diagnostics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Per-run detail: illuminant handling, patch census, per-tile values.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_diagnostics</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span> <span class="o">...</span>
+
+    <span class="nd">@overload</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span> <span class="o">...</span>
+
+<div class="viewcode-block" id="CalibrateColorRpcc.apply">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.correction.CalibrateColorRpcc.html#phenotypic.correction.CalibrateColorRpcc.apply">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calibrate from this image&#39;s own chart, then correct it.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span></div>
+
+
+    <span class="c1"># -- stages ------------------------------------------------------------</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_roi_views</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">roi</span><span class="p">:</span> <span class="n">CheckerRoi</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Lab and normalised sRGB for one ROI.</span>
+
+<span class="sd">        Lab comes from ``Image.color.Lab`` so the encoding is handled once and</span>
+<span class="sd">        correctly; feeding linear RGB to a converter that expects sRGB is the</span>
+<span class="sd">        defect this operation exists partly to avoid.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span> <span class="k">as</span> <span class="n">_Image</span>
+
+        <span class="n">sub</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">rgb</span><span class="p">[</span><span class="n">roi</span><span class="o">.</span><span class="n">row_slice</span><span class="p">,</span> <span class="n">roi</span><span class="o">.</span><span class="n">col_slice</span><span class="p">]</span>
+        <span class="n">wrapped</span> <span class="o">=</span> <span class="n">_Image</span><span class="p">(</span>
+                <span class="n">arr</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">sub</span><span class="p">),</span>
+                <span class="n">gamma</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">gamma</span><span class="p">,</span>
+                <span class="n">illuminant</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">illuminant</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">wrapped</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">Lab</span><span class="p">[:],</span> <span class="n">wrapped</span><span class="o">.</span><span class="n">rgb</span><span class="o">.</span><span class="n">normed</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_measure_roi</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lab</span><span class="p">,</span> <span class="n">srgb</span><span class="p">,</span> <span class="n">lattice</span><span class="p">,</span> <span class="n">roi_index</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Measure every tile of one ROI&#39;s lattice.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="n">measure_tile</span><span class="p">(</span>
+                    <span class="n">extract_patch</span><span class="p">(</span><span class="n">lab</span><span class="p">,</span> <span class="p">(</span><span class="n">y0</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="n">x1</span><span class="p">)),</span>
+                    <span class="n">extract_patch</span><span class="p">(</span><span class="n">srgb</span><span class="p">,</span> <span class="p">(</span><span class="n">y0</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="n">x1</span><span class="p">)),</span>
+                    <span class="n">row</span><span class="o">=</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="n">col</span><span class="p">,</span> <span class="n">roi_index</span><span class="o">=</span><span class="n">roi_index</span><span class="p">,</span>
+                    <span class="n">candidates</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">medoid_candidates</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">,</span> <span class="n">y0</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="n">x1</span> <span class="ow">in</span> <span class="n">lattice</span><span class="o">.</span><span class="n">boxes</span><span class="p">(</span><span class="n">core</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">core_trim</span><span class="p">,</span> <span class="n">rot</span><span class="o">=</span><span class="n">lattice</span><span class="o">.</span><span class="n">rot</span><span class="p">)</span>
+        <span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Detect, identify, measure, fit, apply.&quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">colour</span>
+
+        <span class="kn">from</span><span class="w"> </span><span class="nn">._color_checker_profile</span><span class="w"> </span><span class="kn">import</span> <span class="n">_load_reference_data</span>
+
+        <span class="c1"># One instance may process many images; nothing from the last one may</span>
+        <span class="c1"># survive into this one&#39;s result, least of all on the skip path.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fitted_profile</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">qc</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_diagnostics</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="n">ref_lab</span><span class="p">,</span> <span class="n">ref_linear</span><span class="p">,</span> <span class="n">_wp</span> <span class="o">=</span> <span class="n">_load_reference_data</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">checker_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span>
+        <span class="p">)</span>
+        <span class="n">patch_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">ref_lab</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="n">grid</span> <span class="o">=</span> <span class="n">chart_grid</span><span class="p">(</span><span class="n">patch_names</span><span class="p">)</span>
+        <span class="n">chart_illuminant</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">CCS_COLOURCHECKERS</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">checker_type</span><span class="p">]</span><span class="o">.</span><span class="n">illuminant</span>
+
+        <span class="n">measured</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">claimed_by</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># patch name -&gt; ROI that measured it</span>
+        <span class="n">records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">QcRecord</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">tiles_out</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># One entry per ROI, None where no lattice was found, so that</span>
+        <span class="c1"># lattices[i] always describes ROI i.</span>
+        <span class="n">lattices</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">CheckerLattice</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">roi</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rois</span><span class="p">):</span>
+            <span class="n">lab</span><span class="p">,</span> <span class="n">srgb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_roi_views</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">roi</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_prior</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">refined</span> <span class="o">=</span> <span class="n">refine</span><span class="p">(</span>
+                        <span class="n">lab</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_prior</span><span class="p">[</span><span class="n">index</span><span class="p">],</span> <span class="n">method</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">refine_method</span><span class="p">,</span>
+                        <span class="n">anchor_col</span><span class="o">=</span><span class="n">roi</span><span class="o">.</span><span class="n">anchor_col</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">lattice</span><span class="p">,</span> <span class="n">shift</span> <span class="o">=</span> <span class="n">refined</span><span class="o">.</span><span class="n">lattice</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">hypot</span><span class="p">(</span><span class="n">refined</span><span class="o">.</span><span class="n">dy</span><span class="p">,</span> <span class="n">refined</span><span class="o">.</span><span class="n">dx</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">lattice</span> <span class="o">=</span> <span class="n">fit_lattice</span><span class="p">(</span><span class="n">lab</span><span class="p">,</span> <span class="n">grid</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                    <span class="c1"># No card in the rectangle is a property of this frame,</span>
+                    <span class="c1"># not of the configuration: the policy decides.</span>
+                    <span class="n">records</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_refusal</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;lattice not found: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">))</span>
+                    <span class="n">lattices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+                    <span class="k">continue</span>
+                <span class="n">shift</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="n">lattices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lattice</span><span class="p">)</span>
+
+            <span class="n">refusals</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">if</span> <span class="n">roi</span><span class="o">.</span><span class="n">expect_tiles</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">lattice</span><span class="o">.</span><span class="n">n_tiles</span> <span class="o">!=</span> <span class="n">roi</span><span class="o">.</span><span class="n">expect_tiles</span><span class="p">:</span>
+                <span class="n">refusals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;declared to hold </span><span class="si">{</span><span class="n">roi</span><span class="o">.</span><span class="n">expect_tiles</span><span class="si">}</span><span class="s2"> tiles but &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">lattice</span><span class="o">.</span><span class="n">n_tiles</span><span class="si">}</span><span class="s2"> were detected&quot;</span>
+                <span class="p">)</span>
+            <span class="n">candidates</span> <span class="o">=</span> <span class="n">placements</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="p">(</span><span class="n">lattice</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">lattice</span><span class="o">.</span><span class="n">columns</span><span class="p">)))</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">candidates</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">refusals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;a </span><span class="si">{</span><span class="n">lattice</span><span class="o">.</span><span class="n">nrows</span><span class="si">}</span><span class="s2">x</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">lattice</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2"> tile block cannot &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;sit on a </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">grid</span><span class="p">)</span><span class="si">}</span><span class="s2">x</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">grid</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="si">}</span><span class="s2"> chart in more than one &quot;</span>
+                        <span class="s2">&quot;way; patch identity would be assumed, not measured&quot;</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="n">refusals</span><span class="p">:</span>
+                <span class="n">records</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_refusal</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="o">*</span><span class="n">refusals</span><span class="p">))</span>
+                <span class="k">continue</span>
+
+            <span class="n">tiles</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_measure_roi</span><span class="p">(</span><span class="n">lab</span><span class="p">,</span> <span class="n">srgb</span><span class="p">,</span> <span class="n">lattice</span><span class="p">,</span> <span class="n">index</span><span class="p">)</span>
+            <span class="c1"># Index explicitly by (row, col): CheckerLattice.boxes() yields</span>
+            <span class="c1"># column-major, so reshaping the flat list would transpose the</span>
+            <span class="c1"># card and mislabel every patch.</span>
+            <span class="n">observed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">lattice</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">lattice</span><span class="o">.</span><span class="n">columns</span><span class="p">),</span> <span class="mi">3</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">tile</span> <span class="ow">in</span> <span class="n">tiles</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">tile</span><span class="o">.</span><span class="n">n_pixels</span><span class="p">:</span>
+                    <span class="n">observed</span><span class="p">[</span><span class="n">tile</span><span class="o">.</span><span class="n">row</span><span class="p">,</span> <span class="n">tile</span><span class="o">.</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">colour</span><span class="o">.</span><span class="n">cctf_decoding</span><span class="p">(</span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">tile</span><span class="o">.</span><span class="n">srgb</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">function</span><span class="o">=</span><span class="s2">&quot;sRGB&quot;</span>
+                    <span class="p">)</span>
+            <span class="n">empty</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">tile</span> <span class="ow">in</span> <span class="n">tiles</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">tile</span><span class="o">.</span><span class="n">n_pixels</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">empty</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">tiles</span><span class="p">):</span>
+                <span class="n">records</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_refusal</span><span class="p">(</span>
+                        <span class="n">index</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="s2">&quot;every tile box falls outside the ROI&quot;</span>
+                <span class="p">))</span>
+                <span class="k">continue</span>
+            <span class="n">identity</span> <span class="o">=</span> <span class="n">assign_placement</span><span class="p">(</span><span class="n">observed</span><span class="p">,</span> <span class="n">candidates</span><span class="p">,</span> <span class="n">ref_linear</span><span class="p">)</span>
+
+            <span class="n">disagreement</span><span class="p">,</span> <span class="n">voting</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_anchor_disagreement</span><span class="p">(</span><span class="n">lab</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">lattice</span><span class="p">)</span>
+            <span class="n">record</span> <span class="o">=</span> <span class="n">evaluate_roi</span><span class="p">(</span>
+                    <span class="n">roi_index</span><span class="o">=</span><span class="n">index</span><span class="p">,</span>
+                    <span class="n">label</span><span class="o">=</span><span class="n">roi</span><span class="o">.</span><span class="n">label</span><span class="p">,</span>
+                    <span class="n">shift_px</span><span class="o">=</span><span class="n">shift</span><span class="p">,</span>
+                    <span class="n">anchor_disagreement_px</span><span class="o">=</span><span class="n">disagreement</span><span class="p">,</span>
+                    <span class="n">anchor_columns_voting</span><span class="o">=</span><span class="n">voting</span><span class="p">,</span>
+                    <span class="n">ecc_confidence</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">placement_margin</span><span class="o">=</span><span class="n">identity</span><span class="o">.</span><span class="n">margin</span><span class="p">,</span>
+                    <span class="n">hungarian_disagreement</span><span class="o">=</span><span class="p">(</span>
+                        <span class="n">identity</span><span class="o">.</span><span class="n">n_tiles</span> <span class="o">-</span> <span class="n">identity</span><span class="o">.</span><span class="n">hungarian_agreement</span>
+                    <span class="p">),</span>
+                    <span class="n">impurities</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">t</span><span class="o">.</span><span class="n">impurity</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tiles</span><span class="p">]),</span>
+                    <span class="n">robust_shifts</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">t</span><span class="o">.</span><span class="n">robust_shift</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tiles</span><span class="p">]),</span>
+                    <span class="n">clipped</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">t</span><span class="o">.</span><span class="n">clipped</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tiles</span><span class="p">]),</span>
+                    <span class="n">limits</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">qc_limits</span><span class="p">,</span>
+                    <span class="n">empty_tiles</span><span class="o">=</span><span class="n">empty</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">records</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
+
+            <span class="c1"># Measurements are collected whatever the gate said; the</span>
+            <span class="c1"># ``on_qc_fail`` policy below decides whether they are used.</span>
+            <span class="c1"># Dropping them here would make &quot;warn&quot; behave like &quot;skip&quot;.</span>
+            <span class="n">names</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">identity</span><span class="o">.</span><span class="n">placement</span><span class="o">.</span><span class="n">names</span><span class="p">[</span><span class="n">tile</span><span class="o">.</span><span class="n">row</span><span class="p">][</span><span class="n">tile</span><span class="o">.</span><span class="n">col</span><span class="p">]:</span> <span class="n">tile</span><span class="o">.</span><span class="n">srgb</span>
+                <span class="k">for</span> <span class="n">tile</span> <span class="ow">in</span> <span class="n">tiles</span> <span class="k">if</span> <span class="n">tile</span><span class="o">.</span><span class="n">n_pixels</span>
+            <span class="p">}</span>
+            <span class="n">collided</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">measured</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">collided</span><span class="p">:</span>
+                <span class="c1"># A guessed placement can land on another ROI&#39;s patches, so</span>
+                <span class="c1"># this is a property of the frame: flag it and let the policy</span>
+                <span class="c1"># decide, rather than raising past it.</span>
+                <span class="n">others</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">({</span><span class="n">claimed_by</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">collided</span><span class="p">})</span>
+                <span class="n">record</span><span class="o">.</span><span class="n">flags</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;identified patch(es) </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">collided</span><span class="p">)</span><span class="si">}</span><span class="s2"> that ROI &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span><span class="w"> </span><span class="n">others</span><span class="p">))</span><span class="si">}</span><span class="s2"> already claimed; &quot;</span>
+                        <span class="s2">&quot;overlapping rectangles, or a guessed placement&quot;</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">measured</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">names</span><span class="p">)</span>
+                <span class="n">claimed_by</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">names</span><span class="p">,</span> <span class="n">index</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">message</span> <span class="ow">in</span> <span class="n">record</span><span class="o">.</span><span class="n">warnings</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;ROI </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">roi</span><span class="o">.</span><span class="n">label</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">&#39;unlabelled&#39;</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="ne">UserWarning</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="n">tiles_out</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="o">**</span><span class="n">tile</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(),</span>
+                        <span class="s2">&quot;patch&quot;</span><span class="p">:</span> <span class="n">identity</span><span class="o">.</span><span class="n">placement</span><span class="o">.</span><span class="n">names</span><span class="p">[</span><span class="n">tile</span><span class="o">.</span><span class="n">row</span><span class="p">][</span><span class="n">tile</span><span class="o">.</span><span class="n">col</span><span class="p">],</span>
+                    <span class="p">}</span>
+                    <span class="k">for</span> <span class="n">tile</span> <span class="ow">in</span> <span class="n">tiles</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">qc</span> <span class="o">=</span> <span class="n">records</span>
+        <span class="n">failed</span> <span class="o">=</span> <span class="p">[</span><span class="n">record</span> <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">records</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">record</span><span class="o">.</span><span class="n">ok</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">failed</span><span class="p">:</span>
+            <span class="n">summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_flag_summary</span><span class="p">(</span><span class="n">failed</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_qc_fail</span> <span class="o">==</span> <span class="s2">&quot;raise&quot;</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Colour-checker quality gate failed. </span><span class="si">{</span><span class="n">summary</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Colour-checker quality gate failed. </span><span class="si">{</span><span class="n">summary</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="ne">UserWarning</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">on_qc_fail</span> <span class="o">==</span> <span class="s2">&quot;skip&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_diagnostics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_diagnostics</span><span class="p">(</span>
+                        <span class="n">chart_illuminant</span><span class="p">,</span> <span class="p">[],</span> <span class="n">patch_names</span><span class="p">,</span> <span class="n">tiles_out</span><span class="p">,</span> <span class="n">lattices</span><span class="p">,</span>
+                        <span class="n">accepted</span><span class="o">=</span><span class="p">[],</span> <span class="n">skipped</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">return</span> <span class="n">image</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">measured</span><span class="p">:</span>
+            <span class="c1"># Every ROI was refused (under &quot;warn&quot;). A rank message here would</span>
+            <span class="c1"># advise a lower degree, but no degree fits zero patches; the</span>
+            <span class="c1"># refusals are the cause.</span>
+            <span class="n">summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_flag_summary</span><span class="p">(</span><span class="n">records</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;no ROI recorded a flag&quot;</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;No ROI produced usable tiles, so there is nothing to fit. </span><span class="si">{</span><span class="n">summary</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="n">require_rank</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">measured</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">&quot;were measured&quot;</span><span class="p">)</span>
+
+        <span class="n">profile</span> <span class="o">=</span> <span class="n">ColorCheckerProfile</span><span class="p">(</span>
+                <span class="n">checker_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">checker_type</span><span class="p">,</span>
+                <span class="n">target_illuminant</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span><span class="p">,</span>
+                <span class="n">degree</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span>
+                <span class="n">outlier_sigma</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">outlier_sigma</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">profile</span><span class="o">.</span><span class="n">fit_from_patch_colors</span><span class="p">(</span>
+                <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">measured</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="p">)</span>
+        <span class="c1"># ``accepted`` means patches that reached the fit: outlier rejection</span>
+        <span class="c1"># removes some, and the census must count them as missing.</span>
+        <span class="n">rejected</span> <span class="o">=</span> <span class="n">profile</span><span class="o">.</span><span class="n">diagnostics</span><span class="p">[</span><span class="s2">&quot;rejected_patches&quot;</span><span class="p">]</span>
+        <span class="n">accepted</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">measured</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">rejected</span><span class="p">]</span>
+        <span class="n">require_rank</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">accepted</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">&quot;remain after outlier rejection&quot;</span><span class="p">)</span>
+        <span class="n">census</span> <span class="o">=</span> <span class="n">warn_on_patch_census</span><span class="p">(</span>
+                <span class="n">accepted</span><span class="p">,</span> <span class="n">patch_names</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_patches</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fitted_profile</span> <span class="o">=</span> <span class="n">profile</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_diagnostics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_diagnostics</span><span class="p">(</span>
+                <span class="n">chart_illuminant</span><span class="p">,</span> <span class="n">census</span><span class="p">,</span> <span class="n">patch_names</span><span class="p">,</span> <span class="n">tiles_out</span><span class="p">,</span> <span class="n">lattices</span><span class="p">,</span>
+                <span class="n">accepted</span><span class="o">=</span><span class="n">accepted</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">ColorCorrector</span><span class="p">(</span>
+                <span class="n">profile</span><span class="o">=</span><span class="n">profile</span><span class="p">,</span> <span class="n">output_illuminant</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_refusal</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">roi</span><span class="p">:</span> <span class="n">CheckerRoi</span><span class="p">,</span> <span class="o">*</span><span class="n">flags</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">QcRecord</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A record for an ROI that failed before it could be measured.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">QcRecord</span><span class="p">(</span><span class="n">roi_index</span><span class="o">=</span><span class="n">index</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">roi</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">flags</span><span class="p">))</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_flag_summary</span><span class="p">(</span><span class="n">records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">QcRecord</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;``ROI i: flag, flag; ROI j: ...`` for every record carrying flags.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;ROI </span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">roi_index</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">flags</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">records</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">flags</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_anchor_disagreement</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">lab</span><span class="p">,</span> <span class="n">roi_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">lattice</span><span class="p">:</span> <span class="n">CheckerLattice</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Spread between the shifts different anchor columns imply.</span>
+
+<span class="sd">        A reference-free internal consistency check: the columns of one rigid</span>
+<span class="sd">        card must agree about where it moved.  Only columns lying wholly</span>
+<span class="sd">        inside the ROI on this frame vote -- a column the border clips</span>
+<span class="sd">        tracks the shift at about half rate, and letting it vote refuses an</span>
+<span class="sd">        in-range move as an inconsistency.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``(spread, voting)``: the spread in pixels, or ``None`` when fewer</span>
+<span class="sd">            than two columns qualify; and the number of voting columns, so an</span>
+<span class="sd">            unavailable check is visible rather than looking like a pass.</span>
+<span class="sd">            Both are ``None`` when there is no prior to refine.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">._checker_detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">refine_rigid</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_prior</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+        <span class="n">width</span> <span class="o">=</span> <span class="n">lab</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">inside</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">index</span> <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">column</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lattice</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">column</span><span class="o">.</span><span class="n">x0</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">column</span><span class="o">.</span><span class="n">x1</span> <span class="o">&lt;=</span> <span class="n">width</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">inside</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">inside</span><span class="p">)</span>
+        <span class="n">prior</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lattice_prior</span><span class="p">[</span><span class="n">roi_index</span><span class="p">]</span>
+        <span class="n">estimates</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">refine_rigid</span><span class="p">(</span><span class="n">lab</span><span class="p">,</span> <span class="n">prior</span><span class="p">,</span> <span class="n">anchor_col</span><span class="o">=</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">dx</span> <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="n">inside</span>
+        <span class="p">]</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">estimates</span><span class="p">)</span> <span class="o">-</span> <span class="nb">min</span><span class="p">(</span><span class="n">estimates</span><span class="p">)),</span> <span class="nb">len</span><span class="p">(</span><span class="n">inside</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_diagnostics</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">chart_illuminant</span><span class="p">,</span> <span class="n">census</span><span class="p">,</span> <span class="n">patch_names</span><span class="p">,</span> <span class="n">tiles</span><span class="p">,</span> <span class="n">lattices</span><span class="p">,</span>
+            <span class="n">accepted</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">skipped</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Assemble the per-run diagnostics record.&quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">_np</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;degree&quot;</span>    <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span>
+            <span class="s2">&quot;skipped&quot;</span>   <span class="p">:</span> <span class="n">skipped</span><span class="p">,</span>
+            <span class="s2">&quot;illuminant&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;checker&quot;</span>         <span class="p">:</span> <span class="n">_np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">chart_illuminant</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+                <span class="s2">&quot;target&quot;</span>          <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span><span class="p">,</span>
+                <span class="s2">&quot;bradford_adapted&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;patch_census&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;expected&quot;</span><span class="p">:</span> <span class="n">patch_names</span><span class="p">,</span>
+                <span class="s2">&quot;accepted&quot;</span><span class="p">:</span> <span class="n">accepted</span><span class="p">,</span>
+                <span class="s2">&quot;warnings&quot;</span><span class="p">:</span> <span class="n">census</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;tiles&quot;</span>    <span class="p">:</span> <span class="n">tiles</span><span class="p">,</span>
+            <span class="s2">&quot;lattices&quot;</span> <span class="p">:</span> <span class="p">[</span>
+                <span class="n">lattice</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span> <span class="k">if</span> <span class="n">lattice</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+                <span class="k">for</span> <span class="n">lattice</span> <span class="ow">in</span> <span class="n">lattices</span>
+            <span class="p">],</span>
+            <span class="s2">&quot;qc&quot;</span>       <span class="p">:</span> <span class="p">[</span><span class="n">record</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span> <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">qc</span><span class="p">],</span>
+        <span class="p">}</span>
+
+<div class="viewcode-block" id="CalibrateColorRpcc.patch_census">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.correction.CalibrateColorRpcc.html#phenotypic.correction.CalibrateColorRpcc.patch_census">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">patch_census</span><span class="p">(</span>
+            <span class="bp">cls</span><span class="p">,</span> <span class="n">images</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Image</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">rois</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Count what each image&#39;s card offers, before choosing a degree.</span>
+
+<span class="sd">        Counts only -- it recommends nothing.  Run it once over a batch to see</span>
+<span class="sd">        whether every frame can support the degree you intend to fix, since</span>
+<span class="sd">        that degree must then be the same for all of them.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            images: Images to survey.</span>
+<span class="sd">            rois: As for the constructor.</span>
+<span class="sd">            **kwargs: Passed to the constructor.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ``{&quot;per_image&quot;: {name: accepted_count}, &quot;missing&quot;: [...],</span>
+<span class="sd">            &quot;cyan_everywhere&quot;: bool, &quot;worst&quot;: int}``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">per_image</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">missing</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">images</span><span class="p">:</span>
+            <span class="n">operation</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span><span class="n">rois</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">rois</span><span class="p">),</span> <span class="n">on_qc_fail</span><span class="o">=</span><span class="s2">&quot;warn&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">operation</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">RuntimeError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="c1"># apply() wraps every failure as RuntimeError; a ValueError at</span>
+                <span class="c1"># the root is this frame failing to calibrate, which is what a</span>
+                <span class="c1"># census counts. Anything else is a bug and propagates.</span>
+                <span class="n">cause</span> <span class="o">=</span> <span class="n">_root_cause</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cause</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+                    <span class="k">raise</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;patch_census: </span><span class="si">%s</span><span class="s2"> failed (</span><span class="si">%s</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">cause</span><span class="p">)</span>
+                <span class="n">per_image</span><span class="p">[</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">continue</span>
+            <span class="n">accepted</span> <span class="o">=</span> <span class="n">operation</span><span class="o">.</span><span class="n">diagnostics</span><span class="p">[</span><span class="s2">&quot;patch_census&quot;</span><span class="p">][</span><span class="s2">&quot;accepted&quot;</span><span class="p">]</span>
+            <span class="n">expected</span> <span class="o">=</span> <span class="n">operation</span><span class="o">.</span><span class="n">diagnostics</span><span class="p">[</span><span class="s2">&quot;patch_census&quot;</span><span class="p">][</span><span class="s2">&quot;expected&quot;</span><span class="p">]</span>
+            <span class="n">per_image</span><span class="p">[</span><span class="n">image</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">accepted</span><span class="p">))</span>
+            <span class="n">missing</span> <span class="o">|=</span> <span class="nb">set</span><span class="p">(</span><span class="n">expected</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">accepted</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;per_image&quot;</span>      <span class="p">:</span> <span class="n">per_image</span><span class="p">,</span>
+            <span class="s2">&quot;missing&quot;</span>        <span class="p">:</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">missing</span><span class="p">),</span>
+            <span class="s2">&quot;cyan_everywhere&quot;</span><span class="p">:</span> <span class="s2">&quot;cyan&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">missing</span><span class="p">,</span>
+            <span class="s2">&quot;worst&quot;</span>          <span class="p">:</span> <span class="nb">min</span><span class="p">(</span><span class="n">per_image</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="k">if</span> <span class="n">per_image</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="p">}</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
