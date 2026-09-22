@@ -495,11 +495,15 @@ class PlotCoordinator:
             )
         finally:
             FigureAdapter.close(figure)
-        _remove_stale_sibling(
-            base, output_stem, backend, files,
-            publication_guard=self._publication_guard,
-            commit_guard=self._commit_guard,
-        )
+        if files:
+            # Same rule as the manifest path: only a page this run published
+            # has its leftover rendering removed. A rerun that produced
+            # nothing keeps the previous pair whole rather than half of it.
+            _remove_stale_sibling(
+                base, output_stem, backend, files,
+                publication_guard=self._publication_guard,
+                commit_guard=self._commit_guard,
+            )
         # Recorded as raised: the class is the diagnostic, so never re-wrap.
         for error in errors:
             record_plot_failure(

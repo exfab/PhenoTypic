@@ -1041,6 +1041,39 @@ def test_a_rerun_without_chrome_removes_the_previous_png(
     assert len(list(directory.glob("*.html"))) == 1
 
 
+def test_a_failed_flat_rerun_keeps_both_previous_renderings(
+    tmp_path, monkeypatch
+) -> None:
+    """A rerun that publishes nothing must not half-clean the old pair.
+
+    Removal is for a page this run DID publish, as on the manifest path. If the
+    HTML save fails on a Chrome-less rerun, deleting the old PNG would leave the
+    old HTML alone on disk, reading as this run's output.
+    """
+    from phenotypic.plotting._pipeline import _backends
+    from phenotypic.plotting._pipeline._adapter import FigureAdapter
+
+    plot = _SwitchableImagePlot(backend="plotly")
+    pipeline = ImagePipeline(plots=[PlotBinding(id="image", plot=plot)])
+    coordinator = PlotCoordinator(pipeline, tmp_path)
+    directory = plots_dir(tmp_path) / "image" / "ds"
+
+    monkeypatch.setattr(_backends, "chrome_available", lambda: True)
+    monkeypatch.setattr(FigureAdapter, "save_png", staticmethod(_fake_png))
+    coordinator.emit_image(object(), dataset="ds", image_stem="plate-1")
+    before = sorted(path.name for path in directory.iterdir())
+    assert [n.rsplit(".", 1)[1] for n in before] == ["html", "png"], before
+
+    def _failing_html(*args, **kwargs):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(_backends, "chrome_available", lambda: False)
+    monkeypatch.setattr(FigureAdapter, "save_html", staticmethod(_failing_html))
+    coordinator.emit_image(object(), dataset="ds", image_stem="plate-1")
+
+    assert sorted(path.name for path in directory.iterdir()) == before
+
+
 def test_a_rerun_as_matplotlib_removes_the_previous_html(
     tmp_path, monkeypatch
 ) -> None:
