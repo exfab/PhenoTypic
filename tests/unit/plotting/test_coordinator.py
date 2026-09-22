@@ -1113,3 +1113,91 @@ def test_the_flat_path_closes_its_matplotlib_figure(tmp_path) -> None:
         coordinator.emit_image(object(), dataset="ds", image_stem="plate-1")
 
     assert set(plt.get_fignums()) == before
+
+
+# --- F2, manifest directories: the same stale sibling, behind a manifest ----
+
+
+class _MultiPagePlotlyImagePlot(BaseModel, PlotImage):
+    def inspect(self, subject=None, *, for_save=False, **overrides):
+        import plotly.graph_objects as go
+
+        return PlotOutput(pages=(
+            PlotPage(key="first", figure=go.Figure(), label="First"),
+            PlotPage(key="second", figure=go.Figure(), label="Second"),
+        ))
+
+
+def _assert_manifest_matches_disk(directory) -> None:
+    """The non-hidden page files are exactly what the manifest names."""
+    import json
+
+    manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
+    named = {name for page in manifest["pages"] for name in page["files"].values()}
+    on_disk = {
+        path.name
+        for path in directory.iterdir()
+        if path.is_file()
+        and not path.name.startswith(".")
+        and path.name != "manifest.json"
+    }
+    assert on_disk == named, (on_disk, named)
+
+
+def _emit_twice_chrome_then_none(monkeypatch, coordinator, emit) -> None:
+    from phenotypic.plotting._pipeline import _backends
+    from phenotypic.plotting._pipeline._adapter import FigureAdapter
+
+    monkeypatch.setattr(_backends, "chrome_available", lambda: True)
+    monkeypatch.setattr(FigureAdapter, "save_png", staticmethod(_fake_png))
+    emit(coordinator)
+    monkeypatch.setattr(_backends, "chrome_available", lambda: False)
+    emit(coordinator)
+
+
+def test_an_aggregate_rerun_without_chrome_removes_the_previous_png(
+    tmp_path, monkeypatch
+) -> None:
+    """The manifest stops naming the PNG; the PNG must stop existing with it.
+
+    Otherwise ``default.png`` from the Chrome run sits beside the new
+    ``default.html`` under a manifest that denies it exists.
+    """
+    pipeline = ImagePipeline(
+        plots=[PlotBinding(id="measurements", plot=_PlotlyMeasPlot())]
+    )
+    directory = plots_dir(tmp_path) / "measurements"
+
+    _emit_twice_chrome_then_none(
+        monkeypatch,
+        PlotCoordinator(pipeline, tmp_path),
+        lambda coordinator: coordinator.emit_measurements(pd.DataFrame()),
+    )
+
+    assert list(directory.glob("*.png")) == []
+    assert (directory / "default.html").is_file()
+    _assert_manifest_matches_disk(directory)
+
+
+def test_a_multi_page_image_rerun_without_chrome_removes_the_previous_pngs(
+    tmp_path, monkeypatch
+) -> None:
+    pipeline = ImagePipeline(
+        plots=[PlotBinding(id="image", plot=_MultiPagePlotlyImagePlot())]
+    )
+
+    _emit_twice_chrome_then_none(
+        monkeypatch,
+        PlotCoordinator(pipeline, tmp_path),
+        lambda coordinator: coordinator.emit_image(
+            object(), dataset="ds", image_stem="plate-1"
+        ),
+    )
+
+    (directory,) = [
+        path for path in (plots_dir(tmp_path) / "image" / "ds").iterdir()
+        if path.is_dir()
+    ]
+    assert list(directory.glob("*.png")) == []
+    assert len(list(directory.glob("*.html"))) == 2
+    _assert_manifest_matches_disk(directory)

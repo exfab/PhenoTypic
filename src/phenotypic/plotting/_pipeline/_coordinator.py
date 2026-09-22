@@ -22,7 +22,7 @@ from ._failures import _format_error, record_plot_failure
 from ._output import normalize_plot_output
 from ._writer import (
     PlotPublicationBlocked,
-    _enter_commit,
+    _remove_stale_sibling,
     _render_page,
     publish_plot_output,
     safe_path_component,
@@ -495,7 +495,11 @@ class PlotCoordinator:
             )
         finally:
             FigureAdapter.close(figure)
-        self._remove_stale_sibling(base, output_stem, backend, files)
+        _remove_stale_sibling(
+            base, output_stem, backend, files,
+            publication_guard=self._publication_guard,
+            commit_guard=self._commit_guard,
+        )
         # Recorded as raised: the class is the diagnostic, so never re-wrap.
         for error in errors:
             record_plot_failure(
@@ -517,36 +521,6 @@ class PlotCoordinator:
                 f"{dataset}/{image_stem}: "
                 + (_format_error(errors[0]) if errors else "no renderer")
             ) from (errors[0] if errors else None)
-
-    def _remove_stale_sibling(
-        self,
-        base: Path,
-        output_stem: str,
-        backend: str | None,
-        files: Mapping[str, str],
-    ) -> None:
-        """Remove the rendering this generation did not write.
-
-        With no manifest on this path, a file surviving from an earlier run
-        beside a fresh one reads as this run's: a PNG from a node that had
-        Chrome next to HTML from one that does not, or HTML left behind by a
-        plot that has since switched to matplotlib.
-        """
-        stale: list[str] = []
-        if backend == "plotly" and "png" not in files:
-            stale.append(f"{output_stem}.png")
-        if backend == "mpl":
-            stale.append(f"{output_stem}.html")
-        for name in stale:
-            path = base / name
-            if not path.exists():
-                continue
-            # `_enter_commit`, not `publication_commit`: a fenced removal must
-            # surface as PlotPublicationBlocked like every other commit here,
-            # or the handler would record the fence as a plot failure.
-            with _enter_commit(self._commit_guard):
-                self._require_publication()
-                path.unlink(missing_ok=True)
 
     def _require_publication(self) -> None:
         """Fail closed immediately before a custom image-plot write."""

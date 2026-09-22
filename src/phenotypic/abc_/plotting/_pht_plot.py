@@ -187,7 +187,9 @@ def figure(
         primary: Whether this is the default figure returned by ``inspect``.
 
     Returns:
-        A decorator for a Plotly figure-building method.
+        A decorator for a method that builds a figure of the declared
+        ``backend``: a Plotly ``go.Figure`` for ``"plotly"``, a matplotlib
+        ``Figure`` for ``"mpl"``.
 
     Raises:
         ValueError: If ``backend`` is not ``"plotly"`` or ``"mpl"``, or if a

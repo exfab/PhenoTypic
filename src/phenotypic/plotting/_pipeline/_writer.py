@@ -221,6 +221,46 @@ def _render_page(
     return files, errors, backend
 
 
+def _remove_stale_sibling(
+    directory: Path,
+    stem: str,
+    backend: str | None,
+    files: dict[str, str],
+    *,
+    publication_guard: Callable[[], bool] | None,
+    commit_guard: CommitGuard | None,
+) -> None:
+    """Remove the rendering of *stem* that this generation did not write.
+
+    A rerun on a node without Chrome writes HTML only; a plot that switched
+    to matplotlib writes PNG only. Either way the other rendering from the
+    earlier run would survive beside the new one and read as this run's --
+    on the flat path because nothing records which generation a file belongs
+    to, and in a manifest directory because the manifest stops naming it
+    while it stays on disk.
+
+    Only *stem*'s own sibling is touched. Files a manifest no longer names
+    for other reasons -- a page whose key vanished between runs -- are not
+    swept: that needs ownership of the whole directory, which this does not
+    establish.
+
+    Committed through :func:`_enter_commit`, so a fenced or refused removal
+    raises :class:`PlotPublicationBlocked` like every other commit here.
+    """
+    stale: list[str] = []
+    if backend == "plotly" and "png" not in files:
+        stale.append(f"{stem}.png")
+    if backend == "mpl":
+        stale.append(f"{stem}.html")
+    for name in stale:
+        path = directory / name
+        if not path.exists():
+            continue
+        with _enter_commit(commit_guard):
+            _require_plot_publication(publication_guard)
+            path.unlink(missing_ok=True)
+
+
 def publish_plot_output(
     value: Any | PlotOutput,
     directory: Path,
@@ -342,6 +382,14 @@ def _publish_plot_output_locked(
             FigureAdapter.close(page.figure)
             raise
         FigureAdapter.close(page.figure)
+        if files:
+            # Only for pages the manifest will list: a failed page's files
+            # are not described by this generation either way.
+            _remove_stale_sibling(
+                directory, stem, backend, files,
+                publication_guard=publication_guard,
+                commit_guard=commit_guard,
+            )
 
         # S3: every swallowed error gets a durable record, not just a log line.
         # The exception is passed through unformatted; `record_plot_failure`
