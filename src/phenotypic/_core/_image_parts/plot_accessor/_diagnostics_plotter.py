@@ -151,6 +151,7 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
 
     @figure(
         title="A: Intensity Histogram",
+        backend="plotly",
         section="noise",
     )
     def fig_intensity_histogram(self) -> go.Figure:
@@ -270,6 +271,7 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
 
     @figure(
         title="B: Noise Autocorrelation",
+        backend="plotly",
         section="noise",
         description=PANEL_B_AUTOCORR,
     )
@@ -325,6 +327,7 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
 
     @figure(
         title="C: Power Spectral Density",
+        backend="plotly",
         section="noise",
         description=PANEL_C_PSD,
     )
@@ -392,6 +395,7 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
 
     @figure(
         title="D: Detection Matrix",
+        backend="plotly",
         section="contrast",
         description=PANEL_D_ORIGINAL,
     )
@@ -429,6 +433,7 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
 
     @figure(
         title="E: Local Contrast Map",
+        backend="plotly",
         section="contrast",
         description=PANEL_E_CONTRAST,
     )
@@ -468,6 +473,7 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
 
     @figure(
         title="F: Contrast Metrics",
+        backend="plotly",
         section="contrast",
         description=PANEL_F_BARS,
     )
@@ -528,6 +534,7 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
 
     @figure(
         title="G: Gradient Magnitude",
+        backend="plotly",
         section="structure",
         description=PANEL_G_GRADIENT,
     )
@@ -568,6 +575,7 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
 
     @figure(
         title="H: Orientation Coherence",
+        backend="plotly",
         section="structure",
         controls={"sigma": STRUCTURE_SIGMA},
         description=PANEL_H_COHERENCE,
@@ -629,6 +637,7 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
 
     @figure(
         title="I: Ridge Response",
+        backend="plotly",
         section="structure",
         controls={"sigma": STRUCTURE_SIGMA, "ridge_method": RIDGE_METHOD},
         description=PANEL_I_RIDGE,
@@ -697,6 +706,7 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
 
     @figure(
         title="J: Background Estimate",
+        backend="plotly",
         section="background",
         controls={"bg_sigma": BACKGROUND_SIGMA},
         description=PANEL_J_BACKGROUND,
@@ -764,6 +774,7 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
 
     @figure(
         title="K: Local Variance (log)",
+        backend="plotly",
         section="background",
         description=PANEL_K_VARIANCE,
     )
@@ -804,6 +815,7 @@ class DiagnosticsPlotter(BasePlotter, PhtPlot):
 
     @figure(
         title="Image Quality Summary",
+        backend="plotly",
         section="summary",
         controls={
             "sigma": STRUCTURE_SIGMA,

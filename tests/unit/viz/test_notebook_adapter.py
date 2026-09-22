@@ -22,11 +22,11 @@ METHOD = Control(label="Method", kind="select", default="meijering", options=("m
 
 
 class _Provider(PhtPlot):
-    @figure(title="Ridge", section="structure", controls={"sigma": SIGMA, "method": METHOD})
+    @figure(title="Ridge", backend="plotly", section="structure", controls={"sigma": SIGMA, "method": METHOD})
     def ridge(self, *, sigma, method) -> go.Figure:
         return go.Figure(go.Scatter(x=[sigma], y=[1], name=method))
 
-    @figure(title="Smooth", section="structure", controls={"sigma": SIGMA})
+    @figure(title="Smooth", backend="plotly", section="structure", controls={"sigma": SIGMA})
     def smooth(self, *, sigma) -> go.Figure:
         return go.Figure(go.Scatter(x=[sigma], y=[2]))
 

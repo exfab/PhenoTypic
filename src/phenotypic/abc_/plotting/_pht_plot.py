@@ -15,6 +15,8 @@ import weakref
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Literal
 
+from ._output import FigureLike, figure_backend_of
+
 if TYPE_CHECKING:  # pragma: no cover - typing only
     import plotly.graph_objects as go
 
@@ -106,6 +108,7 @@ class FigureSpec:
     Attributes:
         title: Human-readable figure title.
         section: Grouping tag used by report adapters.
+        backend: Declared rendering backend, ``"plotly"`` or ``"mpl"``.
         controls: Mapping from method keyword to its control.
         description: Optional renderer-neutral explanatory content.
         primary: Whether this is the default :meth:`PhtPlot.inspect` figure.
@@ -118,24 +121,53 @@ class FigureSpec:
 
     title: str
     section: str
+    backend: Literal["plotly", "mpl"]
     controls: dict[str, Control]
     description: Any
     primary: bool
     name: str
-    method: Callable[..., "go.Figure"]
+    method: Callable[..., FigureLike]
     wants_subject: bool
     subject_param: str | None
     order: int
 
 
+def _require_backend(figure_value: Any, declared: str, fn: Callable[..., Any]) -> None:
+    """Raise unless ``figure_value`` matches the backend its method declared.
+
+    Args:
+        figure_value: Whatever the decorated method returned.
+        declared: The backend named in the ``@figure`` declaration.
+        fn: The decorated function, named in the error.
+
+    Raises:
+        TypeError: If the return does not match the declaration.
+    """
+    actual = figure_backend_of(figure_value)
+    if actual == declared:
+        return
+    other = "mpl" if declared == "plotly" else "plotly"
+    expected = (
+        "plotly.graph_objects.Figure" if declared == "plotly"
+        else "matplotlib.figure.Figure"
+    )
+    raise TypeError(
+        f"@figure({fn.__name__!r}): declared backend {declared!r} but the "
+        f"method returned {type(figure_value).__module__}."
+        f"{type(figure_value).__qualname__}. "
+        f"Declare backend={other!r}, or return a {expected}."
+    )
+
+
 def figure(
     *,
     title: str,
+    backend: Literal["plotly", "mpl"],
     section: str = "default",
     controls: dict[str, Control] | None = None,
     description: Any = None,
     primary: bool = False,
-) -> Callable[[Callable[..., "go.Figure"]], Callable[..., "go.Figure"]]:
+) -> Callable[[Callable[..., FigureLike]], Callable[..., FigureLike]]:
     """Mark a method as a figure builder and lazily apply the house theme.
 
     A figure method may accept a subject as its first positional parameter.
@@ -145,22 +177,33 @@ def figure(
 
     Args:
         title: Human-readable figure title.
+        backend: Rendering backend this method returns, ``"plotly"`` or
+            ``"mpl"``. Required: the backend decides how the figure is themed
+            (Plotly themes the result, matplotlib themes the construction), so
+            there is no default that is right for both.
         section: Grouping tag used by report adapters.
         controls: Mapping from method keyword to renderer-neutral control.
         description: Optional renderer-neutral explanatory content.
         primary: Whether this is the default figure returned by ``inspect``.
 
     Returns:
-        A decorator for a Plotly figure-building method.
+        A decorator for a method that builds a figure of the declared
+        ``backend``: a Plotly ``go.Figure`` for ``"plotly"``, a matplotlib
+        ``Figure`` for ``"mpl"``.
 
     Raises:
-        ValueError: If a control key does not name a method parameter.
+        ValueError: If ``backend`` is not ``"plotly"`` or ``"mpl"``, or if a
+            control key does not name a method parameter.
     """
+    if backend not in ("plotly", "mpl"):
+        raise ValueError(
+            f"@figure: unknown backend {backend!r}; expected 'plotly' or 'mpl'"
+        )
     declared_controls = dict(controls) if controls else {}
 
     def decorator(
-        fn: Callable[..., "go.Figure"],
-    ) -> Callable[..., "go.Figure"]:
+        fn: Callable[..., FigureLike],
+    ) -> Callable[..., FigureLike]:
         signature = inspect.signature(fn)
         params = [
             parameter
@@ -186,13 +229,29 @@ def figure(
                 break
 
         @functools.wraps(fn)
-        def wrapper(*args: Any, **kwargs: Any) -> "go.Figure":
-            from phenotypic.sdk_.viz.figures._theme import apply_theme
+        def wrapper(*args: Any, **kwargs: Any) -> FigureLike:
+            if backend == "plotly":
+                from phenotypic.sdk_.viz.figures._theme import apply_theme
 
-            return apply_theme(fn(*args, **kwargs))
+                built = fn(*args, **kwargs)
+                _require_backend(built, "plotly", fn)
+                return apply_theme(built)
+
+            # The matplotlib theme is rcParams, which must be live WHILE the
+            # figure is constructed. There is no post-pass equivalent of
+            # apply_theme; applying it afterwards would silently do nothing.
+            from phenotypic.sdk_.viz.figures._mpl_theme import (
+                phenotypic_mpl_context,
+            )
+
+            with phenotypic_mpl_context():
+                built = fn(*args, **kwargs)
+            _require_backend(built, "mpl", fn)
+            return built
 
         wrapper.__figure_spec__ = FigureSpec(  # type: ignore[attr-defined]
             title=title,
+            backend=backend,
             section=section,
             controls=declared_controls,
             description=description,
@@ -247,7 +306,7 @@ class BoundFigures:
         """Return provider figures in definition order."""
         return self._provider.iter_figures()
 
-    def render(self, spec: FigureSpec, **control_values: Any) -> "go.Figure":
+    def render(self, spec: FigureSpec, **control_values: Any) -> FigureLike:
         """Render a figure for the supplied control values.
 
         Args:
@@ -260,6 +319,21 @@ class BoundFigures:
         return self._provider._render_spec(
             spec, self.subject, **control_values
         )
+
+
+def _select_primary_spec(specs: list[FigureSpec], owner: str) -> FigureSpec:
+    """Return the explicit primary figure or the only declared figure."""
+    if not specs:
+        raise RuntimeError(f"{owner} declares no @figure methods")
+    primaries = [spec for spec in specs if spec.primary]
+    if primaries:
+        return primaries[0]
+    if len(specs) == 1:
+        return specs[0]
+    raise RuntimeError(
+        f"{owner} has multiple @figure methods but none is "
+        "marked primary=True; cannot pick an inspect() figure"
+    )
 
 
 class PhtPlot:
@@ -291,10 +365,22 @@ class PhtPlot:
         An undecorated override removes an inherited figure, while a decorated
         override retains the inherited figure's position.
         """
+        return type(self)._class_figures()
+
+    @classmethod
+    def _class_figures(cls) -> list[FigureSpec]:
+        """Return :meth:`iter_figures` for *cls*, without an instance.
+
+        The discovery depends only on the class, so it lives here and the
+        instance method delegates. The preflight needs it for a QC-recipe
+        binding, which holds a class that the QC runner has not yet
+        instantiated. An instance-level :meth:`iter_figures` override is, by
+        construction, not consulted.
+        """
         specs: dict[str, FigureSpec] = {}
         orders: dict[str, int] = {}
         shadowed: set[str] = set()
-        for index, klass in enumerate(type(self).__mro__):
+        for index, klass in enumerate(cls.__mro__):
             for name, attr in vars(klass).items():
                 if name in shadowed:
                     continue
@@ -302,21 +388,22 @@ class PhtPlot:
                 spec = getattr(attr, "__figure_spec__", None)
                 if spec is not None:
                     specs[name] = spec
-                    orders[name] = self._inherited_figure_order(
+                    orders[name] = cls._inherited_figure_order(
                         name, spec.order, klass, index
                     )
         return sorted(specs.values(), key=lambda spec: orders[spec.name])
 
+    @classmethod
     def _inherited_figure_order(
-        self,
+        cls,
         name: str,
         fallback: int,
         selected_class: type,
         selected_index: int,
     ) -> int:
         """Return the inherited definition slot for a selected override."""
-        if selected_class is type(self):
-            ancestors = type(self).__mro__[selected_index + 1 :]
+        if selected_class is cls:
+            ancestors = cls.__mro__[selected_index + 1 :]
         else:
             ancestors = selected_class.__mro__[1:]
 
@@ -331,28 +418,25 @@ class PhtPlot:
 
     def _primary_spec(self) -> FigureSpec:
         """Return the explicit primary figure or the only declared figure."""
-        specs = self.iter_figures()
-        if not specs:
-            raise RuntimeError(
-                f"{type(self).__name__} declares no @figure methods"
-            )
-        primaries = [spec for spec in specs if spec.primary]
-        if primaries:
-            return primaries[0]
-        if len(specs) == 1:
-            return specs[0]
-        raise RuntimeError(
-            f"{type(self).__name__} has multiple @figure methods but none is "
-            "marked primary=True; cannot pick an inspect() figure"
-        )
+        return _select_primary_spec(self.iter_figures(), type(self).__name__)
+
+    @classmethod
+    def _class_primary_spec(cls) -> FigureSpec:
+        """Return :meth:`_primary_spec` for *cls*, without an instance."""
+        return _select_primary_spec(cls._class_figures(), cls.__name__)
 
     def _render_spec(
         self,
         spec: FigureSpec,
         subject: Any = None,
         **control_values: Any,
-    ) -> "go.Figure":
-        """Render one figure spec with its resolved subject and controls."""
+    ) -> FigureLike:
+        """Render one figure spec with its resolved subject and controls.
+
+        Returns whichever backend the spec declares; ``_compose_control_free_figure``
+        is the Plotly-only consumer and keeps its narrower annotation, because
+        :meth:`report` refuses an ``mpl`` spec before reaching it.
+        """
         method = getattr(self, spec.name)
         if spec.wants_subject:
             return method(self._resolve_subject(subject), **control_values)
@@ -411,6 +495,12 @@ class PhtPlot:
 
         Raises:
             RuntimeError: If no figure methods are declared.
+            TypeError: If any visible figure declares ``backend="mpl"`` --
+                **including a single figure, which needs no composition.** The
+                refusal is uniform by choice: a lone matplotlib figure could
+                round-trip through here, and is refused anyway for
+                predictability. :meth:`inspect` is the supported call and is
+                unaffected. Do not "fix" this by short-circuiting a single spec.
             ValueError: If the base report receives overrides. Concrete plots
                 may override this method to expose report-specific parameters.
         """
@@ -423,6 +513,17 @@ class PhtPlot:
         if not specs:
             raise RuntimeError(
                 f"{type(self).__name__} declares no @figure methods"
+            )
+        mpl_specs = [spec.name for spec in specs if spec.backend == "mpl"]
+        # Placed here rather than in _compose_control_free_figure: a provider
+        # with controls never reaches the composer (it goes to
+        # build_notebook_dashboard), so a guard down there misses that path.
+        if mpl_specs:
+            raise TypeError(
+                f"{type(self).__name__}.report(): cannot compose matplotlib "
+                f"figures ({', '.join(sorted(mpl_specs))}). Composition is "
+                "Plotly-only. Use inspect() for a single figure, or override "
+                "report() with a plot-specific implementation."
             )
         if any(spec.controls for spec in specs):
             from phenotypic.sdk_.viz.notebook._adapter import (

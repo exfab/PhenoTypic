@@ -30,6 +30,14 @@ from ._analysis_registry import (
     AnalysisRegistry,
     AnalysisResult,
 )
+from ._backends import (
+    PlotBackendUnavailable,
+    chrome_available,
+    ensure_plotlyjs_bundle,
+    plotlyjs_src_for,
+    preflight_plot_backends,
+    reset_chrome_probe,
+)
 from ._bindings import (
     AnalysisInput,
     MeasurementInput,
@@ -41,6 +49,7 @@ from ._bindings import (
     serialize_plot_binding,
 )
 from ._coordinator import PlotCoordinator, QcPlotSubject
+from ._failures import record_plot_failure
 from ._writer import (
     PlotPublicationBlocked,
     publish_plot_output,
@@ -61,6 +70,7 @@ __all__ = [
     "FigureAdapter",
     "MeasurementInput",
     "PipelineObjectRef",
+    "PlotBackendUnavailable",
     "PlotBinding",
     "PlotCoordinator",
     "PlotInput",
@@ -68,16 +78,22 @@ __all__ = [
     "QcPlotSubject",
     "analysis_manifest_path",
     "build_analysis_manifest_entry",
+    "chrome_available",
     "deserialize_plot_bindings",
+    "ensure_plotlyjs_bundle",
     "file_sha256",
     "named_analysis_csv_path",
     "named_analysis_parquet_path",
     "named_analysis_paths",
     "normalize_plot_bindings",
+    "plotlyjs_src_for",
+    "preflight_plot_backends",
     "publish_analysis_manifest_entry",
     "publish_plot_output",
     "read_analysis_manifest",
+    "record_plot_failure",
     "recover_analysis_publication",
+    "reset_chrome_probe",
     "safe_path_component",
     "serialize_plot_binding",
     "validate_analysis_id",

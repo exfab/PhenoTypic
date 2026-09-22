@@ -6,9 +6,34 @@ import json
 import math
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
-from typing import Any, Mapping, TypeAlias
+from typing import Any, Literal, Mapping, TypeAlias
 
 FigureLike: TypeAlias = Any
+
+
+def figure_backend_of(figure: Any) -> Literal["plotly", "mpl"] | None:
+    """Return the rendering backend of ``figure``, or ``None`` if unknown.
+
+    Identification is by module string so this module stays standard-library
+    only at runtime -- importing plotly or matplotlib to answer the question
+    would defeat the lazy-import contract this package is held to.
+
+    Args:
+        figure: Any object that might be a supported figure.
+
+    Returns:
+        ``"plotly"``, ``"mpl"``, or ``None`` for anything unrecognised. Never
+        raises: callers that need an error raise their own, with the context
+        only they have.
+    """
+    module = type(figure).__module__
+    if type(figure).__name__ != "Figure":
+        return None
+    if module.startswith("plotly."):
+        return "plotly"
+    if module.startswith("matplotlib."):
+        return "mpl"
+    return None
 
 
 @dataclass(frozen=True)
@@ -107,4 +132,5 @@ __all__ = [
     "PlotOutput",
     "PlotPage",
     "canonical_group_key",
+    "figure_backend_of",
 ]

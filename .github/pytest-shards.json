@@ -59,7 +59,8 @@
       "tests/unit/post/",
       "tests/unit/prefab/",
       "tests/unit/util/",
-      "tests/unit/viz/"
+      "tests/unit/viz/",
+      "tests/integration/plotting/"
     ]
   },
   {

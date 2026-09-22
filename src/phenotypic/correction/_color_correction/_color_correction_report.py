@@ -535,6 +535,7 @@ class ColorCorrectionReport(PhtPlot):
 
     @figure(
         title="Delta E 2000 Before & After Correction",
+        backend="plotly",
         section=_SECTION_DELTA_E,
         primary=True,
     )
@@ -617,6 +618,7 @@ class ColorCorrectionReport(PhtPlot):
 
     @figure(
         title="Matched Patches: Reference | Measured | Corrected",
+        backend="plotly",
         section=_SECTION_PATCHES,
     )
     def fig_patch_swatches(self) -> go.Figure:
@@ -690,7 +692,7 @@ class ColorCorrectionReport(PhtPlot):
 
     # -- Section C: Pipeline steps ----------------------------------------
 
-    @figure(title="Pipeline Preprocessing Steps", section=_SECTION_PIPELINE)
+    @figure(title="Pipeline Preprocessing Steps", backend="plotly", section=_SECTION_PIPELINE)
     def fig_pipeline_steps(self) -> go.Figure:
         """Per-ROI preprocessing stages (legacy section A).
 
@@ -748,7 +750,7 @@ class ColorCorrectionReport(PhtPlot):
 
     # -- Section D: Segmentation ------------------------------------------
 
-    @figure(title="Patch Segmentation", section=_SECTION_SEGMENTATION)
+    @figure(title="Patch Segmentation", backend="plotly", section=_SECTION_SEGMENTATION)
     def fig_segmentation(self) -> go.Figure:
         """Preprocessed image with chip-mask overlay (legacy section B).
 

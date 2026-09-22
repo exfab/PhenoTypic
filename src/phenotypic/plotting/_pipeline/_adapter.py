@@ -7,6 +7,8 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any, Mapping, cast
 
+from phenotypic.abc_.plotting import figure_backend_of
+
 
 class FigureAdapter:
     """Save and render supported Plotly and Matplotlib figures."""
@@ -52,6 +54,33 @@ class FigureAdapter:
             f"matplotlib.figure.Figure; got {type(figure).__module__}."
             f"{type(figure).__qualname__}"
         )
+
+    @staticmethod
+    def save_html(figure: Any, path: Path, *, plotlyjs_src: str) -> None:
+        """Write one Plotly figure as an interactive HTML page.
+
+        **Not standalone**: ``plotlyjs_src`` is emitted verbatim as the script
+        src, so the page references the library rather than embedding it, and
+        needs that file alongside it to render. Embedding would cost 4.8 MB per
+        page.
+
+        No Kaleido and no Chrome are involved.
+
+        Args:
+            figure: A Plotly figure.
+            path: Destination ``.html`` path.
+            plotlyjs_src: Relative src, from ``plotlyjs_src_for``.
+
+        Raises:
+            TypeError: If *figure* is not a Plotly figure.
+        """
+        if not FigureAdapter._is_plotly(figure):
+            raise TypeError(
+                "HTML export is Plotly-only; got "
+                f"{type(figure).__module__}.{type(figure).__qualname__}"
+            )
+        path.parent.mkdir(parents=True, exist_ok=True)
+        figure.write_html(path, include_plotlyjs=plotlyjs_src)
 
     @staticmethod
     def to_dash_component(
@@ -128,10 +157,16 @@ class FigureAdapter:
 
     @staticmethod
     def backend_name(figure: Any) -> str:
-        """Return the stable backend name for a supported figure."""
-        if FigureAdapter._is_plotly(figure):
+        """Return the stable backend name for a supported figure.
+
+        The published manifest spells the matplotlib backend ``"matplotlib"``
+        while the ``@figure`` decorator spells it ``"mpl"``. This is the one
+        place the two vocabularies meet; the wire format is not changed here.
+        """
+        backend = figure_backend_of(figure)
+        if backend == "plotly":
             return "plotly"
-        if FigureAdapter._is_matplotlib(figure):
+        if backend == "mpl":
             return "matplotlib"
         raise TypeError(
             "unsupported figure type "
@@ -140,17 +175,11 @@ class FigureAdapter:
 
     @staticmethod
     def _is_plotly(figure: Any) -> bool:
-        return (
-            type(figure).__module__.startswith("plotly.")
-            and type(figure).__name__ == "Figure"
-        )
+        return figure_backend_of(figure) == "plotly"
 
     @staticmethod
     def _is_matplotlib(figure: Any) -> bool:
-        return (
-            type(figure).__module__.startswith("matplotlib.")
-            and type(figure).__name__ == "Figure"
-        )
+        return figure_backend_of(figure) == "mpl"
 
 
 __all__ = ["FigureAdapter"]

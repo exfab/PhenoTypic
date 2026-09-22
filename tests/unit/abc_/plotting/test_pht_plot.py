@@ -31,11 +31,11 @@ SIGMA = Control(
 
 
 class _MultiPlot(PhtPlot):
-    @figure(title="First")
+    @figure(title="First", backend="plotly")
     def first(self) -> go.Figure:
         return go.Figure(go.Scatter(x=[1], y=[1]))
 
-    @figure(title="Primary", primary=True)
+    @figure(title="Primary", backend="plotly", primary=True)
     def primary(self) -> go.Figure:
         return go.Figure(go.Scatter(x=[2], y=[2]))
 
@@ -43,7 +43,7 @@ class _MultiPlot(PhtPlot):
 class _PlotModel(BaseModel, PlotImage):
     scale: int = 3
 
-    @figure(title="Model", primary=True)
+    @figure(title="Model", backend="plotly", primary=True)
     def model_figure(self) -> go.Figure:
         return go.Figure(go.Bar(y=[self.scale]))
 
@@ -94,11 +94,11 @@ def test_figure_validates_controls_and_detects_subject() -> None:
     with pytest.raises(ValueError, match="not a parameter"):
 
         class _Invalid(PhtPlot):
-            @figure(title="Invalid", controls={"missing": SIGMA})
+            @figure(title="Invalid", backend="plotly", controls={"missing": SIGMA})
             def render(self, *, sigma: float = 1.0) -> go.Figure:
                 return go.Figure()
 
-    @figure(title="Subject", controls={"sigma": SIGMA})
+    @figure(title="Subject", backend="plotly", controls={"sigma": SIGMA})
     def render_subject(
         self: PhtPlot,
         image: object,
@@ -115,7 +115,7 @@ def test_figure_validates_controls_and_detects_subject() -> None:
 
 def test_iter_figures_preserves_definition_and_override_order() -> None:
     class _Derived(_MultiPlot):
-        @figure(title="Overridden", primary=True)
+        @figure(title="Overridden", backend="plotly", primary=True)
         def primary(self) -> go.Figure:
             return go.Figure(go.Scatter(x=[9], y=[9]))
 
@@ -127,7 +127,7 @@ def test_iter_figures_preserves_definition_and_override_order() -> None:
 
 def test_inspect_uses_primary_and_control_defaults() -> None:
     class _Controlled(PhtPlot):
-        @figure(title="Controlled", controls={"sigma": SIGMA}, primary=True)
+        @figure(title="Controlled", backend="plotly", controls={"sigma": SIGMA}, primary=True)
         def controlled(self, *, sigma: float) -> go.Figure:
             return go.Figure(go.Scatter(y=[sigma]))
 
@@ -156,7 +156,7 @@ def test_report_delegates_controlled_figures_to_notebook_adapter(
     subject = object()
 
     class _Controlled(PhtPlot):
-        @figure(title="Controlled", controls={"sigma": SIGMA})
+        @figure(title="Controlled", backend="plotly", controls={"sigma": SIGMA})
         def controlled(self, image: object, *, sigma: float) -> go.Figure:
             return go.Figure()
 
@@ -184,7 +184,7 @@ def test_bound_image_subject_is_weak() -> None:
         pass
 
     class _ImageProvider(PlotImage):
-        @figure(title="Image", primary=True)
+        @figure(title="Image", backend="plotly", primary=True)
         def image(self, subject: object) -> go.Figure:
             return go.Figure()
 

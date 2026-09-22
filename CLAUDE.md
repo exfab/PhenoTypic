@@ -470,7 +470,10 @@ enforces this for ruff, but the rule binds regardless of the tool.
   axis ordered **before** the space axes, so stores are planar `(3,H,W)` and
   `imread` transposes to `(H,W,3)`.
 - Some packages excluded on Windows: `rawpy`, `pympler`, `jupyter` — use try/except.
-- External tools: ExifTool (raw metadata), Pandoc (doc builds).
+- External tools: ExifTool (raw metadata), Pandoc (doc builds), Chrome/Chromium
+  (Kaleido PNG export of Plotly figures -- not installed by `uv sync`; without it
+  pipeline plots publish HTML only and the results viewer's Scatter PDF export refuses; install
+  with `uv run plotly_get_chrome` or set `BROWSER_PATH`).
 - **Operations use `.apply()`, not `__call__`:** `op.apply(image)` is correct;
   `op(image)` raises `TypeError`.
 - **GPU pipelines stage internally:** a `GpuDetector` in a CLI run triggers the staged

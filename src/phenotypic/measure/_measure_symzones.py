@@ -514,6 +514,7 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
 
     @figure(
             title="Symmetric-radius overlay",
+            backend="plotly",
             primary=True,
             controls={"base_layer": BASE_LAYER},
     )

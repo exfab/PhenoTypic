@@ -1981,6 +1981,7 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
 
     @figure(
             title="Orientation-field overlay",
+            backend="plotly",
             primary=True,
             controls={"base_layer": BASE_LAYER},
     )
@@ -2073,6 +2074,7 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
 
     @figure(
             title="Cumulative radial rotation overlay",
+            backend="plotly",
             controls={"base_layer": BASE_LAYER},
     )
     def cumulative_rotation_overlay(
@@ -2176,6 +2178,7 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
 
     @figure(
             title="Matched-ring cumulative fiber rotation overlay",
+            backend="plotly",
             controls={"base_layer": BASE_LAYER},
     )
     def matched_cumulative_rotation_overlay(

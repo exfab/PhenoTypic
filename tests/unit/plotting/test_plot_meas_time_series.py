@@ -13,7 +13,11 @@ from phenotypic.plotting import (
     PlotColonyMetricOverTime,
     PlotMeasTimeSeries,
 )
-from phenotypic.plotting._pipeline import FigureAdapter, publish_plot_output
+from phenotypic.plotting._pipeline import (
+    FigureAdapter,
+    _backends,
+    publish_plot_output,
+)
 
 
 def _frame() -> pd.DataFrame:
@@ -128,6 +132,12 @@ def test_nanosecond_timedeltas_publish_distinct_pages_manifest_last(
         path.write_bytes(b"png")
 
     monkeypatch.setattr(FigureAdapter, "save_png", save_page)
+    # These are Plotly pages, so the PNG renderer now runs only when Chrome is
+    # available. Without this the patched save_png is never called on a
+    # Chrome-less machine and the assertion inside it -- which is this test's
+    # entire subject, that the manifest is replaced AFTER the pages -- silently
+    # stops running while the test stays green.
+    monkeypatch.setattr(_backends, "chrome_available", lambda: True)
 
     manifest = publish_plot_output(output, tmp_path, plot_id="temporal")
 
@@ -305,6 +315,9 @@ def test_colony_radius_pages_group_conditions_and_preserve_replicates(
         "save_png",
         lambda _figure, path: path.write_bytes(b"png"),
     )
+    # Plotly pages: the PNG renderer runs only when Chrome is available, and
+    # the PNG filenames below are what this test is about.
+    monkeypatch.setattr(_backends, "chrome_available", lambda: True)
     destination = (
         tmp_path
         / "deliverables"
@@ -318,7 +331,7 @@ def test_colony_radius_pages_group_conditions_and_preserve_replicates(
         plot_id=type(plot).__name__,
     )
 
-    assert [page["file"] for page in manifest["pages"]] == [
+    assert [page["files"]["png"] for page in manifest["pages"]] == [
         "BY4741.png",
         "RM11-1a.png",
     ]
