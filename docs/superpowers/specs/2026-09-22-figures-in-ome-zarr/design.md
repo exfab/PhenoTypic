@@ -87,6 +87,33 @@ mode `_cli_process_single.py:452` (after the table replace), staged Stage 3
 `_cli_staged_workers.py:583` (before `save_image_store`). Process mode emits no
 figures.
 
+**What a per-image figure takes as input.** `emit_image` selects bindings by
+`isinstance(binding.plot, PlotImage)` over `pipeline.get_plots()`
+(`_coordinator.py:349`) and always passes the `Image` explicitly. No binding
+receives the measurement DataFrame or any run-level state. Two kinds of
+provider exist:
+
+- **Stateless image consumers** — `PlotDiagnostics`, `PlotDetectModes`
+  (`plotting/_image_plots.py:35,115`), `_OrientationZonesReport`
+  (`_measure_orientation_zones.py:3715`). They compute from the image's layers
+  and raise without an image subject.
+- **Measurers that are also plots** — `MeasureSymZones`,
+  `MeasureOrientationZones`. The binding refers to the same instance as the
+  `meas` slot. `_operate` leaves a private cache (weakref to the image,
+  per-object intermediates, and a `model_dump_json()` signature); `inspect(image)`
+  reuses it only when the image is the same object and the parameters are
+  unchanged (`_measure_symzones.py:569`), and otherwise recomputes from
+  `image.objmap` / `image.gray` — `MeasureOrientationZones` by calling
+  `self.measure(image)` again (`_ensure_diagnostic_cache`,
+  `_measure_orientation_zones.py:1970`).
+
+So a stored figure is a function of **(the image's layers and objmap, the
+operation's parameters)**; the operation cache is an optimisation, never an
+input. This is what makes a figure-carrying store self-contained, and it gives
+§4 a second obligation: the cache-hit render (full mode, right after
+`measure`) and the recompute render (process mode, measure mode after a
+reload) must produce identical bytes.
+
 **Byte-determinism of candidate formats**, measured across two fresh processes
 on the same machine (Chrome present):
 
@@ -276,9 +303,13 @@ deterministic by construction:
 - Store HTML uses the **CDN** script: a store cannot reference the run's
   hoisted `plotly.min.js`, and embedding 4.8 MB per figure is rejected.
   Declaring `html` means the author accepts that viewing needs network.
-- **Plotly SVG is provisional.** If its ids cannot be pinned reliably, `svg`
-  becomes mpl-only (a class-definition `TypeError` for Plotly) rather than
-  shipping non-deterministic bytes.
+- **Plotly SVG is decided by a gate, not by judgement.** The plan's first task
+  is a probe: render one fixed Plotly figure to SVG in two fresh processes,
+  apply the id rewrite, and compare bytes. Identical → Plotly `svg` ships as
+  above. Different, or the rewrite needs to parse more than the `id`/`url(#…)`
+  / `href="#…"` references → `svg` is mpl-only (a class-definition
+  `TypeError` for Plotly), and the plan records which outcome held. Either way
+  no non-deterministic bytes ship.
 - All plotting imports stay inside function bodies (lazy-import guards:
   `tests/unit/ci/test_startup_imports.py`, `test_deferred_imports.py`).
 
@@ -343,6 +374,16 @@ sets or removes the `figures` key. Called from `_write_store_part`
 | Process, `--process-format zarr` — `_cli_process_only.py` | after `pipeline.apply` (**new**) | `write_process_only_layer(…, figures=)` → `_save_store`, inside the consolidated part | **no** — no `deliverables/` |
 | Process, `--process-format tiff` | not built | — | — |
 
+**Process mode builds every `PlotImage` binding, measurer-backed ones
+included.** Process mode runs only `pipeline.apply()`, so no measurer's cache is
+ever filled and each measurer-backed figure recomputes inside `inspect()` —
+for `MeasureOrientationZones` that is a full `measure(image)` per image, whose
+result is used for the figure only and never written as a table. Accepted: a
+user who put a measurer's plot in the pipeline asked for that figure, and a
+process store should carry the same figures as a full store of the same
+pipeline. Without a detector in `apply()`, `objmap` is empty and the figure is
+the provider's own "no objects" rendering — a real figure, not a failure.
+
 **Measure mode semantics.** The whole `figures/` group is rebuilt from the
 current pipeline's `PlotImage` bindings. A binding removed from the pipeline
 disappears from the store; a new one appears. A store's figures and its table
@@ -379,6 +420,14 @@ is meant to show up in the store's bytes and in `file_sha256`. Only
 Full-mode stores keep their existing non-reproducible journal timestamps; their
 `figures/` bytes are nonetheless produced by the same deterministic serializers.
 
+**Cache parity.** For a given image and pipeline, a measurer-backed figure
+rendered from the operation cache (full mode, immediately after `measure`) and
+one rendered by recomputation (process mode; measure mode after a reload) must
+be byte-identical. Otherwise the same image's figure would depend on which
+mode wrote the store, and the background claim that the cache is never an
+input would be false. A provider that cannot meet this is a bug in the
+provider, not a tolerance in the contract.
+
 ## §5 — Testing
 
 Each new test must be shown to fail when the bug it guards is reintroduced
@@ -404,6 +453,8 @@ Each new test must be shown to fail when the bug it guards is reintroduced
 | Measure mode: removing a binding removes it from the store; adding one adds it; pixel arrays remain hard links (inode check) | §3 measure |
 | Measure mode: figures are written before the root (no store write outlives the publication that certifies it) | §3 ordering |
 | Process mode: `zarr` export carries `figures/`; `tiff` export produces no figures | §3 process |
+| Process mode with a measurer-backed binding (`MeasureSymZones`) stores its figure, and writes no measurement table | §3 process |
+| Cache parity: for `MeasureSymZones` and `MeasureOrientationZones`, the stored bytes from `inspect()` right after `measure()` equal those from `inspect()` on a freshly loaded copy of the same image | §4 cache parity |
 | `PROCESS_LAYER_SEMANTICS_REVISION` bump changes the process work id | §3 continuation |
 | A pre-feature store (no `figures` key) remains valid to every reader and to `--mode migrate` | §1 optional |
 | Startup/deferred import guards still pass | §2 lazy imports |
@@ -442,7 +493,10 @@ determinism claims are pinned by the tests above.
     Chrome exists.
   - Measure mode's per-image plot emission moves before the table replace.
   - Process-mode stores gain `figures/`, and process mode now calls
-    `PlotImage.inspect()` (new work per image).
+    `PlotImage.inspect()` (new work per image). A measurer-backed binding
+    re-runs its measurement inside `inspect()` there, so a process run with
+    `MeasureOrientationZones` bound pays roughly one extra measurement per
+    image.
 - **Continuation:** in-flight process trees re-derive once (revision 3). Full
   runs resumed across the upgrade keep figure-less stores until `--overwrite`.
 - **Unchanged:** aggregate/QC/analysis figures; `attributes.ome` and OME-XML;
@@ -458,6 +512,8 @@ determinism claims are pinned by the tests above.
 | `store=()` | Rejected | Copy-out makes an opted-out figure vanish everywhere |
 | Process-mode reproducibility | Figures inside the byte-identical contract; serializers remove stochastic variation | "The store's bytes are its identity" stays unqualified; environment-driven differences are real signal |
 | Measure mode | Rebuild `figures/` in the table transaction | A store's figures and table never disagree |
+| Process mode, measurer-backed bindings | Built like every other `PlotImage` binding (recompute inside `inspect()`) | Same figures as a full store of the same pipeline; the user bound the plot, so they asked for it |
+| Figure inputs | Image layers + objmap + operation parameters; the operation cache is an optimisation only, pinned by a cache-parity test | Keeps the store self-contained and the figure independent of which mode wrote it |
 | Figure failure | Publish the store; record in descriptor `failed` | Dashboard can tell "not configured" from "failed"; one bad figure never kills a run |
 | Write architecture | Single sink into the store; `deliverables/plots/` copied out after promotion | One source of truth, same pattern as embedded tables → master |
 | Copy-out content | Stored files verbatim + HTML generated from stored `plotly-json` | Keeps deliverables browsable without re-rendering from figure objects |
