@@ -7,11 +7,56 @@ See docs/superpowers/specs/2026-06-10-robust-lab-color-measures-design.md.
 """
 from __future__ import annotations
 
+from typing import Annotated, NamedTuple
+
 import numpy as np
+from pydantic import Field
 
 from phenotypic.util._geometric_median import geometric_median as _geometric_median
 
 _EPS = 1e-12
+
+#: Candidates scored against every pixel by :func:`candidate_medoid`.  256 is
+#: ~60x cheaper than the exhaustive form and returned the identical pixel on
+#: every tile-like cloud tested; see the spec's Stage E.
+DEFAULT_MEDOID_CANDIDATES = 256
+
+#: The one validated type for an operation's ``medoid_candidates`` field, so
+#: ``MeasureColor`` and ``CalibrateColorRpcc`` -- the same knob on the same
+#: estimator -- reject a non-positive count identically, at construction.
+MedoidCandidates = Annotated[int, Field(ge=1)]
+
+#: Weiszfeld settings for the seed geometric median, matching the constants
+#: ``ColorCheckerProfile`` uses so the two paths agree.
+GEOMEDIAN_MAX_ITER = 200
+GEOMEDIAN_TOL = 1e-6
+
+#: A winner this deep into the candidate set means the cloud is not unimodal
+#: around its geometric median, so the true medoid may lie outside the set and
+#: the search is re-run once against a four-times-larger set.
+#:
+#: The guard is a safety net at the default candidate count, not at any count.
+#: Measured on a deliberately bimodal cloud (900 pixels at one colour, 300 at
+#: another 30 a\* away): at ``k >= 256`` it fires and recovers the exhaustive
+#: medoid, but at ``k <= 64`` the winner sits at rank 3 -- comfortably inside
+#: the set -- while being the wrong pixel, so nothing fires. Do not lower
+#: ``candidates`` below the default expecting the guard to compensate.
+CANDIDATE_EDGE_FRACTION = 0.8
+
+#: Byte budget for one block of :func:`candidate_medoid`'s ΔE2000 scoring.
+#: Sizing the block from it, rather than from a fixed candidate count, keeps a
+#: very large object (a merged lawn, a whole-plate mis-detection) from
+#: allocating gigabytes of CIEDE2000 temporaries.
+MEDOID_MEMORY_BUDGET_BYTES = 256 * 2**20
+
+#: Peak bytes allocated per candidate-pixel pair while scoring one block.
+#: colour's CIEDE2000 materialises many ``(block, N)`` float64 temporaries.
+#: Measured with ``tracemalloc`` on a 20 000-pixel unimodal L*a*b* cloud
+#: (macOS arm64, numpy 2, colour-science 0.4): peak over ``chunk_size * N`` is
+#: 264.6 B at ``chunk_size=64`` and 266.5 B at 16, the difference between the
+#: two giving a slope of 264.0 B/pair plus ~0.8 MB of per-call overhead.
+#: Rounded up to 265 so the block errs small.
+MEDOID_BYTES_PER_PAIR = 265
 
 
 def robust_color_center(
@@ -103,6 +148,124 @@ def medoid_ciede2000(
     medoid = sample[row_sums.argmin()]
     all_deltas = np.asarray(colour.difference.delta_E_CIE2000(lab, medoid))
     return medoid, all_deltas
+
+
+def _delta_e(lab_a: np.ndarray, lab_b: np.ndarray) -> np.ndarray:
+    """delta-E 2000 between broadcastable ``(..., 3)`` Lab arrays."""
+    import colour
+
+    return np.asarray(colour.difference.delta_E_CIE2000(lab_a, lab_b))
+
+
+class MedoidResult(NamedTuple):
+    """Outcome of a candidate-restricted medoid search.
+
+    Attributes:
+        index: Row of the winning pixel in the input array.
+        lab: The winning pixel's Lab coordinate.
+        rank: The winner's position within the candidate set, 0 being the
+            pixel closest to the geometric median.
+        total_delta_e: The winner's total delta-E 2000 to every input pixel.
+        widened: ``True`` when the first search put the winner near the edge
+            of the candidate set and the search was re-run with a larger one.
+    """
+
+    index: int
+    lab: np.ndarray
+    rank: int
+    total_delta_e: float
+    widened: bool
+
+
+def candidate_medoid(
+        lab_points: np.ndarray,
+        k: int = DEFAULT_MEDOID_CANDIDATES,
+        chunk_size: int | None = None,
+) -> MedoidResult:
+    """The delta-E 2000 medoid of *lab_points*, found deterministically.
+
+    Scores only the *k* pixels nearest the cloud's Lab geometric median, each
+    against **every** pixel, and returns the best.  Cost is ``O(k * n)`` rather
+    than the exhaustive ``O(n^2)``, and no pixel is ever sampled at random.
+
+    Why not :func:`~phenotypic.util.medoid_ciede2000`: it selects the medoid
+    from a seeded subsample of 1000 pixels, and re-drawing that seed moves the
+    answer by ~0.12 delta-E 2000 (worst 0.81) -- larger than the difference
+    between the medoid and the geometric median it is chosen over.  Raising the
+    cap does not fix it affordably: selection is quadratic, costing ~41 s per
+    24-tile frame at a 4000-pixel cap, while the seed spread only falls from
+    ~0.32 to ~0.25 delta-E 2000.  Restricting the candidates instead removes
+    the randomness entirely and reproduces the exhaustive medoid exactly on
+    unimodal tile clouds.
+
+    Args:
+        lab_points: ``(N, 3)`` CIE Lab pixels.
+        k: Number of candidates to score.  Widened once, automatically, if the
+            winner lands past :data:`CANDIDATE_EDGE_FRACTION` of the set.
+        chunk_size: Candidates scored per block, bounding peak memory to
+            ``O(chunk_size * N)`` instead of ``O(k * N)``.  ``None`` (the
+            default) sizes the block from :data:`MEDOID_MEMORY_BUDGET_BYTES`:
+            ``max(1, min(64, budget // (N * MEDOID_BYTES_PER_PAIR)))``.  The
+            result is bit-identical for every block size -- each candidate's
+            total is summed over the same full row -- so this bounds memory and
+            nothing else.  Below one candidate per block the floor is one
+            ``(1, N)`` row, ~265 B per pixel.
+
+    Returns:
+        A :class:`MedoidResult`.  For an empty input the index is ``-1`` and
+        the coordinate is all-NaN; for a single pixel it is that pixel.
+
+    Raises:
+        ValueError: If *lab_points* is not 2-D, or *k* or *chunk_size* is
+            not positive.
+    """
+    points = np.asarray(lab_points, dtype=np.float64)
+    if points.ndim != 2 or points.shape[-1] != 3:
+        raise ValueError(f"lab_points must be (N, 3); got {points.shape}.")
+    if k < 1:
+        raise ValueError(f"k must be a positive candidate count; got {k}.")
+    if chunk_size is not None and chunk_size < 1:
+        raise ValueError(f"chunk_size must be positive; got {chunk_size}.")
+
+    n = points.shape[0]
+    if n == 0:
+        return MedoidResult(-1, np.full(3, np.nan), -1, float("nan"), False)
+    if n == 1:
+        return MedoidResult(0, points[0].copy(), 0, 0.0, False)
+
+    seed = robust_color_center(
+            points, max_iter=GEOMEDIAN_MAX_ITER, tol=GEOMEDIAN_TOL
+    )
+    order = np.argsort(np.linalg.norm(points - seed, axis=1), kind="stable")
+    if chunk_size is None:
+        chunk_size = max(
+                1, min(64, MEDOID_MEMORY_BUDGET_BYTES // (n * MEDOID_BYTES_PER_PAIR))
+        )
+
+    attempts = (min(k, n), min(max(4 * k, k), n))
+    widened = False
+    for attempt_no, attempt_k in enumerate(attempts):
+        candidate_idx = order[:attempt_k]
+        totals = np.empty(attempt_k, dtype=np.float64)
+        for start in range(0, attempt_k, chunk_size):
+            block = points[candidate_idx[start : start + chunk_size]]
+            totals[start : start + chunk_size] = _delta_e(
+                    block[:, None, :], points[None, :, :]
+            ).sum(axis=1)
+        rank = int(totals.argmin())
+        at_edge = rank >= CANDIDATE_EDGE_FRACTION * attempt_k
+        last_attempt = attempt_no == len(attempts) - 1
+        # Always return on the final attempt: a cloud that is still at the
+        # edge of a widened set has no better answer available here, and
+        # falling through would be a crash rather than a degraded result.
+        if not at_edge or attempt_k >= n or last_attempt:
+            winner = int(candidate_idx[rank])
+            return MedoidResult(
+                    winner, points[winner].copy(), rank, float(totals[rank]), widened
+            )
+        widened = True
+
+    raise AssertionError("unreachable")  # pragma: no cover
 
 
 def delta_e2000_spread(deltas: np.ndarray) -> tuple[float, float, float]:

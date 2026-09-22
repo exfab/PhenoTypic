@@ -11,9 +11,15 @@ import warnings
 
 from ._bayesshrink_corrector import BayesShrinkCorrector
 from ._color_correction import (
+    CalibrateColorRpcc,
     CaptureMetadata,
+    CheckerLattice,
+    CheckerRoi,
     ColorCheckerProfile,
     ColorCorrector,
+    ColumnLattice,
+    QcLimits,
+    QcRecord,
 )
 from ._color_denoise import ColorDenoise
 from ._denoise_block_match import DenoiseBlockMatch
@@ -23,15 +29,21 @@ from ._image_cropper import CropImage
 from ._image_padder import PadImage
 
 __all__ = [
+    "CalibrateColorRpcc",
     "CaptureMetadata",
+    "CheckerLattice",
+    "CheckerRoi",
     "ColorCheckerProfile",
     "ColorCorrector",
     "ColorDenoise",
+    "ColumnLattice",
     "DenoiseBlockMatch",
     "GridAligner",
     "CropImage",
     "PadImage",
     "BayesShrinkCorrector",
+    "QcLimits",
+    "QcRecord",
     "VisuShrinkCorrector",
 ]
 

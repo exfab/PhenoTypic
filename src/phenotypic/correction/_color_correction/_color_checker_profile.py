@@ -652,6 +652,35 @@ class ColorCheckerProfile(BaseModel):
         )
         return self
 
+    def fit_from_patch_colors(
+            self,
+            measured: "dict[str, np.ndarray] | np.ndarray",
+            patch_names: list[str] | None = None,
+    ) -> "ColorCheckerProfile":
+        """Fit from patch colours measured elsewhere.
+
+        The entry point for a detector that has already located and measured
+        the chart -- :class:`CalibrateColorRpcc` uses it, so both paths share
+        one solver, one outlier rule and one diagnostics schema.
+
+        Args:
+            measured: Either a mapping of patch name to sRGB in ``[0, 1]``, or
+                an ``(N, 3)`` array with *patch_names* naming its rows.
+            patch_names: Row names, required only for the array form.
+
+        Returns:
+            ``self``, fitted.
+
+        Raises:
+            ValueError: If an array is given without names and its row count
+                does not match the chart.
+        """
+        if isinstance(measured, dict):
+            names = list(measured.keys())
+            array = np.asarray([measured[name] for name in names], dtype=np.float64)
+            return self._fit_from_patch_colors(array, names)
+        return self._fit_from_patch_colors(np.asarray(measured), patch_names)
+
     def _fit_from_patch_colors(
             self,
             measured_rgb: np.ndarray,
@@ -659,8 +688,8 @@ class ColorCheckerProfile(BaseModel):
     ) -> ColorCheckerProfile:
         """Fit from pre-measured patch colors.
 
-        Lower-level entry point for when patch RGB values have already been
-        extracted externally (e.g. from an automatic checker detector).
+        Private implementation behind :meth:`fit_from_patch_colors`, which is
+        the supported entry point and also accepts a name-to-colour mapping.
 
         Args:
             measured_rgb: ``(N, 3)`` float array of measured sRGB values in

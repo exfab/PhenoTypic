@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import ClassVar, TYPE_CHECKING
+import warnings
+from typing import Any, ClassVar, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
@@ -9,18 +10,21 @@ import numpy as np
 import pandas as pd
 import logging
 
+from pydantic import model_validator
 from scipy import ndimage
 
 from phenotypic.abc_ import MeasureFeatures
 from phenotypic.schema import MeasurementInfo, OBJECT
 from phenotypic.schema import ColorXYZ, Colorxy, ColorLab, ColorHSV
 from phenotypic.util import (
-    robust_color_center,
-    medoid_ciede2000,
+    DEFAULT_MEDOID_CANDIDATES,
+    MedoidCandidates,
+    candidate_medoid,
+    cone_to_hsv,
     delta_e2000_spread,
     hsv_to_cone,
-    cone_to_hsv,
     lab_to_srgb_hex,
+    robust_color_center,
 )
 
 logger = logging.getLogger(__name__)
@@ -33,7 +37,10 @@ class MeasureColor(MeasureFeatures):
 
     - **CIE L*a*b*** -- ΔE76 geometric-median center, ΔE2000 medoid center,
       ΔE2000 within-colony consistency (median/mean/P95 from the medoid),
-      ``LabTotalVariance``, and an sRGB hex swatch (plot-only).
+      ``LabTotalVariance``, and an sRGB hex swatch (plot-only). The medoid is
+      computed from the colony's own pixels only, deterministically -- the same
+      estimator ``CalibrateColorRpcc`` uses to read a colour-checker tile, so a
+      calibrated colour and a measured colony colour are the same statistic.
     - **HSV** -- a cone-embedded robust center (circular-correct) and
       ``HSVConeVariance``.
 
@@ -50,9 +57,23 @@ class MeasureColor(MeasureFeatures):
         geomedian_max_iter: Weiszfeld iteration cap for the L*a*b* geometric
             median. Default ``50``.
         geomedian_tol: Weiszfeld convergence tolerance. Default ``1e-4``.
-        medoid_max_pixels: Subsample cap for the O(N^2) ΔE2000 medoid selection;
-            consistency scalars still use all pixels. Default ``1000``.
-        random_seed: Seed for reproducible medoid subsampling. Default ``0``.
+        medoid_candidates: Number of candidate pixels scored for the ΔE2000
+            medoid: those nearest the colony's L*a*b* geometric median, found
+            by a tightly converged Weiszfeld run of the medoid search's own
+            (200 iterations, tolerance ``1e-6``). That centre is not the
+            reported ``*GeoMedian`` value, which uses the looser
+            ``geomedian_max_iter``/``geomedian_tol``; those two parameters do
+            not affect the medoid.
+            Each candidate is scored against **every** colony pixel, so cost is
+            linear in colony size and no pixel is sampled at random: the same
+            colony always yields the same medoid. If the winner lands near the
+            edge of the candidate set (a colony whose colour cloud is not
+            unimodal, e.g. a sectored colony), the search is re-run once with
+            four times as many candidates. Lowering this below the default
+            weakens that safeguard. Default ``256``. The removed
+            ``medoid_max_pixels`` and ``random_seed`` fields are ignored with a
+            ``FutureWarning`` -- shown by default, unlike a
+            ``DeprecationWarning`` -- when a saved pipeline still sets them.
 
     Examples:
         Measure robust colorimetric statistics for a detected plate:
@@ -74,8 +95,31 @@ class MeasureColor(MeasureFeatures):
     include_xy: bool = False
     geomedian_max_iter: int = 50
     geomedian_tol: float = 1e-4
-    medoid_max_pixels: int = 1000
-    random_seed: int = 0
+    medoid_candidates: MedoidCandidates = DEFAULT_MEDOID_CANDIDATES
+
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_legacy_medoid_fields(cls, data: Any) -> Any:
+        """Accept pipelines saved before the medoid became deterministic.
+
+        ``medoid_max_pixels`` and ``random_seed`` configured a random
+        subsample that no longer exists.  Dropping them keeps old JSON
+        loadable under ``extra="forbid"``.  The warning is a
+        ``FutureWarning`` because it is aimed at the user rerunning a saved
+        pipeline: Python's default filters hide a ``DeprecationWarning`` not
+        raised from ``__main__``, and this one is attributed to pydantic.
+        """
+        if isinstance(data, dict):
+            legacy = [k for k in ("medoid_max_pixels", "random_seed") if k in data]
+            if legacy:
+                warnings.warn(
+                        f"MeasureColor ignores {', '.join(legacy)}: the ΔE2000 "
+                        "medoid is now deterministic (candidate_medoid). Use "
+                        "medoid_candidates to size the candidate set.",
+                        FutureWarning, stacklevel=2,
+                )
+                data = {k: v for k, v in data.items() if k not in legacy}
+        return data
 
     def get_measurement_infoclasses(
             self,
@@ -131,11 +175,19 @@ class MeasureColor(MeasureFeatures):
         return {col: [row[col] for row in rows] for col in columns}
 
     def _robust_lab_row(self, lab_px: np.ndarray) -> dict:
+        import colour
+
         gm = robust_color_center(
             lab_px, max_iter=self.geomedian_max_iter, tol=self.geomedian_tol
         )
-        medoid, deltas = medoid_ciede2000(
-            lab_px, max_pixels=self.medoid_max_pixels, seed=self.random_seed
+        # lab_px is this label's pixels only (the caller masks the bbox), so a
+        # neighbour sharing the bounding box never enters the medoid search.
+        medoid = candidate_medoid(lab_px, k=self.medoid_candidates).lab
+        deltas = (
+            np.asarray(colour.difference.delta_E_CIE2000(
+                    np.broadcast_to(medoid, lab_px.shape), lab_px
+            ))
+            if lab_px.shape[0] else np.empty(0)
         )
         de_median, de_mean, de_p95 = delta_e2000_spread(deltas)
         total_var = (

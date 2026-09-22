@@ -1,0 +1,47 @@
+{
+ "left": {
+  "nrows": 6,
+  "cols": [
+   {
+    "x0": 5,
+    "x1": 72,
+    "start": 329.0,
+    "pitch": 255.5,
+    "duty": 0.7600000000000002
+   },
+   {
+    "x0": 145,
+    "x1": 198,
+    "start": 334.5,
+    "pitch": 255.5,
+    "duty": 0.7100000000000002
+   }
+  ]
+ },
+ "right": {
+  "nrows": 6,
+  "cols": [
+   {
+    "x0": 170,
+    "x1": 202,
+    "start": 336.0,
+    "pitch": 255.5,
+    "duty": 0.6900000000000002
+   },
+   {
+    "x0": 282,
+    "x1": 338,
+    "start": 337.0,
+    "pitch": 255.5,
+    "duty": 0.7000000000000002
+   }
+  ]
+ },
+ "band_y": [
+  950,
+  3100
+ ],
+ "band_w": 340,
+ "reference_frame": "d000220_300_021",
+ "note": "Band coords: y relative to band_y[0], x relative to band origin (0 for left, W-band_w for right). Outer column of each side is clipped by the frame border; inner column sits against the plate wall."
+}
