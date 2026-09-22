@@ -109,3 +109,40 @@ makes this a defensible trade rather than a concession.
 The change is small and local: move `try:` to just after the `model_copy`, delete
 the `binding = None` line and the fallback, and invert the test's assertion from
 "the loop continued" to `pytest.raises(RuntimeError)`.
+
+# Deferred — run identity in `.failures.jsonl` records
+
+Raised by the C5 gate (`reports/2026-09-20-figure-backend-routing/c5-review.md`, F4).
+
+## What was deferred
+
+`record_plot_failure` writes `ts, binding_id, plot_class, lifecycle, error` (plus
+`dataset`/`image_stem` for image plots) and nothing that says *which run* produced
+the record. The file is append-only and never reset, so records from reruns,
+`--mode measure` re-emits and GUI refreshes accumulate side by side. Adding
+`SLURM_JOB_ID` (when set) and, where available, the lifecycle epoch would let a
+reader separate them.
+
+## Why it was deferred, not rejected
+
+The worst producer of misattributed records — a fenced Stage-3 worker writing into
+a run it no longer owns — is removed by the C5 gate's F1 fix: a guard or fence
+rejection now propagates as `PlotPublicationBlocked` instead of being recorded. What
+remains is ordinary accumulation across legitimate runs, which `ts` already orders.
+Adding fields is backward-compatible for a JSONL reader, so nothing is lost by
+waiting.
+
+## Reconsider when
+
+- a consumer of `.failures.jsonl` appears (the GUI, a QC report, a dashboard) and
+  needs to show "failures from this run" rather than "all failures ever"; or
+- a rerun's records are mistaken for a current failure in practice.
+
+# Deferred — `_`-prefixed `PlotAnalysis` class names (pre-existing)
+
+A user `PlotAnalysis` whose class name starts with `_` fails analysis-id validation
+at `registry.get(type(binding.plot).__name__)` in `PlotCoordinator.emit_analyses`,
+before `inspect` runs. Pre-existing and out of this change's scope. Since C5 it is
+at least *recorded* (lifecycle `analysis`), but the record blames id validation, not
+the class name the user chose — and `_Name` is exactly what someone writes in a
+notebook. Fix belongs with the analysis registry's id rules, not the plot writer.
