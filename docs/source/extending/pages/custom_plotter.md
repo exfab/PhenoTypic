@@ -245,6 +245,11 @@ A Plotly binding always publishes an interactive `.html` page. It publishes a
 `.png` as well when Kaleido can drive Chrome to rasterise the figure. A
 matplotlib binding publishes `.png` only, because matplotlib has no HTML export.
 
+Chrome (or Chromium) is an external dependency that `uv sync` does not install.
+Fetch one with `uv run plotly_get_chrome`, or point the `BROWSER_PATH`
+environment variable at a browser you already have. Without it, Plotly plots
+still publish their HTML pages and the run completes.
+
 The HTML pages do not each embed Plotly's JavaScript. The run writes one
 `plotly.min.js` at `deliverables/plots/plotly.min.js`, and every page loads it
 through a relative path such as `../../plotly.min.js`. If you copy a plot

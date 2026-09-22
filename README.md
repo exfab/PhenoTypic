@@ -161,6 +161,29 @@ requires the external [ExifTool](https://exiftool.org/install.html) application.
 it is unavailable, some RAW metadata may not be imported. See the
 [PyExifTool dependency documentation](https://pypi.org/project/PyExifTool/#pyexiftool-dependencies).
 
+### Chrome or Chromium (PNG export of Plotly figures)
+
+Plotly figures are rasterised by [Kaleido](https://pypi.org/project/kaleido/), which
+drives a Chrome or Chromium browser. The browser is **not** installed by `uv sync`.
+Without it:
+
+- Pipeline plots (`ImagePipeline(plots=[...])`) still publish: Plotly plots write
+  interactive `.html` pages and skip the `.png`. Matplotlib plots are unaffected.
+  CLI validation logs one warning naming the affected plots before the run starts.
+- The results viewer's Scatter-tab PDF export reports the missing browser beside
+  its button instead of exporting.
+
+Install a browser Kaleido can use:
+
+```bash
+uv run plotly_get_chrome
+```
+
+or point the `BROWSER_PATH` environment variable at a Chrome/Chromium binary you
+already have. See
+[Custom pipeline plot](docs/source/extending/pages/custom_plotter.md) for what
+each backend publishes.
+
 # Run the CLI
 
 Process a directory of plate images through a saved pipeline:
