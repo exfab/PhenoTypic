@@ -24,6 +24,7 @@ from ._writer import (
     PlotPublicationBlocked,
     _remove_stale_sibling,
     _render_page,
+    _require_plot_publication,
     publish_plot_output,
     safe_path_component,
 )
@@ -435,7 +436,14 @@ class PlotCoordinator:
         )
 
     def _publish_aggregate(self, binding: PlotBinding, value: Any) -> None:
-        directory = self._plots_base / safe_path_component(binding.id)
+        self._publish_to_directory(
+            binding, value, self._plots_base / safe_path_component(binding.id)
+        )
+
+    def _publish_to_directory(
+        self, binding: PlotBinding, value: Any, directory: Path
+    ) -> None:
+        """Publish *value* as a manifest directory, via the locked writer."""
         publish_plot_output(
             value,
             directory,
@@ -462,15 +470,7 @@ class PlotCoordinator:
             / safe_path_component(dataset)
         )
         if len(output.pages) != 1 or output.pages[0].key != "default":
-            publish_plot_output(
-                output,
-                base / output_stem,
-                plot_id=binding.id,
-                plot_class=type(binding.plot).__name__,
-                plots_base=self._plots_base,
-                publication_guard=self._publication_guard,
-                commit_guard=self._commit_guard,
-            )
+            self._publish_to_directory(binding, output, base / output_stem)
             return
         # The flat single-page path: every bare figure lands here, as
         # `<stem>-<hash>.{html,png}` directly under `base`. Routing it through
@@ -482,7 +482,7 @@ class PlotCoordinator:
         # failure, and the CLI preflight announces it.
         figure = output.pages[0].figure
         try:
-            self._require_publication()
+            _require_plot_publication(self._publication_guard)
             base.mkdir(parents=True, exist_ok=True)
             files, errors, backend = _render_page(
                 figure,
@@ -521,16 +521,6 @@ class PlotCoordinator:
                 f"{dataset}/{image_stem}: "
                 + (_format_error(errors[0]) if errors else "no renderer")
             ) from (errors[0] if errors else None)
-
-    def _require_publication(self) -> None:
-        """Fail closed immediately before a custom image-plot write."""
-        if (
-            self._publication_guard is not None
-            and not self._publication_guard()
-        ):
-            raise PlotPublicationBlocked(
-                "Plot publication blocked because its output snapshot changed."
-            )
 
 
 def _image_output_stem(dataset: str, image_stem: str) -> str:

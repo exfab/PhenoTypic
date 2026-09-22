@@ -497,8 +497,8 @@ class PhtPlot:
             RuntimeError: If no figure methods are declared.
             TypeError: If any visible figure declares ``backend="mpl"`` --
                 **including a single figure, which needs no composition.** The
-                refusal is uniform by choice: a lone matplotlib figure did round
-                -trip through here successfully, and that path was withdrawn for
+                refusal is uniform by choice: a lone matplotlib figure could
+                round-trip through here, and is refused anyway for
                 predictability. :meth:`inspect` is the supported call and is
                 unaffected. Do not "fix" this by short-circuiting a single spec.
             ValueError: If the base report receives overrides. Concrete plots

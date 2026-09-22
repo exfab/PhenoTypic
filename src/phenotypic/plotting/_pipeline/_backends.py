@@ -26,9 +26,9 @@ _CHROME: bool | None = None
 #: temporary sibling and ``os.replace``s it, which is atomic, so *this* function
 #: cannot leave a half-written bundle behind. The floor guards what it did not
 #: write -- a file truncated by a full filesystem, copied in by hand, produced
-#: by a different tool, or left by an older implementation. An earlier version
-#: of this comment justified the floor by "the zero-byte remnant of an
-#: interrupted write", which ``os.replace`` makes impossible here.
+#: by a different tool, or left by an older implementation. It is NOT a guard
+#: against the zero-byte remnant of an interrupted write, which ``os.replace``
+#: makes impossible here.
 #:
 #: Measured 2026-09-21: ``len(get_plotlyjs())`` is 4,847,452 chars /
 #: 4,847,499 utf-8 bytes on plotly 6.6.0 -- 4.85x this floor. The comparison is
@@ -227,9 +227,9 @@ def _declared_backends(plot: Any) -> str | None:
     """Return the backend *plot*'s ``inspect()`` declares it renders, if any.
 
     ``inspect()`` publishes ONE figure, so a binding is classified by that
-    figure alone -- not by the union of its ``@figure`` methods, which named a
-    plot with an mpl primary and a Plotly secondary as "HTML only, without
-    PNG" when it publishes a PNG. Three steps, in order:
+    figure alone -- not by the union of its ``@figure`` methods, which would
+    name a plot with an mpl primary and a Plotly secondary as "HTML only,
+    without PNG" when it publishes a PNG. Three steps, in order:
 
     1. The effective ``inspect`` itself carries ``@figure``: its declared
        backend. ``MeasureSymZones`` and ``MeasureOrientationZones`` decorate

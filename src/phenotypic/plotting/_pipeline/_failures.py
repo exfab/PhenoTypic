@@ -58,7 +58,7 @@ def record_plot_failure(
     each an independent way to fail on an unwritable target, and building the
     entry runs the caller's exception through ``__str__``. That last one is
     the reason the boundary is drawn around the whole body rather than around
-    the I/O: a "formatting cannot fail" assumption is how this raised.
+    the I/O: "formatting cannot fail" is an assumption, not a guarantee.
 
     A :class:`BaseException` still propagates. An ``error`` whose ``__str__``
     raises :class:`KeyboardInterrupt` escapes, and that is deliberate --
@@ -85,9 +85,8 @@ def record_plot_failure(
     try:
         # Inside the handler, not above it. A lazy import can fail -- a circular
         # import, a partially-initialised package during interpreter shutdown --
-        # and "every step is inside the one handler" was false while this sat
-        # outside. That sentence is the generalisation drawn from this module's
-        # own two defects; it should not be the third.
+        # and "every step is inside the one handler" would be false if this sat
+        # outside it.
         from phenotypic.sdk_ import plot_failures_jsonl_path
 
         entry: dict[str, str] = {
@@ -107,10 +106,9 @@ def record_plot_failure(
         # destroy the entry. These fields are TYPED str but arrive from
         # callers -- a Path, a numpy scalar or bytes makes dumps raise
         # INSIDE this handler, and the whole record vanishes silently.
-        # Measured: np.str_ survives (it subclasses str), np.int64 and
-        # Path and bytes did not. Same shape as the __str__ defect, one
-        # layer out -- serialising the entry was outside the set of
-        # things believed able to fail.
+        # Measured: np.str_ survives (it subclasses str); np.int64, Path
+        # and bytes do not. Serialising the entry is one more step that can
+        # fail, like the caller's __str__ one layer in.
         line = json.dumps(entry, sort_keys=True, default=str) + "\n"
         record = plot_failures_jsonl_path(plots_base)
         with exclusive_path_lock(plots_base / ".failures.lock"):

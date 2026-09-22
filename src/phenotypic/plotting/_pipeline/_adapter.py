@@ -59,13 +59,12 @@ class FigureAdapter:
     def save_html(figure: Any, path: Path, *, plotlyjs_src: str) -> None:
         """Write one Plotly figure as an interactive HTML page.
 
-        **Not standalone**: the page references ``plotlyjs_src`` rather than
-        embedding the library, so it needs that file alongside it to render.
-        Embedding would cost 4.8 MB per page.
+        **Not standalone**: ``plotlyjs_src`` is emitted verbatim as the script
+        src, so the page references the library rather than embedding it, and
+        needs that file alongside it to render. Embedding would cost 4.8 MB per
+        page.
 
-        No Kaleido and no Chrome are involved. ``plotlyjs_src`` is emitted
-        verbatim as the script src, so the 4.8 MB bundle is referenced rather
-        than embedded.
+        No Kaleido and no Chrome are involved.
 
         Args:
             figure: A Plotly figure.
@@ -75,7 +74,7 @@ class FigureAdapter:
         Raises:
             TypeError: If *figure* is not a Plotly figure.
         """
-        if figure_backend_of(figure) != "plotly":
+        if not FigureAdapter._is_plotly(figure):
             raise TypeError(
                 "HTML export is Plotly-only; got "
                 f"{type(figure).__module__}.{type(figure).__qualname__}"

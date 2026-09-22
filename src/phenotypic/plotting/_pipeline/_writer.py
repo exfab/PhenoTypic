@@ -26,7 +26,7 @@ from phenotypic.abc_.plotting import PlotOutput, figure_backend_of
 
 from ._adapter import FigureAdapter
 # `_format_error` is private to `_failures`, and reused here on purpose rather
-# than reimplemented: the manifest now formats caller-supplied exceptions, and
+# than reimplemented: the manifest formats caller-supplied exceptions, and
 # interpolating one runs user code. `_format_error` degrades to a placeholder
 # instead of raising, so a figure whose exception has a broken `__str__` costs
 # one unreadable field rather than the whole publication. It is also the single
@@ -59,9 +59,9 @@ def _enter_commit(commit_guard: CommitGuard | None) -> Iterator[None]:
     The body is NOT translated: an ``os.replace`` that fails inside the guard is
     a genuine write error and stays one.
 
-    Note what this costs on the CLI full path: a lock timeout used to lose one
-    plot while the image continued; it now fails the image, like any other
-    commit that cannot confirm ownership of the run.
+    Note what this costs on the CLI full path: a lock timeout fails the image,
+    like any other commit that cannot confirm ownership of the run, rather than
+    losing one plot while the image continues.
     """
     with ExitStack() as stack:
         try:
@@ -73,6 +73,22 @@ def _enter_commit(commit_guard: CommitGuard | None) -> Iterator[None]:
                 "Plot publication blocked because the commit guard refused: "
                 f"{_format_error(exc)}"
             ) from exc
+        yield
+
+
+@contextmanager
+def _guarded_commit(
+    publication_guard: Callable[[], bool] | None,
+    commit_guard: CommitGuard | None,
+) -> Iterator[None]:
+    """Enter *commit_guard*, then recheck *publication_guard*, for one mutation.
+
+    Every canonical write, replace or removal here goes through this, so the
+    predicate is always rechecked inside the commit guard and immediately
+    before the mutation in the body -- never outside it.
+    """
+    with _enter_commit(commit_guard):
+        _require_plot_publication(publication_guard)
         yield
 
 
@@ -109,8 +125,7 @@ def _atomic_write(
     temporary = destination.parent / f".{destination.name}.{uuid.uuid4().hex}.tmp"
     try:
         write(temporary)
-        with _enter_commit(commit_guard):
-            _require_plot_publication(publication_guard)
+        with _guarded_commit(publication_guard, commit_guard):
             os.replace(temporary, destination)
     finally:
         temporary.unlink(missing_ok=True)
@@ -154,10 +169,10 @@ def _render_page(
 
         The errors are exceptions rather than pre-formatted strings so that the
         one caller that records them and the one that puts them in the manifest
-        format them the same way, once. An earlier draft returned strings, and
-        the recorder -- which formats what it is given -- wrote
+        format them the same way, once. Returning strings would double-format:
+        the recorder formats what it is given, so it would write
         ``"RuntimeError: RuntimeError: raster exploded"`` into the durable
-        record this change exists to produce.
+        record.
 
     Raises:
         PlotPublicationBlocked: If a guard rejects the write. Never swallowed --
@@ -244,7 +259,7 @@ def _remove_stale_sibling(
     swept: that needs ownership of the whole directory, which this does not
     establish.
 
-    Committed through :func:`_enter_commit`, so a fenced or refused removal
+    Committed through :func:`_guarded_commit`, so a fenced or refused removal
     raises :class:`PlotPublicationBlocked` like every other commit here.
     """
     stale: list[str] = []
@@ -256,8 +271,7 @@ def _remove_stale_sibling(
         path = directory / name
         if not path.exists():
             continue
-        with _enter_commit(commit_guard):
-            _require_plot_publication(publication_guard)
+        with _guarded_commit(publication_guard, commit_guard):
             path.unlink(missing_ok=True)
 
 
@@ -321,30 +335,13 @@ def _publish_plot_output_locked(
     commit_guard: CommitGuard | None,
 ) -> dict[str, Any]:
     """Publish one plot generation while its directory lock is held."""
-    # Function-scope import, deliberately unlike `figure_backend_of` at module
-    # level: tests patch `_backends.chrome_available`, the DEFINING module's
-    # attribute, so the name must be resolved when this runs rather than bound
-    # unpatched at import time. See the note at this module's imports.
+    # Function-scope import on purpose; see the note at this module's imports.
     from ._backends import chrome_available
 
-    # Probed once, eagerly (spec §2, "The capability check"). With Chrome
-    # absent this is identical to probing lazily -- one probe per process, then
-    # memoised. With Chrome present it moves the first-launch cost onto the
-    # first publish rather than the first figure, which is knowingly taken.
-    # Probed lazily: every use of png_ok is under `has_plotly`, so an
-    # all-matplotlib publication would otherwise launch a browser for a value
-    # it cannot use. _render_page's own `backend == "mpl" or chrome_available()`
-    # short-circuits for the same reason.
-    _png_ok: bool | None = None
-
-    def png_ok() -> bool:
-        nonlocal _png_ok
-        if _png_ok is None:
-            _png_ok = chrome_available()
-        return _png_ok
     used: dict[str, str] = {}
     pages: list[dict[str, Any]] = []
     failed: list[dict[str, Any]] = []
+    backends: set[str | None] = set()
     # NOT `plots_base or directory`. Defaulting to the page directory writes a
     # 4.8 MB bundle into EVERY directory -- one per image for a multi-page image
     # plot -- which is the gigabyte trap this design exists to avoid, and it
@@ -382,6 +379,7 @@ def _publish_plot_output_locked(
             FigureAdapter.close(page.figure)
             raise
         FigureAdapter.close(page.figure)
+        backends.add(backend)
         if files:
             # Only for pages the manifest will list: a failed page's files
             # are not described by this generation either way.
@@ -428,30 +426,30 @@ def _publish_plot_output_locked(
             entry["partial"] = [_format_error(exc) for exc in errors]
         pages.append(entry)
 
-    # `figure_backend_of` is asked a second time here. Matplotlib figures were
-    # closed during the page loop, but `type()` inspection stays valid on a
-    # closed figure, so this is safe.
+    # `renderers` answers a CAPABILITY question -- what this machine could
+    # render for this directory -- not an OUTCOME question about what landed on
+    # disk. `files` and `failed` carry outcomes. Describing a capability in
+    # outcome terms ("the matplotlib pages have a PNG and the Plotly pages do
+    # not") is how a reader ends up unable to tell which question a value
+    # answers, and "fixes" one branch to match another.
     renderers: dict[str, str] = {}
-    backends = {
-        figure_backend_of(page.figure) for page in output.pages
-    }
     has_plotly = "plotly" in backends
     has_mpl = "mpl" in backends
     if has_plotly:
         renderers["html"] = "available"
-    if has_plotly and has_mpl and not png_ok():
-        # `renderers` answers a CAPABILITY question -- what this machine could
-        # render for this directory -- not an OUTCOME question about what
-        # landed on disk. `files` and `failed` carry outcomes. The two were
-        # mixed in an earlier draft of this comment ("the matplotlib pages
-        # have a PNG and the Plotly pages do not"), which is how a reader ends
-        # up unable to tell which question a value answers, and "fixes" one
-        # branch to match another. Mixed directory, no Chrome: PNG capability
-        # exists, but only for the matplotlib backend.
-        renderers["png"] = "available: matplotlib only; chrome not found"
-    elif has_plotly and not png_ok():
-        renderers["png"] = "unavailable: chrome not found"
-    elif has_plotly or has_mpl:
+        # Probed only here, under `has_plotly`: an all-matplotlib publication
+        # must not launch a browser for a value it cannot use. _render_page's
+        # own `backend == "mpl" or chrome_available()` short-circuits for the
+        # same reason.
+        if chrome_available():
+            renderers["png"] = "available"
+        elif has_mpl:
+            # Mixed directory, no Chrome: PNG capability exists, but only for
+            # the matplotlib backend.
+            renderers["png"] = "available: matplotlib only; chrome not found"
+        else:
+            renderers["png"] = "unavailable: chrome not found"
+    elif has_mpl:
         renderers["png"] = "available"
 
     manifest = {
@@ -468,8 +466,7 @@ def _publish_plot_output_locked(
         temporary_manifest.write_text(
             json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
         )
-        with _enter_commit(commit_guard):
-            _require_plot_publication(publication_guard)
+        with _guarded_commit(publication_guard, commit_guard):
             os.replace(temporary_manifest, manifest_path)
     finally:
         temporary_manifest.unlink(missing_ok=True)
