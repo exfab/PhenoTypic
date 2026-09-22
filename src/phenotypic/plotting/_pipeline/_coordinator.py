@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import os
-import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
@@ -15,19 +13,27 @@ from typing import Any, Mapping
 import pandas as pd
 
 from phenotypic.abc_.plotting import PlotAnalysis, PlotImage, PlotMeas, PlotQc
-from phenotypic.sdk_ import CommitGuard, plots_dir, publication_commit
+from phenotypic.sdk_ import CommitGuard, plots_dir
 
 from ._adapter import FigureAdapter
 from ._analysis_registry import AnalysisRegistry
 from ._bindings import AnalysisInput, MeasurementInput, PlotBinding, PlotInput
+from ._failures import _format_error, record_plot_failure
 from ._output import normalize_plot_output
 from ._writer import (
     PlotPublicationBlocked,
+    _render_page,
     publish_plot_output,
     safe_path_component,
 )
 
 logger = logging.getLogger(__name__)
+
+#: ``plot_class`` recorded when a failure precedes binding resolution, so the
+#: class that would have emitted is unknown. For a QC reference the configured
+#: object is the recipe entry, not the check substituted for it, so naming its
+#: class would record a plausible-looking wrong answer instead of an absence.
+_UNRESOLVED_PLOT_CLASS = "<unresolved>"
 
 
 @dataclass(frozen=True)
@@ -101,12 +107,15 @@ class PlotCoordinator:
                     dataset=dataset,
                     image_stem=image_stem,
                 )
-            except Exception:  # noqa: BLE001 - plot output is best-effort
+            except Exception as exc:  # noqa: BLE001 - plot output is best-effort
                 if strict:
                     raise
-                logger.warning(
-                    "Plot %s failed during image inspect", binding.id,
-                    exc_info=True,
+                self._record_failure(
+                    binding,
+                    exc,
+                    lifecycle="image",
+                    dataset=dataset,
+                    image_stem=image_stem,
                 )
 
     def emit_measurements(self, measurements: pd.DataFrame) -> None:
@@ -174,11 +183,8 @@ class PlotCoordinator:
                     else binding.plot.inspect(subject, for_save=True)
                 )
                 self._publish_aggregate(binding, value)
-            except Exception:  # noqa: BLE001 - plot output is best-effort
-                logger.warning(
-                    "Plot %s failed during analysis inspect", binding.id,
-                    exc_info=True,
-                )
+            except Exception as exc:  # noqa: BLE001 - plot output is best-effort
+                self._record_failure(binding, exc, lifecycle="analysis")
         return tuple(dict.fromkeys(refreshed_analysis_ids))
 
     def _refresh_analysis_producer(
@@ -223,6 +229,13 @@ class PlotCoordinator:
         modules = successful_modules or {}
         immutable_state = MappingProxyType(dict(review_state or {}))
         for configured in self._pipeline.get_plots():
+            # Reset EVERY iteration, before the prelude. Assigned only after
+            # the prelude resolves the plot, so a prelude failure must not see
+            # the previous iteration's binding -- it would record the failure
+            # against the wrong plot. The prelude stays inside the `try` by
+            # decision: one malformed binding must not stop the QC bindings
+            # after it (spec DEFERRED.md records the cost).
+            binding: PlotBinding | None = None
             try:
                 ref = configured.ref
                 is_qc_ref = ref is not None and ref.slot == "qc"
@@ -256,11 +269,18 @@ class PlotCoordinator:
                     review_state=immutable_state,
                 )
                 self._emit_aggregate(binding, subject, lifecycle="qc")
-            except Exception:  # noqa: BLE001 - plot output is best-effort
-                logger.warning(
-                    "Plot %s failed during QC inspect", binding.id,
-                    exc_info=True,
-                )
+            except Exception as exc:  # noqa: BLE001 - plot output is best-effort
+                if binding is not None:
+                    self._record_failure(binding, exc, lifecycle="qc")
+                else:
+                    # `configured.id` IS the binding id -- `model_copy` only
+                    # replaces `plot`. The class is what cannot be known here.
+                    self._record_failure_by_name(
+                        binding_id=configured.id,
+                        plot_class=_UNRESOLVED_PLOT_CLASS,
+                        error=exc,
+                        lifecycle="qc",
+                    )
 
     def emit_dependent_qc(
         self,
@@ -300,12 +320,16 @@ class PlotCoordinator:
                     input_ref=input_ref,
                     review_state=immutable_state,
                 )
-                self._emit_aggregate(binding, subject, lifecycle="qc dependency")
-            except Exception:  # noqa: BLE001 - plot output is best-effort
-                logger.warning(
-                    "Plot %s failed during dependent QC inspect",
-                    binding.id,
-                    exc_info=True,
+                # "qc", not "qc dependency": `lifecycle` is a field of the
+                # durable record and belongs to a closed set. The dependency
+                # refresh is the same emit point; the distinction lives only
+                # in the log line.
+                self._emit_aggregate(
+                    binding, subject, lifecycle="qc", log_label="dependent QC"
+                )
+            except Exception as exc:  # noqa: BLE001 - plot output is best-effort
+                self._record_failure(
+                    binding, exc, lifecycle="qc", log_label="dependent QC"
                 )
 
     def _bindings(self, lifecycle: type[Any]) -> list[PlotBinding]:
@@ -321,15 +345,79 @@ class PlotCoordinator:
         subject: Any,
         *,
         lifecycle: str,
+        log_label: str | None = None,
     ) -> None:
         try:
             value = binding.plot.inspect(subject, for_save=True)
             self._publish_aggregate(binding, value)
-        except Exception:  # noqa: BLE001 - plot output is best-effort
-            logger.warning(
-                "Plot %s failed during %s inspect", binding.id, lifecycle,
-                exc_info=True,
+        except Exception as exc:  # noqa: BLE001 - plot output is best-effort
+            self._record_failure(
+                binding, exc, lifecycle=lifecycle, log_label=log_label
             )
+
+    def _record_failure(
+        self,
+        binding: PlotBinding,
+        error: BaseException,
+        *,
+        lifecycle: str,
+        log_label: str | None = None,
+        dataset: str | None = None,
+        image_stem: str | None = None,
+    ) -> None:
+        """Log and durably record one swallowed failure of a resolved binding."""
+        self._record_failure_by_name(
+            binding_id=binding.id,
+            plot_class=type(binding.plot).__name__,
+            error=error,
+            lifecycle=lifecycle,
+            log_label=log_label,
+            dataset=dataset,
+            image_stem=image_stem,
+        )
+
+    def _record_failure_by_name(
+        self,
+        *,
+        binding_id: str,
+        plot_class: str,
+        error: BaseException,
+        lifecycle: str,
+        log_label: str | None = None,
+        dataset: str | None = None,
+        image_stem: str | None = None,
+    ) -> None:
+        """Log and durably record one swallowed plot failure.
+
+        Takes the identity directly for the one caller that has no resolved
+        binding to read it from. ``record_plot_failure`` never raises, so this
+        is safe to call from inside an ``except`` block.
+
+        Args:
+            binding_id: Stable plot binding id.
+            plot_class: Producer class name, or ``_UNRESOLVED_PLOT_CLASS``.
+            error: The swallowed exception.
+            lifecycle: Emit point; one of the closed set documented on
+                :func:`record_plot_failure`.
+            log_label: Log-line wording when it differs from ``lifecycle``.
+            dataset: Dataset name, for the image lifecycle only.
+            image_stem: Image stem, for the image lifecycle only.
+        """
+        logger.warning(
+            "Plot %s failed during %s inspect",
+            binding_id,
+            log_label or lifecycle,
+            exc_info=error,
+        )
+        record_plot_failure(
+            self._plots_base,
+            binding_id=binding_id,
+            plot_class=plot_class,
+            lifecycle=lifecycle,
+            error=error,
+            dataset=dataset,
+            image_stem=image_stem,
+        )
 
     def _publish_aggregate(self, binding: PlotBinding, value: Any) -> None:
         directory = self._plots_base / safe_path_component(binding.id)
@@ -369,17 +457,48 @@ class PlotCoordinator:
                 commit_guard=self._commit_guard,
             )
             return
+        # The flat single-page path: every bare figure lands here. Rendered
+        # directly rather than through `publish_plot_output`, which would take
+        # a `.publication.lock` on `base` -- shared by every image in the
+        # dataset -- and name the file from the page key, so every image would
+        # collide on `default.*`. No manifest is written here, so a Chrome-less
+        # machine leaves HTML and no PNG with nothing recording why: that is a
+        # missing capability, not a failure, and the CLI preflight announces it.
         self._require_publication()
-        destination = base / f"{output_stem}.png"
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        temporary = destination.parent / f".{destination.name}.{uuid.uuid4().hex}.tmp"
+        base.mkdir(parents=True, exist_ok=True)
+        figure = output.pages[0].figure
         try:
-            FigureAdapter.save_png(output.pages[0].figure, temporary)
-            with publication_commit(self._commit_guard):
-                self._require_publication()
-                os.replace(temporary, destination)
+            files, errors, _backend = _render_page(
+                figure,
+                base,
+                output_stem,
+                plots_base=self._plots_base,
+                plot_id=binding.id,
+                publication_guard=self._publication_guard,
+                commit_guard=self._commit_guard,
+            )
         finally:
-            temporary.unlink(missing_ok=True)
+            FigureAdapter.close(figure)
+        # Recorded as raised: the class is the diagnostic, so never re-wrap.
+        for error in errors:
+            record_plot_failure(
+                self._plots_base,
+                binding_id=binding.id,
+                plot_class=type(binding.plot).__name__,
+                lifecycle="image",
+                error=error,
+                dataset=dataset,
+                image_stem=image_stem,
+            )
+        if not files:
+            # Recorded a second time by `emit_image`'s handler, deliberately:
+            # the entry above names the renderer, this one the image. It also
+            # keeps `strict=True` meaningful for this path.
+            raise RuntimeError(
+                f"plot {binding.id!r} produced no file for "
+                f"{dataset}/{image_stem}: "
+                + (_format_error(errors[0]) if errors else "no renderer")
+            )
 
     def _require_publication(self) -> None:
         """Fail closed immediately before a custom image-plot write."""

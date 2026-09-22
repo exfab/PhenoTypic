@@ -584,7 +584,6 @@ def stage3_merge_measure_core(
             image,
             dataset=dataset_name,
             image_stem=image_stem,
-            strict=True,
         )
 
         _check_active(active_check)

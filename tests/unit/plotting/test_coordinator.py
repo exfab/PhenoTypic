@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import pytest
@@ -472,3 +474,303 @@ def test_a_multi_page_plotly_image_plot_writes_exactly_one_bundle(tmp_path) -> N
     # exists", so again only a whole-tree count distinguishes the two.
     records = sorted(tmp_path.rglob(".failures.jsonl"))
     assert records == [], f"nothing failed here, yet: {records}"
+
+
+def _failure_entries(tmp_path) -> list[dict]:
+    """Parse the one durable failure record under ``deliverables/plots``."""
+    import json
+
+    record = plots_dir(tmp_path) / ".failures.jsonl"
+    return [
+        json.loads(line)
+        for line in record.read_text(encoding="utf-8").splitlines()
+    ]
+
+
+def test_a_raising_figure_leaves_the_run_green_and_is_recorded(tmp_path) -> None:
+    from phenotypic.abc_.plotting import figure
+    from phenotypic.detect import OtsuDetector
+
+    class _Exploding(BaseModel, PlotMeas):
+        @figure(title="T", backend="plotly", primary=True)
+        def t(self, subject):
+            raise RuntimeError("figure exploded")
+
+    pipeline = ImagePipeline(ops={"d": OtsuDetector()}, plots=[_Exploding()])
+    PlotCoordinator(pipeline, tmp_path).emit_measurements(pd.DataFrame())
+
+    entries = _failure_entries(tmp_path)
+    assert len(entries) == 1
+    assert entries[0]["binding_id"] == "_Exploding"
+    assert entries[0]["plot_class"] == "_Exploding"
+    assert entries[0]["lifecycle"] == "measurements"
+    assert entries[0]["error"] == "RuntimeError: figure exploded"
+
+
+class _RaisingImagePlot(BaseModel, PlotImage):
+    def inspect(self, subject=None, *, for_save=False, **overrides):
+        raise ValueError("image plot exploded")
+
+
+# No leading underscore: emit_analyses looks the producer up by class name,
+# and the registry rejects an id starting with "_" -- which raises before
+# inspect() and would record the id validation instead of this failure.
+class RaisingAnalysisPlot(BaseModel, PlotAnalysis):
+    def inspect(self, subject=None, *, for_save=False, **overrides):
+        raise ValueError("analysis plot exploded")
+
+
+class _RaisingQcPlot(BaseModel, PlotQc):
+    def inspect(self, subject=None, *, for_save=False, **overrides):
+        raise ValueError("qc plot exploded")
+
+
+def _emit_image(coordinator) -> None:
+    coordinator.emit_image(object(), dataset="ds", image_stem="plate-1")
+
+
+def _emit_analyses(coordinator) -> None:
+    coordinator.emit_analyses(pd.DataFrame(), AnalysisRegistry())
+
+
+def _emit_qc(coordinator) -> None:
+    coordinator.emit_qc(pd.DataFrame(), AnalysisRegistry())
+
+
+def _emit_dependent_qc(coordinator) -> None:
+    coordinator.emit_dependent_qc(
+        pd.DataFrame(), AnalysisRegistry(), updated_input=MeasurementInput()
+    )
+
+
+def _emit_dependent_qc_unresolvable(coordinator) -> None:
+    # The input names a table the registry cannot resolve, so the failure is
+    # raised by emit_dependent_qc's OWN try, before _emit_aggregate is reached.
+    coordinator.emit_dependent_qc(
+        pd.DataFrame(),
+        AnalysisRegistry(),
+        updated_input=AnalysisInput(analysis_id="MissingModel"),
+    )
+
+
+@pytest.mark.parametrize(
+    ("plot", "plot_input", "emit", "lifecycle", "image_fields", "error_pattern"),
+    [
+        pytest.param(
+            _RaisingImagePlot(), None, _emit_image, "image",
+            {"dataset": "ds", "image_stem": "plate-1"}, r"ValueError: image plot exploded",
+            id="emit_image",
+        ),
+        pytest.param(
+            RaisingAnalysisPlot(), None, _emit_analyses, "analysis",
+            {}, r"ValueError: analysis plot exploded", id="emit_analyses",
+        ),
+        pytest.param(
+            _RaisingQcPlot(), None, _emit_qc, "qc",
+            {}, r"ValueError: qc plot exploded", id="emit_qc-via-aggregate",
+        ),
+        # "qc", NOT "qc dependency". The string is supplied at the
+        # emit_dependent_qc call site and only FORWARDED by _emit_aggregate's
+        # handler, so a fix made in that handler changes nothing.
+        pytest.param(
+            _RaisingQcPlot(), None, _emit_dependent_qc, "qc",
+            {}, r"ValueError: qc plot exploded", id="emit_dependent_qc-via-aggregate",
+        ),
+        pytest.param(
+            _RaisingQcPlot(), AnalysisInput(analysis_id="MissingModel"),
+            _emit_dependent_qc_unresolvable, "qc",
+            {}, r"AnalysisNotFoundError: .*MissingModel.*", id="emit_dependent_qc-own-handler",
+        ),
+    ],
+)
+def test_every_emit_point_records_one_failure_under_a_closed_lifecycle(
+    tmp_path, plot, plot_input, emit, lifecycle, image_fields, error_pattern
+) -> None:
+    """Each coordinator handler writes exactly one record, never two.
+
+    ``_emit_aggregate`` swallows without re-raising, so an aggregate failure
+    must reach the record once -- from the innermost handler -- and not again
+    from the emit method's own handler around it.
+    """
+    pipeline = ImagePipeline(
+        plots=[PlotBinding(id="failing", plot=plot, input=plot_input)]
+    )
+
+    emit(PlotCoordinator(pipeline, tmp_path))
+
+    entries = _failure_entries(tmp_path)
+    assert len(entries) == 1, entries
+    entry = entries[0]
+    assert entry["binding_id"] == "failing"
+    assert entry["plot_class"] == type(plot).__name__
+    assert entry["lifecycle"] == lifecycle
+    assert re.fullmatch(error_pattern, entry["error"]), entry["error"]
+    assert {
+        key: entry[key] for key in ("dataset", "image_stem") if key in entry
+    } == image_fields
+
+
+def test_emit_qc_prelude_failure_names_the_right_binding(tmp_path) -> None:
+    """F4: the prelude is the ONLY window where the misattribution lives.
+
+    The prelude is everything in ``emit_qc``'s loop before ``binding`` is
+    assigned by ``model_copy``. An earlier draft of this test patched
+    ``MeasurementInput.__init__``, which runs one line AFTER that assignment,
+    so it passed on the unfixed code and proved nothing. ``modules.get`` is
+    inside the prelude, and is the way in.
+    """
+    import plotly.graph_objects as go
+
+    from phenotypic.abc_.plotting import figure
+    from phenotypic.detect import OtsuDetector
+
+    class _FirstQc(BaseModel, PlotQc):
+        @figure(title="First", backend="plotly", primary=True)
+        def t(self, subject):
+            return go.Figure()
+
+    class _SecondQc(BaseModel, PlotQc):
+        @figure(title="Second", backend="plotly", primary=True)
+        def t(self, subject):
+            return go.Figure()
+
+    pipeline = ImagePipeline(
+        ops={"d": OtsuDetector()}, plots=[_FirstQc(), _SecondQc()]
+    )
+
+    class _RaisingOnSecond(dict):
+        """Raises inside the prelude for the SECOND binding only.
+
+        Raising on the FIRST would make the misnaming assertion tautological:
+        with no prior iteration there is no stale ``binding`` to be
+        misattributed to. Raising on the second is what makes a missing
+        ``binding = None`` reset detectable -- the record would then say
+        ``_FirstQc`` for a failure in ``_SecondQc``.
+        """
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.calls = 0
+
+        def get(self, key, default=None):
+            self.calls += 1
+            if self.calls == 2:
+                raise RuntimeError("prelude exploded")
+            return super().get(key, default)
+
+    # Non-empty: `modules = successful_modules or {}` discards a falsy mapping,
+    # which would skip the injection entirely.
+    modules = _RaisingOnSecond({"unused": object()})
+
+    PlotCoordinator(pipeline, tmp_path).emit_qc(
+        pd.DataFrame(),
+        AnalysisRegistry(tmp_path / "deliverables"),
+        successful_modules=modules,
+    )
+
+    assert modules.calls == 2, "premise: the prelude ran once per binding"
+    entries = _failure_entries(tmp_path)
+    assert len(entries) == 1
+    assert entries[0]["binding_id"] == "_SecondQc", (
+        "a stale binding from the previous iteration was misattributed"
+    )
+    # The class that WOULD have emitted is unknowable from inside the prelude:
+    # for a QC reference, `configured.plot` is the recipe entry, not the check
+    # substituted for it. An explicit marker keeps that row distinguishable
+    # from one whose class was actually observed.
+    assert entries[0]["plot_class"] == "<unresolved>"
+    assert entries[0]["lifecycle"] == "qc"
+    assert entries[0]["error"] == "RuntimeError: prelude exploded"
+
+    # ...and the FIRST binding, which ran before the failure, still published.
+    assert (plots_dir(tmp_path) / "_FirstQc").is_dir()
+
+
+class _SingleFigurePlotlyImagePlot(BaseModel, PlotImage):
+    def inspect(self, subject=None, *, for_save=False, **overrides):
+        import plotly.graph_objects as go
+
+        return go.Figure()
+
+
+def test_a_single_figure_plotly_image_plot_publishes_html(
+    tmp_path, monkeypatch
+) -> None:
+    """B1: the flat single-page path is the one every bare figure takes.
+
+    A bare figure normalizes to one ``"default"`` page, which bypasses
+    ``publish_plot_output`` entirely. Before it was routed through
+    ``_render_page`` it wrote PNG only, so without Chrome an image plot
+    published nothing at all.
+    """
+    from phenotypic.plotting._pipeline import _backends
+
+    monkeypatch.setattr(_backends, "chrome_available", lambda: False)
+    pipeline = ImagePipeline(
+        plots=[PlotBinding(id="image", plot=_SingleFigurePlotlyImagePlot())]
+    )
+    coordinator = PlotCoordinator(pipeline, tmp_path)
+    for image_stem in ("plate-1", "plate-2"):
+        coordinator.emit_image(object(), dataset="ds", image_stem=image_stem)
+
+    directory = plots_dir(tmp_path) / "image" / "ds"
+    pages = sorted(path.name for path in directory.glob("*.html"))
+    assert len(pages) == 2, pages
+    # `<stem>-<hash>`, NOT the page key: routing through publish_plot_output
+    # would name every image `default.html` and each would overwrite the last.
+    assert pages[0].startswith("plate-1-") and pages[1].startswith("plate-2-")
+    assert not (directory / "manifest.json").exists()
+    assert list(directory.glob("*.png")) == []
+
+    bundle = plots_dir(tmp_path) / "plotly.min.js"
+    assert sorted(tmp_path.rglob("plotly.min.js")) == [bundle]
+    html = (directory / pages[0]).read_text(encoding="utf-8")
+    sources = re.findall(r'src="([^"]*plotly\.min\.js)"', html)
+    assert len(sources) == 1, sources
+    assert (directory / sources[0]).resolve() == bundle.resolve(), sources
+
+    # Chrome being absent is a missing CAPABILITY, not a failure: the PNG was
+    # never attempted, so the durable record stays empty (spec §2, "Scope of
+    # the durable record"). The CLI preflight announcement covers this case.
+    assert list(tmp_path.rglob(".failures.jsonl")) == []
+
+
+class _UnsupportedFigureImagePlot(BaseModel, PlotImage):
+    def inspect(self, subject=None, *, for_save=False, **overrides):
+        return object()
+
+
+def test_a_flat_image_render_failure_records_the_real_exception_class(
+    tmp_path,
+) -> None:
+    """The render error is recorded as raised -- its class is the diagnostic.
+
+    ``_render_page`` returns exceptions, not strings. Wrapping one as
+    ``RuntimeError(exc)`` would spell this ``"RuntimeError: unsupported
+    figure type ..."``; for an error that already IS a RuntimeError the wrap
+    comes out right by coincidence, which is why this uses a TypeError.
+    """
+    pipeline = ImagePipeline(
+        plots=[PlotBinding(id="image", plot=_UnsupportedFigureImagePlot())]
+    )
+
+    PlotCoordinator(pipeline, tmp_path).emit_image(
+        object(), dataset="ds", image_stem="plate-1"
+    )
+
+    entries = _failure_entries(tmp_path)
+    # Two records by design: the first says which renderer failed, the second
+    # (from emit_image's handler) that the image got no file at all.
+    assert len(entries) == 2, entries
+    render, image = entries
+    assert render["error"].startswith(
+        "TypeError: unsupported figure type builtins.object"
+    ), render["error"]
+    assert image["error"].startswith("RuntimeError: plot 'image' produced no file")
+    # Formatted once, by _format_error -- not a doubled "TypeError: TypeError:".
+    assert image["error"].count("TypeError") == 1, image["error"]
+    for entry in entries:
+        assert entry["binding_id"] == "image"
+        assert entry["plot_class"] == "_UnsupportedFigureImagePlot"
+        assert entry["lifecycle"] == "image"
+        assert (entry["dataset"], entry["image_stem"]) == ("ds", "plate-1")
