@@ -91,7 +91,23 @@ live in [`enhance/CLAUDE.md`](../enhance/CLAUDE.md).
   Compact derived measurements may be cached, but cached NumPy crops must own
   their buffers rather than retain a whole-image backing array. CLI output is
   published under `deliverables/plots/<binding-id>/`. Reference implementation:
-  [`measure/_measure_symmetric_zones.py`](../measure/_measure_symmetric_zones.py).
+  [`measure/_measure_symzones.py`](../measure/_measure_symzones.py).
+- **Declaring a figure:** decorate each figure-building method with
+  `@figure(title=..., backend="plotly" | "mpl", primary=True)`; `backend` is
+  required, with no default, because it picks the theming path -- a
+  `"plotly"` return is wrapped in `apply_theme`, a `"mpl"` return is built
+  inside an auto-applied `phenotypic_mpl_context()`, and a figure that doesn't
+  match its declared backend raises `TypeError`. `report()` refuses outright
+  if any visible figure declares `backend="mpl"`, even a lone one. Overriding
+  `inspect()` (e.g. for multi-page or runtime output) is the escape hatch;
+  decorate the override itself with `@figure` to declare its backend the same
+  way (as `MeasureSymZones.inspect` does). CLI publication writes a Plotly figure as `.html` always plus
+  `.png` when Chrome is available, an mpl figure as `.png` only, and shares
+  one `plotly.min.js` bundle per run under `deliverables/plots/`. A swallowed
+  plot failure is appended to `deliverables/plots/.failures.jsonl`; a
+  `PlotPublicationBlocked` is never recorded there and propagates instead.
+  Full guide:
+  [`extending/pages/custom_plotter.md`](../../../docs/source/extending/pages/custom_plotter.md).
 
 ---
 
