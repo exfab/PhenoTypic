@@ -292,3 +292,23 @@ def test_a_roi_without_a_lattice_has_an_image_and_no_boxes() -> None:
     image_axes = [ax for ax in fig.axes if ax.images]
     assert len(image_axes) == 2 and all(not ax.patches for ax in image_axes)
     assert_no_overlap_or_clipping(fig)
+
+
+# -- show_tiles() -------------------------------------------------------------
+def test_show_tiles_renders_the_last_apply() -> None:
+    operation = calibrated(planted_faults(), on_qc_fail="warn")
+    fig = operation.show_tiles()
+    assert len([ax for ax in fig.axes if ax.images]) == 2
+    assert_no_overlap_or_clipping(fig)
+
+
+def test_show_tiles_before_apply_raises() -> None:
+    with pytest.raises(RuntimeError, match="call apply\\(\\) first"):
+        frozen_op().show_tiles()
+
+
+def test_show_tiles_works_after_a_refusal() -> None:
+    operation = frozen_op()
+    with pytest.raises(RuntimeError):
+        quietly(operation, Image(arr=render_frame(gain=1.6)))
+    assert operation.show_tiles() is not None

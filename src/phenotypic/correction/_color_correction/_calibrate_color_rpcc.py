@@ -44,6 +44,7 @@ from ._calibration_overlay import (
     RoiDraft,
     Verdict,
     build_overlay_record,
+    render_calibration_overlay,
 )
 from ._checker_detect import fit_lattice, refine
 from ._checker_identity import (
@@ -68,6 +69,8 @@ from ._color_checker_profile import ColorCheckerProfile
 from ._color_corrector import ColorCorrector
 
 if TYPE_CHECKING:
+    from matplotlib.figure import Figure
+
     from phenotypic._core._grid_image import GridImage
     from phenotypic._core._image import Image
 
@@ -147,6 +150,8 @@ class CalibrateColorRpcc(ImageCorrector):
     Returns:
         Image: ``rgb`` corrected, with ``gray`` and ``detect_mat`` recomputed.
         ``fitted_profile`` and ``qc`` are populated on the operation.
+        ``calibration_record`` holds the tile overlay of the last run, even a
+        refused one, and ``show_tiles()`` draws it.
 
     Raises:
         ValueError: If any ROI fails the gate under ``on_qc_fail="raise"``,
@@ -225,6 +230,41 @@ class CalibrateColorRpcc(ImageCorrector):
         every ``apply()``. Never serialised.
         """
         return self._calibration_record
+
+    def show_tiles(self, *, figsize: tuple[float, float] | None = None) -> Figure:
+        """Draw where the last ``apply()`` measured each tile and what it matched.
+
+        One panel per ROI: the as-shot pixels, each detected tile outlined, the
+        core box the medoid came from coloured by status (used, partly
+        covered, rejected, excluded, empty), and beside each tile the chart
+        patch it was matched to, a measured | reference swatch pair and ΔE00
+        before -> after correction. A refused frame still draws, with its
+        reasons under each ROI and no after-values.
+
+        .. code-block:: python
+
+            try:
+                corrected = op.apply(plate)
+            finally:
+                op.show_tiles().savefig("calibration.png", dpi=160)
+
+        Args:
+            figsize: Optional ``(width, height)`` in inches; must be at least
+                the size the labels need.
+
+        Returns:
+            A ``matplotlib.figure.Figure``.
+
+        Raises:
+            RuntimeError: If ``apply()`` has not run on this instance.
+            ValueError: If *figsize* is too small for the labels.
+        """
+        record = self._calibration_record
+        if record is None:
+            raise RuntimeError(
+                    "show_tiles() draws the last apply(); call apply() first."
+            )
+        return render_calibration_overlay(record, figsize=figsize)
 
     @overload
     def apply(self, image: GridImage, inplace: bool = False) -> GridImage: ...
