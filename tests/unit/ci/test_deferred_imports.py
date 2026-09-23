@@ -95,6 +95,14 @@ DEFERRED_SITES: dict[str, dict[str, tuple[str, ...]]] = {
     "analysis/qc/_expected_vs_detected.py": {"go": ("inspect",)},
     "analysis/qc/_grid_occupancy.py": {"go": ("inspect",)},
     "analysis/qc/_replicate_agreement.py": {"go": ("inspect",)},
+    "correction/_color_correction/_calibration_overlay.py": {
+        "FigureCanvasAgg": ("render_calibration_overlay",),
+        "Figure": ("render_calibration_overlay",),
+        "Rectangle": ("render_calibration_overlay",),
+        "font_manager": ("render_calibration_overlay",),
+        "rc_context": ("render_calibration_overlay",),
+        "phenotypic_mpl_context": ("render_calibration_overlay",),
+    },
     "correction/_color_correction/_color_corrector.py": {"colour": ("_operate",)},
     "correction/_color_denoise.py": {
         "bm3d": ("_build_profile", "_denoise_gat", "_denoise_plain"),
