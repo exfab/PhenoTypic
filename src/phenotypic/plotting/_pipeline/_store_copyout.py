@@ -16,6 +16,7 @@ from phenotypic.abc_.plotting._store_formats import STORE_FORMATS
 from phenotypic.sdk_ import CommitGuard
 from phenotypic.sdk_._file_locking import exclusive_path_lock
 from phenotypic.sdk_._image_figures import read_image_figures_descriptor
+from phenotypic.sdk_.ngff_ import FIGURES_GROUP, FIGURES_SCHEMA_VERSION
 
 from ._adapter import FigureAdapter
 from ._failures import _format_error, record_plot_failure
@@ -82,6 +83,13 @@ def publish_store_figures(
         descriptor = read_image_figures_descriptor(store_path)
         if descriptor is None:
             return
+        version = descriptor.get("schema_version")
+        if version != FIGURES_SCHEMA_VERSION:
+            # Reading a newer layout as this one would publish a guess.
+            raise ValueError(
+                f"figures schema_version {version!r} is not supported "
+                f"(this reader knows {FIGURES_SCHEMA_VERSION})"
+            )
         # Before the first record, too: a refused guard means "do not touch
         # this tree", and the failure log lives in it (_coordinator F1).
         _require_plot_publication(publication_guard)
@@ -111,11 +119,26 @@ def publish_store_figures(
                     page=failure.get("page"), fmt=failure.get("format"))
         except Exception as exc:  # noqa: BLE001 - a malformed entry is one record
             _record("<store>", exc)
-    for binding_id, binding in bindings.items():
+    # A page that failed outright is absent from `pages` but still part of
+    # its binding's output, so a binding with only such pages is published
+    # too. A binding-level failure (`page: null`) stays a record only.
+    page_failures = [
+        f for f in failures
+        if isinstance(f, dict)
+        and isinstance(f.get("binding"), str)
+        and isinstance(f.get("page"), str)
+    ]
+    targets = list(bindings)
+    for failure in page_failures:
+        if failure["binding"] not in targets:
+            targets.append(failure["binding"])
+    for binding_id in targets:
         try:
-            page_failures = [f for f in failures if f.get("binding") == binding_id]
             _publish_binding(
-                Path(store_path), plots_base, binding_id, binding, page_failures,
+                Path(store_path), plots_base, binding_id,
+                bindings.get(binding_id, {}),
+                [f for f in page_failures if f["binding"] == binding_id],
+                plot_class=classes.get(binding_id, _UNRESOLVED),
                 dataset=dataset, output_stem=output_stem, record=_record,
                 publication_guard=publication_guard, commit_guard=commit_guard,
             )
@@ -133,21 +156,38 @@ def _publish_binding(
     binding: dict[str, Any],
     page_failures: list[dict[str, Any]],
     *,
+    plot_class: str,
     dataset: str,
     output_stem: str,
     record: Callable[..., None],
     publication_guard: Callable[[], bool] | None,
     commit_guard: CommitGuard | None,
 ) -> None:
-    """Publish one binding flat (a lone ``default`` page) or as a manifest dir."""
+    """Publish one binding flat (a lone ``default`` page) or as a manifest dir.
+
+    The layout is decided over every page the binding produced, failed ones
+    included, as the retired writer decided it over the whole ``PlotOutput``:
+    a failure must not flip a multi-page binding to the flat layout.
+    """
     pages = binding.get("pages", [])
+    published_keys = [p["key"] for p in pages]
+    failed_only: dict[str, str] = {}
+    for failure in page_failures:
+        if failure["page"] not in published_keys:
+            failed_only.setdefault(failure["page"], str(failure.get("error")))
+    universe = published_keys + list(failed_only)
+    flat = universe == ["default"]
+    if flat and not pages:
+        return  # a page that published nothing keeps its previous files
     base = plots_base / safe_path_component(binding_id) / safe_path_component(dataset)
-    flat = len(pages) == 1 and pages[0]["key"] == "default"
     directory = base if flat else base / output_stem
     stems = (
         [output_stem]
         if flat
-        else unique_page_stems([(p["key"], p["label"] or p["key"]) for p in pages])
+        else unique_page_stems(
+            [(p["key"], p["label"] or p["key"]) for p in pages]
+            + [(key, key) for key in failed_only]
+        )[: len(pages)]
     )
     _require_plot_publication(publication_guard)
     directory.mkdir(parents=True, exist_ok=True)
@@ -165,6 +205,11 @@ def _publish_binding(
             record=record, binding_id=binding_id,
             publication_guard=publication_guard, commit_guard=commit_guard,
         )
+        # The store records no label for a page that stored nothing.
+        failed += [
+            {"key": key, "label": None, "error": error}
+            for key, error in failed_only.items()
+        ]
         # A capability, not an outcome; see the note in `_writer`.
         renderers: dict[str, str] = {}
         if any(p["backend"] == "plotly" for p in published):
@@ -175,7 +220,7 @@ def _publish_binding(
             directory,
             {
                 "schema_version": 2, "plot_id": binding_id,
-                "class": binding.get("class", binding_id),
+                "class": plot_class,
                 "renderers": renderers, "pages": published, "failed": failed,
             },
             publication_guard=publication_guard, commit_guard=commit_guard,
@@ -198,12 +243,18 @@ def _publish_pages(
     """Copy every page's stored files; return manifest pages and failures."""
     published: list[dict[str, Any]] = []
     failed: list[dict[str, Any]] = []
+    figures_root = (store / FIGURES_GROUP).resolve()
     for page, stem in zip(pages, stems):
         files: dict[str, str] = {}
         errors: list[BaseException] = []
         for entry in page["files"]:
             try:
-                data = (store / entry["path"]).read_bytes()
+                source = (store / entry["path"]).resolve()
+                if not source.is_relative_to(figures_root):
+                    raise ValueError(
+                        f"stored path {entry['path']!r} is outside {FIGURES_GROUP}/"
+                    )
+                data = source.read_bytes()
                 digest = hashlib.sha256(data).hexdigest()
                 if digest != entry["sha256"]:
                     raise ValueError(
@@ -220,20 +271,28 @@ def _publish_pages(
                     publication_guard=publication_guard, commit_guard=commit_guard,
                 )
                 files[entry["format"]] = name
-                if entry["format"] == "plotly-json":
-                    files["html"] = _write_html_from_json(
-                        data, directory, stem, plots_base,
-                        publication_guard=publication_guard, commit_guard=commit_guard,
-                    )
             except PlotPublicationBlocked:
-                # S11, as in `_render_page`: a refused guard must not leave
-                # half a page behind asserting what this pass no longer owns.
-                for written in files.values():
-                    (directory / written).unlink(missing_ok=True)
+                _discard_page(directory, files)
                 raise
             except Exception as exc:  # noqa: BLE001 - per-file best effort
                 errors.append(exc)
                 record(binding_id, exc, page=page["key"], fmt=entry.get("format"))
+                continue
+            if entry["format"] != "plotly-json":
+                continue
+            # Its own step: the stored JSON was verified and copied, so a
+            # failure here is the deliverable rendering, not the store.
+            try:
+                files["html"] = _write_html_from_json(
+                    data, directory, stem, plots_base,
+                    publication_guard=publication_guard, commit_guard=commit_guard,
+                )
+            except PlotPublicationBlocked:
+                _discard_page(directory, files)
+                raise
+            except Exception as exc:  # noqa: BLE001 - per-rendering best effort
+                errors.append(exc)
+                record(binding_id, exc, page=page["key"], fmt="html")
         if not files:
             failed.append({"key": page["key"], "label": page["label"],
                            "error": "no stored file could be copied out"})
@@ -255,6 +314,13 @@ def _publish_pages(
             entry_out["partial"] = partial
         published.append(entry_out)
     return published, failed
+
+
+def _discard_page(directory: Path, files: Mapping[str, str]) -> None:
+    """S11, as in `_render_page`: a refused guard must not leave half a page
+    behind asserting what this pass no longer owns."""
+    for written in files.values():
+        (directory / written).unlink(missing_ok=True)
 
 
 def _write_html_from_json(

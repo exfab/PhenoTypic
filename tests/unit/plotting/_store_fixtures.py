@@ -4,11 +4,12 @@
 descriptor), so tests need no pixels. `emit_image_via_store` puts its store
 OUTSIDE the test's tmp_path, in a fresh directory per call, so assertions over
 tmp_path see only deliverables and a second emit for the same stem never
-collides (plan-review B1).
+collides (plan-review B1). The store is removed once copy-out has read it.
 """
 from __future__ import annotations
 
 import json
+import shutil
 import tempfile
 from pathlib import Path
 
@@ -43,6 +44,9 @@ def emit_image_via_store(coordinator, image=None, *, dataset="ds", image_stem="p
         return None
     output_root = coordinator._plots_base.parent.parent
     scratch = Path(tempfile.mkdtemp(prefix=f"{output_root.name}-store-", dir=output_root.parent))
-    store = figure_store(scratch, stored)
-    coordinator.publish_store_figures(store, dataset=dataset, image_stem=image_stem)
+    try:
+        store = figure_store(scratch, stored)
+        coordinator.publish_store_figures(store, dataset=dataset, image_stem=image_stem)
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
     return stored

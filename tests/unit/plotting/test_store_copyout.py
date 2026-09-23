@@ -97,7 +97,10 @@ def test_a_failed_html_generation_is_partial_on_a_published_page(tmp_path, monke
     first = manifest["pages"][0]
     assert first["files"] == {"plotly-json": "first.plotly.json"}
     assert first["partial"] == ["OSError: disk full"]
-    assert [r["page"] for r in _lines(plots)] == ["first", "second"]
+    # The stored JSON copied fine: the record names the rendering, not the store.
+    assert [(r["page"], r["format"]) for r in _lines(plots)] == [
+        ("first", "html"), ("second", "html")
+    ]
 
 
 def test_a_refused_guard_mid_page_leaves_no_half_page(tmp_path, monkeypatch):
@@ -195,7 +198,7 @@ def test_the_coordinator_names_a_failed_binding_by_its_pipeline_class(tmp_path):
 
     from phenotypic import ImagePipeline
     from phenotypic.abc_.plotting import PlotImage, figure
-    from phenotypic.plotting._pipeline import PlotCoordinator
+    from phenotypic.plotting._pipeline import PlotBinding, PlotCoordinator
     from tests.unit.plotting._store_fixtures import emit_image_via_store
 
     class Bars(BaseModel, PlotImage):
@@ -209,14 +212,18 @@ def test_the_coordinator_names_a_failed_binding_by_its_pipeline_class(tmp_path):
         def inspect(self, subject=None, *, for_save=False, **overrides):
             raise RuntimeError("boom")
 
-    coordinator = PlotCoordinator(ImagePipeline(plots=[Bars(), Explodes()]), tmp_path)
+    # An id unlike the class, so a fallback to the id cannot pass for the class.
+    pipeline = ImagePipeline(plots=[Bars(), PlotBinding(id="exploder", plot=Explodes())])
+    coordinator = PlotCoordinator(pipeline, tmp_path)
     emit_image_via_store(coordinator, dataset="ds", image_stem="plate-1")
     plots = tmp_path / "deliverables" / "plots"
     stem = _image_output_stem("ds", "plate-1")
     assert (plots / "Bars" / "ds" / f"{stem}.html").is_file()
     [record] = _lines(plots)
-    assert (record["binding_id"], record["plot_class"]) == ("Explodes", "Explodes")
+    assert (record["binding_id"], record["plot_class"]) == ("exploder", "Explodes")
     assert record["error"] == "RuntimeError: boom"
+    # MINOR-13: the helper's store, kept outside tmp_path, does not leak.
+    assert not list(tmp_path.parent.glob(f"{tmp_path.name}-store-*"))
 
 
 def test_a_refused_guard_propagates_before_anything_is_written(tmp_path):
@@ -227,3 +234,129 @@ def test_a_refused_guard_propagates_before_anything_is_written(tmp_path):
     with pytest.raises(PlotPublicationBlocked):
         _publish(tmp_path, store, publication_guard=lambda: False)
     assert not (tmp_path / "deliverables").exists()
+
+
+# --- MAJOR-2: layout and manifest `failed` cover every page, failed ones too ---
+
+
+def _manifest(plots, binding="sym"):
+    path = plots / binding / "ds-1" / _STEM / "manifest.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_a_page_that_failed_outright_stays_in_the_manifest(tmp_path):
+    """TwoOneBad: the store has page `good`; `bad` stored nothing."""
+    failed = (StoredFigureFailure("sym", "bad", None, "TypeError: unsupported figure type"),)
+    plots = _publish(tmp_path, figure_store(tmp_path / "s", _one(_page("good"), failed=failed)))
+    manifest = _manifest(plots)
+    assert [p["key"] for p in manifest["pages"]] == ["good"]
+    assert manifest["failed"] == [
+        {"key": "bad", "label": None, "error": "TypeError: unsupported figure type"}
+    ]
+
+
+def test_a_failed_second_page_does_not_flip_the_layout_to_flat(tmp_path):
+    """DefaultPlusBad: two pages produced, so a directory, as the old writer did."""
+    failed = (StoredFigureFailure("sym", "bad", None, "TypeError: nope"),)
+    plots = _publish(tmp_path, figure_store(tmp_path / "s", _one(_page(), failed=failed)))
+    base = plots / "sym" / "ds-1"
+    assert not (base / f"{_STEM}.plotly.json").exists()
+    assert (base / _STEM / "default.plotly.json").is_file()
+    manifest = _manifest(plots)
+    assert [p["key"] for p in manifest["pages"]] == ["default"]
+    assert [f["key"] for f in manifest["failed"]] == ["bad"]
+
+
+def test_every_page_failed_replaces_the_previous_manifest(tmp_path):
+    """No published page, yet the directory's manifest must describe this run."""
+    directory = tmp_path / "deliverables" / "plots" / "sym" / "ds-1" / _STEM
+    directory.mkdir(parents=True)
+    (directory / "a.html").write_bytes(b"previous")
+    (directory / "manifest.json").write_text(
+        json.dumps({"schema_version": 2, "pages": [{"key": "a"}], "failed": []}),
+        encoding="utf-8",
+    )
+    failed = (
+        StoredFigureFailure("sym", "a", "png", "PlotBackendUnavailable: no chrome"),
+        StoredFigureFailure("sym", "b", None, "TypeError: nope"),
+        StoredFigureFailure("sym", "a", "plotly-json", "OSError: second"),
+    )
+    plots = _publish(
+        tmp_path, figure_store(tmp_path / "s", StoredFigures((), failed)),
+        plot_classes={"sym": "MeasureSymZones"},
+    )
+    manifest = _manifest(plots)
+    assert manifest["pages"] == []
+    assert manifest["class"] == "MeasureSymZones"
+    assert manifest["failed"] == [
+        {"key": "a", "label": None, "error": "PlotBackendUnavailable: no chrome"},
+        {"key": "b", "label": None, "error": "TypeError: nope"},
+    ]
+    # A page that published nothing keeps its previous files.
+    assert (directory / "a.html").read_bytes() == b"previous"
+
+
+def test_a_failed_lone_default_page_writes_nothing(tmp_path):
+    """Flat case: a page that published nothing keeps its previous files, so
+    there is nothing to write -- not even the binding's directory."""
+    failed = (StoredFigureFailure("sym", "default", "png", "PlotBackendUnavailable: x"),)
+    plots = _publish(tmp_path, figure_store(tmp_path / "s", StoredFigures((), failed)))
+    assert [r["page"] for r in _lines(plots)] == ["default"]
+    assert not (plots / "sym").exists()
+
+
+def test_a_binding_level_failure_is_a_record_only(tmp_path):
+    failed = (StoredFigureFailure("orient", None, None, "RuntimeError: boom"),)
+    plots = _publish(tmp_path, figure_store(tmp_path / "s", StoredFigures((), failed)))
+    assert [r["binding_id"] for r in _lines(plots)] == ["orient"]
+    assert not (plots / "orient").exists()
+
+
+def test_the_manifest_class_is_the_pipelines_class(tmp_path):
+    """MINOR-8: the same class the failure records carry."""
+    failed = (StoredFigureFailure("sym", "second", "png", "OSError: partial"),)
+    pages = (_page("first"), _page("second", formats=("plotly-json", "png")))
+    plots = _publish(
+        tmp_path, figure_store(tmp_path / "s", _one(*pages, failed=failed)),
+        plot_classes={"sym": "Renamed"},
+    )
+    assert _manifest(plots)["class"] == "Renamed"
+    assert [r["plot_class"] for r in _lines(plots)] == ["Renamed"]
+
+
+# --- MINOR-7: the descriptor is checked, not trusted ---
+
+
+def _edit_descriptor(store, edit):
+    root = json.loads((store / "zarr.json").read_text(encoding="utf-8"))
+    edit(root["attributes"]["phenotypic"]["figures"])
+    (store / "zarr.json").write_text(json.dumps(root), encoding="utf-8")
+
+
+def test_an_unknown_schema_version_is_skipped_and_recorded(tmp_path):
+    store = figure_store(tmp_path / "s", _one(_page()))
+    _edit_descriptor(store, lambda d: d.update(schema_version=2))
+    plots = _publish(tmp_path, store)
+    assert not (plots / "sym").exists()
+    [record] = _lines(plots)
+    assert record["binding_id"] == "<store>"
+    assert "schema_version 2" in record["error"]
+
+
+def test_a_path_outside_figures_is_a_per_file_failure(tmp_path):
+    """Correct sha256, so only the containment check can refuse it."""
+    store = figure_store(tmp_path / "s", _one(_page()))
+    data = (store / "figures/sym/default.plotly.json").read_bytes()
+    (store / "outside.plotly.json").write_bytes(data)
+
+    def _escape(descriptor):
+        descriptor["bindings"]["sym"]["pages"][0]["files"][0]["path"] = (
+            "figures/../outside.plotly.json"
+        )
+
+    _edit_descriptor(store, _escape)
+    plots = _publish(tmp_path, store)
+    assert not list((plots / "sym").rglob("*.plotly.json"))
+    [record] = _lines(plots)
+    assert (record["page"], record["format"]) == ("default", "plotly-json")
+    assert "outside figures/" in record["error"]

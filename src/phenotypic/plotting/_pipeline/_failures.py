@@ -89,7 +89,10 @@ def record_plot_failure(
         page: The page key a per-image failure is about, recorded as the
             ``page`` field.
         fmt: The store format a per-image failure is about, recorded as the
-            ``format`` field.
+            ``format`` field. It may instead name a deliverable rendering
+            copy-out produces from a stored file -- ``"html"`` for the page
+            generated from a stored ``plotly-json`` -- so a failure to render
+            is never mistaken for a fault in the store.
     """
     try:
         # Inside the handler, not above it. A lazy import can fail -- a circular
