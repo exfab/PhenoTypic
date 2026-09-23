@@ -32,9 +32,11 @@ with a media type, and a consumer renders what it understands.
   a break.
 - **Embedding the pipeline in the store.** The store records the pipeline by
   basename + SHA-256 only (see Background). Unchanged here.
-- **Figures in intermediate or preview stores.** Stage 1/2 staged stores and
-  builder preview stores (`save_intermediate_zarr`, `_image_io_handler.py:1428`)
-  get no figures.
+- **Figures in intermediate or preview stores.** Builder preview stores
+  (`save_intermediate_zarr`, `_image_io_handler.py:1428`) get no figures, and
+  staged Stage 1 stores get none **except** those of the §3a bindings whose
+  producer ran in Stage 1, which Stage 3 carries forward. Stage 2 writes no
+  store.
 - **Figures for flat process exports.** `--process-format tiff` has no store,
   so it gets no figures.
 - **Backfilling figures during `--mode migrate`.** Migrate never fabricates a
@@ -407,7 +409,62 @@ current pipeline's `PlotImage` bindings. A binding removed from the pipeline
 disappears from the store; a new one appears. A store's figures and its table
 always come from the same pipeline. `replace_embedded_measurement_table` (the
 migrate-only path) leaves `figures/` untouched — it hard-links it across like
-any other unchanged file.
+any other unchanged file. The one exception to "rebuilt" is a binding whose
+input no longer exists (§3a): that binding is carried across.
+
+### §3a — Figures whose input exists only where the operation applied
+
+*Added 2026-09-22, user decision, with `CalibrateColorRpcc`'s tile overlay
+(PR #238) as the first case.*
+
+The Background rule, that a figure is a function of the image's layers and
+the operation's parameters, holds for measurers. It does **not** hold for a
+figure drawn from state that only `apply()` can produce. The calibration
+overlay draws the **as-shot** checker pixels, and `apply()` overwrites them
+with the corrected image. After that, no process can redraw the overlay from
+the image. It can only be drawn in the process that ran `apply()`, and only
+for the image that `apply()` ran on.
+
+**Signal.** Such a provider raises `FigureInputUnavailable`, a new public
+`RuntimeError` subclass in `phenotypic.abc_.plotting`, from `inspect()` when
+it cannot draw for the image it was given. That happens when no `apply()` ran
+in this process, or when the last `apply()` ran on a different image. It is a
+statement about where the figure can be drawn, not a failure of the figure.
+
+**Build.** `build_image_figures(pipeline, image, *, carry_from=None)` treats
+the signal as follows:
+
+- **`carry_from` names a store whose descriptor holds this binding.** The
+  binding is **carried**: its descriptor entry (pages, labels, backends,
+  metadata, and the page-level `failed` entries naming it) and its files are
+  copied into the new `StoredFigures` unchanged. Each file is verified
+  against its recorded `sha256`. A mismatch is a binding-level failure, never
+  a silent copy.
+- **Otherwise.** The signal is a binding-level failure, spelled like any
+  other (`FigureInputUnavailable: …`).
+
+**Where `carry_from` is passed.**
+
+| Path | `carry_from` | Why |
+|---|---|---|
+| Full mode, process mode | none | `apply()` ran in this process on this image; the provider draws. |
+| Measure mode | the store being re-measured | No `apply()`. The stored overlay is still true of the stored pixels, so it is kept. |
+| Staged Stage 3 | the Stage-1 store it just loaded | The operation applied in Stage 1, in another process. |
+| Staged Stage 1 | (builds) | Stage 1 runs the pre-detector operations. It builds figures **only for bindings whose producer ran in Stage 1** and writes them into its store, so Stage 3 has something to carry. Other bindings (the measurers) are left to Stage 3; building them on a store with no objmap would be wasted work. |
+
+A carried figure is byte-identical to the one it was carried from. It needs
+no re-hash for continuation (§1 *What the hashes bind*). §4's
+"cache parity" does not apply to these providers, because they have no
+recompute path by construction.
+
+**`CalibrateColorRpcc`** becomes a `PlotImage`. Its `inspect(image)` renders
+`show_tiles()` (matplotlib, so the default store format is `png`). It raises
+`FigureInputUnavailable` when there is no calibration record, or when the
+record was built from a different image. It holds a weak reference to the
+image `_operate` saw, never the image itself (abc_ rule on image caches).
+`inspect` is an undecorated override. The approved overlay look is kept
+exactly: no theme context wraps it, and its page backend (`mpl`) selects the
+format.
 
 ### Continuation
 
@@ -568,3 +625,11 @@ Clarifications made while planning, not changes of intent:
    writer's manifest commit, keeps `renderers` a capability field (§3).
 10. Process mode builds figures before closing provenance status (§3).
 11. "KB-sized" corrected: image-backed Plotly JSON is MB-sized (§2).
+
+Added 2026-09-22 after the calibration overlay (PR #238) merged into main:
+
+12. §3a: figures whose input exists only where the operation applied
+    (`FigureInputUnavailable`, carried across in measure mode and staged
+    Stage 3, built by Stage 1 for its own operations). User decision: keep the
+    stored overlay rather than drop it. `CalibrateColorRpcc` is the first
+    provider.
