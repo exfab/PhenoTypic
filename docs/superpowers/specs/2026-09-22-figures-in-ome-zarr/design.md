@@ -290,11 +290,19 @@ figures/
 
 - Full mode, measure mode, staged Stage 3 and process mode **carry every other
   run folder across byte-for-byte**, together with its descriptor entry, from
-  the store being replaced. This holds even when full or process mode rewrites
-  the store from scratch (`--overwrite`, or a re-derived process run). In a
-  measure-mode rewrite those folders are hard links. They are never written
-  through; only this run's folder is cleared and rewritten, which is the
-  existing hard-link rule.
+  the store being replaced. This holds even when a store is rewritten from
+  scratch: a re-derived process run, `--restart`, Stage 3 over Stage 1, or
+  any `save2zarr` over an existing store. In a measure-mode rewrite those
+  folders are hard links. They are never written through; only this run's
+  folder is cleared and rewritten, which is the existing hard-link rule.
+- **The one exception is `--overwrite`** (user decision). It is the explicit
+  "start over" flag: it deletes the whole output folder before the run, as it
+  always has, and every store's figure history goes with it.
+- **Known limitation.** A run entry records no input identity. If a store's
+  path is reused for a different image, for example when an input is replaced
+  under the same stem and the run is `--restart`ed, the older run folders
+  describe the previous image. They are carried because nothing is wiped, and
+  a consumer cannot tell them apart.
 - **The same run id (same day, same pipeline hash) replaces that one folder**,
   subject to §3a's keep rule.
 - A pipeline with **no** `PlotImage` binding adds no run folder, and removes
