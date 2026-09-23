@@ -31,7 +31,8 @@ class StagePlan:
     """Result of splitting a pipeline at its (single) GpuDetector.
 
     Attributes:
-        pre_pipeline: Ops before the detector's top-level ancestor (Stage 1).
+        pre_pipeline: Ops before the detector's top-level ancestor, plus the
+            plots bound to them (Stage 1).
         gpu_path: Tree path to the detector, addressed from the root pipeline.
             List entries are spelled ``"ops[0]"``. Doubles as the detector's
             ``pipeline_step_path`` and as the Stage-2 signal's slot key.
@@ -42,7 +43,8 @@ class StagePlan:
             detector. Entries are ``ImageOperation``s or nested pipelines --
             anything with ``.apply()``.
         post_pipeline: The top-level ancestor onward, plus
-            meas/post/filters/model/qc/plots (Stage 3).
+            meas/post/filters/model/qc and every plot not in
+            ``pre_pipeline`` (Stage 3).
     """
 
     pre_pipeline: ImagePipeline
@@ -125,25 +127,34 @@ def split_pipeline_at_gpu(pipeline: ImagePipeline) -> StagePlan:
     pre_ops = {k: ops[k] for k in keys[:cut]}
     post_ops = {k: ops[k] for k in keys[cut:]}  # ANCESTOR INCLUDED
 
+    pre_plots = []
+    post_plots = []
     for binding in pipeline.get_plots():
         ref = binding.ref
-        if ref is None or ref.slot != "ops":
+        # A plot bound to a pre-GPU operation goes with it: Stage 1 applies
+        # that operation, so Stage 1 draws its figure and Stage 3 carries it
+        # (spec 2026-09-22 §3a).
+        if ref is not None and ref.slot == "ops" and ref.key in pre_ops:
+            pre_plots.append(binding)
             continue
-        # `ref.key in pre_ops` alone is NOT enough. When the detector is itself
-        # top-level, `gpu_path[0]` IS the detector and now lives in post_ops --
-        # but Stage 3 never runs the real detector, and the substituted
-        # ReplayDetector is not plot-capable, so a plot bound to it must still
-        # be refused. A plot bound to a *container* ancestor is legal: that
-        # ancestor really does run in Stage 3.
-        if ref.key in pre_ops or (len(gpu_path) == 1 and ref.key == gpu_path[0]):
+        # When the detector is itself top-level, `gpu_path[0]` IS the detector
+        # and lives in post_ops -- but Stage 3 never runs the real detector,
+        # and the substituted ReplayDetector is not plot-capable, so a plot
+        # bound to it is refused. A plot bound to a *container* ancestor is
+        # legal: that ancestor really does run in Stage 3.
+        if (
+            ref is not None and ref.slot == "ops"
+            and len(gpu_path) == 1 and ref.key == gpu_path[0]
+        ):
             raise ValueError(
-                f"plot {binding.id!r} references pre-GPU operation "
-                f"{ref.key!r}; staged plotting supports only post-GPU "
-                "operations, measurers, aggregate slots, and inline plots"
+                f"plot {binding.id!r} references the GPU detector {ref.key!r}; "
+                "staged execution replays its output and never runs it, so it "
+                "cannot plot"
             )
+        post_plots.append(binding)
 
     pre_pipeline = ImagePipeline(
-        ops=pre_ops, nrows=pipeline.nrows, ncols=pipeline.ncols
+        ops=pre_ops, plots=pre_plots, nrows=pipeline.nrows, ncols=pipeline.ncols
     )
     post_pipeline = ImagePipeline(
         ops=post_ops,
@@ -152,7 +163,7 @@ def split_pipeline_at_gpu(pipeline: ImagePipeline) -> StagePlan:
         filters=pipeline.get_filters(),
         model=pipeline.get_model(),
         qc=pipeline.get_qc(),
-        plots=pipeline.get_plots(),
+        plots=post_plots,
         nrows=pipeline.nrows,
         ncols=pipeline.ncols,
     )

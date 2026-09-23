@@ -368,6 +368,21 @@ def stage1_preprocess_core(
         ):
             plan.pre_pipeline.apply(image, inplace=True)
         operation_count = len(current_application_operations(image))
+        from phenotypic.plotting._pipeline._store_figures import (
+            build_image_figures,
+            figure_run_for,
+        )
+
+        # Only the plots bound to Stage 1's operations (the split gives them
+        # to pre_pipeline): a §3a figure draws from state its apply() left in
+        # this process, and Stage 3 keeps it from this run's folder. No
+        # copy-out here; Stage 3 publishes.
+        _check_active(active_check)
+        figures = build_image_figures(
+            plan.pre_pipeline,
+            image,
+            run=figure_run_for(image, initiation=output_manager.run_initiation),
+        )
         _check_active(active_check)
         set_retry_base_length(image, operation_count)
         set_provenance_status(image, "staged")
@@ -377,6 +392,7 @@ def stage1_preprocess_core(
             image_stem,
             work_id=work_id,
             commit_guard=commit_guard,
+            figures=figures,
         )
         if saved_store is None or not valid_staged_store(saved_store):
             raise RuntimeError(
@@ -579,19 +595,20 @@ def stage3_merge_measure_core(
         from phenotypic.plotting._pipeline._store_figures import (
             build_image_figures,
             figure_run_for,
+            keep_image_figures,
+            merge_stored_figures,
         )
 
         # The run is Stage 1's: its journal application, continued here,
         # records the pipeline digest, and the run's initial call is the one
-        # every stage is handed (spec §1a). A §3a figure Stage 1 drew is kept
-        # from the store loaded above -- the same run's folder -- before the
-        # save below replaces it.
+        # every stage is handed (spec §1a). Stage 1's plots are kept from the
+        # store loaded above -- the same run's folder -- and so is any §3a
+        # figure of Stage 3's own, all before the save below replaces it.
         _check_active(active_check)
-        figures = build_image_figures(
-            plan.post_pipeline,
-            image,
-            run=figure_run_for(image, initiation=output_manager.run_initiation),
-            keep_from=store,
+        run = figure_run_for(image, initiation=output_manager.run_initiation)
+        figures = merge_stored_figures(
+            keep_image_figures(store, plan.pre_pipeline.get_plots(), run=run),
+            build_image_figures(plan.post_pipeline, image, run=run, keep_from=store),
         )
 
         _check_active(active_check)

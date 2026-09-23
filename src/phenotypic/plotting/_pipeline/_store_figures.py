@@ -14,7 +14,7 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from phenotypic.abc_.plotting import FigureInputUnavailable, PlotImage, figure_backend_of
 from phenotypic.abc_.plotting._store_formats import STORE_FORMATS, default_store_formats
@@ -162,6 +162,76 @@ def build_image_figures(
     return StoredFigures(
         run=run, bindings=tuple(built), failed=tuple(failed),
         unavailable=tuple(unavailable),
+    )
+
+
+def keep_image_figures(
+    store_path: Path, bindings: Iterable[Any], *, run: FigureRun | None
+) -> StoredFigures | None:
+    """Keep every ``PlotImage`` binding in *bindings* from *run*'s folder.
+
+    For bindings whose producer ran in an earlier stage of this same run --
+    staged Stage 1's operations, kept into the Stage-3 store (spec §3a). Each
+    is kept as :func:`build_image_figures` keeps a binding it cannot draw;
+    one the folder does not name is listed as ``unavailable``.
+
+    Args:
+        store_path: The store the earlier stage wrote.
+        bindings: Plot bindings; those that are not ``PlotImage`` are skipped.
+        run: This run's folder. Needed only when there is an image binding.
+
+    Returns:
+        ``None`` when no binding is a ``PlotImage``, else the kept value.
+
+    Raises:
+        PlotPublicationBlocked: Never swallowed.
+        ValueError: If there is an image binding but no *run*.
+    """
+    image_bindings = [b for b in bindings if isinstance(b.plot, PlotImage)]
+    if not image_bindings:
+        return None
+    if run is None:
+        raise ValueError(
+            "image figures need the run folder they belong to (spec §1a); "
+            "no pipeline digest was known for this image"
+        )
+    built: list[StoredFigureBinding] = []
+    failed: list[StoredFigureFailure] = []
+    unavailable: list[str] = []
+    keeper = _SameRunKeeper(store_path, run)
+    for binding in image_bindings:
+        try:
+            if not keeper.keep(binding, built, failed):
+                unavailable.append(binding.id)
+        except PlotPublicationBlocked:
+            raise
+        except Exception as exc:  # noqa: BLE001 - one figure never kills an image
+            logger.warning("Plot %s could not be kept", binding.id, exc_info=exc)
+            failed.append(StoredFigureFailure(binding.id, None, None, normalize_figure_error(exc)))
+    return StoredFigures(
+        run=run, bindings=tuple(built), failed=tuple(failed),
+        unavailable=tuple(unavailable),
+    )
+
+
+def merge_stored_figures(*parts: StoredFigures | None) -> StoredFigures | None:
+    """One run folder's worth from several, in order; ``None`` if all are.
+
+    Raises:
+        ValueError: If the parts name different run folders -- one store
+            write fills exactly one folder.
+    """
+    present = [part for part in parts if part is not None]
+    if not present:
+        return None
+    runs = {part.run for part in present}
+    if len(runs) != 1:
+        raise ValueError(f"cannot merge figures of different runs: {sorted(r.run_id for r in runs)}")
+    return StoredFigures(
+        run=present[0].run,
+        bindings=tuple(b for part in present for b in part.bindings),
+        failed=tuple(f for part in present for f in part.failed),
+        unavailable=tuple(u for part in present for u in part.unavailable),
     )
 
 
@@ -343,4 +413,10 @@ def _build_page(
     )
 
 
-__all__ = ["build_image_figures", "figure_run_for", "normalize_figure_error"]
+__all__ = [
+    "build_image_figures",
+    "figure_run_for",
+    "keep_image_figures",
+    "merge_stored_figures",
+    "normalize_figure_error",
+]

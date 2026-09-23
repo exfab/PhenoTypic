@@ -272,7 +272,8 @@ def test_a_plot_referencing_the_ancestor_is_now_allowed():
     assert "CompositeDetector" in plan.post_pipeline.get_ops()
 
 
-def test_a_plot_referencing_a_pre_gpu_op_is_still_refused():
+def test_a_plot_referencing_a_pre_gpu_op_goes_to_stage_one():
+    """Stage 1 applies it, so Stage 1 draws it (figures spec §3a)."""
     pipe = ImagePipeline(
         ops={
             "BlurGauss": _PreGpuPlot(sigma=2.0),
@@ -281,8 +282,9 @@ def test_a_plot_referencing_a_pre_gpu_op_is_still_refused():
             ),
         }
     )
-    with pytest.raises(ValueError, match="pre-GPU"):
-        split_pipeline_at_gpu(_with_plot_on(pipe, "BlurGauss"))
+    plan = split_pipeline_at_gpu(_with_plot_on(pipe, "BlurGauss"))
+    assert [b.id for b in plan.pre_pipeline.get_plots()] == ["BlurGauss"]
+    assert plan.post_pipeline.get_plots() == []
 
 
 def test_a_plot_on_a_TOP_LEVEL_gpu_detector_is_still_refused():
@@ -294,7 +296,7 @@ def test_a_plot_on_a_TOP_LEVEL_gpu_detector_is_still_refused():
     ``ref.key in pre_ops`` would let this through.
     """
     pipe = ImagePipeline(ops={"gpu": _PlottingGpu()})
-    with pytest.raises(ValueError, match="pre-GPU"):
+    with pytest.raises(ValueError, match="references the GPU detector 'gpu'"):
         split_pipeline_at_gpu(_with_plot_on(pipe, "gpu"))
 
 

@@ -475,3 +475,51 @@ def test_a_drawable_binding_is_redrawn_not_kept(tmp_path):
     rebuilt = _keep(store, ApplyState(mode="draw"), Bars())
     assert [b.binding_id for b in rebuilt.bindings] == ["ApplyState", "Bars"]
     assert rebuilt.bindings[0] == first.bindings[0]
+
+
+# --------------------------------------------------------------------------
+# Staged Stage 3: Stage 1's plots are kept, never drawn, and merged with
+# Stage 3's own build into the one run folder
+# --------------------------------------------------------------------------
+
+
+def test_keep_image_figures_keeps_what_stage_one_wrote(tmp_path):
+    from phenotypic.plotting._pipeline._store_figures import keep_image_figures
+
+    first, store = _first_store(tmp_path)
+    # Its inspect() would now raise: keeping must never ask it to draw.
+    kept = keep_image_figures(
+        store, ImagePipeline(plots=[ApplyState(mode="explode")]).get_plots(), run=TEST_RUN
+    )
+    assert kept == first
+
+
+def test_keep_image_figures_lists_a_binding_stage_one_never_wrote(tmp_path):
+    from phenotypic.plotting._pipeline._store_figures import keep_image_figures
+
+    _first, store = _first_store(tmp_path)
+    kept = keep_image_figures(
+        store, ImagePipeline(plots=[ApplyState(), Bars()]).get_plots(), run=TEST_RUN
+    )
+    assert [b.binding_id for b in kept.bindings] == ["ApplyState"]
+    assert kept.unavailable == ("Bars",)
+    assert keep_image_figures(store, ImagePipeline().get_plots(), run=TEST_RUN) is None
+    with pytest.raises(ValueError, match="run folder"):
+        keep_image_figures(store, ImagePipeline(plots=[Bars()]).get_plots(), run=None)
+
+
+def test_merge_joins_one_runs_parts_and_refuses_two_runs():
+    from phenotypic.plotting._pipeline._store_figures import merge_stored_figures
+    from phenotypic.sdk_._image_figures import FigureRun
+
+    stage1 = _build(ApplyState(mode="gone"))
+    stage3 = _build(Bars())
+    merged = merge_stored_figures(stage1, None, stage3)
+    assert merged.run == TEST_RUN
+    assert [b.binding_id for b in merged.bindings] == ["Bars"]
+    assert merged.unavailable == ("ApplyState",)
+    assert merge_stored_figures(None, None) is None
+    other = FigureRun(date="2026-10-01", pipeline_sha256=TEST_RUN.pipeline_sha256)
+    elsewhere = build_image_figures(ImagePipeline(plots=[Bars()]), object(), run=other)
+    with pytest.raises(ValueError, match="different runs"):
+        merge_stored_figures(stage3, elsewhere)
