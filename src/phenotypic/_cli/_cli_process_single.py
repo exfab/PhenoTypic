@@ -443,6 +443,7 @@ def process_single_store_measure_core(
         store_path,
         measurements,
         dataset_name,
+        figures=None,  # Task 6 wires the real figures
         commit_guard=commit_guard,
     )
     from phenotypic.plotting._pipeline import PlotCoordinator

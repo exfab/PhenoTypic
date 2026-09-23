@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
     from phenotypic.plotting._pipeline import AnalysisResult
     from phenotypic.sdk_ import CommitGuard
+    from phenotypic.sdk_._image_figures import StoredFigures
 
 from ._cli_types import Dataset
 from ._embedded_measurement_tables import prepare_image_tables
@@ -1849,6 +1850,7 @@ class OutputManager:
         durable: bool | None = None,
         commit_guard: CommitGuard | None = None,
         measurements: pd.DataFrame | None = None,
+        figures: StoredFigures | None = None,
     ) -> Optional[Path]:
         """Save a processed image as an OME-Zarr store under ``results/<ds>/zarr/``.
 
@@ -1876,6 +1878,9 @@ class OutputManager:
                 Deferring rather than re-defaulting to ``None`` here is what
                 makes the flag reach *every* write site: a caller that passes
                 nothing still gets the run's mode, so no site can be inert.
+            figures: Per-image figures to write inside the store's
+                transaction (spec 2026-09-22 §3). ``None`` writes no
+                ``figures`` key.
 
         Returns:
             Path where the store was promoted, or ``None`` if saving failed.
@@ -1917,6 +1922,8 @@ class OutputManager:
             }
             if table is not None:
                 save_kwargs["measurement_table"] = table
+            if figures is not None:
+                save_kwargs["figures"] = figures
             saved = image.save2zarr(final_path, **save_kwargs)
             logger.info(
                 "Saved OME-Zarr store for %s/%s", dataset_name, image_stem
@@ -1944,6 +1951,7 @@ class OutputManager:
         measurements: pd.DataFrame,
         dataset_name: str,
         *,
+        figures: StoredFigures | None,
         durable: bool | None = None,
         commit_guard: CommitGuard | None = None,
     ) -> Path:
@@ -1955,6 +1963,19 @@ class OutputManager:
         **un-invert** every image ``--mode measure`` touches: a joined
         ``table.parquet`` and no ``pht-metadata.parquet``, on a tree whose
         other stores are inverted.
+
+        Args:
+            store_path: A promoted ``*.ome.zarr`` store.
+            measurements: The image's per-object measurements.
+            dataset_name: Dataset name.
+            figures: The current pipeline's per-image figures; ``None``
+                removes the store's figures (spec 2026-09-22 §3 measure mode).
+            durable: ``fsync`` before promoting. ``None`` defers to
+                :attr:`durable_writes`.
+            commit_guard: Publication guard, checked at the commit point.
+
+        Returns:
+            The store's embedded measurement table path.
         """
         from phenotypic.sdk_ import (
             MEASUREMENT_TABLE_RELATIVE_PATH,
@@ -1979,6 +2000,7 @@ class OutputManager:
         replace_image_tables(
             store_path,
             tables,
+            figures=figures,
             durable=self.durable_writes if durable is None else durable,
             commit_guard=commit_guard,
         )

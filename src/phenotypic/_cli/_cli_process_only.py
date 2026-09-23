@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import warnings
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 import click
 
@@ -27,6 +27,9 @@ from phenotypic._core._provenance import (
 )
 from phenotypic.sdk_.typing_ import ImageTypeName, ProcessFormat, ProcessOnlyLayer
 from ._cli_failure_tracker import PerImageScientificError
+
+if TYPE_CHECKING:
+    from phenotypic.sdk_._image_figures import StoredFigures
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +159,7 @@ def write_process_only_layer(
     *,
     fmt: ProcessFormat = "tiff",
     commit_guard: CommitGuard | None = None,
+    figures: StoredFigures | None = None,
 ) -> None:
     """Write one image layer, as a flat file or as a single-series store.
 
@@ -180,6 +184,9 @@ def write_process_only_layer(
     For ``objmap`` with no detected objects (e.g. a pipeline without a detector),
     emits the D9 warning and still writes the (all-zero) map; the run does not
     fail.
+
+    *figures* are the per-image figures to write inside the store's
+    transaction (spec 2026-09-22 §3); only the ``zarr`` branch writes them.
     """
     if fmt == "zarr":
         from phenotypic.sdk_ import ngff_
@@ -233,9 +240,11 @@ def write_process_only_layer(
             # the tree it describes; do not lift this onto a store that is
             # rewritten in place.
             consolidate=True,
+            figures=figures,
         )
         return
 
+    # Figures are never built for flat exports (spec 2026-09-22 non-goal).
     out_path.parent.mkdir(parents=True, exist_ok=True)
     accessor = getattr(image, layer)
     if layer == "objmap" and image.num_objects == 0:

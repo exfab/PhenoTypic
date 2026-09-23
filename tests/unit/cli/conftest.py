@@ -833,7 +833,7 @@ def _remeasure_every_store(output_dir: Path, stems: list[str]) -> None:
     for stem in stems:
         store = zarr_store_path(output_dir, DATASET, stem)
         manager.replace_image_store_measurements(
-            store, _measurements(stem), DATASET
+            store, _measurements(stem), DATASET, figures=None
         )
         publish_image_success(
             output_dir,

@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
     from phenotypic._core._image import Image
     from phenotypic.sdk_ import CommitGuard
+    from phenotypic.sdk_._image_figures import StoredFigures
     from phenotypic.sdk_._measurement_tables import (
         PreparedImageTables,
     )
@@ -1073,6 +1074,7 @@ class ImageIOHandler(ImageColorSpace):
         durable: bool | None = None,
         commit_guard: CommitGuard | None = None,
         measurement_table: PreparedImageTables | None = None,
+        figures: StoredFigures | None = None,
     ) -> Path:
         """Save the image as an OME-Zarr (NGFF 0.5 / Zarr v3) store.
 
@@ -1090,6 +1092,9 @@ class ImageIOHandler(ImageColorSpace):
             work_id: CLI work id, written into ``attributes.phenotypic`` at
                 build time. Never patched in afterwards.
             durable: ``fsync`` before promoting. ``None`` auto-detects SLURM.
+            figures: Per-image figures to write inside this store's
+                transaction (spec 2026-09-22 §3). ``None`` writes no
+                ``figures`` key.
 
         Returns:
             The promoted store path.
@@ -1123,6 +1128,7 @@ class ImageIOHandler(ImageColorSpace):
             durable=durable,
             commit_guard=commit_guard,
             measurement_table=measurement_table,
+            figures=figures,
         )
 
     def _save_store(
@@ -1139,6 +1145,7 @@ class ImageIOHandler(ImageColorSpace):
         write_image_class: bool = True,
         consolidate: bool = False,
         reproducible_provenance: bool = False,
+        figures: StoredFigures | None = None,
     ) -> Path:
         """Write one OME-Zarr store into a ``.part`` sibling and promote it.
 
@@ -1178,6 +1185,9 @@ class ImageIOHandler(ImageColorSpace):
                 ``duration_seconds`` from the store, making it byte-identical
                 across identical runs (spec 2.3.3). Only the ``--mode
                 process`` writer passes ``True``.
+            figures: Per-image figures to write inside this store's
+                transaction (spec 2026-09-22 §3). ``None`` writes no
+                ``figures`` key.
 
         Returns:
             The promoted store path.
@@ -1204,6 +1214,7 @@ class ImageIOHandler(ImageColorSpace):
                 write_image_class=write_image_class,
                 consolidate=consolidate,
                 reproducible_provenance=reproducible_provenance,
+                figures=figures,
             )
         except Exception:
             shutil.rmtree(ngff_.long_path(part), ignore_errors=True)
@@ -1224,6 +1235,7 @@ class ImageIOHandler(ImageColorSpace):
         write_image_class: bool = True,
         consolidate: bool = False,
         reproducible_provenance: bool = False,
+        figures: StoredFigures | None = None,
     ) -> Path:
         """Populate one allocated part and promote it to its final path.
 
@@ -1239,6 +1251,9 @@ class ImageIOHandler(ImageColorSpace):
                 ``duration_seconds`` from the store, making it byte-identical
                 across identical runs (spec 2.3.3). Only the ``--mode
                 process`` writer passes ``True``.
+            figures: Per-image figures to write inside this store's
+                transaction (spec 2026-09-22 §3). ``None`` writes no
+                ``figures`` key.
         """
         from phenotypic.sdk_ import ngff_
 
@@ -1388,6 +1403,14 @@ class ImageIOHandler(ImageColorSpace):
                 objmap_target=ngff_.objmap_path(primary),
             )
 
+        # Figures land in THIS part too, before the root, for the same reason
+        # as the tables above: the root certifies their sha256 (spec §1).
+        figures_fragment = None
+        if figures is not None:
+            from phenotypic.sdk_._image_figures import write_image_figures
+
+            figures_fragment = write_image_figures(part, figures)
+
         # 4. root zarr.json LAST
         phenotypic_attributes = self._build_store_attributes(
             series_names=series_names,
@@ -1405,6 +1428,14 @@ class ImageIOHandler(ImageColorSpace):
 
             apply_image_tables_attributes(
                 phenotypic_attributes, tables_attributes
+            )
+        if figures_fragment is not None:
+            from phenotypic.sdk_._image_figures import (
+                apply_image_figures_attributes,
+            )
+
+            apply_image_figures_attributes(
+                phenotypic_attributes, figures_fragment
             )
         self._write_group_json(
             part,

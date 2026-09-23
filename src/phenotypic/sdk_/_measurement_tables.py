@@ -8,7 +8,7 @@ import shutil
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import pandas as pd
 
@@ -18,6 +18,9 @@ from ._atomic_io import (
     atomic_write_json,
     atomic_write_with_writer,
 )
+
+if TYPE_CHECKING:
+    from ._image_figures import StoredFigures
 
 JoinStatus = Literal["not_requested", "joined", "no_common_keys"]
 
@@ -635,12 +638,17 @@ def _rewrite_store_tables(
     plan: Callable[[dict[str, object]], Callable[[Path], None]],
     durable: bool | None,
     commit_guard: CommitGuard | None,
+    clear_figures: bool = False,
 ) -> Path:
     """Re-promote one store with refreshed embedded tables, root written last.
 
     *plan* is handed the store's ``attributes.phenotypic`` block. It validates
     and **mutates** it -- before any part exists, so a refusal costs nothing --
     and returns the writer that populates the part.
+
+    *clear_figures* drops the part's copied ``figures/`` before *plan*'s writer
+    runs, for a caller that rebuilds the group (spec 2026-09-22 §3 measure
+    mode). Leaving it ``False`` carries the group across unchanged.
 
     **There is no in-place fast path, and its removal is the point (CAN-3 /
     C5).** The branch this replaces fired whenever the measurement
@@ -680,6 +688,12 @@ def _rewrite_store_tables(
         # These are hard links into the promoted store, so unlinking them in
         # the part leaves the live store untouched.
         shutil.rmtree(part / ngff_.TABLES_GROUP, ignore_errors=True)
+        if clear_figures:
+            # The copied figure files are HARD LINKS into the live store, like
+            # everything copytree cloned above. Removing them here means the
+            # new generation is written as new files; writing through a link
+            # would change the published store before its new root exists.
+            shutil.rmtree(part / ngff_.FIGURES_GROUP, ignore_errors=True)
         populate(part)
         atomic_write_json(part / ngff_.STORE_ROOT_JSON, root_document)
         ngff_.promote_store(
@@ -699,6 +713,7 @@ def replace_image_tables(
     store_path: Path,
     tables: PreparedImageTables,
     *,
+    figures: StoredFigures | None,
     objmap_target: str | None = None,
     durable: bool | None = None,
     commit_guard: CommitGuard | None = None,
@@ -708,11 +723,16 @@ def replace_image_tables(
     The ``--mode measure`` analogue of the promote-time writer: both tables
     and the root's ``metadata_table`` block move as one root-last
     transaction, so the store never certifies a table it does not have or a
-    snapshot it was not built against.
+    snapshot it was not built against. The ``figures/`` group is rebuilt in
+    the same transaction, so a store's figures and its table always come
+    from the same pipeline.
 
     Args:
         store_path: A promoted ``*.ome.zarr`` store.
         tables: The split payload to write.
+        figures: The current pipeline's per-image figures. Required: the
+            group is always rebuilt, and ``None`` removes it along with the
+            root's ``figures`` key (spec 2026-09-22 §3 measure mode).
         objmap_target: Store-relative path of the label image the measurement
             table indexes. ``None`` reads it from the store.
         durable: ``fsync`` before promoting. ``None`` auto-detects SLURM.
@@ -737,6 +757,17 @@ def replace_image_tables(
                 phenotypic,
                 write_image_tables(part, tables, objmap_target=target),
             )
+            from ._image_figures import (
+                apply_image_figures_attributes,
+                write_image_figures,
+            )
+
+            apply_image_figures_attributes(
+                phenotypic,
+                write_image_figures(part, figures)
+                if figures is not None
+                else None,
+            )
 
         return _populate
 
@@ -745,6 +776,7 @@ def replace_image_tables(
         plan=_plan,
         durable=durable,
         commit_guard=commit_guard,
+        clear_figures=True,
     )
 
 

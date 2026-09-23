@@ -291,7 +291,7 @@ def _replace_store_tables(output_dir: Path, *, snapshot: str | None) -> Path:
     _install_metadata_snapshot(output_dir, snapshot)
     store = zarr_store_path(output_dir, DATASET, STEM)
     _manager(output_dir).replace_image_store_measurements(
-        store, _store_measurements(), DATASET
+        store, _store_measurements(), DATASET, figures=None
     )
     return store
 
