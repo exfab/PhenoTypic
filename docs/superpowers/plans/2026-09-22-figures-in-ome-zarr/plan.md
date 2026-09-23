@@ -53,6 +53,7 @@ execution is **sequential**; no parallel worktrees.
 | C3 | T5 | Keystone (copy-out) | Opus, high |
 | C4 | T6 | Seam + test-port sweep (4 call sites, emit_image retired) | Opus, high |
 | C5 | T7 | Leaf (properties; cache parity may expose a provider bug) | Opus, high |
+| C5b | T7a | Keystone + Seam (apply-state figures; calibration provider; staged split) | Opus, high |
 | C6 | T8 | Sweep (docs; Sphinx build on Slurm) | Sonnet, medium |
 | — | T9 | Orchestrator (sharded Slurm regression) | — |
 
@@ -2581,6 +2582,35 @@ uv run ruff check --fix tests/unit/cli/test_process_only_zarr.py tests/unit/meas
 git add tests/unit/cli/test_process_only_zarr.py tests/unit/measure/test_zone_figure_cache_parity.py tests/unit/cli/test_cli_provenance_migration.py
 git commit -m "test: figure reproducibility, cache parity, and migrate neutrality"
 ```
+
+---
+
+### Task 7a: Apply-state figures (§3a) and the calibration overlay as a `PlotImage`
+
+*Added 2026-09-22 after PR #238 merged. Spec: §3a. The user chose to wire it in for real and to keep the stored overlay whenever it cannot be redrawn.*
+
+**Files:**
+- Modify: `src/phenotypic/abc_/plotting/_output.py` (or a new `_errors.py`) + `abc_/plotting/__init__.py` — export `FigureInputUnavailable(RuntimeError)`.
+- Modify: `src/phenotypic/plotting/_pipeline/_store_figures.py` — `build_image_figures(pipeline, image, *, carry_from: Path | None = None)`; a binding raising `FigureInputUnavailable` is carried from `carry_from`'s descriptor (sha-verified) or else recorded as a binding-level failure.
+- Modify: `src/phenotypic/correction/_color_correction/_calibrate_color_rpcc.py` — `CalibrateColorRpcc(ImageCorrector, PlotImage)`; weakref to the image `_operate` saw; undecorated `inspect(self, subject=None, *, for_save=False, **overrides)` → `show_tiles()`, or `FigureInputUnavailable` when there is no record or the record is for another image.
+- Modify: `src/phenotypic/_cli/_cli_process_single.py` (measure mode: `carry_from=store_path`).
+- Modify: `src/phenotypic/_cli/_cli_pipeline_split.py` — stop refusing a plot bound to a **pre-GPU operation** (still refuse a plot bound to the GPU detector itself); give `pre_pipeline` the bindings whose `ref` is a pre-op key, and keep them out of `post_pipeline` (whose ops no longer contain them).
+- Modify: `src/phenotypic/_cli/_cli_staged_workers.py` — Stage 1: after `plan.pre_pipeline.apply`, `build_image_figures(plan.pre_pipeline, image)` and pass `figures=` to Stage 1's `save_image_store`. Stage 3: `build_image_figures(plan.post_pipeline, image, carry_from=<the Stage-1 store it loaded>)`, and **also** carry every Stage-1 binding (they are not in `post_pipeline`): simplest is a helper `carry_bindings(carry_from, binding_ids)` merged into the Stage-3 `StoredFigures`.
+- Tests: `tests/unit/plotting/test_store_figures_build.py` (carry semantics), `tests/unit/correction/test_calibration_plot_image.py` (new: provider contract), `tests/integration/cli/test_calibration_figure_in_store.py` (new: end-to-end on the synthetic checker frame from `tests/unit/correction/_checker_frames.py`), the staged split tests (grep `staged plotting supports only post-GPU`), and the Stage 1/3 worker tests.
+
+**Required behaviour (each needs a test that can fail + a mutation):**
+1. `FigureInputUnavailable` is public (`phenotypic.abc_.plotting`) and lazy-import safe.
+2. `CalibrateColorRpcc` after `apply(frame, inplace=True)`: `inspect(frame)` returns the same figure `show_tiles()` does (compare PNG bytes via the store serializer); `inspect(other_image)` and `inspect()` on a fresh instance raise `FigureInputUnavailable`; the record/weakref never pins the image (`weakref`-released image → unavailable). Pydantic serialization of the op is unchanged (`to_json`/`from_json` round-trip, no new fields in `model_json_schema()`).
+3. Build: a binding raising `FigureInputUnavailable` with `carry_from=None` → one binding-level failure `FigureInputUnavailable: …`; with `carry_from` holding the binding → carried byte-identical (descriptor entry + files + its page-level failed entries); tampered carried file → binding-level failure, nothing carried.
+4. Full mode (`process_single_image_core`), pipeline `ops={"cal": CalibrateColorRpcc(rois=band_rois(), ...)}` + a detector + a measurer, `plots=[cal]`, on the synthetic frame written to disk: store has `figures/cal/default.png` (mpl → png); deliverables copy exists and equals it.
+5. Process mode (zarr): the store carries the overlay.
+6. Measure mode on the full-mode store: the overlay is **carried** — same descriptor entry, same bytes (sha) — while the table is replaced; a measure run on a store that never had the overlay records `FigureInputUnavailable` and writes no overlay.
+7. Staged split: a plot bound to a pre-GPU op is accepted; one bound to the GPU detector is still refused. Stage 1 writes the overlay into its store; Stage 3's final store carries it byte-identical. (Use the existing staged-worker test fixtures; grep `stage1_preprocess_core(` / `stage3_merge_measure_core(` in `tests/`.)
+8. The calibration record's own tests (`tests/unit/correction/test_calibration_overlay.py`, `test_calibrate_color_rpcc_review.py`) still pass unchanged.
+
+**Manual check (not a unit test):** one full-mode run on `load_yeast_plate_full()` (the bundled *Rhodotorula* full plate with its checker) as a Slurm job via the **`slurm-job`** skill, if valid checker ROIs for that plate can be found in the calibration specs/tests (`docs/superpowers/specs/2026-09-21-in-frame-checker-color-correction/`, `tests/unit/correction/`); open the stored `figures/cal/default.png` and the deliverables copy. If no ROIs are documented, report that instead of guessing coordinates.
+
+- [ ] Commit in two parts: (a) `FigureInputUnavailable` + build carry + `CalibrateColorRpcc` provider + unit tests; (b) CLI wiring (measure carry, staged split + Stage 1 build + Stage 3 carry) + integration tests.
 
 ---
 
