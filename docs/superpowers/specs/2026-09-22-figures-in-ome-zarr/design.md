@@ -262,7 +262,10 @@ figures/
   one, if several match). So a re-measure with the same pipeline overwrites
   that run's figures, which is what the user decided: the measurer figures are
   rebuilt, and §3a figures such as the calibration overlay are kept. Otherwise
-  measure mode uses the UTC date of its own invocation. **Workers read the
+  measure mode uses the UTC date of its own invocation. On SLURM that date is
+  recorded once, as a new key in the existing `job_metadata.json`, written
+  before fan-out; measure workers read it from there (user decision). A run
+  that crosses midnight therefore stays in one folder. **Workers read the
   date from the run's processing state**. It never travels on a command line
   (user decision): no worker argument and no generated script carries it. It
   is **not** part of `processing_configuration_digest`, because a new day must
