@@ -663,3 +663,49 @@ def test_failed_status_cleanup_does_not_mask_apply_failure(
     assert caught.value.stage == "process"
     assert caught.value.cause is original
     assert caught.value.__cause__ is original
+
+
+def test_two_processes_with_a_figure_binding_write_byte_identical_stores(
+    tmp_path: Path, source_image: Path
+) -> None:
+    """Spec §4: byte identity now covers figures/, and holds across fresh
+    interpreters (fresh hash seeds, fresh object addresses)."""
+    import os
+    import subprocess
+    import sys
+    import textwrap
+
+    from phenotypic.detect import OtsuDetector
+    from phenotypic.measure import MeasureSymZones
+
+    sym = MeasureSymZones()
+    pipeline = tmp_path / "plotted.json.pht-pipe"
+    ImagePipeline(
+        ops=[OtsuDetector()], meas={"sym": sym}, plots=[sym]
+    ).to_json(pipeline)
+
+    def run(out: Path, seed: str) -> Path:
+        code = textwrap.dedent(f"""
+            from pathlib import Path
+            from phenotypic._cli._cli_process_only import process_single_apply_only_core
+            process_single_apply_only_core(
+                pipeline_path=Path({str(pipeline)!r}),
+                image_path=Path({str(source_image)!r}),
+                input_root=Path({str(source_image.parent)!r}),
+                output_dir=Path({str(out)!r}),
+                image_type="Image", layer="rgb", read_kwargs={{}},
+                process_format="zarr",
+            )
+        """)
+        subprocess.run(
+            [sys.executable, "-c", code],
+            check=True,
+            env={**os.environ, "PYTHONHASHSEED": seed},
+        )
+        return out / f"{source_image.stem}{ngff_.STORE_SUFFIX}"
+
+    first, second = run(tmp_path / "a", "1"), run(tmp_path / "b", "2")
+    left, right = _tree_bytes(first), _tree_bytes(second)
+    assert any(name.startswith("figures/sym/") for name in left)
+    assert sorted(left) == sorted(right)
+    assert [name for name in left if left[name] != right[name]] == []
