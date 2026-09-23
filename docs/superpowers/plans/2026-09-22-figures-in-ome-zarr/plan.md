@@ -2650,6 +2650,15 @@ git commit -m "test: figure reproducibility, cache parity, and migrate neutralit
 
 ### Task 8: Documentation
 
+> **Executed against the revised spec (2026-09-23).** The steps below predate
+> Revisions 12–14: §1a run folders (`figures/<run>/…`, `attributes.phenotypic.figures.runs`,
+> never wiped except by `--overwrite`, the run's initial call recorded once in
+> `state.config`/`job_metadata.json`) and §3a `FigureInputUnavailable` /
+> `unavailable`. Where they disagree, the docs follow `design.md`, not these
+> steps: the Step 4 snippet was adapted to the run-keyed descriptor. The edits
+> also cover Phase B review MINOR-5, -8 and -9, `correction/CLAUDE.md`, and
+> `docs/source/contrib_guide/tracked_state.md`.
+
 **Files:**
 - Modify: `.claude/skills/working-with-ome-zarr/SKILL.md`
 - Modify: `src/phenotypic/_cli/CLAUDE.md`

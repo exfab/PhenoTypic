@@ -53,9 +53,11 @@ under `ImagePipeline(plots=...)`, the CLI stores the rendered overlay PNG in
 each image's store (`figures/<run>/<id>/default.png`) and copies it to
 `deliverables/plots/`. The record itself is not saved. `inspect(image)` raises
 `FigureInputUnavailable` for any image but the one the last `apply()` ran on,
-so staged Stage 3 keeps the PNG Stage 1 drew in the same run folder, and
-`--mode measure` lists the binding as `unavailable` in its own run folder
-while the earlier run's PNG stays where it is.
+so staged Stage 3 keeps the PNG Stage 1 drew in the same run folder.
+`--mode measure` with the **same pipeline** reuses that run's folder and keeps
+the PNG there. With a **different pipeline** it writes that pipeline's own run
+folder, which holds no overlay, so it lists the binding there as `unavailable`
+and leaves the earlier run's PNG where it is.
 
 ## Invariants a change here must not break
 

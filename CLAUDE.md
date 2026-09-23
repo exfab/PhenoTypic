@@ -117,7 +117,12 @@ isolation before attributing it — most of them pass.
   `Image.load_zarr` refuses it and points at `Image.imread`, which reads any
   OME-Zarr — PhenoTypic's or a third party's — as plain pixels. A published
   store is bit-reproducible: `applied_at_utc` and `duration_seconds` are
-  omitted from its journal, so two identical runs write byte-identical stores.
+  omitted from its journal, so two identical runs **on the same UTC day** write
+  byte-identical stores. The day matters because figure run folders are named
+  by date. A store also carries the pipeline's per-image figures under
+  `figures/<run>/` (revision 3); flat `tiff` exports carry none. A process
+  store's run entry omits the initial call's `initiated_at_utc` and
+  `initiated_pid` for the same reason the journal omits its wall-clock times.
   Provenance is cumulative: reading a PhenoTypic store retains its complete
   journal, and each process/full/programmatic invocation appends a separately
   typed application with its own pipeline identity. Process output is therefore
@@ -129,7 +134,8 @@ isolation before attributing it — most of them pass.
   rather than reusing outputs of the other kind. So does a change in what an
   exported layer *means*: the work-id digest carries a
   `PROCESS_LAYER_SEMANTICS_REVISION` (`_cli_failure_tracker.py`), bumped to `2`
-  when `--layer objmap` began applying the post-detector op chain, so a tree
+  when `--layer objmap` began applying the post-detector op chain and to `3`
+  when process stores began carrying figures, so a tree
   processed under the old semantics is re-derived rather than reused. The
   revision is one integer shared by every layer, so a bump invalidates
   in-flight `--layer gray` continuations too — deliberate; invalidating too much
@@ -176,9 +182,13 @@ isolation before attributing it — most of them pass.
   on. A pre-slot-keying signal is relocated into its slot directory once, by
   `relocate_legacy_stage2_signal`, rather than recomputed on a GPU. Stage 3
   replays the raw array, measures, re-promotes the store, and consumes the token
-  and then the raw array. The output folder is identical to a single-pass run;
-  continuation is content-defined (valid store → complete Stage-2 signal →
-  atomic Stage-3 completion marker) and progress is stage-tagged.
+  and then the raw array. The output folder is identical to a single-pass run,
+  except for a `PlotImage` bound to a pre-GPU `ops` entry: Stage 1 draws it
+  after the pre-GPU ops only, and Stage 3 keeps it in the run's figure folder.
+  Today the only such plot is `CalibrateColorRpcc`, whose overlay comes from its
+  own `apply()`. Continuation is content-defined (valid store → complete
+  Stage-2 signal → atomic Stage-3 completion marker) and progress is
+  stage-tagged.
 - **A `GpuDetector` may sit anywhere in the operation tree** — nested inside a
   `CompositeDetector`, a `CompositeEnhance`, or a branch `ImagePipeline` — not
   only at top level. Detection is tree-wide (`find_gpu_detectors`), the detector

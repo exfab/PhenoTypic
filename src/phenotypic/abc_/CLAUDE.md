@@ -101,13 +101,46 @@ live in [`enhance/CLAUDE.md`](../enhance/CLAUDE.md).
   if any visible figure declares `backend="mpl"`, even a lone one. Overriding
   `inspect()` (e.g. for multi-page or runtime output) is the escape hatch;
   decorate the override itself with `@figure` to declare its backend the same
-  way (as `MeasureSymZones.inspect` does). CLI publication writes a Plotly figure as `.html` always plus
-  `.png` when Chrome is available, an mpl figure as `.png` only, and shares
-  one `plotly.min.js` bundle per run under `deliverables/plots/`. A swallowed
-  plot failure is appended to `deliverables/plots/.failures.jsonl`; a
-  `PlotPublicationBlocked` is never recorded there and propagates instead.
-  Full guide:
+  way (as `MeasureSymZones.inspect` does). **Where the CLI puts a figure
+  depends on the lifecycle.** A `PlotImage` figure is stored in the image's
+  OME-Zarr store, under `figures/<run>/<binding>/`, in the formats its
+  declaration names (below). `deliverables/plots/` then receives a copy of
+  those files, plus an `.html` generated from each stored `plotly-json`. The
+  copy-out never renders a PNG. `PlotMeas`/`PlotAnalysis`/`PlotQc` figures
+  have no per-image store. They publish straight to `deliverables/plots/`: a
+  Plotly figure as `.html` always, plus `.png` when Chrome is available, and
+  an mpl figure as `.png` only. Every HTML page shares one `plotly.min.js`
+  bundle per run under `deliverables/plots/`. A swallowed plot failure is
+  appended to `deliverables/plots/.failures.jsonl`; a `PlotPublicationBlocked`
+  is never recorded there and propagates instead. Full guide:
   [`extending/pages/custom_plotter.md`](../../../docs/source/extending/pages/custom_plotter.md).
+- **Store formats: `@figure(store=...)`.** A `PlotImage` figure's stored
+  formats come from the closed set `{"plotly-json", "png"}`
+  (`abc_/plotting/_store_formats.py`). Omitted (`None`), each backend has its
+  own default: `("plotly-json",)` for `"plotly"` and `("png",)` for `"mpl"`.
+  An invalid declaration raises `TypeError` when the decorator runs, which is
+  at class definition. Invalid means a bare string (`store="png"`), `store=()`,
+  an unknown or duplicate name, or `"plotly-json"` on `backend="mpl"`. The
+  binding stores what the figure its `inspect()` renders declares: the
+  decorated `inspect` override, else the primary figure. An **undecorated**
+  `inspect()` override declares nothing, so each page it returns is stored in
+  its own backend's default, sniffed per page with `figure_backend_of`. A page
+  whose backend is not recognised is a recorded page failure. A default Plotly
+  figure therefore gets no PNG in the store or in `deliverables/`, even where
+  Chrome exists. Declare
+  `store=("plotly-json", "png")` to get one. Without Chrome that PNG is a
+  recorded failure.
+- **`FigureInputUnavailable`** (public, `phenotypic.abc_.plotting`, a
+  `RuntimeError`). Raise it from `inspect()` when the figure is drawn from state
+  that only this operation's own `apply()` produces, and that `apply()` did not
+  run in this process on the image given. `CalibrateColorRpcc` is the example:
+  its overlay shows the as-shot checker pixels that correction then overwrites.
+  It says where the figure can be drawn, not that the figure failed. The CLI
+  keeps the binding's stored files from the **same run's** folder, as staged
+  Stage 3 does with Stage 1's overlay. When that folder does not hold it, the
+  CLI lists the binding in the run's `unavailable`, never in `failed`. Such a
+  provider remembers the image `apply()` saw through a `weakref` only, like any
+  image cache.
 
 ---
 

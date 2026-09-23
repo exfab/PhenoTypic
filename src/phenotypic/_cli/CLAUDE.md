@@ -43,7 +43,8 @@ details that are load-bearing rather than incidental:
   reach for `set_provenance_status(image, "in_progress")` — that status is also
   non-terminal and raises the very error it looks like it prevents.
 - The change of meaning is fenced in the work id:
-  `PROCESS_LAYER_SEMANTICS_REVISION` (`_cli_failure_tracker.py`, currently `2`)
+  `PROCESS_LAYER_SEMANTICS_REVISION` (`_cli_failure_tracker.py`, currently `3`;
+  2 → 3 is the per-image figures, see **Per-image figures** below)
   rides beside `process_format` in the process-only branch of
   `processing_configuration_digest_from_values`, **not** in the base payload —
   a base placement would cold-start every in-flight `full` and `measure`
@@ -270,7 +271,12 @@ that would raise `FileNotFoundError` and be recorded as a terminal *scientific*
 failure. Stage 3 embeds the authoritative Parquet inside the final store transaction,
 publishes the image marker over both the store root and table, then consumes the
 signal. The output is byte-identical to a
-single-pass run.
+single-pass run, with one exception: a `PlotImage` bound to a pre-GPU `ops`
+entry goes to `pre_pipeline`, so Stage 1 draws it on the image after the
+pre-GPU ops only, where a single-pass run draws it after the whole op chain.
+Stage 3 keeps that figure (see **Per-image figures**). Today the only shipped
+`PlotImage` that is also an operation is `CalibrateColorRpcc`, whose overlay is
+the same either way because it draws from its own `apply()`.
 
 **Progress events.** Stages emit stage-tagged events via the `stage` field on
 the event log (`_cli_update_state.py`: `append_event(..., stage="stage1|2|3")`).
@@ -411,6 +417,74 @@ only an explicit known terminal scheduler state permits interrupted
 terminalization. Every active/held/requeue/signaling state preserves the attempt,
 and an unknown state fails closed.
 
+## Per-image figures
+
+Every `PlotImage` binding's figures are written **into the image's store**, in
+one folder per run, `figures/<date>-<pipeline sha[:12]>/`. `deliverables/plots/`
+is then filled by copying that folder out. The store layout and descriptor are
+in the `working-with-ome-zarr` skill. The build is
+`build_image_figures` (`plotting/_pipeline/_store_figures.py`). It writes
+nothing, and no figure error can fail the image. The store write is
+`write_image_figures` (`sdk_/_image_figures.py`), and the copy-out is
+`publish_store_figures` (`plotting/_pipeline/_store_copyout.py`).
+`PlotCoordinator.emit_image` is **retired**. Nothing renders an image plot
+straight to `deliverables/` any more.
+
+| Mode | Build | Store write | Copy-out |
+|---|---|---|---|
+| Full (`_cli_process_single.py`) | after `apply_and_measure` | `save_image_store(figures=)`, inside the root-last transaction | yes |
+| Staged Stage 1 | only the bindings `split_pipeline_at_gpu` gave to `pre_pipeline`, after the pre-GPU ops | Stage 1's `save_image_store(figures=)` | no; Stage 3 publishes |
+| Staged Stage 3 | `keep_image_figures` for Stage 1's bindings, merged with `build_image_figures(post_pipeline, keep_from=<Stage-1 store>)` | `save_image_store(figures=)` | yes |
+| Measure | after `measure()` and **before** the table replace | `replace_image_tables(figures=)`: the same root-last transaction as the tables | yes |
+| Process, `--process-format zarr` | after `pipeline.apply`, before the provenance status is closed | `write_process_only_layer(figures=)` | no `deliverables/` |
+| Process, `tiff` (and the `--layer objmap` PNG) | none for the exported file | none | none |
+
+- **Copy-out runs after the store is promoted and before anything marks the
+  image complete.** Full mode: promotion → copy-out → the caller's completion
+  record. Stage 3: promotion → copy-out → Stage-3 marker → token → raw. Measure:
+  the table-and-figures transaction → copy-out → marker refresh. A crash between
+  promotion and copy-out therefore re-runs the image. The copy-out is
+  best-effort. It publishes only **this run's** folder. It verifies each file
+  against its `sha256`. It writes an `.html` for each stored `plotly-json`, and
+  it never renders a PNG. Every failure, including each descriptor `failed`
+  entry, becomes a `.failures.jsonl` line; only `PlotPublicationBlocked`
+  propagates.
+- **One run date for the whole run.** The CLI captures the initial call once
+  (`mint_run_initiation`): its UTC date, UTC timestamp and pid. It records them
+  in `state.config` as `figures_run_date`, `initiated_at_utc` and
+  `initiated_pid` before any worker starts, and a resume reuses them
+  (`_run_initiation` in `phenotypicCLI.py`). `--restart` and `--overwrite` mint
+  a new call. Measure mode keeps no run state. Locally it mints its own call; on
+  SLURM its submitter writes the same three keys into `job_metadata.json` before
+  fan-out. In-process workers get the call on the `OutputManager`. A worker in
+  another process reads it back with `recorded_run_initiation` (state) or
+  `metadata_run_initiation` (measure on SLURM). **It never travels on a command
+  line**: no worker argument and no generated script carries it. It is not in
+  `processing_configuration_digest`, so a new day never invalidates
+  continuation, and a run that crosses midnight stays in one folder.
+- **Measure mode reuses a folder.** If the store already has a run with this
+  pipeline's sha256, measure mode takes the most recent such run's date
+  (`latest_run_date`). It then overwrites that folder's measurer figures and
+  keeps its §3a figures. Otherwise it writes a folder dated by its own call. The
+  digest is read from the pipeline file measure mode runs, not from the store's
+  journal.
+- **§3a figures (`FigureInputUnavailable`).** A binding whose `inspect()` raises
+  it is kept from the same run's folder, sha-verified and all or nothing, when
+  the store being replaced has one. Otherwise it is listed in the run's
+  `unavailable`, not in `failed`. It is never copied between run folders.
+- **Nothing is wiped.** Every store rewrite carries the other runs' folders
+  (`carry_figure_runs` in `_write_store_part`; the measure rewrite keeps them as
+  hard links). Only `--overwrite`, which deletes the output folder, removes
+  them.
+- **A run folder that cannot be named** (no pipeline digest, a malformed date)
+  gives the image no figures. It records one `.failures.jsonl` line with
+  binding id `"<run>"` (`name_figure_run`), and the image still completes.
+- **Continuation.** Process mode bumped `PROCESS_LAYER_SEMANTICS_REVISION` from
+  2 to 3, so a process tree resumed across the upgrade re-derives, `tiff`
+  included. Full mode has no revision: a full run resumed across the upgrade
+  reuses figure-less stores, and `--overwrite` fills them in. `--mode migrate`
+  never adds a figure.
+
 ## Durability (`--durable-writes` / `--no-durable-writes`)
 
 Whether each per-image store is `fsync`ed before its promote. The flag is a
@@ -431,6 +505,14 @@ its command line, namely the staged SLURM worker, the ordinary per-image SLURM
 array (`_cli_slurm_array_scripts.py` → `python -m phenotypic._cli._cli_process_single`),
 and the staged script generator. A new spawn site needs the flag threaded, or
 the option is inert on that path alone.
+
+**That is the rule for this one flag, not the pattern for a new per-run
+value.** A value that must be the same for every worker, stage and resume
+belongs in the run's recorded state, and workers read it from there. The figure
+run date and the initial call's timestamp and pid work this way (see
+**Per-image figures**). They are recorded in `state.config`, or in
+`job_metadata.json` for measure mode on SLURM, and they are never handed to a
+worker on its command line.
 
 `durable_writes` is deliberately **not** part of
 `processing_configuration_digest` (`_cli_failure_tracker.py`, an explicit

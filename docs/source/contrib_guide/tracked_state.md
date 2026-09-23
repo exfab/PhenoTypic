@@ -128,6 +128,31 @@ frozenset({TERMINAL_FAILURES_JSONL, RESTART_EPOCH_JSON, DIR_LEGACY_V2})
 operation it fences is not a fence**. `legacy-v2/` is preserved because a
 restart is not a revert.
 
+### Configuration recorded beside the inventory is not tracked state
+
+The processing state's `config` block also records **configuration**: values
+the run was started with, which say nothing about its progress. Three of them
+record the run's initial CLI call, which names the per-image figure folders
+(spec `2026-09-22-figures-in-ome-zarr` §1a):
+
+| Key | Value |
+|---|---|
+| `figures_run_date` | the UTC date the run started, `YYYY-MM-DD`: every store's figure run folder is `figures/<figures_run_date>-<pipeline sha[:12]>/` |
+| `initiated_at_utc` | the call's UTC timestamp, ISO-8601 with a trailing `Z` |
+| `initiated_pid` | the call's process id |
+
+`create_initial_state` writes them once, and a resume rewrites them unchanged.
+`--restart` and `--overwrite` start a new call. Measure mode keeps no processing
+state, so on SLURM its submitter writes the same three keys into
+`job_metadata.json` instead. Workers in another process read them back with
+`recorded_run_initiation` / `metadata_run_initiation`
+(`_cli_state_management.py`), and never from a command line.
+
+They are not a fifth tracked state: `resolve_run_state` never reads them, and
+no verdict is derived from them. They are **excluded from the work-id
+digest** (`processing_configuration_digest`) and from `processing_generation`:
+a resume on a later day must not invalidate a single finished image.
+
 ---
 
 ## (b) Content proofs — evidence, not tracked state

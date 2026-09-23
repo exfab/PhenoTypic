@@ -224,7 +224,7 @@ Inside `plots/<id>/`, the layout depends on the lifecycle and on what
 
 | Output | Published as |
 |---|---|
-| `PlotImage`, one figure | `<dataset>/<stem>-<hash>.html` and `.png`, with no manifest |
+| `PlotImage`, one figure | `<dataset>/<stem>-<hash>.<ext>`, one file per stored format, plus `.html` for a stored `plotly-json`; no manifest |
 | `PlotImage`, a multi-page `PlotOutput` | `<dataset>/<stem>-<hash>/`, holding the pages and a `manifest.json` |
 | `PlotMeas`, `PlotAnalysis`, `PlotQc` | the pages and a `manifest.json`, directly in `plots/<id>/` |
 
@@ -239,7 +239,134 @@ each manifest directory and `.plotlyjs.lock` and `.failures.lock` at the
 plots root. They serialise concurrent writers, for example SLURM workers
 publishing into the same run, and are not plot output.
 
+## Storing figures with the image
+
+A `PlotImage` figure is written **into the image's OME-Zarr store**, so a
+dashboard can show a plate's figures from its `.ome.zarr` alone. The CLI does
+this in `--mode full`, `--mode measure`, staged GPU runs, and
+`--mode process --process-format zarr`. A flat `--process-format tiff` export
+has no store, so it has no figures. `deliverables/plots/<id>/` is a **copy** of
+the store's files, made once the store is in place. Aggregate plots
+(`PlotMeas`, `PlotAnalysis`, `PlotQc`) have no per-image store and still
+publish straight to `deliverables/plots/`, as described under **Two renderings**.
+
+### Choosing the formats: `store=`
+
+`@figure` takes a `store=` tuple naming the formats to keep. The set is closed:
+
+| Format | File in the store | `media_type` | Backends |
+|---|---|---|---|
+| `plotly-json` | `<page>.plotly.json` | `application/vnd.plotly.v1+json` | `plotly` |
+| `png` | `<page>.png` | `image/png` | `plotly` (needs Chrome), `mpl` |
+
+Leave `store` out and each backend stores its default. For `backend="plotly"`
+that is `("plotly-json",)`: lossless, interactive in any Plotly consumer, and
+needing no Chrome. For `backend="mpl"` it is `("png",)`. Both formats are
+byte-stable: the same figure serializes to the same bytes in every process.
+
+A declaration the store cannot honour raises `TypeError` when the class is
+defined. That covers a bare string (`store="png"`, write `store=("png",)`),
+an empty tuple, an unknown or repeated name, and `"plotly-json"` on
+`backend="mpl"`. An empty tuple is refused because `deliverables/plots/` is
+copied from the store, so a figure that stores nothing would appear nowhere.
+
+Two consequences are easy to miss:
+
+- **A default Plotly figure has no PNG in `deliverables/`, even on a machine
+  with Chrome.** The copy-out never renders; it copies what was stored and
+  writes an `.html` page from each stored `plotly-json`. To get a PNG, declare
+  `store=("plotly-json", "png")`. On a machine without Chrome, that declared PNG
+  is then recorded as a failure, because you asked for it.
+- **A Plotly figure built on the plate image is MB-sized as JSON.** Its size
+  follows the figure, and a trace-only figure such as a histogram is KB-sized.
+  But `px.imshow(..., binary_string=True)`, which the zone measurers use for
+  their plate overview, embeds the whole image as a base64 PNG data URI, so the
+  stored `plotly-json` is at least as large as a PNG of the plate.
+
+The binding stores what the figure its `inspect()` renders declares. That is
+the decorated `inspect()` override if there is one, or else the primary figure.
+An **undecorated** `inspect()` override declares nothing. Each page it returns
+is stored in the default for that page's own backend, and a page whose figure
+type is neither Plotly nor matplotlib is recorded as a failed page.
+
+The histogram of colony areas below keeps a PNG beside the Plotly JSON:
+
+```python
+import numpy as np
+import plotly.graph_objects as go
+from pydantic import BaseModel, ConfigDict
+
+from phenotypic import ImagePipeline
+from phenotypic.abc_.plotting import PlotImage, figure
+from phenotypic.data import load_synth_yeast_plate
+from phenotypic.detect import OtsuDetector
+
+
+class PlotColonySizes(BaseModel, PlotImage):
+    """Distribution of colony areas on one plate, in pixels."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    @figure(
+        title="Colony sizes",
+        backend="plotly",
+        store=("plotly-json", "png"),
+        primary=True,
+    )
+    def colony_sizes(self, image):
+        areas = np.bincount(image.objmap[:].ravel())[1:]
+        return go.Figure(go.Histogram(x=areas[areas > 0], name="Area (px)"))
+
+
+sizes = PlotColonySizes()
+pipeline = ImagePipeline(ops={"detect": OtsuDetector()}, plots=[sizes])
+
+plate = load_synth_yeast_plate()
+pipeline.apply(plate, inplace=True)
+fig = sizes.inspect(plate)
+print([spec.store for spec in sizes.iter_figures()])
+# [('plotly-json', 'png')]
+```
+
+A CLI run of this pipeline stores `PlotColonySizes/default.plotly.json` and
+`PlotColonySizes/default.png` in each plate's run folder, and publishes both
+under `deliverables/plots/PlotColonySizes/<dataset>/`, next to an `.html` page
+generated from the JSON.
+
+### Run folders
+
+A store keeps one folder per run: `figures/<date>-<hash>/`. `<date>` is the
+UTC date the run started, and `<hash>` is the first 12 hex characters of the
+pipeline's sha256. The date is recorded once per run, so a run resumed on a
+later day, or one that crosses midnight, still writes a single folder. Folders
+are never deleted. A rerun with another pipeline or on another day adds a
+folder beside the earlier ones, and a rerun with the same pipeline on the same
+day replaces its own. `--mode measure` with the same pipeline as an earlier run
+reuses that run's folder. The one exception is `--overwrite`, which deletes the
+whole output folder, figures included. `deliverables/plots/` holds a copy of
+**this run's** folder only. Reading a store's figures directly, including
+choosing among its runs, is covered in
+[Store Results in OME-Zarr](../../how_to/pages/zarr_storage.md).
+
+### Figures that can only be drawn where the operation ran
+
+Some figures cannot be redrawn from the finished image. `CalibrateColorRpcc`'s
+tile overlay shows the as-shot checker pixels, and the colour correction then
+overwrites them. A provider like that raises `FigureInputUnavailable` (from
+`phenotypic.abc_.plotting`) from `inspect()` when it is given an image its own
+`apply()` did not just process in this process. Keep the reference to that
+image weak.
+
+The exception is not a failure. The CLI keeps the figure already stored in
+this run's folder, for example the overlay staged Stage 1 drew before Stage 3
+rewrote the store. If this run's folder holds none, the CLI lists the binding
+in the run's `unavailable` list, and any earlier run's folder keeps its copy.
+
 ## Two renderings
+
+This section describes aggregate plots (`PlotMeas`, `PlotAnalysis`,
+`PlotQc`). An image plot publishes what its store holds; see
+**Storing figures with the image**.
 
 A Plotly binding always publishes an interactive `.html` page. It publishes a
 `.png` as well when Kaleido can drive Chrome to rasterise the figure. A
@@ -275,8 +402,9 @@ can render:
 
 - **Chrome missing** is not an error. Validation logs one warning that names
   the Plotly bindings that will publish HTML without PNG, and suggests
-  `plotly_get_chrome` to install it. For single-figure image plots, which have no
-  manifest, this warning is the only record of why no PNG exists.
+  `plotly_get_chrome` to install it. An image plot is named only if it
+  declares a Plotly `png`. Such a plot is listed as recording that PNG as
+  failed, or, if `png` is its only format, as publishing nothing.
 - **A declared backend whose library cannot be imported** fails validation
   with `Plot backend unavailable: …`, naming the bindings that declared it.
   Such a plot could not publish anything, so the run stops before it starts.
@@ -314,7 +442,12 @@ wrote there. The manifest is at `schema_version: 2`:
   what landed on disk. A Plotly directory has `html: "available"` and a `png`
   verdict of `"available"` or `"unavailable: chrome not found"`. A matplotlib
   directory has only `png: "available"`. A directory that mixes both backends
-  without Chrome reads `"available: matplotlib only; chrome not found"`.
+  without Chrome reads `"available: matplotlib only; chrome not found"`. A
+  manifest copied out for a multi-page image plot never probes Chrome. It
+  records `html: "available"` when a page is Plotly and `png: "available"` when
+  a page is matplotlib. Its `files` show which stored formats were copied, and
+  `partial` lists the errors of the formats that failed for that page, whether
+  the store recorded them or the copy hit them.
 - `pages` lists each published page. `files` maps each format to the file it
   produced. It omits `png` when Chrome was unavailable and `html` for a
   matplotlib page. `backend` is `"plotly"` or `"matplotlib"`.
@@ -343,6 +476,16 @@ multi-page output failed to render, whichever of those four was running.
 `dataset` and `image_stem` appear only for image-lifecycle entries.
 `plot_class` is `<unresolved>` when a QC plot failed before its class could be
 determined.
+
+An image-lifecycle entry may also carry `page` and `format`: the page key, and
+the store format that failed, or `html` for the page generated from a stored
+`plotly-json`. A failure the store recorded is copied with its `error` text
+exactly as stored. A stored file that no longer matches its recorded sha256 is
+recorded under its own binding, page and format, and is not copied. Two
+binding ids are not plots. `<store>` means the store's figures descriptor could
+not be read, for example because its `schema_version` is newer than this
+release knows. `<run>` means the image's run folder could not be named, so the
+image was written without figures.
 
 Some refusals are not plot failures. When the GUI's snapshot check or a SLURM
 worker's lifecycle fence refuses a publication, the process can no longer
