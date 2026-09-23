@@ -39,6 +39,12 @@ from pydantic import Field, PrivateAttr, field_validator, model_validator
 from ...abc_ import ImageCorrector
 from ...sdk_.typing_ import TuneSpec
 from ...util import MedoidCandidates
+from ._calibration_overlay import (
+    CalibrationOverlayRecord,
+    RoiDraft,
+    Verdict,
+    build_overlay_record,
+)
 from ._checker_detect import fit_lattice, refine
 from ._checker_identity import (
     assign_placement,
@@ -170,6 +176,7 @@ class CalibrateColorRpcc(ImageCorrector):
     qc: list[QcRecord] = []
 
     _diagnostics: dict[str, Any] = PrivateAttr(default_factory=dict)
+    _calibration_record: CalibrationOverlayRecord | None = PrivateAttr(default=None)
 
     @field_validator("rois", mode="before")
     @classmethod
@@ -209,6 +216,15 @@ class CalibrateColorRpcc(ImageCorrector):
     def diagnostics(self) -> dict[str, Any]:
         """Per-run detail: illuminant handling, patch census, per-tile values."""
         return self._diagnostics
+
+    @property
+    def calibration_record(self) -> CalibrationOverlayRecord | None:
+        """The last ``apply()``'s tile overlay record, or ``None`` before one.
+
+        Kept even when the frame was refused or skipped, and replaced by
+        every ``apply()``. Never serialised.
+        """
+        return self._calibration_record
 
     @overload
     def apply(self, image: GridImage, inplace: bool = False) -> GridImage: ...
@@ -261,6 +277,7 @@ class CalibrateColorRpcc(ImageCorrector):
         self.fitted_profile = None
         self.qc = []
         self._diagnostics = {}
+        self._calibration_record = None
 
         ref_lab, ref_linear, _wp = _load_reference_data(
                 self.checker_type, self.target_illuminant
@@ -276,8 +293,40 @@ class CalibrateColorRpcc(ImageCorrector):
         # One entry per ROI, None where no lattice was found, so that
         # lattices[i] always describes ROI i.
         lattices: list[CheckerLattice | None] = []
+        # What the overlay record is built from; assigned on every exit below.
+        drafts: list[RoiDraft] = []
+        reference_srgb: dict[str, tuple[float, float, float]] = {}
+        for name in patch_names:
+            r, g, b = np.clip(colour.cctf_encoding(
+                    np.clip(ref_linear[name], 0, 1), function="sRGB"), 0, 1)
+            reference_srgb[name] = (float(r), float(g), float(b))
+
+        def keep_record(
+                verdict: Verdict,
+                *,
+                refusal: str | None = None,
+                fitted: dict[str, dict[str, float]] | None = None,
+                rejected: Sequence[str] = (),
+                n_fitted: int | None = None,
+        ) -> None:
+            self._calibration_record = build_overlay_record(
+                    image_name=image.name, verdict=verdict, refusal=refusal,
+                    degree=self.degree, n_expected=len(patch_names),
+                    n_fitted=n_fitted, drafts=drafts, qc=records,
+                    reference_srgb=reference_srgb, fitted_patches=fitted,
+                    rejected=set(rejected),
+                    impurity_limit=self.qc_limits.max_tile_impurity,
+                    core_trim=self.core_trim,
+            )
 
         for index, roi in enumerate(self.rois):
+            # The as-shot pixels, owned: correction below runs in place, and a
+            # view would pin the whole-image buffer.
+            draft = RoiDraft(
+                    roi_index=index, label=roi.label,
+                    crop=np.array(image.rgb[roi.row_slice, roi.col_slice], copy=True),
+            )
+            drafts.append(draft)
             lab, srgb = self._roi_views(image, roi)
 
             if self.lattice_prior is not None:
@@ -297,6 +346,7 @@ class CalibrateColorRpcc(ImageCorrector):
                     continue
                 shift = 0.0
             lattices.append(lattice)
+            draft.lattice = lattice
 
             refusals: list[str] = []
             if roi.expect_tiles is not None and lattice.n_tiles != roi.expect_tiles:
@@ -332,6 +382,7 @@ class CalibrateColorRpcc(ImageCorrector):
                 ))
                 continue
             identity = assign_placement(observed, candidates, ref_linear)
+            draft.tiles = [(t, identity.placement.names[t.row][t.col]) for t in tiles]
 
             disagreement, voting = self._anchor_disagreement(lab, index, lattice)
             record = evaluate_roi(
@@ -374,6 +425,7 @@ class CalibrateColorRpcc(ImageCorrector):
             else:
                 measured.update(names)
                 claimed_by.update(dict.fromkeys(names, index))
+                draft.claimed = True
             for message in record.warnings:
                 warnings.warn(
                         f"ROI {index} ({roi.label or 'unlabelled'}): {message}",
@@ -392,12 +444,15 @@ class CalibrateColorRpcc(ImageCorrector):
         if failed:
             summary = self._flag_summary(failed)
             if self.on_qc_fail == "raise":
-                raise ValueError(f"Colour-checker quality gate failed. {summary}")
+                message = f"Colour-checker quality gate failed. {summary}"
+                keep_record("refused", refusal=message)
+                raise ValueError(message)
             warnings.warn(
                     f"Colour-checker quality gate failed. {summary}",
                     UserWarning, stacklevel=3,
             )
             if self.on_qc_fail == "skip":
+                keep_record("skipped")
                 self._diagnostics = self._build_diagnostics(
                         chart_illuminant, [], patch_names, tiles_out, lattices,
                         accepted=[], skipped=True,
@@ -409,10 +464,14 @@ class CalibrateColorRpcc(ImageCorrector):
             # advise a lower degree, but no degree fits zero patches; the
             # refusals are the cause.
             summary = self._flag_summary(records) or "no ROI recorded a flag"
-            raise ValueError(
-                    f"No ROI produced usable tiles, so there is nothing to fit. {summary}"
-            )
-        require_rank(len(measured), self.degree, stage="were measured")
+            message = f"No ROI produced usable tiles, so there is nothing to fit. {summary}"
+            keep_record("refused", refusal=message)
+            raise ValueError(message)
+        try:
+            require_rank(len(measured), self.degree, stage="were measured")
+        except ValueError as exc:
+            keep_record("refused", refusal=str(exc))
+            raise
 
         profile = ColorCheckerProfile(
                 checker_type=self.checker_type,
@@ -427,7 +486,11 @@ class CalibrateColorRpcc(ImageCorrector):
         # removes some, and the census must count them as missing.
         rejected = profile.diagnostics["rejected_patches"]
         accepted = [name for name in measured if name not in rejected]
-        require_rank(len(accepted), self.degree, stage="remain after outlier rejection")
+        try:
+            require_rank(len(accepted), self.degree, stage="remain after outlier rejection")
+        except ValueError as exc:
+            keep_record("refused", refusal=str(exc))
+            raise
         census = warn_on_patch_census(
                 accepted, patch_names, self.degree, self.min_patches,
         )
@@ -435,6 +498,12 @@ class CalibrateColorRpcc(ImageCorrector):
         self._diagnostics = self._build_diagnostics(
                 chart_illuminant, census, patch_names, tiles_out, lattices,
                 accepted=accepted,
+        )
+        keep_record(
+                "corrected_with_warnings"
+                if any(r.flags or r.warnings for r in records) else "corrected",
+                fitted=profile.diagnostics["patches"], rejected=rejected,
+                n_fitted=len(accepted),
         )
         return ColorCorrector(
                 profile=profile, output_illuminant=self.target_illuminant
