@@ -41,6 +41,7 @@ phenotypic.correction.CalibrateColorRpcc
       ~CalibrateColorRpcc.patch_census
       ~CalibrateColorRpcc.schema
       ~CalibrateColorRpcc.schema_json
+      ~CalibrateColorRpcc.show_tiles
       ~CalibrateColorRpcc.to_json
       ~CalibrateColorRpcc.update_forward_refs
       ~CalibrateColorRpcc.validate
@@ -54,6 +55,7 @@ phenotypic.correction.CalibrateColorRpcc
 
    .. autosummary::
    
+      ~CalibrateColorRpcc.calibration_record
       ~CalibrateColorRpcc.diagnostics
       ~CalibrateColorRpcc.model_computed_fields
       ~CalibrateColorRpcc.model_config

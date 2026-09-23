@@ -2497,7 +2497,9 @@ the frame.</p></li>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">rgb</span></code> corrected, with <code class="docutils literal notranslate"><span class="pre">gray</span></code> and <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> recomputed.
-<code class="docutils literal notranslate"><span class="pre">fitted_profile</span></code> and <code class="docutils literal notranslate"><span class="pre">qc</span></code> are populated on the operation.</p>
+<code class="docutils literal notranslate"><span class="pre">fitted_profile</span></code> and <code class="docutils literal notranslate"><span class="pre">qc</span></code> are populated on the operation.
+<code class="docutils literal notranslate"><span class="pre">calibration_record</span></code> holds the tile overlay of the last run, even a
+refused one, and <code class="docutils literal notranslate"><span class="pre">show_tiles()</span></code> draws it.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Image</p>
@@ -3316,6 +3318,46 @@ logged.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">show_tiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="reference internal" href="../../_modules/phenotypic/correction/_color_correction/_calibrate_color_rpcc.html#CalibrateColorRpcc.show_tiles"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Draw where the last <code class="docutils literal notranslate"><span class="pre">apply()</span></code> measured each tile and what it matched.</p>
+<p>One panel per ROI: the as-shot pixels, each detected tile outlined, the
+core box the medoid came from coloured by status (used, partly
+covered, rejected, excluded, empty), and beside each tile the chart
+patch it was matched to, a measured | reference swatch pair and ΔE00
+before -&gt; after correction. A refused frame still draws, with its
+reasons under each ROI and no after-values.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">try</span><span class="p">:</span>
+    <span class="n">corrected</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">plate</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
+    <span class="c1"># An apply() that fails before its ROIs are measured keeps no</span>
+    <span class="c1"># record; draw only when there is one, and re-raise either way.</span>
+    <span class="k">if</span> <span class="n">op</span><span class="o">.</span><span class="n">calibration_record</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">op</span><span class="o">.</span><span class="n">show_tiles</span><span class="p">()</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">&quot;calibration.png&quot;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">160</span><span class="p">)</span>
+    <span class="k">raise</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>figsize</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – Optional <code class="docutils literal notranslate"><span class="pre">(width,</span> <span class="pre">height)</span></code> in inches; must be at least
+the size the labels need.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <code class="docutils literal notranslate"><span class="pre">matplotlib.figure.Figure</span></code>.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">apply()</span></code> has not run on this instance.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <em>figsize</em> is too small for the labels.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Figure</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span></dt>
 <dd><p>Serialize this operation to JSON.</p>
 <p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
@@ -3376,6 +3418,14 @@ visualization controls will be added to the widget.</p></li>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ImportError" title="(in Python v3.14)"><strong>ImportError</strong></a> – If ipywidgets or IPython are not installed.</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">calibration_record</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CalibrationOverlayRecord</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em></dt>
+<dd><p>The last <code class="docutils literal notranslate"><span class="pre">apply()</span></code>’s tile overlay record, or <code class="docutils literal notranslate"><span class="pre">None</span></code> before one.</p>
+<p>Kept even when the frame was refused or skipped, and replaced by
+every <code class="docutils literal notranslate"><span class="pre">apply()</span></code>. Never serialised.</p>
 </dd></dl>
 
 <dl class="py attribute">

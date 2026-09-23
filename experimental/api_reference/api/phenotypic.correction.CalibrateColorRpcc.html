@@ -1358,7 +1358,9 @@ the frame.</p></li>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">rgb</span></code> corrected, with <code class="docutils literal notranslate"><span class="pre">gray</span></code> and <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> recomputed.
-<code class="docutils literal notranslate"><span class="pre">fitted_profile</span></code> and <code class="docutils literal notranslate"><span class="pre">qc</span></code> are populated on the operation.</p>
+<code class="docutils literal notranslate"><span class="pre">fitted_profile</span></code> and <code class="docutils literal notranslate"><span class="pre">qc</span></code> are populated on the operation.
+<code class="docutils literal notranslate"><span class="pre">calibration_record</span></code> holds the tile overlay of the last run, even a
+refused one, and <code class="docutils literal notranslate"><span class="pre">show_tiles()</span></code> draws it.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Image</p>
@@ -1448,16 +1450,19 @@ the frame.</p></li>
 <tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.schema_json" title="phenotypic.correction.CalibrateColorRpcc.schema_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema_json</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.to_json" title="phenotypic.correction.CalibrateColorRpcc.to_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_json</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.show_tiles" title="phenotypic.correction.CalibrateColorRpcc.show_tiles"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show_tiles</span></code></a></p></td>
+<td><p>Draw where the last <code class="docutils literal notranslate"><span class="pre">apply()</span></code> measured each tile and what it matched.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.to_json" title="phenotypic.correction.CalibrateColorRpcc.to_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_json</span></code></a></p></td>
 <td><p>Serialize this operation to JSON.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.update_forward_refs" title="phenotypic.correction.CalibrateColorRpcc.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.update_forward_refs" title="phenotypic.correction.CalibrateColorRpcc.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.validate" title="phenotypic.correction.CalibrateColorRpcc.validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.validate" title="phenotypic.correction.CalibrateColorRpcc.validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.widget" title="phenotypic.correction.CalibrateColorRpcc.widget"><code class="xref py py-obj docutils literal notranslate"><span class="pre">widget</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.widget" title="phenotypic.correction.CalibrateColorRpcc.widget"><code class="xref py py-obj docutils literal notranslate"><span class="pre">widget</span></code></a></p></td>
 <td><p>Return (and optionally display) the root widget.</p></td>
 </tr>
 </tbody>
@@ -1466,67 +1471,70 @@ the frame.</p></li>
 <p class="rubric">Attributes</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.diagnostics" title="phenotypic.correction.CalibrateColorRpcc.diagnostics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">diagnostics</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.calibration_record" title="phenotypic.correction.CalibrateColorRpcc.calibration_record"><code class="xref py py-obj docutils literal notranslate"><span class="pre">calibration_record</span></code></a></p></td>
+<td><p>The last <code class="docutils literal notranslate"><span class="pre">apply()</span></code>'s tile overlay record, or <code class="docutils literal notranslate"><span class="pre">None</span></code> before one.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.diagnostics" title="phenotypic.correction.CalibrateColorRpcc.diagnostics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">diagnostics</span></code></a></p></td>
 <td><p>illuminant handling, patch census, per-tile values.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.model_computed_fields" title="phenotypic.correction.CalibrateColorRpcc.model_computed_fields"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_computed_fields</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.model_computed_fields" title="phenotypic.correction.CalibrateColorRpcc.model_computed_fields"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_computed_fields</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.model_config" title="phenotypic.correction.CalibrateColorRpcc.model_config"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_config</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.model_config" title="phenotypic.correction.CalibrateColorRpcc.model_config"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_config</span></code></a></p></td>
 <td><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.model_extra" title="phenotypic.correction.CalibrateColorRpcc.model_extra"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_extra</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.model_extra" title="phenotypic.correction.CalibrateColorRpcc.model_extra"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_extra</span></code></a></p></td>
 <td><p>Get extra fields set during validation.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.model_fields" title="phenotypic.correction.CalibrateColorRpcc.model_fields"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_fields</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.model_fields" title="phenotypic.correction.CalibrateColorRpcc.model_fields"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_fields</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.model_fields_set" title="phenotypic.correction.CalibrateColorRpcc.model_fields_set"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_fields_set</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.model_fields_set" title="phenotypic.correction.CalibrateColorRpcc.model_fields_set"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_fields_set</span></code></a></p></td>
 <td><p>Returns the set of fields that have been explicitly set on this model instance.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.rois" title="phenotypic.correction.CalibrateColorRpcc.rois"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rois</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.rois" title="phenotypic.correction.CalibrateColorRpcc.rois"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rois</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.checker_type" title="phenotypic.correction.CalibrateColorRpcc.checker_type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">checker_type</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.checker_type" title="phenotypic.correction.CalibrateColorRpcc.checker_type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">checker_type</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.target_illuminant" title="phenotypic.correction.CalibrateColorRpcc.target_illuminant"><code class="xref py py-obj docutils literal notranslate"><span class="pre">target_illuminant</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.target_illuminant" title="phenotypic.correction.CalibrateColorRpcc.target_illuminant"><code class="xref py py-obj docutils literal notranslate"><span class="pre">target_illuminant</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.degree" title="phenotypic.correction.CalibrateColorRpcc.degree"><code class="xref py py-obj docutils literal notranslate"><span class="pre">degree</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.degree" title="phenotypic.correction.CalibrateColorRpcc.degree"><code class="xref py py-obj docutils literal notranslate"><span class="pre">degree</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.grid" title="phenotypic.correction.CalibrateColorRpcc.grid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">grid</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.grid" title="phenotypic.correction.CalibrateColorRpcc.grid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">grid</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.lattice_prior" title="phenotypic.correction.CalibrateColorRpcc.lattice_prior"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lattice_prior</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.lattice_prior" title="phenotypic.correction.CalibrateColorRpcc.lattice_prior"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lattice_prior</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.refine_method" title="phenotypic.correction.CalibrateColorRpcc.refine_method"><code class="xref py py-obj docutils literal notranslate"><span class="pre">refine_method</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.refine_method" title="phenotypic.correction.CalibrateColorRpcc.refine_method"><code class="xref py py-obj docutils literal notranslate"><span class="pre">refine_method</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.core_trim" title="phenotypic.correction.CalibrateColorRpcc.core_trim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">core_trim</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.core_trim" title="phenotypic.correction.CalibrateColorRpcc.core_trim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">core_trim</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.medoid_candidates" title="phenotypic.correction.CalibrateColorRpcc.medoid_candidates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">medoid_candidates</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.medoid_candidates" title="phenotypic.correction.CalibrateColorRpcc.medoid_candidates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">medoid_candidates</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.outlier_sigma" title="phenotypic.correction.CalibrateColorRpcc.outlier_sigma"><code class="xref py py-obj docutils literal notranslate"><span class="pre">outlier_sigma</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.outlier_sigma" title="phenotypic.correction.CalibrateColorRpcc.outlier_sigma"><code class="xref py py-obj docutils literal notranslate"><span class="pre">outlier_sigma</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.min_patches" title="phenotypic.correction.CalibrateColorRpcc.min_patches"><code class="xref py py-obj docutils literal notranslate"><span class="pre">min_patches</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.min_patches" title="phenotypic.correction.CalibrateColorRpcc.min_patches"><code class="xref py py-obj docutils literal notranslate"><span class="pre">min_patches</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.qc_limits" title="phenotypic.correction.CalibrateColorRpcc.qc_limits"><code class="xref py py-obj docutils literal notranslate"><span class="pre">qc_limits</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.qc_limits" title="phenotypic.correction.CalibrateColorRpcc.qc_limits"><code class="xref py py-obj docutils literal notranslate"><span class="pre">qc_limits</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.on_qc_fail" title="phenotypic.correction.CalibrateColorRpcc.on_qc_fail"><code class="xref py py-obj docutils literal notranslate"><span class="pre">on_qc_fail</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.on_qc_fail" title="phenotypic.correction.CalibrateColorRpcc.on_qc_fail"><code class="xref py py-obj docutils literal notranslate"><span class="pre">on_qc_fail</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.fitted_profile" title="phenotypic.correction.CalibrateColorRpcc.fitted_profile"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fitted_profile</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.fitted_profile" title="phenotypic.correction.CalibrateColorRpcc.fitted_profile"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fitted_profile</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.qc" title="phenotypic.correction.CalibrateColorRpcc.qc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">qc</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.qc" title="phenotypic.correction.CalibrateColorRpcc.qc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">qc</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -1614,6 +1622,54 @@ the frame.</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Per-run detail</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="phenotypic.correction.CalibrateColorRpcc.calibration_record">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">calibration_record</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CalibrationOverlayRecord</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><a class="headerlink" href="#phenotypic.correction.CalibrateColorRpcc.calibration_record" title="Link to this definition">#</a></dt>
+<dd><p>The last <code class="docutils literal notranslate"><span class="pre">apply()</span></code>’s tile overlay record, or <code class="docutils literal notranslate"><span class="pre">None</span></code> before one.</p>
+<p>Kept even when the frame was refused or skipped, and replaced by
+every <code class="docutils literal notranslate"><span class="pre">apply()</span></code>. Never serialised.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.correction.CalibrateColorRpcc.show_tiles">
+<span class="sig-name descname"><span class="pre">show_tiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="reference internal" href="../../_modules/phenotypic/correction/_color_correction/_calibrate_color_rpcc.html#CalibrateColorRpcc.show_tiles"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.correction.CalibrateColorRpcc.show_tiles" title="Link to this definition">#</a></dt>
+<dd><p>Draw where the last <code class="docutils literal notranslate"><span class="pre">apply()</span></code> measured each tile and what it matched.</p>
+<p>One panel per ROI: the as-shot pixels, each detected tile outlined, the
+core box the medoid came from coloured by status (used, partly
+covered, rejected, excluded, empty), and beside each tile the chart
+patch it was matched to, a measured | reference swatch pair and ΔE00
+before -&gt; after correction. A refused frame still draws, with its
+reasons under each ROI and no after-values.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">try</span><span class="p">:</span>
+    <span class="n">corrected</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">plate</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
+    <span class="c1"># An apply() that fails before its ROIs are measured keeps no</span>
+    <span class="c1"># record; draw only when there is one, and re-raise either way.</span>
+    <span class="k">if</span> <span class="n">op</span><span class="o">.</span><span class="n">calibration_record</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">op</span><span class="o">.</span><span class="n">show_tiles</span><span class="p">()</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">&quot;calibration.png&quot;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">160</span><span class="p">)</span>
+    <span class="k">raise</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>figsize</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – Optional <code class="docutils literal notranslate"><span class="pre">(width,</span> <span class="pre">height)</span></code> in inches; must be at least
+the size the labels need.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <code class="docutils literal notranslate"><span class="pre">matplotlib.figure.Figure</span></code>.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">apply()</span></code> has not run on this instance.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If <em>figsize</em> is too small for the labels.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Figure</p>
 </dd>
 </dl>
 </dd></dl>
@@ -2564,6 +2620,8 @@ that degree must then be the same for all of them.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.CalibrateColorRpcc.fitted_profile"><code class="docutils literal notranslate"><span class="pre">CalibrateColorRpcc.fitted_profile</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.CalibrateColorRpcc.qc"><code class="docutils literal notranslate"><span class="pre">CalibrateColorRpcc.qc</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.CalibrateColorRpcc.diagnostics"><code class="docutils literal notranslate"><span class="pre">CalibrateColorRpcc.diagnostics</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.CalibrateColorRpcc.calibration_record"><code class="docutils literal notranslate"><span class="pre">CalibrateColorRpcc.calibration_record</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.CalibrateColorRpcc.show_tiles"><code class="docutils literal notranslate"><span class="pre">CalibrateColorRpcc.show_tiles()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.CalibrateColorRpcc.apply"><code class="docutils literal notranslate"><span class="pre">CalibrateColorRpcc.apply()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.CalibrateColorRpcc.__copy__"><code class="docutils literal notranslate"><span class="pre">CalibrateColorRpcc.__copy__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.CalibrateColorRpcc.__deepcopy__"><code class="docutils literal notranslate"><span class="pre">CalibrateColorRpcc.__deepcopy__()</span></code></a></li>
