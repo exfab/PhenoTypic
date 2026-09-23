@@ -1062,18 +1062,9 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         if measure_only:
             # Measure mode keeps no processing state, so its workers read the
             # invocation's initial call from here (figures spec §1a).
-            initiation = self.config.run_initiation
-            job_metadata |= {
-                JobMetadataKey.FIGURES_RUN_DATE: (
-                    initiation.date if initiation is not None else None
-                ),
-                JobMetadataKey.INITIATED_AT_UTC: (
-                    initiation.at_utc if initiation is not None else None
-                ),
-                JobMetadataKey.INITIATED_PID: (
-                    initiation.pid if initiation is not None else None
-                ),
-            }
+            from ._cli_state_management import run_initiation_config
+
+            job_metadata |= run_initiation_config(self.config.run_initiation)
         atomic_write_json(metadata_path, job_metadata)
 
         # Fan-out begins HERE -- one writer, in the submitting process,

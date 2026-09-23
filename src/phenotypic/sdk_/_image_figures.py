@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from datetime import date as _date
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
-from typing import Any, Mapping
+from typing import Any, Mapping, TypeGuard, cast
 
 from ._atomic_io import atomic_write_json
 
@@ -46,7 +46,7 @@ def utc_run_date() -> str:
     return _utc_now().date().isoformat()
 
 
-def is_run_date(value: object) -> bool:
+def is_run_date(value: object) -> TypeGuard[str]:
     """Whether *value* is a real calendar date spelled ``YYYY-MM-DD``."""
     if not isinstance(value, str):
         return False
@@ -56,7 +56,7 @@ def is_run_date(value: object) -> bool:
         return False
 
 
-def is_initiation_timestamp(value: object) -> bool:
+def is_initiation_timestamp(value: object) -> TypeGuard[str]:
     """Whether *value* is a UTC ISO-8601 timestamp with a trailing ``Z``,
     as :func:`mint_run_initiation` spells one."""
     if not isinstance(value, str) or not value.endswith("Z"):
@@ -379,6 +379,10 @@ def carry_figure_runs(
     if not carried:
         return None
     source_root = Path(source_store)
+    # The parent group first: a run with no files (every binding unavailable
+    # or failed) never reaches _carry_file, and Zarr v3 has no implicit
+    # groups, so figures/<run>/ alone would not open as a hierarchy.
+    _ensure_group(Path(store_part) / ngff_.FIGURES_GROUP)
     for run_id, entry in carried.items():
         for binding in entry.get("bindings", {}).values():
             for page in binding.get("pages", []):
@@ -478,7 +482,8 @@ def apply_image_figures_attributes(
 
     if fragment is None:
         return
-    incoming = fragment[ngff_.PhenotypicAttr.FIGURES]
+    # Always a descriptor dict: _fragment's, or one carried whole.
+    incoming = cast("dict[str, Any]", fragment[ngff_.PhenotypicAttr.FIGURES])
     current = phenotypic.get(ngff_.PhenotypicAttr.FIGURES)
     if not (known_figures_schema(current) and known_figures_schema(incoming)):
         if isinstance(current, dict):
@@ -557,7 +562,8 @@ def latest_run_date(
         for run in runs.values()
         if isinstance(run, Mapping)
         and run.get("pipeline_sha256") == pipeline_sha256
-        and isinstance(run.get("date"), str)
+        # A malformed date would win the lexical max and name no folder.
+        and is_run_date(run.get("date"))
     ]
     # ISO dates order lexically.
     return max(dates) if dates else None

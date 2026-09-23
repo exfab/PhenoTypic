@@ -203,6 +203,18 @@ def test_latest_run_date_is_the_most_recent_run_of_this_pipeline():
     assert latest_run_date(None, _SHA) is None
 
 
+def test_latest_run_date_ignores_a_malformed_date_of_the_same_pipeline():
+    """``"garbage"`` sorts after every ISO date, so it would otherwise win."""
+    from phenotypic.sdk_._image_figures import latest_run_date
+
+    descriptor = {"runs": {
+        "a": {"date": "2026-09-22", "pipeline_sha256": _SHA},
+        "b": {"date": "garbage", "pipeline_sha256": _SHA},
+        "c": {"date": "2026-02-30", "pipeline_sha256": _SHA},
+    }}
+    assert latest_run_date(descriptor, _SHA) == "2026-09-22"
+
+
 def test_carry_links_every_other_run_byte_for_byte(tmp_path: Path):
     store = _store_with(tmp_path / "old", _stored(), _stored(_OTHER))
     part = tmp_path / "new.part"

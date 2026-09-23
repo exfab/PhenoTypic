@@ -132,7 +132,7 @@ def split_pipeline_at_gpu(pipeline: ImagePipeline) -> StagePlan:
     for binding in pipeline.get_plots():
         ref = binding.ref
         # A plot bound to a pre-GPU operation goes with it: Stage 1 applies
-        # that operation, so Stage 1 draws its figure and Stage 3 carries it
+        # that operation, so Stage 1 draws its figure and Stage 3 keeps it
         # (spec 2026-09-22 §3a).
         if ref is not None and ref.slot == "ops" and ref.key in pre_ops:
             pre_plots.append(binding)

@@ -190,6 +190,22 @@ def test_a_save2zarr_over_an_existing_store_keeps_the_other_runs(tmp_path, plate
     assert {k: v[0] for k, v in _snapshot(store, RUN).items()} == first
 
 
+def test_carrying_a_run_with_no_files_keeps_the_figures_group(tmp_path, plate):
+    """A run whose every binding was unavailable has no file to carry, yet
+    its folder is carried: `figures/` must stay a group, since Zarr v3 has
+    no implicit groups (spec §1a)."""
+    import zarr
+
+    empty = StoredFigures(RUN, (), (), unavailable=("calibrate",))
+    store = plate.save2zarr(tmp_path / "p.ome.zarr", figures=empty)
+    plate.save2zarr(store)
+    assert _runs(store)[RUN.run_id]["unavailable"] == ["calibrate"]
+    assert (store / "figures" / "zarr.json").is_file()
+    root = zarr.open_group(str(store), mode="r")
+    assert isinstance(root["figures"], zarr.Group)
+    assert isinstance(root[f"figures/{RUN.run_id}"], zarr.Group)
+
+
 def test_a_re_derived_process_store_carries_another_days_run(tmp_path, plate):
     """MINOR-12: the consolidated process writer, over a store holding another
     day's run, carries it and consolidates both runs' groups (spec §1a)."""
