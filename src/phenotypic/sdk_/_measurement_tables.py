@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shutil
 from collections.abc import Callable
@@ -21,6 +22,8 @@ from ._atomic_io import (
 
 if TYPE_CHECKING:
     from ._image_figures import StoredFigures
+
+logger = logging.getLogger(__name__)
 
 JoinStatus = Literal["not_requested", "joined", "no_common_keys"]
 
@@ -696,7 +699,8 @@ def _rewrite_store_tables(
             # would change the published store before its new root exists.
             # Other runs' folders are never touched (spec §1a).
             shutil.rmtree(
-                part / ngff_.FIGURES_GROUP / clear_figure_run, ignore_errors=True
+                ngff_.long_path(part / ngff_.FIGURES_GROUP / clear_figure_run),
+                ignore_errors=True,
             )
         populate(part)
         atomic_write_json(part / ngff_.STORE_ROOT_JSON, root_document)
@@ -736,7 +740,8 @@ def replace_image_tables(
         figures: One run's per-image figures. They replace that run's folder
             and descriptor entry only; every other run is carried across
             unchanged (spec 2026-09-22 §1a). ``None`` adds no run and
-            touches no figure.
+            touches no figure, and so does a store whose figures descriptor
+            has a ``schema_version`` this writer does not know.
         objmap_target: Store-relative path of the label image the measurement
             table indexes. ``None`` reads it from the store.
         durable: ``fsync`` before promoting. ``None`` auto-detects SLURM.
@@ -773,6 +778,20 @@ def replace_image_tables(
             )
 
         return _populate
+
+    if figures is not None:
+        from ._image_figures import known_figures_schema, read_image_figures_descriptor
+
+        descriptor = read_image_figures_descriptor(Path(store_path))
+        if not known_figures_schema(descriptor):
+            # Clearing "this run's folder" in a layout this writer cannot read
+            # could delete anything; the store's figures stay as they are.
+            logger.warning(
+                "Adding no figure run to %s: its figures schema_version %r is "
+                "not one this writer knows",
+                store_path, descriptor.get("schema_version"),
+            )
+            figures = None
 
     return _rewrite_store_tables(
         store_path,

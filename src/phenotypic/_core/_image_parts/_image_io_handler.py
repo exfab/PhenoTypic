@@ -1088,13 +1088,16 @@ class ImageIOHandler(ImageColorSpace):
         included, because ``valid_staged_store`` requires it after Stage 1.
 
         Args:
-            path: Target ``*.ome.zarr`` directory. Created or replaced.
+            path: Target ``*.ome.zarr`` directory. Created, or replaced by a
+                new store that carries the figure runs of the one it
+                replaces (spec 2026-09-22 §1a).
             work_id: CLI work id, written into ``attributes.phenotypic`` at
                 build time. Never patched in afterwards.
             durable: ``fsync`` before promoting. ``None`` auto-detects SLURM.
-            figures: Per-image figures to write inside this store's
-                transaction (spec 2026-09-22 §3). ``None`` writes no
-                ``figures`` key.
+            figures: One run's per-image figures, written inside this store's
+                transaction (spec 2026-09-22 §3); they replace that run's
+                folder only. ``None`` adds no run. Either way, every other
+                run already at *path* is carried across.
 
         Returns:
             The promoted store path.
@@ -1165,7 +1168,9 @@ class ImageIOHandler(ImageColorSpace):
         not have.
 
         Args:
-            path: Target ``*.ome.zarr`` directory. Created or replaced.
+            path: Target ``*.ome.zarr`` directory. Created, or replaced by a
+                new store that carries the figure runs of the one it
+                replaces (spec 2026-09-22 §1a).
             series: Series to write, in canonical order. Must contain a
                 primary series (``rgb`` or ``gray``).
             write_objmap: Write the objmap label image.
@@ -1185,9 +1190,10 @@ class ImageIOHandler(ImageColorSpace):
                 ``duration_seconds`` from the store, making it byte-identical
                 across identical runs (spec 2.3.3). Only the ``--mode
                 process`` writer passes ``True``.
-            figures: Per-image figures to write inside this store's
-                transaction (spec 2026-09-22 §3). ``None`` writes no
-                ``figures`` key.
+            figures: One run's per-image figures, written inside this store's
+                transaction (spec 2026-09-22 §3); they replace that run's
+                folder only. ``None`` adds no run. Either way, every other
+                run already at *path* is carried across.
 
         Returns:
             The promoted store path.
@@ -1409,6 +1415,7 @@ class ImageIOHandler(ImageColorSpace):
         # store being replaced keeps every other run's folder (spec §1a).
         from phenotypic.sdk_._image_figures import (
             carry_figure_runs,
+            known_figures_schema,
             write_image_figures,
         )
 
@@ -1416,7 +1423,10 @@ class ImageIOHandler(ImageColorSpace):
             final, part, exclude=figures.run.run_id if figures is not None else None
         )
         figures_fragment = None
-        if figures is not None:
+        # A layout this writer does not know was carried whole; it gains no run.
+        if figures is not None and known_figures_schema(
+            (carried_fragment or {}).get(ngff_.PhenotypicAttr.FIGURES)
+        ):
             figures_fragment = write_image_figures(part, figures)
 
         # 4. root zarr.json LAST

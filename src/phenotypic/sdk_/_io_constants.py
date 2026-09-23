@@ -2538,7 +2538,9 @@ class JobMetadataKey:
     #: The initial CLI call of a measure-mode SLURM invocation (figures spec
     #: §1a): its UTC date (the figure-folder ``{date}``), UTC timestamp and
     #: pid. Measure mode keeps no processing state, so its workers read these
-    #: instead; written with the rest of this file, before fan-out.
+    #: instead; written with the rest of this file, before fan-out. The same
+    #: three names key ``state.config`` for every other mode
+    #: (``_cli_state_management.RUN_INITIATION_KEYS``).
     FIGURES_RUN_DATE: Final[str] = "figures_run_date"
     INITIATED_AT_UTC: Final[str] = "initiated_at_utc"
     INITIATED_PID: Final[str] = "initiated_pid"

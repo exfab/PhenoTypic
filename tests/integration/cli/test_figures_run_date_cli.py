@@ -77,3 +77,55 @@ def test_a_continued_run_keeps_its_call_and_a_restart_records_one(
 
     _run(out, simple_pipeline_json, synth_plate_dir, "--restart")
     assert _recorded(out) == ("2026-09-30", "2026-09-30T08:00:00.000Z", os.getpid())
+
+
+def test_a_local_run_across_midnight_writes_one_folder(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, synth_plate_dir: Path
+) -> None:
+    """MINOR-12: the clock moves to the next day between the two images, and
+    both still land in the run's one folder -- the day the call was made."""
+    from phenotypic import ImagePipeline
+    from phenotypic._cli import _cli_execution_strategies
+    from phenotypic.detect import OtsuDetector
+    from phenotypic.measure import MeasureSize
+    from phenotypic.plotting import PlotDiagnostics
+    from phenotypic.sdk_ import _image_figures, zarr_store_path
+    from phenotypic.sdk_._image_figures import read_image_figures_descriptor
+    from tests.integration.cli.conftest import _write_synth_image
+
+    _write_synth_image(synth_plate_dir / "plate_002.png")
+    pipeline = tmp_path / "pipeline.json"
+    pipeline.write_text(
+        ImagePipeline(
+            ops={"detect": OtsuDetector()},
+            meas={"size": MeasureSize()},
+            plots=[PlotDiagnostics()],
+        ).to_json(),
+        encoding="utf-8",
+    )
+    clock = {"now": datetime(2026, 9, 22, 23, 59, 58, tzinfo=timezone.utc)}
+    monkeypatch.setattr(_image_figures, "_utc_now", lambda: clock["now"])
+    real = _cli_execution_strategies.process_single_image_core
+    processed: list[str] = []
+
+    def _then_midnight(*args: object, **kwargs: object) -> object:
+        result = real(*args, **kwargs)
+        processed.append(str(kwargs["image_path"]))
+        clock["now"] = datetime(2026, 9, 23, 0, 0, 5, tzinfo=timezone.utc)
+        return result
+
+    monkeypatch.setattr(
+        _cli_execution_strategies, "process_single_image_core", _then_midnight
+    )
+
+    out = tmp_path / "out"
+    _run(out, pipeline, synth_plate_dir)
+
+    assert len(processed) == 2
+    runs = {
+        stem: set(read_image_figures_descriptor(zarr_store_path(out, "plates", stem))["runs"])
+        for stem in ("plate_001", "plate_002")
+    }
+    [only] = runs["plate_001"]
+    assert only.startswith("2026-09-22-")
+    assert runs["plate_002"] == {only}

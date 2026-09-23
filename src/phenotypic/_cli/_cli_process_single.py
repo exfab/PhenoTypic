@@ -345,18 +345,22 @@ def process_single_image_core(
         from phenotypic.plotting._pipeline import PlotCoordinator
         from phenotypic.plotting._pipeline._store_figures import (
             build_image_figures,
-            figure_run_for,
+            name_figure_run,
         )
+        from phenotypic.sdk_ import plots_dir
 
         _check_active(active_check)
-        figures = build_image_figures(
-            pipeline,
+        run = name_figure_run(
+            pipeline.get_plots(),
             image,
-            run=figure_run_for(
-                image,
-                initiation=output_manager.run_initiation,
-                pipeline_sha256=resolved_pipeline_identity["sha256"],
-            ),
+            initiation=output_manager.run_initiation,
+            pipeline_sha256=resolved_pipeline_identity["sha256"],
+            plots_base=plots_dir(output_dir),
+            dataset=dataset_name,
+            image_stem=image_stem,
+        )
+        figures = (
+            build_image_figures(pipeline, image, run=run) if run is not None else None
         )
         _check_active(active_check)
         set_provenance_status(image, "complete")
@@ -453,8 +457,9 @@ def process_single_store_measure_core(
     from phenotypic.plotting._pipeline import PlotCoordinator
     from phenotypic.plotting._pipeline._store_figures import (
         build_image_figures,
-        figure_run_for,
+        name_figure_run,
     )
+    from phenotypic.sdk_ import plots_dir
     from phenotypic.sdk_._image_figures import (
         latest_run_date,
         read_image_figures_descriptor,
@@ -470,18 +475,20 @@ def process_single_store_measure_core(
     # folder's date is then that run's; otherwise it is this call's. The
     # run entry's timestamp and pid are always this call's.
     pipeline_sha256 = pipeline_source_identity(pipeline_path)["sha256"]
-    figures = build_image_figures(
-        pipeline,
+    run = name_figure_run(
+        pipeline.get_plots(),
         image,
-        run=figure_run_for(
-            image,
-            initiation=output_manager.run_initiation,
-            date=latest_run_date(
-                read_image_figures_descriptor(store_path), pipeline_sha256
-            ),
-            pipeline_sha256=pipeline_sha256,
-        ),
-        keep_from=store_path,
+        initiation=output_manager.run_initiation,
+        date=latest_run_date(read_image_figures_descriptor(store_path), pipeline_sha256),
+        pipeline_sha256=pipeline_sha256,
+        plots_base=plots_dir(output_dir),
+        dataset=dataset_name,
+        image_stem=stem,
+    )
+    figures = (
+        build_image_figures(pipeline, image, run=run, keep_from=store_path)
+        if run is not None
+        else None
     )
 
     # Publish the authoritative tables inside the existing store, through a

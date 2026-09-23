@@ -170,9 +170,11 @@ def test_no_new_run_touches_no_figure(tmp_path, plate):
     assert read_image_figures_descriptor(store) == descriptor_before
 
 
-def test_a_rewrite_from_scratch_keeps_the_other_runs(tmp_path, plate):
-    """Full `--overwrite`, a re-derived process store, Stage 3 over Stage 1:
-    save2zarr over an existing store carries every other run (spec §1a)."""
+def test_a_save2zarr_over_an_existing_store_keeps_the_other_runs(tmp_path, plate):
+    """A `save2zarr` over an existing store -- what `--restart`, a re-derived
+    process run and Stage 3 over Stage 1 each do -- carries every other run
+    (spec §1a). `--overwrite` deletes the output tree before the run, so it
+    never reaches this path and is not covered here."""
     store = plate.save2zarr(tmp_path / "p.ome.zarr", figures=_figures(b"first", "a"))
     first = {k: v[0] for k, v in _snapshot(store, RUN).items()}
     first_entry = _runs(store)[RUN.run_id]
@@ -186,6 +188,101 @@ def test_a_rewrite_from_scratch_keeps_the_other_runs(tmp_path, plate):
     assert not (store / _at("b", LATER)).exists()
     assert (store / _at("c/default.plotly.json", LATER)).read_bytes() == b"third"
     assert {k: v[0] for k, v in _snapshot(store, RUN).items()} == first
+
+
+def test_a_re_derived_process_store_carries_another_days_run(tmp_path, plate):
+    """MINOR-12: the consolidated process writer, over a store holding another
+    day's run, carries it and consolidates both runs' groups (spec §1a)."""
+    import zarr
+
+    from phenotypic._cli._cli_process_only import write_process_only_layer
+
+    out = tmp_path / "p.ome.zarr"
+    write_process_only_layer(plate, "rgb", out, fmt="zarr", figures=_figures(b"old", "a"))
+    earlier = {k: v[0] for k, v in _snapshot(out, RUN).items()}
+    earlier_entry = _runs(out)[RUN.run_id]
+    write_process_only_layer(
+        plate, "rgb", out, fmt="zarr", figures=_figures(b"new", "b", LATER)
+    )
+    assert {k: v[0] for k, v in _snapshot(out, RUN).items()} == earlier
+    assert _runs(out)[RUN.run_id] == earlier_entry
+    assert set(_runs(out)) == {RUN.run_id, LATER.run_id}
+    listed = json.loads((out / "zarr.json").read_text(encoding="utf-8"))[
+        "consolidated_metadata"
+    ]["metadata"]
+    for group in (f"figures/{RUN.run_id}", _at("a"), f"figures/{LATER.run_id}", _at("b", LATER)):
+        assert group in listed
+    root = zarr.open_group(str(out), mode="r")
+    assert isinstance(root[_at("a")], zarr.Group)
+    assert isinstance(root[_at("b", LATER)], zarr.Group)
+
+
+def test_the_writer_never_writes_through_a_hard_link_it_finds(tmp_path):
+    """MINOR-6: a file left in the part -- a hard link into the live store that
+    a clear missed -- is replaced by a new file, never written into."""
+    from phenotypic.sdk_._image_figures import write_image_figures
+
+    live = tmp_path / "live.plotly.json"
+    live.write_bytes(b"published")
+    part = tmp_path / "p.ome.zarr.part"
+    planted = part / _at("sym/default.plotly.json")
+    planted.parent.mkdir(parents=True)
+    try:
+        os.link(live, planted)
+    except OSError:
+        pytest.skip("this filesystem refuses hard links")
+    write_image_figures(part, _figures(b"new"))
+    assert live.read_bytes() == b"published"
+    assert planted.read_bytes() == b"new"
+
+
+def _relabel_as_newer(store) -> dict:
+    """Give *store* a figures layout this writer does not know: a newer
+    ``schema_version`` and a file only that layout names."""
+    root_path = store / "zarr.json"
+    root = json.loads(root_path.read_text(encoding="utf-8"))
+    root["attributes"]["phenotypic"]["figures"]["schema_version"] = 2
+    root_path.write_text(json.dumps(root), encoding="utf-8")
+    (store / "figures" / "newer.bin").write_bytes(b"newer layout")
+    return read_image_figures_descriptor(store)
+
+
+def _figures_tree(store) -> dict:
+    return {
+        p.relative_to(store).as_posix(): (p.read_bytes(), p.stat().st_ino)
+        for p in sorted((store / "figures").rglob("*"))
+        if p.is_file()
+    }
+
+
+def _without_inodes(tree: dict) -> dict:
+    return {path: data for path, (data, _inode) in tree.items()}
+
+
+def test_a_save_over_an_unknown_figures_schema_carries_it_untouched(tmp_path, plate):
+    """MINOR-7, full save: the newer layout is carried whole -- files linked,
+    descriptor as it is -- and gains no run, not even this run's id."""
+    store = plate.save2zarr(tmp_path / "p.ome.zarr", figures=_figures(b"old"))
+    newer = _relabel_as_newer(store)
+    before = _figures_tree(store)
+    plate.save2zarr(store, figures=_figures(b"new"))
+    assert read_image_figures_descriptor(store) == newer
+    after = _figures_tree(store)
+    assert _without_inodes(after) == _without_inodes(before)
+    if sys.platform != "win32":
+        assert after == before
+
+
+def test_a_measure_rewrite_leaves_an_unknown_figures_schema_untouched(tmp_path, plate):
+    """MINOR-7, measure rewrite: same behaviour as the full save."""
+    store = plate.save2zarr(tmp_path / "p.ome.zarr", figures=_figures(b"old"))
+    newer = _relabel_as_newer(store)
+    before = _without_inodes(_figures_tree(store))
+    replace_image_tables(
+        store, _tables(), objmap_target=ngff_.objmap_path("rgb"), figures=_figures(b"new")
+    )
+    assert read_image_figures_descriptor(store) == newer
+    assert _without_inodes(_figures_tree(store)) == before
 
 
 def test_the_descriptor_reader_answers_none_for_a_foreign_root(tmp_path):

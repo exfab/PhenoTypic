@@ -98,8 +98,13 @@ def test_a_resume_reuses_the_recorded_call(monkeypatch: pytest.MonkeyPatch) -> N
 
 @pytest.mark.parametrize(
     "state",
-    [None, SimpleNamespace(config={}), SimpleNamespace(config={"figures_run_date": None})],
-    ids=["fresh-restart-or-measure", "state-before-the-call", "unrecorded"],
+    [
+        None,
+        SimpleNamespace(config={}),
+        SimpleNamespace(config={"figures_run_date": None}),
+        SimpleNamespace(config={"figures_run_date": "2026-13-45"}),
+    ],
+    ids=["fresh-restart-or-measure", "state-before-the-call", "unrecorded", "malformed"],
 )
 def test_anything_else_is_a_new_call(monkeypatch: pytest.MonkeyPatch, state: Any) -> None:
     import os
@@ -144,6 +149,50 @@ def test_no_recorded_call_reads_as_none(
     corrupt = recorded_state(tmp_path / "corrupt")
     corrupt.write_text("{not json", encoding="utf-8")
     assert recorded_run_initiation(tmp_path / "corrupt") is None
+
+
+def _edit_recorded_call(state_file: Path, **values: Any) -> None:
+    state = json.loads(state_file.read_text(encoding="utf-8"))
+    state["config"].update(values)
+    state_file.write_text(json.dumps(state), encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    "date", ["2026-13-45", "20260922", "2026-9-22", "../escape", 20260922]
+)
+def test_a_malformed_recorded_date_reads_as_unrecorded(
+    tmp_path: Path, recorded_state: Callable[..., Path], date: Any
+) -> None:
+    """MINOR-2: the date names a folder, so a corrupt one never reaches a
+    worker -- which then names its run as an unrecorded state would."""
+    from phenotypic._cli._cli_state_management import (
+        metadata_run_initiation,
+        recorded_run_initiation,
+    )
+    from phenotypic.sdk_ import JobMetadataKey, job_metadata_path
+
+    out = tmp_path / "out"
+    _edit_recorded_call(recorded_state(out), figures_run_date=date)
+    assert recorded_run_initiation(out) is None
+    job_metadata_path(out).parent.mkdir(parents=True, exist_ok=True)
+    job_metadata_path(out).write_text(
+        json.dumps({JobMetadataKey.FIGURES_RUN_DATE: date}), encoding="utf-8"
+    )
+    assert metadata_run_initiation(out) is None
+
+
+@pytest.mark.parametrize(
+    ("at_utc", "pid"),
+    [("yesterday", -1), ("2026-09-22T12:00:00", 0), (None, True), (123, "4242")],
+)
+def test_a_malformed_timestamp_or_pid_reads_as_absent(
+    tmp_path: Path, recorded_state: Callable[..., Path], at_utc: Any, pid: Any
+) -> None:
+    from phenotypic._cli._cli_state_management import recorded_run_initiation
+
+    out = tmp_path / "out"
+    _edit_recorded_call(recorded_state(out), initiated_at_utc=at_utc, initiated_pid=pid)
+    assert recorded_run_initiation(out) == RunInitiation(date=DATE)
 
 
 def test_the_call_is_not_part_of_the_work_id(

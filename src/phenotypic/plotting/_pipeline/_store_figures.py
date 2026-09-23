@@ -34,15 +34,19 @@ from phenotypic.sdk_.ngff_ import FIGURES_GROUP
 
 from ._adapter import FigureAdapter
 from ._backends import declared_figure_spec
-from ._failures import _format_error
+from ._failures import _format_error, record_plot_failure
 from ._output import normalize_plot_output
-from ._store_copyout import _read_stored_file
+from ._store_copyout import _UNRESOLVED, _read_stored_file
 from ._store_formats import serialize_store_format
 from ._writer import PlotPublicationBlocked, safe_path_component, unique_page_stems
 
 logger = logging.getLogger(__name__)
 
 _ADDRESS = re.compile(r"0x[0-9a-fA-F]+")
+
+#: The ``.failures.jsonl`` binding id of "this image's run folder could not be
+#: named", after the copy-out's ``<store>``.
+RUN_FOLDER_FAILURE = "<run>"
 
 
 def normalize_figure_error(error: BaseException) -> str:
@@ -90,6 +94,63 @@ def figure_run_for(
         initiated_at_utc=initiation.at_utc if initiation is not None else None,
         initiated_pid=initiation.pid if initiation is not None else None,
     )
+
+
+def name_figure_run(
+    bindings: Iterable[Any],
+    image: Any,
+    *,
+    initiation: RunInitiation | None = None,
+    date: str | None = None,
+    pipeline_sha256: str | None = None,
+    plots_base: Path | None = None,
+    dataset: str | None = None,
+    image_stem: str | None = None,
+) -> FigureRun | None:
+    """:func:`figure_run_for` for a CLI write, where no figure error may fail
+    the image (spec §3).
+
+    When *bindings* hold a ``PlotImage`` but the run folder cannot be named
+    -- no pipeline digest is known, or the date or digest is malformed --
+    the image gets no figures: this logs a warning, records one
+    ``.failures.jsonl`` line under *plots_base* when there is one, and
+    returns ``None``.
+
+    Args:
+        bindings: The plot bindings this write would build or keep.
+        image: The image being written.
+        initiation: As :func:`figure_run_for`.
+        date: As :func:`figure_run_for`.
+        pipeline_sha256: As :func:`figure_run_for`.
+        plots_base: Resolved ``deliverables/plots``; ``None`` records nothing
+            (process mode has no deliverables).
+        dataset: Dataset name, for the record.
+        image_stem: Image stem, for the record.
+
+    Returns:
+        The run, or ``None`` when there is no ``PlotImage`` binding or the run
+        cannot be named.
+    """
+    if not any(isinstance(binding.plot, PlotImage) for binding in bindings):
+        return None
+    try:
+        run = figure_run_for(
+            image, initiation=initiation, date=date, pipeline_sha256=pipeline_sha256
+        )
+        if run is None:
+            raise ValueError("no pipeline digest is known for this image")
+        return run
+    except Exception as exc:  # noqa: BLE001 - one figure error never kills an image
+        logger.warning(
+            "Writing no figures for %s/%s: its run folder cannot be named (spec §1a)",
+            dataset, image_stem, exc_info=exc,
+        )
+        if plots_base is not None:
+            record_plot_failure(
+                plots_base, binding_id=RUN_FOLDER_FAILURE, plot_class=_UNRESOLVED,
+                lifecycle="image", error=exc, dataset=dataset, image_stem=image_stem,
+            )
+        return None
 
 
 def build_image_figures(
@@ -414,9 +475,11 @@ def _build_page(
 
 
 __all__ = [
+    "RUN_FOLDER_FAILURE",
     "build_image_figures",
     "figure_run_for",
     "keep_image_figures",
     "merge_stored_figures",
+    "name_figure_run",
     "normalize_figure_error",
 ]

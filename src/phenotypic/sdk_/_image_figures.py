@@ -46,6 +46,28 @@ def utc_run_date() -> str:
     return _utc_now().date().isoformat()
 
 
+def is_run_date(value: object) -> bool:
+    """Whether *value* is a real calendar date spelled ``YYYY-MM-DD``."""
+    if not isinstance(value, str):
+        return False
+    try:
+        return _date.fromisoformat(value).isoformat() == value
+    except ValueError:
+        return False
+
+
+def is_initiation_timestamp(value: object) -> bool:
+    """Whether *value* is a UTC ISO-8601 timestamp with a trailing ``Z``,
+    as :func:`mint_run_initiation` spells one."""
+    if not isinstance(value, str) or not value.endswith("Z"):
+        return False
+    try:
+        datetime.fromisoformat(value[:-1] + "+00:00")
+    except ValueError:
+        return False
+    return True
+
+
 @dataclass(frozen=True)
 class RunInitiation:
     """The initial CLI call of a run (spec §1a).
@@ -102,11 +124,7 @@ class FigureRun:
     initiated_pid: int | None = None
 
     def __post_init__(self) -> None:
-        try:
-            parsed = _date.fromisoformat(self.date)
-        except (TypeError, ValueError):
-            parsed = None
-        if parsed is None or parsed.isoformat() != self.date:
+        if not is_run_date(self.date):
             raise ValueError(f"run date must be YYYY-MM-DD; got {self.date!r}")
         if not isinstance(self.pipeline_sha256, str) or not _SHA256.fullmatch(
             self.pipeline_sha256
@@ -217,8 +235,8 @@ def _ensure_group(directory: Path) -> None:
     """
     from . import ngff_
 
-    directory.mkdir(parents=True, exist_ok=True)
-    document = directory / ngff_.STORE_ROOT_JSON
+    Path(ngff_.long_path(directory)).mkdir(parents=True, exist_ok=True)
+    document = Path(ngff_.long_path(directory / ngff_.STORE_ROOT_JSON))
     if not document.exists():
         atomic_write_json(document, _GROUP_DOCUMENT)
 
@@ -233,13 +251,16 @@ def write_image_figures(
             run's folder does not yet exist. Callers rewriting a promoted store
             remove the part's copy of that one folder first: its files are
             hard links into the live store, and writing through one would
-            change the published bytes (``replace_image_tables``).
+            change the published bytes (``replace_image_tables``). A file
+            that survived that removal is unlinked, never opened for writing.
         figures: The built figures of one run.
 
     Returns:
         ``{"figures": {"schema_version": 1, "runs": {run_id: entry}}}``, to
         merge with :func:`apply_image_figures_attributes`.
     """
+    import os
+
     from . import ngff_
 
     run_id = figures.run.run_id
@@ -255,7 +276,15 @@ def write_image_figures(
             entries = []
             for stored in page.files:
                 target = ngff_.long_path(directory / stored.filename)
-                Path(target).write_bytes(stored.data)
+                # A new inode, always: an existing path may be a hard link
+                # into the live store, and exclusive create refuses to write
+                # through one the unlink did not remove.
+                try:
+                    os.unlink(target)
+                except FileNotFoundError:
+                    pass
+                with open(target, "xb") as handle:
+                    handle.write(stored.data)
                 entries.append({
                     "format": stored.format,
                     "media_type": stored.media_type,
@@ -296,14 +325,21 @@ def carry_figure_runs(
 ) -> dict[str, object] | None:
     """Carry every run folder of *source_store* but *exclude* into *store_part*.
 
-    Used when a store is rewritten from scratch over an existing one (full
-    ``--overwrite``, a re-derived process store, Stage 3 over Stage 1): the
-    other runs' files are hard-linked (or copied) across byte for byte, with
-    their descriptor entries unchanged (spec §1a "never wiped").
+    Used when a store is rewritten from scratch over an existing one (a
+    ``save2zarr`` over an existing store: ``--restart``, a re-derived process
+    store, Stage 3 over Stage 1): the other runs' files are hard-linked (or
+    copied) across byte for byte, with their descriptor entries unchanged
+    (spec §1a "never wiped").
 
     Each file is checked against its recorded sha256. A mismatch or a missing
     file is logged and carried as it is -- dropping it would wipe history, and
     the descriptor's sha256 still exposes it to any consumer that verifies.
+
+    A descriptor whose ``schema_version`` this writer does not know is
+    carried whole: every file under ``figures/`` and the descriptor as it is,
+    *exclude* included. Relabelling a newer layout as this one would be a
+    guess, and dropping it would wipe history, so the caller then writes no
+    run into it (:func:`known_figures_schema`).
 
     Args:
         source_store: The store being replaced. Absent or unreadable carries
@@ -325,13 +361,17 @@ def carry_figure_runs(
         return None
     if descriptor is None:
         return None
-    if descriptor.get("schema_version") != ngff_.FIGURES_SCHEMA_VERSION:
-        # Relabelling a newer layout as this one would be a guess.
+    if not known_figures_schema(descriptor):
         logger.warning(
-            "Not carrying figures from %s: schema_version %r is not %r",
+            "Carrying the figures of %s untouched and adding no run: "
+            "schema_version %r is not %r",
             source_store, descriptor.get("schema_version"), ngff_.FIGURES_SCHEMA_VERSION,
         )
-        return None
+        _carry_tree(
+            Path(source_store) / ngff_.FIGURES_GROUP,
+            Path(store_part) / ngff_.FIGURES_GROUP,
+        )
+        return {ngff_.PhenotypicAttr.FIGURES: descriptor}
     runs = descriptor.get("runs")
     if not isinstance(runs, dict):
         return None
@@ -352,9 +392,6 @@ def _carry_file(
     source_root: Path, store_part: Path, run_id: str, stored: Mapping[str, Any]
 ) -> None:
     """Link one descriptor-listed file into the part; warn, never raise."""
-    import os
-    import shutil
-
     from . import ngff_
 
     try:
@@ -371,13 +408,45 @@ def _carry_file(
         _ensure_group(store_part / ngff_.FIGURES_GROUP)
         _ensure_group(store_part / ngff_.FIGURES_GROUP / run_id)
         _ensure_group(store_part / ngff_.FIGURES_GROUP / run_id / directory)
-        target = store_part / stored["path"]
-        try:
-            os.link(ngff_.long_path(source), ngff_.long_path(target))
-        except OSError:
-            shutil.copy2(ngff_.long_path(source), ngff_.long_path(target))
+        _link_or_copy(source, store_part / stored["path"])
     except (OSError, KeyError, TypeError, ValueError) as exc:
         logger.warning("Could not carry figure file %r: %s", stored.get("path"), exc)
+
+
+def _carry_tree(source: Path, target: Path) -> None:
+    """Link every file under *source* to the same place under *target*.
+
+    For a layout this module cannot read: nothing is selected, so nothing is
+    lost. Warns per file, never raises.
+    """
+    import os
+
+    from . import ngff_
+
+    root = ngff_.long_path(source)
+    for directory, _subdirectories, filenames in os.walk(root):
+        destination = Path(ngff_.long_path(target)) / os.path.relpath(directory, root)
+        for filename in filenames:
+            try:
+                destination.mkdir(parents=True, exist_ok=True)
+                _link_or_copy(Path(directory) / filename, destination / filename)
+            except OSError as exc:
+                logger.warning(
+                    "Could not carry figure file %s: %s", Path(directory) / filename, exc
+                )
+
+
+def _link_or_copy(source: Path, target: Path) -> None:
+    """Hard-link *source* at *target*, copying where links are refused."""
+    import os
+    import shutil
+
+    from . import ngff_
+
+    try:
+        os.link(ngff_.long_path(source), ngff_.long_path(target))
+    except OSError:
+        shutil.copy2(ngff_.long_path(source), ngff_.long_path(target))
 
 
 def _fragment(runs: dict[str, object]) -> dict[str, object]:
@@ -399,6 +468,11 @@ def apply_image_figures_attributes(
     A run in *fragment* replaces the entry of the same run id; every other run
     already present is kept. ``None`` changes nothing: a pipeline with no
     ``PlotImage`` binding adds no run and removes none (spec §1a).
+
+    A descriptor whose ``schema_version`` this writer does not know is never
+    merged with: already in the root, it stays untouched and nothing is
+    added; arriving in *fragment* (carried whole) into a root with none, it
+    is set as it is (:func:`known_figures_schema`).
     """
     from . import ngff_
 
@@ -406,12 +480,37 @@ def apply_image_figures_attributes(
         return
     incoming = fragment[ngff_.PhenotypicAttr.FIGURES]
     current = phenotypic.get(ngff_.PhenotypicAttr.FIGURES)
+    if not (known_figures_schema(current) and known_figures_schema(incoming)):
+        if isinstance(current, dict):
+            logger.warning(
+                "Adding no figure run to a figures descriptor of schema_version "
+                "%r; this writer knows %r",
+                current.get("schema_version"), ngff_.FIGURES_SCHEMA_VERSION,
+            )
+            return
+        phenotypic[ngff_.PhenotypicAttr.FIGURES] = incoming
+        return
     runs = dict(current.get("runs", {})) if isinstance(current, dict) else {}
     runs.update(incoming["runs"])
     phenotypic[ngff_.PhenotypicAttr.FIGURES] = {
         "schema_version": incoming["schema_version"],
         "runs": runs,
     }
+
+
+def known_figures_schema(descriptor: object) -> bool:
+    """Whether a run may be added to *descriptor* -- ``True`` when there is none.
+
+    ``False`` for a descriptor whose ``schema_version`` this writer does not
+    know. Every write path then leaves that descriptor and its files as they
+    are and adds no run: never relabelled, never dropped (spec §1a).
+    """
+    from . import ngff_
+
+    return (
+        not isinstance(descriptor, Mapping)
+        or descriptor.get("schema_version") == ngff_.FIGURES_SCHEMA_VERSION
+    )
 
 
 def read_image_figures_descriptor(store_path: Path) -> dict[str, Any] | None:
@@ -501,6 +600,9 @@ __all__ = [
     "apply_image_figures_attributes",
     "carry_figure_runs",
     "figure_file_path",
+    "is_initiation_timestamp",
+    "is_run_date",
+    "known_figures_schema",
     "latest_run_date",
     "mint_run_initiation",
     "read_figure_run",

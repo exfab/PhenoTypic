@@ -16,6 +16,7 @@ from datetime import datetime
 from ._cli_types import ProcessingState, DatasetState, Dataset, ExecutionConfig
 from ._cli_update_state import aggregate_state_from_events
 from phenotypic.sdk_ import (
+    JobMetadataKey,
     ProcessingStateKey,
     migrate_legacy_machine_state,
     processing_state_path,
@@ -121,19 +122,18 @@ def save_processing_state(
     return state_file
 
 
-#: Where a run's initial CLI call is recorded in ``state.config`` (figures
-#: spec §1a). ``job_metadata.json`` uses the same three names through
-#: ``JobMetadataKey``.
-RUN_INITIATION_STATE_KEYS: tuple[str, str, str] = (
-    "figures_run_date",
-    "initiated_at_utc",
-    "initiated_pid",
+#: Where a run's initial CLI call is recorded (figures spec §1a): the same
+#: three names in ``state.config`` and in ``job_metadata.json``.
+RUN_INITIATION_KEYS: tuple[str, str, str] = (
+    JobMetadataKey.FIGURES_RUN_DATE,
+    JobMetadataKey.INITIATED_AT_UTC,
+    JobMetadataKey.INITIATED_PID,
 )
 
 
 def run_initiation_config(initiation: "RunInitiation | None") -> dict[str, Any]:
     """The three ``state.config`` entries recording *initiation*."""
-    date_key, at_key, pid_key = RUN_INITIATION_STATE_KEYS
+    date_key, at_key, pid_key = RUN_INITIATION_KEYS
     return {
         date_key: initiation.date if initiation is not None else None,
         at_key: initiation.at_utc if initiation is not None else None,
@@ -148,23 +148,47 @@ def _read_json(path: Path) -> Any:
         return None
 
 
-def _initiation_from(
-    record: Any, keys: tuple[str, str, str]
-) -> "RunInitiation | None":
-    """A :class:`RunInitiation` from a mapping, or ``None`` without a date."""
-    from phenotypic.sdk_._image_figures import RunInitiation
+def _initiation_from(record: Any) -> "RunInitiation | None":
+    """A :class:`RunInitiation` from a mapping, or ``None`` without a valid date.
+
+    The date names a folder, so a malformed one reads as unrecorded. A
+    malformed timestamp or pid reads as absent, as in a state recorded
+    before they were captured.
+    """
+    from phenotypic.sdk_._image_figures import (
+        RunInitiation,
+        is_initiation_timestamp,
+        is_run_date,
+    )
 
     if not isinstance(record, dict):
         return None
-    date_key, at_key, pid_key = keys
+    date_key, at_key, pid_key = RUN_INITIATION_KEYS
     date, at_utc, pid = record.get(date_key), record.get(at_key), record.get(pid_key)
-    if not isinstance(date, str):
+    if not is_run_date(date):
         return None
     return RunInitiation(
         date=date,
-        at_utc=at_utc if isinstance(at_utc, str) else None,
-        pid=pid if isinstance(pid, int) and not isinstance(pid, bool) else None,
+        at_utc=at_utc if is_initiation_timestamp(at_utc) else None,
+        pid=(
+            pid
+            if isinstance(pid, int) and not isinstance(pid, bool) and pid > 0
+            else None
+        ),
     )
+
+
+def run_initiation_from_config(config: Any) -> "RunInitiation | None":
+    """The run's initial CLI call as a processing state's ``config`` records it.
+
+    Args:
+        config: ``state.config``.
+
+    Returns:
+        The recorded call, or ``None`` when it records none or a malformed
+        date. Never raises.
+    """
+    return _initiation_from(config)
 
 
 def recorded_run_initiation(output_dir: Path) -> "RunInitiation | None":
@@ -182,11 +206,11 @@ def recorded_run_initiation(output_dir: Path) -> "RunInitiation | None":
 
     Returns:
         The recorded call, or ``None`` when there is no state or it records
-        no date. Never raises.
+        no valid date. Never raises.
     """
     state = _read_json(resolve_processing_state_path(Path(output_dir)))
     config = state.get(ProcessingStateKey.CONFIG) if isinstance(state, dict) else None
-    return _initiation_from(config, RUN_INITIATION_STATE_KEYS)
+    return run_initiation_from_config(config)
 
 
 def metadata_run_initiation(output_dir: Path) -> "RunInitiation | None":
@@ -202,18 +226,11 @@ def metadata_run_initiation(output_dir: Path) -> "RunInitiation | None":
 
     Returns:
         The recorded call, or ``None`` when the metadata is absent, corrupt
-        or records no date.
+        or records no valid date.
     """
-    from phenotypic.sdk_ import JobMetadataKey, job_metadata_path
+    from phenotypic.sdk_ import job_metadata_path
 
-    return _initiation_from(
-        _read_json(job_metadata_path(Path(output_dir))),
-        (
-            JobMetadataKey.FIGURES_RUN_DATE,
-            JobMetadataKey.INITIATED_AT_UTC,
-            JobMetadataKey.INITIATED_PID,
-        ),
-    )
+    return _initiation_from(_read_json(job_metadata_path(Path(output_dir))))
 
 
 def load_processing_state(output_dir: Path) -> Optional[ProcessingState]:

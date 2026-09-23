@@ -1893,9 +1893,10 @@ class OutputManager:
                 Deferring rather than re-defaulting to ``None`` here is what
                 makes the flag reach *every* write site: a caller that passes
                 nothing still gets the run's mode, so no site can be inert.
-            figures: Per-image figures to write inside the store's
-                transaction (spec 2026-09-22 §3). ``None`` writes no
-                ``figures`` key.
+            figures: One run's per-image figures, written inside the store's
+                transaction (spec 2026-09-22 §3); they replace that run's
+                folder only. ``None`` adds no run. Either way, every other
+                run already in the store is carried across (§1a).
 
         Returns:
             Path where the store was promoted, or ``None`` if saving failed.

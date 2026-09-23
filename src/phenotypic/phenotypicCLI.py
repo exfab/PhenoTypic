@@ -830,7 +830,8 @@ def _run_initiation(resume_state: Any | None) -> "RunInitiation":
     timestamp and pid unchanged -- so a run resumed on a later day still
     writes one folder and names one call. Anything else -- a fresh run,
     ``--restart``, ``--overwrite``, a state written before the call was
-    recorded, or measure mode, which keeps no state -- is a new call.
+    recorded or with a malformed date, or measure mode, which keeps no
+    state -- is a new call.
 
     Args:
         resume_state: The state being resumed, or ``None``.
@@ -838,14 +839,11 @@ def _run_initiation(resume_state: Any | None) -> "RunInitiation":
     Returns:
         The call's :class:`~phenotypic.sdk_._image_figures.RunInitiation`.
     """
-    from phenotypic._cli._cli_state_management import (
-        RUN_INITIATION_STATE_KEYS,
-        _initiation_from,
-    )
+    from phenotypic._cli._cli_state_management import run_initiation_from_config
     from phenotypic.sdk_._image_figures import mint_run_initiation
 
     recorded = (
-        _initiation_from(resume_state.config, RUN_INITIATION_STATE_KEYS)
+        run_initiation_from_config(resume_state.config)
         if resume_state is not None
         else None
     )

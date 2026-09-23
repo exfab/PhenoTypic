@@ -370,18 +370,27 @@ def stage1_preprocess_core(
         operation_count = len(current_application_operations(image))
         from phenotypic.plotting._pipeline._store_figures import (
             build_image_figures,
-            figure_run_for,
+            name_figure_run,
         )
+        from phenotypic.sdk_ import plots_dir
 
         # Only the plots bound to Stage 1's operations (the split gives them
         # to pre_pipeline): a §3a figure draws from state its apply() left in
         # this process, and Stage 3 keeps it from this run's folder. No
         # copy-out here; Stage 3 publishes.
         _check_active(active_check)
-        figures = build_image_figures(
-            plan.pre_pipeline,
+        run = name_figure_run(
+            plan.pre_pipeline.get_plots(),
             image,
-            run=figure_run_for(image, initiation=output_manager.run_initiation),
+            initiation=output_manager.run_initiation,
+            plots_base=plots_dir(output_dir),
+            dataset=dataset_name,
+            image_stem=image_stem,
+        )
+        figures = (
+            build_image_figures(plan.pre_pipeline, image, run=run)
+            if run is not None
+            else None
         )
         _check_active(active_check)
         set_retry_base_length(image, operation_count)
@@ -594,10 +603,11 @@ def stage3_merge_measure_core(
         from phenotypic.plotting._pipeline import PlotCoordinator
         from phenotypic.plotting._pipeline._store_figures import (
             build_image_figures,
-            figure_run_for,
             keep_image_figures,
             merge_stored_figures,
+            name_figure_run,
         )
+        from phenotypic.sdk_ import plots_dir
 
         # The run is Stage 1's: its journal application, continued here,
         # records the pipeline digest, and the run's initial call is the one
@@ -605,11 +615,21 @@ def stage3_merge_measure_core(
         # store loaded above -- the same run's folder -- and so is any §3a
         # figure of Stage 3's own, all before the save below replaces it.
         _check_active(active_check)
-        run = figure_run_for(image, initiation=output_manager.run_initiation)
-        figures = merge_stored_figures(
-            keep_image_figures(store, plan.pre_pipeline.get_plots(), run=run),
-            build_image_figures(plan.post_pipeline, image, run=run, keep_from=store),
+        stage_plots = [*plan.pre_pipeline.get_plots(), *plan.post_pipeline.get_plots()]
+        run = name_figure_run(
+            stage_plots,
+            image,
+            initiation=output_manager.run_initiation,
+            plots_base=plots_dir(output_dir),
+            dataset=dataset_name,
+            image_stem=image_stem,
         )
+        figures = None
+        if run is not None:
+            figures = merge_stored_figures(
+                keep_image_figures(store, plan.pre_pipeline.get_plots(), run=run),
+                build_image_figures(plan.post_pipeline, image, run=run, keep_from=store),
+            )
 
         _check_active(active_check)
         set_provenance_status(image, "complete")
@@ -628,7 +648,8 @@ def stage3_merge_measure_core(
             )
         # After promotion, before the Stage-3 marker, the token/raw cleanup
         # and the caller's completion record: a crash between the two re-runs
-        # Stage 3, so deliverables never lag a certified store.
+        # Stage 3, so deliverables never lag a certified store. Stage 1's
+        # bindings name the class of the failures this folder keeps for them.
         _check_active(active_check)
         PlotCoordinator(
             plan.post_pipeline, output_dir, commit_guard=commit_guard
@@ -637,6 +658,7 @@ def stage3_merge_measure_core(
             run_id=figures.run.run_id if figures is not None else None,
             dataset=dataset_name,
             image_stem=image_stem,
+            bindings=stage_plots,
         )
         if work_id is None:
             _check_active(active_check)

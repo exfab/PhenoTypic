@@ -352,19 +352,20 @@ def process_single_apply_only_core(
         if process_format == "zarr":
             from phenotypic.plotting._pipeline._store_figures import (
                 build_image_figures,
-                figure_run_for,
+                name_figure_run,
             )
 
-            figures = build_image_figures(
-                pipeline,
+            # The date only: a process store omits the call's timestamp and
+            # pid, like the journal's wall-clock times (spec §1a). There is no
+            # deliverables tree, so a run that cannot be named is only logged.
+            run = name_figure_run(
+                pipeline.get_plots(),
                 image,
-                # The date only: a process store omits the call's timestamp
-                # and pid, like the journal's wall-clock times (spec §1a).
-                run=figure_run_for(
-                    image,
-                    date=run_initiation.date if run_initiation is not None else None,
-                ),
+                date=run_initiation.date if run_initiation is not None else None,
+                image_stem=image_path.name,
             )
+            if run is not None:
+                figures = build_image_figures(pipeline, image, run=run)
         # BEFORE the write below, or the store records the stale default.
         # `initialize_cli_provenance` opens at `"in_progress"`
         # (_provenance.py:305), and every sibling path closes it --

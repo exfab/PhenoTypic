@@ -109,6 +109,38 @@ def test_figure_run_for_reads_the_journal_or_takes_what_it_is_given():
     assert figure_run_for(object(), date="2026-09-22") is None
 
 
+def test_a_run_that_cannot_be_named_writes_no_figures_and_says_so(tmp_path):
+    """Spec §3: no figure error fails an image. An unnamed run folder -- no
+    digest, a malformed date -- is one `.failures.jsonl` line, never a raise."""
+    from phenotypic.plotting._pipeline._store_figures import (
+        RUN_FOLDER_FAILURE,
+        name_figure_run,
+    )
+    from phenotypic.sdk_ import plot_failures_jsonl_path
+
+    bindings = ImagePipeline(plots=[Bars()]).get_plots()
+    sha = "ef" * 32
+    assert name_figure_run(bindings, object(), plots_base=tmp_path) is None
+    assert name_figure_run(
+        bindings, object(), date="2026-13-45", pipeline_sha256=sha, plots_base=tmp_path,
+        dataset="ds", image_stem="plate",
+    ) is None
+    assert name_figure_run(bindings, object(), plots_base=None) is None
+    lines = [
+        json.loads(line)
+        for line in plot_failures_jsonl_path(tmp_path).read_text(encoding="utf-8").splitlines()
+    ]
+    assert [line["binding_id"] for line in lines] == [RUN_FOLDER_FAILURE] * 2
+    assert "no pipeline digest" in lines[0]["error"]
+    assert (lines[1]["dataset"], lines[1]["image_stem"]) == ("ds", "plate")
+    assert "YYYY-MM-DD" in lines[1]["error"]
+    # A named run passes through; no image binding needs no run and records nothing.
+    run = name_figure_run(bindings, object(), date="2026-09-22", pipeline_sha256=sha)
+    assert run.run_id == "2026-09-22-efefefefefef"
+    assert name_figure_run(ImagePipeline().get_plots(), object(), plots_base=tmp_path) is None
+    assert len(plot_failures_jsonl_path(tmp_path).read_text(encoding="utf-8").splitlines()) == 2
+
+
 def test_default_plotly_stores_plotly_json_only():
     stored = _build(Bars())
     [binding] = stored.bindings

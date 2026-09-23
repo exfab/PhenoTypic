@@ -7,7 +7,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from typing import Any, Mapping
 
 import pandas as pd
@@ -83,11 +83,20 @@ class PlotCoordinator:
         self._commit_guard = commit_guard
 
     def publish_store_figures(
-        self, store_path: Path, *, run_id: str | None, dataset: str, image_stem: str
+        self,
+        store_path: Path,
+        *,
+        run_id: str | None,
+        dataset: str,
+        image_stem: str,
+        bindings: Iterable[Any] | None = None,
     ) -> None:
         """Copy one run folder of a promoted store to deliverables (spec §3, §1a).
 
         ``run_id`` ``None`` -- this run built no figures -- publishes nothing.
+        *bindings* name the class of each recorded failure (spec §3); ``None``
+        means this coordinator's pipeline's. Staged Stage 3 passes Stage 1's
+        too, since its run folder keeps them.
         """
         from ._store_copyout import publish_store_figures
 
@@ -98,7 +107,9 @@ class PlotCoordinator:
             dataset=dataset, image_stem=image_stem,
             plot_classes={
                 binding.id: type(binding.plot).__name__
-                for binding in self._pipeline.get_plots()
+                for binding in (
+                    self._pipeline.get_plots() if bindings is None else bindings
+                )
             },
             publication_guard=self._publication_guard, commit_guard=self._commit_guard,
         )

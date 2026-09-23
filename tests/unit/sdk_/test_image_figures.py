@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -145,6 +146,20 @@ def test_apply_merges_a_run_and_keeps_every_other():
     assert phenotypic["figures"]["runs"] == {"a": {"n": 1}, "b": {"n": 3}}
 
 
+def test_apply_never_merges_with_an_unknown_schema():
+    """MINOR-7: never relabelled, never dropped (spec §1a)."""
+    newer = {"schema_version": 2, "layout": {"x": 1}}
+    phenotypic: dict = {"figures": dict(newer)}
+    apply_image_figures_attributes(
+        phenotypic, {"figures": {"schema_version": 1, "runs": {"b": {"n": 3}}}}
+    )
+    assert phenotypic == {"figures": newer}
+    # Carried whole into a root that has none: set as it is.
+    fresh: dict = {}
+    apply_image_figures_attributes(fresh, {"figures": dict(newer)})
+    assert fresh == {"figures": newer}
+
+
 def test_apply_none_changes_nothing():
     """`figures=None` means "no new run", never removal (spec §1a)."""
     phenotypic: dict = {"figures": {"schema_version": 1, "runs": {"a": {}}}}
@@ -199,6 +214,9 @@ def test_carry_links_every_other_run_byte_for_byte(tmp_path: Path):
     assert not (part / "figures" / _RUN.run_id).exists()
     for entry in runs[_OTHER.run_id]["bindings"]["sym"]["pages"][0]["files"]:
         assert (part / entry["path"]).read_bytes() == (store / entry["path"]).read_bytes()
+        # A link, not a copy, where the platform allows one.
+        if sys.platform != "win32":
+            assert (part / entry["path"]).stat().st_ino == (store / entry["path"]).stat().st_ino
     for level in ("", _OTHER.run_id, f"{_OTHER.run_id}/sym"):
         assert (part / "figures" / level / "zarr.json").is_file()
 
