@@ -161,14 +161,14 @@ record it loaded from a store.
   - a measured | reference swatch pair, drawn next to the image;
   - the patch name, plus a status suffix (`· 24% covered`, `· rejected`,
     `· excluded`, `· empty`);
-  - a second line, `ΔE00 {before:.1f} → {after:.1f}` in the monospace family,
-    or `ΔE00 not fitted`.
+  - a second line, `ΔE00 {before:.1f} -> {after:.1f}`, or `ΔE00 not fitted`.
 - Boxes on the image:
   - every `full_box` as a thin dotted white outline;
   - every `core_box` as a 1.8 pt outline in its status colour;
   - dashed outlines for `rejected`, `excluded` and `empty`.
-- Below each group, spanning its three columns, the ROI's flags (vermilion) and
-  warnings (orange) are printed wrapped. Nothing is printed when both are empty.
+- Below each group, spanning its three columns, the ROI's flags and warnings
+  are printed, wrapped by measured width. Nothing is printed when both are
+  empty.
 - A ROI with `lattice_found=False` shows its crop, no boxes, and its flags.
 - Figure title: `{image_name} · {verdict} · degree {degree} · {n_fitted}/{n_expected} patches fitted`.
   The count reads `not fitted` when `n_fitted` is `None`.
@@ -197,8 +197,13 @@ record it loaded from a store.
 - `matplotlib` and `colour` are imported inside the function, so
   `tests/unit/ci/test_deferred_imports.py` and `test_startup_imports.py` stay
   green, with the new module added to the deferred-imports allow-list.
-- Label glyphs such as "→" and "ΔE" use the monospace family, which renders
-  them. The first prototype showed that the theme's sans fallback lacks "→".
+- **Default text styling (user decision, 2026-09-22).** No text sets a font
+  size, family or colour; every text takes the `phenotypic_mpl_context()`
+  defaults. The layout adapts to whatever those defaults measure, and only
+  the layout changes to avoid overlap. The only colours are the two meaning-
+  carrying systems in §Colour. A glyph the default font lacks is replaced in
+  the text, not by changing the font: the first prototype's fallback font had
+  no "→", so the ΔE line uses "->".
 
 ### 3. `CalibrateColorRpcc.show_tiles(*, figsize=None) -> Figure`
 
