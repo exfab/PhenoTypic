@@ -53,7 +53,7 @@ execution is **sequential**; no parallel worktrees.
 | C3 | T5 | Keystone (copy-out) | Opus, high |
 | C4 | T6 | Seam + test-port sweep (4 call sites, emit_image retired) | Opus, high |
 | C5 | T7 | Leaf (properties; cache parity may expose a provider bug) | Opus, high |
-| C5b | T7a | Keystone + Seam (apply-state figures; calibration provider; staged split) | Opus, high |
+| C5b | T7a + T7b | Keystone + Seam (apply-state figures; calibration provider; staged split; run folders) | Opus, high |
 | C6 | T8 | Sweep (docs; Sphinx build on Slurm) | Sonnet, medium |
 | — | T9 | Orchestrator (sharded Slurm regression) | — |
 
@@ -2611,6 +2611,40 @@ git commit -m "test: figure reproducibility, cache parity, and migrate neutralit
 **Manual check (not a unit test):** one full-mode run on `load_yeast_plate_full()` (the bundled *Rhodotorula* full plate with its checker) as a Slurm job via the **`slurm-job`** skill, if valid checker ROIs for that plate can be found in the calibration specs/tests (`docs/superpowers/specs/2026-09-21-in-frame-checker-color-correction/`, `tests/unit/correction/`); open the stored `figures/cal/default.png` and the deliverables copy. If no ROIs are documented, report that instead of guessing coordinates.
 
 - [ ] Commit in two parts: (a) `FigureInputUnavailable` + build carry + `CalibrateColorRpcc` provider + unit tests; (b) CLI wiring (measure carry, staged split + Stage 1 build + Stage 3 carry) + integration tests.
+
+---
+
+### Task 7b: Run folders (§1a) — and Task 7a revised to match
+
+*Added 2026-09-22, user decision. Spec: §1a (run folders `{date}-{pipeline hash}`, never wiped, descriptor keyed by run, consumer picks the current run) and the revised §3a (no copy between run folders; keep only within the same run folder; else `unavailable`). Executed by the same agent as Task 7a, sequentially, because the two share files.*
+
+**Order.**
+1. Finish and commit Task 7a's provider part: `FigureInputUnavailable` (fix its lazy-import test), `CalibrateColorRpcc` as `PlotImage`, and its unit tests. The carry/CLI parts of 7a are superseded below.
+2. Run folders, store side:
+   - `sdk_/_image_figures.py`: `StoredFigures` gains `run_id`, `date` and `pipeline_sha256`, plus `unavailable: tuple[str, ...]`. `write_image_figures` writes `figures/<run_id>/<binding>/…` and returns a fragment for **one run**. Merging that fragment into the root **preserves every other run's entry**.
+   - `replace_image_tables`: `figures=None` (the default) means no new run and nothing touched. `KEEP_FIGURES` is retired. A `StoredFigures` clears and rewrites **only its own run folder** in the part; the other runs stay as hard links.
+   - `_write_store_part` / `save2zarr`: when the final path already holds a store, carry its other run folders (files and descriptor entries) into the new part, verified by sha256. This covers full `--overwrite`, a re-derived process store, and Stage 3 over Stage 1.
+3. Run id at the CLI:
+   - `{date}` is the UTC date the CLI invocation started, taken from existing run state if there is one (grep for the run start timestamp or manifest under `.phenotypic/`). Otherwise, capture it once at invocation and pass it through the worker config to every image and stage. The same date must reach SLURM workers and staged Stage 1/3.
+   - `{pipeline hash}` is the first 12 hex of the pipeline source sha256 recorded in provenance.
+4. Build: `build_image_figures(pipeline, image, *, run_id, date, pipeline_sha256, keep_from: Path | None = None)`. A §3a binding that raises `FigureInputUnavailable` keeps its entry from `keep_from`'s **same `run_id`** folder, if one exists and its sha256 verifies. Otherwise it goes into `unavailable`.
+   - Measure mode passes `keep_from=store_path`.
+   - Stage 3 passes `keep_from=<the Stage-1 store>`.
+   - Stage 1 builds only the bindings whose producer is in `pre_pipeline`. The staged split changes from 7a still apply.
+5. Copy-out publishes **this run's** folder only (it takes `run_id`). A store with no folder for this run publishes nothing.
+
+**Tests.** Each must be able to fail, and each gets a mutation.
+- **Two runs, one store.** A full run, then a measure run with a different pipeline: both run folders are present, and the first is byte-identical.
+- **Same run id.** A same-day, same-pipeline rerun replaces only that folder.
+- **Full `--overwrite`** (a direct `save_image_store` over an existing store) keeps the other runs' folders.
+- **Process-mode byte identity** is kept within one fixed date.
+- **Run id** is `YYYY-MM-DD-<12 hex>` from a pinned date and the pipeline sha.
+- **One run id for the whole run:** the staged Stage 1 → Stage 3 path uses a single run id across stages, even when the stages see different wall-clock days (monkeypatch the clock).
+- **Copy-out** publishes only this run.
+- **§3a:** measure mode on a store whose earlier run holds the calibration overlay puts `cal` in the new run's `unavailable`, and leaves the earlier folder untouched. Stage 3 keeps Stage 1's overlay in the same folder.
+- **Existing tests:** update the Task 1–7 tests and fixtures that assert the flat `figures/<binding>/…` paths or the flat descriptor (`figure_store`, `emit_image_via_store`, `test_image_figures*.py`, `test_store_copyout.py`, `test_figures_in_store.py`, `test_process_only_zarr.py`, the parity and migrate tests). Keep what each one guarantees.
+
+**Commits.** Separate commits, each green: (a) 7a provider; (b) store-side run folders plus updated tests; (c) CLI run id, build keep and copy-out; (d) calibration wiring and staged §3a, plus the integration tests.
 
 ---
 

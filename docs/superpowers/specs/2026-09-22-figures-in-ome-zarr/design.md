@@ -35,8 +35,8 @@ with a media type, and a consumer renders what it understands.
 - **Figures in intermediate or preview stores.** Builder preview stores
   (`save_intermediate_zarr`, `_image_io_handler.py:1428`) get no figures, and
   staged Stage 1 stores get none **except** those of the §3a bindings whose
-  producer ran in Stage 1, which Stage 3 carries forward. Stage 2 writes no
-  store.
+  producer ran in Stage 1, which Stage 3 keeps in the same run folder (§1a,
+  §3a). Stage 2 writes no store.
 - **Figures for flat process exports.** `--process-format tiff` has no store,
   so it gets no figures.
 - **Backfilling figures during `--mode migrate`.** Migrate never fabricates a
