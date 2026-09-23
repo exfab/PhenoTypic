@@ -16,16 +16,22 @@ from phenotypic.correction._color_correction import _calibration_overlay as over
 from phenotypic.correction._color_correction._calibration_overlay import (
     STATUS_COLOURS,
     CalibrationOverlayRecord,
+    RoiDraft,
     RoiOverlay,
     TileOverlay,
+    build_overlay_record,
     render_calibration_overlay,
 )
+from phenotypic.correction._color_correction._checker_measure import TileMeasurement
+from phenotypic.correction._color_correction._checker_roi import CheckerLattice
 
 from ._checker_frames import (
+    NAMES,
     SRGB,
     TILE,
     TOP,
     _band_patch,
+    band_prior,
     band_rois,
     frozen_op,
     quietly,
@@ -80,6 +86,138 @@ def test_record_values_match_the_run() -> None:
             assert t.delta_e_after == pytest.approx(patches[t.patch]["deltaE00_after"])
 
 
+@pytest.mark.parametrize("run", ["planted", "expect_tiles"])
+def test_record_boxes_are_the_lattice_boxes(run) -> None:
+    if run == "planted":
+        operation = calibrated(planted_faults(), on_qc_fail="warn")
+    else:
+        operation = frozen_op(degree=1, on_qc_fail="warn")
+        operation.rois[1].expect_tiles = 7
+        quietly(operation, Image(arr=render_frame()))
+    record = operation.calibration_record
+
+    for roi, dumped in zip(record.rois, operation.diagnostics["lattices"], strict=True):
+        lattice = CheckerLattice.model_validate(dumped)
+        full = [b[2:] for b in lattice.boxes(rot=lattice.rot)]
+        core = [b[2:] for b in lattice.boxes(core=operation.core_trim, rot=lattice.rot)]
+        if roi.tiles:
+            by_rc = {(b[0], b[1]): b[2:] for b in lattice.boxes(rot=lattice.rot)}
+            by_rc_core = {(b[0], b[1]): b[2:]
+                          for b in lattice.boxes(core=operation.core_trim, rot=lattice.rot)}
+            assert len(roi.tiles) == len(full)
+            for t in roi.tiles:
+                assert t.full_box == pytest.approx(by_rc[(t.row, t.col)])
+                assert t.core_box == pytest.approx(by_rc_core[(t.row, t.col)])
+        else:
+            assert [pair[0] for pair in roi.unidentified_boxes] == pytest.approx(full)
+            assert [pair[1] for pair in roi.unidentified_boxes] == pytest.approx(core)
+    assert any(not roi.tiles for roi in record.rois) == (run == "expect_tiles")
+
+
+# -- build_overlay_record on plain inputs -----------------------------------
+def measurement(row: int, col: int, *, n_pixels: int = 100,
+                impurity: float = 0.0) -> TileMeasurement:
+    return TileMeasurement(
+            row=row, col=col, roi_index=0, n_pixels=n_pixels, lab=(50.0, 0.0, 0.0),
+            srgb=(0.2 + 0.1 * row, 0.3, 0.2 + 0.1 * col), spread_delta_e=0.5,
+            medoid_rank=0, medoid_widened=False, impurity=impurity,
+            robust_shift=0.0, clipped=0.0,
+    )
+
+
+#: Patches the winning ROI fitted, with made-up ΔE00 that a test can trace.
+SCORES = {name: {"deltaE00_before": 10.0 + i, "deltaE00_after": 1.0 + i}
+          for i, name in enumerate(NAMES[:4])}
+IMPURITY_LIMIT = 0.2
+
+
+def synthetic_record(*, fitted: bool, rejected: set[str], lattice=None,
+                     core_trim: float = 0.4) -> CalibrationOverlayRecord:
+    """ROI 0 claims patches 0-3; ROI 1 lost a collision over patches 0 and 1.
+
+    ROI 0: patch 0 clean, patch 1 whatever *rejected* says, patch 2 occluded
+    past the impurity limit, patch 3 an empty box. ROI 1: the same names as
+    ROI 0's patches 0 and 1, which it did not claim.
+    """
+    lattice = lattice or band_prior(nrows=2)
+    winner = RoiDraft(
+            roi_index=0, label=None, crop=np.zeros((10, 10, 3), np.uint8),
+            lattice=lattice, claimed=True,
+            tiles=[(measurement(0, 0), NAMES[0]), (measurement(1, 0), NAMES[1]),
+                   (measurement(0, 1, impurity=0.5), NAMES[2]),
+                   (measurement(1, 1, n_pixels=0), NAMES[3])],
+    )
+    loser = RoiDraft(
+            roi_index=1, label=None, crop=np.zeros((10, 10, 3), np.uint8),
+            lattice=lattice, claimed=False,
+            tiles=[(measurement(0, 0), NAMES[0]), (measurement(1, 0), NAMES[1])],
+    )
+    return build_overlay_record(
+            image_name="synthetic", verdict="corrected" if fitted else "refused",
+            refusal=None if fitted else "refused", degree=1, n_expected=24,
+            n_fitted=3 if fitted else None, drafts=[winner, loser], qc=[],
+            reference_srgb={name: (0.5, 0.5, 0.5) for name in NAMES},
+            fitted_patches=SCORES if fitted else None, rejected=rejected,
+            impurity_limit=IMPURITY_LIMIT, core_trim=core_trim,
+    )
+
+
+def test_an_unclaimed_tile_whose_patch_was_rejected_is_excluded() -> None:
+    # The winner's rejection of patch 1 is not the losing ROI's own.
+    record = synthetic_record(fitted=True, rejected={NAMES[1]})
+    assert tile(record, 0, 1, 0).status == "rejected"
+    assert tile(record, 1, 1, 0).status == "excluded"
+    assert tile(record, 1, 0, 0).status == "excluded"
+
+
+@pytest.mark.parametrize("fitted", [True, False])
+def test_a_claimed_rejected_tile_is_rejected(fitted) -> None:
+    # Also without an accepted fit: a post-rejection rank refusal.
+    record = synthetic_record(fitted=fitted, rejected={NAMES[1]})
+    assert tile(record, 0, 1, 0).status == "rejected"
+    assert tile(record, 0, 0, 0).status == ("used" if fitted else "excluded")
+    assert tile(record, 0, 1, 1).status == "empty"
+
+
+def test_delta_e_is_attached_only_to_used_partly_covered_and_rejected() -> None:
+    record = synthetic_record(fitted=True, rejected={NAMES[1]})
+    statuses = {}
+    for roi in record.rois:
+        for t in roi.tiles:
+            statuses[(roi.roi_index, t.row, t.col)] = t.status
+            if t.status in ("used", "partly_covered", "rejected"):
+                assert t.delta_e_before == SCORES[t.patch]["deltaE00_before"]
+                assert t.delta_e_after == SCORES[t.patch]["deltaE00_after"]
+            else:
+                # ROI 1's patches 0 and 1 were scored -- for ROI 0's tiles.
+                assert t.delta_e_before is None and t.delta_e_after is None, t
+    assert statuses == {
+        (0, 0, 0): "used", (0, 1, 0): "rejected", (0, 0, 1): "partly_covered",
+        (0, 1, 1): "empty", (1, 0, 0): "excluded", (1, 1, 0): "excluded",
+    }
+    empty = tile(record, 0, 1, 1)
+    assert empty.measured_srgb is None and empty.impurity is None
+
+
+def test_no_fit_attaches_no_delta_e() -> None:
+    record = synthetic_record(fitted=False, rejected={NAMES[1]})
+    assert all(t.delta_e_before is None and t.delta_e_after is None
+               for roi in record.rois for t in roi.tiles)
+
+
+def test_synthetic_boxes_follow_rotation_and_core_trim() -> None:
+    lattice = band_prior(nrows=2).model_copy(update={"rot": 0.05})
+    record = synthetic_record(fitted=True, rejected=set(), lattice=lattice,
+                              core_trim=0.3)
+    full = {(b[0], b[1]): b[2:] for b in lattice.boxes(rot=0.05)}
+    core = {(b[0], b[1]): b[2:] for b in lattice.boxes(core=0.3, rot=0.05)}
+    assert full[(0, 0)] != pytest.approx(lattice.boxes()[0][2:])  # rotation moves it
+    for roi in record.rois:
+        for t in roi.tiles:
+            assert t.full_box == pytest.approx(full[(t.row, t.col)])
+            assert t.core_box == pytest.approx(core[(t.row, t.col)])
+
+
 # -- spec test 2: the crop is as shot, and owns its memory ------------------
 def test_crop_is_the_as_shot_pixels_and_owns_its_buffer() -> None:
     arr = planted_faults()
@@ -110,6 +248,7 @@ def test_a_gate_refusal_keeps_a_record() -> None:
     record = operation.calibration_record
     assert record.verdict == "refused" and "quality gate failed" in record.refusal
     assert record.n_fitted is None
+    assert all(roi.tiles for roi in record.rois)
     assert {t.status for roi in record.rois for t in roi.tiles} <= {"excluded", "empty"}
     assert all(t.delta_e_after is None for roi in record.rois for t in roi.tiles)
 
@@ -210,7 +349,11 @@ def test_a_collided_roi_marks_its_tiles_excluded() -> None:
                         degree=2).calibration_record
 
     assert any("already claimed" in flag for flag in record.rois[1].flags)
+    assert record.rois[1].tiles
     assert {t.status for t in record.rois[1].tiles} <= {"excluded", "empty"}
+    # Its patch names were scored -- for ROI 0's tiles, not these.
+    assert all(t.delta_e_before is None and t.delta_e_after is None
+               for t in record.rois[1].tiles)
 
 
 # -- spec test 4: per-run reset ---------------------------------------------
