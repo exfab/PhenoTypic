@@ -585,10 +585,29 @@ def _accounting_job_is_terminal(job_id: str) -> bool:
     fail-safe ``None`` rather than unblocking on a guess. An array job yields
     one row per task and every task must be terminal; ``sacct`` renders
     cancellation as ``CANCELLED by <uid>``, so only the leading token matches.
+
+    A requeued task has one row per *attempt*, and an attempt whose node died
+    is never closed: it reads ``RUNNING`` with no end time indefinitely, even
+    though the requeued attempt finished. Only each task's latest attempt is
+    judged, ranked by start time. A start that is not a timestamp is a
+    placeholder: ``Unknown`` for a pending (not yet restarted) attempt and
+    ``None`` for one cancelled before it ever started. A placeholder on a
+    non-terminal state is the latest (it may still run); on a terminal state it
+    never ran and ranks below every real attempt. Ties go to the non-terminal
+    row, so print order can never unblock a live task. Rows that are not
+    ``jobid|state|start`` are not an answer.
     """
     try:
         result = subprocess.run(
-            ["sacct", "-j", str(job_id), "-X", "-n", "-P", "--format=State"],
+            [
+                "sacct",
+                "-j",
+                str(job_id),
+                "-X",
+                "-n",
+                "-P",
+                "--format=JobID,State,Start",
+            ],
             capture_output=True,
             text=True,
             check=False,
@@ -598,10 +617,23 @@ def _accounting_job_is_terminal(job_id: str) -> bool:
         return False
     if result.returncode != 0:
         return False
-    states = [line.strip() for line in result.stdout.splitlines() if line.strip()]
-    return bool(states) and all(
-        state.split()[0] in _TERMINAL_JOB_STATES for state in states
-    )
+    latest: dict[str, tuple[tuple[int, str, bool], bool]] = {}
+    for line in result.stdout.splitlines():
+        if not line.strip():
+            continue
+        fields = [field.strip() for field in line.split("|")]
+        if len(fields) != 3 or not all(fields):
+            return False
+        task, state, start = fields
+        live = state.split()[0] not in _TERMINAL_JOB_STATES
+        try:
+            datetime.fromisoformat(start)
+            order = (1, start, live)
+        except ValueError:
+            order = (2 if live else 0, "", live)
+        if task not in latest or order > latest[task][0]:
+            latest[task] = (order, live)
+    return bool(latest) and not any(live for _, live in latest.values())
 
 
 def scheduler_job_is_active(job_id: str) -> bool | None:

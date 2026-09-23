@@ -43,6 +43,14 @@ Run `DenoiseBlockMatch` *after* correction: correction improves accuracy while
 mildly amplifying per-pixel noise (within-tile ΔE2000 spread 3.32 → 3.63 median
 on the calibration chip).
 
+**Checking a calibration by eye:** after `apply()`, `op.show_tiles()` draws
+each ROI's tiles, the chart patch each was matched to, and ΔE00 before and
+after. It draws from `op.calibration_record`, plain data that is kept even
+when the gate refuses the frame. `render_calibration_overlay(record)` in
+`_calibration_overlay.py` reads nothing else, so a record persisted elsewhere
+draws the same figure. Saving the record and CLI publication are not
+implemented yet.
+
 ## Invariants a change here must not break
 
 - **Reference values are Bradford-adapted** from the chart's own illuminant to
