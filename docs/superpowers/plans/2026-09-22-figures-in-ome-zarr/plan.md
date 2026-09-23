@@ -2,159 +2,76 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Every per-image (`PlotImage`) figure a pipeline produces is written into the image's `.ome.zarr` store in `--mode full`, staged Stage 3, `--mode measure` and `--mode process --process-format zarr`. `deliverables/plots/` is then populated by copying out of the promoted store.
+**Goal:** Every per-image (`PlotImage`) figure a pipeline produces is written into that image's `.ome.zarr` store. This happens in `--mode full`, staged Stage 3, `--mode measure` and `--mode process --process-format zarr`. `deliverables/plots/` is then filled by copying out of the promoted store.
 
-**Architecture:** Three separate units.
-1. **Build** (`plotting/_pipeline/_store_figures.py`) renders each binding in memory into an immutable `StoredFigures` value. It writes nothing.
-2. **Store write** (`sdk_/_image_figures.py`) writes that value into a `.part` directory inside the existing root-last transaction and returns the `attributes.phenotypic.figures` descriptor.
-3. **Copy-out** (`plotting/_pipeline/_store_copyout.py`) runs after promotion. It reads the promoted store's descriptor, verifies each file's `sha256`, and republishes the files at today's `deliverables/plots/` paths.
+**Architecture:** Three units, each depending only on the one before it:
 
-`PlotCoordinator.emit_image` and its flat-path writer are removed. The four CLI call sites go through build → store → copy-out.
+1. **Build** (`plotting/_pipeline/_store_figures.py`) renders every `PlotImage` binding in memory into an immutable `StoredFigures` value. It writes nothing.
+2. **Store write** (`sdk_/_image_figures.py`) writes that value into a store `.part` inside the existing root-last transaction, and returns the `attributes.phenotypic.figures` descriptor.
+3. **Copy-out** (`plotting/_pipeline/_store_copyout.py`) runs after promotion. It reads the promoted store's descriptor, verifies each file's `sha256`, and republishes the files at today's `deliverables/plots/` paths. It also renders the deliverable HTML from each stored `plotly-json`.
 
-**Tech Stack:** Python 3.12, pydantic v2, Zarr v3 / OME-Zarr 0.5 (hand-written group documents, as `tables/` does it), Plotly 6 + Kaleido 1 (Chrome), matplotlib, pytest, `uv`.
+`PlotCoordinator.emit_image` and its flat-path writer are removed.
 
-**Spec:** `docs/superpowers/specs/2026-09-22-figures-in-ome-zarr/design.md`. Read it before any task; section numbers below (§1–§6) refer to it.
+**Tech Stack:** Python 3.12, pydantic v2, Zarr v3 / OME-Zarr 0.5 (hand-written group documents, as `tables/` does), Plotly 6 + Kaleido 1, matplotlib, pytest, `uv`.
+
+**Spec:** `docs/superpowers/specs/2026-09-22-figures-in-ome-zarr/design.md`, revised 2026-09-22 after plan review; read its *Revision* section at the end. §-numbers below refer to it. The reviews are in `docs/superpowers/reports/2026-09-22-figures-in-ome-zarr/` (`plan-review.md`, `simplicity-review.md`). Finding ids (B1, M4, "minor 7") refer to `plan-review.md`.
 
 ## Global Constraints
 
-- `uv run` for every command; never bare `python`/`pip`. `uv run ruff check --fix <explicit paths>` only — never bare.
-- **Lazy imports:** no module-level import of plotly, matplotlib, kaleido or zarr in any file this plan touches. Guards: `tests/unit/ci/test_startup_imports.py`, `tests/unit/ci/test_deferred_imports.py`.
-- Everything new in the store lives under `attributes.phenotypic`. Do not change `attributes.ome`, `OME/zarr.json` or `METADATA.ome.xml`, and do not bump `store_schema_version`.
-- Figures are **best-effort**. One figure failing never fails an image. The only exception to propagate is `PlotPublicationBlocked` (a refused guard), as in every handler today.
-- **Determinism:** the same inputs, pipeline, version and environment give the same bytes. The only variation removed is stochastic (random ids, timestamps, `0x…` addresses).
-- Store format names, closed set: `"plotly-json"`, `"html"`, `"png"`, `"svg"`. Extensions: `.plotly.json`, `.html`, `.png`, `.svg`. Media types: `application/vnd.plotly.v1+json`, `text/html`, `image/png`, `image/svg+xml`.
-- Default `store`: `("plotly-json",)` for `backend="plotly"`, `("png",)` for `backend="mpl"`.
+- Use `uv run` for every command, never bare `python` or `pip`. Run `uv run ruff check --fix <explicit paths>` only, never bare.
+- No module-level import of plotly, matplotlib, kaleido or zarr in any file this plan touches. Guards: `tests/unit/ci/test_startup_imports.py`, `tests/unit/ci/test_deferred_imports.py`.
+- New store content lives under `attributes.phenotypic` only. Do not change `attributes.ome`, `OME/zarr.json` or `METADATA.ome.xml`. Do not bump `store_schema_version`.
+- The format set is closed: `"plotly-json"` (`.plotly.json`, `application/vnd.plotly.v1+json`) and `"png"` (`.png`, `image/png`). The default `store` is `("plotly-json",)` for `backend="plotly"` and `("png",)` for `backend="mpl"`.
+- Figures are best-effort: no figure error may fail an image. The only exception that propagates is `PlotPublicationBlocked` (a refused guard or fence), as in every handler today.
+- Determinism: the same inputs, pipeline, version and environment give the same bytes. Only stochastic variation is removed (random ids, timestamps, `0x…` addresses).
 - `PROCESS_LAYER_SEMANTICS_REVISION` goes 2 → 3. Full mode gets no revision.
-- Google-style docstrings; explicit names (no `run()`/`process()`); match the surrounding comment density.
-- Tests: per step, run only the touched test file(s). Per task, run the task's files. The full suite runs once at the end, as a Slurm job, through the **`run-phenotypic-test`** skill (Task 12). Never `-n auto`, never `-x` on a baseline run.
-- **Each new test must be shown to fail when the bug it guards is reintroduced.** A step marked "prove it can fail" does exactly that and then restores the code.
-
-## Additions to the spec made while planning
-
-Tasks 5 and 7 need three clarifications the spec does not state. They are written into the spec in Task 11:
-
-1. **Descriptor pages carry `"metadata"`** (the `PlotPage.metadata` mapping, JSON-native). The copy-out rebuilds manifest v2, whose page entries have a `metadata` field. Without it in the descriptor, the copy-out cannot reproduce today's manifest.
-2. **Build is a module-level function** `build_image_figures(pipeline, image)`. `PlotCoordinator.build_image_figures(image)` delegates to it. Process mode has no `deliverables/` and so no `plots_base` to construct a coordinator with.
-3. **Chrome absence is spelled `PlotBackendUnavailable: …`**, using the existing `_backends.PlotBackendUnavailable`. The spec's `ChromeNotFoundError` was illustrative.
+- No new public API. The `_image_figures` names are **not** re-exported from `phenotypic.sdk_`; callers import the private module. The only new public name is `StoreFormat` in `phenotypic.abc_.plotting`, next to `figure`.
+- Use Google-style docstrings and explicit names, and match the surrounding comment density.
+- Tests per step: run only the touched test file(s). Per task: run the task's files. The full suite runs once, in Task 9, as a Slurm job through the **`run-phenotypic-test`** skill. Never use `-n auto`, and never use `-x` on a baseline.
+- **Every new test must be shown to fail when the bug it guards is reintroduced.** A "prove it can fail" step does exactly that, then restores the code.
 
 ## File structure
 
 | File | Status | Responsibility |
 |---|---|---|
-| `src/phenotypic/abc_/plotting/_store_formats.py` | create | Closed format table, defaults, `@figure(store=)` validation. Stdlib only. |
+| `src/phenotypic/abc_/plotting/_store_formats.py` | create | Closed format table, defaults, `store=` validation. Stdlib only. |
 | `src/phenotypic/abc_/plotting/_pht_plot.py` | modify | `figure(store=)`, `FigureSpec.store` |
 | `src/phenotypic/abc_/plotting/__init__.py` | modify | export `StoreFormat` |
-| `src/phenotypic/plotting/_pipeline/_store_formats.py` | create | One deterministic serializer per format |
-| `src/phenotypic/sdk_/_image_figures.py` | create | `StoredFigures` value types; write/apply/read the descriptor |
 | `src/phenotypic/sdk_/ngff_.py` | modify | `FIGURES_GROUP`, `FIGURES_SCHEMA_VERSION`, `PhenotypicAttr.FIGURES` |
-| `src/phenotypic/sdk_/__init__.py` | modify | re-export the new sdk_ names |
+| `src/phenotypic/sdk_/_image_figures.py` | create | `StoredFigures` value types; write/apply/read the descriptor |
+| `src/phenotypic/plotting/_pipeline/_store_formats.py` | create | Two deterministic serializers |
 | `src/phenotypic/plotting/_pipeline/_store_figures.py` | create | `build_image_figures`, format resolution, error normalisation |
-| `src/phenotypic/plotting/_pipeline/_backends.py` | modify | `declared_figure_spec` (split out of `_declared_backends`); preflight counts only image plots that store Chrome formats |
-| `src/phenotypic/plotting/_pipeline/_writer.py` | modify | extract `unique_page_stems` from `_publish_plot_output_locked` |
+| `src/phenotypic/plotting/_pipeline/_backends.py` | modify | `declared_figure_spec`; the preflight judges image plots by a declared `png` |
+| `src/phenotypic/plotting/_pipeline/_writer.py` | modify | extract `unique_page_stems` and `_commit_manifest` |
+| `src/phenotypic/plotting/_pipeline/_failures.py` | modify | `record_plot_failure(error: BaseException \| str, *, page=None, fmt=None)` |
 | `src/phenotypic/plotting/_pipeline/_store_copyout.py` | create | `publish_store_figures` |
-| `src/phenotypic/plotting/_pipeline/_failures.py` | modify | `record_plot_failure(error: BaseException \| str)` |
-| `src/phenotypic/plotting/_pipeline/_coordinator.py` | modify | add `build_image_figures`, `publish_store_figures`; delete `emit_image`, `_publish_image_value` |
+| `src/phenotypic/plotting/_pipeline/_coordinator.py` | modify | add `publish_store_figures`; delete `emit_image`, `_publish_image_value` |
 | `src/phenotypic/_core/_image_parts/_image_io_handler.py` | modify | `figures=` through `save2zarr` → `_save_store` → `_write_store_part` |
-| `src/phenotypic/sdk_/_measurement_tables.py` | modify | `replace_image_tables(figures=, rebuild_figures=)` |
-| `src/phenotypic/_cli/_cli_output_manager.py` | modify | `save_image_store(figures=)`, `replace_image_store_measurements(figures=, rebuild_figures=)` |
+| `src/phenotypic/sdk_/_measurement_tables.py` | modify | `replace_image_tables(*, figures)` (required); `_rewrite_store_tables(clear_figures=)` |
+| `src/phenotypic/_cli/_cli_output_manager.py` | modify | `save_image_store(figures=)`, `replace_image_store_measurements(*, figures)` (required) |
 | `src/phenotypic/_cli/_cli_process_only.py` | modify | build + `write_process_only_layer(figures=)` |
-| `src/phenotypic/_cli/_cli_process_single.py` | modify | full + measure wiring |
-| `src/phenotypic/_cli/_cli_staged_workers.py` | modify | Stage 3 wiring |
+| `src/phenotypic/_cli/_cli_process_single.py`, `_cli_staged_workers.py` | modify | wiring for full mode, measure mode and Stage 3 |
 | `src/phenotypic/_cli/_cli_failure_tracker.py` | modify | revision 3 |
-| `tests/unit/cli/_kaleido_utils.py`, `.github/pytest-shards.json`, `.github/workflows/run-pytest.yml`, `tests/unit/ci/test_pytest_shard_manifest.py` | modify | the Chrome lane where Chrome-dependent tests must run |
+| `tests/unit/plotting/_store_fixtures.py` | create | `figure_store`, `emit_image_via_store` test helpers |
 
 ---
 
-### Task 1: Plotly-SVG determinism probe (decides `svg` for Plotly)
-
-**Files:**
-- Create: `docs/superpowers/plans/2026-09-22-figures-in-ome-zarr/probe_plotly_svg.py`
-- Modify: this plan (record the outcome under "Probe outcome" below)
-
-This task writes no product code. Its outcome selects one of two small code variants, which Task 2 and Task 3 both spell out. The probe drives Plotly directly, not `phenotypic`, so it is not a `logic_validation_scripts/` script. It lives beside this plan, as the project rule requires for executable artifacts of a change.
-
-- [ ] **Step 1: Make Chrome available locally**
-
-Run: `uv run plotly_get_chrome -y`
-Then: `uv run python -c "from choreographer.browsers.chromium import Chromium; print(Chromium.find_browser(skip_local=False))"`
-Expected: a path. If either command fails (no network, missing system libraries), skip to Step 4 and record outcome **B** with the reason. Being unable to run the probe is not evidence that the bytes are stable.
-
-- [ ] **Step 2: Write the probe**
-
-```python
-"""Probe: is Plotly SVG byte-stable across processes once its ids are pinned?
-
-Run twice in fresh interpreters; exits 0 and prints the digest. The caller
-compares the two digests. Depends only on plotly/kaleido, never on phenotypic.
-"""
-from __future__ import annotations
-
-import hashlib
-import re
-import sys
-
-import plotly.graph_objects as go
-import plotly.io as pio
-
-_ID = re.compile(rb'\bid="([^"]+)"')
-
-
-def pin_svg_ids(svg: bytes, salt: str) -> bytes:
-    """Rewrite every id and every #reference to it to a stable sequence."""
-    ids = list(dict.fromkeys(_ID.findall(svg)))
-    for index, old in enumerate(ids):
-        new = f"{salt}-{index}".encode()
-        svg = re.sub(rb'id="' + re.escape(old) + rb'"', b'id="' + new + b'"', svg)
-        svg = re.sub(rb"#" + re.escape(old) + rb"\b", b"#" + new, svg)
-    return svg
-
-
-def render_probe_figure() -> go.Figure:
-    fig = go.Figure(go.Scatter(x=[1, 2, 3], y=[3, 1, 2], mode="lines+markers"))
-    fig.add_trace(go.Heatmap(z=[[1, 2], [3, 4]], xaxis="x2", yaxis="y2"))
-    fig.update_layout(xaxis2={"domain": [0.6, 1]}, xaxis={"domain": [0, 0.4]})
-    return fig
-
-
-if __name__ == "__main__":
-    raw = pio.to_image(render_probe_figure(), format="svg")
-    pinned = pin_svg_ids(raw, "pht")
-    residual = set(re.findall(rb"url\(#([^)]+)\)|href=\"#([^\"]+)\"", pinned))
-    print(hashlib.sha256(raw).hexdigest(), hashlib.sha256(pinned).hexdigest())
-    print("residual-refs:", sorted({a or b for a, b in residual}))
-    sys.exit(0)
-```
-
-- [ ] **Step 3: Run it twice in fresh processes**
-
-Run: `for i in 1 2; do uv run python docs/superpowers/plans/2026-09-22-figures-in-ome-zarr/probe_plotly_svg.py; done`
-Expected: two lines, each `<raw digest> <pinned digest>`, plus the residual refs.
-- **Outcome A** (Plotly SVG ships): the two *pinned* digests are equal, **and** every residual ref names an id of the form `pht-<n>` (the rewrite reached every reference).
-- **Outcome B** (`svg` is mpl-only): anything else, including Step 1 failing.
-
-- [ ] **Step 4: Record the outcome in this plan and commit**
-
-Edit the line below to `A` or `B`, with the two digest lines or the Step 1 error pasted underneath.
-
-**Probe outcome:** _(filled in by Task 1)_
-
-```bash
-git add docs/superpowers/plans/2026-09-22-figures-in-ome-zarr/
-git commit -m "chore(plan): Plotly SVG determinism probe and its outcome"
-```
-
----
-
-### Task 2: The store-format contract and `@figure(store=)`
+### Task 1: The store-format contract and `@figure(store=)`
 
 **Files:**
 - Create: `src/phenotypic/abc_/plotting/_store_formats.py`
-- Modify: `src/phenotypic/abc_/plotting/_pht_plot.py` (the `FigureSpec` dataclass and `figure()` near lines 104–268)
+- Modify: `src/phenotypic/abc_/plotting/_pht_plot.py` (`FigureSpec` ≈104; `figure()` ≈154–268)
 - Modify: `src/phenotypic/abc_/plotting/__init__.py`
 - Test: `tests/unit/abc_/plotting/test_store_formats.py`
 
 **Interfaces:**
-- Produces: `StoreFormat` (the `Literal`), `StoreFormatInfo(extension: str, media_type: str, backends: frozenset[str])`, `STORE_FORMATS: Mapping[str, StoreFormatInfo]`, `default_store_formats(backend: str) -> tuple[str, ...]`, `resolve_store_formats(store, *, backend, owner) -> tuple[str, ...]` (raises `TypeError`), and `FigureSpec.store: tuple[str, ...]`.
+- Produces:
+  - `StoreFormat = Literal["plotly-json", "png"]`
+  - `StoreFormatInfo(extension: str, media_type: str, backends: frozenset[str])`
+  - `STORE_FORMATS: Mapping[str, StoreFormatInfo]`
+  - `default_store_formats(backend: str) -> tuple[str, ...]`
+  - `resolve_store_formats(store, *, backend, owner) -> tuple[str, ...]`, which raises `TypeError`
+  - `FigureSpec.store: tuple[str, ...]`
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -171,16 +88,10 @@ from phenotypic.abc_.plotting._store_formats import (
 )
 
 
-def _spec(cls):
-    return cls._class_primary_spec()
-
-
 def test_the_format_table_is_the_closed_set_with_its_media_types():
-    assert {name: (info.extension, info.media_type) for name, info in STORE_FORMATS.items()} == {
+    assert {n: (i.extension, i.media_type) for n, i in STORE_FORMATS.items()} == {
         "plotly-json": (".plotly.json", "application/vnd.plotly.v1+json"),
-        "html": (".html", "text/html"),
         "png": (".png", "image/png"),
-        "svg": (".svg", "image/svg+xml"),
     }
 
 
@@ -194,7 +105,7 @@ def test_an_omitted_store_takes_the_backend_default(backend, expected):
         def draw(self, image):
             raise AssertionError("never rendered")
 
-    assert _spec(Plot).store == expected
+    assert Plot._class_primary_spec().store == expected
     assert default_store_formats(backend) == expected
 
 
@@ -204,17 +115,17 @@ def test_a_declared_store_is_kept_in_declared_order():
         def draw(self, image):
             raise AssertionError
 
-    assert _spec(Plot).store == ("png", "plotly-json")
+    assert Plot._class_primary_spec().store == ("png", "plotly-json")
 
 
 @pytest.mark.parametrize(
     ("backend", "store", "match"),
     [
-        ("mpl", ("plotly-json",), "plotly-json"),
-        ("mpl", ("html",), "html"),
-        ("plotly", ("jpeg",), "unknown"),
+        ("mpl", ("plotly-json",), "cannot produce"),
+        ("plotly", ("svg",), "unknown"),
         ("plotly", ("png", "png"), "duplicate"),
         ("plotly", (), "at least one"),
+        ("plotly", "png", "tuple"),
     ],
 )
 def test_an_invalid_store_is_refused_at_class_definition(backend, store, match):
@@ -226,9 +137,7 @@ def test_an_invalid_store_is_refused_at_class_definition(backend, store, match):
                 raise AssertionError
 ```
 
-With **outcome B**, also add a case to the parametrized refusal: `("plotly", ("svg",), "svg")`. With **outcome A**, add a positive test instead: `store=("svg",)` on `backend="plotly"` is accepted.
-
-- [ ] **Step 2: Run the tests to verify they fail**
+- [ ] **Step 2: Run to verify they fail**
 
 Run: `uv run pytest tests/unit/abc_/plotting/test_store_formats.py -p no:cacheprovider -q`
 Expected: collection error `ModuleNotFoundError: phenotypic.abc_.plotting._store_formats`.
@@ -248,7 +157,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Literal, Mapping
 
-StoreFormat = Literal["plotly-json", "html", "png", "svg"]
+StoreFormat = Literal["plotly-json", "png"]
 
 
 @dataclass(frozen=True)
@@ -266,16 +175,13 @@ class StoreFormatInfo:
     backends: frozenset[str]
 
 
-#: Keyed in the order the spec lists them. The folder layout is storage only:
-#: a consumer reads ``media_type`` from the descriptor, never the extension.
+#: The folder layout is storage only: a consumer reads ``media_type`` from the
+#: descriptor, never the extension.
 STORE_FORMATS: Mapping[str, StoreFormatInfo] = MappingProxyType({
     "plotly-json": StoreFormatInfo(
         ".plotly.json", "application/vnd.plotly.v1+json", frozenset({"plotly"})
     ),
-    "html": StoreFormatInfo(".html", "text/html", frozenset({"plotly"})),
     "png": StoreFormatInfo(".png", "image/png", frozenset({"plotly", "mpl"})),
-    # Outcome B of the Task 1 probe: matplotlib only. Outcome A: {"plotly", "mpl"}.
-    "svg": StoreFormatInfo(".svg", "image/svg+xml", frozenset({"mpl"})),
 })
 
 _DEFAULTS: Mapping[str, tuple[str, ...]] = MappingProxyType({
@@ -316,11 +222,16 @@ def resolve_store_formats(
         The formats to store, in declared order.
 
     Raises:
-        TypeError: On an empty tuple, an unknown or duplicate name, or a
-            format the backend cannot produce.
+        TypeError: On a bare string, an empty tuple, an unknown or duplicate
+            name, or a format the backend cannot produce.
     """
     if store is None:
         return default_store_formats(backend)
+    if isinstance(store, str):
+        raise TypeError(
+            f"@figure({owner!r}): store must be a tuple of format names, "
+            f"got the string {store!r}; write store=({store!r},)"
+        )
     formats = tuple(store)
     if not formats:
         raise TypeError(
@@ -337,9 +248,7 @@ def resolve_store_formats(
     duplicates = sorted({name for name in formats if formats.count(name) > 1})
     if duplicates:
         raise TypeError(f"@figure({owner!r}): duplicate store format(s) {duplicates}")
-    unsupported = [
-        name for name in formats if backend not in STORE_FORMATS[name].backends
-    ]
+    unsupported = [n for n in formats if backend not in STORE_FORMATS[n].backends]
     if unsupported:
         raise TypeError(
             f"@figure({owner!r}): backend={backend!r} cannot produce "
@@ -360,22 +269,21 @@ __all__ = [
 - [ ] **Step 4: Thread `store` through `figure()` and `FigureSpec`**
 
 In `_pht_plot.py`:
-- Import: `from ._store_formats import StoreFormat, resolve_store_formats` beside the `._output` import.
-- Add the attribute `store: tuple[str, ...]` to `FigureSpec`, after `backend`. Document it in the `Attributes:` block as *"Formats a `PlotImage` publication stores for this figure (spec §2)."*
-- Add the parameter `store: tuple[StoreFormat, ...] | None = None,` to `figure()`, after `backend`. Document it in `Args:` as *"Formats to store in the image's OME-Zarr store. `None` stores the backend default (`("plotly-json",)` / `("png",)`). Validated when the class is defined."*
-- Inside `decorator`, immediately after the controls check, add `resolved_store = resolve_store_formats(store, backend=backend, owner=fn.__name__)`, and pass `store=resolved_store` to the `FigureSpec(...)` constructor.
-- Keep `store` out of `wrapper`. It is metadata only.
+- Import `from ._store_formats import StoreFormat, resolve_store_formats` beside the `._output` import.
+- On `FigureSpec`, add `store: tuple[str, ...]` after `backend`. Document it under `Attributes:` as *"Formats a `PlotImage` publication stores for this figure (spec §2)."*
+- On `figure()`, add `store: tuple[StoreFormat, ...] | None = None,` after `backend`. Document it under `Args:` as *"Formats to store in the image's OME-Zarr store. `None` stores the backend default (`("plotly-json",)` / `("png",)`). Validated when the class is defined."* Extend `Raises:` with a `TypeError` entry: *"or if `store` is invalid"*.
+- In `decorator`, right after the controls check, add `resolved_store = resolve_store_formats(store, backend=backend, owner=fn.__name__)` and pass `store=resolved_store` to `FigureSpec(...)`. `wrapper` does not change.
 
-In `abc_/plotting/__init__.py`, add `from ._store_formats import StoreFormat` and put `"StoreFormat"` in `__all__`.
+In `abc_/plotting/__init__.py`: add `from ._store_formats import StoreFormat`, and add `"StoreFormat"` to `__all__`.
 
-- [ ] **Step 5: Run the tests to verify they pass**
+- [ ] **Step 5: Run to verify they pass**
 
 Run: `uv run pytest tests/unit/abc_/plotting/ -p no:cacheprovider -q`
-Expected: all pass, including the existing `test_pht_plot.py`, `test_figure_backend.py` and `test_imports.py`. `FigureSpec` is built only through `figure()`, so no other constructor call needs the new field. Confirm with `grep -rn "FigureSpec(" src tests`: expect only `_pht_plot.py`, plus `replace(...)` in `_image_plots.py`, which copies the field.
+Expected: all pass, including the existing `test_pht_plot.py`, `test_figure_backend.py` and `test_imports.py`. `grep -rn "FigureSpec(" src tests` should show only `_pht_plot.py`. `_image_plots.py` builds its specs with `replace(...)`, which carries the new field over.
 
-- [ ] **Step 6: Prove the refusal test can fail**
+- [ ] **Step 6: Prove it can fail**
 
-Temporarily change `if not formats:` to `if False:`. Run the file. Expect the `at least one` case to FAIL. Restore the line.
+Change `if not formats:` to `if False:` and run the file. Expect the `at least one` case to FAIL. Restore the line.
 
 - [ ] **Step 7: Commit**
 
@@ -387,310 +295,26 @@ git commit -m "feat(plotting): @figure(store=) over a closed set of store format
 
 ---
 
-### Task 3: Deterministic serializers, and the Chrome lane that must run their Chrome cases
+### Task 2: Store-side value types and the `figures/` writer
 
 **Files:**
-- Create: `src/phenotypic/plotting/_pipeline/_store_formats.py`
-- Modify: `tests/unit/cli/_kaleido_utils.py`
-- Modify: `.github/pytest-shards.json` (the `plots-post-viz` entry), `.github/workflows/run-pytest.yml` (the Linux shard job, after "Install Playwright browser")
-- Modify: `tests/unit/ci/test_pytest_shard_manifest.py`
-- Test: `tests/unit/plotting/test_store_serializers.py`
-
-**Interfaces:**
-- Consumes: `STORE_FORMATS` (Task 2).
-- Produces: `serialize_store_format(format: str, figure, *, binding_id: str, page_key: str) -> bytes`, plus a pinned-id helper `pin_svg_ids(svg: bytes, salt: str) -> bytes` (outcome A only).
-
-- [ ] **Step 1: Make the Chrome marker strict on a lane that declares Chrome**
-
-In `tests/unit/cli/_kaleido_utils.py`, replace the `requires_kaleido_chrome = pytest.mark.skipif(...)` definition with:
-
-```python
-import os
-
-#: Set on a CI shard that installs Chrome. There a missing browser is a
-#: FAILURE, not a skip: a Chrome-only check that skips on every lane is a
-#: silent green (spec §5). Everywhere else the marker still skips.
-_CHROME_REQUIRED = os.environ.get("PHENOTYPIC_REQUIRE_CHROME") == "1"
-
-requires_kaleido_chrome = pytest.mark.skipif(
-    not _CHROME_REQUIRED and not _kaleido_chrome_available(),
-    reason=(
-        "kaleido >= 1 requires Chrome for Plotly PNG export; "
-        "install Chrome or run `plotly_get_chrome`"
-    ),
-)
-```
-
-(Put `import os` with the module's other imports.)
-
-- [ ] **Step 2: Declare the lane**
-
-In `.github/pytest-shards.json`, add `"chrome": true` to the `plots-post-viz` entry. Add `"chrome": false` to every other entry, so the key is total.
-
-In `.github/workflows/run-pytest.yml`, in the Linux shard job, directly after the "Install Playwright browser" step, add:
-
-```yaml
-      - name: Install Chrome for Kaleido
-        if: matrix.shard.chrome
-        run: uv run plotly_get_chrome -y
-```
-
-In the shard job's "Run … tests" step, add `env:` with `PHENOTYPIC_REQUIRE_CHROME: ${{ matrix.shard.chrome && '1' || '' }}`.
-
-In `tests/unit/ci/test_pytest_shard_manifest.py`, add:
-
-```python
-def test_the_chrome_lane_installs_chrome_and_makes_its_marker_strict() -> None:
-    """Spec §5: the Chrome-dependent serializer tests must run somewhere."""
-    shards = json.loads(SHARDS.read_text(encoding="utf-8"))
-    assert all("chrome" in shard for shard in shards)
-    chrome = [shard["name"] for shard in shards if shard["chrome"]]
-    assert chrome == ["plots-post-viz"]
-    workflow = WORKFLOW.read_text(encoding="utf-8")
-    assert re.search(
-        r"if: matrix\.shard\.chrome\s*\n\s*run: uv run plotly_get_chrome -y", workflow
-    )
-    assert "PHENOTYPIC_REQUIRE_CHROME: ${{ matrix.shard.chrome && '1' || '' }}" in workflow
-```
-
-(Use the file's existing `SHARDS`/`WORKFLOW` path constants. If the shards constant has a different name, `grep -n "pytest-shards.json" tests/unit/ci/test_pytest_shard_manifest.py` gives it.)
-
-- [ ] **Step 3: Write the failing serializer tests**
-
-```python
-"""Store serializers are byte-deterministic across processes (spec §2, §4)."""
-from __future__ import annotations
-
-import subprocess
-import sys
-import textwrap
-
-import pytest
-
-from tests.unit.cli._kaleido_utils import requires_kaleido_chrome
-
-#: Built fresh in each subprocess, so any per-process randomness (hash seeds,
-#: uuid4 ids, object addresses) would show up as differing bytes.
-_FIGURES = {
-    "plotly": textwrap.dedent("""
-        import plotly.graph_objects as go
-        fig = go.Figure(go.Scatter(x=[1, 2, 3], y=[3, 1, 2]))
-    """),
-    "mpl": textwrap.dedent("""
-        from matplotlib.figure import Figure
-        fig = Figure()
-        fig.subplots().plot([1, 2, 3], [3, 1, 2])
-    """),
-}
-
-
-def _digest_in_fresh_process(backend: str, fmt: str) -> str:
-    code = _FIGURES[backend] + textwrap.dedent(f"""
-        import hashlib
-        from phenotypic.plotting._pipeline._store_formats import serialize_store_format
-        data = serialize_store_format({fmt!r}, fig, binding_id="b", page_key="default")
-        print(hashlib.sha256(data).hexdigest())
-    """)
-    result = subprocess.run(
-        [sys.executable, "-c", code], capture_output=True, text=True, check=True
-    )
-    return result.stdout.strip()
-
-
-@pytest.mark.parametrize(
-    ("backend", "fmt"),
-    [("plotly", "plotly-json"), ("plotly", "html"), ("mpl", "png"), ("mpl", "svg")],
-)
-def test_a_chrome_free_serializer_is_stable_across_processes(backend, fmt):
-    assert _digest_in_fresh_process(backend, fmt) == _digest_in_fresh_process(backend, fmt)
-
-
-@requires_kaleido_chrome
-@pytest.mark.parametrize("fmt", ["png"])  # outcome A: ["png", "svg"]
-def test_a_chrome_serializer_is_stable_across_processes(fmt):
-    assert _digest_in_fresh_process("plotly", fmt) == _digest_in_fresh_process("plotly", fmt)
-
-
-def test_html_names_its_div_after_the_binding_and_page_not_a_uuid():
-    import plotly.graph_objects as go
-
-    from phenotypic.plotting._pipeline._store_formats import serialize_store_format
-
-    html = serialize_store_format(
-        "html", go.Figure(), binding_id="sym", page_key="default"
-    ).decode()
-    other = serialize_store_format(
-        "html", go.Figure(), binding_id="sym", page_key="second"
-    ).decode()
-    assert 'id="pht-' in html
-    assert html != other
-    assert "cdn.plot.ly" in html
-
-
-def test_plotly_png_without_chrome_raises_backend_unavailable(monkeypatch):
-    import plotly.graph_objects as go
-
-    from phenotypic.plotting._pipeline import _backends
-    from phenotypic.plotting._pipeline._store_formats import serialize_store_format
-
-    monkeypatch.setattr(_backends, "chrome_available", lambda: False)
-    with pytest.raises(_backends.PlotBackendUnavailable, match="Chrome"):
-        serialize_store_format("png", go.Figure(), binding_id="b", page_key="default")
-```
-
-- [ ] **Step 4: Run them to verify they fail**
-
-Run: `uv run pytest tests/unit/plotting/test_store_serializers.py tests/unit/ci/test_pytest_shard_manifest.py -p no:cacheprovider -q`
-Expected: the serializer tests fail with `ModuleNotFoundError`, and the shard test passes (Steps 1–2 are already in place). If the shard test fails, fix the manifest or workflow edit before moving on.
-
-- [ ] **Step 5: Write the serializers**
-
-```python
-"""One deterministic serializer per store format (spec §2 "Serializers").
-
-Each takes ``(figure, *, binding_id, page_key)`` and returns bytes. Anything a
-format would otherwise randomise -- Plotly's HTML div id, matplotlib's SVG ids
-and ``Date`` -- is derived from the binding id and page key instead, so the
-same figure always yields the same bytes. What the environment legitimately
-changes (a different Chrome's PNG) is left alone: that is signal, not noise.
-
-Plotting libraries are imported inside each function (lazy-import contract).
-"""
-from __future__ import annotations
-
-import hashlib
-from io import BytesIO
-from typing import Any, Callable
-
-from phenotypic.abc_.plotting import figure_backend_of
-
-
-def _stable_token(binding_id: str, page_key: str) -> str:
-    """Return a short id that depends only on the page's identity."""
-    identity = f"{binding_id}\0{page_key}".encode("utf-8")
-    return hashlib.sha256(identity).hexdigest()[:16]
-
-
-def _serialize_plotly_json(figure: Any, *, binding_id: str, page_key: str) -> bytes:
-    return figure.to_json().encode("utf-8")
-
-
-def _serialize_html(figure: Any, *, binding_id: str, page_key: str) -> bytes:
-    import plotly.io as pio
-
-    # CDN, not the run's hoisted bundle: a store cannot reference a file
-    # outside itself, and embedding costs 4.8 MB per figure (spec §2).
-    return pio.to_html(
-        figure,
-        include_plotlyjs="cdn",
-        full_html=True,
-        div_id=f"pht-{_stable_token(binding_id, page_key)}",
-    ).encode("utf-8")
-
-
-def _serialize_png(figure: Any, *, binding_id: str, page_key: str) -> bytes:
-    if figure_backend_of(figure) == "plotly":
-        # Imported from the module, not bound by name, so a test that patches
-        # `_backends.chrome_available` is honoured (see `_writer.py` imports).
-        from . import _backends
-
-        if not _backends.chrome_available():
-            raise _backends.PlotBackendUnavailable(
-                "Plotly PNG export needs Chrome (kaleido); install it with "
-                "plotly_get_chrome"
-            )
-        import plotly.io as pio
-
-        return pio.to_image(figure, format="png")
-    buffer = BytesIO()
-    figure.savefig(buffer, format="png")
-    return buffer.getvalue()
-
-
-def _serialize_svg(figure: Any, *, binding_id: str, page_key: str) -> bytes:
-    from matplotlib import rc_context
-
-    buffer = BytesIO()
-    with rc_context({"svg.hashsalt": _stable_token(binding_id, page_key)}):
-        figure.savefig(buffer, format="svg", metadata={"Date": None})
-    return buffer.getvalue()
-
-
-_SERIALIZERS: dict[str, Callable[..., bytes]] = {
-    "plotly-json": _serialize_plotly_json,
-    "html": _serialize_html,
-    "png": _serialize_png,
-    "svg": _serialize_svg,
-}
-
-
-def serialize_store_format(
-    fmt: str, figure: Any, *, binding_id: str, page_key: str
-) -> bytes:
-    """Serialize *figure* to one store format.
-
-    Args:
-        fmt: A name from ``STORE_FORMATS``.
-        figure: A Plotly or matplotlib figure whose backend supports *fmt*
-            (the caller has already checked; see ``_store_figures``).
-        binding_id: The plot binding id; salts every generated id.
-        page_key: The page key; salts every generated id.
-
-    Returns:
-        The encoded bytes.
-
-    Raises:
-        KeyError: If *fmt* is not a store format.
-        PlotBackendUnavailable: A Plotly PNG without Chrome.
-    """
-    return _SERIALIZERS[fmt](figure, binding_id=binding_id, page_key=page_key)
-
-
-__all__ = ["serialize_store_format"]
-```
-
-**Outcome A only:** replace `_serialize_svg` with a dispatcher. For Plotly: `pio.to_image(figure, format="svg")` is Chrome-gated exactly as in `_serialize_png`, then `pin_svg_ids(raw, f"pht-{_stable_token(...)}")`. Copy `pin_svg_ids` verbatim from the Task 1 probe and export it. For mpl, keep the body above. Also add `"svg"` to the Chrome test's parametrize list.
-
-- [ ] **Step 6: Run them to verify they pass**
-
-Run: `uv run pytest tests/unit/plotting/test_store_serializers.py -p no:cacheprovider -q`
-Expected: PASS. The Chrome case SKIPs locally unless Task 1 installed Chrome, in which case it passes.
-
-- [ ] **Step 7: Prove the determinism test can fail**
-
-Temporarily change `div_id=...` to `div_id=None`. Run the `html` case and expect FAIL (Plotly then generates a uuid). Restore the line.
-
-- [ ] **Step 8: Commit**
-
-```bash
-uv run ruff check --fix src/phenotypic/plotting/_pipeline/_store_formats.py tests/unit/plotting/test_store_serializers.py tests/unit/cli/_kaleido_utils.py tests/unit/ci/test_pytest_shard_manifest.py
-git add src/phenotypic/plotting/_pipeline/_store_formats.py tests/unit/plotting/test_store_serializers.py tests/unit/cli/_kaleido_utils.py tests/unit/ci/test_pytest_shard_manifest.py .github/
-git commit -m "feat(plotting): deterministic store serializers and a Chrome lane that must run"
-```
-
----
-
-### Task 4: The store-side value types and the `figures/` writer
-
-**Files:**
-- Modify: `src/phenotypic/sdk_/ngff_.py`: constants after `METADATA_TABLE_SCHEMA_VERSION` (≈line 93); `FIGURES` in `PhenotypicAttr` (≈line 484)
+- Modify: `src/phenotypic/sdk_/ngff_.py`. Add the constants after `METADATA_TABLE_SCHEMA_VERSION` (≈93), and add `FIGURES` to `PhenotypicAttr` after `TABLES` (≈464).
 - Create: `src/phenotypic/sdk_/_image_figures.py`
-- Modify: `src/phenotypic/sdk_/__init__.py` (re-export; follow how `write_image_tables` is exported there)
 - Test: `tests/unit/sdk_/test_image_figures.py`
 
 **Interfaces:**
-- Produces:
-  - `StoredFigureFile(format: str, media_type: str, filename: str, data: bytes)`
-  - `StoredFigurePage(key: str, label: str | None, backend: str, metadata: Mapping[str, Any], files: tuple[StoredFigureFile, ...])`
-  - `StoredFigureBinding(binding_id: str, plot_class: str, directory: str, pages: tuple[StoredFigurePage, ...])`
-  - `StoredFigureFailure(binding: str, page: str | None, format: str | None, error: str)`
-  - `StoredFigures(bindings: tuple[StoredFigureBinding, ...], failed: tuple[StoredFigureFailure, ...])`
-  - `write_image_figures(store_part: Path, figures: StoredFigures) -> dict[str, object]`
+- Produces, all in `phenotypic.sdk_._image_figures` and not re-exported:
+  - `StoredFigureFile(format, media_type, filename, data: bytes)`
+  - `StoredFigurePage(key, label, backend, metadata: Mapping, files: tuple[StoredFigureFile, ...])`
+  - `StoredFigureBinding(binding_id, plot_class, directory, pages: tuple[StoredFigurePage, ...])`
+  - `StoredFigureFailure(binding, page: str | None, format: str | None, error)`
+  - `StoredFigures(bindings: tuple[...], failed: tuple[...])`
+  - `write_image_figures(store_part: Path, figures: StoredFigures) -> dict`
   - `apply_image_figures_attributes(phenotypic: dict, fragment: dict | None) -> None`
   - `read_image_figures_descriptor(store_path: Path) -> dict | None`
-  - `ngff_.FIGURES_GROUP = "figures"`, `ngff_.FIGURES_SCHEMA_VERSION = 1`, `PhenotypicAttr.FIGURES = "figures"`
+- Also produces `ngff_.FIGURES_GROUP = "figures"`, `ngff_.FIGURES_SCHEMA_VERSION = 1` and `PhenotypicAttr.FIGURES = "figures"`.
 
-The value types are storage-neutral. Filenames and directory names are decided upstream (Task 5), so this module knows nothing about formats or plotting.
+This module is storage-neutral. Filenames, directory names, formats and media types are all decided upstream, in Task 3.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -742,8 +366,8 @@ def test_writer_lays_out_groups_files_and_a_hash_bound_descriptor(tmp_path: Path
 
     descriptor = fragment[ngff_.PhenotypicAttr.FIGURES]
     assert descriptor["schema_version"] == 1
-    page = descriptor["bindings"]["sym"]["pages"][0]
     assert descriptor["bindings"]["sym"]["class"] == "MeasureSymZones"
+    page = descriptor["bindings"]["sym"]["pages"][0]
     assert page["metadata"] == {"plate": 1}
     assert [f["format"] for f in page["files"]] == ["plotly-json", "png"]
     for entry in page["files"]:
@@ -782,7 +406,7 @@ def test_reader_returns_none_for_a_pre_feature_store(tmp_path: Path):
 Run: `uv run pytest tests/unit/sdk_/test_image_figures.py -p no:cacheprovider -q`
 Expected: `ModuleNotFoundError: phenotypic.sdk_._image_figures`.
 
-- [ ] **Step 3: Add the constants to `ngff_.py`**
+- [ ] **Step 3: Add the `ngff_` constants**
 
 ```python
 #: Per-image figures (spec 2026-09-22 §1). A Zarr v3 group holding non-Zarr
@@ -792,7 +416,7 @@ FIGURES_GROUP: Final[str] = "figures"
 FIGURES_SCHEMA_VERSION: Final[int] = 1
 ```
 
-Add `FIGURES: Final[str] = "figures"` to `PhenotypicAttr`, after `TABLES`.
+`PhenotypicAttr`: `FIGURES: Final[str] = "figures"` after `TABLES`.
 
 - [ ] **Step 4: Write `_image_figures.py`**
 
@@ -822,7 +446,7 @@ _GROUP_DOCUMENT: dict[str, object] = {
 
 @dataclass(frozen=True)
 class StoredFigureFile:
-    """One rendering of one page. ``filename`` is final; no path separators."""
+    """One rendering of one page. ``filename`` is final; no separators."""
 
     format: str
     media_type: str
@@ -832,7 +456,11 @@ class StoredFigureFile:
 
 @dataclass(frozen=True)
 class StoredFigurePage:
-    """One page and the renderings that succeeded for it."""
+    """One page and the renderings that succeeded for it.
+
+    ``metadata`` is JSON-native by the time it gets here: the builder
+    refuses a page whose metadata does not serialize (spec §1).
+    """
 
     key: str
     label: str | None
@@ -853,7 +481,7 @@ class StoredFigureBinding:
 
 @dataclass(frozen=True)
 class StoredFigureFailure:
-    """A failure at the finest level available (spec §1 "Failure granularity")."""
+    """A failure at the finest level available (spec §1)."""
 
     binding: str
     page: str | None
@@ -875,9 +503,11 @@ def write_image_figures(
     """Write ``figures/`` into an unpromoted part and return its descriptor.
 
     Args:
-        store_part: An unpromoted ``*.ome.zarr.part`` directory. Nothing is
-            written into a promoted store: the root that certifies these files
-            is written after them, in the same transaction.
+        store_part: An unpromoted ``*.ome.zarr.part`` directory in which
+            ``figures/`` does not yet exist. Callers rewriting a promoted store
+            remove the part's copied ``figures/`` first: those copies are hard
+            links into the live store, and writing through one would change
+            the published bytes (``replace_image_tables``).
         figures: The built figures.
 
     Returns:
@@ -898,9 +528,6 @@ def write_image_figures(
         for page in binding.pages:
             entries = []
             for stored in page.files:
-                # A fresh file in a fresh part. Never write through an existing
-                # path here: in a measure-mode rewrite the part's files are hard
-                # links into the LIVE store (see `replace_image_tables`).
                 (directory / stored.filename).write_bytes(stored.data)
                 entries.append({
                     "format": stored.format,
@@ -933,8 +560,8 @@ def apply_image_figures_attributes(
     """Make the root's ``figures`` key equal *fragment*, removal included.
 
     ``None`` removes the key: a pipeline with no ``PlotImage`` binding has no
-    figures, and a measure-mode rebuild must drop a stale descriptor, not
-    keep it (the same total-function rule as ``apply_image_tables_attributes``).
+    figures, and a measure-mode rebuild must drop a stale descriptor -- the
+    same total-function rule as ``apply_image_tables_attributes``.
     """
     from . import ngff_
 
@@ -966,8 +593,6 @@ __all__ = [
 ]
 ```
 
-Re-export these eight names plus `FIGURES_GROUP` from `phenotypic.sdk_`, the same way the tables names are exported. Check with `grep -n "write_image_tables" src/phenotypic/sdk_/__init__.py`, which shows whether they are eager imports or `__getattr__` lazy entries; follow that pattern. `tests/unit/ci/test_startup_imports.py` must stay green.
-
 - [ ] **Step 5: Run to verify they pass**
 
 Run: `uv run pytest tests/unit/sdk_/test_image_figures.py tests/unit/ci/test_startup_imports.py -p no:cacheprovider -q`
@@ -976,30 +601,30 @@ Expected: PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-uv run ruff check --fix src/phenotypic/sdk_/_image_figures.py src/phenotypic/sdk_/ngff_.py src/phenotypic/sdk_/__init__.py tests/unit/sdk_/test_image_figures.py
-git add src/phenotypic/sdk_/ tests/unit/sdk_/test_image_figures.py
+uv run ruff check --fix src/phenotypic/sdk_/_image_figures.py src/phenotypic/sdk_/ngff_.py tests/unit/sdk_/test_image_figures.py
+git add src/phenotypic/sdk_/_image_figures.py src/phenotypic/sdk_/ngff_.py tests/unit/sdk_/test_image_figures.py
 git commit -m "feat(sdk): figures/ group writer and attributes.phenotypic.figures descriptor"
 ```
 
 ---
 
-### Task 5: Build per-image figures in memory
+### Task 3: Build per-image figures in memory (serializers, build, preflight)
 
 **Files:**
-- Modify: `src/phenotypic/plotting/_pipeline/_backends.py`: split `_declared_backends` (≈line 221) into `declared_figure_spec`
-- Modify: `src/phenotypic/plotting/_pipeline/_writer.py`: extract the stem loop from `_publish_plot_output_locked` (≈lines 334–349)
+- Create: `src/phenotypic/plotting/_pipeline/_store_formats.py`
 - Create: `src/phenotypic/plotting/_pipeline/_store_figures.py`
-- Modify: `src/phenotypic/plotting/_pipeline/_coordinator.py`: add `build_image_figures`
-- Test: `tests/unit/plotting/test_store_figures_build.py`
+- Modify: `src/phenotypic/plotting/_pipeline/_backends.py`. Split `declared_figure_spec` out of `_declared_backends` (≈221), and change the preflight (≈166).
+- Modify: `src/phenotypic/plotting/_pipeline/_writer.py`. Extract `unique_page_stems` from `_publish_plot_output_locked` (≈334–349).
+- Test: `tests/unit/plotting/test_store_figures_build.py`, `tests/unit/plotting/test_backends.py` (append)
 
 **Interfaces:**
-- Consumes: `STORE_FORMATS`, `default_store_formats` (Task 2); `serialize_store_format` (Task 3); the `StoredFigure*` types (Task 4).
+- Consumes: `STORE_FORMATS`, `default_store_formats` (Task 1); `StoredFigure*` (Task 2).
 - Produces:
-  - `build_image_figures(pipeline, image) -> StoredFigures | None` (`None` ⇔ no `PlotImage` binding)
+  - `serialize_store_format(fmt, figure, *, binding_id, page_key) -> bytes`
+  - `build_image_figures(pipeline, image) -> StoredFigures | None`. Returns `None` iff the pipeline has no `PlotImage` binding.
   - `normalize_figure_error(exc: BaseException) -> str`
   - `declared_figure_spec(plot) -> FigureSpec | None`
-  - `unique_page_stems(names: Sequence[tuple[str, str]]) -> list[str]` (input `(page_key, preferred_name)`; the manifest writer passes `label or key`, the store passes `key`)
-  - `PlotCoordinator.build_image_figures(image) -> StoredFigures | None`
+  - `unique_page_stems(names: Sequence[tuple[str, str]]) -> list[str]`, where each input pair is `(page_key, preferred_name)`
 
 - [ ] **Step 1: Extract `unique_page_stems` in `_writer.py` (behaviour-preserving)**
 
@@ -1038,21 +663,25 @@ def unique_page_stems(names: Sequence[tuple[str, str]]) -> list[str]:
     return stems
 ```
 
-In `_publish_plot_output_locked`, delete the `used` dict and the stem loop body. Compute `stems = unique_page_stems([(p.key, p.label or p.key) for p in output.pages])` before the loop, and iterate `for page, stem in zip(output.pages, stems):`. Add `Sequence` to the `collections.abc` import.
+In `_publish_plot_output_locked`:
+- Delete `used` and the per-page stem block.
+- Before the loop, compute `stems = unique_page_stems([(p.key, p.label or p.key) for p in output.pages])`.
+- Iterate with `for page, stem in zip(output.pages, stems):`.
+- Add `Sequence` to the `collections.abc` import.
 
-Run: `uv run pytest tests/unit/plotting/ -p no:cacheprovider -q -k "disambiguat or collision or manifest"`
+Run: `uv run pytest tests/unit/plotting/test_output_adapter.py -p no:cacheprovider -q`
 Expected: PASS, with no behaviour change.
 
 - [ ] **Step 2: Split `declared_figure_spec` out of `_declared_backends`**
 
-In `_backends.py`, rename the body of `_declared_backends` into:
+In `_backends.py`, move the body of `_declared_backends` into:
 
 ```python
 def declared_figure_spec(plot: Any) -> Any:
     """Return the ``FigureSpec`` *plot*'s ``inspect()`` renders, if declared.
 
-    The three-step rule documented on :func:`_declared_backends`, returning the
-    spec rather than its backend so a caller can also read ``spec.store``.
+    The three-step rule documented on :func:`_declared_backends`, returning
+    the spec rather than its backend so a caller can also read ``spec.store``.
     """
     from phenotypic.abc_.plotting import PhtPlot
 
@@ -1074,16 +703,20 @@ def declared_figure_spec(plot: Any) -> Any:
         return None
 ```
 
-and make `_declared_backends` a two-liner that keeps its docstring: `spec = declared_figure_spec(plot); return spec.backend if spec is not None else None`.
+`_declared_backends` keeps its docstring, and its body becomes `spec = declared_figure_spec(plot); return spec.backend if spec is not None else None`.
 
 - [ ] **Step 3: Write the failing build tests**
 
 ```python
-"""build_image_figures: in-memory, finest-grained failures (spec §1, §3 step 1)."""
+"""build_image_figures: in memory, finest-grained failures (spec §1, §3 step 1)."""
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
+import textwrap
 
+import numpy as np
 import pytest
 from pydantic import BaseModel
 
@@ -1132,12 +765,18 @@ class HandBuiltPages(BaseModel, PlotImage):
             PlotPage(key="A b", figure=go.Figure(), label="First"),
             PlotPage(key="a-b", figure=Figure()),
             PlotPage(key="odd", figure=object()),
+            PlotPage(key="np", figure=go.Figure(), metadata={"n": np.int64(3)}),
         ))
 
 
 class Explodes(BaseModel, PlotImage):
     def inspect(self, subject=None, *, for_save=False, **overrides):
         raise RuntimeError(f"bad object at {hex(id(self))}")
+
+
+class ReturnsNone(BaseModel, PlotImage):
+    def inspect(self, subject=None, *, for_save=False, **overrides):
+        return None
 
 
 def _build(*plots):
@@ -1164,6 +803,7 @@ def test_mpl_default_stores_png():
     [page] = _build(MplLine()).bindings[0].pages
     assert [f.format for f in page.files] == ["png"]
     assert page.backend == "mpl"
+    assert page.files[0].data.startswith(b"\x89PNG")
 
 
 def test_a_declared_png_without_chrome_fails_that_format_only(monkeypatch):
@@ -1178,6 +818,17 @@ def test_a_declared_png_without_chrome_fails_that_format_only(monkeypatch):
     assert failure.error.startswith("PlotBackendUnavailable: ")
 
 
+def test_a_declared_png_with_chrome_stores_what_kaleido_returns(monkeypatch):
+    import plotly.io as pio
+
+    from phenotypic.plotting._pipeline import _backends
+
+    monkeypatch.setattr(_backends, "chrome_available", lambda: True)
+    monkeypatch.setattr(pio, "to_image", lambda fig, format: b"\x89PNG kaleido")
+    [page] = _build(BarsWithPng()).bindings[0].pages
+    assert [(f.format, f.data) for f in page.files][1] == ("png", b"\x89PNG kaleido")
+
+
 def test_hand_built_pages_use_backend_defaults_and_collision_safe_names():
     stored = _build(HandBuiltPages())
     [binding] = stored.bindings
@@ -1185,10 +836,12 @@ def test_hand_built_pages_use_backend_defaults_and_collision_safe_names():
     assert names["A b"] == ["A-b.plotly.json"]
     [mpl_name] = names["a-b"]
     assert mpl_name.endswith(".png") and mpl_name != "A-b.png"
-    assert "odd" not in names
-    [failure] = stored.failed
-    assert (failure.page, failure.format) == ("odd", None)
-    assert failure.error.startswith("TypeError: unsupported figure type")
+    assert "odd" not in names and "np" not in names
+    by_page = {f.page: f for f in stored.failed}
+    assert by_page["odd"].format is None
+    assert by_page["odd"].error.startswith("TypeError: unsupported figure type")
+    assert by_page["np"].format is None
+    assert by_page["np"].error.startswith("TypeError: ")
 
 
 def test_inspect_raising_omits_the_binding_and_normalises_the_address():
@@ -1197,6 +850,41 @@ def test_inspect_raising_omits_the_binding_and_normalises_the_address():
     [failure] = stored.failed
     assert (failure.binding, failure.page, failure.format) == ("Explodes", None, None)
     assert failure.error == "RuntimeError: bad object at 0x…"
+
+
+def test_inspect_returning_none_is_a_failure_not_an_absence():
+    stored = _build(ReturnsNone())
+    assert stored.bindings == ()
+    [failure] = stored.failed
+    assert (failure.binding, failure.page, failure.format) == ("ReturnsNone", None, None)
+
+
+def test_a_binding_whose_every_page_failed_is_absent(monkeypatch):
+    from phenotypic.plotting._pipeline import _backends
+
+    class PngOnly(BaseModel, PlotImage):
+        @figure(title="p", backend="plotly", primary=True, store=("png",))
+        def draw(self, image):
+            import plotly.graph_objects as go
+
+            return go.Figure()
+
+    monkeypatch.setattr(_backends, "chrome_available", lambda: False)
+    stored = _build(PngOnly())
+    assert stored.bindings == ()
+    assert [(f.page, f.format) for f in stored.failed] == [("default", "png")]
+
+
+def test_an_unexpected_error_outside_inspect_stays_inside_the_binding(monkeypatch):
+    from phenotypic.plotting._pipeline import _store_figures
+
+    def _boom(plot):
+        raise LookupError("resolver broke")
+
+    monkeypatch.setattr(_store_figures, "declared_figure_spec", _boom)
+    stored = _build(Bars())
+    assert stored.bindings == ()
+    assert stored.failed[0].error == "LookupError: resolver broke"
 
 
 def test_normalize_figure_error_replaces_every_address():
@@ -1210,6 +898,33 @@ def test_figures_are_closed_after_serialization(monkeypatch):
     monkeypatch.setattr(_store_figures.FigureAdapter, "close", staticmethod(closed.append))
     _build(MplLine())
     assert len(closed) == 1
+
+
+@pytest.mark.parametrize("backend", ["plotly", "mpl"])
+def test_the_default_serializer_is_stable_across_processes(backend):
+    """Spec §4: fresh interpreters (fresh hash seeds, fresh addresses) agree."""
+    make = {
+        "plotly": "import plotly.graph_objects as go\nfig = go.Figure(go.Scatter(x=[1, 2, 3], y=[3, 1, 2]))\n",
+        "mpl": "from matplotlib.figure import Figure\nfig = Figure()\nfig.subplots().plot([1, 2, 3], [3, 1, 2])\n",
+    }[backend]
+    fmt = "plotly-json" if backend == "plotly" else "png"
+    code = make + textwrap.dedent(f"""
+        import hashlib
+        from phenotypic.plotting._pipeline._store_formats import serialize_store_format
+        data = serialize_store_format({fmt!r}, fig, binding_id="b", page_key="default")
+        print(hashlib.sha256(data).hexdigest())
+    """)
+
+    def digest(seed: str) -> str:
+        import os
+
+        env = {**os.environ, "PYTHONHASHSEED": seed}
+        return subprocess.run(
+            [sys.executable, "-c", code], capture_output=True, text=True,
+            check=True, env=env,
+        ).stdout.strip()
+
+    assert digest("1") == digest("2")
 ```
 
 - [ ] **Step 4: Run to verify they fail**
@@ -1217,17 +932,88 @@ def test_figures_are_closed_after_serialization(monkeypatch):
 Run: `uv run pytest tests/unit/plotting/test_store_figures_build.py -p no:cacheprovider -q`
 Expected: `ModuleNotFoundError: phenotypic.plotting._pipeline._store_figures`.
 
-- [ ] **Step 5: Write `_store_figures.py`**
+- [ ] **Step 5: Write `_store_formats.py` (the serializers)**
+
+```python
+"""One deterministic serializer per store format (spec §2 "Serializers").
+
+Plotting libraries are imported inside each function (lazy-import contract).
+"""
+from __future__ import annotations
+
+from io import BytesIO
+from typing import Any, Callable
+
+from phenotypic.abc_.plotting import figure_backend_of
+
+
+def _serialize_plotly_json(figure: Any, *, binding_id: str, page_key: str) -> bytes:
+    # `to_json` drops trace uids by default, the one per-object random field.
+    return figure.to_json().encode("utf-8")
+
+
+def _serialize_png(figure: Any, *, binding_id: str, page_key: str) -> bytes:
+    if figure_backend_of(figure) == "plotly":
+        # Module attribute access, not a bound name, so a test that patches
+        # `_backends.chrome_available` is honoured (see `_writer.py` imports).
+        from . import _backends
+
+        if not _backends.chrome_available():
+            raise _backends.PlotBackendUnavailable(
+                "Plotly PNG export needs Chrome (kaleido); install it with "
+                "plotly_get_chrome"
+            )
+        import plotly.io as pio
+
+        return pio.to_image(figure, format="png")
+    buffer = BytesIO()
+    figure.savefig(buffer, format="png")
+    return buffer.getvalue()
+
+
+_SERIALIZERS: dict[str, Callable[..., bytes]] = {
+    "plotly-json": _serialize_plotly_json,
+    "png": _serialize_png,
+}
+
+
+def serialize_store_format(
+    fmt: str, figure: Any, *, binding_id: str, page_key: str
+) -> bytes:
+    """Serialize *figure* to one store format.
+
+    Args:
+        fmt: A name from ``STORE_FORMATS``.
+        figure: A figure whose backend supports *fmt* (checked by the caller).
+        binding_id: The plot binding id. Unused by the current formats; kept
+            so a format that must salt generated ids has what it needs.
+        page_key: The page key; same reason.
+
+    Returns:
+        The encoded bytes.
+
+    Raises:
+        KeyError: If *fmt* is not a store format.
+        PlotBackendUnavailable: A Plotly PNG without Chrome.
+    """
+    return _SERIALIZERS[fmt](figure, binding_id=binding_id, page_key=page_key)
+
+
+__all__ = ["serialize_store_format"]
+```
+
+- [ ] **Step 6: Write `_store_figures.py`**
 
 ```python
 """Build one image's figures in memory for the store (spec §3 step 1).
 
 Writes nothing, so it is safe to call anywhere before a store transaction.
-Every failure is captured at the finest level available and returned inside
-the value; only ``PlotPublicationBlocked`` propagates, as in every handler.
+Everything per binding sits inside that binding's failure boundary; only
+``PlotPublicationBlocked`` propagates, as in every handler.
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 from typing import Any
@@ -1273,7 +1059,7 @@ def build_image_figures(pipeline: Any, image: Any) -> StoredFigures | None:
     Returns:
         ``None`` when the pipeline has no ``PlotImage`` binding -- the store
         then carries no ``figures`` key at all. Otherwise the built value,
-        which may hold no bindings if every one failed.
+        which holds no bindings if every one failed.
 
     Raises:
         PlotPublicationBlocked: Never swallowed.
@@ -1286,13 +1072,15 @@ def build_image_figures(pipeline: Any, image: Any) -> StoredFigures | None:
     for binding in image_bindings:
         try:
             value = binding.plot.inspect(image, for_save=True)
+            if value is None:
+                raise TypeError("inspect() returned None; expected a figure or PlotOutput")
+            pages = _build_pages(binding, value, failed)
         except PlotPublicationBlocked:
             raise
         except Exception as exc:  # noqa: BLE001 - one figure never kills an image
-            logger.warning("Plot %s failed during image inspect", binding.id, exc_info=exc)
+            logger.warning("Plot %s failed while building its figure", binding.id, exc_info=exc)
             failed.append(StoredFigureFailure(binding.id, None, None, normalize_figure_error(exc)))
             continue
-        pages = _build_pages(binding, value, failed)
         if pages:
             built.append(StoredFigureBinding(
                 binding_id=binding.id,
@@ -1306,124 +1094,179 @@ def build_image_figures(pipeline: Any, image: Any) -> StoredFigures | None:
 def _build_pages(
     binding: Any, value: Any, failed: list[StoredFigureFailure]
 ) -> list[StoredFigurePage]:
-    """Serialize every page of one binding, recording per-page/format failures."""
+    """Serialize every page of one binding, recording page/format failures."""
     output = normalize_plot_output(value)
-    spec = declared_figure_spec(binding.plot)
-    stems = unique_page_stems([(page.key, page.key) for page in output.pages])
+    try:
+        spec = declared_figure_spec(binding.plot)
+        stems = unique_page_stems([(page.key, page.key) for page in output.pages])
+    except BaseException:
+        for page in output.pages:
+            FigureAdapter.close(page.figure)
+        raise
     pages: list[StoredFigurePage] = []
     for page, stem in zip(output.pages, stems):
         try:
-            backend = figure_backend_of(page.figure)
-            if backend is None:
-                failed.append(StoredFigureFailure(
-                    binding.id, page.key, None,
-                    "TypeError: unsupported figure type "
-                    f"{type(page.figure).__module__}.{type(page.figure).__qualname__}",
-                ))
-                continue
-            formats = spec.store if spec is not None else default_store_formats(backend)
-            files: list[StoredFigureFile] = []
-            for fmt in formats:
-                info = STORE_FORMATS[fmt]
-                try:
-                    if backend not in info.backends:
-                        raise TypeError(f"a {backend} figure cannot be stored as {fmt}")
-                    data = serialize_store_format(
-                        fmt, page.figure, binding_id=binding.id, page_key=page.key
-                    )
-                except PlotPublicationBlocked:
-                    raise
-                except Exception as exc:  # noqa: BLE001 - per-format best effort
-                    failed.append(StoredFigureFailure(
-                        binding.id, page.key, fmt, normalize_figure_error(exc)
-                    ))
-                    continue
-                files.append(StoredFigureFile(
-                    fmt, info.media_type, f"{stem}{info.extension}", data
-                ))
-            if files:
-                pages.append(StoredFigurePage(
-                    key=page.key, label=page.label, backend=backend,
-                    metadata=dict(page.metadata), files=tuple(files),
-                ))
+            built = _build_page(binding, page, stem, spec, failed)
+        except PlotPublicationBlocked:
+            raise
+        except Exception as exc:  # noqa: BLE001 - per-page best effort
+            failed.append(StoredFigureFailure(
+                binding.id, page.key, None, normalize_figure_error(exc)
+            ))
+            built = None
         finally:
             FigureAdapter.close(page.figure)
+        if built is not None:
+            pages.append(built)
     return pages
+
+
+def _build_page(
+    binding: Any,
+    page: Any,
+    stem: str,
+    spec: Any,
+    failed: list[StoredFigureFailure],
+) -> StoredFigurePage | None:
+    """One page: backend check, metadata check, then each declared format."""
+    backend = figure_backend_of(page.figure)
+    if backend is None:
+        raise TypeError(
+            "unsupported figure type "
+            f"{type(page.figure).__module__}.{type(page.figure).__qualname__}"
+        )
+    metadata = dict(page.metadata)
+    # The measure-mode root is written without `default=`, so a numpy scalar
+    # here would fail the whole store rewrite; refuse the page instead (spec §1).
+    json.dumps(metadata)
+    formats = spec.store if spec is not None else default_store_formats(backend)
+    files: list[StoredFigureFile] = []
+    for fmt in formats:
+        info = STORE_FORMATS[fmt]
+        try:
+            if backend not in info.backends:
+                raise TypeError(f"a {backend} figure cannot be stored as {fmt}")
+            data = serialize_store_format(
+                fmt, page.figure, binding_id=binding.id, page_key=page.key
+            )
+        except PlotPublicationBlocked:
+            raise
+        except Exception as exc:  # noqa: BLE001 - per-format best effort
+            failed.append(StoredFigureFailure(
+                binding.id, page.key, fmt, normalize_figure_error(exc)
+            ))
+            continue
+        files.append(StoredFigureFile(fmt, info.media_type, f"{stem}{info.extension}", data))
+    if not files:
+        return None
+    return StoredFigurePage(
+        key=page.key, label=page.label, backend=backend,
+        metadata=metadata, files=tuple(files),
+    )
 
 
 __all__ = ["build_image_figures", "normalize_figure_error"]
 ```
 
-Rules this implements, which the reviewer checks against spec §1/§2:
-- The spec's `store` applies to every page the declared method produced.
-- A page whose backend contradicts a declared format fails **that format**, not the page.
-- A page whose backend is unknown fails with `format: null`.
-- A page with zero successful files is omitted.
-- A binding with zero pages is omitted.
+The reviewer checks these rules against spec §1 and §2:
+- A declared spec's `store` applies to every page of that binding.
+- A page whose backend contradicts a declared format fails that one format only.
+- An unknown backend fails the whole page with `format: None`.
+- Metadata that is not JSON-native also fails the whole page with `format: None`.
+- A page with no file is omitted.
+- A binding with no page is omitted.
 
-- [ ] **Step 6: Add the coordinator delegate**
+- [ ] **Step 7: The preflight judges image plots by their declared `png`**
 
-In `_coordinator.py`, add this method to `PlotCoordinator` (place it where `emit_image` is; `emit_image` itself is removed in Task 9):
-
-```python
-    def build_image_figures(self, image: Any) -> "StoredFigures | None":
-        """Build this pipeline's per-image figures in memory (spec §3 step 1)."""
-        from ._store_figures import build_image_figures
-
-        return build_image_figures(self._pipeline, image)
-```
-
-Add `from phenotypic.sdk_._image_figures import StoredFigures` under `if TYPE_CHECKING:`, and add `TYPE_CHECKING` to the `typing` import.
-
-- [ ] **Step 7: Run to verify they pass**
-
-Run: `uv run pytest tests/unit/plotting/test_store_figures_build.py tests/unit/plotting/test_backends.py -p no:cacheprovider -q`
-Expected: PASS.
-
-- [ ] **Step 8: Prove two tests can fail**
-
-(a) Delete the `_ADDRESS.sub` call; expect the address test to FAIL. Restore it.
-(b) Change `if pages:` to `if True:` in `build_image_figures`. Nothing fails yet, because the all-failed binding case is not covered in this file. Add this test, confirm it fails under the mutation, then restore the line and confirm it passes:
+Append to `tests/unit/plotting/test_backends.py`:
 
 ```python
-def test_a_binding_whose_every_page_failed_is_absent(monkeypatch):
+def test_image_plots_need_chrome_only_when_they_declare_png(monkeypatch):
+    from pydantic import BaseModel
+
+    from phenotypic import ImagePipeline
+    from phenotypic.abc_.plotting import PlotImage, figure
     from phenotypic.plotting._pipeline import _backends
 
-    class PngOnly(BaseModel, PlotImage):
-        @figure(title="p", backend="plotly", primary=True, store=("png",))
+    class Img(BaseModel, PlotImage):
+        @figure(title="t", backend="plotly", primary=True)
         def draw(self, image):
-            import plotly.graph_objects as go
+            raise AssertionError
 
-            return go.Figure()
+    class ImgPng(BaseModel, PlotImage):
+        @figure(title="t", backend="plotly", primary=True, store=("png",))
+        def draw(self, image):
+            raise AssertionError
 
     monkeypatch.setattr(_backends, "chrome_available", lambda: False)
-    stored = _build(PngOnly())
-    assert stored.bindings == ()
-    assert [(f.page, f.format) for f in stored.failed] == [("default", "png")]
+    assert _backends.preflight_plot_backends(ImagePipeline(plots=[Img()])) == []
+    [line] = _backends.preflight_plot_backends(ImagePipeline(plots=[ImgPng()]))
+    assert "ImgPng" in line
 ```
 
-- [ ] **Step 9: Commit**
+In `preflight_plot_backends`, at the top of the loop:
+
+```python
+        if isinstance(binding.plot, PlotImage):
+            spec = declared_figure_spec(binding.plot)
+            # An image plot renders PNG only if it declared it (spec §2);
+            # an undeclared one stores its backend default, which for Plotly
+            # needs no Chrome.
+            if spec is not None and spec.backend == "plotly" and "png" in spec.store:
+                plotly_ids.append(binding.id)
+            elif spec is not None and spec.backend == "mpl":
+                mpl_ids.append(binding.id)
+            elif spec is not None:
+                _require_importable("plotly", "plotly", [binding.id])
+            continue
+```
+
+Import `PlotImage` inside the function, beside the existing function-scope imports.
+
+Run: `uv run pytest tests/unit/plotting/test_backends.py -p no:cacheprovider -q`
+Expected: the new test passes. An existing preflight test that used a `PlotImage` fixture and expected the old "HTML only" line needs one of two fixes:
+- If the test is about aggregate wording, change its fixture to `PlotMeas`.
+- If it is about image plots, change its assertion to the new rule.
+
+- [ ] **Step 8: Run to verify they pass**
+
+Run: `uv run pytest tests/unit/plotting/test_store_figures_build.py tests/unit/plotting/test_backends.py tests/unit/plotting/test_output_adapter.py -p no:cacheprovider -q`
+Expected: PASS.
+
+- [ ] **Step 9: Prove it can fail**
+
+- Remove the `_ADDRESS.sub` call. Expect the address test to FAIL, then restore the call.
+- Replace `json.dumps(metadata)` with `pass`. Expect `test_hand_built_pages…` to FAIL on `"np" not in names`, then restore it.
+
+- [ ] **Step 10: Commit**
 
 ```bash
-uv run ruff check --fix src/phenotypic/plotting/_pipeline/ tests/unit/plotting/test_store_figures_build.py
-git add src/phenotypic/plotting/_pipeline/ tests/unit/plotting/test_store_figures_build.py
+uv run ruff check --fix src/phenotypic/plotting/_pipeline/ tests/unit/plotting/test_store_figures_build.py tests/unit/plotting/test_backends.py
+git add src/phenotypic/plotting/_pipeline/ tests/unit/plotting/test_store_figures_build.py tests/unit/plotting/test_backends.py
 git commit -m "feat(plotting): build per-image figures in memory for the store"
 ```
 
 ---
 
-### Task 6: Write figures inside the store transaction, in every mode
+### Task 4: Write figures inside the store transaction
 
 **Files:**
-- Modify: `src/phenotypic/_core/_image_parts/_image_io_handler.py`: `save2zarr` (≈1068), `_save_store` (≈1128), `_write_store_part` (≈1212; the tables block at 1377–1389, the root at 1391–1418)
+- Modify: `src/phenotypic/_core/_image_parts/_image_io_handler.py`:
+  - `save2zarr` (≈1068)
+  - `_save_store` (≈1128)
+  - `_write_store_part` (≈1212; tables block at 1377–1389, root at 1391–1418)
 - Modify: `src/phenotypic/sdk_/_measurement_tables.py`: `_rewrite_store_tables` (≈632), `replace_image_tables` (≈698)
 - Modify: `src/phenotypic/_cli/_cli_output_manager.py`: `save_image_store` (≈1842), `replace_image_store_measurements` (≈1941)
 - Modify: `src/phenotypic/_cli/_cli_process_only.py`: `write_process_only_layer` (≈152)
+- Modify: `tests/unit/cli/conftest.py:835` and `tests/unit/cli/test_embedded_table_inversion.py:293`. They call `replace_image_store_measurements`; add `figures=None` to each call.
 - Test: `tests/unit/sdk_/test_image_figures_store.py`
 
 **Interfaces:**
-- Consumes: `StoredFigures`, `write_image_figures`, `apply_image_figures_attributes` (Task 4).
-- Produces: a keyword `figures: StoredFigures | None = None` on `Image.save2zarr`, `Image._save_store`, `Image._write_store_part`, `OutputManager.save_image_store` and `write_process_only_layer`. `replace_image_tables` and `OutputManager.replace_image_store_measurements` gain `figures: StoredFigures | None = None, rebuild_figures: bool = False`.
+- Consumes: `StoredFigures`, `write_image_figures`, `apply_image_figures_attributes` (Task 2).
+- Produces:
+  - `figures: StoredFigures | None = None` on `Image.save2zarr`, `_save_store`, `_write_store_part`, `OutputManager.save_image_store` and `write_process_only_layer`.
+  - A **required** keyword-only `figures: StoredFigures | None` on `replace_image_tables` and `OutputManager.replace_image_store_measurements`. These functions always rebuild the figures group; `None` removes it.
+  - The private helper `_rewrite_store_tables(..., clear_figures: bool = False)`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1433,11 +1276,14 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from phenotypic import Image
+from phenotypic._cli._embedded_measurement_tables import prepare_image_tables
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.sdk_ import ngff_
 from phenotypic.sdk_._image_figures import (
@@ -1447,6 +1293,7 @@ from phenotypic.sdk_._image_figures import (
     StoredFigures,
     read_image_figures_descriptor,
 )
+from phenotypic.sdk_._measurement_tables import replace_image_tables
 
 
 def _figures(tag: bytes = b"one", binding: str = "sym") -> StoredFigures:
@@ -1455,6 +1302,10 @@ def _figures(tag: bytes = b"one", binding: str = "sym") -> StoredFigures:
                          "default.plotly.json", tag),
     ))
     return StoredFigures((StoredFigureBinding(binding, "X", binding, (page,)),), ())
+
+
+def _tables():
+    return prepare_image_tables(pd.DataFrame({"Object_Label": [1]}), None)
 
 
 @pytest.fixture(scope="module")
@@ -1494,82 +1345,97 @@ def test_process_writer_carries_figures_inside_the_consolidated_store(tmp_path, 
     assert "figures/sym" in root["consolidated_metadata"]["metadata"]
 
 
-def test_measure_rebuild_replaces_figures_without_touching_live_bytes(tmp_path, plate):
-    from phenotypic.sdk_ import replace_image_tables
-    from phenotypic.sdk_._measurement_tables import prepare_image_tables
-    import pandas as pd
-
+def test_measure_rebuild_replaces_the_group_and_keeps_pixels_linked(tmp_path, plate):
     store = plate.save2zarr(tmp_path / "p.ome.zarr", figures=_figures(b"old", "gone"))
-    old_file = store / "figures/gone/default.plotly.json"
     pixel = next(
         p for p in (store / "rgb" / "0").rglob("*") if p.is_file() and p.name != "zarr.json"
     )
     pixel_inode = pixel.stat().st_ino
-    held = os.open(old_file, os.O_RDONLY)
-    try:
-        replace_image_tables(
-            store,
-            prepare_image_tables(pd.DataFrame({"Object_Label": [1]}), None),
-            objmap_target=ngff_.objmap_path("rgb"),
-            figures=_figures(b"new", "kept"),
-            rebuild_figures=True,
-        )
-        # the replaced file's inode still holds the OLD bytes: nothing wrote through it
-        assert os.pread(held, 16, 0) == b"old"
-    finally:
-        os.close(held)
+    replace_image_tables(
+        store, _tables(), objmap_target=ngff_.objmap_path("rgb"),
+        figures=_figures(b"new", "kept"),
+    )
     assert not (store / "figures/gone").exists()
     assert (store / "figures/kept/default.plotly.json").read_bytes() == b"new"
     assert list(read_image_figures_descriptor(store)["bindings"]) == ["kept"]
-    assert (store / pixel.relative_to(store)).stat().st_ino == pixel_inode
+    assert pixel.stat().st_ino == pixel_inode
+
+
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="holds a descriptor across a directory rename, which Windows refuses",
+)
+def test_a_same_name_rebuild_never_writes_through_into_the_live_store(tmp_path, plate):
+    """Spec §5: the part's copies are hard links; the new bytes must be new files."""
+    store = plate.save2zarr(tmp_path / "p.ome.zarr", figures=_figures(b"old-bytes", "sym"))
+    held = os.open(store / "figures/sym/default.plotly.json", os.O_RDONLY)
+    try:
+        replace_image_tables(
+            store, _tables(), objmap_target=ngff_.objmap_path("rgb"),
+            figures=_figures(b"new-bytes", "sym"),
+        )
+        os.lseek(held, 0, os.SEEK_SET)
+        assert os.read(held, 32) == b"old-bytes"
+    finally:
+        os.close(held)
+    assert (store / "figures/sym/default.plotly.json").read_bytes() == b"new-bytes"
 
 
 def test_measure_rebuild_with_no_bindings_removes_key_and_group(tmp_path, plate):
-    from phenotypic.sdk_ import replace_image_tables
-    from phenotypic.sdk_._measurement_tables import prepare_image_tables
-    import pandas as pd
-
     store = plate.save2zarr(tmp_path / "p.ome.zarr", figures=_figures())
     replace_image_tables(
-        store,
-        prepare_image_tables(pd.DataFrame({"Object_Label": [1]}), None),
-        objmap_target=ngff_.objmap_path("rgb"),
-        figures=None,
-        rebuild_figures=True,
+        store, _tables(), objmap_target=ngff_.objmap_path("rgb"), figures=None
     )
     assert read_image_figures_descriptor(store) is None
     assert not (store / "figures").exists()
 
 
-def test_a_table_only_replace_leaves_figures_untouched(tmp_path, plate):
-    from phenotypic.sdk_ import replace_image_tables
-    from phenotypic.sdk_._measurement_tables import prepare_image_tables
-    import pandas as pd
+def test_measure_rebuild_writes_figures_before_the_root_is_promoted(
+    tmp_path, plate, monkeypatch
+):
+    """Spec §5: judged at the promote, not from the final tree."""
+    import hashlib
+
+    store = plate.save2zarr(tmp_path / "p.ome.zarr")
+    real_promote = ngff_.promote_store
+    seen = {}
+
+    def _spy(part, final, **kwargs):
+        root = json.loads((Path(part) / "zarr.json").read_text())
+        entry = root["attributes"]["phenotypic"]["figures"]["bindings"]["sym"]["pages"][0]["files"][0]
+        data = (Path(part) / entry["path"]).read_bytes()
+        seen["match"] = hashlib.sha256(data).hexdigest() == entry["sha256"]
+        return real_promote(part, final, **kwargs)
+
+    monkeypatch.setattr(ngff_, "promote_store", _spy)
+    replace_image_tables(
+        store, _tables(), objmap_target=ngff_.objmap_path("rgb"), figures=_figures()
+    )
+    assert seen == {"match": True}
+
+
+def test_migrates_table_replace_leaves_figures_untouched(tmp_path, plate):
+    from phenotypic.sdk_._measurement_tables import replace_embedded_measurement_table
 
     store = plate.save2zarr(tmp_path / "p.ome.zarr", figures=_figures())
     before = read_image_figures_descriptor(store)
-    replace_image_tables(
-        store,
-        prepare_image_tables(pd.DataFrame({"Object_Label": [1]}), None),
-        objmap_target=ngff_.objmap_path("rgb"),
+    replace_embedded_measurement_table(
+        store, _tables().measurements_payload(), objmap_target=ngff_.objmap_path("rgb")
     )
     assert read_image_figures_descriptor(store) == before
     assert (store / "figures/sym/default.plotly.json").read_bytes() == b"one"
 ```
 
-Before running, check two names in this test:
-- **`prepare_image_tables`**: `grep -rn "def prepare_image_tables" src/phenotypic` shows its module. Import it from there, and match the call to its signature (the output manager calls `prepare_image_tables(baseline, metadata_snapshot_or_None)`). If the synthetic frame is rejected for lacking a required column, use the frame the existing `tests/unit/sdk_` table tests build. `grep -rln "prepare_image_tables(" tests/unit/sdk_` finds them.
-
 - [ ] **Step 2: Run to verify they fail**
 
 Run: `uv run pytest tests/unit/sdk_/test_image_figures_store.py -p no:cacheprovider -q`
-Expected: `TypeError: ... got an unexpected keyword argument 'figures'`.
+Expected: `TypeError: ... unexpected keyword argument 'figures'`.
 
 - [ ] **Step 3: Thread `figures` through the image writer**
 
-- `save2zarr`: add `figures: "StoredFigures | None" = None`. Document it in `Args:` as *"Per-image figures to write inside this store's transaction (spec 2026-09-22 §3). `None` writes no `figures` key."* Pass `figures=figures` to `_save_store`.
-- `_save_store`: add the same parameter and pass it to `_write_store_part`.
-- `_write_store_part`: add the same parameter. After the tables block and **before** `# 4. root zarr.json LAST`, insert:
+`save2zarr`, `_save_store` and `_write_store_part` each gain the parameter `figures: "StoredFigures | None" = None`, documented in `Args:` as *"Per-image figures to write inside this store's transaction (spec 2026-09-22 §3). `None` writes no `figures` key."* `save2zarr` and `_save_store` pass it down to the next function.
+
+In `_write_store_part`, after the tables block and **before** `# 4. root zarr.json LAST`, insert:
 
 ```python
         # Figures land in THIS part too, before the root, for the same reason
@@ -1590,93 +1456,187 @@ After the `apply_image_tables_attributes(...)` block, insert:
             apply_image_figures_attributes(phenotypic_attributes, figures_fragment)
 ```
 
-Add `from phenotypic.sdk_._image_figures import StoredFigures` under the file's `TYPE_CHECKING` block. If there is none, use a string annotation and add one.
+Put the `StoredFigures` import under the file's `TYPE_CHECKING` block (add the block if there is none).
 
 - [ ] **Step 4: Thread it through the process writer and the output manager**
 
-- `write_process_only_layer(..., commit_guard=None, figures: "StoredFigures | None" = None)`: pass `figures=figures` to `image._save_store(...)` in the `zarr` branch. The `tiff` branch ignores it; add a one-line comment saying figures are never built for flat exports (spec non-goal).
-- `OutputManager.save_image_store(..., measurements=None, figures=None)`: `if figures is not None: save_kwargs["figures"] = figures`.
-- `OutputManager.replace_image_store_measurements(..., commit_guard=None, figures=None, rebuild_figures=False)`: forward both to `replace_image_tables`.
+- **`write_process_only_layer(..., figures: "StoredFigures | None" = None)`:** pass `figures` to `image._save_store(...)` in the `zarr` branch. In the `tiff` branch, add one comment: figures are never built for flat exports (spec non-goal).
+- **`OutputManager.save_image_store(..., figures=None)`:** `if figures is not None: save_kwargs["figures"] = figures`.
+- **`OutputManager.replace_image_store_measurements(..., *, figures, commit_guard=None, durable=None)`:** `figures` is required and keyword-only. Forward it as `replace_image_tables(..., figures=figures)`. Document it as *"The current pipeline's per-image figures; `None` removes the store's figures (spec §3 measure mode)."*
+- Update the two test callers to pass `figures=None`.
 
 - [ ] **Step 5: Rebuild figures inside the table transaction**
 
-In `_measurement_tables.py`:
-
-`_rewrite_store_tables(..., commit_guard, clear_figures: bool = False)`: after `shutil.rmtree(part / ngff_.TABLES_GROUP, ignore_errors=True)`, add:
+Give `_rewrite_store_tables` a new parameter, `clear_figures: bool = False` (after `commit_guard`), and add this after the `tables/` rmtree:
 
 ```python
         if clear_figures:
-            # Same reasoning as `tables/` above, plus one more: the copied
-            # figure files are HARD LINKS into the live store, so the new
-            # generation must be written as new files, never through these.
+            # The copied figure files are HARD LINKS into the live store, like
+            # everything copytree cloned above. Removing them here means the
+            # new generation is written as new files; writing through a link
+            # would change the published store before its new root exists.
             shutil.rmtree(part / ngff_.FIGURES_GROUP, ignore_errors=True)
 ```
 
-`replace_image_tables(..., commit_guard=None, figures: "StoredFigures | None" = None, rebuild_figures: bool = False)`: add both parameters to `Args:`. *`rebuild_figures`* is documented as: *"Replace the whole `figures/` group with *figures* (`None` removes it). `False` leaves the store's figures exactly as they are."* Inside `_populate`, after the tables `apply_…` call:
+Change the signature to `replace_image_tables(store_path, tables, *, figures, objmap_target=None, durable=None, commit_guard=None)`, with `figures` required, and document it under `Args:`. In `_populate`, after the tables `apply_…` call:
 
 ```python
-            if rebuild_figures:
-                from ._image_figures import (
-                    apply_image_figures_attributes,
-                    write_image_figures,
-                )
+            from ._image_figures import apply_image_figures_attributes, write_image_figures
 
-                apply_image_figures_attributes(
-                    phenotypic,
-                    write_image_figures(part, figures) if figures is not None else None,
-                )
+            apply_image_figures_attributes(
+                phenotypic,
+                write_image_figures(part, figures) if figures is not None else None,
+            )
 ```
 
-Pass `clear_figures=rebuild_figures` to `_rewrite_store_tables`. Leave `replace_embedded_measurement_table` as it is: it never clears `figures/`, so migrate hard-links it across (spec §3).
+Pass `clear_figures=True` to `_rewrite_store_tables`. Leave `replace_embedded_measurement_table` unchanged: it never clears `figures/`, so migrate hard-links the group across (spec §3).
 
 - [ ] **Step 6: Run to verify they pass**
 
-Run: `uv run pytest tests/unit/sdk_/test_image_figures_store.py tests/unit/cli/test_process_only_zarr.py tests/unit/cli/test_embedded_measurement_replacement.py -p no:cacheprovider -q`
-Expected: all PASS.
+Run: `uv run pytest tests/unit/sdk_/test_image_figures_store.py tests/unit/cli/test_process_only_zarr.py tests/unit/cli/test_embedded_measurement_replacement.py tests/unit/cli/test_embedded_table_inversion.py -p no:cacheprovider -q`
+Expected: PASS.
 
 - [ ] **Step 7: Prove the hard-link guard can fail**
 
-Temporarily pass `clear_figures=False` in `replace_image_tables`. Expect `test_measure_rebuild_replaces_figures_without_touching_live_bytes` to FAIL: the stale `gone/` survives, and on a same-name rebuild the write goes through the link. Restore it.
+Pass `clear_figures=False` from `replace_image_tables`. Expect `test_a_same_name_rebuild_never_writes_through_into_the_live_store` to FAIL (the held descriptor reads `new-bytes`). Restore it.
 
 - [ ] **Step 8: Commit**
 
 ```bash
-uv run ruff check --fix src/phenotypic/_core/_image_parts/_image_io_handler.py src/phenotypic/sdk_/_measurement_tables.py src/phenotypic/_cli/_cli_output_manager.py src/phenotypic/_cli/_cli_process_only.py tests/unit/sdk_/test_image_figures_store.py
-git add src/phenotypic/ tests/unit/sdk_/test_image_figures_store.py
+uv run ruff check --fix src/phenotypic/_core/_image_parts/_image_io_handler.py src/phenotypic/sdk_/_measurement_tables.py src/phenotypic/_cli/_cli_output_manager.py src/phenotypic/_cli/_cli_process_only.py tests/unit/sdk_/test_image_figures_store.py tests/unit/cli/conftest.py tests/unit/cli/test_embedded_table_inversion.py
+git add src/phenotypic/_core/_image_parts/_image_io_handler.py src/phenotypic/sdk_/_measurement_tables.py src/phenotypic/_cli/_cli_output_manager.py src/phenotypic/_cli/_cli_process_only.py tests/unit/sdk_/test_image_figures_store.py tests/unit/cli/conftest.py tests/unit/cli/test_embedded_table_inversion.py
 git commit -m "feat(store): write per-image figures inside the root-last transaction"
 ```
 
 ---
 
-### Task 7: Copy-out from the promoted store to `deliverables/plots/`
+### Task 5: Copy-out from the promoted store to `deliverables/plots/`
 
 **Files:**
-- Modify: `src/phenotypic/plotting/_pipeline/_failures.py`: `record_plot_failure(error: BaseException | str)`
+- Modify: `src/phenotypic/plotting/_pipeline/_failures.py` (`record_plot_failure`)
+- Modify: `src/phenotypic/plotting/_pipeline/_writer.py`. Extract `_commit_manifest` from `_publish_plot_output_locked` (≈455–473).
 - Create: `src/phenotypic/plotting/_pipeline/_store_copyout.py`
-- Modify: `src/phenotypic/plotting/_pipeline/_coordinator.py`: add `publish_store_figures`
+- Modify: `src/phenotypic/plotting/_pipeline/_coordinator.py`. Add `publish_store_figures`.
+- Create: `tests/unit/plotting/_store_fixtures.py`
 - Test: `tests/unit/plotting/test_store_copyout.py`
 
 **Interfaces:**
-- Consumes: `read_image_figures_descriptor` (Task 4); `unique_page_stems`, `_atomic_write`, `_guarded_commit`, `safe_path_component`, `PlotPublicationBlocked` (writer); `ensure_plotlyjs_bundle`, `plotlyjs_src_for` (backends); `_image_output_stem` (coordinator).
-- Produces: `publish_store_figures(store_path, plots_base, *, dataset, image_stem, publication_guard=None, commit_guard=None) -> None` and `PlotCoordinator.publish_store_figures(store_path, *, dataset, image_stem) -> None`.
+- Consumes:
+  - `read_image_figures_descriptor` (Task 2)
+  - `unique_page_stems` (Task 3)
+  - `STORE_FORMATS` (Task 1)
+  - `_atomic_write`, `_guarded_commit`, `_require_plot_publication`, `safe_path_component` (writer)
+  - `exclusive_path_lock`
+  - `ensure_plotlyjs_bundle`, `plotlyjs_src_for`
+  - `_image_output_stem` (coordinator)
+- Produces:
+  - `publish_store_figures(store_path, plots_base, *, dataset, image_stem, plot_classes=None, publication_guard=None, commit_guard=None) -> None`
+  - `PlotCoordinator.publish_store_figures(store_path, *, dataset, image_stem) -> None`
+  - `record_plot_failure(..., error: BaseException | str, ..., page: str | None = None, fmt: str | None = None)`
+  - `_commit_manifest(directory, manifest, *, publication_guard, commit_guard) -> None`
+  - test helpers `figure_store(root, stored) -> Path` and `emit_image_via_store(coordinator, image=None, *, dataset="ds", image_stem="plate-1") -> StoredFigures | None`
 
-**Output layout, reproduced exactly as today:**
-- A binding with one page keyed `default`: files at `<plots_base>/<safe(binding)>/<safe(dataset)>/<stem>-<hash>.<ext>`, where `<stem>-<hash>` = `_image_output_stem(dataset, image_stem)`. No manifest.
-- Otherwise: `<…>/<stem>-<hash>/<page-stem>.<ext>` plus `manifest.json` (schema 2). `<page-stem>` = `unique_page_stems([(key, label or key) …])`, the same rule as `_publish_plot_output_locked`.
-- For each stored `plotly-json`, an `.html` is rendered beside it, referencing the hoisted `plotly.min.js` by relative src.
-- Manifest page `files` map format → filename. It includes `"html"` for a generated HTML. `backend` is spelled `"plotly"`/`"matplotlib"`, as the writer spells it. `renderers` is `{"html": "available"}` when any page is Plotly, plus `{"png": "available"}` when any page carries a PNG. `failed` lists pages with no copied file.
+**The output reproduces today's layout.** Reviewers check it against spec §3:
+- **One `default` page (flat):** the files go to `<plots_base>/<safe(binding)>/<safe(dataset)>/<stem>-<hash>.<ext>`, with no manifest.
+- **Anything else (directory):** the files go to `<…>/<stem>-<hash>/<page-stem>.<ext>`, plus a schema-2 `manifest.json` committed by `_commit_manifest` while holding `.publication.lock`. `<page-stem>` = `unique_page_stems([(key, label or key) …])`, which is the manifest writer's rule.
+- **HTML:** for each stored `plotly-json`, a `<page-stem>.html` is generated, referencing the hoisted `plotly.min.js`.
+- **Manifest fields:**
+  - `files` maps format → filename, and includes `"html"`.
+  - `renderers` stays a *capability*: `html: available` when any page is Plotly, `png: available` when any page is matplotlib.
+  - `partial` lists a published page's store failures.
+  - `failed` lists pages that had no file copied.
+- **Failure lines:** the stored `error` is written verbatim. `page` and `format` are added as fields when known. `plot_class` comes from `plot_classes`, or `"<unresolved>"` when the binding is not in it.
 
-- [ ] **Step 1: Let `record_plot_failure` take a pre-spelled message**
+- [ ] **Step 1: Extend `record_plot_failure`**
 
-In `_failures.py`, change the annotation to `error: BaseException | str` and document it: *"A `str` is recorded verbatim. The store already spelled it with `normalize_figure_error`, and re-wrapping it would prefix a class name twice."* Change the entry line to `"error": error if isinstance(error, str) else _format_error(error),`.
+In `_failures.py`:
+- Change the annotation to `error: BaseException | str`, documented as *"A `str` is recorded verbatim; the store already spelled it with `normalize_figure_error`, and re-wrapping would prefix a class twice."*
+- Add the keyword arguments `page: str | None = None, fmt: str | None = None`, documented as *"The page key and store format a per-image failure is about, recorded as `page`/`format` fields."*
+- In the body, use `"error": error if isinstance(error, str) else _format_error(error)`. Then add `if page is not None: entry["page"] = page` and `if fmt is not None: entry["format"] = fmt`.
 
-- [ ] **Step 2: Write the failing tests**
+- [ ] **Step 2: Extract `_commit_manifest` in `_writer.py` (behaviour-preserving)**
+
+```python
+def _commit_manifest(
+    directory: Path,
+    manifest: dict[str, Any],
+    *,
+    publication_guard: Callable[[], bool] | None,
+    commit_guard: CommitGuard | None,
+) -> None:
+    """Replace ``directory/manifest.json`` with *manifest*, guarded, last."""
+    manifest_path = directory / "manifest.json"
+    temporary_manifest = directory / f".manifest.{uuid.uuid4().hex}.tmp"
+    try:
+        temporary_manifest.write_text(
+            json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
+        )
+        with _guarded_commit(publication_guard, commit_guard):
+            os.replace(temporary_manifest, manifest_path)
+    finally:
+        temporary_manifest.unlink(missing_ok=True)
+```
+
+In `_publish_plot_output_locked`, replace the inline block at the end with a call to it. Run: `uv run pytest tests/unit/plotting/test_output_adapter.py -p no:cacheprovider -q` and expect PASS.
+
+- [ ] **Step 3: Write the shared test fixtures**
+
+`tests/unit/plotting/_store_fixtures.py`:
+
+```python
+"""Minimal stores for copy-out tests, and the build -> store -> copy-out path.
+
+`figure_store` writes only what copy-out reads (figures/ + a root carrying the
+descriptor), so tests need no pixels. `emit_image_via_store` puts its store
+OUTSIDE the test's tmp_path, in a fresh directory per call, so assertions over
+tmp_path see only deliverables and a second emit for the same stem never
+collides (plan-review B1).
+"""
+from __future__ import annotations
+
+import json
+import tempfile
+from pathlib import Path
+
+from phenotypic.sdk_._image_figures import (
+    StoredFigures,
+    apply_image_figures_attributes,
+    write_image_figures,
+)
+
+
+def figure_store(root: Path, stored: StoredFigures) -> Path:
+    """Write a promoted-looking store under *root* and return its path."""
+    store = Path(root) / "p.ome.zarr"
+    store.mkdir(parents=True)
+    phenotypic: dict = {"store_schema_version": 3}
+    apply_image_figures_attributes(phenotypic, write_image_figures(store, stored))
+    (store / "zarr.json").write_text(json.dumps(
+        {"zarr_format": 3, "node_type": "group", "attributes": {"phenotypic": phenotypic}}
+    ))
+    return store
+
+
+def emit_image_via_store(coordinator, image=None, *, dataset="ds", image_stem="plate-1"):
+    """build -> minimal store -> copy-out: the path every CLI mode now takes."""
+    from phenotypic.plotting._pipeline._store_figures import build_image_figures
+
+    stored = build_image_figures(coordinator._pipeline, object() if image is None else image)
+    if stored is None:
+        return None
+    output_root = coordinator._plots_base.parent.parent
+    scratch = Path(tempfile.mkdtemp(prefix=f"{output_root.name}-store-", dir=output_root.parent))
+    store = figure_store(scratch, stored)
+    coordinator.publish_store_figures(store, dataset=dataset, image_stem=image_stem)
+    return stored
+```
+
+- [ ] **Step 4: Write the failing copy-out tests**
 
 ```python
 """Copy-out: promoted store -> today's deliverables layout (spec §3 step 3)."""
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 
@@ -1690,25 +1650,10 @@ from phenotypic.sdk_._image_figures import (
     StoredFigureFile,
     StoredFigurePage,
     StoredFigures,
-    apply_image_figures_attributes,
-    write_image_figures,
 )
+from tests.unit.plotting._store_fixtures import figure_store
 
-
-def figure_store(tmp_path: Path, figures: StoredFigures) -> Path:
-    """A minimal promoted store: figures/ plus a root carrying the descriptor.
-
-    Copy-out reads only these, so no pixels are needed. Shared with the ported
-    coordinator tests (Task 9) -- keep it importable.
-    """
-    store = tmp_path / "p.ome.zarr"
-    store.mkdir()
-    phenotypic: dict = {"store_schema_version": 3}
-    apply_image_figures_attributes(phenotypic, write_image_figures(store, figures))
-    (store / "zarr.json").write_text(json.dumps(
-        {"zarr_format": 3, "node_type": "group", "attributes": {"phenotypic": phenotypic}}
-    ))
-    return store
+_STEM = _image_output_stem("ds 1", "plate_01")
 
 
 def _plotly_json() -> bytes:
@@ -1717,13 +1662,13 @@ def _plotly_json() -> bytes:
     return go.Figure(go.Bar(x=["a"], y=[1])).to_json().encode()
 
 
-def _page(key="default", label=None, formats=("plotly-json",)):
+def _page(key="default", label=None, formats=("plotly-json",), backend="plotly"):
     table = {
         "plotly-json": ("application/vnd.plotly.v1+json", ".plotly.json", _plotly_json()),
         "png": ("image/png", ".png", b"\x89PNG"),
     }
     stem = key.replace(" ", "-")
-    return StoredFigurePage(key, label, "plotly", {"k": 1}, tuple(
+    return StoredFigurePage(key, label, backend, {"k": 1}, tuple(
         StoredFigureFile(fmt, table[fmt][0], f"{stem}{table[fmt][1]}", table[fmt][2])
         for fmt in formats
     ))
@@ -1739,110 +1684,133 @@ def _publish(tmp_path, store, **kw):
     return plots
 
 
+def _lines(plots):
+    return [json.loads(line) for line in (plots / ".failures.jsonl").read_text().splitlines()]
+
+
 def test_a_single_default_page_lands_flat_with_generated_html(tmp_path):
-    plots = _publish(tmp_path, figure_store(tmp_path, _one(_page())))
+    plots = _publish(tmp_path, figure_store(tmp_path / "s", _one(_page())))
     base = plots / "sym" / "ds-1"
-    stem = _image_output_stem("ds 1", "plate_01")
-    assert sorted(p.name for p in base.iterdir()) == [f"{stem}.html", f"{stem}.plotly.json"]
-    html = (base / f"{stem}.html").read_text()
-    assert 'src="../../plotly.min.js"' in html
+    assert sorted(p.name for p in base.iterdir()) == [f"{_STEM}.html", f"{_STEM}.plotly.json"]
+    assert 'src="../../plotly.min.js"' in (base / f"{_STEM}.html").read_text()
     assert (plots / "plotly.min.js").is_file()
     assert not (base / "manifest.json").exists()
 
 
 def test_multi_page_writes_a_directory_and_manifest_v2(tmp_path):
-    store = figure_store(tmp_path, _one(_page("first", "First"), _page("second", formats=("plotly-json", "png"))))
-    plots = _publish(tmp_path, store)
-    directory = plots / "sym" / "ds-1" / _image_output_stem("ds 1", "plate_01")
+    pages = (_page("first", "First"), _page("second", formats=("plotly-json", "png")))
+    failed = (StoredFigureFailure("sym", "second", "png", "OSError: partial"),)
+    plots = _publish(tmp_path, figure_store(tmp_path / "s", _one(*pages, failed=failed)))
+    directory = plots / "sym" / "ds-1" / _STEM
     manifest = json.loads((directory / "manifest.json").read_text())
     assert manifest["schema_version"] == 2
     assert [p["key"] for p in manifest["pages"]] == ["first", "second"]
     assert manifest["pages"][0]["files"] == {"plotly-json": "First.plotly.json", "html": "First.html"}
     assert manifest["pages"][1]["files"]["png"] == "second.png"
+    assert manifest["pages"][1]["partial"] == ["OSError: partial"]
     assert manifest["pages"][0]["metadata"] == {"k": 1}
-    assert manifest["renderers"] == {"html": "available", "png": "available"}
+    assert manifest["renderers"] == {"html": "available"}
     assert 'src="../../../plotly.min.js"' in (directory / "First.html").read_text()
 
 
 def test_a_tampered_file_is_recorded_and_not_copied(tmp_path):
-    store = figure_store(tmp_path, _one(_page()))
+    store = figure_store(tmp_path / "s", _one(_page()))
     (store / "figures/sym/default.plotly.json").write_bytes(b"tampered")
-    plots = _publish(tmp_path, store)
+    plots = _publish(tmp_path, store, plot_classes={"sym": "MeasureSymZones"})
     assert not list((plots / "sym").rglob("*.plotly.json"))
-    [line] = (plots / ".failures.jsonl").read_text().splitlines()
-    record = json.loads(line)
-    assert record["lifecycle"] == "image" and "sha256" in record["error"]
+    [record] = _lines(plots)
+    assert record["error"].startswith("ValueError: ") and "sha256" in record["error"]
+    assert (record["page"], record["format"], record["plot_class"]) == (
+        "default", "plotly-json", "MeasureSymZones"
+    )
 
 
-def test_descriptor_failures_become_failure_lines_verbatim(tmp_path):
+def test_descriptor_failures_are_recorded_verbatim_with_their_class(tmp_path):
     failed = (StoredFigureFailure("orient", None, None, "RuntimeError: boom at 0x…"),)
-    plots = _publish(tmp_path, figure_store(tmp_path, _one(_page(), failed=failed)))
-    [line] = (plots / ".failures.jsonl").read_text().splitlines()
-    record = json.loads(line)
+    plots = _publish(
+        tmp_path, figure_store(tmp_path / "s", _one(_page(), failed=failed)),
+        plot_classes={"orient": "MeasureOrientationZones"},
+    )
+    [record] = _lines(plots)
     assert record["error"] == "RuntimeError: boom at 0x…"
-    assert (record["binding_id"], record["dataset"], record["image_stem"]) == ("orient", "ds 1", "plate_01")
+    assert record["plot_class"] == "MeasureOrientationZones"
+    assert "page" not in record and "format" not in record
+    assert (record["binding_id"], record["dataset"], record["image_stem"]) == (
+        "orient", "ds 1", "plate_01"
+    )
 
 
-def test_a_rerun_removes_a_leftover_rendering_of_a_republished_page(tmp_path):
-    stem = _image_output_stem("ds 1", "plate_01")
+def test_a_republished_page_loses_its_leftover_renderings(tmp_path):
     base = tmp_path / "deliverables" / "plots" / "sym" / "ds-1"
     base.mkdir(parents=True)
-    (base / f"{stem}.png").write_bytes(b"old png from a run that stored png")
-    _publish(tmp_path, figure_store(tmp_path, _one(_page())))
-    assert not (base / f"{stem}.png").exists()
+    (base / f"{_STEM}.png").write_bytes(b"a png from a run that stored png")
+    _publish(tmp_path, figure_store(tmp_path / "s", _one(_page())))
+    assert not (base / f"{_STEM}.png").exists()
+
+
+def test_a_page_that_publishes_nothing_keeps_its_previous_files(tmp_path):
+    base = tmp_path / "deliverables" / "plots" / "sym" / "ds-1"
+    base.mkdir(parents=True)
+    for suffix in (".html", ".png"):
+        (base / f"{_STEM}{suffix}").write_bytes(b"previous")
+    store = figure_store(tmp_path / "s", _one(_page()))
+    (store / "figures/sym/default.plotly.json").write_bytes(b"tampered")
+    _publish(tmp_path, store)
+    assert sorted(p.name for p in base.iterdir()) == [f"{_STEM}.html", f"{_STEM}.png"]
 
 
 def test_a_store_without_figures_publishes_nothing(tmp_path):
-    store = tmp_path / "p.ome.zarr"
-    store.mkdir()
+    store = tmp_path / "s" / "p.ome.zarr"
+    store.mkdir(parents=True)
     (store / "zarr.json").write_text(json.dumps(
         {"zarr_format": 3, "node_type": "group", "attributes": {"phenotypic": {}}}
     ))
     plots = _publish(tmp_path, store)
-    assert not plots.exists() or not any(plots.rglob("*"))
+    assert not plots.exists()
 
 
-def test_a_refused_guard_propagates(tmp_path):
+def test_a_refused_guard_propagates_before_anything_is_written(tmp_path):
     from phenotypic.plotting._pipeline import PlotPublicationBlocked
 
+    failed = (StoredFigureFailure("orient", None, None, "RuntimeError: boom"),)
+    store = figure_store(tmp_path / "s", _one(_page(), failed=failed))
     with pytest.raises(PlotPublicationBlocked):
-        _publish(tmp_path, figure_store(tmp_path, _one(_page())), publication_guard=lambda: False)
+        _publish(tmp_path, store, publication_guard=lambda: False)
+    assert not (tmp_path / "deliverables").exists()
 ```
 
-- [ ] **Step 3: Run to verify they fail**
+- [ ] **Step 5: Run to verify they fail**
 
 Run: `uv run pytest tests/unit/plotting/test_store_copyout.py -p no:cacheprovider -q`
 Expected: `ModuleNotFoundError: phenotypic.plotting._pipeline._store_copyout`.
 
-- [ ] **Step 4: Write `_store_copyout.py`**
+- [ ] **Step 6: Write `_store_copyout.py`**
 
 ```python
 """Copy a promoted store's figures out to deliverables/plots (spec §3 step 3).
 
-The store is the single source: this never renders from a figure object. The
-one thing it produces rather than copies is an HTML page for each stored
-``plotly-json``, so a Plotly figure stays browsable in deliverables.
-Best-effort: every failure is recorded to ``.failures.jsonl``; only a refused
-guard (:class:`PlotPublicationBlocked`) propagates.
+The store is the single source: this never renders a PNG. The one thing it
+produces rather than copies is an HTML page for each stored ``plotly-json``,
+so a Plotly figure stays browsable in deliverables. Best-effort: every failure
+is recorded to ``.failures.jsonl``; only a refused guard propagates.
 """
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
-import os
-import uuid
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 
 from phenotypic.abc_.plotting._store_formats import STORE_FORMATS
 from phenotypic.sdk_ import CommitGuard
+from phenotypic.sdk_._file_locking import exclusive_path_lock
 from phenotypic.sdk_._image_figures import read_image_figures_descriptor
 
 from ._failures import record_plot_failure
 from ._writer import (
     PlotPublicationBlocked,
     _atomic_write,
+    _commit_manifest,
     _guarded_commit,
     _require_plot_publication,
     safe_path_component,
@@ -1851,9 +1819,11 @@ from ._writer import (
 
 logger = logging.getLogger(__name__)
 
-#: Every suffix a page can have in deliverables -- stored ones plus the
-#: generated HTML. Used only to remove a republished page's leftovers.
-_DELIVERABLE_SUFFIXES = (".plotly.json", ".html", ".png", ".svg")
+#: `<unresolved>` is the coordinator's spelling for "class not knowable here".
+_UNRESOLVED = "<unresolved>"
+
+#: Every suffix a page can have in deliverables, for leftover removal only.
+_DELIVERABLE_SUFFIXES = (".plotly.json", ".html", ".png")
 
 
 def publish_store_figures(
@@ -1862,6 +1832,7 @@ def publish_store_figures(
     *,
     dataset: str,
     image_stem: str,
+    plot_classes: Mapping[str, str] | None = None,
     publication_guard: Callable[[], bool] | None = None,
     commit_guard: CommitGuard | None = None,
 ) -> None:
@@ -1872,57 +1843,61 @@ def publish_store_figures(
         plots_base: Resolved ``deliverables/plots`` directory.
         dataset: Dataset name (unsanitized; hashed into the output stem).
         image_stem: Image stem (unsanitized).
+        plot_classes: ``binding_id -> class name`` from the pipeline. The
+            descriptor records no class for a binding that failed outright.
         publication_guard: Optional GUI compare-and-set predicate.
         commit_guard: Optional commit guard.
 
     Raises:
         PlotPublicationBlocked: If a guard refuses. Never swallowed.
     """
-    from ._coordinator import _image_output_stem
+    classes = dict(plot_classes or {})
+
+    def _record(binding_id: str, error: BaseException | str, *, page=None, fmt=None) -> None:
+        record_plot_failure(
+            plots_base, binding_id=binding_id,
+            plot_class=classes.get(binding_id, _UNRESOLVED), lifecycle="image",
+            error=error, dataset=dataset, image_stem=image_stem, page=page, fmt=fmt,
+        )
 
     try:
         descriptor = read_image_figures_descriptor(store_path)
+        if descriptor is None:
+            return
+        # Before the first record, too: a refused guard means "do not touch
+        # this tree", and the failure log lives in it (_coordinator F1).
+        _require_plot_publication(publication_guard)
+        from ._coordinator import _image_output_stem
+
+        output_stem = _image_output_stem(dataset, image_stem)
+        failures = list(descriptor.get("failed", []))
+        bindings = dict(descriptor.get("bindings", {}))
+    except PlotPublicationBlocked:
+        raise
     except Exception as exc:  # noqa: BLE001 - copy-out is best-effort
-        record_plot_failure(
-            plots_base, binding_id="<store>", plot_class="<store>",
-            lifecycle="image", error=exc, dataset=dataset, image_stem=image_stem,
-        )
+        logger.warning("Copy-out could not read %s", store_path, exc_info=exc)
+        _record("<store>", exc)
         return
-    if descriptor is None:
-        return
-    output_stem = _image_output_stem(dataset, image_stem)
-    for failure in descriptor.get("failed", []):
-        record_plot_failure(
-            plots_base,
-            binding_id=failure["binding"],
-            plot_class="<stored>",
-            lifecycle="image",
-            error=_located(failure["page"], failure["format"], failure["error"]),
-            dataset=dataset,
-            image_stem=image_stem,
-        )
-    for binding_id, binding in descriptor.get("bindings", {}).items():
+    for failure in failures:
+        try:
+            _record(failure["binding"], failure["error"],
+                    page=failure.get("page"), fmt=failure.get("format"))
+        except Exception as exc:  # noqa: BLE001 - a malformed entry is one record
+            _record("<store>", exc)
+    for binding_id, binding in bindings.items():
+        classes.setdefault(binding_id, binding.get("class", _UNRESOLVED))
+        page_failures = [f for f in failures if f.get("binding") == binding_id]
         try:
             _publish_binding(
-                Path(store_path), plots_base, binding_id, binding,
-                dataset=dataset, image_stem=image_stem, output_stem=output_stem,
+                Path(store_path), plots_base, binding_id, binding, page_failures,
+                dataset=dataset, output_stem=output_stem, record=_record,
                 publication_guard=publication_guard, commit_guard=commit_guard,
             )
         except PlotPublicationBlocked:
             raise
         except Exception as exc:  # noqa: BLE001 - copy-out is best-effort
             logger.warning("Copy-out of plot %s failed", binding_id, exc_info=exc)
-            record_plot_failure(
-                plots_base, binding_id=binding_id, plot_class=binding.get("class", "<stored>"),
-                lifecycle="image", error=exc, dataset=dataset, image_stem=image_stem,
-            )
-
-
-def _located(page: str | None, fmt: str | None, error: str) -> str:
-    """Prefix a stored error with where it happened, when that is known."""
-    where = [f"page={page}"] if page is not None else []
-    where += [f"format={fmt}"] if fmt is not None else []
-    return f"[{' '.join(where)}] {error}" if where else error
+            _record(binding_id, exc)
 
 
 def _publish_binding(
@@ -1930,10 +1905,11 @@ def _publish_binding(
     plots_base: Path,
     binding_id: str,
     binding: dict[str, Any],
+    page_failures: list[dict[str, Any]],
     *,
     dataset: str,
-    image_stem: str,
     output_stem: str,
+    record: Callable[..., None],
     publication_guard: Callable[[], bool] | None,
     commit_guard: CommitGuard | None,
 ) -> None:
@@ -1948,22 +1924,64 @@ def _publish_binding(
     )
     _require_plot_publication(publication_guard)
     directory.mkdir(parents=True, exist_ok=True)
-    manifest_pages: list[dict[str, Any]] = []
-    manifest_failed: list[dict[str, Any]] = []
+    if flat:
+        _publish_pages(store, plots_base, directory, pages, stems, page_failures,
+                       record=record, binding_id=binding_id,
+                       publication_guard=publication_guard, commit_guard=commit_guard)
+        return
+    # Same lock `publish_plot_output` takes for a manifest directory, so two
+    # writers of one image's directory cannot interleave pages and manifest.
+    with exclusive_path_lock(directory / ".publication.lock"):
+        _require_plot_publication(publication_guard)
+        published, failed = _publish_pages(
+            store, plots_base, directory, pages, stems, page_failures,
+            record=record, binding_id=binding_id,
+            publication_guard=publication_guard, commit_guard=commit_guard,
+        )
+        renderers: dict[str, str] = {}
+        if any(p["backend"] == "plotly" for p in published):
+            renderers["html"] = "available"
+        if any(p["backend"] == "matplotlib" for p in published):
+            renderers["png"] = "available"
+        _commit_manifest(
+            directory,
+            {
+                "schema_version": 2, "plot_id": binding_id,
+                "class": binding.get("class", binding_id),
+                "renderers": renderers, "pages": published, "failed": failed,
+            },
+            publication_guard=publication_guard, commit_guard=commit_guard,
+        )
+
+
+def _publish_pages(
+    store: Path,
+    plots_base: Path,
+    directory: Path,
+    pages: list[dict[str, Any]],
+    stems: list[str],
+    page_failures: list[dict[str, Any]],
+    *,
+    record: Callable[..., None],
+    binding_id: str,
+    publication_guard: Callable[[], bool] | None,
+    commit_guard: CommitGuard | None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Copy every page's stored files; return manifest pages and failures."""
+    published: list[dict[str, Any]] = []
+    failed: list[dict[str, Any]] = []
     for page, stem in zip(pages, stems):
         files: dict[str, str] = {}
         for entry in page["files"]:
-            suffix = STORE_FORMATS[entry["format"]].extension
-            source = store / entry["path"]
             try:
-                data = source.read_bytes()
+                data = (store / entry["path"]).read_bytes()
                 digest = hashlib.sha256(data).hexdigest()
                 if digest != entry["sha256"]:
                     raise ValueError(
                         f"stored {entry['path']} does not match its sha256 "
                         f"(descriptor {entry['sha256'][:12]}…, file {digest[:12]}…)"
                     )
-                name = f"{stem}{suffix}"
+                name = f"{stem}{STORE_FORMATS[entry['format']].extension}"
                 _atomic_write(
                     directory / name, lambda dest, data=data: dest.write_bytes(data),
                     publication_guard=publication_guard, commit_guard=commit_guard,
@@ -1977,33 +1995,23 @@ def _publish_binding(
             except PlotPublicationBlocked:
                 raise
             except Exception as exc:  # noqa: BLE001 - per-file best effort
-                record_plot_failure(
-                    plots_base, binding_id=binding_id,
-                    plot_class=binding.get("class", "<stored>"), lifecycle="image",
-                    error=_located(page["key"], entry["format"], f"{type(exc).__name__}: {exc}"),
-                    dataset=dataset, image_stem=image_stem,
-                )
-        if files:
-            _remove_leftovers(
-                directory, stem, set(files.values()),
-                publication_guard=publication_guard, commit_guard=commit_guard,
-            )
-            manifest_pages.append({
-                "key": page["key"], "label": page["label"], "files": files,
-                "backend": "matplotlib" if page["backend"] == "mpl" else "plotly",
-                "metadata": page.get("metadata", {}),
-            })
-        else:
-            manifest_failed.append({
-                "key": page["key"], "label": page["label"],
-                "error": "no stored file could be copied out",
-            })
-    if not flat:
-        _write_manifest(
-            directory, binding_id, binding.get("class", binding_id),
-            manifest_pages, manifest_failed,
-            publication_guard=publication_guard, commit_guard=commit_guard,
-        )
+                record(binding_id, exc, page=page["key"], fmt=entry.get("format"))
+        if not files:
+            failed.append({"key": page["key"], "label": page["label"],
+                           "error": "no stored file could be copied out"})
+            continue
+        _remove_leftovers(directory, stem, set(files.values()),
+                          publication_guard=publication_guard, commit_guard=commit_guard)
+        entry_out: dict[str, Any] = {
+            "key": page["key"], "label": page["label"], "files": files,
+            "backend": "matplotlib" if page["backend"] == "mpl" else "plotly",
+            "metadata": page.get("metadata", {}),
+        }
+        partial = [f["error"] for f in page_failures if f.get("page") == page["key"]]
+        if partial:
+            entry_out["partial"] = partial
+        published.append(entry_out)
+    return published, failed
 
 
 def _write_html_from_json(
@@ -2039,7 +2047,11 @@ def _remove_leftovers(
     publication_guard: Callable[[], bool] | None,
     commit_guard: CommitGuard | None,
 ) -> None:
-    """Remove *stem*'s renderings this pass did not write (today's stale rule)."""
+    """Remove *stem*'s renderings this pass did not write (today's stale rule).
+
+    Only for a page this pass published: a page that published nothing keeps
+    its previous files whole rather than half of them.
+    """
     for suffix in _DELIVERABLE_SUFFIXES:
         path = directory / f"{stem}{suffix}"
         if path.name in written or not path.exists():
@@ -2048,40 +2060,10 @@ def _remove_leftovers(
             path.unlink(missing_ok=True)
 
 
-def _write_manifest(
-    directory: Path,
-    plot_id: str,
-    plot_class: str,
-    pages: list[dict[str, Any]],
-    failed: list[dict[str, Any]],
-    *,
-    publication_guard: Callable[[], bool] | None,
-    commit_guard: CommitGuard | None,
-) -> None:
-    renderers: dict[str, str] = {}
-    if any(page["backend"] == "plotly" for page in pages):
-        renderers["html"] = "available"
-    if any("png" in page["files"] for page in pages):
-        renderers["png"] = "available"
-    manifest = {
-        "schema_version": 2, "plot_id": plot_id, "class": plot_class,
-        "renderers": renderers, "pages": pages, "failed": failed,
-    }
-    temporary = directory / f".manifest.{uuid.uuid4().hex}.tmp"
-    try:
-        temporary.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
-        with _guarded_commit(publication_guard, commit_guard):
-            os.replace(temporary, directory / "manifest.json")
-    finally:
-        temporary.unlink(missing_ok=True)
-
-
 __all__ = ["publish_store_figures"]
 ```
 
-The suffix comes from the descriptor's `format` through `STORE_FORMATS`, never from parsing a filename: a stem may contain dots.
-
-- [ ] **Step 5: Add the coordinator method**
+- [ ] **Step 7: Add the coordinator method**
 
 ```python
     def publish_store_figures(
@@ -2092,134 +2074,51 @@ The suffix comes from the descriptor's `format` through `STORE_FORMATS`, never f
 
         publish_store_figures(
             store_path, self._plots_base, dataset=dataset, image_stem=image_stem,
+            plot_classes={
+                binding.id: type(binding.plot).__name__
+                for binding in self._pipeline.get_plots()
+            },
             publication_guard=self._publication_guard, commit_guard=self._commit_guard,
         )
 ```
 
-- [ ] **Step 6: Run to verify they pass**
+- [ ] **Step 8: Run to verify they pass**
 
-Run: `uv run pytest tests/unit/plotting/test_store_copyout.py tests/unit/plotting/test_failure_record.py -p no:cacheprovider -q`
+Run: `uv run pytest tests/unit/plotting/test_store_copyout.py tests/unit/plotting/test_failure_record.py tests/unit/plotting/test_output_adapter.py -p no:cacheprovider -q`
 Expected: PASS.
 
-- [ ] **Step 7: Prove the sha256 check can fail**
+- [ ] **Step 9: Prove it can fail**
 
-Replace `if digest != entry["sha256"]:` with `if False:`. Expect the tamper test to FAIL. Restore it.
+- **sha256 check:** replace `if digest != entry["sha256"]:` with `if False:`. Expect the tamper test to FAIL, then restore the line.
+- **Guard ordering:** move the early `_require_plot_publication(publication_guard)` below the failure-record loop. Expect the refused-guard test to FAIL, because `deliverables/` now exists. Restore it.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
-uv run ruff check --fix src/phenotypic/plotting/_pipeline/ tests/unit/plotting/test_store_copyout.py
-git add src/phenotypic/plotting/_pipeline/ tests/unit/plotting/test_store_copyout.py
+uv run ruff check --fix src/phenotypic/plotting/_pipeline/ tests/unit/plotting/test_store_copyout.py tests/unit/plotting/_store_fixtures.py
+git add src/phenotypic/plotting/_pipeline/ tests/unit/plotting/test_store_copyout.py tests/unit/plotting/_store_fixtures.py
 git commit -m "feat(plotting): copy per-image figures out of the promoted store"
 ```
 
 ---
 
-### Task 8: The preflight warns only about Chrome formats an image figure declares
+### Task 6: Wire every mode, retire `emit_image`, bump the process revision
 
 **Files:**
-- Modify: `src/phenotypic/plotting/_pipeline/_backends.py`: `preflight_plot_backends` (≈166)
-- Test: `tests/unit/plotting/test_backends.py` (append)
-
-After this change, a `PlotImage` binding produces a PNG only when its store declares `"png"` (or Plotly `"svg"` under outcome A). The old warning, *"N Plotly plots will publish HTML only, without PNG"*, is still true for aggregate plots, but it is now misleading for image plots, which never produce a PNG by default.
-
-- [ ] **Step 1: Write the failing test**
-
-```python
-def test_a_default_plotly_image_plot_needs_no_chrome_warning(monkeypatch):
-    from pydantic import BaseModel
-
-    from phenotypic import ImagePipeline
-    from phenotypic.abc_.plotting import PlotImage, figure
-    from phenotypic.plotting._pipeline import _backends
-
-    class Img(BaseModel, PlotImage):
-        @figure(title="t", backend="plotly", primary=True)
-        def draw(self, image):
-            raise AssertionError
-
-    class ImgPng(BaseModel, PlotImage):
-        @figure(title="t", backend="plotly", primary=True, store=("png",))
-        def draw(self, image):
-            raise AssertionError
-
-    monkeypatch.setattr(_backends, "chrome_available", lambda: False)
-    assert _backends.preflight_plot_backends(ImagePipeline(plots=[Img()])) == []
-    [line] = _backends.preflight_plot_backends(ImagePipeline(plots=[ImgPng()]))
-    assert "ImgPng" in line and "store" in line
-```
-
-- [ ] **Step 2: Run to verify it fails**
-
-Run: `uv run pytest tests/unit/plotting/test_backends.py -p no:cacheprovider -q -k chrome_warning`
-Expected: FAIL. The first assertion gets a non-empty warning.
-
-- [ ] **Step 3: Split image bindings out of the classification**
-
-At the top of the loop in `preflight_plot_backends`, route `PlotImage` bindings through the store formats:
-
-```python
-    from phenotypic.abc_.plotting import PlotImage
-    from phenotypic.abc_.plotting._store_formats import default_store_formats
-
-    chrome_formats = {"png", "svg"}
-    image_store_ids: list[str] = []
-    ...
-    for binding in pipeline.get_plots():
-        if isinstance(binding.plot, PlotImage):
-            spec = declared_figure_spec(binding.plot)
-            backend = spec.backend if spec is not None else None
-            if backend == "mpl":
-                mpl_ids.append(binding.id)
-            elif backend == "plotly":
-                _require_importable("plotly", "plotly", [binding.id])
-                if chrome_formats & set(spec.store):
-                    image_store_ids.append(binding.id)
-            continue
-        ...existing classification...
-```
-
-Change the early return to `if not (plotly_ids or undeclared_ids or image_store_ids) or chrome_available(): return []`. Before the install hint, append:
-
-```python
-    if image_store_ids:
-        parts.append(
-            f"{len(image_store_ids)} image plots declare a store format that "
-            f"needs Chrome and will record it as failed: {', '.join(image_store_ids)}."
-        )
-```
-
-Update the docstring's first paragraph with one sentence: *"Image plots are judged by their declared store formats (spec 2026-09-22 §2): only a declared `png`/Plotly `svg` needs Chrome."*
-
-- [ ] **Step 4: Run the whole backends file**
-
-Run: `uv run pytest tests/unit/plotting/test_backends.py tests/unit/cli/ -p no:cacheprovider -q -k "preflight or backend"`
-Expected: PASS. An existing preflight test that used a `PlotImage` fixture and expected the old "HTML only" line must be updated to the new semantics. Change the fixture to `PlotMeas` if the test is about aggregates. If it is about image plots, assert the new line.
-
-- [ ] **Step 5: Commit**
-
-```bash
-uv run ruff check --fix src/phenotypic/plotting/_pipeline/_backends.py tests/unit/plotting/test_backends.py
-git add src/phenotypic/plotting/_pipeline/_backends.py tests/unit/plotting/test_backends.py
-git commit -m "fix(plotting): preflight judges image plots by their declared store formats"
-```
-
----
-
-### Task 9: Wire every mode; retire `emit_image`; bump the process revision
-
-**Files:**
-- Modify: `src/phenotypic/_cli/_cli_process_single.py`: full mode (≈344–366), measure mode (≈437–456)
+- Modify: `src/phenotypic/_cli/_cli_process_single.py`: full mode (≈340–366) and measure mode (≈437–456)
 - Modify: `src/phenotypic/_cli/_cli_staged_workers.py`: Stage 3 (≈578–600)
-- Modify: `src/phenotypic/_cli/_cli_process_only.py`: `process_single_apply_only_core` (≈330–352)
-- Modify: `src/phenotypic/_cli/_cli_failure_tracker.py:205`
-- Modify: `src/phenotypic/plotting/_pipeline/_coordinator.py`: delete `emit_image`, `_publish_image_value`; drop the now-unused imports (`_render_page`, `_remove_stale_sibling`, `_format_error`, `FigureAdapter`, `normalize_plot_output`, `_require_plot_publication` — delete only those ruff reports as unused)
-- Modify: `tests/unit/plotting/test_coordinator.py`, `tests/integration/plotting/test_publication_end_to_end.py`, `tests/unit/cli/test_embedded_measurement_replacement.py:155`
-- Modify: `tests/unit/cli/test_work_id_semantics_revision.py` (if it pins the value 2)
+- Modify: `src/phenotypic/_cli/_cli_process_only.py`: `process_single_apply_only_core` (≈320–352)
+- Modify: `src/phenotypic/_cli/_cli_failure_tracker.py:195-205`
+- Modify: `src/phenotypic/plotting/_pipeline/_coordinator.py`: delete `emit_image` and `_publish_image_value`, then delete the imports ruff reports as unused
+- Modify tests: `tests/unit/plotting/test_coordinator.py`, `tests/integration/plotting/test_publication_end_to_end.py`, `tests/unit/cli/test_embedded_measurement_replacement.py:155`, and `tests/unit/cli/test_work_id_semantics_revision.py` if it pins the value 2
 - Test: `tests/integration/cli/test_figures_in_store.py`
 
 **Interfaces:**
-- Consumes: `PlotCoordinator.build_image_figures`, `PlotCoordinator.publish_store_figures`, `build_image_figures`, and every `figures=` keyword from Task 6.
+- Consumes:
+  - `build_image_figures` (Task 3)
+  - the `figures=` keywords (Task 4)
+  - `PlotCoordinator.publish_store_figures` (Task 5)
+  - `emit_image_via_store` (Task 5 fixtures)
 
 - [ ] **Step 1: Write the failing CLI-level tests**
 
@@ -2236,7 +2135,7 @@ from phenotypic.sdk_ import zarr_store_path
 from phenotypic.sdk_._image_figures import read_image_figures_descriptor
 
 
-def _write_inputs(tmp_path: Path, *, with_plot: bool, measure_only_plot: bool = False):
+def _write_inputs(root: Path, *, with_plot: bool):
     from skimage.io import imsave
 
     from phenotypic import ImagePipeline
@@ -2244,15 +2143,17 @@ def _write_inputs(tmp_path: Path, *, with_plot: bool, measure_only_plot: bool = 
     from phenotypic.detect import OtsuDetector
     from phenotypic.measure import MeasureSize, MeasureSymZones
 
-    image = tmp_path / "in" / "plate.tiff"
-    image.parent.mkdir()
+    root.mkdir(parents=True, exist_ok=True)
+    image = root / "in" / "plate.tiff"
+    image.parent.mkdir(exist_ok=True)
     imsave(str(image), load_synth_yeast_plate().rgb[:], check_contrast=False)
     sym = MeasureSymZones()
-    meas = {"size": MeasureSize(), "sym": sym} if not measure_only_plot else {"sym": sym}
     pipeline = ImagePipeline(
-        ops={"detect": OtsuDetector()}, meas=meas, plots=[sym] if with_plot else []
+        ops={"detect": OtsuDetector()},
+        meas={"size": MeasureSize(), "sym": sym},
+        plots=[sym] if with_plot else [],
     )
-    path = tmp_path / "pipeline.json"
+    path = root / "pipeline.json"
     path.write_text(pipeline.to_json(), encoding="utf-8")
     return image, path
 
@@ -2272,18 +2173,13 @@ def test_full_mode_stores_figures_and_copies_them_out(tmp_path):
     image, pipeline = _write_inputs(tmp_path, with_plot=True)
     out, store = _full(tmp_path, pipeline, image)
     descriptor = read_image_figures_descriptor(store)
+    assert descriptor["failed"] == []
     [page] = descriptor["bindings"]["sym"]["pages"]
     assert [f["format"] for f in page["files"]] == ["plotly-json"]
-    deliverable = list((out / "deliverables" / "plots" / "sym" / "ds").glob("plate-*.plotly.json"))
+    deliverable = list((out / "deliverables/plots/sym/ds").glob("plate-*.plotly.json"))
     assert len(deliverable) == 1
     assert deliverable[0].read_bytes() == (store / page["files"][0]["path"]).read_bytes()
-
-
-def test_full_mode_without_image_bindings_writes_no_figures(tmp_path):
-    image, pipeline = _write_inputs(tmp_path, with_plot=False)
-    _out, store = _full(tmp_path, pipeline, image)
-    assert read_image_figures_descriptor(store) is None
-    assert not (store / "figures").exists()
+    assert len(list((out / "deliverables/plots/sym/ds").glob("plate-*.html"))) == 1
 
 
 def test_measure_mode_rebuilds_figures_from_the_current_pipeline(tmp_path):
@@ -2291,17 +2187,11 @@ def test_measure_mode_rebuilds_figures_from_the_current_pipeline(tmp_path):
 
     image, with_plot = _write_inputs(tmp_path, with_plot=True)
     out, store = _full(tmp_path, with_plot, image)
-    (tmp_path / "second").mkdir()
     _, without_plot = _write_inputs(tmp_path / "second", with_plot=False)
-    process_single_store_measure_core(
-        without_plot, store, out, "ds", "Image",
-        OutputManager.from_config(out, ".tiff", save_overlays=False),
-    )
+    manager = OutputManager.from_config(out, ".tiff", save_overlays=False)
+    process_single_store_measure_core(without_plot, store, out, "ds", "Image", manager)
     assert read_image_figures_descriptor(store) is None
-    process_single_store_measure_core(
-        with_plot, store, out, "ds", "Image",
-        OutputManager.from_config(out, ".tiff", save_overlays=False),
-    )
+    process_single_store_measure_core(with_plot, store, out, "ds", "Image", manager)
     assert list(read_image_figures_descriptor(store)["bindings"]) == ["sym"]
 
 
@@ -2318,7 +2208,8 @@ def test_process_mode_carries_figures_only_in_a_store(tmp_path, fmt):
     )
     if fmt == "zarr":
         store = out / "plate.ome.zarr"
-        assert list(read_image_figures_descriptor(store)["bindings"]) == ["sym"]
+        descriptor = read_image_figures_descriptor(store)
+        assert list(descriptor["bindings"]) == ["sym"] and descriptor["failed"] == []
         assert not (store / "tables").exists(), "process mode writes no table"
     else:
         assert not list(out.rglob("*.plotly.json"))
@@ -2334,88 +2225,80 @@ def test_process_revision_is_3():
 - [ ] **Step 2: Run to verify they fail**
 
 Run: `uv run pytest tests/integration/cli/test_figures_in_store.py -p no:cacheprovider -q`
-Expected: FAIL. There is no `figures` descriptor yet, and the revision is 2.
+Expected: FAIL, because there is no descriptor and the revision is still 2.
 
 - [ ] **Step 3: Wire full mode**
 
-In `_cli_process_single.py`, replace the `PlotCoordinator(...).emit_image(...)` block (≈343–355) and the following `save_image_store` call with:
+In `_cli_process_single.py`, replace the `PlotCoordinator(...).emit_image(...)` block (≈343–355) with:
 
 ```python
         from phenotypic.plotting._pipeline import PlotCoordinator
+        from phenotypic.plotting._pipeline._store_figures import build_image_figures
 
         _check_active(active_check)
-        coordinator = PlotCoordinator(pipeline, output_dir, commit_guard=commit_guard)
-        figures = coordinator.build_image_figures(image)
-        _check_active(active_check)
-        set_provenance_status(image, "complete")
-        saved_store = output_manager.save_image_store(
-            image,
-            dataset_name,
-            image_stem,
-            work_id=work_id,
-            commit_guard=commit_guard,
-            measurements=measurements,
-            figures=figures,
-        )
-        if saved_store is None:
-            raise RuntimeError(
-                f"Final image store publication failed for {dataset_name}/{image_stem}"
-            )
+        figures = build_image_figures(pipeline, image)
+```
+
+Add `figures=figures` to the `save_image_store(...)` call that follows. Keep its `if saved_store is None: raise RuntimeError(...)` unchanged, and directly after it add:
+
+```python
         # After promotion, before the completion record: a crash between the
         # two re-runs the image, so deliverables never lag a certified store.
         _check_active(active_check)
-        coordinator.publish_store_figures(
+        PlotCoordinator(pipeline, output_dir, commit_guard=commit_guard).publish_store_figures(
             saved_store, dataset=dataset_name, image_stem=image_stem
         )
 ```
 
-Keep the existing `if saved_store is None: raise` text exactly as it is. The block above repeats it only to show where the copy-out goes.
-
 - [ ] **Step 4: Wire staged Stage 3**
 
-Apply the same transformation in `_cli_staged_workers.py` (≈578–600) with `plan.post_pipeline`. The copy-out goes after the existing `if saved_store is None or not valid_staged_store(saved_store): raise ...` check.
+Make the same change in `_cli_staged_workers.py` (≈578–600), using `plan.post_pipeline` in place of `pipeline`. The copy-out goes after the existing `if saved_store is None or not valid_staged_store(saved_store): raise ...`.
 
 - [ ] **Step 5: Wire measure mode**
 
-In `process_single_store_measure_core`, replace the `replace_image_store_measurements(...)` call and the `PlotCoordinator(...).emit_image(...)` block (≈437–456) with:
+Replace the `output_manager.replace_image_store_measurements(...)` call and the `PlotCoordinator(...).emit_image(...)` block (≈437–456) with:
 
 ```python
     from phenotypic.plotting._pipeline import PlotCoordinator
+    from phenotypic.plotting._pipeline._store_figures import build_image_figures
 
-    coordinator = PlotCoordinator(pipeline, output_dir, commit_guard=commit_guard)
     # Built BEFORE the table replace so the figures ride the same root-last
     # transaction: a store's figures and its table always come from the same
     # pipeline (spec §3 "Measure mode semantics").
-    figures = coordinator.build_image_figures(image)
+    figures = build_image_figures(pipeline, image)
     output_manager.replace_image_store_measurements(
         store_path,
         measurements,
         dataset_name,
         commit_guard=commit_guard,
         figures=figures,
-        rebuild_figures=True,
     )
-    coordinator.publish_store_figures(store_path, dataset=dataset_name, image_stem=stem)
+    PlotCoordinator(pipeline, output_dir, commit_guard=commit_guard).publish_store_figures(
+        store_path, dataset=dataset_name, image_stem=stem
+    )
 ```
 
-Keep the long comment above the replace call (CAN-3). Keep the "Marker refresh is the final successful per-image publication" comment and code after it unchanged.
+Keep the CAN-3 comment above the replace call. Leave everything from "Marker refresh is the final successful per-image publication" onward unchanged.
 
 - [ ] **Step 6: Wire process mode**
 
-In `process_single_apply_only_core`, right after `set_provenance_status(image, "complete")` and still inside the same `try`, add:
+In `process_single_apply_only_core`:
+- Before the `try`, add `figures = None`.
+- Inside the `try`, after `pipeline.apply(...)` and **before** `set_provenance_status(image, "complete")`, add the block below.
+- Pass `figures=figures` to `write_process_only_layer(...)`.
+
+Process mode has no copy-out.
 
 ```python
-        # Figures only when there is a store to hold them (spec §3 by mode).
-        # Measurer-backed bindings recompute inside inspect() here, because
-        # apply() never filled their cache -- accepted (spec §3 process mode).
-        figures = None
+        # Figures only when there is a store to hold them (spec §3 by mode),
+        # and before the status is closed, as in full mode. Measurer-backed
+        # bindings recompute inside inspect() here, because apply() never
+        # filled their cache -- accepted (spec §3 process mode).
         if process_format == "zarr":
             from phenotypic.plotting._pipeline._store_figures import build_image_figures
 
             figures = build_image_figures(pipeline, image)
 ```
-
-Add `figures = None` before the `try`, so the name exists on the tiff path. Pass `figures=figures` to `write_process_only_layer(...)`. Process mode does no copy-out.
 
 - [ ] **Step 7: Bump the revision**
 
@@ -2428,105 +2311,144 @@ In `_cli_failure_tracker.py`, append to the changelog comment:
 PROCESS_LAYER_SEMANTICS_REVISION = 3
 ```
 
-Run: `uv run pytest tests/unit/cli/test_work_id_semantics_revision.py tests/integration/cli/test_process_objmap_semantics.py -p no:cacheprovider -q`
-If a test pins the literal `2`, change it to `3`. Tests that compute `shipped - 1` need no change.
+Run: `uv run pytest tests/unit/cli/test_work_id_semantics_revision.py tests/integration/cli/test_process_objmap_semantics.py -p no:cacheprovider -q`. If a test pins the literal `2`, change it to `3`.
 
-- [ ] **Step 8: Retire `emit_image` and port its tests**
+- [ ] **Step 8: Retire `emit_image`**
 
-Delete `PlotCoordinator.emit_image` and `_publish_image_value`, and update the class docstring to say that image plots publish through `build_image_figures` → store → `publish_store_figures`. Keep `_image_output_stem`, which the copy-out uses. Run `uv run ruff check src/phenotypic/plotting/_pipeline/_coordinator.py` and delete only the imports it reports as unused.
+- In `_coordinator.py`, delete `PlotCoordinator.emit_image` and `_publish_image_value`. Keep `_image_output_stem`: the copy-out uses it.
+- In the class docstring, add one sentence: *image plots publish through `build_image_figures` → store → `publish_store_figures`*.
+- Run `uv run ruff check src/phenotypic/plotting/_pipeline/_coordinator.py` and delete exactly the imports it reports as unused.
+- In `tests/unit/cli/test_embedded_measurement_replacement.py:155`, patch `PlotCoordinator.publish_store_figures` instead of `emit_image`. The test's claim still holds: a failure after the table write leaves the old marker stale, because copy-out runs before the marker refresh.
 
-Port every test that calls `emit_image`. Give `tests/unit/plotting/test_coordinator.py` one helper:
+- [ ] **Step 9: Port `tests/unit/plotting/test_coordinator.py`, test by test (plan-review B1)**
+
+First, add `from tests.unit.plotting._store_fixtures import emit_image_via_store`.
+
+"Swap" in the table below means: replace `coordinator.emit_image(x, dataset=D, image_stem=S)` with `emit_image_via_store(coordinator, x, dataset=D, image_stem=S)`. Every store lands outside `tmp_path`, in a fresh directory, so "tree is empty" assertions over `tmp_path` still mean "deliverables are empty".
+
+`grep -n "emit_image" tests/unit/plotting/test_coordinator.py` lists every call site. Each one is covered below:
+
+| Test (current line) | Action |
+|---|---|
+| `test_image_plot_uses_deliverables_plot_layout` (92) | Swap. An mpl `_ImagePlot` stores `png`, so the assertions hold. |
+| `test_image_plot_strict_mode_propagates_publication_failure` (105) | **Delete**, because `strict` is gone. Its guarantee (the failure is visible) moves to Task 3's `test_inspect_raising_omits_the_binding…` and Task 5's `test_descriptor_failures_are_recorded_verbatim…`. |
+| `test_image_plot_disambiguates_sanitized_and_casefold_collisions` (119) | Swap. |
+| `test_image_plot_output_name_is_stable_for_reruns` (137) | Swap. |
+| `test_multi_page_image_plot_disambiguates_invocation_directories` (150) | Swap. |
+| `test_a_multi_page_plotly_image_plot_writes_exactly_one_bundle` (424) | Swap. The `broken` page is now a build failure recorded at copy-out, so change the final assertion to `[(e["lifecycle"], e["page"]) for e in entries] == [("image", "broken")] * 3`. The bundle, 6-HTML-page and hoisted-record assertions hold. |
+| `_emit_image` helper (539) and the `emit_image` param of `test_every_emit_point_records_one_failure…` (560) | Make the helper call `emit_image_via_store(coordinator)`. `plot_class` is `_RaisingImagePlot` via `plot_classes`, and the error regex holds because the text is stored verbatim with no address in it. |
+| `test_a_single_figure_plotly_image_plot_publishes_html` (707) | Swap. The default `plotly-json` also lands, so add `assert len(list(directory.glob("*.plotly.json"))) == 2`. The other assertions hold. |
+| `test_a_flat_image_render_failure_records_the_real_exception_class` (754) | Rewrite the assertions. There is now **one** record, with no second "produced no file" record. It must have `error.startswith("TypeError: unsupported figure type builtins.object")`, `page == "default"`, no `format` key, `plot_class == "_UnsupportedFigureImagePlot"`, and the same lifecycle, dataset and stem. |
+| `_emit_image_flat` (793), used by the `emit_image-flat` / `emit_image-multi-page` params of `test_a_refused_publication_guard_propagates_and_writes_nothing` | Make the helper call `emit_image_via_store(coordinator)`. The test holds: the guard refuses before anything under `tmp_path` is written. |
+| `test_a_fenced_commit_propagates_with_its_cause_and_records_nothing` (877–880, three `emit_image` params) | Holds via `_emit_image_flat`. The flat mpl case makes 1 png commit. The multi-page mpl case makes 2 png commits plus 1 manifest commit, and `allow=2` fences the manifest. |
+| `test_the_flat_path_commits_through_the_commit_guard` (909) | Swap. There is one png commit, so `entered == 1` holds. |
+| `test_the_flat_path_rechecks_the_publication_guard_before_commit` (925) | Swap, and change `answers = iter([True])` to `iter([True, True])`. The copy-out checks the guard at entry and again before `mkdir`, so the third check, inside the commit, is the one that must refuse. |
+| `test_a_strict_flat_failure_keeps_the_renderer_as_its_cause` (954) | **Delete** (`strict`). |
+| `test_a_partial_flat_render_publishes_what_it_can_and_records_once` (966) | Rewrite. Use a local plot declaring `@figure(backend="plotly", primary=True, store=("plotly-json", "png"))`, patch `_backends.chrome_available` to `True` and `plotly.io.to_image` to raise `OSError("raster exploded")`. Assert one `.html` and one `.plotly.json`, no `.png`, and the record list `== ["OSError: raster exploded"]` with `format == "png"`. |
+| `test_a_rerun_without_chrome_removes_the_previous_png` (1022) | **Delete.** Its guarantee (a republished page loses its leftover PNG) is Task 5's `test_a_republished_page_loses_its_leftover_renderings`, which seeds the leftover by hand, since no default Plotly run writes a PNG any more. |
+| `test_a_failed_flat_rerun_keeps_both_previous_renderings` (1045) | **Delete.** Its guarantee is Task 5's `test_a_page_that_publishes_nothing_keeps_its_previous_files`. |
+| `test_a_rerun_as_matplotlib_removes_the_previous_html` (1073) | Swap both calls, and add `assert list(directory.glob("*.plotly.json")) == []`. |
+| `test_the_flat_path_closes_its_matplotlib_figure` (1096) | Swap. In the docstring, say the close now happens in build (the `finally` in `_build_pages`), before the guard is consulted. |
+| `test_a_multi_page_image_rerun_without_chrome_removes_the_previous_pngs` (1220) | Rewrite. Emit once via `emit_image_via_store`, seed `First.png` and `Second.png` in the invocation directory, and emit again. Assert no `.png`, 2 `.html`, 2 `.plotly.json`, and `_assert_manifest_matches_disk(directory)`. |
+
+Keep `_emit_twice_chrome_then_none`, because the aggregate test (≈1197) still uses it.
+
+- [ ] **Step 10: Port the integration file**
+
+In `tests/integration/plotting/test_publication_end_to_end.py`, replace each `PlotCoordinator(pipeline, tmp_path).emit_image(image, dataset="ds 1", image_stem="plate_01"[, strict=True])` with:
 
 ```python
-from tests.unit.plotting.test_store_copyout import figure_store
-
-
-def _emit_image_via_store(coordinator, tmp_path, image, *, dataset="ds", image_stem="plate-1"):
-    """build -> minimal store -> copy-out: the path every CLI mode now takes."""
-    stored = coordinator.build_image_figures(image)
-    if stored is None:
-        return None
-    store = figure_store(tmp_path / f"store-{image_stem}", stored)
-    coordinator.publish_store_figures(store, dataset=dataset, image_stem=image_stem)
-    return stored
+    stored = build_image_figures(pipeline, image)
+    assert stored.failed == ()  # replaces strict=True: a failed build must not pass quietly
+    store = image.save2zarr(tmp_path.parent / f"{tmp_path.name}-store.ome.zarr", figures=stored)
+    PlotCoordinator(pipeline, tmp_path).publish_store_figures(
+        store, dataset="ds 1", image_stem="plate_01"
+    )
 ```
 
-(`figure_store` needs `(tmp_path / ...)` to exist: have the helper `mkdir(parents=True, exist_ok=True)` first. If importing across test modules trips on package layout, move `figure_store` to `tests/unit/plotting/_store_fixtures.py` and import it from there in both files.)
+Test-specific changes:
+- **`test_a_failing_plot_is_recorded_once…`:** omit the `stored.failed == ()` line, since failure is the test's subject. Its record assertions hold; `plot_class` now comes from the pipeline map, which gives the same value.
+- **The Plotly test:** replace the assertion that PNG presence depends on `chrome_available()` with: `.plotly.json` and `.html` are present, and there is no `.png`.
+- **The mpl test:** its assertions hold.
 
-Then, for each `emit_image` call site listed by `grep -n "emit_image" tests/unit/plotting/test_coordinator.py`:
-- Layout, stable-name and collision tests (≈92, 119, 137, 150, 424, 707): replace the call with `_emit_image_via_store(...)`. An mpl `_ImagePlot` still yields `<stem>-<hash>.png`. A Plotly one yields `.plotly.json` + `.html` and **no PNG even with Chrome**. Update any PNG-with-Chrome assertion to that.
-- Strict-mode test (≈105): `strict` no longer exists. Delete the test. Its guarantee ("a failure is visible") is now `test_inspect_raising_omits_the_binding_and_normalises_the_address` (Task 5) plus `test_descriptor_failures_become_failure_lines_verbatim` (Task 7). Name both in the commit message.
-- Guard and fence tests (≈539–573, 793–811, 877–880, 915, 941, 954): route through `_emit_image_via_store`. The guard now fires inside `publish_store_figures`, so the expected `PlotPublicationBlocked` / no-write assertions hold unchanged.
-- The failure-class test (≈754–800): the durable line's `error` now starts with the real exception class. The descriptor spelling (`normalize_figure_error`) keeps it, so assert `record["error"].startswith("<ExpectedClass>: ")`.
-- Stale-sibling tests (≈1034–1093): copy-out's `_remove_leftovers` preserves "only a republished page loses its leftovers", so keep the assertions and swap the call.
+- [ ] **Step 11: Run the touched surface**
 
-In `tests/integration/plotting/test_publication_end_to_end.py`, replace `PlotCoordinator(pipeline, tmp_path).emit_image(image, dataset="ds 1", image_stem="plate_01", strict=True)` with the build → `image.save2zarr(tmp_path / "s.ome.zarr", figures=stored)` → `publish_store_figures` sequence. Assert `.plotly.json` + `.html` for Plotly, whatever Chrome says (the old assertion `png is chrome_available()` no longer holds for image plots). Keep the aggregate tests unchanged.
-
-In `tests/unit/cli/test_embedded_measurement_replacement.py:155`, patch `PlotCoordinator.publish_store_figures` instead of `emit_image`. The test's claim ("a failure after the table write leaves the old marker stale") still holds, because copy-out runs before the marker refresh.
-
-- [ ] **Step 9: Run the touched surface**
-
-Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/integration/cli/test_figures_in_store.py tests/unit/plotting/ tests/integration/plotting/ tests/unit/cli/test_embedded_measurement_replacement.py tests/unit/cli/test_embedded_measurement_publication.py tests/unit/cli/test_process_only_zarr.py -p no:cacheprovider -q`
+Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/integration/cli/test_figures_in_store.py tests/unit/plotting/ tests/integration/plotting/ tests/unit/cli/test_embedded_measurement_replacement.py tests/unit/cli/test_embedded_measurement_publication.py tests/unit/cli/test_process_only_zarr.py tests/unit/cli/test_work_id_semantics_revision.py -p no:cacheprovider -q`
 Expected: PASS. Run any failure in isolation before attributing it (project rule).
 
-- [ ] **Step 10: Prove the wiring test can fail**
+- [ ] **Step 12: Prove it can fail**
 
-Remove `figures=figures` from the full-mode `save_image_store` call. Expect `test_full_mode_stores_figures_and_copies_them_out` to FAIL. Restore it.
+Remove `figures=figures` from the full-mode `save_image_store` call. Expect `test_full_mode_stores_figures_and_copies_them_out` to FAIL, then restore it.
 
-- [ ] **Step 11: Commit**
+- [ ] **Step 13: Commit**
 
 ```bash
-uv run ruff check --fix src/phenotypic/_cli/_cli_process_single.py src/phenotypic/_cli/_cli_staged_workers.py src/phenotypic/_cli/_cli_process_only.py src/phenotypic/_cli/_cli_failure_tracker.py src/phenotypic/plotting/_pipeline/_coordinator.py tests/integration/cli/test_figures_in_store.py tests/unit/plotting/test_coordinator.py tests/integration/plotting/test_publication_end_to_end.py tests/unit/cli/test_embedded_measurement_replacement.py
-git add -A src/phenotypic tests
+uv run ruff check --fix src/phenotypic/_cli/_cli_process_single.py src/phenotypic/_cli/_cli_staged_workers.py src/phenotypic/_cli/_cli_process_only.py src/phenotypic/_cli/_cli_failure_tracker.py src/phenotypic/plotting/_pipeline/_coordinator.py tests/integration/cli/test_figures_in_store.py tests/unit/plotting/test_coordinator.py tests/integration/plotting/test_publication_end_to_end.py tests/unit/cli/test_embedded_measurement_replacement.py tests/unit/cli/test_work_id_semantics_revision.py
+git add src/phenotypic/_cli/_cli_process_single.py src/phenotypic/_cli/_cli_staged_workers.py src/phenotypic/_cli/_cli_process_only.py src/phenotypic/_cli/_cli_failure_tracker.py src/phenotypic/plotting/_pipeline/_coordinator.py tests/integration/cli/test_figures_in_store.py tests/unit/plotting/test_coordinator.py tests/integration/plotting/test_publication_end_to_end.py tests/unit/cli/test_embedded_measurement_replacement.py tests/unit/cli/test_work_id_semantics_revision.py
 git commit -m "feat(cli): per-image figures live in the store in every mode; emit_image retired"
 ```
 
 ---
 
-### Task 10: The cross-mode properties — reproducibility, cache parity, migrate, lazy imports
+### Task 7: Cross-mode properties: reproducibility, cache parity, migrate, lazy imports
 
 **Files:**
-- Modify: `tests/unit/cli/test_process_only_zarr.py`: add a byte-identical test with a figure binding
+- Modify: `tests/unit/cli/test_process_only_zarr.py`
 - Create: `tests/unit/measure/test_zone_figure_cache_parity.py`
-- Modify: `tests/unit/cli/test_cli_provenance_migration.py`: a figure-carrying direct store survives migrate
-- Test run: `tests/unit/ci/test_startup_imports.py`, `tests/unit/ci/test_deferred_imports.py`
+- Modify: `tests/unit/cli/test_cli_provenance_migration.py`
 
-- [ ] **Step 1: The byte-identical process store, now with figures**
+- [ ] **Step 1: Process stores with a figure binding are byte-identical across processes**
 
 Append to `tests/unit/cli/test_process_only_zarr.py`:
 
 ```python
-@pytest.fixture
-def plotted_pipeline_file(tmp_path: Path) -> Path:
-    """A detector plus a measurer-backed figure binding (spec §3, §4)."""
+def test_two_processes_with_a_figure_binding_write_byte_identical_stores(
+    tmp_path: Path, source_image: Path
+) -> None:
+    """Spec §4: byte identity now covers figures/, and holds across fresh
+    interpreters (fresh hash seeds, fresh object addresses)."""
+    import os
+    import subprocess
+    import sys
+    import textwrap
+
     from phenotypic.detect import OtsuDetector
     from phenotypic.measure import MeasureSymZones
 
     sym = MeasureSymZones()
-    path = tmp_path / "plotted.json.pht-pipe"
-    ImagePipeline(ops=[OtsuDetector()], meas={"sym": sym}, plots=[sym]).to_json(path)
-    return path
+    pipeline = tmp_path / "plotted.json.pht-pipe"
+    ImagePipeline(ops=[OtsuDetector()], meas={"sym": sym}, plots=[sym]).to_json(pipeline)
 
+    def run(out: Path, seed: str) -> Path:
+        code = textwrap.dedent(f"""
+            from pathlib import Path
+            from phenotypic._cli._cli_process_only import process_single_apply_only_core
+            process_single_apply_only_core(
+                pipeline_path=Path({str(pipeline)!r}), image_path=Path({str(source_image)!r}),
+                input_root=Path({str(source_image.parent)!r}), output_dir=Path({str(out)!r}),
+                image_type="Image", layer="rgb", read_kwargs={{}}, process_format="zarr",
+            )
+        """)
+        subprocess.run([sys.executable, "-c", code], check=True,
+                       env={**os.environ, "PYTHONHASHSEED": seed})
+        return out / f"{source_image.stem}{ngff_.STORE_SUFFIX}"
 
-def test_two_runs_with_a_figure_binding_produce_byte_identical_stores(
-    tmp_path: Path, source_image: Path, plotted_pipeline_file: Path
-) -> None:
-    """Spec §4: the byte-identity contract now includes figures/."""
-    first = _run_to_store(plotted_pipeline_file, source_image, tmp_path / "a")
-    second = _run_to_store(plotted_pipeline_file, source_image, tmp_path / "b")
+    first, second = run(tmp_path / "a", "1"), run(tmp_path / "b", "2")
     left, right = _tree_bytes(first), _tree_bytes(second)
     assert any(name.startswith("figures/sym/") for name in left)
     assert sorted(left) == sorted(right)
     assert [name for name in left if left[name] != right[name]] == []
 ```
 
-Prove it can fail: in `_serialize_html`, temporarily make the div id `uuid4().hex`; the test does not notice, because `html` is not stored by default. That shows this test guards the *default* path only; `plotly-json` stability across processes is pinned in Task 3. Revert. Then temporarily append `str(time.time())` to the bytes in `_serialize_plotly_json`, expect FAIL, and revert.
+Prove it can fail: append `str(time.time()).encode()` to what `_serialize_plotly_json` returns, and expect the test to FAIL. Revert the change.
 
 - [ ] **Step 2: Cache parity**
 
 ```python
 """A zone figure does not depend on whether measure() just ran (spec §4)."""
 from __future__ import annotations
+
+import json
 
 import pytest
 
@@ -2543,6 +2465,26 @@ def _detected() -> Image:
     return image
 
 
+def _first_difference(left, right, path="$"):
+    if type(left) is not type(right):
+        return path
+    if isinstance(left, dict):
+        for key in sorted(set(left) | set(right)):
+            found = _first_difference(left.get(key), right.get(key), f"{path}.{key}")
+            if found:
+                return found
+    elif isinstance(left, list):
+        if len(left) != len(right):
+            return f"{path}[len]"
+        for index, (a, b) in enumerate(zip(left, right)):
+            found = _first_difference(a, b, f"{path}[{index}]")
+            if found:
+                return found
+    elif left != right:
+        return path
+    return None
+
+
 @pytest.mark.parametrize("measurer_cls", [MeasureSymZones, MeasureOrientationZones])
 def test_cache_hit_and_recompute_render_identical_bytes(measurer_cls, tmp_path):
     image = _detected()
@@ -2556,13 +2498,12 @@ def test_cache_hit_and_recompute_render_identical_bytes(measurer_cls, tmp_path):
     def encode(fig):
         return serialize_store_format("plotly-json", fig, binding_id="b", page_key="default")
 
-    assert encode(hit) == encode(recomputed)
+    left, right = encode(hit), encode(recomputed)
+    assert left == right, _first_difference(json.loads(left), json.loads(right))
 ```
 
 Run: `uv run pytest tests/unit/measure/test_zone_figure_cache_parity.py -p no:cacheprovider -q`
-If `OtsuDetector().apply(image, inplace=True)` is not the right signature, match `tests/unit/detect` usage (`grep -rn "OtsuDetector()" tests/unit/detect | head -3`).
-
-**If it FAILS, that is a real provider bug** (spec §4: "a bug in the provider, not a tolerance"). Stop and report it to the orchestrator with the first differing JSON path. Do not loosen the assertion. Compare with `json.loads` to find the path.
+**If it FAILS, that is a real provider bug.** Spec §4 treats this as "a bug in the provider, not a tolerance". Stop and report the path from the assertion message to the orchestrator. Do not loosen the assertion.
 
 - [ ] **Step 3: A figure-carrying store survives migrate unchanged**
 
@@ -2595,24 +2536,22 @@ def test_migrate_leaves_a_stores_figures_and_their_descriptor_untouched(
     assert figure.read_bytes() == b"{}"
 ```
 
-Also add the absence case, using the existing test above it as the template: a store with no `figures` key still migrates and gains none. Assert `"figures" not in after`.
+- [ ] **Step 4: Run the lazy-import guards and this task's files**
 
-- [ ] **Step 4: Run the lazy-import guards**
-
-Run: `uv run pytest tests/unit/ci/test_startup_imports.py tests/unit/ci/test_deferred_imports.py -p no:cacheprovider -q`
-Expected: PASS. A failure means a module-level plotly/matplotlib/zarr import slipped into a Task 2–7 file. Move it into the function that uses it.
+Run: `uv run pytest tests/unit/ci/test_startup_imports.py tests/unit/ci/test_deferred_imports.py tests/unit/cli/test_process_only_zarr.py tests/unit/measure/test_zone_figure_cache_parity.py tests/unit/cli/test_cli_provenance_migration.py -p no:cacheprovider -q`
+Expected: PASS. If a guard fails, a module-level plotly/matplotlib/zarr import slipped in; move it into the function that uses it.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 uv run ruff check --fix tests/unit/cli/test_process_only_zarr.py tests/unit/measure/test_zone_figure_cache_parity.py tests/unit/cli/test_cli_provenance_migration.py
-git add tests/
+git add tests/unit/cli/test_process_only_zarr.py tests/unit/measure/test_zone_figure_cache_parity.py tests/unit/cli/test_cli_provenance_migration.py
 git commit -m "test: figure reproducibility, cache parity, and migrate neutrality"
 ```
 
 ---
 
-### Task 11: Documentation and the spec clarifications
+### Task 8: Documentation
 
 **Files:**
 - Modify: `.claude/skills/working-with-ome-zarr/SKILL.md`
@@ -2621,41 +2560,45 @@ git commit -m "test: figure reproducibility, cache parity, and migrate neutralit
 - Modify: `src/phenotypic/abc_/CLAUDE.md`
 - Modify: `docs/source/extending/pages/custom_plotter.md`
 - Modify: `docs/source/how_to/pages/zarr_storage.md`
-- Modify: `docs/superpowers/specs/2026-09-22-figures-in-ome-zarr/design.md`
 
-- [ ] **Step 1: Spec clarifications**
+- [ ] **Step 1: The store-contract skill**
+  - Add a *Per-image figures* row to the store-contract table:
+    - location: `figures/<binding>/…`
+    - described by: `attributes.phenotypic.figures`
+    - optional, and not listed in `ome.series`
+  - Add one paragraph covering:
+    - The media type is the contract.
+    - The root binds each file's `sha256`.
+    - The `bindings` key order is not part of the contract.
+    - There is no `store_schema_version` bump.
+    - Measure mode rebuilds the group inside the table transaction, and removes the part's hard-linked copies first.
 
-In the spec:
-- In the §1 descriptor example, add `"metadata": {}` to the page object, and add a bullet under **Rules**: *"`metadata` is the page's `PlotPage.metadata`, JSON-native; the copy-out reproduces manifest v2 from it."*
-- In §3 step 1, add a sentence: *"Implemented as the module function `build_image_figures(pipeline, image)`; `PlotCoordinator.build_image_figures(image)` delegates. Process mode calls the function, having no `plots_base`."*
-- In §1, replace the example error `ChromeNotFoundError: <message>` with `PlotBackendUnavailable: Plotly PNG export needs Chrome (kaleido); install it with plotly_get_chrome`.
-- In §2, replace the Plotly-SVG gate paragraph with the recorded outcome (A or B) and one line of evidence from Task 1.
+- [ ] **Step 2: `_cli/CLAUDE.md` and the root `CLAUDE.md`**
+  - In `_cli/CLAUDE.md`, add a short *"Per-image figures"* section covering:
+    - the write path per mode, one sentence per row of the spec §3 table
+    - copy-out runs after promotion and before the completion record
+    - process revision 3; full mode is unchanged
+    - `emit_image` is retired
+  - In the root `CLAUDE.md`, add to the `--mode process` bullet: *"A store also carries the pipeline's per-image figures under `figures/` (revision 3); flat `tiff` exports carry none."*
 
-- [ ] **Step 2: The store contract skill**
+- [ ] **Step 3: `abc_/CLAUDE.md` and the extending guide**
+  - In `abc_/CLAUDE.md`, add the `@figure(store=...)` convention:
+    - The closed set is `{plotly-json, png}`.
+    - Each backend has its own default.
+    - An invalid declaration raises `TypeError` when the class is defined.
+    - An `inspect()` override falls back to the backend default, page by page.
+  - In `custom_plotter.md`, add a section *"Storing figures with the image"* covering:
+    - the `store=` parameter
+    - the formats and their media types, as a table
+    - the defaults
+    - a default Plotly figure has no PNG in `deliverables/`, even with Chrome
+    - an image-backed Plotly figure's JSON is MB-sized, because it embeds a PNG data URI (plan-review minor 13)
+    - `deliverables/plots/` is a copy of the store
+    - one runnable docstring-style example using `load_synth_yeast_plate()`
 
-In `.claude/skills/working-with-ome-zarr/SKILL.md`, add a *Per-image figures* row to the store-contract table (location `figures/<binding>/…`; described by `attributes.phenotypic.figures`; optional; not in `ome.series`). Add one paragraph on the descriptor: media type is the contract, `sha256` bound by the root, no `store_schema_version` bump, and measure mode rebuilds the group in the table transaction.
+- [ ] **Step 4: The zarr storage how-to**
 
-- [ ] **Step 3: `_cli/CLAUDE.md` and root `CLAUDE.md`**
-
-In `_cli/CLAUDE.md`, add a short section, *"Per-image figures"*: the write path per mode (the §3 table in one sentence per row), the copy-out running after promotion and before the completion record, process revision 3, full mode unchanged, and `emit_image` retired. In root `CLAUDE.md`, in the `--mode process` bullet, add: *"A store also carries the pipeline's per-image figures under `figures/` (revision 3); flat `tiff` exports carry none."*
-
-- [ ] **Step 4: `abc_/CLAUDE.md` and the extending guide**
-
-In `abc_/CLAUDE.md`, add the `@figure(store=...)` convention: the closed set, the per-backend defaults, class-definition `TypeError`s, and the fact that an `inspect()` override falls back to the backend default per page.
-
-In `docs/source/extending/pages/custom_plotter.md`, add a section *"Storing figures with the image"*. Cover:
-- `store=`;
-- the four formats and their media types, as a table;
-- determinism (why `html` uses the CDN);
-- the defaults;
-- that a default Plotly figure has no PNG in `deliverables/`, even with Chrome;
-- that `deliverables/plots/` is a copy of the store.
-
-Include one runnable docstring-style example using `load_synth_yeast_plate()`.
-
-- [ ] **Step 5: The zarr storage how-to**
-
-In `docs/source/how_to/pages/zarr_storage.md`, add *"Reading an image's figures"*: read `zarr.json` → `attributes.phenotypic.figures` → pick the file whose `media_type` you can render → verify `sha256`. Include a stdlib-only snippet:
+Add a section *"Reading an image's figures"* with this stdlib-only snippet:
 
 ```python
 import hashlib, json
@@ -2671,34 +2614,30 @@ for binding_id, binding in (figures or {}).get("bindings", {}).items():
             print(binding_id, page["key"], entry["media_type"], len(data))
 ```
 
-- [ ] **Step 6: Verify the docs build renders the changed pages**
+- [ ] **Step 5: Verify the rendered pages**
 
-Use the **`slurm-job`** skill to submit one job running `uv run sphinx-build -j "$SLURM_CPUS_PER_TASK" -D nbsphinx_execute=never -b html docs/source <out>` (per the global rule: never locally, never `-j auto`). Then read the generated HTML for the two changed pages. Exit 0 is not the check.
+Using the **`slurm-job`** skill, submit one job that runs `uv run sphinx-build -j "$SLURM_CPUS_PER_TASK" -D nbsphinx_execute=never -b html docs/source <out>`. Never build locally, and never use `-j auto`. When it finishes, read the generated HTML for the two changed pages; an exit status of 0 is not the check.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add .claude/skills/working-with-ome-zarr/SKILL.md src/phenotypic/_cli/CLAUDE.md CLAUDE.md src/phenotypic/abc_/CLAUDE.md docs/source/ docs/superpowers/specs/2026-09-22-figures-in-ome-zarr/design.md
+git add .claude/skills/working-with-ome-zarr/SKILL.md src/phenotypic/_cli/CLAUDE.md CLAUDE.md src/phenotypic/abc_/CLAUDE.md docs/source/extending/pages/custom_plotter.md docs/source/how_to/pages/zarr_storage.md
 git commit -m "docs: per-image figures in the OME-Zarr store"
 ```
 
 ---
 
-### Task 12: Final regression
+### Task 9: Final regression
 
-- [ ] **Step 1: Types and lint on the changed surface**
-
-Run: `uv run mypy src/phenotypic/abc_/plotting src/phenotypic/plotting/_pipeline src/phenotypic/sdk_/_image_figures.py src/phenotypic/_cli/_cli_process_only.py`
-Run: `uv run ruff check $(git diff --name-only origin/main...HEAD -- '*.py')`
-Expected: no new errors.
-
-- [ ] **Step 2: The full sharded suite, once, as a Slurm job**
-
-Use the **`run-phenotypic-test`** skill with the committed batch script `docs/superpowers/plans/2026-08-18-ome-zarr-image-store/run_unit_suite.sbatch`, run in a worktree detached at this branch's HEAD SHA (global rule: a parallel gate measures one tree). Compare against the recorded baseline (memory: 11,106 tests / 81 known failures, all outside `sdk_`/`_cli`/`gui`). Run each new failure in isolation before attributing it.
-
-- [ ] **Step 3: Report**
-
-Report test totals only from the job output you just read. List any failure attributed to this change, with its isolated-run result.
+- [ ] **Step 1: Types and lint on the changed surface.** Expect no new errors from either command:
+  - `uv run mypy src/phenotypic/abc_/plotting src/phenotypic/plotting/_pipeline src/phenotypic/sdk_/_image_figures.py src/phenotypic/_cli/_cli_process_only.py`
+  - `uv run ruff check $(git diff --name-only origin/main...HEAD -- '*.py')`
+- [ ] **Step 2: The full sharded suite, once, as a Slurm job.**
+  - Use the **`run-phenotypic-test`** skill with `docs/superpowers/plans/2026-08-18-ome-zarr-image-store/run_unit_suite.sbatch`.
+  - Run it in a worktree detached at this branch's HEAD SHA, with an `afterany` cleanup finalizer.
+  - Compare the result against the recorded baseline: 11,106 tests, 81 known failures, all outside `sdk_`/`_cli`/`gui`.
+  - Run each new failure in isolation before attributing it to this change.
+- [ ] **Step 3: Report.** Take totals only from the job output you just read. List by name each failure attributed to this change, with its isolated-run result.
 
 ---
 
@@ -2708,25 +2647,64 @@ Report test totals only from the job output you just read. List any failure attr
 
 | Spec | Task |
 |---|---|
-| §1 layout, descriptor, media types | 2 (table), 4 (writer) |
-| §1 presence, ordering | 4, 5, 6 |
-| §1 failure granularity, `error` text | 5 |
-| §1 namespace, no version bump | 6 (independent-reader test) |
-| §1 hashes, copy-out verify, no re-hash in continuation | 7; continuation untouched |
-| §2 signature, validation, defaults | 2 |
-| §2 which declaration applies, `inspect()` override fallback | 5 (`declared_figure_spec`) |
-| §2 serializers, CDN HTML, Plotly SVG gate | 1, 3 |
-| §2 lazy imports | 10 |
-| §3 build, store write, copy-out | 5, 6, 7 |
-| §3 by-mode table | 9 |
-| §3 measure semantics, migrate path untouched | 6, 9, 10 |
-| §3 continuation (revision 3, full unchanged) | 9 |
-| §4 byte-identical process store | 10 |
-| §4 cross-process serializer stability | 3 |
-| §4 cache parity | 10 |
-| §5 tests | 2–10 (each row appears in its task) |
-| §5 Chrome lane | 3 |
-| §6 docs | 11 |
-| Blast radius: preflight semantics | 8 |
+| §1 layout, descriptor, media types, metadata | 1, 2, 3 |
+| §1 presence, ordering, collision suffix | 2, 3, 4 |
+| §1 failure granularity, `error` text | 3 |
+| §1 namespace, no version bump | 4 (independent-reader test) |
+| §1 hashes, copy-out verify | 5 |
+| §2 signature, validation (including a bare `str`), defaults | 1 |
+| §2 which declaration applies, `inspect()` override fallback | 3 |
+| §2 serializers, lazy imports | 3, 7 |
+| §3 build (whole binding inside the boundary, `None` counts as a failure) | 3 |
+| §3 store write | 4 |
+| §3 copy-out (lock, manifest commit, `renderers` capability, `partial`, failure fields and class) | 5 |
+| §3 by-mode table, process builds before the status closes | 6 |
+| §3 measure semantics, hard-link safety, migrate path untouched | 4, 6, 7 |
+| §3 continuation (revision 3, full mode unchanged) | 6 |
+| §4 byte-identical process store across processes | 7 |
+| §4 cross-process serializers | 3 |
+| §4 cache parity | 7 |
+| §5 every row | 1–7 |
+| §6 docs | 8 |
+| Preflight follows the declared `png` (review) | 3 |
 
-**Type consistency.** The following names are identical across Tasks 4–9: `StoredFigures` / `StoredFigureBinding(binding_id, plot_class, directory, pages)` / `StoredFigurePage(key, label, backend, metadata, files)` / `StoredFigureFile(format, media_type, filename, data)` / `StoredFigureFailure(binding, page, format, error)`, the keyword `figures=` on every writer, and `rebuild_figures=` on the two replace functions.
+**Review findings disposition.**
+
+| Finding | Resolution |
+|---|---|
+| B1 | Task 6 Step 9 (enumerated test by test) + `_store_fixtures` |
+| M1 | `plot_classes` |
+| M2 | Same-name hard-link test |
+| M3 | `skipif win32` |
+| M4 | Metadata check in `_build_page` |
+| M5 | Removed: `html` is out of the store |
+| M6 | `promote_store` spy |
+| M7 | `stored.failed == ()` |
+| M8 | `error` verbatim + `page`/`format` fields |
+| Minors 1–8 | Spec revision items 6, 8, 10 and 9, plus the copy-out code |
+| Minors 9, 11 | Moot: no Chrome lane |
+| Minor 10 | Import path fixed |
+| Minor 12 | Task 7 Step 1 |
+| Minor 13 | Spec §2 + Task 8 |
+| Minor 14 | Bare `str` rejected; collision suffix is now in spec §1. Windows `MAX_PATH` has the same gap as tables and is left as it is. |
+
+**Simplicity cuts.**
+
+| Cut | Resolution |
+|---|---|
+| 1–3 | Accepted by the user |
+| 4 | `figures` is a required keyword; no `rebuild_figures` |
+| 5 | Preflight folded into Task 3 |
+| 6 | `_commit_manifest` reused |
+| 7 | Delegate dropped; the four call sites use `build_image_figures(pipeline, image)` |
+| 8 | No re-export |
+| 9 | Duplicate tests dropped |
+
+**Type consistency.** These names are spelled identically in Tasks 2–7:
+- `StoredFigures`
+- `StoredFigureBinding(binding_id, plot_class, directory, pages)`
+- `StoredFigurePage(key, label, backend, metadata, files)`
+- `StoredFigureFile(format, media_type, filename, data)`
+- `StoredFigureFailure(binding, page, format, error)`
+- the `figures=` keyword on every writer
+- `record_plot_failure(..., page=, fmt=)`

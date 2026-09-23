@@ -2,7 +2,9 @@
 
 - **Date:** 2026-09-22
 - **Branch:** `claude/figures-ome-zarr-storage-6eba6f`
-- **Status:** design approved in conversation, awaiting written-spec review
+- **Status:** approved; revised 2026-09-22 after plan review (format set cut to
+  `{plotly-json, png}`, no Chrome lane, failure-log fields, clarifications — see
+  *Revision 2026-09-22* at the end)
 - **Builds on:** `docs/superpowers/specs/2026-09-20-figure-backend-routing/design.md`
   (PR #236 — `@figure(backend=...)`, HTML+PNG publication, `.failures.jsonl`)
 
@@ -37,6 +39,14 @@ with a media type, and a consumer renders what it understands.
   so it gets no figures.
 - **Backfilling figures during `--mode migrate`.** Migrate never fabricates a
   figure.
+- **`html` and `svg` store formats.** Cut at review: no shipped figure produces
+  SVG, and a stored HTML page would load Plotly from a CDN, so it is not
+  self-contained while `plotly-json` already is. Either can be added later
+  without breaking a store (the set is closed per version, the descriptor is
+  already media-typed).
+- **Exercising Plotly PNG against real Chrome in CI.** Plotly PNG bytes are
+  Kaleido's, not ours; our code path is tested with Chrome patched absent and
+  present (§5).
 - **Re-hashing figures during continuation validation.** See §1, *What the
   hashes bind*.
 
@@ -139,14 +149,13 @@ on the same machine (Chrome present):
     └── <binding_id>/                safe_path_component(binding.id)
         ├── zarr.json                empty Zarr v3 group document
         ├── <page_key>.plotly.json
-        ├── <page_key>.html
-        ├── <page_key>.png
-        └── <page_key>.svg
+        └── <page_key>.png
 ```
 
 `<page_key>` is `safe_path_component(page.key)`; a bare figure is page
-`default`. File extension per format: `plotly-json` → `.plotly.json`, `html` →
-`.html`, `png` → `.png`, `svg` → `.svg`. **The folder layout is storage only;
+`default`. Two keys that sanitize to the same name (case-folded) get a stable
+digest suffix, by the same rule the manifest writer already uses. File
+extension per format: `plotly-json` → `.plotly.json`, `png` → `.png`. **The folder layout is storage only;
 the descriptor is the contract.** A consumer never infers anything from a file
 name.
 
@@ -163,6 +172,7 @@ name.
           "key": "default",
           "label": null,
           "backend": "plotly",
+          "metadata": {},
           "files": [
             {"format": "plotly-json",
              "media_type": "application/vnd.plotly.v1+json",
@@ -177,7 +187,7 @@ name.
   },
   "failed": [
     {"binding": "sym", "page": "default", "format": "png",
-     "error": "ChromeNotFoundError: <message>"}
+     "error": "PlotBackendUnavailable: Plotly PNG export needs Chrome (kaleido); install it with plotly_get_chrome"}
   ]
 }
 ```
@@ -185,9 +195,7 @@ name.
 | Format | `media_type` |
 |---|---|
 | `plotly-json` | `application/vnd.plotly.v1+json` (the Jupyter mimebundle type) |
-| `html` | `text/html` |
 | `png` | `image/png` |
-| `svg` | `image/svg+xml` |
 
 **Rules.**
 
@@ -195,9 +203,14 @@ name.
   pipeline carries at least one `PlotImage` binding. No binding → neither
   exists (the same convention as `labels`). Bindings present but all failed →
   the key exists with an empty `bindings` map and a populated `failed`.
-- **Ordering.** `bindings` is keyed by binding id in pipeline order; `pages` in
-  `PlotOutput` order; `files` in the declared `store` order. Deterministic
-  ordering is part of the reproducibility contract (§4).
+- **Ordering.** `pages` are in `PlotOutput` order and `files` in the declared
+  `store` order; both are lists, so their order is part of the data.
+  `bindings` is a map: a consumer must not rely on its key order (a
+  measure-mode rewrite serializes the root with sorted keys). Byte order is
+  still deterministic for a given writer, which is what §4 needs.
+- **`metadata`** is the page's `PlotPage.metadata`, which must be JSON-native.
+  A page whose metadata does not serialize is a page failure (`format: null`),
+  never a store failure. The copy-out rebuilds manifest v2 from it.
 - **Failure granularity — the finest level available.**
   - One format fails (e.g. a declared `png` with no Chrome): one entry with
     that `page` and `format`; the page still lists the files that succeeded.
@@ -236,7 +249,7 @@ digests the root — binds those hashes. **It does not re-read figure bytes.**
 ### Signature
 
 ```python
-StoreFormat = Literal["plotly-json", "html", "png", "svg"]
+StoreFormat = Literal["plotly-json", "png"]
 
 def figure(
     *,
@@ -254,10 +267,9 @@ def figure(
 
 ### Validation — `TypeError` at class-definition time
 
-- `plotly-json` or `html` with `backend="mpl"` (matplotlib has no native form
-  of either; consistent with the figure-routing spec's "no HTML for
-  matplotlib").
+- `plotly-json` with `backend="mpl"` (matplotlib has no native form of it).
 - An unknown format name, or a duplicate.
+- A bare `str` (`store="png"`), which would otherwise iterate as characters.
 - **`store=()`**: rejected. An image figure must store at least one format.
   Because `deliverables/plots/` is a copy-out of the store (§3), an opted-out
   figure would appear nowhere; a figure the author does not want stored should
@@ -267,7 +279,7 @@ def figure(
 
 | Backend | Default | Why |
 |---|---|---|
-| `plotly` | `("plotly-json",)` | Lossless, interactive via any Plotly consumer, Chrome-free, byte-stable, KB-sized |
+| `plotly` | `("plotly-json",)` | Lossless, interactive via any Plotly consumer, Chrome-free, byte-stable. Size follows the figure: a trace-only figure is KB, an image-backed one (`px.imshow(binary_string=True)`, as the zone measurers use) embeds a full-resolution PNG data URI and is MB |
 | `mpl` | `("png",)` | The only lossless-enough native form without extra dependencies; byte-stable |
 
 **Consequence, accepted:** a default Plotly figure no longer yields a PNG in
@@ -295,21 +307,9 @@ deterministic by construction:
 
 | Format | Serializer |
 |---|---|
-| `plotly-json` | `fig.to_json()`, UTF-8 |
-| `html` | `plotly.io.to_html(fig, include_plotlyjs="cdn", full_html=True, div_id=<stable id derived from binding_id + page_key>)` |
-| `png` | Plotly: `plotly.io.to_image(fig, format="png")` (Chrome-gated via `chrome_available()`); mpl: `fig.savefig(buf, format="png")` |
-| `svg` | mpl: `savefig(format="svg", metadata={"Date": None})` under `rc_context({"svg.hashsalt": <stable>})`; Plotly: `to_image(format="svg")` with generated ids rewritten to stable ones |
+| `plotly-json` | `fig.to_json()`, UTF-8 (uids removed by default) |
+| `png` | Plotly: `plotly.io.to_image(fig, format="png")` (Chrome-gated via `chrome_available()`; absent Chrome raises `PlotBackendUnavailable`); mpl: `fig.savefig(buf, format="png")` |
 
-- Store HTML uses the **CDN** script: a store cannot reference the run's
-  hoisted `plotly.min.js`, and embedding 4.8 MB per figure is rejected.
-  Declaring `html` means the author accepts that viewing needs network.
-- **Plotly SVG is decided by a gate, not by judgement.** The plan's first task
-  is a probe: render one fixed Plotly figure to SVG in two fresh processes,
-  apply the id rewrite, and compare bytes. Identical → Plotly `svg` ships as
-  above. Different, or the rewrite needs to parse more than the `id`/`url(#…)`
-  / `href="#…"` references → `svg` is mpl-only (a class-definition
-  `TypeError` for Plotly), and the plan records which outcome held. Either way
-  no non-deterministic bytes ship.
 - All plotting imports stay inside function bodies (lazy-import guards:
   `tests/unit/ci/test_startup_imports.py`, `test_deferred_imports.py`).
 
@@ -319,13 +319,21 @@ deterministic by construction:
 
 ### Step 1 — build (in memory)
 
-`PlotCoordinator.build_image_figures(image) -> StoredFigures`:
+`build_image_figures(pipeline, image) -> StoredFigures | None` (a module
+function in `plotting/_pipeline/`; `None` when the pipeline has no `PlotImage`
+binding). Process mode has no `plots_base`, so there is no coordinator to hang
+it on; the other modes call the same function:
 
 - For each `PlotImage` binding: `inspect(image, for_save=True)` →
   `normalize_plot_output` → for each page, each resolved format → serializer
   bytes. Figures are closed after serialization (`FigureAdapter.close`).
 - Failures are captured into `StoredFigures.failed` at the finest level (§1).
   `PlotPublicationBlocked` still propagates, as in every handler today.
+  Everything per binding — `inspect`, normalisation, format resolution,
+  serialization — is inside that binding's failure boundary, so no figure
+  error can fail the image. An `inspect()` that returns `None` is a failure
+  (`page: null, format: null`), not an absence: absence means "not
+  configured".
 - **Writes nothing.** Safe to call anywhere before a store transaction.
 
 `StoredFigures` is an immutable value: an ordered mapping
@@ -352,16 +360,26 @@ sets or removes the `figures` key. Called from `_write_store_part`
     (`_image_output_stem`, `_coordinator.py:530`);
   - multi-page → `<binding>/<dataset>/<stem>-<hash>/<page>.<ext>` + manifest v2.
 - For each stored `plotly-json`, additionally writes
-  `<…>.html` rendered from it (`plotly.io.from_json` → `to_html` with
+  `<…>.html` rendered from it (`plotly.io.from_json` → `write_html` with
   `include_plotlyjs=<relpath to the hoisted plotly.min.js>`), preserving the
   figure-routing rule that a Plotly figure is always browsable as HTML in
-  `deliverables/`. PNGs are copied only if stored; copy-out never renders.
+  `deliverables/`. PNGs are copied only if stored; copy-out never renders a
+  PNG.
+- A multi-page directory is published under its `.publication.lock`, like
+  `publish_plot_output`, and its manifest is committed by the writer's own
+  manifest commit. `renderers` keeps its documented *capability* meaning
+  (`html: available` for Plotly pages); outcomes stay in `files`, `partial`
+  (formats that failed for a published page) and `failed`.
 - Each descriptor `failed` entry becomes one `.failures.jsonl` line through
-  `record_plot_failure` (`_failures.py:41`), `lifecycle="image"`.
+  `record_plot_failure` (`_failures.py:41`), `lifecycle="image"`. The stored
+  `error` is recorded **verbatim**; the page and format go in two new optional
+  JSONL fields, `page` and `format`. `plot_class` comes from the pipeline's
+  binding of that id (the descriptor records no class for a failed binding).
+  The publication guard is checked before the first record is written.
 - Stale-sibling removal keeps today's rule: only a page this pass published has
   its leftover renderings removed.
 - **Best-effort.** A copy-out error is recorded, never raised, never fails the
-  image. It runs **before** the image's completion record is published, so a
+  image. Only a refused guard (`PlotPublicationBlocked`) propagates. It runs **before** the image's completion record is published, so a
   crash between promotion and copy-out re-runs the image.
 
 ### By mode
@@ -371,7 +389,7 @@ sets or removes the `figures` key. Called from `_write_store_part`
 | Full — `_cli_process_single.py` | after `apply_and_measure`, where `emit_image` runs today | `save_image_store(…, figures=)` → `save2zarr` → `_save_store` → `_write_store_part` | yes |
 | Staged Stage 3 — `_cli_staged_workers.py` | same, with `plan.post_pipeline` | same | yes |
 | Measure — `_cli_process_single.py` | after `measure()`, **moved before** the table replace | same root-last transaction as the tables: `replace_image_tables` → `_rewrite_store_tables` (`_measurement_tables.py:632`) also clears the part's copied `figures/` (alongside `tables/`) and writes the new one | yes |
-| Process, `--process-format zarr` — `_cli_process_only.py` | after `pipeline.apply` (**new**) | `write_process_only_layer(…, figures=)` → `_save_store`, inside the consolidated part | **no** — no `deliverables/` |
+| Process, `--process-format zarr` — `_cli_process_only.py` | after `pipeline.apply`, before the provenance status is closed (**new**) | `write_process_only_layer(…, figures=)` → `_save_store`, inside the consolidated part | **no** — no `deliverables/` |
 | Process, `--process-format tiff` | not built | — | — |
 
 **Process mode builds every `PlotImage` binding, measurer-backed ones
@@ -438,10 +456,12 @@ Each new test must be shown to fail when the bug it guards is reintroduced
 | Full-mode store with a `PlotImage` binding has `figures/` + per-binding groups, the descriptor, and `sha256` equal to each file's bytes | §1 |
 | Pipeline with no `PlotImage` binding → no `figures` key, no `figures/` group | §1 presence |
 | An independent Zarr v3 reader (zarr-python, not the writer's own reopen) opens `figures/` as groups; `OME/zarr.json` `series` and `METADATA.ome.xml` are unchanged | §1 namespace; store contract step 4 |
-| `store=` validation: `plotly-json`/`html` with `mpl`, unknown name, duplicate, `()` → `TypeError` at class definition | §2 |
+| `store=` validation: `plotly-json` with `mpl`, unknown name, duplicate, `()`, a bare `str` → `TypeError` at class definition | §2 |
 | `store` omitted → `("plotly-json",)` for plotly, `("png",)` for mpl | §2 defaults |
 | A provider overriding `inspect()` stores each page in its backend default | §2 fallback |
-| Each serializer, run in two separate processes, produces identical bytes. Chrome-free cases (`plotly-json`, `html`, mpl `png`/`svg`) run everywhere. Chrome-dependent cases (Plotly `png`/`svg`) reuse the existing `requires_kaleido_chrome` marker; the plan must name a lane where they actually run, because a marker that skips on every lane is a silent green (user rule: a check that cannot run must fail) | §2, §4 |
+| `plotly-json` and mpl `png`, each run in two separate processes, produce identical bytes. Plotly `png` is tested with Chrome patched absent (a recorded `PlotBackendUnavailable`) and present (the Kaleido call is reached); its bytes are Kaleido's and are not pinned by us | §2, §4 |
+| A page whose `metadata` is not JSON-native is a recorded page failure; the store still publishes (all modes, including the measure-mode root rewrite) | §1 metadata |
+| An `inspect()` returning `None` is recorded as a failure | §3 step 1 |
 | The existing process-mode byte-identical-store test, extended to a pipeline with an image binding | §4 |
 | A figure whose `inspect()` raises → store still published; `failed` entry with `page: null, format: null`; binding absent | §1 failure |
 | A declared `png` with `chrome_available()` false → per-format `failed` entry; the page's other files present | §1 failure |
@@ -449,9 +469,10 @@ Each new test must be shown to fail when the bug it guards is reintroduced
 | Copy-out lands files at today's `deliverables/plots/` paths (flat and multi-page) | §3 |
 | Copy-out writes HTML from stored `plotly-json`, and its `plotly.min.js` `src` resolves from each depth | §3 |
 | A tampered stored figure (bytes ≠ `sha256`) is recorded as failed and not copied | §1 hashes, §3 |
-| Descriptor `failed` entries become `.failures.jsonl` lines | §3 |
+| Descriptor `failed` entries become `.failures.jsonl` lines with the stored `error` verbatim, `page`/`format` fields, and the binding's real `plot_class` | §3 |
 | Measure mode: removing a binding removes it from the store; adding one adds it; pixel arrays remain hard links (inode check) | §3 measure |
-| Measure mode: figures are written before the root (no store write outlives the publication that certifies it) | §3 ordering |
+| Measure mode: figures are written before the root (no store write outlives the publication that certifies it) — asserted at `promote_store` time, not from the final tree | §3 ordering |
+| Measure mode: a same-name rebuild never writes through a hard link into the live store (a held descriptor on the old file still reads the old bytes) | §3 measure |
 | Process mode: `zarr` export carries `figures/`; `tiff` export produces no figures | §3 process |
 | Process mode with a measurer-backed binding (`MeasureSymZones`) stores its figure, and writes no measurement table | §3 process |
 | Cache parity: for `MeasureSymZones` and `MeasureOrientationZones`, the stored bytes from `inspect()` right after `measure()` equal those from `inspect()` on a freshly loaded copy of the same image | §4 cache parity |
@@ -478,8 +499,9 @@ determinism claims are pinned by the tests above.
 - Root `CLAUDE.md` — process-mode bullet: stores carry figures; revision 3.
 - `src/phenotypic/abc_/CLAUDE.md` — `@figure(store=...)` convention.
 - `docs/source/extending/pages/custom_plotter.md` — `store=`, the format set,
-  media types, determinism, defaults, and that `deliverables/plots/` is a
-  copy-out of the store.
+  media types, determinism, defaults, that `plotly-json` for an image-backed
+  figure is MB-sized, and that `deliverables/plots/` is a copy-out of the
+  store.
 - `docs/source/how_to/pages/zarr_storage.md` — the `figures/` group and how a
   consumer reads it (descriptor → media type → file).
 
@@ -518,5 +540,31 @@ determinism claims are pinned by the tests above.
 | Write architecture | Single sink into the store; `deliverables/plots/` copied out after promotion | One source of truth, same pattern as embedded tables → master |
 | Copy-out content | Stored files verbatim + HTML generated from stored `plotly-json` | Keeps deliverables browsable without re-rendering from figure objects |
 | Default Plotly store | `("plotly-json",)` | Chrome-free and stable; declared PNGs fail honestly |
+| Format set | `{plotly-json, png}` (review, 2026-09-22) | `svg` unused by any shipped figure; stored `html` not self-contained and collided with the generated deliverable HTML |
+| Chrome in CI | No lane | Plotly PNG bytes are Kaleido's; our path is tested with Chrome patched |
+| Failure log | `error` verbatim + optional `page`/`format` fields; class from the pipeline | Keeps `.failures.jsonl`'s "starts with the exception class" contract; no descriptor change |
 | Continuation | Process revision → 3; full mode unchanged | Process re-derivation is cheap; full-run re-derivation is not |
 | Continuation validation | Does not re-hash figures | Figures are not measurement authority |
+
+## Revision 2026-09-22 (after plan review)
+
+Decided by the user after the plan review and the simplicity review
+(`docs/superpowers/reports/2026-09-22-figures-in-ome-zarr/`):
+
+1. Format set cut to `{plotly-json, png}` (Non-goals; §1; §2).
+2. No Chrome CI lane; Plotly PNG tested with Chrome patched (§5).
+3. `.failures.jsonl`: stored `error` verbatim, new optional `page`/`format`
+   fields, `plot_class` from the pipeline (§3).
+
+Clarifications made while planning, not changes of intent:
+
+4. Descriptor pages carry `metadata`; a non-JSON value is a page failure (§1).
+5. `build_image_figures(pipeline, image)` is a module function (§3).
+6. `bindings` key order is not part of the contract (§1 Ordering).
+7. Page filenames that collide after sanitizing get a stable digest suffix (§1).
+8. Every per-binding step is inside the failure boundary; `inspect() -> None`
+   is a failure (§3).
+9. Copy-out holds `.publication.lock` for a manifest directory, reuses the
+   writer's manifest commit, keeps `renderers` a capability field (§3).
+10. Process mode builds figures before closing provenance status (§3).
+11. "KB-sized" corrected: image-backed Plotly JSON is MB-sized (§2).

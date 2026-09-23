@@ -1,7 +1,7 @@
 # Plan review: per-image figures in the OME-Zarr store
 
 - **Reviewed:** `plans/2026-09-22-figures-in-ome-zarr/plan.md` (commit `e3df9c42`) against the spec and the worktree code.
-- **Method:** I read every file the plan cites, plus its callers. Anything I did not verify is marked **UNVERIFIED**. The probe I requested separately (consolidation with non-Zarr files under a nested group; `prepare_image_tables` on a one-column frame; the binding id for `plots=[sym]`) is not reflected in this report.
+- **Method:** I read every file the plan cites, plus its callers. Anything I did not verify is marked **UNVERIFIED**. One runtime probe (run by the orchestrator, output verbatim) verified consolidation, `prepare_image_tables` and binding ids.
 - **Tally:** 1 BLOCKER, 8 MAJOR, 14 MINOR.
 
 ## What checks out (verified)
@@ -112,7 +112,7 @@ Nothing distinguishes "written in the part before the root" from "written after 
 7. **The copy-out drops the `.publication.lock`** that `publish_plot_output` takes for manifest directories (`_writer.py:317-319`).
 8. **The manifest's `renderers` becomes an outcome field** ("png available when a page carries a PNG"). `_writer.py:420-425` documents it as a capability and warns against exactly this. `partial` is also dropped.
 9. **Task 3 names a constant that does not exist.** It says `SHARDS`; the real constant is `MANIFEST` (`test_pytest_shard_manifest.py:15`). The plan hedges with a grep.
-10. **Task 6 imports `prepare_image_tables` from the wrong module.** It lives in `phenotypic._cli._embedded_measurement_tables`, not `sdk_._measurement_tables`. The plan hedges. Whether the one-column frame is accepted is UNVERIFIED (probe requested).
+10. **Task 6 imports `prepare_image_tables` from the wrong module.** It lives in `phenotypic._cli._embedded_measurement_tables`, not `sdk_._measurement_tables`. The plan hedges. The one-column frame is accepted (verified by probe).
 11. **The Chrome lane (UNVERIFIED on CI):** GitHub `ubuntu-latest` ships Google Chrome, so the marker may already run there. Kaleido launching under Ubuntu 24.04's AppArmor userns restriction is also unverified; only a CI dry run settles either. `requires_kaleido_chrome` currently has no users (only a docstring at `_backends.py:50`). It is still worth making it strict.
 12. **Cross-process determinism of real provider figures is untested.** Task 10's byte-identity test runs both runs in one interpreter, and Task 3's cross-process test uses a trivial scatter. Suggest two subprocesses with different `PYTHONHASHSEED` for the process-store test.
 13. **The spec's "KB-sized plotly-json" is false for the zone measurers.** `plotly_imshow` uses `px.imshow(binary_string=True)` (`_accessor_dash_handler.py:125-131`), which embeds a full-resolution PNG data URI, so it is MBs per image, in the store and again in deliverables. Don't repeat the claim in the Task 11 docs.
