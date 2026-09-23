@@ -176,6 +176,9 @@ def preflight_plot_backends(pipeline: Any) -> list[str]:
     backend is not declared -- most plots that override ``inspect`` directly
     -- has a backend decided only at render time, so it is named
     conditionally in the Chrome warning and never fails the import check.
+    Image plots are judged by their declared ``store`` instead: only one
+    storing a Plotly ``png`` needs Chrome, and it gets its own sentence,
+    since its deliverables are the stored files, not a rendered HTML page.
 
     :func:`chrome_available` is called only when some binding declares
     ``plotly`` or declares nothing; a pipeline that can only produce
@@ -195,6 +198,10 @@ def preflight_plot_backends(pipeline: Any) -> list[str]:
     plotly_ids: list[str] = []
     mpl_ids: list[str] = []
     undeclared_ids: list[str] = []
+    # Image plots with a declared Plotly PNG: that PNG fails without Chrome,
+    # and a plot storing nothing else publishes nothing at all.
+    image_png_ids: list[str] = []
+    image_png_only_ids: list[str] = []
     for binding in pipeline.get_plots():
         if isinstance(binding.plot, PlotImage):
             spec = declared_figure_spec(binding.plot)
@@ -202,7 +209,10 @@ def preflight_plot_backends(pipeline: Any) -> list[str]:
             # an undeclared one stores its backend default, which for Plotly
             # needs no Chrome.
             if spec is not None and spec.backend == "plotly" and "png" in spec.store:
-                plotly_ids.append(binding.id)
+                if "plotly-json" in spec.store:
+                    image_png_ids.append(binding.id)
+                else:
+                    image_png_only_ids.append(binding.id)
             elif spec is not None and spec.backend == "mpl":
                 mpl_ids.append(binding.id)
             elif spec is not None:
@@ -217,9 +227,13 @@ def preflight_plot_backends(pipeline: Any) -> list[str]:
             undeclared_ids.append(binding.id)
 
     _require_importable("matplotlib", "mpl", mpl_ids)
-    _require_importable("plotly", "plotly", plotly_ids)
+    _require_importable(
+        "plotly", "plotly", plotly_ids + image_png_ids + image_png_only_ids
+    )
 
-    if not (plotly_ids or undeclared_ids) or chrome_available():
+    if not (
+        plotly_ids or undeclared_ids or image_png_ids or image_png_only_ids
+    ) or chrome_available():
         return []
     parts = ["Chrome is not available;"]
     if plotly_ids:
@@ -227,9 +241,19 @@ def preflight_plot_backends(pipeline: Any) -> list[str]:
             f"{len(plotly_ids)} Plotly plots will publish HTML only, without "
             f"PNG: {', '.join(plotly_ids)}."
         )
+    if image_png_ids:
+        parts.append(
+            f"{len(image_png_ids)} image plots declare a PNG that will be "
+            f"recorded as failed: {', '.join(image_png_ids)}."
+        )
+    if image_png_only_ids:
+        parts.append(
+            f"{len(image_png_only_ids)} image plots declare only a PNG and "
+            f"will publish nothing: {', '.join(image_png_only_ids)}."
+        )
     if undeclared_ids:
         parts.append(
-            f"{len(undeclared_ids)} {'more ' if plotly_ids else ''}plots "
+            f"{len(undeclared_ids)} {'more ' if len(parts) > 1 else ''}plots "
             "declare no figure backend and will publish HTML only, without "
             f"PNG, if they return Plotly: {', '.join(undeclared_ids)}."
         )

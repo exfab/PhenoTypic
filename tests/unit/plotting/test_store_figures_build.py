@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 import textwrap
@@ -125,7 +126,7 @@ def test_hand_built_pages_use_backend_defaults_and_collision_safe_names():
     names = {page.key: [f.filename for f in page.files] for page in binding.pages}
     assert names["A b"] == ["A-b.plotly.json"]
     [mpl_name] = names["a-b"]
-    assert mpl_name.endswith(".png") and mpl_name != "A-b.png"
+    assert re.fullmatch(r"a-b-[0-9a-f]{8}\.png", mpl_name)
     assert "odd" not in names and "np" not in names
     by_page = {f.page: f for f in stored.failed}
     assert by_page["odd"].format is None
@@ -147,6 +148,99 @@ def test_inspect_returning_none_is_a_failure_not_an_absence():
     assert stored.bindings == ()
     [failure] = stored.failed
     assert (failure.binding, failure.page, failure.format) == ("ReturnsNone", None, None)
+
+
+def test_an_empty_plot_output_is_a_failure_not_an_absence():
+    class NoPages(BaseModel, PlotImage):
+        def inspect(self, subject=None, *, for_save=False, **overrides):
+            return PlotOutput(pages=())
+
+    stored = _build(NoPages())
+    assert stored.bindings == ()
+    [failure] = stored.failed
+    assert (failure.binding, failure.page, failure.format) == ("NoPages", None, None)
+
+
+def _with_metadata(metadata):
+    """A good page, then a page carrying *metadata*."""
+
+    class Meta(BaseModel, PlotImage):
+        def inspect(self, subject=None, *, for_save=False, **overrides):
+            import plotly.graph_objects as go
+
+            return PlotOutput(pages=(
+                PlotPage(key="good", figure=go.Figure(), metadata={"n": 1}),
+                PlotPage(key="meta", figure=go.Figure(), metadata=metadata),
+            ))
+
+    return Meta()
+
+
+_UNSTORABLE_METADATA = {
+    "unsortable keys": {1: "x", "b": 2},
+    "nan": {"v": float("nan")},
+    "infinity": {"v": float("inf")},
+}
+
+
+@pytest.mark.parametrize("metadata", _UNSTORABLE_METADATA.values(), ids=_UNSTORABLE_METADATA)
+def test_metadata_no_strict_writer_accepts_refuses_that_page(metadata):
+    stored = _build(_with_metadata(metadata))
+    assert [p.key for p in stored.bindings[0].pages] == ["good"]
+    [failure] = stored.failed
+    assert (failure.page, failure.format) == ("meta", None)
+
+
+def test_metadata_is_stored_as_a_reader_reads_it_back():
+    stored = _build(_with_metadata({2: (1, 2), 1: "x"}))
+    meta = next(p for p in stored.bindings[0].pages if p.key == "meta")
+    assert list(meta.metadata.items()) == [("1", "x"), ("2", [1, 2])]
+    assert stored.failed == ()
+
+
+@pytest.fixture(scope="module")
+def plate():
+    from phenotypic import Image
+    from phenotypic.data import load_synth_yeast_plate
+
+    return Image(load_synth_yeast_plate())
+
+
+def _strict_json(text: str):
+    def _refuse(constant):
+        raise ValueError(f"non-standard JSON constant {constant}")
+
+    return json.loads(text, parse_constant=_refuse)
+
+
+@pytest.mark.parametrize("metadata", _UNSTORABLE_METADATA.values(), ids=_UNSTORABLE_METADATA)
+def test_unstorable_metadata_still_publishes_the_store_in_every_mode(
+    tmp_path, plate, metadata
+):
+    """Spec §5: "metadata not JSON-native ... the store still publishes (all
+    modes, including the measure-mode root rewrite)" -- with a strict root."""
+    import pandas as pd
+
+    from phenotypic._cli._embedded_measurement_tables import prepare_image_tables
+    from phenotypic.sdk_ import ngff_
+    from phenotypic.sdk_._image_figures import read_image_figures_descriptor
+    from phenotypic.sdk_._measurement_tables import replace_image_tables
+
+    stored = _build(_with_metadata(metadata))
+    store = plate.save2zarr(tmp_path / "p.ome.zarr", figures=stored)
+    _strict_json((store / "zarr.json").read_text(encoding="utf-8"))
+    replace_image_tables(
+        store,
+        prepare_image_tables(pd.DataFrame({"Object_Label": [1]}), None),
+        objmap_target=ngff_.objmap_path("rgb"),
+        figures=stored,
+    )
+    root = _strict_json((store / "zarr.json").read_text(encoding="utf-8"))
+    descriptor = root["attributes"]["phenotypic"]["figures"]
+    assert descriptor == read_image_figures_descriptor(store)
+    [binding] = descriptor["bindings"].values()
+    assert [p["key"] for p in binding["pages"]] == ["good"]
+    assert [(f["page"], f["format"]) for f in descriptor["failed"]] == [("meta", None)]
 
 
 def test_a_binding_whose_every_page_failed_is_absent(monkeypatch):

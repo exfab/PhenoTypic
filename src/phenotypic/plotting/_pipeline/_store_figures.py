@@ -89,6 +89,9 @@ def _build_pages(
 ) -> list[StoredFigurePage]:
     """Serialize every page of one binding, recording page/format failures."""
     output = normalize_plot_output(value)
+    if not output.pages:
+        # Same as `inspect() -> None`: absence would read as "not configured".
+        raise ValueError("inspect() returned a PlotOutput with no pages")
     try:
         spec = declared_figure_spec(binding.plot)
         stems = unique_page_stems([(page.key, page.key) for page in output.pages])
@@ -128,10 +131,14 @@ def _build_page(
             "unsupported figure type "
             f"{type(page.figure).__module__}.{type(page.figure).__qualname__}"
         )
-    metadata = dict(page.metadata)
-    # The measure-mode root is written without `default=`, so a numpy scalar
-    # here would fail the whole store rewrite; refuse the page instead (spec §1).
-    json.dumps(metadata)
+    # Normalised to exactly what a reader gets back, under the strictest
+    # writer's rules: the measure-mode root has no `default=` and sorts keys,
+    # and a browser rejects a root holding NaN. So a numpy scalar, an
+    # unsortable key mix or a non-finite float refuses this page rather than
+    # failing the store or making its root unreadable (spec §1).
+    metadata = json.loads(
+        json.dumps(dict(page.metadata), allow_nan=False, sort_keys=True)
+    )
     formats = spec.store if spec is not None else default_store_formats(backend)
     files: list[StoredFigureFile] = []
     for fmt in formats:

@@ -642,7 +642,20 @@ def test_image_plots_need_chrome_only_when_they_declare_png(monkeypatch):
         def draw(self, image):
             raise AssertionError
 
+    class ImgJsonPng(BaseModel, PlotImage):
+        @figure(title="t", backend="plotly", primary=True, store=("plotly-json", "png"))
+        def draw(self, image):
+            raise AssertionError
+
     monkeypatch.setattr(_backends, "chrome_available", lambda: False)
     assert _backends.preflight_plot_backends(ImagePipeline(plots=[Img()])) == []
     [line] = _backends.preflight_plot_backends(ImagePipeline(plots=[ImgPng()]))
-    assert "ImgPng" in line
+    # A PNG-only image plot publishes nothing; "HTML only" would be false.
+    assert "1 image plots declare only a PNG and will publish nothing: ImgPng." in line
+    assert "HTML" not in line
+    [line] = _backends.preflight_plot_backends(ImagePipeline(plots=[ImgJsonPng()]))
+    assert (
+        "1 image plots declare a PNG that will be recorded as failed: ImgJsonPng."
+        in line
+    )
+    assert "HTML" not in line
