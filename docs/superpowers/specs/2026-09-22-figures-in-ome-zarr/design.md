@@ -231,6 +231,84 @@ name.
 - **No `store_schema_version` bump.** The key is additive and optional; a
   reader tests for its presence.
 
+### §1a — Run folders: `{date}-{pipeline hash}`, never wiped
+
+*Added 2026-09-22, user decision. **This supersedes the single-generation
+layout and descriptor above**, which now describe one run folder. It also
+supersedes every "the whole `figures/` group is rebuilt" statement in §3.*
+
+**Layout.** Figures live one level deeper, in a folder per run:
+
+```
+figures/
+├── zarr.json                               empty group document
+├── 2026-09-22-3f9a1c2b7e04/                one run folder
+│   ├── zarr.json                           empty group document
+│   └── <binding_id>/…                      exactly as §1 described
+└── 2026-10-03-a07bc5e91d22/
+    └── …
+```
+
+**Name.** The folder name is `{date}-{pipeline hash}`:
+
+- `{date}` is the **UTC calendar date on which the CLI invocation started**,
+  as `YYYY-MM-DD`. There is one value for the whole run: every image, every
+  stage, every SLURM task. A run that crosses midnight, or staged Stage 1 and
+  Stage 3 on different days, therefore stays in one folder. Programmatic
+  callers (`save2zarr(figures=...)`) pass the run id explicitly.
+- `{pipeline hash}` is the first 12 hex characters of the pipeline's sha256.
+  This is the same digest the provenance journal records as `pipeline.sha256`
+  for this run's application.
+
+**Never wiped.** No write path deletes or rewrites another run's folder.
+
+- Full mode, measure mode, staged Stage 3 and process mode **carry every other
+  run folder across byte-for-byte**, together with its descriptor entry, from
+  the store being replaced. This holds even when full or process mode rewrites
+  the store from scratch (`--overwrite`, or a re-derived process run). In a
+  measure-mode rewrite those folders are hard links. They are never written
+  through; only this run's folder is cleared and rewritten, which is the
+  existing hard-link rule.
+- **The same run id (same day, same pipeline hash) replaces that one folder**,
+  subject to §3a's keep rule.
+- A pipeline with **no** `PlotImage` binding adds no run folder, and removes
+  nothing. A table-only replace likewise changes no figure.
+
+**Descriptor.** It is keyed by run:
+
+```json
+"figures": {
+  "schema_version": 1,
+  "runs": {
+    "2026-09-22-3f9a1c2b7e04": {
+      "date": "2026-09-22",
+      "pipeline_sha256": "<full hex>",
+      "bindings": { ... as §1 ... },
+      "failed": [ ... as §1 ... ],
+      "unavailable": ["cal"]
+    }
+  }
+}
+```
+
+- `path` values are store-relative and include the run folder, e.g.
+  `figures/2026-09-22-3f9a1c2b7e04/sym/default.plotly.json`.
+- `unavailable` lists the §3a bindings that could not be drawn in this run and
+  had nothing to keep. It is always present, and may be empty.
+
+**Which run is "current" is left to the consumer** (user decision). There is
+no `latest` pointer. A consumer chooses by `date`, by `pipeline_sha256`, or
+both. The copy-out (§3) publishes **this run's folder** to
+`deliverables/plots/`, because the deliverables tree belongs to the run that
+wrote it.
+
+**Process mode determinism** (user decision). Process stores carry run folders
+too. §4's byte identity therefore holds for identical runs **on the same UTC
+day**. The same image and pipeline run on another day produce a different run
+folder name, and so different bytes.
+
+`schema_version` stays `1`: nothing has been published under the flat layout.
+
 ### What the hashes bind
 
 The root carries each file's `sha256`, so the image's completion record — which
@@ -431,31 +509,32 @@ it cannot draw for the image it was given. That happens when no `apply()` ran
 in this process, or when the last `apply()` ran on a different image. It is a
 statement about where the figure can be drawn, not a failure of the figure.
 
-**Build.** `build_image_figures(pipeline, image, *, carry_from=None)` treats
-the signal as follows:
+**Build.** *(Revised with §1a run folders; user decision: "leave it where it
+is".)* The signal never makes a figure disappear, and it never copies one
+**between** run folders.
 
-- **`carry_from` names a store whose descriptor holds this binding.** The
-  binding is **carried**: its descriptor entry (pages, labels, backends,
-  metadata, and the page-level `failed` entries naming it) and its files are
-  copied into the new `StoredFigures` unchanged. Each file is verified
-  against its recorded `sha256`. A mismatch is a binding-level failure, never
-  a silent copy.
-- **Otherwise.** The signal is a binding-level failure, spelled like any
-  other (`FigureInputUnavailable: …`).
+- **The run folder being written already holds this binding.** This happens
+  when staged Stage 1 wrote it earlier in the same run, or when a same-day
+  rerun of the same pipeline wrote it. The binding's existing entry and files
+  in that folder are **kept** unchanged: its descriptor entry (pages, labels,
+  backends, metadata, and the page-level `failed` entries naming it) and its
+  files. Each file is verified against its recorded `sha256`. A mismatch is a
+  binding-level failure, never a silent keep.
+- **Otherwise.** The binding is listed in the new run folder's `unavailable`
+  list (§1a), not in `failed`: it is a statement about where the figure can
+  be drawn. The figure itself stays wherever an earlier run folder already has
+  it. A consumer that wants it looks back through the run history.
 
-**Where `carry_from` is passed.**
+| Path | Result for a §3a binding |
+|---|---|
+| Full mode, process mode | `apply()` ran in this process on this image; the provider draws into this run's folder. |
+| Measure mode | Usually a new run folder (a different pipeline hash, or another day), where the binding is `unavailable`. The earlier folder holding the overlay is untouched. |
+| Staged Stage 1 | Stage 1 runs the pre-detector operations. It builds figures **only for bindings whose producer ran in Stage 1**, into this run's folder. Other bindings (the measurers) are left to Stage 3; building them on a store with no objmap would be wasted work. |
+| Staged Stage 3 | The same run, so the same run folder (§1a: one `{date}` per run). Stage 1's overlay is kept; Stage 3 adds the rest. |
 
-| Path | `carry_from` | Why |
-|---|---|---|
-| Full mode, process mode | none | `apply()` ran in this process on this image; the provider draws. |
-| Measure mode | the store being re-measured | No `apply()`. The stored overlay is still true of the stored pixels, so it is kept. |
-| Staged Stage 3 | the Stage-1 store it just loaded | The operation applied in Stage 1, in another process. |
-| Staged Stage 1 | (builds) | Stage 1 runs the pre-detector operations. It builds figures **only for bindings whose producer ran in Stage 1** and writes them into its store, so Stage 3 has something to carry. Other bindings (the measurers) are left to Stage 3; building them on a store with no objmap would be wasted work. |
-
-A carried figure is byte-identical to the one it was carried from. It needs
-no re-hash for continuation (§1 *What the hashes bind*). §4's
-"cache parity" does not apply to these providers, because they have no
-recompute path by construction.
+A kept figure is byte-identical to the one Stage 1 or the earlier same-day run
+wrote. §4's "cache parity" does not apply to these providers, because they
+have no recompute path by construction.
 
 **`CalibrateColorRpcc`** becomes a `PlotImage`. Its `inspect(image)` renders
 `show_tiles()` (matplotlib, so the default store format is `png`). It raises
@@ -633,3 +712,12 @@ Added 2026-09-22 after the calibration overlay (PR #238) merged into main:
     Stage 3, built by Stage 1 for its own operations). User decision: keep the
     stored overlay rather than drop it. `CalibrateColorRpcc` is the first
     provider.
+13. §1a: run folders `{date}-{pipeline hash}` (UTC start date of the CLI
+    invocation; first 12 hex of the pipeline sha256), never wiped by any mode.
+    The descriptor is keyed by run, and a consumer chooses the current run.
+    Process-mode byte identity holds within a UTC day. User decisions.
+    §3a is revised to match: no copy between run folders. A §3a binding is
+    kept within its own run folder (staged Stage 1 → Stage 3, or a same-day
+    rerun), and is otherwise listed as `unavailable`. The `KEEP_FIGURES`
+    sentinel is retired: with nothing ever wiped, `figures=None` means "add
+    no run folder" and is safe as the default.
