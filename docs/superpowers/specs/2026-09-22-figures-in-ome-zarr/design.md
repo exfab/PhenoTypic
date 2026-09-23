@@ -265,7 +265,17 @@ figures/
   measure mode uses the UTC date of its own invocation. On SLURM that date is
   recorded once, as a new key in the existing `job_metadata.json`, written
   before fan-out; measure workers read it from there (user decision). A run
-  that crosses midnight therefore stays in one folder. **Workers read the
+  that crosses midnight therefore stays in one folder.
+- **The initial CLI call is recorded too** (user decision): its full UTC
+  timestamp (`initiated_at_utc`, ISO-8601 with `Z`) and its process id
+  (`initiated_pid`). They are captured once, alongside `figures_run_date`, in
+  the same places: the run's processing state, and `job_metadata.json` for a
+  measure-mode SLURM invocation. A resume keeps them. They are also written
+  into each store's run entry, beside `date` and `pipeline_sha256`, and there
+  they describe the CLI call whose run last wrote that folder. **Process-mode
+  stores omit both fields** (user decision), under the same rule that strips
+  the journal's wall-clock times, so that same-day byte identity holds. The
+  run state still records them for process runs. **Workers read the
   date from the run's processing state**. It never travels on a command line
   (user decision): no worker argument and no generated script carries it. It
   is **not** part of `processing_configuration_digest`, because a new day must
