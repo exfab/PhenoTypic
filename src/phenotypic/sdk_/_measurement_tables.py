@@ -8,7 +8,7 @@ import shutil
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Final, Literal
 
 import pandas as pd
 
@@ -23,6 +23,22 @@ if TYPE_CHECKING:
     from ._image_figures import StoredFigures
 
 JoinStatus = Literal["not_requested", "joined", "no_common_keys"]
+
+
+class _KeepFigures:
+    """Type of :data:`KEEP_FIGURES`; its one instance is compared by identity."""
+
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        return "KEEP_FIGURES"
+
+
+#: :func:`replace_image_tables`'s default: carry the store's ``figures/``
+#: group and root ``figures`` key across unchanged. Removal is ``None``, and
+#: stays an explicit act -- a caller that only refreshes tables cannot strip
+#: figures by omission.
+KEEP_FIGURES: Final = _KeepFigures()
 
 
 @dataclass(frozen=True)
@@ -713,7 +729,7 @@ def replace_image_tables(
     store_path: Path,
     tables: PreparedImageTables,
     *,
-    figures: StoredFigures | None,
+    figures: StoredFigures | None | _KeepFigures = KEEP_FIGURES,
     objmap_target: str | None = None,
     durable: bool | None = None,
     commit_guard: CommitGuard | None = None,
@@ -723,16 +739,17 @@ def replace_image_tables(
     The ``--mode measure`` analogue of the promote-time writer: both tables
     and the root's ``metadata_table`` block move as one root-last
     transaction, so the store never certifies a table it does not have or a
-    snapshot it was not built against. The ``figures/`` group is rebuilt in
-    the same transaction, so a store's figures and its table always come
-    from the same pipeline.
+    snapshot it was not built against. When *figures* is given, the
+    ``figures/`` group is rebuilt in the same transaction, so a store's
+    figures and its table always come from the same pipeline.
 
     Args:
         store_path: A promoted ``*.ome.zarr`` store.
         tables: The split payload to write.
-        figures: The current pipeline's per-image figures. Required: the
-            group is always rebuilt, and ``None`` removes it along with the
-            root's ``figures`` key (spec 2026-09-22 §3 measure mode).
+        figures: The current pipeline's per-image figures, which replace the
+            store's ``figures/`` group; ``None`` removes the group along with
+            the root's ``figures`` key (spec 2026-09-22 §3 measure mode). The
+            default, :data:`KEEP_FIGURES`, carries both across unchanged.
         objmap_target: Store-relative path of the label image the measurement
             table indexes. ``None`` reads it from the store.
         durable: ``fsync`` before promoting. ``None`` auto-detects SLURM.
@@ -757,6 +774,8 @@ def replace_image_tables(
                 phenotypic,
                 write_image_tables(part, tables, objmap_target=target),
             )
+            if isinstance(figures, _KeepFigures):
+                return
             from ._image_figures import (
                 apply_image_figures_attributes,
                 write_image_figures,
@@ -776,7 +795,7 @@ def replace_image_tables(
         plan=_plan,
         durable=durable,
         commit_guard=commit_guard,
-        clear_figures=True,
+        clear_figures=not isinstance(figures, _KeepFigures),
     )
 
 

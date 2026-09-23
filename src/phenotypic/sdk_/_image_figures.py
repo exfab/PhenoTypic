@@ -35,8 +35,8 @@ class StoredFigureFile:
 class StoredFigurePage:
     """One page and the renderings that succeeded for it.
 
-    ``metadata`` is JSON-native by the time it gets here: the builder
-    refuses a page whose metadata does not serialize (spec §1).
+    ``metadata`` is strict, key-sorted JSON by the time it gets here: the
+    builder round-trips it and refuses a page it cannot (spec §1).
     """
 
     key: str
@@ -105,7 +105,8 @@ def write_image_figures(
         for page in binding.pages:
             entries = []
             for stored in page.files:
-                (directory / stored.filename).write_bytes(stored.data)
+                target = ngff_.long_path(directory / stored.filename)
+                Path(target).write_bytes(stored.data)
                 entries.append({
                     "format": stored.format,
                     "media_type": stored.media_type,
@@ -149,12 +150,23 @@ def apply_image_figures_attributes(
 
 
 def read_image_figures_descriptor(store_path: Path) -> dict[str, Any] | None:
-    """Return a store's figures descriptor, or ``None`` when it has none."""
+    """Return a store's figures descriptor, or ``None`` when it has none.
+
+    A root with no ``phenotypic`` block -- a third-party OME-Zarr store --
+    has none, like a PhenoTypic store written without figures.
+
+    Raises:
+        FileNotFoundError: If the store has no root ``zarr.json``.
+        json.JSONDecodeError: If the root is present but unparseable.
+    """
     from . import ngff_
 
-    descriptor = ngff_.read_phenotypic_attributes(Path(store_path)).get(
-        ngff_.PhenotypicAttr.FIGURES
+    phenotypic = ngff_.read_root_attributes(Path(store_path)).get(
+        ngff_.PhenotypicAttr.ROOT
     )
+    if not isinstance(phenotypic, dict):
+        return None
+    descriptor = phenotypic.get(ngff_.PhenotypicAttr.FIGURES)
     return descriptor if isinstance(descriptor, dict) else None
 
 

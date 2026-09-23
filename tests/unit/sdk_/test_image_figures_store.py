@@ -119,6 +119,56 @@ def test_measure_rebuild_with_no_bindings_removes_key_and_group(tmp_path, plate)
     assert not (store / "figures").exists()
 
 
+def test_a_table_only_replace_keeps_figures_byte_for_byte(tmp_path, plate):
+    """MINOR-1: omitting `figures` must never strip them (KEEP_FIGURES)."""
+    store = plate.save2zarr(tmp_path / "p.ome.zarr", figures=_figures())
+
+    def _snapshot():
+        return {
+            p.relative_to(store).as_posix(): (p.read_bytes(), p.stat().st_ino)
+            for p in sorted((store / "figures").rglob("*"))
+            if p.is_file()
+        }
+
+    files_before = _snapshot()
+    descriptor_before = read_image_figures_descriptor(store)
+    replace_image_tables(store, _tables(), objmap_target=ngff_.objmap_path("rgb"))
+    assert _snapshot() == files_before
+    assert read_image_figures_descriptor(store) == descriptor_before
+
+
+def test_the_descriptor_reader_answers_none_for_a_foreign_root(tmp_path):
+    """MINOR-2: a third-party store has no `phenotypic` block at all."""
+    store = tmp_path / "foreign.ome.zarr"
+    store.mkdir()
+    (store / "zarr.json").write_text(
+        json.dumps({"zarr_format": 3, "node_type": "group", "attributes": {"ome": {}}}),
+        encoding="utf-8",
+    )
+    assert read_image_figures_descriptor(store) is None
+    with pytest.raises(FileNotFoundError):
+        read_image_figures_descriptor(tmp_path / "missing.ome.zarr")
+
+
+def test_figure_files_are_written_through_long_path(tmp_path, monkeypatch):
+    """MINOR-6: a page key near MAX_PATH must not fail the store on Windows."""
+    from phenotypic.sdk_._image_figures import write_image_figures
+
+    seen = []
+    real = ngff_.long_path
+
+    def _spy(path):
+        seen.append(Path(path).name)
+        return real(path)
+
+    monkeypatch.setattr(ngff_, "long_path", _spy)
+    part = tmp_path / "p.ome.zarr.part"
+    part.mkdir()
+    write_image_figures(part, _figures())
+    assert "default.plotly.json" in seen
+    assert (part / "figures/sym/default.plotly.json").read_bytes() == b"one"
+
+
 def test_measure_rebuild_writes_figures_before_the_root_is_promoted(
     tmp_path, plate, monkeypatch
 ):
