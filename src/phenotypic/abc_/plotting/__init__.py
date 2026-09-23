@@ -15,6 +15,7 @@ from ._output import (
     figure_backend_of,
 )
 from ._pht_plot import BoundFigures, Control, FigureSpec, PhtPlot, figure
+from ._store_formats import StoreFormat
 
 __all__ = [
     "BoundFigures",
@@ -28,6 +29,7 @@ __all__ = [
     "PlotOutput",
     "PlotPage",
     "PlotQc",
+    "StoreFormat",
     "canonical_group_key",
     "figure",
     "figure_backend_of",
