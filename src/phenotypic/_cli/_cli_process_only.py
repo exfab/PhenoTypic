@@ -29,7 +29,7 @@ from phenotypic.sdk_.typing_ import ImageTypeName, ProcessFormat, ProcessOnlyLay
 from ._cli_failure_tracker import PerImageScientificError
 
 if TYPE_CHECKING:
-    from phenotypic.sdk_._image_figures import StoredFigures
+    from phenotypic.sdk_._image_figures import RunInitiation, StoredFigures
 
 logger = logging.getLogger(__name__)
 
@@ -271,11 +271,18 @@ def process_single_apply_only_core(
     cli_ncols: Optional[int] = None,
     commit_guard: CommitGuard | None = None,
     process_format: ProcessFormat = "tiff",
+    run_initiation: RunInitiation | None = None,
 ) -> bool:
     """Apply the pipeline to one image and export ``layer``. No measurement.
 
     Raises on failure (caller logs/handles), mirroring
     :func:`process_single_image_core`.
+
+    ``run_initiation`` is the run's initial CLI call (figures spec §1a); only
+    its date is used, as the figure-folder ``{date}`` (``None``: today in
+    UTC). Its timestamp and pid are deliberately left out of the store, so
+    same-day process stores stay byte-identical. Process mode has no
+    ``OutputManager`` to carry it, so it is passed here.
     """
     image: Image | None = None
     provenance_application_opened = False
@@ -349,7 +356,14 @@ def process_single_apply_only_core(
             )
 
             figures = build_image_figures(
-                pipeline, image, run=figure_run_for(image)
+                pipeline,
+                image,
+                # The date only: a process store omits the call's timestamp
+                # and pid, like the journal's wall-clock times (spec §1a).
+                run=figure_run_for(
+                    image,
+                    date=run_initiation.date if run_initiation is not None else None,
+                ),
             )
         # BEFORE the write below, or the store records the stale default.
         # `initialize_cli_provenance` opens at `"in_progress"`

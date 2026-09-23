@@ -2535,6 +2535,13 @@ class JobMetadataKey:
     IMAGE_TYPE: Final[str] = "image_type"
     NROWS: Final[str] = "nrows"
     NCOLS: Final[str] = "ncols"
+    #: The initial CLI call of a measure-mode SLURM invocation (figures spec
+    #: §1a): its UTC date (the figure-folder ``{date}``), UTC timestamp and
+    #: pid. Measure mode keeps no processing state, so its workers read these
+    #: instead; written with the rest of this file, before fan-out.
+    FIGURES_RUN_DATE: Final[str] = "figures_run_date"
+    INITIATED_AT_UTC: Final[str] = "initiated_at_utc"
+    INITIATED_PID: Final[str] = "initiated_pid"
 
 
 class DashboardManifestKey:

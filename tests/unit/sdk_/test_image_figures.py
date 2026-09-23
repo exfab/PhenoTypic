@@ -105,6 +105,24 @@ def test_writer_lays_out_one_run_folder_and_a_hash_bound_descriptor(tmp_path: Pa
     ]
 
 
+def test_the_initial_call_is_in_the_run_entry_but_not_the_run_id(tmp_path: Path):
+    """Spec §1a: the CLI call whose run last wrote this folder."""
+    from dataclasses import replace
+
+    called = replace(_RUN, initiated_at_utc="2026-09-22T23:59:58.123Z", initiated_pid=4242)
+    assert called.run_id == _RUN.run_id
+    run = write_image_figures(tmp_path, _stored(called))["figures"]["runs"][_RUN.run_id]
+    assert (run["initiated_at_utc"], run["initiated_pid"]) == (
+        "2026-09-22T23:59:58.123Z", 4242
+    )
+
+
+def test_a_run_without_the_call_omits_both_fields(tmp_path: Path):
+    """Process-mode stores: same-day byte identity (spec §1a)."""
+    run = write_image_figures(tmp_path, _stored())["figures"]["runs"][_RUN.run_id]
+    assert "initiated_at_utc" not in run and "initiated_pid" not in run
+
+
 def test_unavailable_is_always_present(tmp_path: Path):
     run = write_image_figures(tmp_path, _stored())["figures"]["runs"][_RUN.run_id]
     assert run["unavailable"] == []
@@ -152,6 +170,22 @@ def test_read_figure_run_picks_one_run_and_refuses_an_unknown_schema(tmp_path: P
     (store / "zarr.json").write_text(json.dumps(root), encoding="utf-8")
     with pytest.raises(ValueError, match="schema_version 2"):
         read_figure_run(store, _RUN.run_id)
+
+
+def test_latest_run_date_is_the_most_recent_run_of_this_pipeline():
+    """Measure mode reuses it (spec §1a, revision 14)."""
+    from phenotypic.sdk_._image_figures import latest_run_date
+
+    run = lambda date, sha: {"date": date, "pipeline_sha256": sha}  # noqa: E731
+    descriptor = {"runs": {
+        "a": run("2026-09-22", _SHA),
+        "b": run("2026-10-03", _SHA),
+        "c": run("2026-12-01", "f" * 64),
+        "d": run("2026-09-30", _SHA),
+    }}
+    assert latest_run_date(descriptor, _SHA) == "2026-10-03"
+    assert latest_run_date(descriptor, "e" * 64) is None
+    assert latest_run_date(None, _SHA) is None
 
 
 def test_carry_links_every_other_run_byte_for_byte(tmp_path: Path):

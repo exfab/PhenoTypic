@@ -36,9 +36,46 @@ RUN_HASH_LENGTH = 12
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
+def _utc_now() -> datetime:
+    """The one clock read behind every run date and initiation time."""
+    return datetime.now(timezone.utc)
+
+
 def utc_run_date() -> str:
     """Today's UTC calendar date as ``YYYY-MM-DD`` -- a run's ``{date}``."""
-    return datetime.now(timezone.utc).date().isoformat()
+    return _utc_now().date().isoformat()
+
+
+@dataclass(frozen=True)
+class RunInitiation:
+    """The initial CLI call of a run (spec §1a).
+
+    Minted once per run and recorded -- in the run's processing state, or in
+    ``job_metadata.json`` for a measure-mode SLURM invocation -- so every
+    worker, stage and resume sees the same values.
+
+    Args:
+        date: The call's UTC date, ``YYYY-MM-DD``: the run folder's ``{date}``.
+        at_utc: The call's UTC timestamp, ISO-8601 with a trailing ``Z``, or
+            ``None`` for a run recorded before it was captured.
+        pid: The CLI process's id, or ``None`` likewise.
+    """
+
+    date: str
+    at_utc: str | None = None
+    pid: int | None = None
+
+
+def mint_run_initiation() -> RunInitiation:
+    """Record this CLI call: date and timestamp from ONE instant, and its pid."""
+    import os
+
+    now = _utc_now()
+    return RunInitiation(
+        date=now.date().isoformat(),
+        at_utc=now.isoformat(timespec="milliseconds").replace("+00:00", "Z"),
+        pid=os.getpid(),
+    )
 
 
 @dataclass(frozen=True)
@@ -49,13 +86,20 @@ class FigureRun:
         date: The UTC date the run started, ``YYYY-MM-DD``.
         pipeline_sha256: The pipeline's full sha256 hex digest, as the
             provenance journal records it.
+        initiated_at_utc: The initial CLI call's UTC timestamp, written into
+            the run entry. ``None`` omits it -- as process-mode stores do, so
+            same-day byte identity holds. Not part of :attr:`run_id`.
+        initiated_pid: The initial CLI call's process id, likewise.
 
     Raises:
-        ValueError: If either value is malformed. Both become part of a path.
+        ValueError: If the date or digest is malformed. Both become part of a
+            path.
     """
 
     date: str
     pipeline_sha256: str
+    initiated_at_utc: str | None = None
+    initiated_pid: int | None = None
 
     def __post_init__(self) -> None:
         try:
@@ -226,9 +270,17 @@ def write_image_figures(
                 "files": entries,
             })
         bindings[binding.binding_id] = {"class": binding.plot_class, "pages": pages}
-    entry = {
+    entry: dict[str, object] = {
         "date": figures.run.date,
         "pipeline_sha256": figures.run.pipeline_sha256,
+    }
+    # The CLI call whose run last wrote this folder; absent when not given
+    # (process-mode stores, for same-day byte identity).
+    if figures.run.initiated_at_utc is not None:
+        entry["initiated_at_utc"] = figures.run.initiated_at_utc
+    if figures.run.initiated_pid is not None:
+        entry["initiated_pid"] = figures.run.initiated_pid
+    entry |= {
         "bindings": bindings,
         "failed": [
             {"binding": f.binding, "page": f.page, "format": f.format, "error": f.error}
@@ -383,6 +435,35 @@ def read_image_figures_descriptor(store_path: Path) -> dict[str, Any] | None:
     return descriptor if isinstance(descriptor, dict) else None
 
 
+def latest_run_date(
+    descriptor: Mapping[str, Any] | None, pipeline_sha256: str
+) -> str | None:
+    """The most recent ``date`` among the runs made by this pipeline, if any.
+
+    ``--mode measure`` with the same pipeline as an earlier run reuses that
+    run's folder, so its figures overwrite that run's (spec §1a, revision 14).
+
+    Args:
+        descriptor: A store's figures descriptor, or ``None``.
+        pipeline_sha256: The pipeline's full sha256.
+
+    Returns:
+        ``YYYY-MM-DD``, or ``None`` when no run has this pipeline.
+    """
+    runs = descriptor.get("runs") if isinstance(descriptor, Mapping) else None
+    if not isinstance(runs, Mapping):
+        return None
+    dates = [
+        run["date"]
+        for run in runs.values()
+        if isinstance(run, Mapping)
+        and run.get("pipeline_sha256") == pipeline_sha256
+        and isinstance(run.get("date"), str)
+    ]
+    # ISO dates order lexically.
+    return max(dates) if dates else None
+
+
 def read_figure_run(store_path: Path, run_id: str) -> dict[str, Any] | None:
     """Return one run's descriptor entry, or ``None`` when the store has none.
 
@@ -411,6 +492,7 @@ def read_figure_run(store_path: Path, run_id: str) -> dict[str, Any] | None:
 __all__ = [
     "RUN_HASH_LENGTH",
     "FigureRun",
+    "RunInitiation",
     "StoredFigureBinding",
     "StoredFigureFailure",
     "StoredFigureFile",
@@ -419,6 +501,8 @@ __all__ = [
     "apply_image_figures_attributes",
     "carry_figure_runs",
     "figure_file_path",
+    "latest_run_date",
+    "mint_run_initiation",
     "read_figure_run",
     "read_image_figures_descriptor",
     "split_figure_file_path",

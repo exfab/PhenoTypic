@@ -582,10 +582,16 @@ def stage3_merge_measure_core(
         )
 
         # The run is Stage 1's: its journal application, continued here,
-        # records the pipeline digest (spec §1a).
+        # records the pipeline digest, and the run's initial call is the one
+        # every stage is handed (spec §1a). A §3a figure Stage 1 drew is kept
+        # from the store loaded above -- the same run's folder -- before the
+        # save below replaces it.
         _check_active(active_check)
         figures = build_image_figures(
-            plan.post_pipeline, image, run=figure_run_for(image)
+            plan.post_pipeline,
+            image,
+            run=figure_run_for(image, initiation=output_manager.run_initiation),
+            keep_from=store,
         )
 
         _check_active(active_check)

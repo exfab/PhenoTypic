@@ -669,7 +669,8 @@ def test_two_processes_with_a_figure_binding_write_byte_identical_stores(
     tmp_path: Path, source_image: Path
 ) -> None:
     """Spec §4: byte identity now covers figures/, and holds across fresh
-    interpreters (fresh hash seeds, fresh object addresses)."""
+    interpreters (fresh hash seeds, fresh object addresses). The run date is
+    pinned: identity is promised within one UTC day (spec §1a)."""
     import os
     import subprocess
     import sys
@@ -685,9 +686,14 @@ def test_two_processes_with_a_figure_binding_write_byte_identical_stores(
     ).to_json(pipeline)
 
     def run(out: Path, seed: str) -> Path:
+        # Same day, but each process's own call: a different timestamp and
+        # pid, which a process store must omit to stay byte-identical.
         code = textwrap.dedent(f"""
+            import os
+            from datetime import datetime, timezone
             from pathlib import Path
             from phenotypic._cli._cli_process_only import process_single_apply_only_core
+            from phenotypic.sdk_._image_figures import RunInitiation
             process_single_apply_only_core(
                 pipeline_path=Path({str(pipeline)!r}),
                 image_path=Path({str(source_image)!r}),
@@ -695,6 +701,11 @@ def test_two_processes_with_a_figure_binding_write_byte_identical_stores(
                 output_dir=Path({str(out)!r}),
                 image_type="Image", layer="rgb", read_kwargs={{}},
                 process_format="zarr",
+                run_initiation=RunInitiation(
+                    "2026-09-22",
+                    datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                    os.getpid(),
+                ),
             )
         """)
         subprocess.run(
@@ -707,7 +718,7 @@ def test_two_processes_with_a_figure_binding_write_byte_identical_stores(
     first, second = run(tmp_path / "a", "1"), run(tmp_path / "b", "2")
     left, right = _tree_bytes(first), _tree_bytes(second)
     assert any(
-        name.startswith("figures/") and name.endswith("/sym/default.plotly.json")
+        name.startswith("figures/2026-09-22-") and name.endswith("/sym/default.plotly.json")
         for name in left
     )
     assert sorted(left) == sorted(right)

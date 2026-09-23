@@ -50,6 +50,7 @@ from ._cli_completion import (
     valid_image_success,
 )
 from ._cli_staged_slurm import partition_shards
+from ._cli_state_management import recorded_run_initiation
 from ._cli_staged_resume import (
     clear_downstream_artifacts_for_stage1,
     stage3_completion_exists,
@@ -184,7 +185,11 @@ def run_stage1_step(
             commit_guard=commit_guard,
         )
     output_manager = OutputManager.from_config(
-        output_dir, ext, save_overlays=False, durable_writes=durable_writes
+        output_dir,
+        ext,
+        save_overlays=False,
+        durable_writes=durable_writes,
+        run_initiation=recorded_run_initiation(output_dir),
     )
     log = event_log_path(output_dir)
     try:
@@ -371,6 +376,7 @@ def run_stage3_step(
         overlay_alpha=overlay_alpha,
         save_overlays=True,
         durable_writes=durable_writes,
+        run_initiation=recorded_run_initiation(output_dir),
     )
     check = _active_check(output_dir, epoch)
     commit_guard = _commit_guard(output_dir, epoch)

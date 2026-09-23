@@ -353,7 +353,9 @@ def process_single_image_core(
             pipeline,
             image,
             run=figure_run_for(
-                image, pipeline_sha256=resolved_pipeline_identity["sha256"]
+                image,
+                initiation=output_manager.run_initiation,
+                pipeline_sha256=resolved_pipeline_identity["sha256"],
             ),
         )
         _check_active(active_check)
@@ -453,19 +455,33 @@ def process_single_store_measure_core(
         build_image_figures,
         figure_run_for,
     )
+    from phenotypic.sdk_._image_figures import (
+        latest_run_date,
+        read_image_figures_descriptor,
+    )
 
     # Built BEFORE the table replace so the figures ride the same root-last
     # transaction: a run folder and the table it sits beside come from the
     # same pipeline (spec §3 "Measure mode semantics", §1a). The store's
     # journal names the run that WROTE it, so this run's pipeline digest is
-    # read from the file it runs.
+    # read from the file it runs. A store that already has a folder for this
+    # pipeline gets it reused (the latest one), so its measurer figures are
+    # overwritten and its §3a figures kept (spec §1a, revision 14). The
+    # folder's date is then that run's; otherwise it is this call's. The
+    # run entry's timestamp and pid are always this call's.
+    pipeline_sha256 = pipeline_source_identity(pipeline_path)["sha256"]
     figures = build_image_figures(
         pipeline,
         image,
         run=figure_run_for(
             image,
-            pipeline_sha256=pipeline_source_identity(pipeline_path)["sha256"],
+            initiation=output_manager.run_initiation,
+            date=latest_run_date(
+                read_image_figures_descriptor(store_path), pipeline_sha256
+            ),
+            pipeline_sha256=pipeline_sha256,
         ),
+        keep_from=store_path,
     )
 
     # Publish the authoritative tables inside the existing store, through a
@@ -714,6 +730,21 @@ def main(
     commit_guard = _ordinary_slurm_commit_guard(output_dir)
     try:
         cli_mode = cast(CliMode, mode)
+        # The run's initial CLI call (figures spec §1a) is read back from what
+        # the submitter recorded before it launched any worker; it never
+        # travels on the command line. Measure mode keeps no processing state
+        # -- the state present is an earlier run's -- so its SLURM submitter
+        # records the call in the job metadata instead.
+        from ._cli_state_management import (
+            metadata_run_initiation,
+            recorded_run_initiation,
+        )
+
+        run_initiation = (
+            metadata_run_initiation(output_dir)
+            if cli_mode == "measure"
+            else recorded_run_initiation(output_dir)
+        )
         if drop_originals and cli_mode != "full":
             raise click.UsageError(
                 f"--drop-originals is not accepted with --mode {cli_mode}"
@@ -838,6 +869,7 @@ def main(
                 cli_ncols=ncols,
                 commit_guard=commit_guard,
                 process_format=resolved_process_format,
+                run_initiation=run_initiation,
             )
             work_id, relative_path = _worker_work_identity(
                 pipeline=pipeline,
@@ -928,6 +960,7 @@ def main(
                 overlay_alpha=overlay_alpha,
                 save_overlays=False,
                 durable_writes=durable_writes,
+                run_initiation=run_initiation,
             )
 
             click.echo(f"Measuring {image.name} (store rerun)...")
@@ -955,6 +988,7 @@ def main(
                 overlay_alpha=overlay_alpha,
                 save_overlays=save_overlays,
                 durable_writes=durable_writes,
+                run_initiation=run_initiation,
             )
 
             click.echo(f"Processing {image.name}...")

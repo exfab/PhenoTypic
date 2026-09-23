@@ -12,7 +12,13 @@ import pytest
 from pydantic import BaseModel
 
 from phenotypic import ImagePipeline
-from phenotypic.abc_.plotting import PlotImage, PlotOutput, PlotPage, figure
+from phenotypic.abc_.plotting import (
+    FigureInputUnavailable,
+    PlotImage,
+    PlotOutput,
+    PlotPage,
+    figure,
+)
 from phenotypic.plotting._pipeline._store_figures import (
     build_image_figures,
     normalize_figure_error,
@@ -335,3 +341,137 @@ def test_the_default_serializer_is_stable_across_processes(backend):
         ).stdout.strip()
 
     assert digest("1") == digest("2")
+
+
+# --------------------------------------------------------------------------
+# §3a: a figure only apply() can draw is kept within its own run folder, or
+# listed as unavailable -- never copied between run folders
+# --------------------------------------------------------------------------
+
+
+class ApplyState(BaseModel, PlotImage):
+    """Draws while its apply-state exists; afterwards raises the signal.
+
+    ``draw`` gives a labelled page with metadata plus a page that fails, so a
+    keep has an entry, its files and a page-level failure to keep.
+    """
+
+    mode: str = "draw"
+
+    def inspect(self, subject=None, *, for_save=False, **overrides):
+        from matplotlib.figure import Figure
+
+        if self.mode == "gone":
+            raise FigureInputUnavailable("the as-shot pixels are gone")
+        if self.mode == "explode":
+            raise RuntimeError("the gate refused this frame")
+        fig = Figure()
+        fig.subplots().plot([0, 1])
+        return PlotOutput(pages=(
+            PlotPage(key="tiles", figure=fig, label="Tiles", metadata={"roi": 1}),
+            PlotPage(key="odd", figure=object()),
+        ))
+
+
+class OtherClass(BaseModel, PlotImage):
+    def inspect(self, subject=None, *, for_save=False, **overrides):
+        raise FigureInputUnavailable("not here")
+
+
+def _files(store):
+    return {
+        path.relative_to(store).as_posix(): path.read_bytes()
+        for path in sorted((store / "figures").rglob("*")) if path.is_file()
+    }
+
+
+def _first_store(tmp_path, mode="draw", run=TEST_RUN):
+    from tests.unit.plotting._store_fixtures import figure_store
+
+    first = build_image_figures(
+        ImagePipeline(plots=[ApplyState(mode=mode)]), object(), run=run
+    )
+    return first, figure_store(tmp_path / "first", first)
+
+
+def _keep(store, *plots, run=TEST_RUN):
+    return build_image_figures(
+        ImagePipeline(plots=list(plots)), object(), run=run, keep_from=store
+    )
+
+
+def test_unavailable_with_nothing_to_keep_is_listed_not_failed():
+    stored = _build(ApplyState(mode="gone"), Bars())
+    assert [b.binding_id for b in stored.bindings] == ["Bars"]
+    assert stored.failed == ()
+    assert stored.unavailable == ("ApplyState",)
+
+
+def test_a_binding_in_the_same_runs_folder_is_kept_byte_identical(tmp_path):
+    from phenotypic.sdk_._image_figures import read_image_figures_descriptor
+
+    from tests.unit.plotting._store_fixtures import figure_store
+
+    first, store = _first_store(tmp_path)
+    assert [(f.page, f.format) for f in first.failed] == [("odd", None)]
+    kept = _keep(store, ApplyState(mode="gone"))
+    assert kept == first
+    again = figure_store(tmp_path / "again", kept)
+    assert read_image_figures_descriptor(again) == read_image_figures_descriptor(store)
+    assert _files(again) == _files(store)
+
+
+def test_another_runs_folder_is_never_copied_from(tmp_path):
+    from phenotypic.sdk_._image_figures import FigureRun
+
+    earlier = FigureRun(date="2026-09-01", pipeline_sha256=TEST_RUN.pipeline_sha256)
+    _first, store = _first_store(tmp_path, run=earlier)
+    kept = _keep(store, ApplyState(mode="gone"))
+    assert kept.bindings == () and kept.failed == ()
+    assert kept.unavailable == ("ApplyState",)
+
+
+def test_a_tampered_file_is_a_binding_failure_and_keeps_nothing(tmp_path):
+    _first, store = _first_store(tmp_path)
+    [png] = (store / "figures" / TEST_RUN.run_id / "ApplyState").glob("*.png")
+    png.write_bytes(png.read_bytes() + b"\0")
+    kept = _keep(store, ApplyState(mode="gone"))
+    assert kept.bindings == () and kept.unavailable == ()
+    [failure] = kept.failed
+    assert (failure.binding, failure.page, failure.format) == ("ApplyState", None, None)
+    assert "does not match its sha256" in failure.error
+
+
+def test_a_stored_binding_level_failure_is_kept_verbatim(tmp_path):
+    first, store = _first_store(tmp_path, mode="explode")
+    assert first.bindings == () and len(first.failed) == 1
+    assert _keep(store, ApplyState(mode="gone")) == first
+
+
+def test_a_folder_that_never_held_the_binding_lists_it_unavailable(tmp_path):
+    from tests.unit.plotting._store_fixtures import figure_store
+
+    store = figure_store(tmp_path, _build(Bars()))
+    kept = _keep(store, ApplyState(mode="gone"), Bars())
+    assert [b.binding_id for b in kept.bindings] == ["Bars"]
+    assert kept.failed == () and kept.unavailable == ("ApplyState",)
+
+
+def test_a_figure_stored_by_another_class_is_not_kept(tmp_path):
+    from phenotypic.plotting._pipeline import PlotBinding
+
+    _first, store = _first_store(tmp_path)
+    kept = _keep(store, PlotBinding(id="ApplyState", plot=OtherClass()))
+    assert kept.bindings == ()
+    [failure] = kept.failed
+    assert "was drawn by 'ApplyState', not OtherClass" in failure.error
+
+
+def test_a_drawable_binding_is_redrawn_not_kept(tmp_path):
+    first, store = _first_store(tmp_path)
+    # A stored copy that would refuse to be kept: only a redraw can succeed.
+    for png in (store / "figures" / TEST_RUN.run_id / "ApplyState").glob("*.png"):
+        png.write_bytes(b"tampered")
+    rebuilt = _keep(store, ApplyState(mode="draw"), Bars())
+    assert [b.binding_id for b in rebuilt.bindings] == ["ApplyState", "Bars"]
+    assert rebuilt.bindings[0] == first.bindings[0]

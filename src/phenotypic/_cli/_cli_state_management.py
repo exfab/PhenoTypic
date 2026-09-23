@@ -28,6 +28,7 @@ from ._cli_directory_scanner import image_manifest_digest
 from ._cli_staged_resume import pipeline_content_digest
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
+    from ..sdk_._image_figures import RunInitiation
     from ..sdk_._state_types import RunIdentity
 
 logger = logging.getLogger(__name__)
@@ -118,6 +119,101 @@ def save_processing_state(
         atomic_write_json(state_file, state_dict)
     
     return state_file
+
+
+#: Where a run's initial CLI call is recorded in ``state.config`` (figures
+#: spec §1a). ``job_metadata.json`` uses the same three names through
+#: ``JobMetadataKey``.
+RUN_INITIATION_STATE_KEYS: tuple[str, str, str] = (
+    "figures_run_date",
+    "initiated_at_utc",
+    "initiated_pid",
+)
+
+
+def run_initiation_config(initiation: "RunInitiation | None") -> dict[str, Any]:
+    """The three ``state.config`` entries recording *initiation*."""
+    date_key, at_key, pid_key = RUN_INITIATION_STATE_KEYS
+    return {
+        date_key: initiation.date if initiation is not None else None,
+        at_key: initiation.at_utc if initiation is not None else None,
+        pid_key: initiation.pid if initiation is not None else None,
+    }
+
+
+def _read_json(path: Path) -> Any:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def _initiation_from(
+    record: Any, keys: tuple[str, str, str]
+) -> "RunInitiation | None":
+    """A :class:`RunInitiation` from a mapping, or ``None`` without a date."""
+    from phenotypic.sdk_._image_figures import RunInitiation
+
+    if not isinstance(record, dict):
+        return None
+    date_key, at_key, pid_key = keys
+    date, at_utc, pid = record.get(date_key), record.get(at_key), record.get(pid_key)
+    if not isinstance(date, str):
+        return None
+    return RunInitiation(
+        date=date,
+        at_utc=at_utc if isinstance(at_utc, str) else None,
+        pid=pid if isinstance(pid, int) and not isinstance(pid, bool) else None,
+    )
+
+
+def recorded_run_initiation(output_dir: Path) -> "RunInitiation | None":
+    """The run's initial CLI call, as its processing state records it.
+
+    How a worker in another process learns the run's figure-folder date and
+    the call's timestamp and pid (figures spec §1a): the CLI records them in
+    ``state.config`` before any worker is submitted or launched, and they
+    never travel on a command line. A plain read-only JSON read -- unlike
+    :func:`load_processing_state` it neither migrates legacy state nor
+    aggregates events -- so it is cheap per image.
+
+    Args:
+        output_dir: The run's output root.
+
+    Returns:
+        The recorded call, or ``None`` when there is no state or it records
+        no date. Never raises.
+    """
+    state = _read_json(resolve_processing_state_path(Path(output_dir)))
+    config = state.get(ProcessingStateKey.CONFIG) if isinstance(state, dict) else None
+    return _initiation_from(config, RUN_INITIATION_STATE_KEYS)
+
+
+def metadata_run_initiation(output_dir: Path) -> "RunInitiation | None":
+    """A measure-mode SLURM invocation's initial call, from ``job_metadata.json``.
+
+    Measure mode keeps no processing state -- the state under its tree is
+    the earlier run's -- so its SLURM submitter records the call in the job
+    metadata it writes before fan-out (figures spec §1a). Read-only; never
+    raises.
+
+    Args:
+        output_dir: The run's output root.
+
+    Returns:
+        The recorded call, or ``None`` when the metadata is absent, corrupt
+        or records no date.
+    """
+    from phenotypic.sdk_ import JobMetadataKey, job_metadata_path
+
+    return _initiation_from(
+        _read_json(job_metadata_path(Path(output_dir))),
+        (
+            JobMetadataKey.FIGURES_RUN_DATE,
+            JobMetadataKey.INITIATED_AT_UTC,
+            JobMetadataKey.INITIATED_PID,
+        ),
+    )
 
 
 def load_processing_state(output_dir: Path) -> Optional[ProcessingState]:
@@ -289,6 +385,11 @@ def create_initial_state(
             # gate no longer fires at all, which overstated one line into a
             # whole-gate guarantee.
             "restart_epoch": identity.restart_epoch,
+            # The run's initial CLI call -- figure-folder date, UTC timestamp,
+            # pid: recorded once here and reused on resume, so every image and
+            # stage writes one folder (figures spec §1a). Configuration, not
+            # tracked progress state.
+            **run_initiation_config(config.run_initiation),
         }
     )
     

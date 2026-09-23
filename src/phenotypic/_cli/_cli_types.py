@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
 
 from phenotypic.sdk_.typing_ import (
     ExecutionMode,
@@ -18,6 +18,9 @@ from phenotypic.sdk_.typing_ import (
     ProcessFormat,
     ProcessOnlyLayer,
 )
+
+if TYPE_CHECKING:
+    from phenotypic.sdk_._image_figures import RunInitiation
 
 
 @dataclass
@@ -137,6 +140,16 @@ class ExecutionConfig:
     # guarantee, not a scientific parameter, so toggling it must not
     # invalidate a run's work ids and restart finished images.
     durable_writes: Optional[bool] = None
+
+    # The run's initial CLI call (figures spec §1a): its UTC date is the
+    # ``{date}`` of every figure run folder, and its UTC timestamp and pid go
+    # into each run entry. Minted once and recorded in ``state.config`` (or in
+    # ``job_metadata.json`` for a measure-mode SLURM run); reused on resume.
+    # In-process workers get it on the CLI's OutputManager; a worker in
+    # another process reads it back from that record -- never from its command
+    # line. Deliberately NOT part of ``processing_configuration_digest``: a
+    # new day must not invalidate continuation.
+    run_initiation: Optional["RunInitiation"] = None
 
     # Full-forward storage policy. The default retains decoded source pixels.
     drop_originals: bool = False

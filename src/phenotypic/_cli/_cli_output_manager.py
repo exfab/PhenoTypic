@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
     from phenotypic.plotting._pipeline import AnalysisResult
     from phenotypic.sdk_ import CommitGuard
-    from phenotypic.sdk_._image_figures import StoredFigures
+    from phenotypic.sdk_._image_figures import RunInitiation, StoredFigures
 
 from ._cli_types import Dataset
 from ._embedded_measurement_tables import prepare_image_tables
@@ -1561,6 +1561,7 @@ class OutputManager:
         overlay_alpha: float = 0.3,
         save_overlays: bool = True,
         durable_writes: bool | None = None,
+        run_initiation: RunInitiation | None = None,
     ):
         """
         Initialize OutputManager.
@@ -1583,6 +1584,12 @@ class OutputManager:
                 rather than passed per call so that no ``save_image_store``
                 site can be silently inert: every write this manager performs
                 inherits the run's resolved durability (spec §3.7).
+            run_initiation: The run's initial CLI call (figures spec §1a):
+                its date is the ``{date}`` of every figure run folder this run
+                writes, and its UTC timestamp and pid go into each run entry.
+                Carried here so every write this manager performs describes
+                the one call. ``None`` falls back to today's UTC date, with no
+                timestamp or pid.
         """
         self.base_dir = Path(base_dir)
         self.save_layers = save_layers
@@ -1591,6 +1598,7 @@ class OutputManager:
         self.overlay_alpha = overlay_alpha
         self.save_overlays = save_overlays
         self.durable_writes = durable_writes
+        self.run_initiation = run_initiation
 
         # Results directory for dataset outputs (images, measurements, overlays)
         self.results_dir = self.base_dir / DIR_RESULTS
@@ -1607,6 +1615,7 @@ class OutputManager:
         overlay_alpha: float = 0.3,
         save_overlays: bool = True,
         durable_writes: bool | None = None,
+        run_initiation: RunInitiation | None = None,
     ) -> "OutputManager":
         """Create an OutputManager configured for store-centric forward runs.
 
@@ -1639,6 +1648,11 @@ class OutputManager:
                 command line -- an unset flag re-detects correctly on its own,
                 but ``--no-durable-writes`` exists only in the submitting
                 process (spec §3.7).
+            run_initiation: See :meth:`__init__`. A worker in another
+                process passes what the run recorded
+                (``_cli_state_management.recorded_run_initiation``, or
+                ``metadata_run_initiation`` for measure mode); it never
+                travels on a command line.
         """
         return cls(
             base_dir=base_dir,
@@ -1648,6 +1662,7 @@ class OutputManager:
             overlay_alpha=overlay_alpha,
             save_overlays=save_overlays,
             durable_writes=durable_writes,
+            run_initiation=run_initiation,
         )
 
     def create_structure(self, datasets: List[Dataset]) -> None:
