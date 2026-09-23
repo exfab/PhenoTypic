@@ -399,6 +399,84 @@ def assert_no_overlap_or_clipping(fig) -> None:
             assert dx <= 0.5 or dy <= 0.5, f"{a_text!r} overlaps {b_text!r}"
 
 
+def image_axes_of(fig) -> list:
+    return [ax for ax in fig.axes if ax.images]
+
+
+def side_axes_of(fig, image_ax) -> list:
+    """The label columns, which share y with their ROI's image axes."""
+    return [ax for ax in fig.axes if ax is not image_ax and not ax.images
+            and image_ax.get_shared_y_axes().joined(image_ax, ax)]
+
+
+def assert_core_boxes_sit_on_their_tiles(fig, record) -> None:
+    """Each tile has exactly one core box, at its core_box, in its status style."""
+    for ax, roi in zip(image_axes_of(fig), record.rois, strict=True):
+        cores = [p for p in ax.patches
+                 if isinstance(p, Rectangle) and p.get_linewidth() == 1.8]
+        for t in roi.tiles:
+            cy0, cy1, cx0, cx1 = t.core_box
+            at_tile = [p for p in cores
+                       if np.allclose(p.get_xy(), (cx0 - 0.5, cy0 - 0.5))
+                       and np.allclose((p.get_width(), p.get_height()),
+                                       (cx1 - cx0, cy1 - cy0))]
+            assert len(at_tile) == 1, f"ROI {roi.roi_index} {t.patch}: {len(at_tile)} boxes"
+            (box,) = at_tile
+            assert tuple(box.get_edgecolor()) == to_rgba(STATUS_COLOURS[t.status]), t.patch
+            dashed = t.status in ("rejected", "excluded", "empty")
+            assert box.get_linestyle() == ("--" if dashed else "-"), t.patch
+
+
+def assert_labels_sit_at_their_tiles(fig, record) -> None:
+    """Each side label, ΔE line and swatch pair lies within its tile's rows.
+
+    Pairs a name to its tile by text, so it needs unique names per ROI.
+    """
+    for image_ax, roi in zip(image_axes_of(fig), record.rois, strict=True):
+        if not roi.tiles or roi.n_tile_columns > 2:
+            continue
+        sides = side_axes_of(fig, image_ax)
+        texts = [t for ax in sides for t in ax.texts]
+        swatches = [p for ax in sides for p in ax.patches if isinstance(p, Rectangle)]
+        assert len({overlay._name_line(t) for t in roi.tiles}) == len(roi.tiles)
+        for t in roi.tiles:
+            # The shared y axis is the image's: pixel rows, box edges at -0.5.
+            lo, hi = t.full_box[0] - 0.5, t.full_box[1] - 0.5
+            (name,) = [x for x in texts if x.get_text() == overlay._name_line(t)]
+            name_x, name_y = name.get_position()
+            assert lo <= name_y <= hi, f"{t.patch}: name at {name_y}, tile {lo}-{hi}"
+            delta_e = overlay._delta_e_line(t)[0]
+            assert any(x.get_text() == delta_e and x.axes is name.axes
+                       and x.get_position()[0] == name_x
+                       and name_y < x.get_position()[1] <= hi for x in texts), t.patch
+            for rgb in (t.measured_srgb, t.reference_srgb):
+                if rgb is None:
+                    continue
+                centres = [p.get_y() + p.get_height() / 2 for p in swatches
+                           if p.axes is name.axes
+                           and np.allclose(p.get_facecolor()[:3], rgb)]
+                assert any(lo <= c <= hi for c in centres), f"{t.patch}: swatch {rgb}"
+
+
+def assert_labels_clear_the_images(fig) -> None:
+    """No text outside an image axes lands on any ROI's image.
+
+    Text drawn *on* an image axes -- the key mode's tile numbers -- belongs there.
+    """
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    images = image_axes_of(fig)
+    image_boxes = [ax.get_window_extent(renderer) for ax in images]
+    for text in fig.findobj(Text):
+        if not (text.get_visible() and text.get_text().strip()) or text.axes in images:
+            continue
+        box = text.get_window_extent(renderer)
+        for image_box in image_boxes:
+            dx = min(box.x1, image_box.x1) - max(box.x0, image_box.x0)
+            dy = min(box.y1, image_box.y1) - max(box.y0, image_box.y0)
+            assert dx <= 0.5 or dy <= 0.5, f"{text.get_text()!r} is drawn over an image"
+
+
 def card_record(rows: int, cols: int, *, name: str = "neutral 6.5 (.44 D)",
                 status: str = "rejected", tile_px: int = 40) -> CalibrationOverlayRecord:
     """A synthetic record: one ROI holding a rows x cols card of long names."""
@@ -421,21 +499,130 @@ def card_record(rows: int, cols: int, *, name: str = "neutral 6.5 (.44 D)",
                                     n_fitted=24, n_expected=24, refusal=None, rois=[roi])
 
 
+def edge_record() -> CalibrationOverlayRecord:
+    """Tiles flush with the crop's top and bottom edges, short against their labels.
+
+    A wide crop with 6 px tiles: each label block is taller than the tile it
+    names, so the first and last blocks overhang the image. A long ROI label
+    makes the ROI title span the label columns, so an overhang it did not
+    reserve room for collides with it.
+    """
+    rows, pitch, tile_h, width = 6, 30, 6, 160
+    crop = np.full(((rows - 1) * pitch + tile_h, width, 3), 30, dtype=np.uint8)
+    tiles = []
+    for c, x0 in enumerate((20, width - 60)):
+        for r in range(rows):
+            name = NAMES[c * rows + r]
+            y0 = r * pitch
+            reference = tuple(float(v) for v in SRGB[name])
+            tiles.append(TileOverlay(
+                    row=r, col=c, patch=name, status="used",
+                    full_box=(y0, y0 + tile_h, x0, x0 + 40),
+                    core_box=(y0 + 1, y0 + tile_h - 1, x0 + 8, x0 + 32),
+                    measured_srgb=tuple(0.9 * v for v in reference),
+                    reference_srgb=reference, impurity=0.0,
+                    delta_e_before=4.0, delta_e_after=1.0,
+            ))
+    roi = RoiOverlay(roi_index=0, label="left card band, flush with the top of its rectangle",
+                     crop=crop, lattice_found=True, n_tile_columns=2, flags=[],
+                     warnings=[], tiles=tiles)
+    return CalibrationOverlayRecord(image_name="edge", verdict="corrected", degree=3,
+                                    n_fitted=12, n_expected=24, refusal=None, rois=[roi])
+
+
+def status_record() -> CalibrationOverlayRecord:
+    """One ROI with a used, an excluded and an empty tile (no measured colour)."""
+    crop = np.full((3 * 60 + 24, 2 * 60 + 24, 3), 30, dtype=np.uint8)
+    spec = [(0, 0, "used", (0.4, 0.3, 0.2)), (1, 0, "excluded", (0.3, 0.4, 0.2)),
+            (2, 0, "empty", None), (0, 1, "used", (0.2, 0.3, 0.4))]
+    tiles = []
+    for i, (r, c, status, measured) in enumerate(spec):
+        y0, x0 = 12 + r * 60, 12 + c * 60
+        name = NAMES[i]
+        fitted = status == "used"
+        tiles.append(TileOverlay(
+                row=r, col=c, patch=name, status=status,
+                full_box=(y0, y0 + 48, x0, x0 + 48),
+                core_box=(y0 + 10, y0 + 38, x0 + 10, x0 + 38),
+                measured_srgb=measured,
+                reference_srgb=tuple(float(v) for v in SRGB[name]),
+                impurity=None if measured is None else 0.0,
+                delta_e_before=3.0 if fitted else None,
+                delta_e_after=1.0 if fitted else None,
+        ))
+    roi = RoiOverlay(roi_index=0, label=None, crop=crop, lattice_found=True,
+                     n_tile_columns=2, flags=[], warnings=[], tiles=tiles)
+    return CalibrationOverlayRecord(image_name="statuses", verdict="corrected", degree=1,
+                                    n_fitted=2, n_expected=24, refusal=None, rois=[roi])
+
+
 # -- spec test 5: no overlapping text, no clipping ---------------------------
 def test_two_band_figure_has_no_overlap() -> None:
     record = calibrated(planted_faults(), on_qc_fail="warn").calibration_record
-    assert_no_overlap_or_clipping(render_calibration_overlay(record))
+    fig = render_calibration_overlay(record)
+    assert_no_overlap_or_clipping(fig)
+    assert_labels_clear_the_images(fig)
+
+
+def test_two_band_labels_sit_at_their_tiles() -> None:
+    record = calibrated(planted_faults(), on_qc_fail="warn").calibration_record
+    assert_labels_sit_at_their_tiles(render_calibration_overlay(record), record)
+
+
+def test_tiles_flush_with_the_crop_edge_have_no_overlap() -> None:
+    record = edge_record()
+    fig = render_calibration_overlay(record)
+    assert_no_overlap_or_clipping(fig)
+    assert_labels_clear_the_images(fig)
+    assert_labels_sit_at_their_tiles(fig, record)
+    assert_core_boxes_sit_on_their_tiles(fig, record)
+
+
+def test_empty_and_excluded_tiles_render_their_suffixes_and_a_hatched_swatch() -> None:
+    record = status_record()
+    fig = render_calibration_overlay(record)
+    assert_no_overlap_or_clipping(fig)
+    assert_labels_sit_at_their_tiles(fig, record)
+    assert_core_boxes_sit_on_their_tiles(fig, record)
+    texts = {t for t, _ in text_boxes(fig)}
+    assert f"{NAMES[1]} · excluded" in texts and f"{NAMES[2]} · empty" in texts
+    assert texts >= {"ΔE00 not fitted"}
+    hatched = [p for ax in fig.axes for p in ax.patches
+               if isinstance(p, Rectangle) and p.get_hatch()]
+    assert len(hatched) == 1 and hatched[0].get_hatch() == "////"
+    (empty,) = [t for t in record.rois[0].tiles if t.status == "empty"]
+    y_mid = hatched[0].get_y() + hatched[0].get_height() / 2
+    assert empty.full_box[0] - 0.5 <= y_mid <= empty.full_box[1] - 0.5
 
 
 def test_longest_names_have_no_overlap() -> None:
-    assert_no_overlap_or_clipping(render_calibration_overlay(card_record(6, 2)))
+    fig = render_calibration_overlay(card_record(6, 2))
+    assert_no_overlap_or_clipping(fig)
+    assert_labels_clear_the_images(fig)
 
 
 def test_a_full_card_uses_a_numbered_key_without_overlap() -> None:
     fig = render_calibration_overlay(card_record(4, 6))
     assert_no_overlap_or_clipping(fig)
+    assert_labels_clear_the_images(fig)
     numbers = {t for t, _ in text_boxes(fig) if t.isdigit()}
     assert {str(n) for n in range(1, 25)} <= numbers
+
+
+@pytest.mark.parametrize("dpi", [50, 300])
+@pytest.mark.parametrize("shape", [(6, 2), (4, 6)])
+def test_labels_measured_at_one_dpi_still_fit_at_another(shape, dpi) -> None:
+    # savefig(dpi=...) redraws at a dpi the labels were not measured at.
+    fig = render_calibration_overlay(card_record(*shape))
+    fig.set_dpi(dpi)
+    assert_no_overlap_or_clipping(fig)
+
+
+def test_a_degenerate_core_box_in_key_mode_does_not_divide_by_zero() -> None:
+    # tile_px=16 trims each core box to zero height and width.
+    record = card_record(4, 6, tile_px=16)
+    assert min(t.core_box[1] - t.core_box[0] for t in record.rois[0].tiles) == 0
+    assert render_calibration_overlay(record) is not None
 
 
 def test_a_refused_frame_renders_its_flags() -> None:
@@ -462,6 +649,21 @@ def test_halved_label_widths_are_caught(monkeypatch) -> None:
         assert_no_overlap_or_clipping(fig)
 
 
+@pytest.mark.parametrize("record", [edge_record, lambda: card_record(4, 6)],
+                         ids=["edge", "key"])
+def test_halved_label_heights_are_caught(monkeypatch, record) -> None:
+    real = overlay._TextMeter.size
+
+    def half_height(self, text, **kwargs):
+        width, height = real(self, text, **kwargs)
+        return width, height / 2
+
+    monkeypatch.setattr(overlay._TextMeter, "size", half_height)
+    fig = render_calibration_overlay(record())
+    with pytest.raises(AssertionError):
+        assert_no_overlap_or_clipping(fig)
+
+
 def test_a_figsize_too_small_is_refused() -> None:
     with pytest.raises(ValueError, match="too small"):
         render_calibration_overlay(card_record(6, 2), figsize=(2.0, 2.0))
@@ -478,6 +680,7 @@ def test_one_image_axes_per_roi_and_one_core_box_per_tile() -> None:
         assert len(cores) == len(roi.tiles)
         assert sorted(tuple(p.get_edgecolor()) for p in cores) == sorted(
                 to_rgba(STATUS_COLOURS[t.status]) for t in roi.tiles)
+    assert_core_boxes_sit_on_their_tiles(fig, record)
 
 
 def expect_tiles_refused() -> CalibrationOverlayRecord:

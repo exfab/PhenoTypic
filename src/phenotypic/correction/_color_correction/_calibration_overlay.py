@@ -422,8 +422,9 @@ def _plan_key(plan: _RoiPlan, roi: RoiOverlay, meter: _TextMeter) -> None:
     number_h = max(h for _, h in sizes)
     # The marker sits inside the core box; the box must stay visible around
     # it, or the tile's status colour is hidden behind its number.
-    smallest_px = min(min(t.core_box[1] - t.core_box[0], t.core_box[3] - t.core_box[2])
-                      for t in roi.tiles)
+    # A degenerate (zero-side) core box is floored at 1 px rather than divided by.
+    smallest_px = max(1.0, min(min(t.core_box[1] - t.core_box[0], t.core_box[3] - t.core_box[2])
+                               for t in roi.tiles))
     pad_in = 2 * _MARKER_PAD * meter.fontsize_pt / 72
     marker = max(number_w, number_h) + pad_in
     scale = max(1.0, marker * _MARKER_ROOM / (smallest_px * plan.image_w / w_px))
