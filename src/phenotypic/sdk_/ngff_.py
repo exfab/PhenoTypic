@@ -95,6 +95,12 @@ METADATA_TABLE_RELATIVE_PATH: Final[Path] = Path(
 )
 METADATA_TABLE_SCHEMA_VERSION: Final[int] = 1
 
+#: Per-image figures (spec 2026-09-22 §1). A Zarr v3 group holding non-Zarr
+#: files, exactly as `tables/` holds `table.parquet`; described by
+#: `attributes.phenotypic.figures`, never by `ome.series`.
+FIGURES_GROUP: Final[str] = "figures"
+FIGURES_SCHEMA_VERSION: Final[int] = 1
+
 
 class EmbeddedMeasurementParquetMetadataKeys(NamedTuple):
     """Stable Parquet key/value metadata names for join provenance."""
@@ -462,6 +468,7 @@ class PhenotypicAttr:
     PUBLICATION_PROTOCOL: Final[str] = "publication_protocol"
     PROVENANCE: Final[str] = "provenance"
     TABLES: Final[str] = "tables"
+    FIGURES: Final[str] = "figures"
     SERIES: Final[str] = "series"
     LABELS: Final[str] = "labels"
     PYRAMID: Final[str] = "pyramid"
