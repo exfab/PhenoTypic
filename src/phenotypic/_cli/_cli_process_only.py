@@ -279,6 +279,7 @@ def process_single_apply_only_core(
     """
     image: Image | None = None
     provenance_application_opened = False
+    figures: StoredFigures | None = None
 
     def _mark_provenance_failed() -> None:
         if image is None or not provenance_application_opened:
@@ -337,6 +338,14 @@ def process_single_apply_only_core(
         provenance_application_opened = True
         with continuing_provenance_application(image):
             pipeline.apply(image, inplace=True)
+        # Figures only when there is a store to hold them (spec §3 by mode),
+        # and before the status is closed, as in full mode. Measurer-backed
+        # bindings recompute inside inspect() here, because apply() never
+        # filled their cache -- accepted (spec §3 process mode).
+        if process_format == "zarr":
+            from phenotypic.plotting._pipeline._store_figures import build_image_figures
+
+            figures = build_image_figures(pipeline, image)
         # BEFORE the write below, or the store records the stale default.
         # `initialize_cli_provenance` opens at `"in_progress"`
         # (_provenance.py:305), and every sibling path closes it --
@@ -357,6 +366,11 @@ def process_single_apply_only_core(
         output_dir, image_path, input_root, layer, fmt=process_format
     )
     write_process_only_layer(
-        image, layer, out_path, fmt=process_format, commit_guard=commit_guard
+        image,
+        layer,
+        out_path,
+        fmt=process_format,
+        commit_guard=commit_guard,
+        figures=figures,
     )
     return True

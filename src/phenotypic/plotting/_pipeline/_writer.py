@@ -143,11 +143,10 @@ def _render_page(
 ) -> tuple[dict[str, str], list[BaseException], str | None]:
     """Render one figure to every format its backend supports.
 
-    This is the single definition of "what files does a page produce". It is
-    called from :func:`_publish_plot_output_locked` for multi-page and aggregate
-    output, and from ``PlotCoordinator._publish_image_value`` for the flat
-    single-page image path -- which does not go through the writer, takes no
-    directory lock and writes no manifest, and would otherwise never gain HTML.
+    This is the single definition of "what files does a page produce" for
+    aggregate output. It is called from :func:`_publish_plot_output_locked`.
+    Image plots do not come here: they are serialized into the store and
+    copied out by ``_store_copyout``.
 
     HTML is attempted first: it needs no Chrome, so a page that can be published
     at all is on disk before anything that might fail is tried.

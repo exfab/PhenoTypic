@@ -343,15 +343,10 @@ def process_single_image_core(
                 commit_guard=commit_guard,
             )
         from phenotypic.plotting._pipeline import PlotCoordinator
+        from phenotypic.plotting._pipeline._store_figures import build_image_figures
 
         _check_active(active_check)
-        PlotCoordinator(
-            pipeline, output_dir, commit_guard=commit_guard
-        ).emit_image(
-            image,
-            dataset=dataset_name,
-            image_stem=image_stem,
-        )
+        figures = build_image_figures(pipeline, image)
         _check_active(active_check)
         set_provenance_status(image, "complete")
         saved_store = output_manager.save_image_store(
@@ -361,11 +356,18 @@ def process_single_image_core(
             work_id=work_id,
             commit_guard=commit_guard,
             measurements=measurements,
+            figures=figures,
         )
         if saved_store is None:
             raise RuntimeError(
                 f"Final image store publication failed for {dataset_name}/{image_stem}"
             )
+        # After promotion, before the completion record: a crash between the
+        # two re-runs the image, so deliverables never lag a certified store.
+        _check_active(active_check)
+        PlotCoordinator(pipeline, output_dir, commit_guard=commit_guard).publish_store_figures(
+            saved_store, dataset=dataset_name, image_stem=image_stem
+        )
     except SlurmGenerationInactiveError:
         raise
     except MemoryError:
@@ -434,6 +436,14 @@ def process_single_store_measure_core(
     # nothing raises on.
     stem = store_stem(store_path)
 
+    from phenotypic.plotting._pipeline import PlotCoordinator
+    from phenotypic.plotting._pipeline._store_figures import build_image_figures
+
+    # Built BEFORE the table replace so the figures ride the same root-last
+    # transaction: a store's figures and its table always come from the same
+    # pipeline (spec §3 "Measure mode semantics").
+    figures = build_image_figures(pipeline, image)
+
     # Publish the authoritative tables inside the existing store, through a
     # root-last store transaction. There is no same-directory fast path: it
     # rewrote a promoted store's Parquet without refreshing the root, so the
@@ -443,17 +453,11 @@ def process_single_store_measure_core(
         store_path,
         measurements,
         dataset_name,
-        figures=None,  # Task 6 wires the real figures
         commit_guard=commit_guard,
+        figures=figures,
     )
-    from phenotypic.plotting._pipeline import PlotCoordinator
-
-    PlotCoordinator(
-        pipeline, output_dir, commit_guard=commit_guard
-    ).emit_image(
-        image,
-        dataset=dataset_name,
-        image_stem=stem,
+    PlotCoordinator(pipeline, output_dir, commit_guard=commit_guard).publish_store_figures(
+        store_path, dataset=dataset_name, image_stem=stem
     )
 
     # Marker refresh is the final successful per-image publication. If any

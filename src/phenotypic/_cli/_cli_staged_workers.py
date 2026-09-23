@@ -576,15 +576,10 @@ def stage3_merge_measure_core(
                 commit_guard=commit_guard,
             )
         from phenotypic.plotting._pipeline import PlotCoordinator
+        from phenotypic.plotting._pipeline._store_figures import build_image_figures
 
         _check_active(active_check)
-        PlotCoordinator(
-            plan.post_pipeline, output_dir, commit_guard=commit_guard
-        ).emit_image(
-            image,
-            dataset=dataset_name,
-            image_stem=image_stem,
-        )
+        figures = build_image_figures(plan.post_pipeline, image)
 
         _check_active(active_check)
         set_provenance_status(image, "complete")
@@ -595,11 +590,21 @@ def stage3_merge_measure_core(
             work_id=work_id,
             commit_guard=commit_guard,
             measurements=measurements,
+            figures=figures,
         )
         if saved_store is None or not valid_staged_store(saved_store):
             raise RuntimeError(
                 f"Stage 3 store publication failed for {dataset_name}/{image_stem}"
             )
+        # After promotion, before the Stage-3 marker, the token/raw cleanup
+        # and the caller's completion record: a crash between the two re-runs
+        # Stage 3, so deliverables never lag a certified store.
+        _check_active(active_check)
+        PlotCoordinator(
+            plan.post_pipeline, output_dir, commit_guard=commit_guard
+        ).publish_store_figures(
+            saved_store, dataset=dataset_name, image_stem=image_stem
+        )
         if work_id is None:
             _check_active(active_check)
             write_stage3_completion_marker(

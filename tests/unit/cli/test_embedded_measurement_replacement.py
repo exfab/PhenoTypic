@@ -152,7 +152,9 @@ def test_measure_failure_before_final_marker_leaves_new_table_unauthorized(
     def fail_plot(*args, **kwargs) -> None:
         raise RuntimeError("simulated post-table publication failure")
 
-    monkeypatch.setattr(PlotCoordinator, "emit_image", fail_plot)
+    # Copy-out runs after the table write and before the marker refresh, so a
+    # failure there must leave the old marker stale against the new table.
+    monkeypatch.setattr(PlotCoordinator, "publish_store_figures", fail_plot)
     with pytest.raises(
         RuntimeError, match="simulated post-table publication failure"
     ):

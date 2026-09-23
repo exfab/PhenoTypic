@@ -202,7 +202,10 @@ def file_sha256(path: Path) -> str:
 #: 1 -> 2: ``--layer objmap`` now applies the post-detector op chain, so the
 #:         export is the pipeline's objmap rather than the detector's raw
 #:         output (spec 2026-09-15-nested-gpu-staging §8).
-PROCESS_LAYER_SEMANTICS_REVISION = 2
+#: 2 -> 3: process-mode stores now carry the pipeline's per-image figures
+#:         (spec 2026-09-22-figures-in-ome-zarr §3). Also invalidates in-flight
+#:         ``tiff`` continuations -- deliberate; invalidating too much is safe.
+PROCESS_LAYER_SEMANTICS_REVISION = 3
 
 
 def processing_configuration_digest_from_values(
