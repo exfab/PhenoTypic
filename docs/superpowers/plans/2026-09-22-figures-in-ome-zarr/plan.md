@@ -30,6 +30,39 @@
 - Tests per step: run only the touched test file(s). Per task: run the task's files. The full suite runs once, in Task 9, as a Slurm job through the **`run-phenotypic-test`** skill. Never use `-n auto`, and never use `-x` on a baseline.
 - **Every new test must be shown to fail when the bug it guards is reintroduced.** A "prove it can fail" step does exactly that, then restores the code.
 
+## Execution (orchestration, 2026-09-22)
+
+**Dependency DAG** (→ = must finish before; shared files in brackets):
+
+```
+T1 (abc_ store formats) ──────────────┐
+T2 (sdk_ _image_figures, ngff_) ──┬──> T3 (build; _writer, _backends) ──> T5 (copy-out; _writer, _failures, _coordinator) ──┐
+                                  └──> T4 (store transaction; io_handler, _measurement_tables, output_manager, process_only) ──┤
+                                                                                                                              v
+                                                         T6 (wire all modes; retire emit_image; port tests) ──> T7 (properties) ──> T8 (docs) ──> T9 (regression)
+```
+
+Shared files: `_writer.py` (T3, T5); `_coordinator.py` (T5, T6); `_cli_process_only.py` (T4, T6).
+No two clusters below touch disjoint files **and** have no ordering edge, so
+execution is **sequential**; no parallel worktrees.
+
+| Cluster | Tasks | Shape | Model / effort |
+|---|---|---|---|
+| C1 | T1 + T2 + T3 | Keystone (contract, value types, build) | Opus, high |
+| C2 | T4 | Seam (root-last transaction, hard-link safety) | Opus, high |
+| C3 | T5 | Keystone (copy-out) | Opus, high |
+| C4 | T6 | Seam + test-port sweep (4 call sites, emit_image retired) | Opus, high |
+| C5 | T7 | Leaf (properties; cache parity may expose a provider bug) | Opus, high |
+| C6 | T8 | Sweep (docs; Sphinx build on Slurm) | Sonnet, medium |
+| — | T9 | Orchestrator (sharded Slurm regression) | — |
+
+**Gates.**
+- Plan review: done (`reports/…/plan-review.md`, `simplicity-review.md`).
+- Per cluster (light): orchestrator reviews the diff and runs the cluster's test files; stop and ask on any design fork.
+- Phase A = C1–C3 (backend units): `implementation-test-reviewer` (Opus) over the combined diff, then a **simplify pass on the backend layer before Phase B builds on it** (user preference), then re-run Phase A tests.
+- Phase B = C4–C5 (wiring + properties): `implementation-test-reviewer` (Opus).
+- End: simplify pass over Phase B + seams; then T9.
+
 ## File structure
 
 | File | Status | Responsibility |
