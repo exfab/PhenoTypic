@@ -262,10 +262,11 @@ figures/
   one, if several match). So a re-measure with the same pipeline overwrites
   that run's figures, which is what the user decided: the measurer figures are
   rebuilt, and §3a figures such as the calibration overlay are kept. Otherwise
-  measure mode uses the UTC date of its own invocation. The date is
-  carried to the workers the way `--durable-writes` is, and is **not** part of
-  `processing_configuration_digest`: a new day must not invalidate
-  continuation. A run that crosses midnight, or staged Stage 1 and Stage 3 on
+  measure mode uses the UTC date of its own invocation. **Workers read the
+  date from the run's processing state**. It never travels on a command line
+  (user decision): no worker argument and no generated script carries it. It
+  is **not** part of `processing_configuration_digest`, because a new day must
+  not invalidate continuation. A run that crosses midnight, or staged Stage 1 and Stage 3 on
   different days, therefore stays in one folder. Programmatic callers
   (`save2zarr(figures=...)`) pass the run id explicitly.
 - `{pipeline hash}` is the first 12 hex characters of the pipeline's sha256.
