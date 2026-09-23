@@ -343,10 +343,19 @@ def process_single_image_core(
                 commit_guard=commit_guard,
             )
         from phenotypic.plotting._pipeline import PlotCoordinator
-        from phenotypic.plotting._pipeline._store_figures import build_image_figures
+        from phenotypic.plotting._pipeline._store_figures import (
+            build_image_figures,
+            figure_run_for,
+        )
 
         _check_active(active_check)
-        figures = build_image_figures(pipeline, image)
+        figures = build_image_figures(
+            pipeline,
+            image,
+            run=figure_run_for(
+                image, pipeline_sha256=resolved_pipeline_identity["sha256"]
+            ),
+        )
         _check_active(active_check)
         set_provenance_status(image, "complete")
         saved_store = output_manager.save_image_store(
@@ -366,7 +375,10 @@ def process_single_image_core(
         # two re-runs the image, so deliverables never lag a certified store.
         _check_active(active_check)
         PlotCoordinator(pipeline, output_dir, commit_guard=commit_guard).publish_store_figures(
-            saved_store, dataset=dataset_name, image_stem=image_stem
+            saved_store,
+            run_id=figures.run.run_id if figures is not None else None,
+            dataset=dataset_name,
+            image_stem=image_stem,
         )
     except SlurmGenerationInactiveError:
         raise
@@ -437,12 +449,24 @@ def process_single_store_measure_core(
     stem = store_stem(store_path)
 
     from phenotypic.plotting._pipeline import PlotCoordinator
-    from phenotypic.plotting._pipeline._store_figures import build_image_figures
+    from phenotypic.plotting._pipeline._store_figures import (
+        build_image_figures,
+        figure_run_for,
+    )
 
     # Built BEFORE the table replace so the figures ride the same root-last
-    # transaction: a store's figures and its table always come from the same
-    # pipeline (spec §3 "Measure mode semantics").
-    figures = build_image_figures(pipeline, image)
+    # transaction: a run folder and the table it sits beside come from the
+    # same pipeline (spec §3 "Measure mode semantics", §1a). The store's
+    # journal names the run that WROTE it, so this run's pipeline digest is
+    # read from the file it runs.
+    figures = build_image_figures(
+        pipeline,
+        image,
+        run=figure_run_for(
+            image,
+            pipeline_sha256=pipeline_source_identity(pipeline_path)["sha256"],
+        ),
+    )
 
     # Publish the authoritative tables inside the existing store, through a
     # root-last store transaction. There is no same-directory fast path: it
@@ -457,7 +481,10 @@ def process_single_store_measure_core(
         figures=figures,
     )
     PlotCoordinator(pipeline, output_dir, commit_guard=commit_guard).publish_store_figures(
-        store_path, dataset=dataset_name, image_stem=stem
+        store_path,
+        run_id=figures.run.run_id if figures is not None else None,
+        dataset=dataset_name,
+        image_stem=stem,
     )
 
     # Marker refresh is the final successful per-image publication. If any

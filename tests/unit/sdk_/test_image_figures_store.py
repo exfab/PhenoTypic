@@ -1,4 +1,4 @@
-"""figures/ rides the root-last transaction (spec §1, §3 step 2, measure mode)."""
+"""figures/<run>/ rides the root-last transaction (spec §1, §1a, §3 step 2)."""
 from __future__ import annotations
 
 import json
@@ -14,6 +14,7 @@ from phenotypic._cli._embedded_measurement_tables import prepare_image_tables
 from phenotypic.data import load_synth_yeast_plate
 from phenotypic.sdk_ import ngff_
 from phenotypic.sdk_._image_figures import (
+    FigureRun,
     StoredFigureBinding,
     StoredFigureFile,
     StoredFigurePage,
@@ -23,12 +24,36 @@ from phenotypic.sdk_._image_figures import (
 from phenotypic.sdk_._measurement_tables import replace_image_tables
 
 
-def _figures(tag: bytes = b"one", binding: str = "sym") -> StoredFigures:
+RUN = FigureRun(date="2026-09-22", pipeline_sha256="ab" * 32)
+LATER = FigureRun(date="2026-10-03", pipeline_sha256="cd" * 32)
+
+
+def _figures(
+    tag: bytes = b"one", binding: str = "sym", run: FigureRun = RUN
+) -> StoredFigures:
     page = StoredFigurePage("default", None, "plotly", {}, (
         StoredFigureFile("plotly-json", "application/vnd.plotly.v1+json",
                          "default.plotly.json", tag),
     ))
-    return StoredFigures((StoredFigureBinding(binding, "X", binding, (page,)),), ())
+    return StoredFigures(run, (StoredFigureBinding(binding, "X", binding, (page,)),), ())
+
+
+def _at(relative: str, run: FigureRun = RUN) -> str:
+    return f"figures/{run.run_id}/{relative}"
+
+
+def _runs(store) -> dict:
+    return read_image_figures_descriptor(store)["runs"]
+
+
+def _snapshot(store, run: FigureRun):
+    """Bytes and inode of every file in one run folder."""
+    folder = store / "figures" / run.run_id
+    return {
+        p.relative_to(store).as_posix(): (p.read_bytes(), p.stat().st_ino)
+        for p in sorted(folder.rglob("*"))
+        if p.is_file()
+    }
 
 
 def _tables():
@@ -44,13 +69,13 @@ def test_save2zarr_writes_figures_and_an_independent_reader_opens_them(tmp_path,
     import zarr
 
     store = plate.save2zarr(tmp_path / "p.ome.zarr", figures=_figures())
-    descriptor = read_image_figures_descriptor(store)
-    assert descriptor["bindings"]["sym"]["pages"][0]["files"][0]["path"] == (
-        "figures/sym/default.plotly.json"
+    run = _runs(store)[RUN.run_id]
+    assert run["bindings"]["sym"]["pages"][0]["files"][0]["path"] == _at(
+        "sym/default.plotly.json"
     )
     root = zarr.open_group(str(store), mode="r")
     assert isinstance(root["figures"], zarr.Group)
-    assert isinstance(root["figures/sym"], zarr.Group)
+    assert isinstance(root[f"figures/{RUN.run_id}/sym"], zarr.Group)
     ome = json.loads((store / "OME" / "zarr.json").read_text(encoding="utf-8"))
     assert "figures" not in ome["attributes"]["ome"]["series"]
     assert "figures" not in (store / "OME" / "METADATA.ome.xml").read_text(
@@ -69,25 +94,46 @@ def test_process_writer_carries_figures_inside_the_consolidated_store(tmp_path, 
 
     out = tmp_path / "p.ome.zarr"
     write_process_only_layer(plate, "rgb", out, fmt="zarr", figures=_figures())
-    assert (out / "figures/sym/default.plotly.json").read_bytes() == b"one"
+    assert (out / _at("sym/default.plotly.json")).read_bytes() == b"one"
     root = json.loads((out / "zarr.json").read_text(encoding="utf-8"))
-    assert "figures/sym" in root["consolidated_metadata"]["metadata"]
+    assert _at("sym") in root["consolidated_metadata"]["metadata"]
 
 
-def test_measure_rebuild_replaces_the_group_and_keeps_pixels_linked(tmp_path, plate):
+def test_a_measure_rewrite_adds_its_run_and_keeps_the_others(tmp_path, plate):
+    """Two runs, one store (spec §1a): the earlier folder stays, hard-linked."""
     store = plate.save2zarr(tmp_path / "p.ome.zarr", figures=_figures(b"old", "gone"))
+    earlier = _snapshot(store, RUN)
+    earlier_entry = _runs(store)[RUN.run_id]
     pixel = next(
         p for p in (store / "rgb" / "0").rglob("*") if p.is_file() and p.name != "zarr.json"
     )
     pixel_inode = pixel.stat().st_ino
     replace_image_tables(
         store, _tables(), objmap_target=ngff_.objmap_path("rgb"),
+        figures=_figures(b"new", "kept", LATER),
+    )
+    assert _snapshot(store, RUN) == earlier
+    assert _runs(store)[RUN.run_id] == earlier_entry
+    assert (store / _at("kept/default.plotly.json", LATER)).read_bytes() == b"new"
+    assert set(_runs(store)) == {RUN.run_id, LATER.run_id}
+    assert pixel.stat().st_ino == pixel_inode
+
+
+def test_the_same_run_id_replaces_only_that_folder(tmp_path, plate):
+    store = plate.save2zarr(tmp_path / "p.ome.zarr", figures=_figures(b"later", "x", LATER))
+    replace_image_tables(
+        store, _tables(), objmap_target=ngff_.objmap_path("rgb"),
+        figures=_figures(b"old", "gone"),
+    )
+    other = _snapshot(store, LATER)
+    replace_image_tables(
+        store, _tables(), objmap_target=ngff_.objmap_path("rgb"),
         figures=_figures(b"new", "kept"),
     )
-    assert not (store / "figures/gone").exists()
-    assert (store / "figures/kept/default.plotly.json").read_bytes() == b"new"
-    assert list(read_image_figures_descriptor(store)["bindings"]) == ["kept"]
-    assert pixel.stat().st_ino == pixel_inode
+    assert not (store / _at("gone")).exists()
+    assert (store / _at("kept/default.plotly.json")).read_bytes() == b"new"
+    assert list(_runs(store)[RUN.run_id]["bindings"]) == ["kept"]
+    assert _snapshot(store, LATER) == other
 
 
 @pytest.mark.skipif(
@@ -97,7 +143,7 @@ def test_measure_rebuild_replaces_the_group_and_keeps_pixels_linked(tmp_path, pl
 def test_a_same_name_rebuild_never_writes_through_into_the_live_store(tmp_path, plate):
     """Spec §5: the part's copies are hard links; the new bytes must be new files."""
     store = plate.save2zarr(tmp_path / "p.ome.zarr", figures=_figures(b"old-bytes", "sym"))
-    held = os.open(store / "figures/sym/default.plotly.json", os.O_RDONLY)
+    held = os.open(store / _at("sym/default.plotly.json"), os.O_RDONLY)
     try:
         replace_image_tables(
             store, _tables(), objmap_target=ngff_.objmap_path("rgb"),
@@ -107,34 +153,39 @@ def test_a_same_name_rebuild_never_writes_through_into_the_live_store(tmp_path, 
         assert os.read(held, 32) == b"old-bytes"
     finally:
         os.close(held)
-    assert (store / "figures/sym/default.plotly.json").read_bytes() == b"new-bytes"
+    assert (store / _at("sym/default.plotly.json")).read_bytes() == b"new-bytes"
 
 
-def test_measure_rebuild_with_no_bindings_removes_key_and_group(tmp_path, plate):
+def test_no_new_run_touches_no_figure(tmp_path, plate):
+    """`figures=None` -- the default, and a pipeline with no image binding --
+    adds no run and removes none (spec §1a; KEEP_FIGURES is retired)."""
     store = plate.save2zarr(tmp_path / "p.ome.zarr", figures=_figures())
+    files_before = _snapshot(store, RUN)
+    descriptor_before = read_image_figures_descriptor(store)
+    replace_image_tables(store, _tables(), objmap_target=ngff_.objmap_path("rgb"))
     replace_image_tables(
         store, _tables(), objmap_target=ngff_.objmap_path("rgb"), figures=None
     )
-    assert read_image_figures_descriptor(store) is None
-    assert not (store / "figures").exists()
-
-
-def test_a_table_only_replace_keeps_figures_byte_for_byte(tmp_path, plate):
-    """MINOR-1: omitting `figures` must never strip them (KEEP_FIGURES)."""
-    store = plate.save2zarr(tmp_path / "p.ome.zarr", figures=_figures())
-
-    def _snapshot():
-        return {
-            p.relative_to(store).as_posix(): (p.read_bytes(), p.stat().st_ino)
-            for p in sorted((store / "figures").rglob("*"))
-            if p.is_file()
-        }
-
-    files_before = _snapshot()
-    descriptor_before = read_image_figures_descriptor(store)
-    replace_image_tables(store, _tables(), objmap_target=ngff_.objmap_path("rgb"))
-    assert _snapshot() == files_before
+    assert _snapshot(store, RUN) == files_before
     assert read_image_figures_descriptor(store) == descriptor_before
+
+
+def test_a_rewrite_from_scratch_keeps_the_other_runs(tmp_path, plate):
+    """Full `--overwrite`, a re-derived process store, Stage 3 over Stage 1:
+    save2zarr over an existing store carries every other run (spec §1a)."""
+    store = plate.save2zarr(tmp_path / "p.ome.zarr", figures=_figures(b"first", "a"))
+    first = {k: v[0] for k, v in _snapshot(store, RUN).items()}
+    first_entry = _runs(store)[RUN.run_id]
+    plate.save2zarr(store, figures=_figures(b"second", "b", LATER))
+    assert {k: v[0] for k, v in _snapshot(store, RUN).items()} == first
+    assert _runs(store)[RUN.run_id] == first_entry
+    assert set(_runs(store)) == {RUN.run_id, LATER.run_id}
+    plate.save2zarr(store)
+    assert set(_runs(store)) == {RUN.run_id, LATER.run_id}
+    plate.save2zarr(store, figures=_figures(b"third", "c", LATER))
+    assert not (store / _at("b", LATER)).exists()
+    assert (store / _at("c/default.plotly.json", LATER)).read_bytes() == b"third"
+    assert {k: v[0] for k, v in _snapshot(store, RUN).items()} == first
 
 
 def test_the_descriptor_reader_answers_none_for_a_foreign_root(tmp_path):
@@ -166,7 +217,7 @@ def test_figure_files_are_written_through_long_path(tmp_path, monkeypatch):
     part.mkdir()
     write_image_figures(part, _figures())
     assert "default.plotly.json" in seen
-    assert (part / "figures/sym/default.plotly.json").read_bytes() == b"one"
+    assert (part / _at("sym/default.plotly.json")).read_bytes() == b"one"
 
 
 def test_measure_rebuild_writes_figures_before_the_root_is_promoted(
@@ -181,7 +232,8 @@ def test_measure_rebuild_writes_figures_before_the_root_is_promoted(
 
     def _spy(part, final, **kwargs):
         root = json.loads((Path(part) / "zarr.json").read_text(encoding="utf-8"))
-        entry = root["attributes"]["phenotypic"]["figures"]["bindings"]["sym"]["pages"][0]["files"][0]
+        run = root["attributes"]["phenotypic"]["figures"]["runs"][RUN.run_id]
+        entry = run["bindings"]["sym"]["pages"][0]["files"][0]
         data = (Path(part) / entry["path"]).read_bytes()
         seen["match"] = hashlib.sha256(data).hexdigest() == entry["sha256"]
         return real_promote(part, final, **kwargs)
@@ -202,4 +254,4 @@ def test_migrates_table_replace_leaves_figures_untouched(tmp_path, plate):
         store, _tables().measurements_payload(), objmap_target=ngff_.objmap_path("rgb")
     )
     assert read_image_figures_descriptor(store) == before
-    assert (store / "figures/sym/default.plotly.json").read_bytes() == b"one"
+    assert (store / _at("sym/default.plotly.json")).read_bytes() == b"one"

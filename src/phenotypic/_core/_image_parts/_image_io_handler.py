@@ -1251,9 +1251,10 @@ class ImageIOHandler(ImageColorSpace):
                 ``duration_seconds`` from the store, making it byte-identical
                 across identical runs (spec 2.3.3). Only the ``--mode
                 process`` writer passes ``True``.
-            figures: Per-image figures to write inside this store's
-                transaction (spec 2026-09-22 §3). ``None`` writes no
-                ``figures`` key.
+            figures: One run's per-image figures to write inside this store's
+                transaction (spec 2026-09-22 §3, §1a). ``None`` adds no run.
+                Either way, every other run folder of a store already at
+                *final* is carried into the part (§1a "never wiped").
         """
         from phenotypic.sdk_ import ngff_
 
@@ -1404,11 +1405,18 @@ class ImageIOHandler(ImageColorSpace):
             )
 
         # Figures land in THIS part too, before the root, for the same reason
-        # as the tables above: the root certifies their sha256 (spec §1).
+        # as the tables above: the root certifies their sha256 (spec §1). A
+        # store being replaced keeps every other run's folder (spec §1a).
+        from phenotypic.sdk_._image_figures import (
+            carry_figure_runs,
+            write_image_figures,
+        )
+
+        carried_fragment = carry_figure_runs(
+            final, part, exclude=figures.run.run_id if figures is not None else None
+        )
         figures_fragment = None
         if figures is not None:
-            from phenotypic.sdk_._image_figures import write_image_figures
-
             figures_fragment = write_image_figures(part, figures)
 
         # 4. root zarr.json LAST
@@ -1429,14 +1437,10 @@ class ImageIOHandler(ImageColorSpace):
             apply_image_tables_attributes(
                 phenotypic_attributes, tables_attributes
             )
-        if figures_fragment is not None:
-            from phenotypic.sdk_._image_figures import (
-                apply_image_figures_attributes,
-            )
+        from phenotypic.sdk_._image_figures import apply_image_figures_attributes
 
-            apply_image_figures_attributes(
-                phenotypic_attributes, figures_fragment
-            )
+        apply_image_figures_attributes(phenotypic_attributes, carried_fragment)
+        apply_image_figures_attributes(phenotypic_attributes, figures_fragment)
         self._write_group_json(
             part,
             {

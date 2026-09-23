@@ -496,11 +496,15 @@ def test_migrate_leaves_a_stores_figures_and_their_descriptor_untouched(
         "retry_base_length": 0,
         "operations": [],
     }, root_version="")
-    figure = store / "figures" / "sym" / "default.plotly.json"
+    run_id = "2026-09-22-3f9a1c2b7e04"
+    figure = store / "figures" / run_id / "sym" / "default.plotly.json"
     figure.parent.mkdir(parents=True)
     figure.write_bytes(b"{}")
     document = json.loads(root.read_text(encoding="utf-8"))
-    descriptor = {"schema_version": 1, "bindings": {}, "failed": []}
+    descriptor = {"schema_version": 1, "runs": {run_id: {
+        "date": "2026-09-22", "pipeline_sha256": "3f9a1c2b7e04" + "0" * 52,
+        "bindings": {}, "failed": [], "unavailable": [],
+    }}}
     document["attributes"]["phenotypic"]["figures"] = descriptor
     root.write_text(json.dumps(document), encoding="utf-8")
 

@@ -14,7 +14,7 @@ from phenotypic.sdk_._image_figures import (
     StoredFigurePage,
     StoredFigures,
 )
-from tests.unit.plotting._store_fixtures import figure_store
+from tests.unit.plotting._store_fixtures import TEST_RUN, figure_store, run_path
 
 _STEM = _image_output_stem("ds 1", "plate_01")
 
@@ -38,11 +38,14 @@ def _page(key="default", label=None, formats=("plotly-json",), backend="plotly")
 
 
 def _one(*pages, binding="sym", failed=()):
-    return StoredFigures((StoredFigureBinding(binding, "MeasureSymZones", binding, pages),), failed)
+    return StoredFigures(
+        TEST_RUN, (StoredFigureBinding(binding, "MeasureSymZones", binding, pages),), failed
+    )
 
 
 def _publish(tmp_path, store, **kw):
     plots = tmp_path / "deliverables" / "plots"
+    kw.setdefault("run_id", TEST_RUN.run_id)
     publish_store_figures(store, plots, dataset="ds 1", image_stem="plate_01", **kw)
     return plots
 
@@ -119,7 +122,7 @@ def test_a_refused_guard_mid_page_leaves_no_half_page(tmp_path, monkeypatch):
 
 def test_a_tampered_file_is_recorded_and_not_copied(tmp_path):
     store = figure_store(tmp_path / "s", _one(_page()))
-    (store / "figures/sym/default.plotly.json").write_bytes(b"tampered")
+    (store / run_path("sym/default.plotly.json")).write_bytes(b"tampered")
     plots = _publish(tmp_path, store, plot_classes={"sym": "MeasureSymZones"})
     assert not list((plots / "sym").rglob("*.plotly.json"))
     [record] = _lines(plots)
@@ -158,7 +161,7 @@ def test_a_page_that_publishes_nothing_keeps_its_previous_files(tmp_path):
     for suffix in (".html", ".png"):
         (base / f"{_STEM}{suffix}").write_bytes(b"previous")
     store = figure_store(tmp_path / "s", _one(_page()))
-    (store / "figures/sym/default.plotly.json").write_bytes(b"tampered")
+    (store / run_path("sym/default.plotly.json")).write_bytes(b"tampered")
     _publish(tmp_path, store)
     assert sorted(p.name for p in base.iterdir()) == [f"{_STEM}.html", f"{_STEM}.png"]
 
@@ -282,7 +285,7 @@ def test_every_page_failed_replaces_the_previous_manifest(tmp_path):
         StoredFigureFailure("sym", "a", "plotly-json", "OSError: second"),
     )
     plots = _publish(
-        tmp_path, figure_store(tmp_path / "s", StoredFigures((), failed)),
+        tmp_path, figure_store(tmp_path / "s", StoredFigures(TEST_RUN, (), failed)),
         plot_classes={"sym": "MeasureSymZones"},
     )
     manifest = _manifest(plots)
@@ -300,14 +303,14 @@ def test_a_failed_lone_default_page_writes_nothing(tmp_path):
     """Flat case: a page that published nothing keeps its previous files, so
     there is nothing to write -- not even the binding's directory."""
     failed = (StoredFigureFailure("sym", "default", "png", "PlotBackendUnavailable: x"),)
-    plots = _publish(tmp_path, figure_store(tmp_path / "s", StoredFigures((), failed)))
+    plots = _publish(tmp_path, figure_store(tmp_path / "s", StoredFigures(TEST_RUN, (), failed)))
     assert [r["page"] for r in _lines(plots)] == ["default"]
     assert not (plots / "sym").exists()
 
 
 def test_a_binding_level_failure_is_a_record_only(tmp_path):
     failed = (StoredFigureFailure("orient", None, None, "RuntimeError: boom"),)
-    plots = _publish(tmp_path, figure_store(tmp_path / "s", StoredFigures((), failed)))
+    plots = _publish(tmp_path, figure_store(tmp_path / "s", StoredFigures(TEST_RUN, (), failed)))
     assert [r["binding_id"] for r in _lines(plots)] == ["orient"]
     assert not (plots / "orient").exists()
 
@@ -346,11 +349,11 @@ def test_an_unknown_schema_version_is_skipped_and_recorded(tmp_path):
 def test_a_path_outside_figures_is_a_per_file_failure(tmp_path):
     """Correct sha256, so only the containment check can refuse it."""
     store = figure_store(tmp_path / "s", _one(_page()))
-    data = (store / "figures/sym/default.plotly.json").read_bytes()
+    data = (store / run_path("sym/default.plotly.json")).read_bytes()
     (store / "outside.plotly.json").write_bytes(data)
 
     def _escape(descriptor):
-        descriptor["bindings"]["sym"]["pages"][0]["files"][0]["path"] = (
+        descriptor["runs"][TEST_RUN.run_id]["bindings"]["sym"]["pages"][0]["files"][0]["path"] = (
             "figures/../outside.plotly.json"
         )
 
@@ -360,3 +363,27 @@ def test_a_path_outside_figures_is_a_per_file_failure(tmp_path):
     [record] = _lines(plots)
     assert (record["page"], record["format"]) == ("default", "plotly-json")
     assert "outside figures/" in record["error"]
+
+
+# --- §1a: the copy-out publishes this run's folder, and only it ---
+
+
+def test_only_this_runs_folder_is_published(tmp_path):
+    from phenotypic.sdk_._image_figures import FigureRun
+
+    other = FigureRun(date="2026-09-21", pipeline_sha256="cd" * 32)
+    earlier = StoredFigures(
+        other, (StoredFigureBinding("old", "Old", "old", (_page(),)),),
+        (StoredFigureFailure("old", None, None, "RuntimeError: earlier run"),),
+    )
+    store = figure_store(tmp_path / "s", earlier, _one(_page()))
+    plots = _publish(tmp_path, store)
+    assert sorted(p.name for p in plots.iterdir() if p.is_dir()) == ["sym"]
+    assert not (plots / ".failures.jsonl").exists()
+    assert (plots / "sym" / "ds-1" / f"{_STEM}.plotly.json").is_file()
+
+
+def test_a_store_with_no_folder_for_this_run_publishes_nothing(tmp_path):
+    store = figure_store(tmp_path / "s", _one(_page()))
+    plots = _publish(tmp_path, store, run_id="2026-01-01-000000000000")
+    assert not plots.exists()

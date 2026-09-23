@@ -343,9 +343,14 @@ def process_single_apply_only_core(
         # bindings recompute inside inspect() here, because apply() never
         # filled their cache -- accepted (spec §3 process mode).
         if process_format == "zarr":
-            from phenotypic.plotting._pipeline._store_figures import build_image_figures
+            from phenotypic.plotting._pipeline._store_figures import (
+                build_image_figures,
+                figure_run_for,
+            )
 
-            figures = build_image_figures(pipeline, image)
+            figures = build_image_figures(
+                pipeline, image, run=figure_run_for(image)
+            )
         # BEFORE the write below, or the store records the stale default.
         # `initialize_cli_provenance` opens at `"in_progress"`
         # (_provenance.py:305), and every sibling path closes it --

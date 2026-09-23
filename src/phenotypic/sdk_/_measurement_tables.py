@@ -8,7 +8,7 @@ import shutil
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Final, Literal
+from typing import TYPE_CHECKING, Literal
 
 import pandas as pd
 
@@ -23,22 +23,6 @@ if TYPE_CHECKING:
     from ._image_figures import StoredFigures
 
 JoinStatus = Literal["not_requested", "joined", "no_common_keys"]
-
-
-class _KeepFigures:
-    """Type of :data:`KEEP_FIGURES`; its one instance is compared by identity."""
-
-    __slots__ = ()
-
-    def __repr__(self) -> str:
-        return "KEEP_FIGURES"
-
-
-#: :func:`replace_image_tables`'s default: carry the store's ``figures/``
-#: group and root ``figures`` key across unchanged. Removal is ``None``, and
-#: stays an explicit act -- a caller that only refreshes tables cannot strip
-#: figures by omission.
-KEEP_FIGURES: Final = _KeepFigures()
 
 
 @dataclass(frozen=True)
@@ -654,7 +638,7 @@ def _rewrite_store_tables(
     plan: Callable[[dict[str, object]], Callable[[Path], None]],
     durable: bool | None,
     commit_guard: CommitGuard | None,
-    clear_figures: bool = False,
+    clear_figure_run: str | None = None,
 ) -> Path:
     """Re-promote one store with refreshed embedded tables, root written last.
 
@@ -662,9 +646,10 @@ def _rewrite_store_tables(
     and **mutates** it -- before any part exists, so a refusal costs nothing --
     and returns the writer that populates the part.
 
-    *clear_figures* drops the part's copied ``figures/`` before *plan*'s writer
-    runs, for a caller that rebuilds the group (spec 2026-09-22 §3 measure
-    mode). Leaving it ``False`` carries the group across unchanged.
+    *clear_figure_run* drops the part's copy of that one run folder,
+    ``figures/<run>/``, before *plan*'s writer rewrites it (spec 2026-09-22
+    §1a). Every other run folder is carried across unchanged, as are all of
+    them when it is ``None``.
 
     **There is no in-place fast path, and its removal is the point (CAN-3 /
     C5).** The branch this replaces fired whenever the measurement
@@ -704,12 +689,15 @@ def _rewrite_store_tables(
         # These are hard links into the promoted store, so unlinking them in
         # the part leaves the live store untouched.
         shutil.rmtree(part / ngff_.TABLES_GROUP, ignore_errors=True)
-        if clear_figures:
+        if clear_figure_run is not None:
             # The copied figure files are HARD LINKS into the live store, like
-            # everything copytree cloned above. Removing them here means the
-            # new generation is written as new files; writing through a link
+            # everything copytree cloned above. Removing this run's folder
+            # here means it is rewritten as new files; writing through a link
             # would change the published store before its new root exists.
-            shutil.rmtree(part / ngff_.FIGURES_GROUP, ignore_errors=True)
+            # Other runs' folders are never touched (spec §1a).
+            shutil.rmtree(
+                part / ngff_.FIGURES_GROUP / clear_figure_run, ignore_errors=True
+            )
         populate(part)
         atomic_write_json(part / ngff_.STORE_ROOT_JSON, root_document)
         ngff_.promote_store(
@@ -729,7 +717,7 @@ def replace_image_tables(
     store_path: Path,
     tables: PreparedImageTables,
     *,
-    figures: StoredFigures | None | _KeepFigures = KEEP_FIGURES,
+    figures: StoredFigures | None = None,
     objmap_target: str | None = None,
     durable: bool | None = None,
     commit_guard: CommitGuard | None = None,
@@ -739,17 +727,16 @@ def replace_image_tables(
     The ``--mode measure`` analogue of the promote-time writer: both tables
     and the root's ``metadata_table`` block move as one root-last
     transaction, so the store never certifies a table it does not have or a
-    snapshot it was not built against. When *figures* is given, the
-    ``figures/`` group is rebuilt in the same transaction, so a store's
-    figures and its table always come from the same pipeline.
+    snapshot it was not built against. When *figures* is given, its run
+    folder is written in the same transaction.
 
     Args:
         store_path: A promoted ``*.ome.zarr`` store.
         tables: The split payload to write.
-        figures: The current pipeline's per-image figures, which replace the
-            store's ``figures/`` group; ``None`` removes the group along with
-            the root's ``figures`` key (spec 2026-09-22 §3 measure mode). The
-            default, :data:`KEEP_FIGURES`, carries both across unchanged.
+        figures: One run's per-image figures. They replace that run's folder
+            and descriptor entry only; every other run is carried across
+            unchanged (spec 2026-09-22 §1a). ``None`` adds no run and
+            touches no figure.
         objmap_target: Store-relative path of the label image the measurement
             table indexes. ``None`` reads it from the store.
         durable: ``fsync`` before promoting. ``None`` auto-detects SLURM.
@@ -774,7 +761,7 @@ def replace_image_tables(
                 phenotypic,
                 write_image_tables(part, tables, objmap_target=target),
             )
-            if isinstance(figures, _KeepFigures):
+            if figures is None:
                 return
             from ._image_figures import (
                 apply_image_figures_attributes,
@@ -782,10 +769,7 @@ def replace_image_tables(
             )
 
             apply_image_figures_attributes(
-                phenotypic,
-                write_image_figures(part, figures)
-                if figures is not None
-                else None,
+                phenotypic, write_image_figures(part, figures)
             )
 
         return _populate
@@ -795,7 +779,7 @@ def replace_image_tables(
         plan=_plan,
         durable=durable,
         commit_guard=commit_guard,
-        clear_figures=not isinstance(figures, _KeepFigures),
+        clear_figure_run=figures.run.run_id if figures is not None else None,
     )
 
 

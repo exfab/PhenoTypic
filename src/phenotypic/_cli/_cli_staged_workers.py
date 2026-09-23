@@ -576,10 +576,17 @@ def stage3_merge_measure_core(
                 commit_guard=commit_guard,
             )
         from phenotypic.plotting._pipeline import PlotCoordinator
-        from phenotypic.plotting._pipeline._store_figures import build_image_figures
+        from phenotypic.plotting._pipeline._store_figures import (
+            build_image_figures,
+            figure_run_for,
+        )
 
+        # The run is Stage 1's: its journal application, continued here,
+        # records the pipeline digest (spec §1a).
         _check_active(active_check)
-        figures = build_image_figures(plan.post_pipeline, image)
+        figures = build_image_figures(
+            plan.post_pipeline, image, run=figure_run_for(image)
+        )
 
         _check_active(active_check)
         set_provenance_status(image, "complete")
@@ -603,7 +610,10 @@ def stage3_merge_measure_core(
         PlotCoordinator(
             plan.post_pipeline, output_dir, commit_guard=commit_guard
         ).publish_store_figures(
-            saved_store, dataset=dataset_name, image_stem=image_stem
+            saved_store,
+            run_id=figures.run.run_id if figures is not None else None,
+            dataset=dataset_name,
+            image_stem=image_stem,
         )
         if work_id is None:
             _check_active(active_check)

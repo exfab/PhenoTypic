@@ -3,6 +3,8 @@
 Writes nothing, so it is safe to call anywhere before a store transaction.
 Everything per binding sits inside that binding's failure boundary; only
 ``PlotPublicationBlocked`` propagates, as in every handler.
+
+What is built is one run folder's worth (spec §1a): the caller names the run.
 """
 from __future__ import annotations
 
@@ -14,11 +16,13 @@ from typing import Any
 from phenotypic.abc_.plotting import PlotImage, figure_backend_of
 from phenotypic.abc_.plotting._store_formats import STORE_FORMATS, default_store_formats
 from phenotypic.sdk_._image_figures import (
+    FigureRun,
     StoredFigureBinding,
     StoredFigureFailure,
     StoredFigureFile,
     StoredFigurePage,
     StoredFigures,
+    utc_run_date,
 )
 
 from ._adapter import FigureAdapter
@@ -42,24 +46,59 @@ def normalize_figure_error(error: BaseException) -> str:
     return _ADDRESS.sub("0x…", _format_error(error))
 
 
-def build_image_figures(pipeline: Any, image: Any) -> StoredFigures | None:
+def figure_run_for(
+    image: Any, *, date: str | None = None, pipeline_sha256: str | None = None
+) -> FigureRun | None:
+    """The run folder *image*'s figures belong to (spec §1a).
+
+    Args:
+        image: The image being written. When *pipeline_sha256* is not given,
+            its provenance journal's current application supplies it -- the
+            digest the journal records for this run.
+        date: The run's UTC date; ``None`` means today in UTC.
+        pipeline_sha256: The pipeline's sha256, when the caller has it.
+
+    Returns:
+        The run, or ``None`` when no pipeline digest is known.
+    """
+    if pipeline_sha256 is None:
+        journal = getattr(getattr(image, "_metadata", None), "provenance_journal", None)
+        applications = journal.get("applications") if isinstance(journal, dict) else None
+        pipeline = applications[-1].get("pipeline") if applications else None
+        pipeline_sha256 = pipeline.get("sha256") if isinstance(pipeline, dict) else None
+    if pipeline_sha256 is None:
+        return None
+    return FigureRun(date=date or utc_run_date(), pipeline_sha256=pipeline_sha256)
+
+
+def build_image_figures(
+    pipeline: Any, image: Any, *, run: FigureRun | None
+) -> StoredFigures | None:
     """Render every ``PlotImage`` binding of *pipeline* for *image*.
 
     Args:
         pipeline: An ``ImagePipeline`` with normalized plot bindings.
         image: The image each binding's ``inspect`` receives.
+        run: The run folder the figures belong to (spec §1a). Needed only
+            when the pipeline has an image binding.
 
     Returns:
         ``None`` when the pipeline has no ``PlotImage`` binding -- the store
-        then carries no ``figures`` key at all. Otherwise the built value,
-        which holds no bindings if every one failed.
+        then gains no run folder. Otherwise the built value, which holds no
+        bindings if every one failed.
 
     Raises:
         PlotPublicationBlocked: Never swallowed.
+        ValueError: If there is an image binding but no *run*.
     """
     image_bindings = [b for b in pipeline.get_plots() if isinstance(b.plot, PlotImage)]
     if not image_bindings:
         return None
+    if run is None:
+        raise ValueError(
+            "image figures need the run folder they belong to (spec §1a); "
+            "no pipeline digest was known for this image"
+        )
     built: list[StoredFigureBinding] = []
     failed: list[StoredFigureFailure] = []
     for binding in image_bindings:
@@ -81,7 +120,7 @@ def build_image_figures(pipeline: Any, image: Any) -> StoredFigures | None:
                 directory=safe_path_component(binding.id),
                 pages=tuple(pages),
             ))
-    return StoredFigures(bindings=tuple(built), failed=tuple(failed))
+    return StoredFigures(run=run, bindings=tuple(built), failed=tuple(failed))
 
 
 def _build_pages(
@@ -165,4 +204,4 @@ def _build_page(
     )
 
 
-__all__ = ["build_image_figures", "normalize_figure_error"]
+__all__ = ["build_image_figures", "figure_run_for", "normalize_figure_error"]

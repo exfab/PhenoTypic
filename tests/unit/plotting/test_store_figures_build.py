@@ -17,6 +17,7 @@ from phenotypic.plotting._pipeline._store_figures import (
     build_image_figures,
     normalize_figure_error,
 )
+from tests.unit.plotting._store_fixtures import TEST_RUN
 
 
 class Bars(BaseModel, PlotImage):
@@ -71,11 +72,35 @@ class ReturnsNone(BaseModel, PlotImage):
 
 
 def _build(*plots):
-    return build_image_figures(ImagePipeline(plots=list(plots)), object())
+    return build_image_figures(ImagePipeline(plots=list(plots)), object(), run=TEST_RUN)
 
 
 def test_no_image_binding_builds_nothing():
-    assert build_image_figures(ImagePipeline(), object()) is None
+    assert build_image_figures(ImagePipeline(), object(), run=None) is None
+
+
+def test_the_built_value_names_its_run():
+    assert _build(Bars()).run == TEST_RUN
+
+
+def test_an_image_binding_without_a_run_is_refused():
+    """A run folder cannot be named without its pipeline digest (spec §1a)."""
+    with pytest.raises(ValueError, match="run folder"):
+        build_image_figures(ImagePipeline(plots=[Bars()]), object(), run=None)
+
+
+def test_figure_run_for_reads_the_journal_or_takes_what_it_is_given():
+    from types import SimpleNamespace
+
+    from phenotypic.plotting._pipeline._store_figures import figure_run_for
+
+    sha = "ef" * 32
+    journal = {"applications": [{"pipeline": {"source_path": "p.json", "sha256": sha}}]}
+    image = SimpleNamespace(_metadata=SimpleNamespace(provenance_journal=journal))
+    assert figure_run_for(image, date="2026-09-22").run_id == "2026-09-22-efefefefefef"
+    other = "01" * 32
+    assert figure_run_for(image, date="2026-09-22", pipeline_sha256=other).pipeline_sha256 == other
+    assert figure_run_for(object(), date="2026-09-22") is None
 
 
 def test_default_plotly_stores_plotly_json_only():
@@ -238,9 +263,10 @@ def test_unstorable_metadata_still_publishes_the_store_in_every_mode(
     root = _strict_json((store / "zarr.json").read_text(encoding="utf-8"))
     descriptor = root["attributes"]["phenotypic"]["figures"]
     assert descriptor == read_image_figures_descriptor(store)
-    [binding] = descriptor["bindings"].values()
+    run = descriptor["runs"][TEST_RUN.run_id]
+    [binding] = run["bindings"].values()
     assert [p["key"] for p in binding["pages"]] == ["good"]
-    assert [(f["page"], f["format"]) for f in descriptor["failed"]] == [("meta", None)]
+    assert [(f["page"], f["format"]) for f in run["failed"]] == [("meta", None)]
 
 
 def test_a_binding_whose_every_page_failed_is_absent(monkeypatch):

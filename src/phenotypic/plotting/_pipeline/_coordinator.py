@@ -83,13 +83,19 @@ class PlotCoordinator:
         self._commit_guard = commit_guard
 
     def publish_store_figures(
-        self, store_path: Path, *, dataset: str, image_stem: str
+        self, store_path: Path, *, run_id: str | None, dataset: str, image_stem: str
     ) -> None:
-        """Copy one promoted store's figures to deliverables (spec §3 step 3)."""
+        """Copy one run folder of a promoted store to deliverables (spec §3, §1a).
+
+        ``run_id`` ``None`` -- this run built no figures -- publishes nothing.
+        """
         from ._store_copyout import publish_store_figures
 
+        if run_id is None:
+            return
         publish_store_figures(
-            store_path, self._plots_base, dataset=dataset, image_stem=image_stem,
+            store_path, self._plots_base, run_id=run_id,
+            dataset=dataset, image_stem=image_stem,
             plot_classes={
                 binding.id: type(binding.plot).__name__
                 for binding in self._pipeline.get_plots()

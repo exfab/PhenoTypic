@@ -44,7 +44,6 @@ from ._metadata_join import (
     prepare_metadata_join_keys,
 )
 from phenotypic.schema import EXPERIMENT, IMAGE, METADATA_MATCH
-from phenotypic.sdk_._measurement_tables import KEEP_FIGURES, _KeepFigures
 from phenotypic.util import split_measurements
 from phenotypic.sdk_ import (
     analysis_manifest_path,
@@ -1952,7 +1951,7 @@ class OutputManager:
         measurements: pd.DataFrame,
         dataset_name: str,
         *,
-        figures: StoredFigures | None | _KeepFigures = KEEP_FIGURES,
+        figures: StoredFigures | None = None,
         durable: bool | None = None,
         commit_guard: CommitGuard | None = None,
     ) -> Path:
@@ -1969,9 +1968,9 @@ class OutputManager:
             store_path: A promoted ``*.ome.zarr`` store.
             measurements: The image's per-object measurements.
             dataset_name: Dataset name.
-            figures: The current pipeline's per-image figures; ``None``
-                removes the store's figures (spec 2026-09-22 §3 measure
-                mode). The default keeps them; see
+            figures: This run's per-image figures, written as one run folder
+                beside the store's others; ``None`` adds no run and touches
+                no figure (spec 2026-09-22 §1a). See
                 :func:`~phenotypic.sdk_.replace_image_tables`.
             durable: ``fsync`` before promoting. ``None`` defers to
                 :attr:`durable_writes`.

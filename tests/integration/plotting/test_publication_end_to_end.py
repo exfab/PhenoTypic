@@ -24,6 +24,7 @@ from phenotypic.detect import OtsuDetector
 from phenotypic.measure import MeasureSize
 from phenotypic.plotting._pipeline import PlotCoordinator, chrome_available
 from phenotypic.plotting._pipeline._store_figures import build_image_figures
+from tests.unit.plotting._store_fixtures import TEST_RUN
 
 _OPS = {"detect": OtsuDetector()}
 _MEAS = {"size": MeasureSize()}
@@ -66,7 +67,7 @@ def _publish_through_store(
     The store sits beside ``tmp_path``, not in it, so the tree assertions
     below see only deliverables. It is removed once copy-out has read it.
     """
-    stored = build_image_figures(pipeline, image)
+    stored = build_image_figures(pipeline, image, run=TEST_RUN)
     if expect_clean:
         # Replaces `strict=True`: a failed build must not pass quietly.
         assert stored.failed == ()
@@ -74,7 +75,7 @@ def _publish_through_store(
     try:
         store = image.save2zarr(store, figures=stored)
         PlotCoordinator(pipeline, tmp_path).publish_store_figures(
-            store, dataset="ds 1", image_stem="plate_01"
+            store, run_id=TEST_RUN.run_id, dataset="ds 1", image_stem="plate_01"
         )
     finally:
         shutil.rmtree(store, ignore_errors=True)

@@ -16,8 +16,8 @@ from typing import Any, Callable, Mapping
 from phenotypic.abc_.plotting._store_formats import STORE_FORMATS
 from phenotypic.sdk_ import CommitGuard
 from phenotypic.sdk_._file_locking import exclusive_path_lock
-from phenotypic.sdk_._image_figures import read_image_figures_descriptor
-from phenotypic.sdk_.ngff_ import FIGURES_GROUP, FIGURES_SCHEMA_VERSION
+from phenotypic.sdk_._image_figures import read_figure_run
+from phenotypic.sdk_.ngff_ import FIGURES_GROUP
 
 from ._adapter import FigureAdapter
 from ._failures import _format_error, record_plot_failure
@@ -44,17 +44,23 @@ def publish_store_figures(
     store_path: Path,
     plots_base: Path,
     *,
+    run_id: str,
     dataset: str,
     image_stem: str,
     plot_classes: Mapping[str, str] | None = None,
     publication_guard: Callable[[], bool] | None = None,
     commit_guard: CommitGuard | None = None,
 ) -> None:
-    """Republish one promoted store's figures at today's deliverables paths.
+    """Republish one run folder of a promoted store at today's deliverables paths.
+
+    Only *run_id*'s folder is published: the deliverables tree belongs to the
+    run that wrote it (spec §1a). A store with no folder for it publishes
+    nothing.
 
     Args:
         store_path: A promoted ``*.ome.zarr`` store.
         plots_base: Resolved ``deliverables/plots`` directory.
+        run_id: This run's folder name, ``{date}-{pipeline hash}``.
         dataset: Dataset name (unsanitized; hashed into the output stem).
         image_stem: Image stem (unsanitized).
         plot_classes: ``binding_id -> class name`` from the pipeline. The
@@ -81,24 +87,19 @@ def publish_store_figures(
         )
 
     try:
-        descriptor = read_image_figures_descriptor(store_path)
-        if descriptor is None:
+        # A newer schema_version raises here: reading a newer layout as this
+        # one would publish a guess.
+        run = read_figure_run(store_path, run_id)
+        if run is None:
             return
-        version = descriptor.get("schema_version")
-        if version != FIGURES_SCHEMA_VERSION:
-            # Reading a newer layout as this one would publish a guess.
-            raise ValueError(
-                f"figures schema_version {version!r} is not supported "
-                f"(this reader knows {FIGURES_SCHEMA_VERSION})"
-            )
         # Before the first record, too: a refused guard means "do not touch
         # this tree", and the failure log lives in it (_coordinator F1).
         _require_plot_publication(publication_guard)
         from ._coordinator import _image_output_stem
 
         output_stem = _image_output_stem(dataset, image_stem)
-        failures = list(descriptor.get("failed", []))
-        bindings = dict(descriptor.get("bindings", {}))
+        failures = list(run.get("failed", []))
+        bindings = dict(run.get("bindings", {}))
         # The pipeline's class wins; the descriptor's is the fallback for a
         # binding the pipeline no longer carries. Filled before the failure
         # records below, so a partial failure of a published binding is not
