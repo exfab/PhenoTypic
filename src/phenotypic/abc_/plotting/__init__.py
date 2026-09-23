@@ -8,6 +8,7 @@ adapters belong to the private :mod:`phenotypic.plotting._pipeline` package.
 
 from ._lifecycle import PlotAnalysis, PlotImage, PlotMeas, PlotQc
 from ._output import (
+    FigureInputUnavailable,
     FigureLike,
     PlotOutput,
     PlotPage,
@@ -20,6 +21,7 @@ from ._store_formats import StoreFormat
 __all__ = [
     "BoundFigures",
     "Control",
+    "FigureInputUnavailable",
     "FigureLike",
     "FigureSpec",
     "PhtPlot",
