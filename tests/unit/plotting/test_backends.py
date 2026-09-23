@@ -140,12 +140,15 @@ def test_preflight_is_silent_when_chrome_is_available(monkeypatch) -> None:
     assert preflight_plot_backends(pipeline) == []
 
 
-def test_preflight_names_plots_that_declare_no_backend(monkeypatch) -> None:
-    """A plot that overrides ``inspect`` with no ``@figure`` is still named.
+def test_preflight_does_not_name_image_plots_that_store_no_png(monkeypatch) -> None:
+    """Image plots are judged by their declared ``store``, not by Chrome.
 
-    PlotDetectModes is a PlotImage -- exactly the single-page image path whose
-    only record of a missing PNG is this announcement -- and it declares no
-    figure backend. Iterating ``iter_figures`` alone would leave it out.
+    Both are PlotImage: PlotDiagnostics has a Plotly primary storing the
+    default ``plotly-json``, and PlotDetectModes overrides ``inspect`` with no
+    ``@figure``, so each page stores its backend default. Neither renders a
+    PNG, so a missing Chrome costs them nothing (spec 2026-09-22 §2). The
+    undeclared non-image case is
+    ``test_preflight_treats_an_undecorated_inspect_override_as_undeclared``.
     """
     from phenotypic import ImagePipeline
     from phenotypic.detect import OtsuDetector
@@ -162,10 +165,7 @@ def test_preflight_names_plots_that_declare_no_backend(monkeypatch) -> None:
         plots=[PlotDiagnostics(), PlotDetectModes()],
     )
 
-    (line,) = preflight_plot_backends(pipeline)
-
-    assert "PlotDiagnostics" in line
-    assert "PlotDetectModes" in line
+    assert preflight_plot_backends(pipeline) == []
 
 
 def test_preflight_names_qc_recipe_bindings(monkeypatch) -> None:
@@ -312,7 +312,7 @@ def test_validation_announces_missing_chrome_once_per_process(
     from phenotypic import ImagePipeline
     from phenotypic._cli._cli_validation import validate_pipeline
     from phenotypic.detect import OtsuDetector
-    from phenotypic.plotting import PlotDetectModes, PlotDiagnostics
+    from phenotypic.plotting import PlotMeasTimeSeries
     from phenotypic.plotting._pipeline import _backends
 
     monkeypatch.setattr(_backends, "chrome_available", lambda: False)
@@ -320,7 +320,8 @@ def test_validation_announces_missing_chrome_once_per_process(
         tmp_path,
         ImagePipeline(
             ops={"d": OtsuDetector()},
-            plots=[PlotDiagnostics(), PlotDetectModes()],
+            # A PlotMeas: image plots storing no PNG are never announced.
+            plots=[PlotMeasTimeSeries(environment_by=["env"], replicate_by=["rep"])],
         ),
     )
 
@@ -335,8 +336,7 @@ def test_validation_announces_missing_chrome_once_per_process(
     ]
     assert len(records) == 1, [r.getMessage() for r in records]
     message = records[0].getMessage()
-    assert "PlotDiagnostics" in message
-    assert "PlotDetectModes" in message
+    assert "PlotMeasTimeSeries" in message
     assert "plotly_get_chrome" in message
 
 
@@ -623,3 +623,26 @@ def test_preflight_respects_an_undecorated_override_on_a_qc_recipe_class(
     assert "Plotly plots will publish" not in line
     assert "declare no figure backend" in line
     assert "qc-output" in line
+
+
+def test_image_plots_need_chrome_only_when_they_declare_png(monkeypatch):
+    from pydantic import BaseModel
+
+    from phenotypic import ImagePipeline
+    from phenotypic.abc_.plotting import PlotImage, figure
+    from phenotypic.plotting._pipeline import _backends
+
+    class Img(BaseModel, PlotImage):
+        @figure(title="t", backend="plotly", primary=True)
+        def draw(self, image):
+            raise AssertionError
+
+    class ImgPng(BaseModel, PlotImage):
+        @figure(title="t", backend="plotly", primary=True, store=("png",))
+        def draw(self, image):
+            raise AssertionError
+
+    monkeypatch.setattr(_backends, "chrome_available", lambda: False)
+    assert _backends.preflight_plot_backends(ImagePipeline(plots=[Img()])) == []
+    [line] = _backends.preflight_plot_backends(ImagePipeline(plots=[ImgPng()]))
+    assert "ImgPng" in line

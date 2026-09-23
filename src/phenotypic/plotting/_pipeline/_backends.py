@@ -190,10 +190,24 @@ def preflight_plot_backends(pipeline: Any) -> list[str]:
     Raises:
         PlotBackendUnavailable: If a declared backend's library is missing.
     """
+    from phenotypic.abc_.plotting import PlotImage
+
     plotly_ids: list[str] = []
     mpl_ids: list[str] = []
     undeclared_ids: list[str] = []
     for binding in pipeline.get_plots():
+        if isinstance(binding.plot, PlotImage):
+            spec = declared_figure_spec(binding.plot)
+            # An image plot renders PNG only if it declared it (spec §2);
+            # an undeclared one stores its backend default, which for Plotly
+            # needs no Chrome.
+            if spec is not None and spec.backend == "plotly" and "png" in spec.store:
+                plotly_ids.append(binding.id)
+            elif spec is not None and spec.backend == "mpl":
+                mpl_ids.append(binding.id)
+            elif spec is not None:
+                _require_importable("plotly", "plotly", [binding.id])
+            continue
         backend = _declared_backends(binding.plot)
         if backend == "plotly":
             plotly_ids.append(binding.id)
@@ -248,6 +262,16 @@ def _declared_backends(plot: Any) -> str | None:
     normalize_plot_bindings admits no other non-PhtPlot, and requires ``cls``
     to subclass PlotQc.
     """
+    spec = declared_figure_spec(plot)
+    return spec.backend if spec is not None else None
+
+
+def declared_figure_spec(plot: Any) -> Any:
+    """Return the ``FigureSpec`` *plot*'s ``inspect()`` renders, if declared.
+
+    The three-step rule documented on :func:`_declared_backends`, returning
+    the spec rather than its backend so a caller can also read ``spec.store``.
+    """
     from phenotypic.abc_.plotting import PhtPlot
 
     if isinstance(plot, PhtPlot):
@@ -259,11 +283,11 @@ def _declared_backends(plot: Any) -> str | None:
     effective_inspect = owner.inspect
     declared = getattr(effective_inspect, "__figure_spec__", None)
     if declared is not None:
-        return declared.backend
+        return declared
     if effective_inspect is not PhtPlot.inspect:
         return None
     try:
-        return primary_spec().backend
+        return primary_spec()
     except RuntimeError:
         return None
 

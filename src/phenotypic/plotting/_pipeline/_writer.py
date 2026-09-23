@@ -10,7 +10,7 @@ import re
 import uuid
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from typing import Any
 
 from phenotypic.sdk_._file_locking import exclusive_path_lock
@@ -275,6 +275,38 @@ def _remove_stale_sibling(
             path.unlink(missing_ok=True)
 
 
+def unique_page_stems(names: Sequence[tuple[str, str]]) -> list[str]:
+    """Return one filesystem stem per page, unique under case folding.
+
+    Args:
+        names: ``(page_key, preferred_name)`` per page, in page order. The
+            manifest writer prefers the label; the store uses the key.
+
+    Returns:
+        Stems in the same order. Sanitization is many-to-one, so a collision
+        gets a digest suffix derived from the page key -- stable across reruns.
+    """
+    used: dict[str, str] = {}
+    stems: list[str] = []
+    for key, preferred in names:
+        try:
+            stem = safe_path_component(preferred)
+        except Exception:
+            stem = "page"
+        base_stem = stem
+        folded = stem.casefold()
+        attempt = 0
+        while folded in used and used[folded] != key:
+            digest_input = key if attempt == 0 else f"{key}:{attempt}"
+            digest = hashlib.sha256(digest_input.encode("utf-8")).hexdigest()[:8]
+            stem = f"{base_stem}-{digest}"
+            folded = stem.casefold()
+            attempt += 1
+        used[folded] = key
+        stems.append(stem)
+    return stems
+
+
 def publish_plot_output(
     value: Any | PlotOutput,
     directory: Path,
@@ -338,7 +370,6 @@ def _publish_plot_output_locked(
     # Function-scope import on purpose; see the note at this module's imports.
     from ._backends import chrome_available
 
-    used: dict[str, str] = {}
     pages: list[dict[str, Any]] = []
     failed: list[dict[str, Any]] = []
     backends: set[str | None] = set()
@@ -348,25 +379,10 @@ def _publish_plot_output_locked(
     # does so while emitting a correct-looking relative src.
     base = plots_base if plots_base is not None else directory
 
-    for page in output.pages:
-        label = page.label or page.key
-        try:
-            stem = safe_path_component(label)
-        except Exception:
-            stem = "page"
-        base_stem = stem
-        folded = stem.casefold()
-        attempt = 0
-        while folded in used and used[folded] != page.key:
-            digest_input = (
-                page.key if attempt == 0 else f"{page.key}:{attempt}"
-            )
-            digest = hashlib.sha256(digest_input.encode("utf-8")).hexdigest()[:8]
-            stem = f"{base_stem}-{digest}"
-            folded = stem.casefold()
-            attempt += 1
-        used[folded] = page.key
-
+    stems = unique_page_stems(
+        [(page.key, page.label or page.key) for page in output.pages]
+    )
+    for page, stem in zip(output.pages, stems):
         try:
             files, errors, backend = _render_page(
                 page.figure, directory, stem,
