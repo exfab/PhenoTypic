@@ -251,11 +251,18 @@ figures/
 
 **Name.** The folder name is `{date}-{pipeline hash}`:
 
-- `{date}` is the **UTC calendar date on which the CLI invocation started**,
-  as `YYYY-MM-DD`. There is one value for the whole run: every image, every
-  stage, every SLURM task. A run that crosses midnight, or staged Stage 1 and
-  Stage 3 on different days, therefore stays in one folder. Programmatic
-  callers (`save2zarr(figures=...)`) pass the run id explicitly.
+- `{date}` is the **UTC calendar date on which the run started**, as
+  `YYYY-MM-DD`. There is one value for the whole run: every image, every
+  stage, every SLURM task. It is recorded once as `figures_run_date` in the
+  run's processing state (`state.config`, beside `pipeline_sha256`) when the
+  state is created. **A resume on a later day reuses it** (user decision), and
+  `--restart` / `--overwrite` start a new one. `--mode measure` has no run
+  state of its own, so it uses the UTC date of its own invocation. The date is
+  carried to the workers the way `--durable-writes` is, and is **not** part of
+  `processing_configuration_digest`: a new day must not invalidate
+  continuation. A run that crosses midnight, or staged Stage 1 and Stage 3 on
+  different days, therefore stays in one folder. Programmatic callers
+  (`save2zarr(figures=...)`) pass the run id explicitly.
 - `{pipeline hash}` is the first 12 hex characters of the pipeline's sha256.
   This is the same digest the provenance journal records as `pipeline.sha256`
   for this run's application.
