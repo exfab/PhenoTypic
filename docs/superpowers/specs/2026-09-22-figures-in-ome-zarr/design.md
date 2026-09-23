@@ -257,7 +257,12 @@ figures/
   run's processing state (`state.config`, beside `pipeline_sha256`) when the
   state is created. **A resume on a later day reuses it** (user decision), and
   `--restart` / `--overwrite` start a new one. `--mode measure` has no run
-  state of its own, so it uses the UTC date of its own invocation. The date is
+  state of its own. **When the store already has a run folder with the same
+  pipeline hash, measure mode reuses that folder's date** (the most recent
+  one, if several match). So a re-measure with the same pipeline overwrites
+  that run's figures, which is what the user decided: the measurer figures are
+  rebuilt, and §3a figures such as the calibration overlay are kept. Otherwise
+  measure mode uses the UTC date of its own invocation. The date is
   carried to the workers the way `--durable-writes` is, and is **not** part of
   `processing_configuration_digest`: a new day must not invalidate
   continuation. A run that crosses midnight, or staged Stage 1 and Stage 3 on
@@ -728,3 +733,8 @@ Added 2026-09-22 after the calibration overlay (PR #238) merged into main:
     rerun), and is otherwise listed as `unavailable`. The `KEEP_FIGURES`
     sentinel is retired: with nothing ever wiped, `figures=None` means "add
     no run folder" and is safe as the default.
+14. §1a (user decision): `--mode measure` with the same pipeline as an
+    earlier run reuses that run's folder (the most recent date among those
+    with the matching pipeline hash). The measurer figures there are
+    overwritten and the §3a figures are kept. A new pipeline still gets a new
+    folder.
