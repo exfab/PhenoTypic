@@ -150,7 +150,7 @@ def build_overlay_record(
         degree: The configured polynomial degree.
         n_expected: Patches the chart has.
         n_fitted: Patches that reached the fit, or ``None`` with no fit.
-        drafts: One per ROI, in ROI order.
+        drafts: One per ROI, in ROI order. Each crop is marked read-only.
         qc: The gate's records; matched to drafts by ``roi_index``.
         reference_srgb: Patch name -> reference colour, sRGB-encoded.
         fitted_patches: ``ColorCheckerProfile.diagnostics["patches"]`` when
@@ -195,6 +195,9 @@ def build_overlay_record(
                         delta_e_before=None if scored is None else float(scored["deltaE00_before"]),
                         delta_e_after=None if scored is None else float(scored["deltaE00_after"]),
                 ))
+        # The record is frozen; so are its pixels. The draft's crop is already
+        # an owned copy, so this costs nothing.
+        draft.crop.flags.writeable = False
         rois.append(RoiOverlay(
                 roi_index=draft.roi_index,
                 label=draft.label,

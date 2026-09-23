@@ -245,8 +245,12 @@ class CalibrateColorRpcc(ImageCorrector):
 
             try:
                 corrected = op.apply(plate)
-            finally:
-                op.show_tiles().savefig("calibration.png", dpi=160)
+            except RuntimeError:
+                # An apply() that fails before its ROIs are measured keeps no
+                # record; draw only when there is one, and re-raise either way.
+                if op.calibration_record is not None:
+                    op.show_tiles().savefig("calibration.png", dpi=160)
+                raise
 
         Args:
             figsize: Optional ``(width, height)`` in inches; must be at least
@@ -483,16 +487,17 @@ class CalibrateColorRpcc(ImageCorrector):
         failed = [record for record in records if not record.ok]
         if failed:
             summary = self._flag_summary(failed)
+            message = f"Colour-checker quality gate failed. {summary}"
             if self.on_qc_fail == "raise":
-                message = f"Colour-checker quality gate failed. {summary}"
                 keep_record("refused", refusal=message)
                 raise ValueError(message)
-            warnings.warn(
-                    f"Colour-checker quality gate failed. {summary}",
-                    UserWarning, stacklevel=3,
-            )
+            # The warning below raises under warnings-as-errors, so the record
+            # is kept first. Under "warn" this one is provisional: every later
+            # exit replaces it.
+            keep_record("skipped" if self.on_qc_fail == "skip" else "refused",
+                        refusal=None if self.on_qc_fail == "skip" else message)
+            warnings.warn(message, UserWarning, stacklevel=3)
             if self.on_qc_fail == "skip":
-                keep_record("skipped")
                 self._diagnostics = self._build_diagnostics(
                         chart_illuminant, [], patch_names, tiles_out, lattices,
                         accepted=[], skipped=True,
@@ -539,15 +544,22 @@ class CalibrateColorRpcc(ImageCorrector):
                 chart_illuminant, census, patch_names, tiles_out, lattices,
                 accepted=accepted,
         )
+        # The record says "corrected" only once the correction has run: a
+        # failure in it must not leave a figure titled corrected behind.
+        try:
+            out = ColorCorrector(
+                    profile=profile, output_illuminant=self.target_illuminant
+            ).apply(image, inplace=True)
+        except Exception as exc:
+            keep_record("refused", refusal=f"correction failed: {exc}")
+            raise
         keep_record(
                 "corrected_with_warnings"
                 if any(r.flags or r.warnings for r in records) else "corrected",
                 fitted=profile.diagnostics["patches"], rejected=rejected,
                 n_fitted=len(accepted),
         )
-        return ColorCorrector(
-                profile=profile, output_illuminant=self.target_illuminant
-        ).apply(image, inplace=True)
+        return out
 
     @staticmethod
     def _refusal(index: int, roi: CheckerRoi, *flags: str) -> QcRecord:

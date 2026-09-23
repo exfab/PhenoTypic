@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pytest
 from matplotlib.colors import to_rgba
@@ -91,6 +93,14 @@ def test_crop_is_the_as_shot_pixels_and_owns_its_buffer() -> None:
     assert crop.base is None
 
 
+def test_the_record_crop_is_read_only() -> None:
+    # The record is frozen; its pixels must be too, or a caller can rewrite
+    # what the figure says was shot.
+    crop = calibrated(planted_faults(), on_qc_fail="warn").calibration_record.rois[0].crop
+    with pytest.raises(ValueError, match="read-only"):
+        crop[0, 0] = 0
+
+
 # -- spec test 3: refused and skipped frames keep a record ------------------
 def test_a_gate_refusal_keeps_a_record() -> None:
     operation = frozen_op()                                   # on_qc_fail="raise"
@@ -107,6 +117,40 @@ def test_a_gate_refusal_keeps_a_record() -> None:
 def test_a_skipped_frame_keeps_a_record() -> None:
     operation = calibrated(render_frame(gain=1.6), on_qc_fail="skip")
     assert operation.calibration_record.verdict == "skipped"
+
+
+def test_a_failed_correction_leaves_no_corrected_record(monkeypatch) -> None:
+    from phenotypic.correction import ColorCorrector
+
+    def broken(self, image, inplace=False):
+        raise RuntimeError("planted correction failure")
+
+    monkeypatch.setattr(ColorCorrector, "apply", broken)
+    operation = frozen_op(on_qc_fail="warn")
+    with pytest.raises(RuntimeError, match="planted correction failure"):
+        quietly(operation, Image(arr=planted_faults()))
+
+    record = operation.calibration_record
+    assert record.verdict == "refused"
+    assert record.refusal.startswith("correction failed: ")
+    assert "planted correction failure" in record.refusal
+
+
+@pytest.mark.parametrize(("policy", "verdict"), [("skip", "skipped"), ("warn", "refused")])
+def test_warnings_as_errors_still_leave_a_record(policy, verdict) -> None:
+    # The gate's warning is the first thing that raises under -W error; the
+    # frame the user most wants to see must not lose its record to it.
+    operation = frozen_op(on_qc_fail=policy)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", UserWarning)
+        with pytest.raises(RuntimeError, match="quality gate failed"):
+            operation.apply(Image(arr=render_frame(gain=1.6)))
+
+    record = operation.calibration_record
+    assert record is not None and record.verdict == verdict
+    if verdict == "refused":
+        assert "quality gate failed" in record.refusal
+    assert all(roi.tiles for roi in record.rois)
 
 
 def test_no_usable_tiles_keeps_a_record_with_no_lattice() -> None:
