@@ -126,6 +126,21 @@ class PlotCoordinator:
                     image_stem=image_stem,
                 )
 
+    def publish_store_figures(
+        self, store_path: Path, *, dataset: str, image_stem: str
+    ) -> None:
+        """Copy one promoted store's figures to deliverables (spec §3 step 3)."""
+        from ._store_copyout import publish_store_figures
+
+        publish_store_figures(
+            store_path, self._plots_base, dataset=dataset, image_stem=image_stem,
+            plot_classes={
+                binding.id: type(binding.plot).__name__
+                for binding in self._pipeline.get_plots()
+            },
+            publication_guard=self._publication_guard, commit_guard=self._commit_guard,
+        )
+
     def emit_measurements(self, measurements: pd.DataFrame) -> None:
         """Emit every ``PlotMeas`` from the current measurement mirror."""
         for binding in self._bindings(PlotMeas):

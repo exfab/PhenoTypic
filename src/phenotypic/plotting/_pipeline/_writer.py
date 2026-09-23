@@ -476,6 +476,21 @@ def _publish_plot_output_locked(
         "pages": pages,
         "failed": failed,
     }
+    _commit_manifest(
+        directory, manifest,
+        publication_guard=publication_guard, commit_guard=commit_guard,
+    )
+    return manifest
+
+
+def _commit_manifest(
+    directory: Path,
+    manifest: dict[str, Any],
+    *,
+    publication_guard: Callable[[], bool] | None,
+    commit_guard: CommitGuard | None,
+) -> None:
+    """Replace ``directory/manifest.json`` with *manifest*, guarded, last."""
     manifest_path = directory / "manifest.json"
     temporary_manifest = directory / f".manifest.{uuid.uuid4().hex}.tmp"
     try:
@@ -486,7 +501,6 @@ def _publish_plot_output_locked(
             os.replace(temporary_manifest, manifest_path)
     finally:
         temporary_manifest.unlink(missing_ok=True)
-    return manifest
 
 
 def _require_plot_publication(
