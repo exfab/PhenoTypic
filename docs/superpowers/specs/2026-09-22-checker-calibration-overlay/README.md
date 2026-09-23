@@ -89,19 +89,29 @@ RoiOverlay
   flags: list[str]
   warnings: list[str]
   tiles: list[TileOverlay]
+  unidentified_boxes: list[tuple[Box, Box]]   # (full, core); default empty
 
 TileOverlay
   row: int; col: int
   patch: str
   status: Literal["used", "partly_covered", "rejected", "excluded", "empty"]
-  full_box: tuple[float, float, float, float]   # (y0, y1, x0, x1), ROI-local
-  core_box: tuple[float, float, float, float]
+  full_box: Box                   # Box = (y0, y1, x0, x1), floats, ROI-local
+  core_box: Box
   measured_srgb: tuple[float, float, float] | None   # the medoid pixel's own sRGB; None for an empty tile
   reference_srgb: tuple[float, float, float]
   impurity: float | None
   delta_e_before: float | None
   delta_e_after: float | None
 ```
+
+**`unidentified_boxes`** (amended 2026-09-22, review F2). A ROI can be refused
+*after* its lattice was found: its detected tile count disagrees with
+`expect_tiles`, its tile block fits the chart in fewer than two placements, or
+every tile box falls outside the ROI. No tile was identified, so `tiles` is
+empty, but the detected boxes are what explains the refusal. The record keeps
+them as `(boxes(rot=lattice.rot), boxes(core=core_trim, rot=lattice.rot))`
+pairs, whenever the lattice is set and `tiles` is empty. It is empty in every
+other case, including a ROI with no lattice.
 
 **Verdict**, decided once when the record is built:
 
@@ -112,17 +122,23 @@ TileOverlay
 | `corrected_with_warnings` | the fit ran and any ROI has flags (only possible under `"warn"`) or warnings |
 | `corrected` | the fit ran, and no ROI has flags or warnings |
 
-**Tile status**, decided once when the record is built, never by the renderer:
+**Tile status**, decided once when the record is built, never by the renderer.
+The rules are tried **top to bottom, and the first that matches wins**
+(amended 2026-09-22, review F3 and the precedence note). `excluded` appears
+twice because its two causes sit on either side of `rejected`:
 
-| status | rule |
-|---|---|
-| `empty` | `n_pixels == 0`, so the box fell outside the ROI |
-| `rejected` | the fit ran, and the patch is in `fitted_profile.diagnostics["rejected_patches"]` |
-| `excluded` | the tile was measured but its colour did not reach the fit for any other reason: the frame was skipped or refused, or this ROI lost a patch collision (it did not claim the name in `claimed_by`) |
-| `partly_covered` | would be `used`, but `impurity > qc_limits.max_tile_impurity` |
-| `used` | its colour was in the fit |
+| # | status | rule |
+|---|---|---|
+| 1 | `empty` | `n_pixels == 0`, so the box fell outside the ROI |
+| 2 | `excluded` | this ROI lost a patch collision: it did not claim the name in `claimed_by`. A losing ROI's tile is `excluded` even when the winner's patch of that name was rejected, because that rejection is not its own. |
+| 3 | `rejected` | the patch is in `fitted_profile.diagnostics["rejected_patches"]`. This includes a post-rejection rank refusal, where the fit ran but was not accepted, because which tiles were rejected is what explains that refusal. |
+| 4 | `excluded` | no accepted fit: the frame was skipped or refused |
+| 5 | `partly_covered` | would be `used`, but `impurity > qc_limits.max_tile_impurity` |
+| 6 | `used` | its colour was in the fit |
 
-`delta_e_before` and `delta_e_after` are `None` unless the fit ran. The
+`delta_e_before` and `delta_e_after` are `None` unless the fit ran and was
+accepted, and are attached only to `used`, `partly_covered` and `rejected`
+tiles. A `rejected` tile on a refused frame therefore has no ΔE. The
 renderer then prints "not fitted" in their place. `reference_srgb` always comes
 from `_load_reference_data`, so a refused frame still shows its reference
 swatches.
@@ -136,9 +152,17 @@ swatches.
   the skip return, the success return, and immediately before each refusal
   raise. A refused frame therefore always has a record, and a successful run
   never leaves a stale one.
+- It is assigned **before** the gate's `warnings.warn`, so warnings-as-errors
+  still leave one: `skipped` under `"skip"`, and under `"warn"` a provisional
+  `refused` record carrying the gate message, which every later exit replaces.
+- The `corrected*` record is assigned only after `ColorCorrector.apply()`
+  succeeds. If the correction raises, the record is `refused` with
+  `refusal="correction failed: ..."`, and the error propagates.
 - It is never serialised (`PrivateAttr`), like `_diagnostics`.
 
-**Crops own their memory.** Each `crop` is `np.array(sub, copy=True)`. It is
+**Crops own their memory, and are read-only.** Each `crop` is
+`np.array(sub, copy=True)`, and `build_overlay_record` sets its
+`flags.writeable = False` to match the frozen record. It is
 never a view into `image.rgb`, because a view would pin the whole-image buffer
 (`abc_/CLAUDE.md`: cached crops must own their buffers). It stores the as-shot
 `image.rgb` ROI slice, taken inside the ROI loop **before** correction runs, in
@@ -165,7 +189,11 @@ record it loaded from a store.
 - Boxes on the image:
   - every `full_box` as a thin dotted white outline;
   - every `core_box` as a 1.8 pt outline in its status colour;
-  - dashed outlines for `rejected`, `excluded` and `empty`.
+  - dashed outlines for `rejected`, `excluded` and `empty`;
+  - every `unidentified_boxes` pair drawn the same way as an `excluded`
+    tile: the thin dotted white full box, and a dashed `#BBBBBB` core box.
+    These boxes get **no labels** and no swatches, because there is no
+    identity to show.
 - Below each group, spanning its three columns, the ROI's flags and warnings
   are printed, wrapped by measured width. Nothing is printed when both are
   empty.
@@ -263,8 +291,11 @@ than being copied.
 3. **Refused frames keep a record.** This covers the `"raise"` gate failure,
    "No ROI produced usable tiles", and post-rejection rank failure. After
    catching the `RuntimeError`, the record exists, its verdict is `refused`,
-   its tiles are `excluded`, and ΔE is `None`. A skipped frame's verdict is
-   `skipped`.
+   its tiles are `excluded`, and ΔE is `None`. The exception is the
+   post-rejection rank failure, whose rejected tiles are `rejected` (still
+   with no ΔE). A skipped frame's verdict is `skipped`. A ROI refused after
+   its lattice was found keeps `unidentified_boxes`, and the figure draws
+   them.
 4. **Per-run reset.** Apply a clean frame, then a refused one: the second
    record describes only the second frame. Calling `show_tiles()` before any
    `apply()` raises `RuntimeError`.

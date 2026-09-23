@@ -171,7 +171,18 @@ def test_a_post_rejection_rank_failure_keeps_a_record() -> None:
     with pytest.raises(RuntimeError, match="remain after outlier rejection"):
         quietly(operation, Image(arr=render_frame(
                 overrides={(1, r, 1): GREEN for r in (1, 2, 3)})))
-    assert operation.calibration_record.verdict == "refused"
+    record = operation.calibration_record
+    assert record.verdict == "refused"
+    assert "remain after outlier rejection" in record.refusal
+    # Which tiles were rejected is what explains this refusal, so it is kept;
+    # no fit was accepted, so there is no ΔE anywhere.
+    green = {(1, row, 1) for row in (1, 2, 3)}
+    for roi in record.rois:
+        assert roi.tiles
+        for t in roi.tiles:
+            expected = "rejected" if (roi.roi_index, t.row, t.col) in green else "excluded"
+            assert t.status == expected, (roi.roi_index, t.row, t.col)
+            assert t.delta_e_before is None and t.delta_e_after is None
 
 
 def collided_frame() -> np.ndarray:
@@ -324,6 +335,43 @@ def test_one_image_axes_per_roi_and_one_core_box_per_tile() -> None:
         assert len(cores) == len(roi.tiles)
         assert sorted(tuple(p.get_edgecolor()) for p in cores) == sorted(
                 to_rgba(STATUS_COLOURS[t.status]) for t in roi.tiles)
+
+
+def expect_tiles_refused() -> CalibrationOverlayRecord:
+    """ROI 1 declares 7 tiles; its 12 are found, then refused before identity."""
+    operation = frozen_op(degree=1, on_qc_fail="warn")
+    operation.rois[1].expect_tiles = 7
+    quietly(operation, Image(arr=render_frame()))
+    return operation.calibration_record
+
+
+def is_unidentified_core(p) -> bool:
+    return (isinstance(p, Rectangle) and p.get_linewidth() == 1.8
+            and p.get_linestyle() == "--"
+            and tuple(p.get_edgecolor()) == to_rgba(STATUS_COLOURS["excluded"]))
+
+
+def test_a_roi_refused_after_its_lattice_keeps_its_boxes() -> None:
+    record = expect_tiles_refused()
+    roi = record.rois[1]
+    assert any("declared to hold 7 tiles" in flag for flag in roi.flags)
+    assert roi.lattice_found and not roi.tiles
+    assert len(roi.unidentified_boxes) == 12
+    assert record.rois[0].unidentified_boxes == []
+
+    fig = render_calibration_overlay(record)
+    image_axes = [ax for ax in fig.axes if ax.images]
+    cores = [p for p in image_axes[1].patches if is_unidentified_core(p)]
+    assert len(cores) == len(roi.unidentified_boxes)
+    for (full, core), p in zip(roi.unidentified_boxes, cores):
+        cy0, cy1, cx0, cx1 = core
+        assert p.get_xy() == pytest.approx((cx0 - 0.5, cy0 - 0.5))
+        assert (p.get_width(), p.get_height()) == pytest.approx((cx1 - cx0, cy1 - cy0))
+    # No identity, so no labels: ROI 1's side columns carry no text at all.
+    side = [ax for ax in fig.axes if not ax.images
+            and ax.get_shared_y_axes().joined(ax, image_axes[1])]
+    assert side and not any(ax.texts for ax in side)
+    assert_no_overlap_or_clipping(fig)
 
 
 def test_a_roi_without_a_lattice_has_an_image_and_no_boxes() -> None:

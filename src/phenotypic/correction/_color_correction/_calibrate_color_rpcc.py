@@ -534,7 +534,8 @@ class CalibrateColorRpcc(ImageCorrector):
         try:
             require_rank(len(accepted), self.degree, stage="remain after outlier rejection")
         except ValueError as exc:
-            keep_record("refused", refusal=str(exc))
+            # Which tiles were rejected is what explains this refusal.
+            keep_record("refused", refusal=str(exc), rejected=rejected)
             raise
         census = warn_on_patch_census(
                 accepted, patch_names, self.degree, self.min_patches,

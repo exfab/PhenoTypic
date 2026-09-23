@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal, Mapping, Sequence
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
@@ -64,7 +64,14 @@ class TileOverlay(BaseModel):
 
 
 class RoiOverlay(BaseModel):
-    """One ROI: its as-shot pixels, its tiles and what the gate said."""
+    """One ROI: its as-shot pixels, its tiles and what the gate said.
+
+    Attributes:
+        unidentified_boxes: ``(full_box, core_box)`` pairs of a lattice that
+            was found but refused before any tile was identified -- a
+            tile-count or placement refusal, or every box outside the ROI.
+            Empty whenever ``tiles`` is not.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid", arbitrary_types_allowed=True)
 
@@ -76,6 +83,7 @@ class RoiOverlay(BaseModel):
     flags: list[str]
     warnings: list[str]
     tiles: list[TileOverlay]
+    unidentified_boxes: list[tuple[Box, Box]] = Field(default_factory=list)
 
 
 class CalibrationOverlayRecord(BaseModel):
@@ -113,13 +121,21 @@ def _tile_status(
         rejected: set[str],
         impurity_limit: float,
 ) -> TileStatus:
-    """The spec's tile-status table, in its order of precedence."""
+    """The spec's tile-status table, in its order of precedence.
+
+    A tile whose ROI lost a patch collision is ``excluded`` even when the
+    winner's patch of that name was rejected: the rejection is not its own.
+    A rejection is shown without an accepted fit, since it explains a
+    post-rejection rank refusal.
+    """
     if not tile.n_pixels:
         return "empty"
-    if not fitted or not claimed:
+    if not claimed:
         return "excluded"
     if patch in rejected:
         return "rejected"
+    if not fitted:
+        return "excluded"
     if tile.impurity == tile.impurity and tile.impurity > impurity_limit:
         return "partly_covered"
     return "used"
@@ -155,7 +171,8 @@ def build_overlay_record(
         reference_srgb: Patch name -> reference colour, sRGB-encoded.
         fitted_patches: ``ColorCheckerProfile.diagnostics["patches"]`` when
             the fit ran and was accepted, else ``None``.
-        rejected: Patches outlier rejection removed.
+        rejected: Patches outlier rejection removed; shown even when
+            ``fitted_patches`` is ``None`` (a post-rejection rank refusal).
         impurity_limit: ``QcLimits.max_tile_impurity``.
         core_trim: The operation's ``core_trim``, for the core boxes.
 
@@ -167,12 +184,17 @@ def build_overlay_record(
     for draft in drafts:
         gate = qc_by_roi.get(draft.roi_index)
         tiles: list[TileOverlay] = []
+        unidentified: list[tuple[Box, Box]] = []
         if draft.lattice is not None:
             lattice = draft.lattice
             full = {(r, c): (y0, y1, x0, x1)
                     for r, c, y0, y1, x0, x1 in lattice.boxes(rot=lattice.rot)}
             core = {(r, c): (y0, y1, x0, x1)
                     for r, c, y0, y1, x0, x1 in lattice.boxes(core=core_trim, rot=lattice.rot)}
+            if not draft.tiles:
+                # Refused after its lattice was found: there is no identity
+                # to show, but the detected boxes are what explain the refusal.
+                unidentified = [(full[key], core[key]) for key in full]
             for measured, patch in draft.tiles:
                 status = _tile_status(
                         measured, patch, claimed=draft.claimed,
@@ -207,6 +229,7 @@ def build_overlay_record(
                 flags=list(gate.flags) if gate is not None else [],
                 warnings=list(gate.warnings) if gate is not None else [],
                 tiles=tiles,
+                unidentified_boxes=unidentified,
         ))
     return CalibrationOverlayRecord(
             image_name=image_name, verdict=verdict, degree=degree,
@@ -566,15 +589,17 @@ def _draw_roi(roi: RoiOverlay, plan: _RoiPlan, axes, x: float, y_top: float,
     ax.set_ylim(h_px - 0.5, -0.5)
     ax.set_axis_off()
 
-    for tile in roi.tiles:
-        y0, y1, x0, x1 = tile.full_box
+    # A refused lattice's boxes carry no identity: drawn like excluded tiles,
+    # and never labelled.
+    boxes = [(t.full_box, t.core_box, t.status) for t in roi.tiles]
+    boxes += [(full, core, "excluded") for full, core in roi.unidentified_boxes]
+    for (y0, y1, x0, x1), (cy0, cy1, cx0, cx1), status in boxes:
         ax.add_patch(rectangle((x0 - 0.5, y0 - 0.5), x1 - x0, y1 - y0, fill=False,
                                edgecolor="white", linewidth=0.6, linestyle=(0, (1.5, 1.5)),
                                alpha=0.8))
-        cy0, cy1, cx0, cx1 = tile.core_box
         ax.add_patch(rectangle((cx0 - 0.5, cy0 - 0.5), cx1 - cx0, cy1 - cy0, fill=False,
-                               edgecolor=STATUS_COLOURS[tile.status], linewidth=_CORE_LW,
-                               linestyle="--" if tile.status in _DASHED else "-"))
+                               edgecolor=STATUS_COLOURS[status], linewidth=_CORE_LW,
+                               linestyle="--" if status in _DASHED else "-"))
 
     if plan.side:
         _draw_side_labels(roi, plan, axes, x, img_bottom, ax, rectangle)
