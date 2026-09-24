@@ -58,29 +58,22 @@ def _display_slurm_config(slurm_args: dict) -> None:
     for key, value in slurm_args.items():
         click.echo(f"    {key:.<30} {value}")
 
+    # The exact text a submission writes, from the one formatter scripts use,
+    # not a re-implementation of it (spec 2026-09-24-cli-preflight F26).
+    from pathlib import Path
+
+    from phenotypic.sdk_.slurm import format_sbatch_directives
+
     click.echo("\n  Converted SBATCH Directives:")
-    for key, value in slurm_args.items():
-        directive_name = key.replace("slurm_", "").replace("_", "-")
-
-        # Handle special cases
-        if key in ("time", "slurm_time"):
-            if isinstance(value, int):
-                hours = value // 60
-                minutes = value % 60
-                value_display = f"{hours:02d}:{minutes:02d}:00 (from {value} minutes)"
-            else:
-                value_display = value
-            directive_name = "time"
-        elif key == "mem_gb":
-            value_display = f"{value}G"
-            directive_name = "mem"
-        elif key == "slurm_mem":
-            value_display = value
-            directive_name = "mem"
-        else:
-            value_display = value
-
-        click.echo(f"    #SBATCH --{directive_name}={value_display}")
+    directives = format_sbatch_directives(
+        job_name="phenotypic",
+        slurm_args=slurm_args,
+        output_log=Path("<log>"),
+        error_log=Path("<log>"),
+    )
+    for line in directives.splitlines():
+        if line.strip():
+            click.echo(f"    {line}")
 
 
 def _display_local_config(config: ExecutionConfig) -> None:

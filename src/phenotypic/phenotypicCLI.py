@@ -2126,6 +2126,33 @@ def phenotypic_cli(
                             err=True,
                         )
 
+        # --gpu-slurm is parsed and its time validated here as well, not first
+        # when the GPU script is rendered, after run state has been written
+        # (spec 2026-09-24-cli-preflight §6, F16). An option-type check: it
+        # runs even under --skip-validation.
+        gpu_slurm_args_dict: dict = {}
+        if gpu_slurm_args:
+            try:
+                gpu_slurm_args_dict = _parse_slurm_args(gpu_slurm_args)
+            except click.BadParameter as e:
+                click.echo(str(e), err=True)
+                sys.exit(1)
+            for time_key in ("time", "slurm_time"):
+                if time_key in gpu_slurm_args_dict:
+                    try:
+                        canonical_time = parse_slurm_time(
+                            gpu_slurm_args_dict[time_key]
+                        )
+                    except ValueError as exc:
+                        click.echo(
+                            f"Error: invalid --gpu-slurm '{time_key}' "
+                            f"{gpu_slurm_args_dict[time_key]!r}: {exc}",
+                            err=True,
+                        )
+                        sys.exit(1)
+                    if canonical_time is not None:
+                        gpu_slurm_args_dict[time_key] = canonical_time
+
         if restart and overwrite:
             raise click.UsageError(
                 "--restart and --overwrite are mutually exclusive"
@@ -2373,7 +2400,7 @@ def phenotypic_cli(
             process_format=resolved_process_format,
             gpu_workers_per_gpu=gpu_workers_per_gpu,
             gpu_shards=gpu_shards,
-            gpu_slurm_args=_parse_slurm_args(gpu_slurm_args),
+            gpu_slurm_args=gpu_slurm_args_dict,
         )
         # Refuse an unstageable GpuDetector HERE, before anything touches
         # --output: every later step (overwrite clearing, run identity,

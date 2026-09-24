@@ -11,7 +11,7 @@ import getpass
 import re
 import subprocess
 from functools import lru_cache
-from typing import List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 
 @lru_cache(maxsize=1)
@@ -281,3 +281,46 @@ def validate_array_chunk(
         return False
 
     return True
+
+
+def partition_gres_error(
+    partition: str,
+    run: "Callable[..., subprocess.CompletedProcess[str]] | None" = None,
+) -> Optional[str]:
+    """Why *partition* cannot serve a GPU request, or ``None`` if it can.
+
+    The one GRES check, shared by ``AutonomousSLURMStrategy`` and the run
+    preflight (spec 2026-09-24-cli-preflight §6, F18). ``sinfo``'s exit status
+    is read FIRST: an unknown partition leaves ``stdout`` empty, and reading
+    only ``stdout`` reported that as "has no GPUs", naming the wrong fault.
+
+    Args:
+        partition: The ``slurm_partition`` value.
+        run: Runs ``(command, timeout=...)`` and returns a completed process;
+            defaults to ``subprocess.run`` capturing text output.
+
+    Returns:
+        A message naming the problem, or ``None`` when the partition lists a
+        GPU GRES, or when ``sinfo`` is absent or times out (nothing to say).
+    """
+    runner = run or (
+        lambda command, timeout: subprocess.run(
+            command, capture_output=True, text=True, timeout=timeout
+        )
+    )
+    try:
+        result = runner(
+            ["sinfo", "-p", partition, "--Format=gres", "--noheader"], timeout=10
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "").strip()
+        return f"sinfo could not read partition {partition!r}: {detail}"
+    gres = (result.stdout or "").strip()
+    if "gpu" not in gres.lower():
+        return (
+            f"partition {partition!r} has no GPUs (sinfo gres: {gres!r}); use "
+            "a GPU partition for the GPU stage"
+        )
+    return None

@@ -26,6 +26,7 @@ startup-import guards): checks import what they need inside their bodies.
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence
@@ -54,6 +55,11 @@ FindingCode = Literal[
     "PF-MISSING-MODULE",
     "PF-LICENSE",
     "PF-WEIGHTS-UNCACHED",
+    "PF-SBATCH-REJECTED",
+    "PF-SBATCH-UNAVAILABLE",
+    "PF-TIME-OVER-PARTITION",
+    "PF-SLURM-LIMIT",
+    "PF-GPU-PARTITION",
     "PF-HEADER-UNREADABLE",
     "PF-CHANNELS",
     "PF-DETECT-MODE-GRAY",
@@ -69,6 +75,9 @@ FindingCode = Literal[
     "PF-META-ORPHANS",
     "PF-META-UNVERIFIED",
     "PF-POST-COLUMN",
+    "PF-OUTPUT-UNWRITABLE",
+    "PF-OUTPUT-SPACE",
+    "PF-NODE-LOCAL",
 ]
 
 #: One remedy per finding code, shown under the finding's message.
@@ -173,6 +182,40 @@ HINTS: dict[str, str] = {
         "Correct the column name in the post operation, or add the column "
         "(e.g. through --metadata). At finalization a failing post operation "
         "is logged and ALL post-operation output is discarded."
+    ),
+    "PF-SBATCH-REJECTED": (
+        "Fix the --slurm/--gpu-slurm option sbatch names above (a partition, "
+        "account, QoS, time, memory or GPU request the cluster refuses, or a "
+        "misspelled key); nothing was submitted."
+    ),
+    "PF-SBATCH-UNAVAILABLE": (
+        "The profile could not be checked; the run will still report a real "
+        "submission failure when it submits."
+    ),
+    "PF-TIME-OVER-PARTITION": (
+        "Lower the requested time to the partition's MaxTime, or choose a "
+        "partition that allows it (unless your QOS overrides the limit)."
+    ),
+    "PF-SLURM-LIMIT": (
+        "Reduce --gpu-shards, or ask for a higher MaxSubmitJobs; the staged "
+        "GPU engine needs 3 submission slots and one GPU array chunk."
+    ),
+    "PF-GPU-PARTITION": (
+        "Point the GPU stage at a partition with GPUs: "
+        "--gpu-slurm slurm_partition=<gpu-partition>."
+    ),
+    "PF-OUTPUT-UNWRITABLE": (
+        "Choose an --output you can write to, or fix the directory's permissions."
+    ),
+    "PF-OUTPUT-SPACE": (
+        "Free space or choose another --output. This compares free space with "
+        "the inputs' total size, a heuristic, and cannot see GPFS user quotas "
+        "(check those with your site's quota command)."
+    ),
+    "PF-NODE-LOCAL": (
+        "Put these paths on shared storage (e.g. /bigdata or a home "
+        "directory): compute nodes cannot see another node's local disk or "
+        "tmpfs."
     ),
     "PF-NO-DETECTOR": (
         "Add an object detector (for example OtsuDetector) to the pipeline's "
@@ -531,6 +574,305 @@ def check_model_weights_cached(context: PreflightContext) -> list[PreflightFindi
 def _severity_for(affected: int, total: int) -> Severity:
     """``error`` when every input is affected, else ``warning`` (spec §0)."""
     return "error" if total and affected >= total else "warning"
+
+
+#: ``sbatch`` stderr fragments that mean the controller could not be reached,
+#: which says nothing about the configuration (review R15).
+SBATCH_COMMUNICATION_PATTERNS: tuple[str, ...] = (
+    "Socket timed out",
+    "Unable to contact slurm controller",
+    "Slurm backup controller in standby mode",
+    "Transport endpoint is not connected",
+)
+
+
+def _scheduler_available(name: str) -> bool:
+    """Whether the Slurm client *name* is on ``PATH``."""
+    import shutil
+
+    return shutil.which(name) is not None
+
+
+def _run_scheduler_command(
+    command: Sequence[str],
+    *,
+    input: "str | None" = None,
+    timeout: float,
+    env: "dict[str, str] | None" = None,
+) -> Any:
+    """Run one read-only Slurm query; the one seam every cluster check uses.
+
+    Every call carries an explicit timeout (30 s for ``sbatch``, 10 s for
+    ``scontrol`` and ``sinfo``). Nothing it runs submits a job.
+    """
+    import subprocess
+
+    return subprocess.run(
+        list(command), input=input, capture_output=True, text=True,
+        timeout=timeout, env=env,
+    )
+
+
+def _staged_slurm_run(context: PreflightContext) -> bool:
+    """Whether the run takes the staged GPU SLURM path (``StagedSlurmStrategy``)."""
+    if context.mode != "full" or not context.config.is_slurm_mode():
+        return False
+    from ._cli_validation import find_gpu_detectors
+
+    try:
+        return bool(find_gpu_detectors(context.pipeline))
+    except ValueError:
+        return False  # an unstageable placement is refused before this runs
+
+
+def _slurm_profiles(context: PreflightContext) -> list[tuple[str, dict[str, Any]]]:
+    """``(label, args)`` for every SBATCH profile the run will submit."""
+    if not context.config.is_slurm_mode():
+        return []
+    profiles = [("CPU profile (--slurm)", dict(context.config.slurm_args))]
+    if _staged_slurm_run(context):
+        from ._cli_staged_slurm import resolve_stage_slurm_args
+
+        profiles.append((
+            "GPU profile (--gpu-slurm over --slurm)",
+            resolve_stage_slurm_args(
+                context.config.gpu_slurm_args, context.config.slurm_args
+            ),
+        ))
+    return profiles
+
+
+def render_test_script(profile: dict[str, Any]) -> str:
+    """A minimal batch script for ``sbatch --test-only`` (review R15).
+
+    ``format_sbatch_directives`` emits no shebang, and ``sbatch`` rejects a
+    script whose first line is not ``#!``; logs go to ``/dev/null`` because
+    nothing runs.
+    """
+    from phenotypic.sdk_.slurm import format_sbatch_directives
+
+    directives = format_sbatch_directives(
+        job_name="phenotypic-preflight",
+        slurm_args=profile,
+        output_log=Path("/dev/null"),
+        error_log=Path("/dev/null"),
+    )
+    return f"#!/bin/bash\n{directives.rstrip()}\ntrue\n"
+
+
+def check_slurm_profiles(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-SBATCH-REJECTED``: ``sbatch --test-only`` refuses a profile.
+
+    Spec §6, F17. Validates partition, account, QoS, time, memory, GPU requests
+    and misspelled keys in one call per profile, without submitting a job and
+    without writing a file (the script goes on stdin). The environment is the
+    one ``submit_script`` uses, so ``SBATCH_*`` variables apply identically.
+    Anything that is not a clear rejection is ``PF-SBATCH-UNAVAILABLE``.
+    """
+    profiles = _slurm_profiles(context)
+    if not profiles:
+        return []
+
+    def unavailable(detail: str) -> PreflightFinding:
+        return PreflightFinding(
+            "PF-SBATCH-UNAVAILABLE", "warning",
+            f"the SLURM profile could not be checked: {detail}",
+        )
+
+    if not _scheduler_available("sbatch"):
+        return [unavailable("sbatch is not on PATH")]
+    import subprocess
+
+    from phenotypic.sdk_.slurm import sbatch_submission_environment
+
+    findings: list[PreflightFinding] = []
+    for label, profile in profiles:
+        try:
+            result = _run_scheduler_command(
+                ["sbatch", "--test-only"],
+                input=render_test_script(profile),
+                timeout=30,
+                env=sbatch_submission_environment(),
+            )
+        except subprocess.TimeoutExpired:
+            findings.append(unavailable(f"sbatch --test-only timed out for the {label}"))
+            continue
+        except OSError as exc:
+            findings.append(unavailable(f"{type(exc).__name__}: {exc}"))
+            continue
+        if result.returncode == 0:
+            continue
+        detail = (result.stderr or result.stdout or "").strip()
+        if any(pattern in detail for pattern in SBATCH_COMMUNICATION_PATTERNS):
+            findings.append(unavailable(detail))
+        else:
+            findings.append(PreflightFinding(
+                "PF-SBATCH-REJECTED", "error",
+                f"sbatch --test-only rejected the {label}: {detail}",
+            ))
+    return findings
+
+
+def parse_slurm_duration_minutes(value: str) -> "int | None":
+    """Minutes in a Slurm duration, or ``None`` for an unlimited one.
+
+    Accepts the forms Slurm prints and accepts: ``UNLIMITED``/``infinite``,
+    ``D-HH:MM:SS``, ``D-HH:MM``, ``D-HH``, ``HH:MM:SS``, ``MM:SS`` and ``MM``.
+    Seconds round up to the next minute.
+    """
+    text = str(value).strip()
+    if text.lower() in {"unlimited", "infinite", "none", ""}:
+        return None
+    days = 0
+    if "-" in text:
+        day_part, text = text.split("-", 1)
+        days = int(day_part)
+        parts = [int(p) for p in text.split(":")] + [0, 0]
+        hours, minutes, seconds = parts[0], parts[1], parts[2]
+    else:
+        parts = [int(p) for p in text.split(":")]
+        if len(parts) == 3:
+            hours, minutes, seconds = parts
+        elif len(parts) == 2:
+            hours, (minutes, seconds) = 0, parts
+        else:
+            hours, minutes, seconds = 0, parts[0], 0
+    return days * 1440 + hours * 60 + minutes + (1 if seconds else 0)
+
+
+def _partition_blocks(text: str) -> list[dict[str, str]]:
+    """``scontrol show partition`` output as one ``{field: value}`` per partition."""
+    blocks: list[dict[str, str]] = []
+    for token in text.split():
+        if "=" not in token:
+            continue
+        key, _, value = token.partition("=")
+        if key == "PartitionName":
+            blocks.append({})
+        if blocks:
+            blocks[-1][key] = value
+    return blocks
+
+
+def _enforce_part_limits() -> "str | None":
+    import re
+
+    try:
+        result = _run_scheduler_command(["scontrol", "show", "config"], timeout=10)
+    except Exception:  # noqa: BLE001 -- unknown is a valid answer here
+        return None
+    match = re.search(r"EnforcePartLimits\s*=\s*(\S+)", result.stdout or "")
+    return match.group(1).upper() if match else None
+
+
+def check_partition_time(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-TIME-OVER-PARTITION``: a time limit above the partition's ``MaxTime``.
+
+    Spec §6, F19 (review R11). A warning, not an error: a QOS with
+    ``Flags=PartitionTimeLimit`` may override the partition limit, and the
+    preflight does not resolve QOS flags. The wording follows the live
+    ``EnforcePartLimits``: under ``NO`` the job is accepted and pends
+    indefinitely; otherwise it is rejected at submission.
+    """
+    profiles = _slurm_profiles(context)
+    if not profiles or not _scheduler_available("scontrol"):
+        return []
+    from phenotypic.sdk_.slurm import parse_slurm_time
+
+    findings: list[PreflightFinding] = []
+    enforce: "str | None" = None
+    for label, profile in profiles:
+        requested = profile.get("slurm_time", profile.get("time"))
+        if requested is None:
+            continue
+        minutes = parse_slurm_duration_minutes(parse_slurm_time(requested) or "")
+        if minutes is None:
+            continue
+        names = [n for n in str(profile.get("slurm_partition", "")).split(",") if n]
+        if names:
+            blocks = []
+            for name in names:
+                result = _run_scheduler_command(
+                    ["scontrol", "show", "partition", name], timeout=10
+                )
+                blocks += _partition_blocks(result.stdout or "")
+        else:
+            result = _run_scheduler_command(["scontrol", "show", "partition"], timeout=10)
+            blocks = [b for b in _partition_blocks(result.stdout or "") if b.get("Default") == "YES"]
+        limits = [
+            (b.get("PartitionName", "?"), b.get("MaxTime", ""), parse_slurm_duration_minutes(b.get("MaxTime", "")))
+            for b in blocks
+        ]
+        limits = [entry for entry in limits if entry[2] is not None]
+        if not limits:
+            continue
+        name, max_time, limit = min(limits, key=lambda entry: entry[2])
+        if minutes <= limit:
+            continue
+        if enforce is None:
+            enforce = _enforce_part_limits() or "UNKNOWN"
+        outcome = {
+            "NO": "accepted and then pend indefinitely (EnforcePartLimits=NO)",
+            "UNKNOWN": "pend or be rejected (EnforcePartLimits could not be read)",
+        }.get(enforce, f"be rejected at submission (EnforcePartLimits={enforce})")
+        findings.append(PreflightFinding(
+            "PF-TIME-OVER-PARTITION", "warning",
+            f"the {label} requests {requested}, above MaxTime {max_time} of "
+            f"partition {name}; the job would be {outcome}",
+        ))
+    return findings
+
+
+def _slurm_submission_limits() -> "tuple[int | None, int]":
+    """``(MaxSubmitJobs, MaxArraySize)`` as the staged strategy reads them."""
+    from phenotypic.sdk_.slurm import get_slurm_array_limit, get_slurm_max_submit_jobs
+
+    return get_slurm_max_submit_jobs(), get_slurm_array_limit()
+
+
+def check_staged_slurm_limits(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-SLURM-LIMIT``: limits the staged strategy would refuse after hashing.
+
+    Spec §6, F18. The strategy checks these only after building its manifest,
+    which hashes every input; the same function answers here first.
+    """
+    if not _staged_slurm_run(context):
+        return []
+    from ._cli_staged_slurm import staged_slurm_limit_errors
+
+    max_submit, array_limit = _slurm_submission_limits()
+    return [
+        PreflightFinding("PF-SLURM-LIMIT", "error", message)
+        for message in staged_slurm_limit_errors(
+            max_submit, array_limit, context.config.gpu_shards
+        )
+    ]
+
+
+def check_gpu_partition(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-GPU-PARTITION``: the GPU stage's partition cannot serve GPUs.
+
+    Spec §6, F18. Staged forward runs never reached the strategy's own GRES
+    check; this asks the same shared function, which reads ``sinfo``'s exit
+    status first so an unknown partition is not reported as "no GPUs".
+    """
+    if not _staged_slurm_run(context) or not _scheduler_available("sinfo"):
+        return []
+    from phenotypic.sdk_.slurm._config import partition_gres_error
+
+    from ._cli_staged_slurm import resolve_stage_slurm_args
+
+    profile = resolve_stage_slurm_args(context.config.gpu_slurm_args, context.config.slurm_args)
+    partition = profile.get("slurm_partition")
+    if not partition or not profile.get("slurm_gpus_per_node"):
+        return []
+    message = partition_gres_error(
+        str(partition),
+        run=lambda command, timeout: _run_scheduler_command(command, timeout=timeout),
+    )
+    if message is None:
+        return []
+    return [PreflightFinding("PF-GPU-PARTITION", "error", f"the GPU stage's {message}")]
 
 
 def _input_paths(context: PreflightContext) -> list[str]:
@@ -898,6 +1240,118 @@ def check_post_columns(context: PreflightContext) -> list[PreflightFinding]:
     return findings
 
 
+#: Filesystem types that live on one node. Shared types (gpfs, lustre, nfs,
+#: nfs4, beegfs, cifs, cephfs, ...) and anything unrecognized produce nothing.
+_NODE_LOCAL_FILESYSTEMS = frozenset(
+    {"tmpfs", "ramfs", "devtmpfs", "ext2", "ext3", "ext4", "xfs", "btrfs", "overlay"}
+)
+_MOUNTS = Path("/proc/self/mounts")
+
+
+def _mounts_text() -> "str | None":
+    """``/proc/self/mounts``, or ``None`` off Linux (the check then skips)."""
+    try:
+        return _MOUNTS.read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+
+def _filesystem_type(path: Path, mounts: str) -> "str | None":
+    """The filesystem type of the longest mount point containing *path*."""
+    resolved = Path(os.path.abspath(path)).resolve(strict=False)
+    best: "tuple[int, str] | None" = None
+    for line in mounts.splitlines():
+        fields = line.split()
+        if len(fields) < 3:
+            continue
+        mount_point = Path(fields[1].replace("\\040", " "))
+        if resolved == mount_point or resolved.is_relative_to(mount_point):
+            depth = len(mount_point.parts)
+            if best is None or depth > best[0]:
+                best = (depth, fields[2])
+    return best[1] if best else None
+
+
+def _nearest_existing_ancestor(path: Path) -> Path:
+    current = Path(os.path.abspath(path))
+    while not current.exists() and current.parent != current:
+        current = current.parent
+    return current
+
+
+def check_output_location(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-OUTPUT-*`` and ``PF-NODE-LOCAL``: where the run writes and reads.
+
+    Spec §9, F25, F29 (review R21, R30). Read-only probes of the nearest
+    existing ancestor of ``--output`` (the directory itself may not exist
+    yet): permissions; free space against the inputs' total size, in ``full``
+    mode only and labelled a heuristic; and, on a SLURM run, every path a
+    worker reads or writes that sits on node-local storage, judged by the
+    filesystem type of its mount rather than by its name.
+    """
+    import shutil
+
+    config = context.config
+    findings: list[PreflightFinding] = []
+    output_dir = Path(config.output_dir) if config.output_dir is not None else None
+    if output_dir is not None:
+        anchor = _nearest_existing_ancestor(output_dir)
+        if not os.access(anchor, os.W_OK | os.X_OK):
+            findings.append(PreflightFinding(
+                "PF-OUTPUT-UNWRITABLE", "error",
+                f"{anchor} (the nearest existing directory of --output) is not writable",
+            ))
+        elif context.mode == "full":
+            total = 0
+            for path in _input_paths(context):
+                try:
+                    if Path(path).is_file():
+                        total += Path(path).stat().st_size
+                except OSError:
+                    continue
+            free = shutil.disk_usage(anchor).free
+            if total and free < total:
+                findings.append(PreflightFinding(
+                    "PF-OUTPUT-SPACE", "warning",
+                    f"{anchor} has {free / 2**30:.1f} GiB free, less than the inputs' "
+                    f"{total / 2**30:.1f} GiB (a heuristic, not an estimate of the "
+                    "run's footprint)",
+                ))
+    if config.is_slurm_mode():
+        mounts = _mounts_text()
+        if mounts is not None:
+            candidates: list[tuple[str, Path]] = []
+            if output_dir is not None:
+                candidates.append(("--output", output_dir))
+            candidates += [
+                (option, Path(value))
+                for option, value in (
+                    ("--input", config.input_path),
+                    ("--pipeline", config.pipeline_json),
+                    ("--metadata", config.metadata_csv),
+                )
+                if value is not None
+            ]
+            from phenotypic.post import JoinMetadata
+
+            for path, operation in operations_in_scope(context):
+                if isinstance(operation, JoinMetadata):
+                    candidates.append((f"{'/'.join(path)} table", Path(operation.metadata)))
+            local = [
+                f"{label} {candidate} ({fs})"
+                for label, candidate in candidates
+                if (fs := _filesystem_type(candidate, mounts)) in _NODE_LOCAL_FILESYSTEMS
+            ]
+            if local:
+                findings.append(PreflightFinding(
+                    "PF-NODE-LOCAL", "warning",
+                    "on a SLURM run these paths are on node-local storage, which "
+                    "workers on other nodes cannot see",
+                    subjects=tuple(local),
+                ))
+    return findings
+
+
 #: The checks :func:`run_preflight` runs, in order: pipeline, environment,
 #: cluster, inputs, metadata, output. Later tasks register theirs here.
 CHECKS: tuple[Check, ...] = (
@@ -907,6 +1361,10 @@ CHECKS: tuple[Check, ...] = (
     check_optional_modules,
     check_model_licenses,
     check_model_weights_cached,
+    check_slurm_profiles,
+    check_partition_time,
+    check_staged_slurm_limits,
+    check_gpu_partition,
     check_input_headers_readable,
     check_input_channels,
     check_stem_collisions,
@@ -916,6 +1374,7 @@ CHECKS: tuple[Check, ...] = (
     check_bit_depth,
     check_metadata_join,
     check_post_columns,
+    check_output_location,
 )
 
 

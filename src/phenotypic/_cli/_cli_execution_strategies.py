@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import subprocess
 import time
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
@@ -918,31 +917,17 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
 
             partition = slurm_args.get("slurm_partition")
             if partition:
-                try:
-                    result = subprocess.run(
-                        [
-                            "sinfo",
-                            "-p",
-                            partition,
-                            "--Format=gres",
-                            "--noheader",
-                        ],
-                        capture_output=True,
-                        text=True,
-                        timeout=10,
+                # The shared check reads sinfo's exit status first, so an
+                # unknown partition is reported as such rather than as "no
+                # GPUs"; sinfo absent or hung still proceeds (spec F18).
+                from phenotypic.sdk_.slurm._config import partition_gres_error
+
+                gres_error = partition_gres_error(partition)
+                if gres_error is not None:
+                    raise RuntimeError(
+                        f"Pipeline contains GPU operations but {gres_error}. "
+                        "Use --slurm slurm_partition=<gpu-partition>."
                     )
-                    gres_info = result.stdout.strip()
-                    if "gpu" not in gres_info.lower():
-                        raise RuntimeError(
-                            f"Pipeline contains GPU operations but partition "
-                            f"'{partition}' has no GPUs (sinfo gres: "
-                            f"{gres_info!r}). Use "
-                            f"--slurm slurm_partition=<gpu-partition>."
-                        )
-                except FileNotFoundError:
-                    pass  # sinfo not available (not on a SLURM login node)
-                except subprocess.TimeoutExpired:
-                    pass  # sinfo hung, proceed anyway
 
             self.config.slurm_args = slurm_args
 

@@ -75,6 +75,39 @@ def partition_shards(items: List[_T], n_shards: int) -> List[List[_T]]:
     return shards
 
 
+def staged_slurm_limit_errors(
+    max_submit: int | None, array_limit: int, gpu_shards: int
+) -> list[str]:
+    """Why a staged GPU SLURM run cannot be orchestrated, or nothing.
+
+    The one statement of the two limits the staged strategy enforces; the run
+    preflight (``PF-SLURM-LIMIT``) and :class:`StagedSlurmStrategy` both call
+    it, so the early refusal and the late one cannot disagree (spec
+    2026-09-24-cli-preflight §6, F18).
+
+    Args:
+        max_submit: Conservative ``MaxSubmitJobs`` (``None`` when unknown).
+        array_limit: ``MaxArraySize``.
+        gpu_shards: ``--gpu-shards``.
+
+    Returns:
+        Error messages; empty when the run fits.
+    """
+    if max_submit is not None and max_submit < 3:
+        return [
+            "SLURM MaxSubmitJobs must be at least 3 for staged GPU "
+            "orchestration (controller, array, recovery controller)."
+        ]
+    submit_capacity = max_submit - 2 if max_submit else array_limit
+    chunk_limit = min(array_limit, submit_capacity)
+    if max(1, gpu_shards) > chunk_limit:
+        return [
+            f"--gpu-shards ({gpu_shards}) exceeds the SLURM chunk limit "
+            f"({chunk_limit}); reduce the shard count."
+        ]
+    return []
+
+
 def resolve_stage_slurm_args(
     gpu_slurm_args: Dict[str, Any],
     cpu_slurm_args: Dict[str, Any] | None = None,
@@ -559,20 +592,16 @@ class StagedSlurmStrategy(ExecutionStrategy):
         # its pre-armed recovery controller while an array is active.
         array_limit = get_slurm_array_limit()
         max_submit = get_slurm_max_submit_jobs()
-        if max_submit is not None and max_submit < 3:
-            raise ValueError(
-                "SLURM MaxSubmitJobs must be at least 3 for staged GPU "
-                "orchestration (controller, array, recovery controller)."
-            )
-        submit_capacity = max_submit - 2 if max_submit else array_limit
-        chunk_limit = min(array_limit, submit_capacity)
         # Image stages chunk to fit the limit; the Stage-2 shard array cannot
         # (a shard worker streams its whole shard on one GPU), so guard it.
-        if max(1, cfg.gpu_shards) > chunk_limit:
-            raise ValueError(
-                f"--gpu-shards ({cfg.gpu_shards}) exceeds the SLURM chunk limit "
-                f"({chunk_limit}); reduce the shard count."
-            )
+        # The run preflight asks the same function first (PF-SLURM-LIMIT).
+        limit_errors = staged_slurm_limit_errors(
+            max_submit, array_limit, cfg.gpu_shards
+        )
+        if limit_errors:
+            raise ValueError(limit_errors[0])
+        submit_capacity = max_submit - 2 if max_submit else array_limit
+        chunk_limit = min(array_limit, submit_capacity)
 
         epoch = new_orchestration_epoch()
         # SUBMISSION PREFLIGHT, and the slot's one producer on this path.
