@@ -45,19 +45,31 @@ on the calibration chip).
 
 **Checking a calibration by eye:** after `apply()`, `op.show_tiles()` draws
 each ROI's tiles, the chart patch each was matched to, and ΔE00 before and
-after. It draws from `op.calibration_record`, plain data that is kept even
-when the gate refuses the frame. `render_calibration_overlay(record)` in
-`_calibration_overlay.py` reads nothing else, so a record persisted elsewhere
-draws the same figure. `CalibrateColorRpcc` is also a `PlotImage`: listed
-under `ImagePipeline(plots=...)`, the CLI stores the rendered overlay PNG in
-each image's store (`figures/<run>/<id>/default.png`) and copies it to
-`deliverables/plots/`. The record itself is not saved. `inspect(image)` raises
+after; `op.show_delta_bar_plot()` charts the same ΔE00 values as paired bars
+per patch. Both draw from `op.calibration_record`, plain data that is kept
+even when the gate refuses the frame. `render_calibration_overlay(record)` and
+`render_delta_e_bars(record)` in `_calibration_overlay.py` read nothing else,
+so a record persisted elsewhere draws the same figures. The overlay scales the
+as-shot crop by bit depth (`normalize_rgb_bitdepth`) before `imshow`: a
+16-bit crop passed raw draws white. `CalibrateColorRpcc` is also a
+`PlotImage`: its `inspect()` returns a two-page `PlotOutput`, `tiles` and
+`delta_e`, and returns both pages even for a refused frame, whose ΔE page says why
+nothing was fitted. A page that came and went with the verdict would flip the
+copy-out between its flat and manifest-directory layouts from one image to the
+next. Listed under `ImagePipeline(plots=...)`, the CLI stores both PNGs in
+each image's store (`figures/<run>/<id>/tiles.png`, `…/delta_e.png`) and
+copies them to `deliverables/plots/<id>/<ds>/<image>/`, named by page label,
+with a `manifest.json`. The record itself is not saved. A run folder written
+before the ΔE page existed holds a single `default` page; `--mode measure`
+with the same pipeline keeps it and republishes that image flat, beside
+freshly drawn images in the manifest layout. Nothing fences this: re-run with
+`--overwrite` to redraw such a run uniformly. `inspect(image)` raises
 `FigureInputUnavailable` for any image but the one the last `apply()` ran on,
-so staged Stage 3 keeps the PNG Stage 1 drew in the same run folder.
+so staged Stage 3 keeps the PNGs Stage 1 drew in the same run folder.
 `--mode measure` with the **same pipeline** reuses that run's folder and keeps
 the PNG there. With a **different pipeline** it writes that pipeline's own run
 folder, which holds no overlay, so it lists the binding there as `unavailable`
-and leaves the earlier run's PNG where it is.
+and leaves the earlier run's PNGs where they are.
 
 ## Invariants a change here must not break
 

@@ -96,12 +96,15 @@ DEFERRED_SITES: dict[str, dict[str, tuple[str, ...]]] = {
     "analysis/qc/_grid_occupancy.py": {"go": ("inspect",)},
     "analysis/qc/_replicate_agreement.py": {"go": ("inspect",)},
     "correction/_color_correction/_calibration_overlay.py": {
-        "FigureCanvasAgg": ("render_calibration_overlay",),
-        "Figure": ("render_calibration_overlay",),
+        "FigureCanvasAgg": ("render_calibration_overlay", "render_delta_e_bars"),
+        "Figure": ("render_calibration_overlay", "render_delta_e_bars"),
         "Rectangle": ("render_calibration_overlay",),
-        "font_manager": ("render_calibration_overlay",),
-        "rc_context": ("render_calibration_overlay",),
-        "phenotypic_mpl_context": ("render_calibration_overlay",),
+        "Patch": ("render_delta_e_bars",),
+        "font_manager": ("_theme_font_family",),
+        "rc_context": ("render_calibration_overlay", "render_delta_e_bars"),
+        "phenotypic_mpl_context": (
+            "_theme_font_family", "render_calibration_overlay", "render_delta_e_bars",
+        ),
     },
     "correction/_color_correction/_color_corrector.py": {"colour": ("_operate",)},
     "correction/_color_denoise.py": {

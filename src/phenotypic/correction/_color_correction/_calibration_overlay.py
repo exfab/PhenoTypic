@@ -18,6 +18,8 @@ from typing import TYPE_CHECKING, Literal, Mapping, Sequence
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
+from phenotypic.sdk_.funcs_ import normalize_rgb_bitdepth
+
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
@@ -497,6 +499,25 @@ def _swatches(ax, x: float, cy: float, height: float, tile: TileOverlay, rectang
                                edgecolor=_SWATCH_EDGE, linewidth=0.4, **style))
 
 
+def _theme_font_family() -> str:
+    """The concrete font family the theme's default text resolves to.
+
+    Text is drawn whenever the caller saves the figure, usually outside the
+    theme. A generic family ("sans-serif") is looked up in rcParams at *draw*
+    time, so the theme's font would be measured and matplotlib's default one
+    drawn -- wider, so labels would clip. Naming the family the theme resolves
+    to makes every text carry that font from its creation; font, size and
+    colour otherwise stay the theme defaults.
+    """
+    from matplotlib import font_manager
+
+    from phenotypic.sdk_.viz.figures._mpl_theme import phenotypic_mpl_context
+
+    with phenotypic_mpl_context():
+        return font_manager.FontProperties(
+                fname=font_manager.findfont(font_manager.FontProperties())).get_name()
+
+
 def render_calibration_overlay(
         record: CalibrationOverlayRecord,
         *,
@@ -520,23 +541,14 @@ def render_calibration_overlay(
     Raises:
         ValueError: If *figsize* is smaller than the labels need.
     """
-    from matplotlib import font_manager, rc_context
+    from matplotlib import rc_context
     from matplotlib.backends.backend_agg import FigureCanvasAgg
     from matplotlib.figure import Figure
     from matplotlib.patches import Rectangle
 
     from phenotypic.sdk_.viz.figures._mpl_theme import phenotypic_mpl_context
 
-    # Text is measured here but drawn whenever the caller saves the figure,
-    # usually outside the theme. A generic family ("sans-serif") is looked up
-    # in rcParams at *draw* time, so the theme's font would be measured and
-    # matplotlib's default one drawn -- wider, so labels would clip. Naming
-    # the family the theme resolves to makes every text carry that font from
-    # its creation; font, size and colour otherwise stay the theme defaults.
-    with phenotypic_mpl_context():
-        default_family = font_manager.FontProperties(
-                fname=font_manager.findfont(font_manager.FontProperties())).get_name()
-    with phenotypic_mpl_context(), rc_context({"font.family": [default_family]}):
+    with phenotypic_mpl_context(), rc_context({"font.family": [_theme_font_family()]}):
         probe = Figure(dpi=dpi)
         FigureCanvasAgg(probe)
         meter = _TextMeter(probe, dpi)
@@ -585,7 +597,9 @@ def _draw_roi(roi: RoiOverlay, plan: _RoiPlan, axes, x: float, y_top: float,
     img_top = y_top - plan.title_h - _GAP_IN - plan.top_pad
     img_bottom = img_top - plan.image_h
     ax = axes(x + plan.left_w, img_bottom, plan.image_w, plan.image_h)
-    ax.imshow(roi.crop, interpolation="nearest", aspect="auto")
+    # The crop is the as-shot array; imshow reads an integer array as 0-255, so a
+    # 16-bit frame would draw as white. Scale by bit depth, as Image.rgb.normed().
+    ax.imshow(normalize_rgb_bitdepth(roi.crop), interpolation="nearest", aspect="auto")
     ax.set_xlim(-0.5, w_px - 0.5)
     ax.set_ylim(h_px - 0.5, -0.5)
     ax.set_axis_off()
@@ -671,3 +685,131 @@ def _draw_key(roi: RoiOverlay, plan: _RoiPlan, axes, x: float, img_bottom: float
         key_ax.text(tx, ey - plan.split / 2, block.name, ha="left", va="bottom")
         key_ax.text(tx, ey + plan.split / 2, block.delta_e, ha="left", va="top",
                     color=block.colour)
+
+
+# -- the ΔE00 bar chart ----------------------------------------------------------
+
+#: Before | after: the first two series of DESIGN.md's fixed order (navy,
+#: orange). Orange is below 3:1 on white, so every bar carries an edge.
+_BEFORE_COLOUR = "#003660"
+_AFTER_COLOUR = "#E69F00"
+#: Threshold annotations never wear a series colour (DESIGN.md).
+_ANNOTATION_COLOUR = "#8892a4"
+_BAR_PITCH_IN = 0.34     # figure width per scored tile
+_BAR_MIN_W_IN = 4.5
+_BAR_H_IN = 3.4
+
+
+def _scored_tiles(record: CalibrationOverlayRecord) -> list[tuple[TileOverlay, float, float]]:
+    """``(tile, before, after)`` for each tile the fit scored.
+
+    ROI by ROI, column-major like the overlay's key.
+    """
+    return [
+        (tile, tile.delta_e_before, tile.delta_e_after)
+        for roi in record.rois
+        for tile in sorted(roi.tiles, key=lambda t: (t.col, t.row))
+        if tile.delta_e_before is not None and tile.delta_e_after is not None
+    ]
+
+
+def render_delta_e_bars(
+        record: CalibrationOverlayRecord,
+        *,
+        figsize: tuple[float, float] | None = None,
+        dpi: float = 160,
+) -> Figure:
+    """Draw each scored patch's ΔE00 before and after correction as paired bars.
+
+    Only tiles the fit scored have bars: used, partly covered, and rejected
+    ones. A rejected tile is hatched and its tick marked, because outlier
+    rejection kept it out of the fit, so its after-value is held out rather
+    than fitted. The title gives the mean before -> after over the fitted
+    tiles alone -- so it differs from ``ColorCheckerProfile.diagnostics``'
+    means, which include rejected patches, whenever one was rejected. Dashed lines mark the good and fair bands
+    (``DELTA_E_GOOD``, ``DELTA_E_FAIR``).
+
+    A frame that was refused or skipped has no ΔE00 and still gets a figure:
+    the title and why nothing was fitted, and no bars. Every image therefore
+    yields the same pages.
+
+    Args:
+        record: From ``CalibrateColorRpcc.calibration_record``.
+        figsize: Optional ``(width, height)`` in inches; by default the width
+            grows with the number of patches.
+        dpi: Resolution the figure is drawn at.
+
+    Returns:
+        A ``matplotlib.figure.Figure`` with an Agg canvas attached. The two
+        bar series are ``fig.axes[0].containers``, labelled ``"before"`` and
+        ``"after"``; a figure with no scored tile has no containers.
+    """
+    from matplotlib import rc_context
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
+    from matplotlib.figure import Figure
+    from matplotlib.patches import Patch
+
+    from phenotypic.sdk_.viz.figures._mpl_theme import phenotypic_mpl_context
+
+    scored = _scored_tiles(record)
+    tiles = [tile for tile, _, _ in scored]
+    befores = [before for _, before, _ in scored]
+    afters = [after for _, _, after in scored]
+    fitted = [(b, a) for t, b, a in scored if t.status != "rejected"]
+    title = _figure_title(record)
+    if fitted:
+        before = float(np.mean([b for b, _ in fitted]))
+        after = float(np.mean([a for _, a in fitted]))
+        title += f"\nmean ΔE00 {before:.2f} -> {after:.2f} over {len(fitted)} fitted patches"
+
+    with phenotypic_mpl_context(), rc_context({"font.family": [_theme_font_family()]}):
+        if figsize is None:
+            figsize = (max(_BAR_MIN_W_IN, _BAR_PITCH_IN * len(tiles) + 1.2), _BAR_H_IN)
+        fig = Figure(figsize=figsize, dpi=dpi, layout="constrained")
+        FigureCanvasAgg(fig)
+        # Wrapped to the figure: an image name has no length limit.
+        fig.suptitle(title, wrap=True)
+        ax = fig.add_subplot()
+        if not tiles:
+            reason = record.refusal or f"frame {record.verdict.replace('_', ' ')}"
+            ax.text(0.5, 0.5, f"not fitted -- no ΔE00\n{reason}", ha="center",
+                    va="center", wrap=True, transform=ax.transAxes)
+            ax.set_axis_off()
+            return fig
+
+        x = np.arange(len(tiles))
+        width = 0.4
+        rejected = [t.status == "rejected" for t in tiles]
+        hatch = ["////" if r else None for r in rejected]
+        for offset, values, colour, label in (
+                (-width / 2, befores, _BEFORE_COLOUR, "before"),
+                (width / 2, afters, _AFTER_COLOUR, "after"),
+        ):
+            ax.bar(x + offset, values, width * 0.92, color=colour, label=label,
+                   edgecolor=_SWATCH_EDGE, linewidth=0.4, hatch=hatch)
+        # Labelled in the right margin, clear of every bar; the fair line is
+        # always in range so both bands read on a well-corrected frame too.
+        # "good" hangs below its line and "fair" sits above its own, so a tall
+        # y-range that squeezes the lines together cannot overlap the labels.
+        top = max(DELTA_E_FAIR, *befores, *afters)
+        ax.set_ylim(0, top * 1.08)
+        for level, name, va in ((DELTA_E_GOOD, "good", "top"),
+                                (DELTA_E_FAIR, "fair", "bottom")):
+            ax.axhline(level, color=_ANNOTATION_COLOUR, linewidth=0.8,
+                       linestyle=(0, (4, 3)), zorder=0)
+            ax.annotate(f"{name} <= {level:g}", (1.0, level), xycoords=("axes fraction", "data"),
+                        xytext=(4, 0), textcoords="offset points", ha="left", va=va,
+                        color=_ANNOTATION_COLOUR)
+        ax.set_xticks(x, [t.patch + (" (rejected)" if t.status == "rejected" else "")
+                          for t in tiles], rotation=60, ha="right", rotation_mode="anchor")
+        ax.set_xlim(-0.6, len(tiles) - 0.4)
+        ax.set_ylabel("ΔE00")
+        # Explicit handles: the bars' own would carry the first bar's hatch.
+        handles = [Patch(facecolor=c, edgecolor=_SWATCH_EDGE, linewidth=0.4, label=label)
+                   for c, label in ((_BEFORE_COLOUR, "before"), (_AFTER_COLOUR, "after"))]
+        if any(rejected):
+            handles.append(Patch(facecolor="none", edgecolor=_SWATCH_EDGE, linewidth=0.4,
+                                 hatch="////", label="rejected, held out of the fit"))
+        ax.legend(handles=handles, loc="lower left", bbox_to_anchor=(0.0, 1.0),
+                  ncols=len(handles), frameon=False, borderaxespad=0.2)
+        return fig

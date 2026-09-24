@@ -16,9 +16,11 @@ import weakref
 import pytest
 
 from phenotypic import Image, ImagePipeline
-from phenotypic.abc_.plotting import FigureInputUnavailable, PlotImage
+from phenotypic.abc_.plotting import FigureInputUnavailable, PlotImage, PlotOutput
 from phenotypic.correction import CalibrateColorRpcc
+from phenotypic.plotting._pipeline._store_figures import build_image_figures
 from phenotypic.plotting._pipeline._store_formats import serialize_store_format
+from phenotypic.sdk_._image_figures import FigureRun
 
 from ._checker_frames import frozen_op, render_frame
 
@@ -56,12 +58,37 @@ def test_it_is_an_image_plot():
     assert isinstance(frozen_op(), PlotImage)
 
 
-def test_inspect_draws_what_show_tiles_draws():
+def _page_pngs(output) -> dict[str, bytes]:
+    assert isinstance(output, PlotOutput)
+    return {page.key: _png(page.figure) for page in output.pages}
+
+
+def test_inspect_draws_the_overlay_and_the_delta_e_chart():
     operation, frame = _applied()
-    expected = _png(operation.show_tiles())
-    assert _png(operation.inspect(frame, for_save=True)) == expected
+    expected = {
+        "tiles": _png(operation.show_tiles()),
+        "delta_e": _png(operation.show_delta_bar_plot()),
+    }
+    output = operation.inspect(frame, for_save=True)
+    assert [page.key for page in output.pages] == ["tiles", "delta_e"]
+    assert _page_pngs(output) == expected
     # No subject: the held image, which is still alive.
-    assert _png(operation.inspect()) == expected
+    assert _page_pngs(operation.inspect()) == expected
+
+
+def test_a_skipped_frame_still_yields_both_pages():
+    # Every image stores the same pages, so the copy-out layout never flips.
+    operation = frozen_op(on_qc_fail="skip")
+    frame = Image(arr=render_frame(gain=1.6))  # saturated card
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        operation.apply(frame, inplace=True)
+    assert operation.calibration_record.verdict == "skipped"
+    output = operation.inspect(frame)
+    assert [page.key for page in output.pages] == ["tiles", "delta_e"]
+    (ax,) = output.pages[1].figure.axes
+    assert ax.containers == []  # no fit, so no bars; the page says why
+    assert all(_png(page.figure).startswith(b"\x89PNG") for page in output.pages)
 
 
 def test_another_image_is_unavailable():
@@ -121,3 +148,24 @@ def test_a_pipeline_binds_it_by_reference_and_round_trips():
     restored = ImagePipeline.from_json(pipeline.to_json())
     [restored_binding] = restored.get_plots()
     assert restored_binding.plot is restored.get_ops()["cal"]
+
+
+def test_an_image_pipeline_listing_it_under_plots_stores_both_figures():
+    operation = frozen_op()
+    pipeline = ImagePipeline(ops={"cal": operation}, plots=[operation])
+    frame = Image(arr=render_frame())
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        corrected = pipeline.apply(frame)
+    run = FigureRun(date="2026-09-23", pipeline_sha256="0" * 64)
+    stored = build_image_figures(pipeline, corrected, run=run)
+
+    assert (stored.failed, stored.unavailable) == ((), ())
+    [binding] = stored.bindings
+    assert (binding.binding_id, binding.plot_class) == ("cal", "CalibrateColorRpcc")
+    assert [(p.key, p.backend) for p in binding.pages] == [("tiles", "mpl"), ("delta_e", "mpl")]
+    for page in binding.pages:
+        [file] = page.files
+        assert (file.format, file.filename) == ("png", f"{page.key}.png")
+        assert file.data.startswith(b"\x89PNG")
+    assert binding.pages[0].files[0].data != binding.pages[1].files[0].data
