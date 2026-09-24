@@ -51,6 +51,9 @@ FindingCode = Literal[
     "PF-GRID-IMAGE",
     "PF-GRID-PRESET",
     "PF-NO-DETECTOR",
+    "PF-MISSING-MODULE",
+    "PF-LICENSE",
+    "PF-WEIGHTS-UNCACHED",
 ]
 
 #: One remedy per finding code, shown under the finding's message.
@@ -77,6 +80,22 @@ HINTS: dict[str, str] = {
         "The pipeline's nrows/ncols preset makes measure() add a "
         "CenteredAutoGridFinder, which needs a GridImage. Run with "
         "--image-type GridImage, or remove nrows and ncols from the pipeline."
+    ),
+    "PF-MISSING-MODULE": (
+        "Install the package in the environment the run uses, e.g. "
+        "`uv sync --extra <extra>` for the extra named above; micro-sam is "
+        "installed with conda (`conda install -c conda-forge micro_sam`)."
+    ),
+    "PF-LICENSE": (
+        "Read the model's license, then accept it for this run, e.g. "
+        "`export PHENOTYPIC_ACCEPT_MODEL_LICENSE=<name>` (comma-separate "
+        "several). Gated Hugging Face models also need `uv run hf auth login`."
+    ),
+    "PF-WEIGHTS-UNCACHED": (
+        "The weights will be downloaded by the first worker that needs them, "
+        "which requires network access on the compute node. Pre-download them "
+        "on a node with network access: `uv run python -m phenotypic.detect.nn "
+        "download --help`."
     ),
     "PF-NO-DETECTOR": (
         "Add an object detector (for example OtsuDetector) to the pipeline's "
@@ -332,12 +351,112 @@ def check_detector_present(context: PreflightContext) -> list[PreflightFinding]:
     ]
 
 
+def _requirements_in_scope(context: PreflightContext) -> list[tuple[str, Any]]:
+    """``("path/to/op", requirements)`` for every in-scope operation."""
+    return [
+        ("/".join(path), operation.preflight_requirements())
+        for path, operation in operations_in_scope(context)
+    ]
+
+
+def check_optional_modules(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-MISSING-MODULE``: an operation's lazily imported package is absent.
+
+    Spec §5, F9. ``find_spec`` locates a package without importing it, so this
+    costs no ``torch`` import in the submitting process.
+    """
+    import importlib.util
+
+    missing: dict[tuple[str, "str | None"], list[str]] = {}
+    for path, requirements in _requirements_in_scope(context):
+        for module in requirements.modules:
+            try:
+                present = importlib.util.find_spec(module) is not None
+            except (ImportError, ValueError):
+                present = False
+            if not present:
+                missing.setdefault((module, requirements.extra), []).append(path)
+    return [
+        PreflightFinding(
+            code="PF-MISSING-MODULE",
+            severity="error",
+            message=(
+                f"the package {module!r} is not installed, but "
+                f"{', '.join(paths)} imports it at run time"
+                + (f" (provided by the {extra!r} extra)" if extra else "")
+            ),
+        )
+        for (module, extra), paths in missing.items()
+    ]
+
+
+def _weights_in_scope(context: PreflightContext) -> list[tuple[str, Any]]:
+    return [
+        (path, weight)
+        for path, requirements in _requirements_in_scope(context)
+        for weight in requirements.weights
+    ]
+
+
+def check_model_licenses(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-LICENSE``: gated weights whose license this run has not accepted.
+
+    Spec §5, §10.3. No runtime path prompts any more, so an unaccepted license
+    fails every image; ``PHENOTYPIC_ACCEPT_MODEL_LICENSE`` is read the same way
+    ``require_license_acceptance`` reads it.
+    """
+    import os
+
+    accepted = {
+        name.strip().lower()
+        for name in os.environ.get("PHENOTYPIC_ACCEPT_MODEL_LICENSE", "").split(",")
+        if name.strip()
+    }
+    findings = []
+    for path, weight in _weights_in_scope(context):
+        if weight.license_key and weight.license_key.lower() not in accepted:
+            findings.append(
+                PreflightFinding(
+                    code="PF-LICENSE",
+                    severity="error",
+                    message=(
+                        f"{path} loads {weight.model}, whose license has not "
+                        "been accepted: PHENOTYPIC_ACCEPT_MODEL_LICENSE does not "
+                        f"include {weight.license_key!r}"
+                    ),
+                )
+            )
+    return findings
+
+
+def check_model_weights_cached(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-WEIGHTS-UNCACHED``: weights that a worker would have to download.
+
+    Spec §5, F12. A warning, not an error: some clusters give compute nodes
+    network access. A probe that cannot tell (``None``) reports nothing.
+    """
+    findings = []
+    for path, weight in _weights_in_scope(context):
+        if weight.is_cached() is False:
+            findings.append(
+                PreflightFinding(
+                    code="PF-WEIGHTS-UNCACHED",
+                    severity="warning",
+                    message=f"{path} loads {weight.model}, which is not in the local cache",
+                )
+            )
+    return findings
+
+
 #: The checks :func:`run_preflight` runs, in order: pipeline, environment,
 #: cluster, inputs, metadata, output. Later tasks register theirs here.
 CHECKS: tuple[Check, ...] = (
     check_grid_image,
     check_grid_preset,
     check_detector_present,
+    check_optional_modules,
+    check_model_licenses,
+    check_model_weights_cached,
 )
 
 

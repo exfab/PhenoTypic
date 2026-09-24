@@ -175,6 +175,23 @@ class Sam3(GpuDetector):
     _processor: Any = PrivateAttr(default=None)
     _device: Any = PrivateAttr(default=None)
 
+    def preflight_requirements(self):
+        """Packages and weights this detector loads (run preflight, spec §3/§5).
+
+        SAM3's weights are gated by the SAM License. See ``BaseOperation.preflight_requirements``.
+        """
+        import dataclasses
+
+        from phenotypic.detect.nn._helper import _checkpoint_manager as ckpt
+
+        requirements = super().preflight_requirements()
+        return dataclasses.replace(
+            requirements,
+            modules=("transformers", "torch"),
+            extra="foundation",
+            weights=(ckpt.sam3_weight_requirement(),),
+        )
+
     def _ensure_model_loaded(self) -> None:
         """Build the SAM3 model + processor on first use (idempotent).
 
@@ -196,9 +213,20 @@ class Sam3(GpuDetector):
 
         from phenotypic.detect.nn._helper._checkpoint_manager import (
             Sam3CheckpointManager,
+            require_license_acceptance,
             resolve_device,
         )
 
+        # The docstring above always promised this gate; the load bypassed it
+        # by calling from_pretrained directly (spec §10.3, F11). Batch
+        # context: never prompt.
+        manager = Sam3CheckpointManager()
+        require_license_acceptance(
+            manager.license_key,
+            manager.license_name,
+            manager.license_url,
+            interactive=False,
+        )
         self._device = resolve_device(self.device)
         repo_id = Sam3CheckpointManager.repo_id
         self._model = Sam3Model.from_pretrained(repo_id).to(self._device)

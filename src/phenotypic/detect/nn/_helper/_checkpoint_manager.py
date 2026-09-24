@@ -837,3 +837,126 @@ def require_license_acceptance(
         f"PHENOTYPIC_ACCEPT_MODEL_LICENSE={model} "
         f"(and `hf auth login` for gated Hugging Face models)."
     )
+
+
+# ---------------------------------------------------------------------------
+# Run-preflight probes (spec 2026-09-24-cli-preflight §5)
+# ---------------------------------------------------------------------------
+#
+# Everything below answers "are these weights on local disk, and are they
+# gated?" for the CLI's run preflight, which runs in the submitting process --
+# often a login node. None of it imports torch or micro_sam: importing either
+# costs seconds and hundreds of MB there, and fails outright when the package
+# is absent (review R8). Each probe returns None when it cannot tell.
+
+
+def torch_hub_checkpoint_dir() -> Path:
+    """``torch.hub.get_dir()/checkpoints``, resolved without importing torch.
+
+    Follows torch's own resolution order: ``$TORCH_HOME/hub``, else
+    ``$XDG_CACHE_HOME/torch/hub``, else ``~/.cache/torch/hub``. It cannot see a
+    ``torch.hub.set_dir`` call made in another process, which is why
+    :meth:`Sam2CheckpointManager.cache_dir` keeps asking torch at run time; a
+    test pins the two equal whenever torch is installed.
+
+    Returns:
+        The directory SAM2 checkpoints are downloaded into.
+    """
+    torch_home = os.environ.get("TORCH_HOME") or os.path.join(
+        os.environ.get("XDG_CACHE_HOME") or os.path.join("~", ".cache"), "torch"
+    )
+    return Path(os.path.expanduser(torch_home)) / "hub" / "checkpoints"
+
+
+def microsam_cache_dir_without_import() -> Path:
+    """micro-sam's model folder from ``MICROSAM_CACHEDIR`` or ``platformdirs``.
+
+    The same fallback :meth:`MicroSamCheckpointManager.cache_dir` uses when
+    ``micro_sam`` is not importable, so the probe never imports it.
+    """
+    env = os.environ.get("MICROSAM_CACHEDIR")
+    if env:
+        return Path(env)
+    try:
+        from platformdirs import user_cache_dir
+
+        return Path(user_cache_dir("micro_sam"))
+    except ImportError:
+        return Path.home() / ".cache" / "micro_sam"
+
+
+def hf_repo_is_cached(repo_id: str) -> bool | None:
+    """Whether a Hugging Face repo's ``config.json`` is in the local cache.
+
+    Returns:
+        ``True``/``False`` from ``huggingface_hub.try_to_load_from_cache``, or
+        ``None`` when ``huggingface_hub`` is not installed (the missing-module
+        check reports that separately).
+    """
+    import importlib.util
+
+    if importlib.util.find_spec("huggingface_hub") is None:
+        return None
+    from huggingface_hub import try_to_load_from_cache
+
+    found = try_to_load_from_cache(repo_id=repo_id, filename="config.json")
+    return isinstance(found, str)
+
+
+def sam2_weight_requirement(model_size: Sam2ModelSize):
+    """The SAM2 checkpoint a detector with *model_size* downloads."""
+    from phenotypic.abc_ import WeightRequirement
+
+    filename = Sam2CheckpointManager.MODELS[model_size]["filename"]
+    return WeightRequirement(
+        model=f"sam2:{model_size}",
+        license_key=None,
+        is_cached=lambda: (torch_hub_checkpoint_dir() / filename).is_file(),
+    )
+
+
+def sam3_weight_requirement():
+    """SAM3's gated Hugging Face weights."""
+    from phenotypic.abc_ import WeightRequirement
+
+    repo_id = Sam3CheckpointManager.repo_id
+    return WeightRequirement(
+        model=repo_id,
+        license_key=Sam3CheckpointManager.license_key,
+        is_cached=lambda: hf_repo_is_cached(repo_id),
+    )
+
+
+def dino_weight_requirement(version: int, size: str):
+    """The DINO backbone a detector loads; DINOv3 is gated, DINOv2 is not."""
+    from phenotypic.abc_ import WeightRequirement
+
+    if int(version) == 3:
+        manager: Any = Dinov3CheckpointManager(size=size)
+        license_key = Dinov3CheckpointManager.license_key
+    else:
+        manager = Dinov2CheckpointManager(size=size)
+        license_key = None
+    repo_id = manager.repo_id
+    return WeightRequirement(
+        model=repo_id,
+        license_key=license_key,
+        is_cached=lambda: hf_repo_is_cached(repo_id),
+    )
+
+
+def microsam_weight_requirement(model_type: str):
+    """The micro-sam model a detector with *model_type* loads."""
+    from phenotypic.abc_ import WeightRequirement
+
+    def is_cached() -> bool | None:
+        cache = microsam_cache_dir_without_import()
+        if not cache.is_dir():
+            return False
+        return (cache / model_type).is_dir() or any(
+            path.is_file() for path in cache.glob(f"*{model_type}*")
+        )
+
+    return WeightRequirement(
+        model=f"micro-sam:{model_type}", license_key=None, is_cached=is_cached
+    )
