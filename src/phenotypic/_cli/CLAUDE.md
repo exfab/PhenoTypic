@@ -866,7 +866,13 @@ User-facing run outputs live under `<output>/deliverables/` (hard cutover):
 `<AnalysisClass>.{csv,parquet}`, `analysis_manifest.json`,
 `plots/<plot-id>/...`,
 `dashboard.html`, `processing_report.html`, `README.md`,
-`pipeline.json`, and `overlays/<ds>/<stem>.png` (detection overlay PNGs). The
+`pipeline.json.pht-pipe`, and `overlays/<ds>/<stem>.png` (detection overlay PNGs). The
+pipeline config is **seeded** from the `--pipeline` bytes when a full or
+staged run starts (`_seed_pipeline_config`, only when no config -- canonical
+or legacy -- exists, under `pipeline_publication_lock`) and rewritten from
+the loaded pipeline at finalize; nothing is copied to the output root any
+more. The `--restart --image-manifest` freshness check treats that seeded
+file and its lock file as scaffolding. The
 dashboard is progress-only: local runs render progress directly, while SLURM
 runs add Progress and Download tabs. Use the Results Viewer or the GUI
 `/analysis/` app for interactive exploration. Each per-image **OME-Zarr store** stays at

@@ -99,7 +99,7 @@ output_folder/
 |   +-- master_measurements.parquet   # Clean archive: every measured object, un-joined (Parquet only)
 |   +-- measurements.csv              # Metadata-joined mirror used by the GUI results viewer (refreshed on every run)
 |   +-- measurements.parquet          # Parquet companion of measurements.csv
-|   +-- pipeline.json                 # Reproducibility spec (operations + filters + model)
+|   +-- pipeline.json.pht-pipe        # Reproducibility spec (operations + filters + model); seeded from --pipeline at start
 |   +-- <AnalysisClass>.csv           # Class-named model-fit output
 |   +-- <AnalysisClass>.parquet       # Parquet companion
 |   +-- analysis_manifest.json        # Named-analysis artifact index and checksums

@@ -145,7 +145,6 @@ import importlib
 import json
 import logging
 import os
-import shutil
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, List, Optional, Sequence, cast, get_args
@@ -203,9 +202,13 @@ from phenotypic.sdk_ import (
     atomic_write_bytes,
     atomic_write_json,
     metadata_csv_deliverable_path,
+    pipeline_json_path,
+    pipeline_publication_lock,
+    pipeline_publication_lock_path,
     processing_report_html_path,
     progress_dir,
     RUN_LOG_DIRNAME,
+    resolve_pipeline_config_path,
     resolve_processing_state_path,
     file_fingerprint,
 )
@@ -393,7 +396,9 @@ _OUTPUT_ROOT_NOT_A_DIRECTORY = "<not a directory>"
 _OUTPUT_ROOT_UNREADABLE = "<unreadable>"
 
 
-def _holds_run_output(directory: Path) -> bool:
+def _holds_run_output(
+    directory: Path, *, seeded_files: frozenset[Path] = frozenset()
+) -> bool:
     """Return whether ``directory`` actually holds an earlier run's output.
 
     Every run scaffolds its output tree up front -- ``results/<ds>/zarr/`` and
@@ -411,6 +416,9 @@ def _holds_run_output(directory: Path) -> bool:
 
     Args:
         directory: A real, non-symlink directory under the output root.
+        seeded_files: Exact paths of regular files a run writes before any
+            image, which count as scaffolding too. Matched by full path, so
+            a file of the same name elsewhere is still output.
 
     Returns:
         ``True`` on the first real file, store directory, or symlink found.
@@ -427,7 +435,7 @@ def _holds_run_output(directory: Path) -> bool:
                 return True
             if child.is_dir():
                 stack.append(child)
-            else:
+            elif child not in seeded_files:
                 return True
     return False
 
@@ -446,9 +454,11 @@ def _prior_scientific_artifact_names(
     the caller refuses.
 
     Three kinds of entry are *not* an earlier run's science: machine-state the
-    restart clears itself, empty scaffolding (see :func:`_holds_run_output`),
-    and the run's own pipeline copy, which ``_copy_pipeline_to_output`` places
-    at the root under the source file's basename.
+    restart clears itself, scaffolding (see :func:`_holds_run_output`), and
+    the run's own pipeline config. A run seeds that config into
+    ``deliverables/`` before any image (:func:`_seed_pipeline_config`), with
+    the publication lock file beside it; output trees from before that
+    change instead hold a copy at the root under the source file's basename.
 
     Fails closed: a path that is not a directory, or a root that cannot be
     enumerated, is reported as holding artifacts rather than assumed fresh.
@@ -460,8 +470,8 @@ def _prior_scientific_artifact_names(
     Args:
         output_dir: Prospective run output root.
         pipeline_snapshot_name: Basename of this run's ``--pipeline`` file, so
-            the copy of it at the output root is not mistaken for science.
-            ``None`` classifies every file at the root as science.
+            an older tree's copy of it at the output root is not mistaken for
+            science. ``None`` classifies every file at the root as science.
 
     Returns:
         Sorted names of the blocking entries, or one of the
@@ -469,6 +479,10 @@ def _prior_scientific_artifact_names(
         when a restart would preserve nothing from an earlier run.
     """
     root = Path(output_dir)
+    seeded_config = pipeline_json_path(root)
+    seeded_files = frozenset(
+        {seeded_config, pipeline_publication_lock_path(seeded_config)}
+    )
     blocking: list[str] = []
     try:
         if not root.exists():
@@ -487,7 +501,9 @@ def _prior_scientific_artifact_names(
                 and entry.is_file()
             ):
                 continue
-            if entry.is_dir() and not _holds_run_output(entry):
+            if entry.is_dir() and not _holds_run_output(
+                entry, seeded_files=seeded_files
+            ):
                 continue
             blocking.append(entry.name)
     except OSError:
@@ -3085,9 +3101,10 @@ def phenotypic_cli(
         if not config.process_only_layer:
             output_manager.create_structure(datasets)
 
-        # Copy pipeline config for reproducibility (skip in measure mode — the
-        # forward run already copied it). Process-only writes its copy under
-        # the hidden cache (.phenotypic/pipeline.json), not deliverables/.
+        # Seed the canonical pipeline config for reproducibility (skip in
+        # measure mode -- the forward run already seeded it). Process-only
+        # writes its copy under the hidden cache (.phenotypic/), since it
+        # has no deliverables/.
         if config.process_only_layer:
             try:
                 from phenotypic.sdk_ import phenotypic_cache_pipeline_json_path
@@ -3104,11 +3121,11 @@ def phenotypic_cli(
                 )
         elif not measure_only:
             try:
-                copied = _copy_pipeline_to_output(
+                seeded = _seed_pipeline_config(
                     config.pipeline_json, output_dir
                 )
-                if copied:
-                    click.echo(f"  Pipeline: {copied}")
+                if seeded:
+                    click.echo(f"  Pipeline: {seeded}")
             except OSError as e:
                 logger.warning(f"Failed to copy pipeline config: {e}")
                 click.echo(
@@ -4215,25 +4232,34 @@ def _handle_recompile(
     console.print(f"\n[bold green]Recompilation complete: {output_dir}")
 
 
-def _copy_pipeline_to_output(
+def _seed_pipeline_config(
     pipeline_path: Path, output_dir: Path
 ) -> Optional[Path]:
-    """Copy pipeline JSON to output directory if not already present.
+    """Seed ``deliverables/pipeline.json.pht-pipe`` with the ``--pipeline`` bytes.
+
+    Gives a run its canonical pipeline config from the moment it starts, where
+    finalize, the analysis GUI and the QC recipe all look for it. Finalize
+    later rewrites the file from the loaded pipeline, so the submitted bytes
+    are kept only until then.
+
+    Never replaces a config that is already there -- canonical or legacy --
+    because on a resume it is the earlier run's, and it may carry QC edits
+    the GUI wrote back into it. The existence check and the write share the
+    publication lock every other writer of this file holds.
 
     Args:
         pipeline_path: Path to the source pipeline JSON file.
-        output_dir: Output directory to copy into.
+        output_dir: Run output root.
 
     Returns:
-        Path to the copy if created, None if skipped.
+        Path to the seeded config, or ``None`` when one already existed.
     """
-    dest = output_dir / pipeline_path.name
-    if dest.exists():
-        return None
-    if pipeline_path.resolve() == dest.resolve():
-        return None
-    shutil.copy2(pipeline_path, dest)
-    return dest
+    target = pipeline_json_path(output_dir)
+    with pipeline_publication_lock(target):
+        if resolve_pipeline_config_path(output_dir).exists():
+            return None
+        atomic_write_bytes(target, Path(pipeline_path).read_bytes())
+    return target
 
 
 def _format_duration(seconds: float) -> str:

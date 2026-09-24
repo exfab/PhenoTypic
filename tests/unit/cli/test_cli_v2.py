@@ -55,7 +55,7 @@ from phenotypic._cli._cli_update_state import (
     append_completion_event,
 )
 from phenotypic.data import load_synth_yeast_plate
-from phenotypic.phenotypicCLI import _copy_pipeline_to_output, phenotypic_cli
+from phenotypic.phenotypicCLI import _seed_pipeline_config, phenotypic_cli
 from phenotypic.prefab import RoundPeaksPipeline
 from phenotypic.sdk_ import (
     MEASUREMENT_TABLE_RELATIVE_PATH,
@@ -488,43 +488,104 @@ class TestOutputManager:
 
         assert manager.save_overlays is False
 
-    def test_pipeline_json_copied_to_output(self, temp_output_dir):
-        """Test pipeline JSON is copied to output directory for reproducibility."""
+    def test_pipeline_seeded_into_deliverables(self, temp_output_dir):
+        """The --pipeline bytes seed the canonical config under deliverables/."""
         source_dir = temp_output_dir / "source"
         source_dir.mkdir()
         pipeline_path = source_dir / "my_pipeline.json"
-        pipeline_content = '{"operations": []}'
-        pipeline_path.write_text(pipeline_content)
+        pipeline_bytes = b'{"operations": []}'
+        pipeline_path.write_bytes(pipeline_bytes)
 
         output_dir = temp_output_dir / "output"
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        result = _copy_pipeline_to_output(pipeline_path, output_dir)
+        result = _seed_pipeline_config(pipeline_path, output_dir)
 
-        assert result is not None
-        assert result.exists()
-        assert result.read_text() == pipeline_content
+        assert result == pipeline_json_path(output_dir)
+        assert result.read_bytes() == pipeline_bytes
+        # Nothing at the output root any more.
+        assert not (output_dir / pipeline_path.name).exists()
 
-    def test_pipeline_json_not_overwritten_on_resume(self, temp_output_dir):
-        """Test pipeline JSON is not overwritten if it already exists (resume)."""
+    @pytest.mark.parametrize(
+        "existing_name",
+        [
+            pytest.param(None, id="canonical"),
+            pytest.param("pipeline.json", id="legacy"),
+        ],
+    )
+    def test_pipeline_seed_never_overwrites_existing_config(
+        self, temp_output_dir, existing_name
+    ):
+        """A resume, or the GUI's QC edits, keep the config already there.
+
+        A legacy ``deliverables/pipeline.json`` counts too: it is what
+        ``resolve_pipeline_config_path`` hands readers, and seeding a
+        canonical file beside it would silently take its place.
+        """
         output_dir = temp_output_dir / "output"
-        output_dir.mkdir(parents=True, exist_ok=True)
+        existing = (
+            pipeline_json_path(output_dir)
+            if existing_name is None
+            else deliverables_dir(output_dir) / existing_name
+        )
+        existing.parent.mkdir(parents=True)
+        original_bytes = b'{"operations": [], "qc": [{"edited": "in GUI"}]}'
+        existing.write_bytes(original_bytes)
 
-        # Pre-existing pipeline copy (from first run)
-        pipeline_copy_path = output_dir / "pipeline.json"
-        original_content = '{"operations": [{"name": "original"}]}'
-        pipeline_copy_path.write_text(original_content)
-
-        # New pipeline with different content
         source_dir = temp_output_dir / "source"
         source_dir.mkdir()
-        new_pipeline = source_dir / "pipeline.json"
-        new_pipeline.write_text('{"operations": [{"name": "modified"}]}')
+        new_pipeline = source_dir / "my_pipeline.json"
+        new_pipeline.write_bytes(b'{"operations": [{"name": "modified"}]}')
 
-        result = _copy_pipeline_to_output(new_pipeline, output_dir)
+        result = _seed_pipeline_config(new_pipeline, output_dir)
 
         assert result is None
-        assert pipeline_copy_path.read_text() == original_content
+        assert existing.read_bytes() == original_bytes
+        if existing_name is not None:
+            assert not pipeline_json_path(output_dir).exists()
+
+    def test_forward_run_seeds_config_not_a_root_or_legacy_copy(
+        self, temp_input_dir, temp_pipeline, tmp_path, monkeypatch
+    ):
+        """A source named ``pipeline.json`` lands at the canonical path only.
+
+        ``deliverables/pipeline.json`` is the legacy config name that
+        ``resolve_pipeline_config_path`` falls back to, and ``pipeline.json``
+        is the commonest name for a pipeline file -- so copying under the
+        source basename would plant a second, competing config.
+        """
+        import phenotypic.phenotypicCLI as cli
+
+        class StopBeforeProcessing:
+            def execute(self, datasets, output_dir):
+                raise SystemExit(0)
+
+        monkeypatch.setattr(
+            cli,
+            "create_execution_strategy",
+            lambda config, output_manager: StopBeforeProcessing(),
+        )
+        source = tmp_path / "pipeline.json"
+        source.write_bytes(temp_pipeline.read_bytes())
+        output_dir = tmp_path / "out"
+
+        result = CliRunner().invoke(
+            phenotypic_cli,
+            [
+                "--pipeline",
+                str(source),
+                "--input",
+                str(temp_input_dir),
+                "--output",
+                str(output_dir),
+                "--skip-validation",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        assert pipeline_json_path(output_dir).read_bytes() == source.read_bytes()
+        assert not (output_dir / "pipeline.json").exists()
+        assert not (deliverables_dir(output_dir) / "pipeline.json").exists()
 
 
 class TestHTMLReportGenerator:

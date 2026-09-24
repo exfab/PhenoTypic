@@ -15,7 +15,7 @@ from phenotypic._cli._cli_state_management import (
     validate_resume_compatibility,
 )
 from phenotypic._cli._cli_types import ExecutionConfig
-from phenotypic.sdk_ import resolve_processing_state_path
+from phenotypic.sdk_ import pipeline_json_path, resolve_processing_state_path
 
 
 @pytest.fixture
@@ -520,6 +520,59 @@ def test_manifest_restart_refuses_a_root_with_prior_scientific_artifacts(
         ],
     )
     assert fresh.exit_code == 0, fresh.output
+
+
+def test_manifest_restart_accepts_a_started_run_holding_only_its_seeded_pipeline(
+    monkeypatch: pytest.MonkeyPatch,
+    image_tree: Path,
+    pipeline_stub: Path,
+    tmp_path: Path,
+) -> None:
+    """The pipeline config a run seeds at startup is not prior science.
+
+    Every forward run writes ``deliverables/pipeline.json.pht-pipe`` before
+    processing an image, so treating it as science would refuse a subset
+    exchange on every run that ever started.
+    """
+    from click.testing import CliRunner
+
+    import phenotypic.phenotypicCLI as cli
+
+    class StopAfterStateSave:
+        def execute(self, datasets, output_dir):
+            raise SystemExit(0)
+
+    monkeypatch.setattr(
+        cli,
+        "create_execution_strategy",
+        lambda config, output_manager: StopAfterStateSave(),
+    )
+    manifest_a = _manifest(tmp_path / "a.images", ["plate1/img001.tiff"])
+    manifest_b = _manifest(tmp_path / "b.images", ["plate2/img001.tiff"])
+    output_dir = tmp_path / "out"
+    base = [
+        "--pipeline",
+        str(pipeline_stub),
+        "--input",
+        str(image_tree),
+        "--output",
+        str(output_dir),
+        "--skip-validation",
+    ]
+    runner = CliRunner()
+    first = runner.invoke(
+        cli.phenotypic_cli,
+        [*base, "--image-manifest", str(manifest_a)],
+    )
+    assert first.exit_code == 0, first.output
+    assert pipeline_json_path(output_dir).is_file()
+
+    restarted = runner.invoke(
+        cli.phenotypic_cli,
+        [*base, "--image-manifest", str(manifest_b), "--restart"],
+    )
+
+    assert restarted.exit_code == 0, restarted.output
 
 
 @pytest.mark.parametrize(
