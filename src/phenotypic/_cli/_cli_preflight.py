@@ -47,6 +47,9 @@ RunMode = Literal["full", "measure", "process"]
 FindingCode = Literal[
     "PF-CHECK-CRASHED",
     "PF-PIPELINE-LOAD",
+    "PF-GRID-IMAGE",
+    "PF-GRID-PRESET",
+    "PF-NO-DETECTOR",
 ]
 
 #: One remedy per finding code, shown under the finding's message.
@@ -58,6 +61,20 @@ HINTS: dict[str, str] = {
     "PF-PIPELINE-LOAD": (
         "Fix the pipeline file named above, then run again; nothing under "
         "--output was changed."
+    ),
+    "PF-GRID-IMAGE": (
+        "Run with --image-type GridImage (and --nrows/--ncols for your plate "
+        "layout), or remove the grid operations listed above."
+    ),
+    "PF-GRID-PRESET": (
+        "The pipeline's nrows/ncols preset makes measure() add a "
+        "CenteredAutoGridFinder, which needs a GridImage. Run with "
+        "--image-type GridImage, or remove nrows and ncols from the pipeline."
+    ),
+    "PF-NO-DETECTOR": (
+        "Add an object detector (for example OtsuDetector) to the pipeline's "
+        "ops. If a custom operation writes the object map itself, rerun with "
+        "--skip-validation."
     ),
 }
 
@@ -154,9 +171,167 @@ class PreflightContext:
 
 Check = Callable[[PreflightContext], "list[PreflightFinding]"]
 
+def _image_class_by_input(context: PreflightContext) -> dict[str, str]:
+    """``"Image"`` or ``"GridImage"`` for every input, as the run will load it.
+
+    ``full`` and ``process`` build every image as ``--image-type``. ``measure``
+    loads each store as its recorded ``phenotypic.image_class``, with
+    ``--image-type`` only as the fallback the worker uses
+    (``load_image_from_store``), so the answer can differ per store.
+    """
+    fallback = str(context.config.image_type)
+    inputs = [str(path) for dataset in context.datasets for path in dataset.images]
+    if context.mode != "measure":
+        return {path: fallback for path in inputs}
+
+    from phenotypic.sdk_.ngff_ import PhenotypicAttr, read_phenotypic_attributes
+
+    classes: dict[str, str] = {}
+    for path in inputs:
+        try:
+            block = read_phenotypic_attributes(Path(path))
+        except (OSError, KeyError, ValueError):
+            classes[path] = fallback
+            continue
+        recorded = block.get(PhenotypicAttr.IMAGE_CLASS, fallback)
+        classes[path] = "GridImage" if recorded == "GridImage" else "Image"
+    return classes
+
+
+def _plain_image_reach(
+    context: PreflightContext,
+) -> "tuple[list[str], Severity] | None":
+    """Which inputs the run loads as a plain ``Image``, and the finding severity.
+
+    Returns:
+        ``None`` when no input is a plain ``Image``. Otherwise the affected
+        inputs and ``"error"`` when every input is affected, ``"warning"`` when
+        only some are. With no inputs scanned the answer is ``--image-type``
+        alone, and a plain ``Image`` then counts as every input.
+    """
+    classes = _image_class_by_input(context)
+    if not classes:
+        if str(context.config.image_type) == "Image":
+            return [], "error"
+        return None
+    plain = [path for path, cls in classes.items() if cls == "Image"]
+    if not plain:
+        return None
+    return plain, "error" if len(plain) == len(classes) else "warning"
+
+
+def check_grid_image(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-GRID-IMAGE``: grid operations that will meet a plain ``Image``.
+
+    Spec §4, F4. Every such operation derives from one of the four ABCs that
+    raise ``GridImageInputError`` on a plain Image, which is what
+    ``preflight_requirements().grid_image`` reports.
+    """
+    grid_ops = [
+        "/".join(path)
+        for path, operation in operations_in_scope(context)
+        if operation.preflight_requirements().grid_image
+    ]
+    if not grid_ops:
+        return []
+    reach = _plain_image_reach(context)
+    if reach is None:
+        return []
+    plain, severity = reach
+    where = (
+        "--image-type Image"
+        if context.mode != "measure"
+        else f"{len(plain)} store(s) recorded as a plain Image"
+    )
+    return [
+        PreflightFinding(
+            code="PF-GRID-IMAGE",
+            severity=severity,
+            message=(
+                f"grid operation(s) {', '.join(grid_ops)} require a GridImage, "
+                f"but the run uses {where}; each such image would fail with "
+                "GridImageInputError"
+            ),
+            subjects=tuple(plain) if context.mode == "measure" else (),
+        )
+    ]
+
+
+def check_grid_preset(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-GRID-PRESET``: a preset that injects a grid finder into a plain ``Image``.
+
+    Spec §4, F5 (review R5). ``measure()`` injects ``CenteredAutoGridFinder``
+    only when the pipeline carries **both** ``nrows`` and ``ncols`` and ``meas``
+    holds no ``GridFinder`` (``_image_pipeline_core.py:1305-1316``). Under
+    ``--image-type Image`` the CLI never applies ``--nrows``/``--ncols`` to the
+    pipeline, so only the preset matters. ``process`` never measures.
+    """
+    if context.mode == "process":
+        return []
+    pipeline = context.pipeline
+    if pipeline._nrows is None or pipeline._ncols is None:
+        return []
+    from phenotypic.abc_ import GridFinder
+
+    if any(isinstance(m, GridFinder) for m in pipeline.get_meas().values()):
+        return []
+    reach = _plain_image_reach(context)
+    if reach is None:
+        return []
+    plain, severity = reach
+    return [
+        PreflightFinding(
+            code="PF-GRID-PRESET",
+            severity=severity,
+            message=(
+                f"the pipeline presets nrows={pipeline._nrows}, "
+                f"ncols={pipeline._ncols}, so measure() adds a "
+                "CenteredAutoGridFinder, which fails on a plain Image"
+            ),
+            subjects=tuple(plain) if context.mode == "measure" else (),
+        )
+    ]
+
+
+def check_detector_present(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-NO-DETECTOR``: a forward run with nothing that produces objects.
+
+    Spec §4, F6. A freshly read image has an empty object map; ``measure()``
+    then raises ``NoObjectsError`` from ``_get_image_info`` (plain Image) or from
+    the default ``CenteredAutoGridFinder`` (GridImage), for every image. Only
+    ``full`` mode applies ``ops`` and then measures: ``measure`` mode measures
+    stored object maps and ``process`` mode never measures.
+    """
+    if context.mode != "full":
+        return []
+    from phenotypic.abc_ import ObjectDetector
+    from phenotypic.sdk_._operation_tree import pipeline_slot_of
+
+    for path, operation in operations_in_scope(context):
+        if pipeline_slot_of(context.pipeline, path[0]) is not None:
+            continue  # reached through meas/post/...: runs after the op chain
+        if isinstance(operation, ObjectDetector):
+            return []
+    return [
+        PreflightFinding(
+            code="PF-NO-DETECTOR",
+            severity="error",
+            message=(
+                "the pipeline's ops contain no object detector, so every "
+                "image reaches measure() with no objects and fails with "
+                "NoObjectsError"
+            ),
+        )
+    ]
+
+
 #: The checks :func:`run_preflight` runs, in order: pipeline, environment,
 #: cluster, inputs, metadata, output. Later tasks register theirs here.
-CHECKS: tuple[Check, ...] = ()
+CHECKS: tuple[Check, ...] = (
+    check_grid_image,
+    check_grid_preset,
+    check_detector_present,
+)
 
 
 def run_mode_of(config: "ExecutionConfig") -> RunMode:

@@ -37,10 +37,11 @@ from phenotypic.enhance import BlurGauss
 from phenotypic.measure import MeasureSize
 from phenotypic.phenotypicCLI import phenotypic_cli
 from phenotypic.post import AppendString
+from tests.unit.cli._preflight_support import make_context
 
 
 def _context(pipeline: ImagePipeline, mode: str = "full") -> PreflightContext:
-    return PreflightContext(config=None, pipeline=pipeline, datasets=(), mode=mode)  # type: ignore[arg-type]
+    return make_context(pipeline, mode)
 
 
 def _finding(severity: str, code: str = "PF-PIPELINE-LOAD", n: int = 0) -> PreflightFinding:
