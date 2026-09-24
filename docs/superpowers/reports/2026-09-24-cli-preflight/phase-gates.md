@@ -49,3 +49,27 @@ equals `81d19ec`) before attribution.
   import fresh; a long-lived xdist worker is safe, a newly spawned process is not.
 - **Also verified in Phase C:** placeholder-image CLI tests (10 files) against the input
   checks: 388 passed.
+
+## Phase D (after `8191fa5`; Tasks 10-12)
+
+- **Surface:** `tests/unit/cli`, `tests/integration/cli`, `tests/unit/gui/run_console`,
+  `tests/unit/post`, `tests/unit/sdk_`, `tests/unit/core`, `tests/unit/ci`
+  (`-m "not slow" -n 4 -o addopts=`): the input-header, metadata-join and post-column
+  checks, the shared metadata reader's importers, and the RAW routing in `imread`.
+  **6364 passed, 13 skipped, 21 xfailed, 12 failed, 3 errors** (14:52).
+- The 12 failures are the known `test_napari_pipeline_viewer.py` baseline (`napari` not
+  installed), identical to Phase B.
+- The 3 errors are `tests/unit/sdk_/test_label_editor_widget.py` and
+  `test_point_picker_widget.py` `TestRealPanelConstruction`: `fixture 'qtbot' not found`.
+  `pytest-qt` (the `test-qt` group) is not installed in this environment; the same files
+  give the same 3 errors run alone. Not attributable to this change.
+- **What this surface did not cover, found afterwards.** `tests/e2e` is outside
+  `testpaths` and needs `PLAYWRIGHT=1`, so no gate so far has run it.
+  `tests/e2e/gui/test_run_console_fake_slurm.py::test_ordinary_slurm_submit_and_cancel_is_generation_fenced`
+  fails from Phase C on: its only input was `b"not-read-by-submitter"`, and the run
+  preflight (Task 8, `PF-HEADER-UNREADABLE`, every image affected, so an error) now refuses
+  the submit before anything is written. The finding is correct and the premise in the
+  fixture's name is the thing that changed, so Task 15 replaces the bytes with a real
+  32x32 TIFF; the test is about submit/cancel fencing, not image content. Run with the
+  preinstalled headless shell, all 5 tests in the file pass. The Phase E and final
+  surfaces include `tests/e2e/gui/test_run_console*.py`.
