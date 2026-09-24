@@ -82,6 +82,13 @@ for gated foundation weights are documented in the
 tutorial section. The SLURM-specific staging is expanded under
 [SLURM Deployment](#slurm-deployment) below.
 
+The CLI's run preflight checks the local cache without importing `torch` and
+warns (`PF-WEIGHTS-UNCACHED`) when a detector's weights would have to be
+downloaded by a compute node; see
+{ref}`Run Preflight Checks`.
+No detector prompts for a license inside a pipeline: gated weights require
+`PHENOTYPIC_ACCEPT_MODEL_LICENSE`.
+
 ## Using Sam2
 
 `Sam2` wraps Meta's SAM2 automatic mask generator. It lays a grid of
@@ -197,7 +204,11 @@ det = Sam3(prompt="yeast colony", score_thresh=0.5)
 
 SAM3 weights are **gated** (SAM License). Accept the gate and authenticate
 once (see {ref}`Deep Learning Detectors`)
-before the first `apply()`.
+before the first `apply()`, and accept the license for PhenoTypic with
+`PHENOTYPIC_ACCEPT_MODEL_LICENSE=sam3`. `Sam3` checks that variable before it
+loads any weights and raises rather than prompting, so a batch job never waits
+on a terminal; the CLI's run preflight reports a missing acceptance as
+`PF-LICENSE` before the run starts.
 
 **Dense plates.** SAM3 caps at 200 instances per forward. `facebook/sam3` is a
 gated repository whose processor config we cannot read (requests return 403),
