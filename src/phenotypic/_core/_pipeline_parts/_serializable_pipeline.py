@@ -630,12 +630,16 @@ class SerializablePipeline(NapariPipelineViewer):
         requested class. It checks the main phenotypic module as well as common
         submodules like detect, measure, enhance, refine, etc.
 
-        On a miss, the modules ``PHENOTYPIC_PRELOAD_MODULES`` names are
-        imported and the search runs once more. Resolution is the one step
-        every process that deserializes a pipeline passes through -- the CLI,
-        a SLURM worker, a joblib/loky worker that never ran the CLI's
-        ``main`` -- so honoring the variable here reaches all of them by
-        construction (spec ``2026-09-24-cli-preflight`` §10.2, review R2).
+        The modules ``PHENOTYPIC_PRELOAD_MODULES`` names are imported before
+        the first lookup in a process, hit or miss
+        (:func:`~phenotypic.sdk_._preload.preload_custom_operation_modules_once`),
+        and again on a miss, which also waits for another thread's in-flight
+        import of the same module. Resolution is the one step every process
+        that deserializes a pipeline passes through -- the CLI, a SLURM
+        worker, a joblib/loky worker that never ran the CLI's ``main`` -- so
+        honoring the variable here reaches all of them by construction (spec
+        ``2026-09-24-cli-preflight`` §10.2, reviews R2 and C4). A caller that
+        must not import custom code uses :meth:`_search_phenotypic_namespace`.
 
         Args:
             class_name: Name of the class to find.
@@ -643,16 +647,16 @@ class SerializablePipeline(NapariPipelineViewer):
         Returns:
             The class object if found, None otherwise.
         """
-        found = SerializablePipeline._search_phenotypic_namespace(class_name)
-        if found is not None:
-            return found
         from phenotypic.sdk_._preload import (
             preload_custom_operation_modules,
+            preload_custom_operation_modules_once,
             preload_module_names,
         )
 
-        if not preload_module_names():
-            return None
+        preload_custom_operation_modules_once()
+        found = SerializablePipeline._search_phenotypic_namespace(class_name)
+        if found is not None or not preload_module_names():
+            return found
         preload_custom_operation_modules()
         return SerializablePipeline._search_phenotypic_namespace(class_name)
 

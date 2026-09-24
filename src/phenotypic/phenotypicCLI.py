@@ -1928,11 +1928,20 @@ def phenotypic_cli(
     load_runtime_dependencies()
     # Custom operations register on import; doing it here, before any
     # pipeline is read, makes a broken PHENOTYPIC_PRELOAD_MODULES entry fail
-    # at startup with its own ImportError. Class resolution also preloads on
-    # a miss, which is what reaches worker processes (spec §10.2).
-    from phenotypic.sdk_._preload import preload_custom_operation_modules
+    # at startup as one error line naming the variable. Class resolution
+    # also preloads, which is what reaches worker processes (spec §10.2).
+    from phenotypic.sdk_._preload import (
+        PRELOAD_MODULES_ENV,
+        preload_custom_operation_modules_once,
+    )
 
-    preload_custom_operation_modules()
+    try:
+        preload_custom_operation_modules_once()
+    except ImportError as exc:
+        raise click.ClickException(
+            f"{PRELOAD_MODULES_ENV} lists a module that cannot be imported: "
+            f"{exc}. Fix the module name or unset the variable."
+        ) from exc
     _load_cli_runtime()
     try:
         _reject_unexpected_positional_args(ctx.args)
@@ -2634,6 +2643,7 @@ def phenotypic_cli(
             # preflight alike (spec §2).
             from phenotypic._cli._cli_preflight import (
                 PreflightContext,
+                PreflightReport,
                 load_pipeline_for_validation,
                 run_mode_of,
                 run_preflight,
@@ -2651,7 +2661,10 @@ def phenotypic_cli(
                     "[bold red]✗ Pipeline loading failed:", style="bold red"
                 )
                 assert load_finding is not None
-                console.print(f"  - {load_finding.message}", style="red")
+                # Rendered as a report so the code and its remedy print too
+                # (PF-CUSTOM-OP, PF-PIPELINE-LOAD), in the one report format.
+                for line in PreflightReport((load_finding,)).render_lines():
+                    console.print(line, highlight=False, markup=False)
                 sys.exit(1)
             console.print("[green]✓ Pipeline loaded successfully")
 

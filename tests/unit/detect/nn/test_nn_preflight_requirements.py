@@ -8,6 +8,7 @@ must fail on the base commit may not skip for want of a dependency.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 import types
@@ -158,6 +159,15 @@ def test_torch_hub_dir_follows_torch_home_then_xdg(monkeypatch, tmp_path: Path) 
     assert ckpt.torch_hub_checkpoint_dir() == tmp_path / "xdg" / "torch" / "hub" / "checkpoints"
 
 
+def test_an_empty_torch_home_is_honored_as_torch_honors_it(monkeypatch) -> None:
+    """Review C16: torch reads ``os.getenv("TORCH_HOME", default)``, so an empty
+    value is the empty path, not "unset" (torch/hub.py ``_get_torch_home``)."""
+    monkeypatch.setenv("TORCH_HOME", "")
+    monkeypatch.setenv("XDG_CACHE_HOME", "/elsewhere")
+
+    assert ckpt.torch_hub_checkpoint_dir() == Path("hub") / "checkpoints"
+
+
 def test_torch_hub_dir_matches_torch_when_torch_is_installed(monkeypatch, tmp_path) -> None:
     """A pin, not this task's failing test: it only runs where torch exists."""
     torch_hub = pytest.importorskip("torch.hub")
@@ -177,14 +187,57 @@ def test_sam2_cache_probe_sees_a_downloaded_checkpoint(monkeypatch, tmp_path: Pa
     assert weight.is_cached() is True
 
 
-def test_probing_requirements_imports_neither_torch_nor_micro_sam() -> None:
+#: Packages the run preflight must never import in the submitting process.
+#: Each is stubbed as an importable package, so an import is observable
+#: whether or not the real package is installed (review C2: without stubs a
+#: ``try: import micro_sam except ImportError`` regression passes wherever
+#: micro_sam is absent, which is everywhere CI runs).
+_HEAVY_PACKAGES = ("torch", "micro_sam", "transformers", "sam2", "fil_finder", "astropy")
+
+
+def test_the_run_preflight_imports_no_heavy_package(tmp_path: Path) -> None:
+    stubs = tmp_path / "stubs"
+    for name in _HEAVY_PACKAGES:
+        (stubs / name).mkdir(parents=True)
+        (stubs / name / "__init__.py").write_text("", encoding="utf-8")
+    repo = Path(__file__).resolve().parents[4]
     code = (
         "import sys\n"
-        "from phenotypic.detect.nn import Sam2, MicroSamDetector, DinoSam2Detector\n"
-        "for d in (Sam2(), MicroSamDetector(), DinoSam2Detector(dino_version=3)):\n"
-        "    for w in d.preflight_requirements().weights: w.is_cached()\n"
-        "print(sorted(m for m in ('torch', 'micro_sam', 'transformers') if m in sys.modules))\n"
+        "from phenotypic import ImagePipeline\n"
+        "from phenotypic._cli._cli_preflight import run_preflight\n"
+        "from phenotypic.detect import FilFinderDetector\n"
+        "from phenotypic.detect.nn import (Sam2, Sam3, DinoSam2Detector, FssDinoDetector,\n"
+        "    Insid3Detector, MicroSamDetector)\n"
+        "from phenotypic.measure import MeasureSize\n"
+        "from tests.unit.cli._preflight_support import make_context\n"
+        "ops = {type(d).__name__ + str(i): d for i, d in enumerate((Sam2(), Sam3(),\n"
+        "    DinoSam2Detector(dino_version=3), FssDinoDetector(), Insid3Detector(),\n"
+        "    MicroSamDetector(), FilFinderDetector()))}\n"
+        "report = run_preflight(make_context(ImagePipeline(ops=ops, meas={'s': MeasureSize()})))\n"
+        "assert not [f for f in report.findings if f.code == 'PF-CHECK-CRASHED'], report.findings\n"
+        f"print(sorted(m for m in {_HEAVY_PACKAGES!r} if m in sys.modules))\n"
     )
-    done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join([str(stubs), str(repo)])}
 
-    assert done.stdout.strip() == "[]", done.stdout
+    done = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=True, env=env, cwd=repo
+    )
+
+    assert done.stdout.strip().splitlines()[-1] == "[]", done.stdout
+
+
+def test_the_heavy_package_guard_sees_an_import(tmp_path: Path) -> None:
+    """Self-test: the stubs make an import visible even when caught."""
+    stubs = tmp_path / "stubs"
+    (stubs / "micro_sam").mkdir(parents=True)
+    (stubs / "micro_sam" / "__init__.py").write_text("", encoding="utf-8")
+    code = (
+        "import sys\n"
+        "try:\n    import micro_sam\nexcept ImportError:\n    pass\n"
+        "print('micro_sam' in sys.modules)\n"
+    )
+    env = {**os.environ, "PYTHONPATH": str(stubs)}
+
+    done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True, env=env)
+
+    assert done.stdout.strip() == "True"

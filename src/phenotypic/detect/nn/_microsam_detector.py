@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import PrivateAttr
 
-from phenotypic.abc_ import GpuDetector
+from phenotypic.abc_ import GpuDetector, OperationRequirements
 from phenotypic.detect.nn._helper._checkpoint_manager import (
     Device,
     MicroSamModelType,
@@ -167,10 +167,15 @@ class MicroSamDetector(GpuDetector):
     _predictor: object = PrivateAttr(default=None)
     _segmenter: object = PrivateAttr(default=None)
 
-    def preflight_requirements(self):
+    def preflight_requirements(self) -> OperationRequirements:
         """Packages and weights this detector loads (run preflight, spec §3/§5).
 
-        micro-sam has no pyproject extra; it is installed with conda. See ``BaseOperation.preflight_requirements``.
+        micro-sam has no pyproject extra; it is installed with conda. See
+        ``BaseOperation.preflight_requirements``.
+
+        Returns:
+            The detector's packages, extra and weights, added to the
+            inherited input-layer requirement.
         """
         import dataclasses
 

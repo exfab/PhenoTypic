@@ -87,6 +87,14 @@ def test_an_accepted_license_passes(monkeypatch) -> None:
     assert check_model_licenses(make_context(pipeline)) == []
 
 
+def test_a_gated_detector_out_of_scope_needs_no_license(monkeypatch) -> None:
+    """Review C8: ``measure`` never applies ops, so their licenses are moot."""
+    monkeypatch.delenv("PHENOTYPIC_ACCEPT_MODEL_LICENSE", raising=False)
+    pipeline = ImagePipeline(ops={"insid3": Insid3Detector()}, meas={"s": MeasureSize()})
+
+    assert check_model_licenses(make_context(pipeline, "measure")) == []
+
+
 class _Weighted(OtsuDetector):
     """An ordinary detector that declares one weight with a controllable probe."""
 
@@ -116,3 +124,26 @@ def test_uncached_weights_warn_and_unknown_is_silent(monkeypatch, cached, codes)
 def test_every_environment_check_is_registered() -> None:
     for check in (check_optional_modules, check_model_licenses, check_model_weights_cached):
         assert check in _cli_preflight.CHECKS
+
+
+def test_weights_out_of_scope_are_not_probed(monkeypatch) -> None:
+    """Review C8: an ``ops`` detector's weights are moot in ``measure`` mode."""
+    monkeypatch.setattr(_Weighted, "state", staticmethod(lambda: False))
+    pipeline = ImagePipeline(ops={"w": _Weighted()}, meas={"s": MeasureSize()})
+
+    assert check_model_weights_cached(make_context(pipeline, "measure")) == []
+
+
+def test_a_package_two_detectors_need_is_reported_once(monkeypatch) -> None:
+    """Review C12: one finding per package, naming every extra that provides it."""
+    from phenotypic.detect.nn import Sam3
+
+    monkeypatch.setattr(importlib.util, "find_spec", _absent("torch", "sam2", "transformers"))
+    pipeline = ImagePipeline(ops={"a": Sam2(), "b": Sam3()})
+
+    findings = check_optional_modules(make_context(pipeline))
+    torch = [f for f in findings if f.message.startswith("the package 'torch'")]
+
+    assert len(torch) == 1
+    assert "'torch'" in torch[0].message.split("provided by")[1]
+    assert "'foundation'" in torch[0].message

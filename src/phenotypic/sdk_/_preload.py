@@ -44,3 +44,30 @@ def preload_custom_operation_modules() -> None:
     """
     for module_name in preload_module_names():
         importlib.import_module(module_name)
+
+
+#: The ``PHENOTYPIC_PRELOAD_MODULES`` value this process last preloaded for.
+_preloaded_for: tuple[str, ...] = ()
+
+
+def preload_custom_operation_modules_once() -> None:
+    """Preload once per process for the current ``PHENOTYPIC_PRELOAD_MODULES``.
+
+    Class resolution calls this before every lookup, hit or miss, so every
+    process that deserializes a pipeline has imported the listed modules
+    before it resolves its first class -- the same state the CLI's explicit
+    startup call produces (review C4). Without it, a process whose names all
+    resolved would never import a module that does more than attach a new
+    name (rebinding a built-in, registering something a built-in looks up),
+    and that process would run different code from the main CLI.
+
+    The value is recorded *before* importing, so a listed module that
+    resolves a class during its own import does not re-enter. A changed
+    value preloads again.
+    """
+    global _preloaded_for
+    names = preload_module_names()
+    if not names or names == _preloaded_for:
+        return
+    _preloaded_for = names
+    preload_custom_operation_modules()

@@ -18,7 +18,6 @@ import numpy as np
 import pytest
 import tifffile
 
-import phenotypic
 from phenotypic import ImagePipeline
 from phenotypic.measure import MeasureSize
 from phenotypic.sdk_._preload import (
@@ -119,6 +118,7 @@ def test_an_unregistered_custom_op_is_refused_with_the_remedy(
     assert result.returncode == 1, output
     assert "CustomThresholdDetector" in output
     assert "PHENOTYPIC_PRELOAD_MODULES" in output
+    assert "[PF-CUSTOM-OP]" in output  # the code and its hint print (review C3)
     assert not (tmp_path / "out").exists()
 
 
@@ -156,16 +156,73 @@ def test_a_module_that_only_defines_the_class_is_not_enough(custom_pipeline: Pat
     assert "attaches the class to the phenotypic namespace" in done.stderr
 
 
-def test_preload_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Blank entries are ignored and a repeated name imports the module once."""
-    monkeypatch.setenv("PHENOTYPIC_PRELOAD_MODULES", f" {REGISTER} , ,{REGISTER}")
-    monkeypatch.delattr(phenotypic, "CustomThresholdDetector", raising=False)
-    monkeypatch.delitem(sys.modules, REGISTER, raising=False)
+def _counting_module(tmp_path: Path, name: str) -> Path:
+    """A module that appends one line to a log each time its body executes."""
+    log = tmp_path / f"{name}.log"
+    (tmp_path / f"{name}.py").write_text(
+        f"with open({str(log)!r}, 'a', encoding='utf-8') as handle:\n"
+        "    handle.write('imported\\n')\n",
+        encoding="utf-8",
+    )
+    return log
 
-    assert preload_module_names() == (REGISTER, REGISTER)
+
+def test_preload_is_idempotent(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Blank entries are ignored and a repeated name executes the module once."""
+    log = _counting_module(tmp_path, "pht_counting_preload")
+    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.delitem(sys.modules, "pht_counting_preload", raising=False)
+    name = "pht_counting_preload"
+    monkeypatch.setenv("PHENOTYPIC_PRELOAD_MODULES", f" {name} , ,{name}")
+
+    assert preload_module_names() == (name, name)
     preload_custom_operation_modules()
-    first = sys.modules[REGISTER]
     preload_custom_operation_modules()
 
-    assert sys.modules[REGISTER] is first
-    assert phenotypic.CustomThresholdDetector is CustomThresholdDetector
+    assert log.read_text(encoding="utf-8").splitlines() == ["imported"]
+
+
+def test_resolution_preloads_even_when_every_name_resolves(tmp_path: Path) -> None:
+    """Review C4: a process whose classes are all built-ins still preloads."""
+    log = _counting_module(tmp_path, "pht_side_effect_preload")
+    pipeline = tmp_path / "builtin.json"
+    pipeline.write_text(
+        ImagePipeline(meas={"size": MeasureSize()}).to_json(), encoding="utf-8"
+    )
+    env = _env("pht_side_effect_preload")
+    env["PYTHONPATH"] = os.pathsep.join([str(tmp_path), env["PYTHONPATH"]])
+    code = (
+        "from phenotypic import ImagePipeline; "
+        f"ImagePipeline.from_json({str(pipeline)!r}); "
+        f"ImagePipeline.from_json({str(pipeline)!r})"
+    )
+
+    done = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True,
+        env=env, cwd=REPO_ROOT, timeout=300,
+    )
+
+    assert done.returncode == 0, done.stderr
+    assert log.read_text(encoding="utf-8").splitlines() == ["imported"]
+
+
+def test_a_broken_preload_name_is_one_error_line_at_startup(
+    two_images: Path, tmp_path: Path
+) -> None:
+    """Review C6: the startup preload names the variable; no traceback."""
+    pipeline = tmp_path / "builtin.json"
+    pipeline.write_text(
+        ImagePipeline(meas={"size": MeasureSize()}).to_json(), encoding="utf-8"
+    )
+
+    result = _cli(
+        "--pipeline", str(pipeline), "--input", str(two_images),
+        "--output", str(tmp_path / "out"), "--dry-run",
+        preload="no_such_module_xyz",
+    )
+
+    output = result.stdout + result.stderr
+    assert result.returncode == 1, output
+    assert "PHENOTYPIC_PRELOAD_MODULES" in output and "no_such_module_xyz" in output
+    assert "Traceback" not in output
+    assert not (tmp_path / "out").exists()

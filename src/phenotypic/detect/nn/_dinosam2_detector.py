@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Annotated, Any, List
 
 from pydantic import Field, PrivateAttr
 
-from phenotypic.abc_ import GpuDetector
+from phenotypic.abc_ import GpuDetector, OperationRequirements
 from phenotypic.detect.nn._helper._checkpoint_manager import Device, Sam2ModelSize
 from phenotypic.sdk_.typing_ import (
     DinoSize,
@@ -360,10 +360,15 @@ class DinoSam2Detector(GpuDetector):
 
         return hf_dino_id(self.dino_version, self.dino_size)
 
-    def preflight_requirements(self):
+    def preflight_requirements(self) -> OperationRequirements:
         """Packages and weights this detector loads (run preflight, spec §3/§5).
 
-        DINOv3 weights are gated; the SAM2 generator needs its own checkpoint. See ``BaseOperation.preflight_requirements``.
+        DINOv3 weights are gated; the SAM2 generator needs its own
+        checkpoint. See ``BaseOperation.preflight_requirements``.
+
+        Returns:
+            The detector's packages, extra and weights, added to the
+            inherited input-layer requirement.
         """
         import dataclasses
 

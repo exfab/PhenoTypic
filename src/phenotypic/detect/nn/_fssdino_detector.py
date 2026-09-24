@@ -55,7 +55,7 @@ from typing import TYPE_CHECKING, Annotated, Any, List
 
 from pydantic import PrivateAttr
 
-from phenotypic.abc_ import GpuDetector
+from phenotypic.abc_ import GpuDetector, OperationRequirements
 from phenotypic.detect.nn._helper._checkpoint_manager import Device
 from phenotypic.sdk_.typing_ import (
     DinoSize,
@@ -421,10 +421,15 @@ class FssDinoDetector(GpuDetector):
     # Lazy load + prototype/Gram caching
     # ------------------------------------------------------------------
 
-    def preflight_requirements(self):
+    def preflight_requirements(self) -> OperationRequirements:
         """Packages and weights this detector loads (run preflight, spec §3/§5).
 
-        DINOv3 weights are gated; DINOv2 (the default) is not. See ``BaseOperation.preflight_requirements``.
+        DINOv3 weights are gated; DINOv2 (the default) is not. See
+        ``BaseOperation.preflight_requirements``.
+
+        Returns:
+            The detector's packages, extra and weights, added to the
+            inherited input-layer requirement.
         """
         import dataclasses
 

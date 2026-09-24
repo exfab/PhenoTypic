@@ -400,29 +400,32 @@ class MicroSamCheckpointManager:
 
     @staticmethod
     def cache_dir() -> Path:
-        """Return micro-sam's model cache directory.
+        """Return the folder micro-sam downloads model checkpoints into.
+
+        ``<MICROSAM_CACHEDIR or platformdirs cache>/models``, resolved by
+        :func:`microsam_models_dir` so the run preflight and this manager
+        agree by construction. Each model is one file there, named after its
+        registry key (``vit_b_lm``), with a ``<key>_decoder`` file beside it
+        for models that have one.
 
         Returns:
-            Path to the cache directory used by micro-sam.
+            Path to micro-sam's models folder (it may not exist yet).
         """
-        try:
-            from micro_sam.util import _get_default_model_folder
+        return microsam_models_dir()
 
-            return Path(_get_default_model_folder())
-        except ImportError:
-            # Provide a reasonable fallback path for display purposes
-            import os
+    @classmethod
+    def _cached_files(cls, model_type: str) -> list[Path]:
+        """The files micro-sam keeps for *model_type*, matched by exact name.
 
-            env = os.environ.get("MICROSAM_CACHEDIR")
-            if env:
-                return Path(env)
-            # platformdirs default
-            try:
-                from platformdirs import user_cache_dir
-
-                return Path(user_cache_dir("micro_sam"))
-            except ImportError:
-                return Path.home() / ".cache" / "micro_sam"
+        Never a glob: ``vit_b`` is a prefix of ``vit_b_lm`` and
+        ``vit_b_em_organelles``, and :meth:`clear` deletes what this returns.
+        """
+        models = cls.cache_dir()
+        return [
+            path
+            for path in (models / model_type, models / f"{model_type}_decoder")
+            if path.is_file()
+        ]
 
     # ------------------------------------------------------------------
     # Download
@@ -465,42 +468,20 @@ class MicroSamCheckpointManager:
             ``"path"``, ``"size_mb"``.
         """
         results: list[dict[str, Any]] = []
-        cache = cls.cache_dir()
-        if not cache.is_dir():
-            return results
-
         for model_type, desc in cls.MODELS.items():
-            # micro-sam stores models in subdirectories named after the type
-            model_dir = cache / model_type
-            if model_dir.is_dir():
-                total_size = sum(
-                    f.stat().st_size
-                    for f in model_dir.rglob("*")
-                    if f.is_file()
-                )
-                results.append(
-                    {
-                        "model_type": model_type,
-                        "description": desc,
-                        "path": str(model_dir),
-                        "size_mb": round(total_size / (1024 * 1024), 1),
-                    }
-                )
-            else:
-                # Check for checkpoint files matching the model type name
-                for ckpt in cache.glob(f"*{model_type}*"):
-                    if ckpt.is_file():
-                        results.append(
-                            {
-                                "model_type": model_type,
-                                "description": desc,
-                                "path": str(ckpt),
-                                "size_mb": round(
-                                    ckpt.stat().st_size / (1024 * 1024), 1
-                                ),
-                            }
-                        )
-                        break
+            files = cls._cached_files(model_type)
+            if not files:
+                continue
+            results.append(
+                {
+                    "model_type": model_type,
+                    "description": desc,
+                    "path": str(files[0]),
+                    "size_mb": round(
+                        sum(f.stat().st_size for f in files) / (1024 * 1024), 1
+                    ),
+                }
+            )
 
         return results
 
@@ -518,29 +499,13 @@ class MicroSamCheckpointManager:
         Returns:
             List of deleted paths.
         """
-        import shutil
-
         deleted: list[str] = []
-        cache = cls.cache_dir()
-        if not cache.is_dir():
-            return deleted
-
         types = [model_type] if model_type else list(cls.MODELS)
         for mt in types:
-            # Try directory-based storage
-            model_dir = cache / mt  # type: ignore[operator]
-            if model_dir.is_dir():
-                shutil.rmtree(model_dir)
-                deleted.append(str(model_dir))
-                logger.info("Deleted %s", model_dir)
-                continue
-
-            # Try file-based storage
-            for ckpt in cache.glob(f"*{mt}*"):  # type: ignore[arg-type]
-                if ckpt.is_file():
-                    ckpt.unlink()
-                    deleted.append(str(ckpt))
-                    logger.info("Deleted %s", ckpt)
+            for path in cls._cached_files(mt):  # type: ignore[arg-type]
+                path.unlink()
+                deleted.append(str(path))
+                logger.info("Deleted %s", path)
 
         return deleted
 
@@ -799,6 +764,20 @@ class Dinov3CheckpointManager:
             raise
 
 
+def accepted_model_licenses() -> frozenset[str]:
+    """The model names ``PHENOTYPIC_ACCEPT_MODEL_LICENSE`` accepts, lowercased.
+
+    A comma list; whitespace and empty entries are ignored. The one parse of
+    the variable, shared by :func:`require_license_acceptance` and the CLI
+    run preflight so the two cannot drift.
+    """
+    return frozenset(
+        name.strip().lower()
+        for name in os.environ.get("PHENOTYPIC_ACCEPT_MODEL_LICENSE", "").split(",")
+        if name.strip()
+    )
+
+
 def require_license_acceptance(
     model: str, license_name: str, license_url: str, *, interactive: bool = True
 ) -> None:
@@ -819,12 +798,7 @@ def require_license_acceptance(
     Raises:
         RuntimeError: If the license has not been accepted.
     """
-    accepted = {
-        m.strip().lower()
-        for m in os.environ.get("PHENOTYPIC_ACCEPT_MODEL_LICENSE", "").split(",")
-        if m.strip()
-    }
-    if model.lower() in accepted:
+    if model.lower() in accepted_model_licenses():
         return
     if interactive:
         print(f"\n{model} weights are under the {license_name}: {license_url}")
@@ -862,27 +836,39 @@ def torch_hub_checkpoint_dir() -> Path:
     Returns:
         The directory SAM2 checkpoints are downloaded into.
     """
-    torch_home = os.environ.get("TORCH_HOME") or os.path.join(
-        os.environ.get("XDG_CACHE_HOME") or os.path.join("~", ".cache"), "torch"
+    # Transcribes torch.hub._get_torch_home (torch/hub.py, main, read
+    # 2026-09-24): os.getenv(name, default), so a set-but-empty variable is
+    # honored as the empty path rather than treated as unset.
+    torch_home = os.path.expanduser(
+        os.getenv(
+            "TORCH_HOME",
+            os.path.join(os.getenv("XDG_CACHE_HOME", "~/.cache"), "torch"),
+        )
     )
-    return Path(os.path.expanduser(torch_home)) / "hub" / "checkpoints"
+    return Path(torch_home) / "hub" / "checkpoints"
 
 
-def microsam_cache_dir_without_import() -> Path:
-    """micro-sam's model folder from ``MICROSAM_CACHEDIR`` or ``platformdirs``.
+def microsam_models_dir() -> Path:
+    """micro-sam's models folder, resolved without importing micro_sam.
 
-    The same fallback :meth:`MicroSamCheckpointManager.cache_dir` uses when
-    ``micro_sam`` is not importable, so the probe never imports it.
+    Mirrors upstream ``micro_sam.util.models()``, which creates its pooch
+    registry at ``os.path.join(microsam_cachedir(), "models")`` where
+    ``microsam_cachedir()`` is ``MICROSAM_CACHEDIR or
+    pooch.os_cache("micro_sam")`` (an empty variable counts as unset), and
+    ``pooch.os_cache`` is ``platformdirs.user_cache_dir``. Upstream
+    ``micro_sam/util.py``, ``master``, read 2026-09-24.
     """
     env = os.environ.get("MICROSAM_CACHEDIR")
     if env:
-        return Path(env)
-    try:
-        from platformdirs import user_cache_dir
+        root = Path(env)
+    else:
+        try:
+            from platformdirs import user_cache_dir
 
-        return Path(user_cache_dir("micro_sam"))
-    except ImportError:
-        return Path.home() / ".cache" / "micro_sam"
+            root = Path(user_cache_dir("micro_sam"))
+        except ImportError:
+            root = Path.home() / ".cache" / "micro_sam"
+    return Path(os.path.expanduser(root)) / "models"
 
 
 def hf_repo_is_cached(repo_id: str) -> bool | None:
@@ -949,13 +935,11 @@ def microsam_weight_requirement(model_type: str):
     """The micro-sam model a detector with *model_type* loads."""
     from phenotypic.abc_ import WeightRequirement
 
-    def is_cached() -> bool | None:
-        cache = microsam_cache_dir_without_import()
-        if not cache.is_dir():
-            return False
-        return (cache / model_type).is_dir() or any(
-            path.is_file() for path in cache.glob(f"*{model_type}*")
-        )
+    def is_cached() -> bool:
+        # The encoder is the checkpoint; a decoder, when the model has one,
+        # is fetched beside it and is not required here (only micro-sam's
+        # registry knows which models have one).
+        return (microsam_models_dir() / model_type).is_file()
 
     return WeightRequirement(
         model=f"micro-sam:{model_type}", license_key=None, is_cached=is_cached

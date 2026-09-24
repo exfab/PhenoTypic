@@ -133,6 +133,22 @@ def test_a_preset_is_irrelevant_in_process_mode_and_under_grid_image() -> None:
     assert check_grid_preset(make_context(pipeline, image_type="GridImage")) == []
 
 
+@pytest.mark.parametrize(("classes", "severity"), [((Image,), "error"), ((Image, GridImage), "warning")])
+def test_measure_mode_judges_a_preset_by_each_stores_class(
+    tmp_path: Path, classes: tuple, severity: str
+) -> None:
+    """Review C8/C15: ``measure`` loads each store as its recorded class."""
+    stores = [_store(tmp_path / f"s{i}.ome.zarr", cls) for i, cls in enumerate(classes)]
+
+    findings = check_grid_preset(
+        make_context(_preset(nrows=8, ncols=12), "measure", make_datasets(*stores), image_type="GridImage")
+    )
+
+    assert _codes(findings) == ["PF-GRID-PRESET"]
+    assert findings[0].severity == severity
+    assert findings[0].subjects in ((), (str(stores[0]),))
+
+
 # --- PF-NO-DETECTOR -----------------------------------------------------------
 
 
@@ -160,3 +176,15 @@ def test_a_detector_nested_in_a_composite_satisfies_the_check() -> None:
     )
 
     assert check_detector_present(make_context(pipeline)) == []
+
+
+def test_a_detector_only_inside_a_measurer_does_not_count() -> None:
+    """Review C8: ``meas`` runs after the op chain; its detector makes no objmap."""
+    from phenotypic.measure import MeasureSymZones
+
+    pipeline = ImagePipeline(
+        ops={"blur": BlurGauss()},
+        meas={"z": MeasureSymZones(center_detector=OtsuDetector())},
+    )
+
+    assert _codes(check_detector_present(make_context(pipeline))) == ["PF-NO-DETECTOR"]

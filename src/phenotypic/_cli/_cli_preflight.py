@@ -490,7 +490,10 @@ def check_optional_modules(context: PreflightContext) -> list[PreflightFinding]:
     """
     import importlib.util
 
-    missing: dict[tuple[str, "str | None"], list[str]] = {}
+    # One finding per package, however many operations and extras need it
+    # (Sam2 names the 'torch' extra, Sam3 the 'foundation' extra; both pull
+    # torch).
+    missing: dict[str, tuple[list[str], list[str]]] = {}
     for path, requirements in _requirements_in_scope(context):
         for module in requirements.modules:
             try:
@@ -498,18 +501,27 @@ def check_optional_modules(context: PreflightContext) -> list[PreflightFinding]:
             except (ImportError, ValueError):
                 present = False
             if not present:
-                missing.setdefault((module, requirements.extra), []).append(path)
+                paths, extras = missing.setdefault(module, ([], []))
+                paths.append(path)
+                if requirements.extra and requirements.extra not in extras:
+                    extras.append(requirements.extra)
     return [
         PreflightFinding(
             code="PF-MISSING-MODULE",
             severity="error",
             message=(
                 f"the package {module!r} is not installed, but "
-                f"{', '.join(paths)} imports it at run time"
-                + (f" (provided by the {extra!r} extra)" if extra else "")
+                f"{', '.join(paths)} {'import' if len(paths) > 1 else 'imports'} "
+                "it at run time"
+                + (
+                    f" (provided by the {' or '.join(repr(e) for e in extras)} "
+                    f"extra{'s' if len(extras) > 1 else ''})"
+                    if extras
+                    else ""
+                )
             ),
         )
-        for (module, extra), paths in missing.items()
+        for module, (paths, extras) in missing.items()
     ]
 
 
@@ -525,16 +537,14 @@ def check_model_licenses(context: PreflightContext) -> list[PreflightFinding]:
     """``PF-LICENSE``: gated weights whose license this run has not accepted.
 
     Spec §5, §10.3. No runtime path prompts any more, so an unaccepted license
-    fails every image; ``PHENOTYPIC_ACCEPT_MODEL_LICENSE`` is read the same way
-    ``require_license_acceptance`` reads it.
+    fails every image. ``PHENOTYPIC_ACCEPT_MODEL_LICENSE`` is parsed by
+    ``accepted_model_licenses``, the same function the runtime gate uses.
     """
-    import os
+    from phenotypic.detect.nn._helper._checkpoint_manager import (
+        accepted_model_licenses,
+    )
 
-    accepted = {
-        name.strip().lower()
-        for name in os.environ.get("PHENOTYPIC_ACCEPT_MODEL_LICENSE", "").split(",")
-        if name.strip()
-    }
+    accepted = accepted_model_licenses()
     findings = []
     for path, weight in _weights_in_scope(context):
         if weight.license_key and weight.license_key.lower() not in accepted:

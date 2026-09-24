@@ -319,7 +319,7 @@ overrides the method:
 |---|---|---|
 | `MeasureColor`, `MeasureColorComposition`, `FocusEdgeColorPhase`, `ColorDenoise`, `ColorCorrector`, `CalibrateColorRpcc` | RGB, unconditional | class variable |
 | `ContrastGamma`, `ContrastLog`, `ContrastSigmoid`, `ContrastStretching` | RGB when `input_layer == "rgb"` | override on `InputLayerMixin` |
-| every `GpuDetector` | RGB when `input_layer == "rgb"`; `torch` | override on `GpuDetector` |
+| every `GpuDetector` | RGB when `input_layer == "rgb"` (no package: a custom or fake `GpuDetector` need not use `torch`, and requiring it would refuse `tests/_fakes/register_fake_gpu.py` pipelines in a torch-free environment; each shipped detector below declares its own packages) | override on `GpuDetector` |
 | `SetDetectMode` | RGB when `get_detection_mode(self.mode).requires_rgb` | override |
 | `Sam2` | `sam2`, `torch`; weights `sam2:<model_size>` unless `checkpoint` is set | override |
 | `Sam3` | `transformers`, `torch`; gated weights `facebook/sam3` | override |
@@ -358,7 +358,7 @@ These read only the loaded `ImagePipeline` and `ExecutionConfig`, over
 | Code | Condition | Severity |
 |---|---|---|
 | `PF-GRID-IMAGE` | the effective image class is `Image` and an in-scope operation has `grid_image`. In `full` and `process` mode the class is `config.image_type`; in `measure` mode it is each store's recorded `phenotypic.image_class`, with `--image-type` only as the fallback the worker uses (`_cli_process_single.py:414-416`), so the finding lists affected stores | error when every image is affected, else warning |
-| `PF-GRID-PRESET` | the effective image class is `Image`, the mode calls `measure()` (`full` or `measure`), `pipeline.nrows` **and** `pipeline.ncols` are both set, and no `GridFinder` is in `meas` (F5). Under `--image-type Image` the CLI does not apply `--nrows`/`--ncols` to the pipeline (`_cli_process_single.py:264-275`), so only the preset matters | error |
+| `PF-GRID-PRESET` | the effective image class is `Image`, the mode calls `measure()` (`full` or `measure`), `pipeline.nrows` **and** `pipeline.ncols` are both set, and no `GridFinder` is in `meas` (F5). Under `--image-type Image` the CLI does not apply `--nrows`/`--ncols` to the pipeline (`_cli_process_single.py:264-275`), so only the preset matters. In `measure` mode the class is each store's recorded one | error; warning listing the plain stores when only some are (§0) |
 | `PF-NO-DETECTOR` | mode is `full` (forward, CPU or staged) and no `ObjectDetector` exists anywhere in `ops` | error |
 
 `PF-NO-DETECTOR` does not fire in `measure` mode, which measures stored objmaps
@@ -398,17 +398,29 @@ clusters give compute nodes network access. Its hint names the pre-download comm
 
 The cache probes must not import `torch` or `micro_sam` in the submitting process: the
 existing `Sam2CheckpointManager.cache_dir()` imports `torch.hub`
-(`_checkpoint_manager.py:232`) and `MicroSamCheckpointManager.cache_dir()` imports
+(`_checkpoint_manager.py:232`) and `MicroSamCheckpointManager.cache_dir()` imported
 `micro_sam.util` (`:409`), which imports `torch` (review R8). The probes therefore resolve
-directories from the environment alone. For SAM2 the directory is `$TORCH_HOME/hub/checkpoints`,
-else `$XDG_CACHE_HOME/torch/hub/checkpoints`, else `~/.cache/torch/hub/checkpoints`, which is
-`torch.hub.get_dir()`'s documented resolution order (plan Task 8 pins it against real
-`torch.hub.get_dir()` when torch is installed). For micro-sam it is `MICROSAM_CACHEDIR` or the
-`platformdirs` fallback the manager already uses (`:417-425`). For Hugging Face repos it is
-`huggingface_hub.try_to_load_from_cache` on the repo's `config.json`, which returns `None`
-from `is_cached` when `huggingface_hub` is absent; `PF-MISSING-MODULE` has then already fired.
-The existing managers' `cache_dir()` methods are changed to call the same resolver, so the
-probe and the runtime agree by construction rather than by parallel code.
+directories from the environment alone.
+
+*As implemented* (plan Task 8, corrected after the Phase C review, C1, C7, C16):
+
+- **SAM2.** `torch_hub_checkpoint_dir()` transcribes `torch.hub._get_torch_home`
+  (`os.getenv("TORCH_HOME", <$XDG_CACHE_HOME or ~/.cache>/torch)`, so a set-but-empty
+  variable is honored as torch honors it) plus `hub/checkpoints`. This is **parallel code,
+  not a shared resolver**: `Sam2CheckpointManager.cache_dir()` keeps asking `torch.hub` at
+  run time, because only torch can see a `torch.hub.set_dir` call. That call is the known
+  limit of the probe; a test pins the two equal whenever torch is installed.
+- **micro-sam.** `microsam_models_dir()` is the shared resolver, and
+  `MicroSamCheckpointManager.cache_dir()` calls it. It mirrors upstream
+  `micro_sam.util.models()`: `<MICROSAM_CACHEDIR or pooch.os_cache("micro_sam")>/models`,
+  one file per model named after its registry key. The first implementation copied the
+  manager's old fallback (the cache root, not `models/`) and matched by glob, so every
+  cached micro-sam model read as uncached (review C1); `_get_default_model_folder`, which
+  the manager imported, no longer exists upstream. The probe, `list_cached` and `clear`
+  now match exact names only, since `vit_b` is a prefix of `vit_b_lm`.
+- **Hugging Face repos.** `huggingface_hub.try_to_load_from_cache` on the repo's
+  `config.json`, which returns `None` from `is_cached` when `huggingface_hub` is absent;
+  `PF-MISSING-MODULE` has then already fired.
 
 ### §6 Cluster checks
 
@@ -661,14 +673,23 @@ the main process preloaded (R2).
 
 *As implemented* (plan Task 7), the preload runs at the one step every such process passes
 through: class resolution. `SerializablePipeline._find_class_in_phenotypic` searches the
-`phenotypic` namespace; on a miss, if `PHENOTYPIC_PRELOAD_MODULES` names any module, it
-imports them and searches once more. This reaches the CLI, SLURM workers, loky workers and
+`phenotypic` namespace. Before its first lookup in a process, hit or miss, it imports the
+modules `PHENOTYPIC_PRELOAD_MODULES` names (`preload_custom_operation_modules_once`, keyed
+on the variable's value and recorded before importing, so a module that resolves a class
+during its own import does not re-enter); on a miss it imports them again, which also waits
+for another thread's in-flight import, and searches once more. Preloading on the first call
+rather than only on a miss is review C4: otherwise a process whose classes all resolve would
+never import a module that rebinds or registers something, and would run different code from
+the main CLI. This reaches the CLI, SLURM workers, loky workers and
 any future call site by construction, where the originally planned per-site calls would have
 needed a list that a new site could fall out of. Because `_core` may not import `_cli`, the
 function moved to `phenotypic.sdk_._preload`, and `_cli/_cli_preload.py` re-exports it for
 existing callers. The main CLI also calls it explicitly right after
-`load_runtime_dependencies()`, so a broken module name fails at startup with its own
-`ImportError`. An unresolved class raises `UnknownOperationClassError` (an `AttributeError`
+`load_runtime_dependencies()`, so a broken module name fails at startup as one
+`click.ClickException` line naming the variable (review C6). A caller that must not import
+custom code, `_metadata_migration._serialized_class` in `--mode migrate`, uses
+`_search_phenotypic_namespace` instead (review C5); `RemoveByFeature` and the GUI analysis
+recipe keep the preloading lookup, because a custom measurer or analyzer must resolve there. An unresolved class raises `UnknownOperationClassError` (an `AttributeError`
 subclass) whose message names the registration contract, and `load_pipeline_for_validation`
 reports it as `PF-CUSTOM-OP`.
 
@@ -680,8 +701,12 @@ its docstring already claims it does.
 
 **§10.4 Duplicate JSON keys (F14).** `ImagePipeline.from_json` parses with an
 `object_pairs_hook` that raises `ValueError` naming the duplicated key and its JSON path.
-This is library-wide, not CLI-only, because the silent reorder is equally wrong in a
-notebook. A saved pipeline carrying a duplicate stops loading; that is intended, since it
+It lives in `from_json`, not in the CLI, because the silent reorder is equally wrong in a
+notebook. Its reach is every pipeline read through `ImagePipeline.from_json` (a file or a
+JSON string); two paths still parse with plain `json` and keep the last duplicate:
+`BaseOperation.from_json` for single-operation JSON, and the tune spec's embedded pipeline
+(`tune/_spec.py`), which arrives already parsed. `from_json(dict)` bypasses the check by
+design (review C10). A saved pipeline carrying a duplicate stops loading; that is intended, since it
 never ran as written.
 
 **§10.5 One metadata reader (F22).** A single `read_metadata_csv(path) -> pl.DataFrame`
@@ -784,7 +809,7 @@ labelled a heuristic and only warns.
 | D4 | Requirements declared on operations (§3) | A checker-side table drifts from `_operate`; the `_CHILD_CONTRACT` precedent covers definitional contracts only |
 | D5 | Dry run exits before any mutation, and previews deletions | Refusing `--dry-run --overwrite` outright loses a useful preview |
 | D6 | `sbatch --test-only` over a key allow-list | An allow-list of `sbatch` options is a second copy of Slurm's documentation to maintain |
-| D7 | Duplicate JSON keys refused in `from_json`, library-wide | A CLI-only check leaves notebooks reordering silently |
+| D7 | Duplicate JSON keys refused in `ImagePipeline.from_json` (text input), not only in the CLI; single-op JSON and the tune spec are not covered (§10.4) | A CLI-only check leaves notebooks reordering silently |
 | D8 | RAW decode fenced per image in the work id | A run-wide revision would cold-start every in-flight continuation |
 | D9 | Headroom helpers not adopted | No timeouts, and they expect keys the CLI never produces |
 | D10 | Checks scoped to the slots each mode executes (§0, §2) | Walking the whole tree refuses valid `process` and `measure` runs (review R4) |
@@ -822,3 +847,27 @@ is lost:
 | R2, R3 | this spec (§10.2, §12) and plan Tasks 7 and 9 |
 | R12, R13, R16, R17, R18, R19, R20, R31, R32, R33, R37 | plan only (fixtures, test names, test scope, grep patterns, citations) |
 | R14, R15 | this spec (§3 table, §6) and plan Tasks 8 and 13 |
+
+## Disposition of the Phase C adherence review (C1-C16)
+
+`docs/superpowers/reports/2026-09-24-cli-preflight/phase-c-adherence.md`, verdict "pass
+with changes". Every finding was accepted.
+
+| Finding | Disposition |
+|---|---|
+| C1 (Major) | Fixed. `microsam_models_dir()` mirrors upstream `micro_sam.util.models()` (verified against `micro_sam/util.py` on `master`), the manager's `cache_dir()` calls it, and the probe, `list_cached` and `clear` match exact names. The old globbing `clear("vit_b")` would have deleted `vit_b_lm` once pointed at the real folder. §5 |
+| C2 (Major) | Fixed. The guard runs `run_preflight` over every nn detector and `FilFinderDetector` with importable stub packages, plus a self-test that a caught import is still seen. Revert proof: R8's regression fails it with `['micro_sam']` |
+| C3 | Fixed. A load finding prints as a one-finding report, code and hint included |
+| C4 | Fixed. Resolution preloads before its first lookup, hit or miss, once per variable value. §10.2 |
+| C5 | Fixed for `_serialized_class` (migrate), which now uses `_search_phenotypic_namespace`. `RemoveByFeature` and the GUI recipe keep the preloading lookup on purpose. §10.2 |
+| C6 | Fixed. A broken name is a `click.ClickException` naming the variable; a subprocess test pins it |
+| C7 | Spec updated (§3 table, §5), including the `torch.hub.set_dir` limit |
+| C8 | Four tests added; each of the reviewer's mutations now fails one |
+| C9 | Fixed. `accepted_model_licenses()` is the one parse |
+| C10 | D7 and §10.4 narrowed to what ships |
+| C11 | Fixed (return annotations, `Returns:` sections, wrapped lines) |
+| C12 | Fixed. One finding per package, naming every extra |
+| C13 | Fixed. The idempotence test counts module executions |
+| C14 | Fixed in both `CLAUDE.md` files |
+| C15 | §4 table updated to the implemented severity rule |
+| C16 | Fixed. `torch_hub_checkpoint_dir` transcribes `torch.hub._get_torch_home` (verified against `torch/hub.py` on `main`); an empty `TORCH_HOME` is pinned by a test |

@@ -50,7 +50,7 @@ from typing import TYPE_CHECKING, Annotated, Any, List, Optional
 
 from pydantic import PrivateAttr, field_validator
 
-from phenotypic.abc_ import GpuDetector
+from phenotypic.abc_ import GpuDetector, OperationRequirements
 from phenotypic.detect.nn._helper._checkpoint_manager import Device
 from phenotypic.sdk_.typing_ import (
     DinoSize,
@@ -321,10 +321,15 @@ class Insid3Detector(GpuDetector):
     # Lazy load + in-context prototype caching
     # ------------------------------------------------------------------
 
-    def preflight_requirements(self):
+    def preflight_requirements(self) -> OperationRequirements:
         """Packages and weights this detector loads (run preflight, spec §3/§5).
 
-        DINOv3 (the default) is gated. See ``BaseOperation.preflight_requirements``.
+        DINOv3 (the default) is gated. See
+        ``BaseOperation.preflight_requirements``.
+
+        Returns:
+            The detector's packages, extra and weights, added to the
+            inherited input-layer requirement.
         """
         import dataclasses
 

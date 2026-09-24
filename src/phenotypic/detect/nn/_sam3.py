@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Annotated, Any, List
 
 from pydantic import PrivateAttr
 
-from phenotypic.abc_ import GpuDetector
+from phenotypic.abc_ import GpuDetector, OperationRequirements
 from phenotypic.detect.nn._helper._checkpoint_manager import Device
 
 # Shared fixed-geometric tiling and the cross-tile instance merges, both owned
@@ -175,10 +175,15 @@ class Sam3(GpuDetector):
     _processor: Any = PrivateAttr(default=None)
     _device: Any = PrivateAttr(default=None)
 
-    def preflight_requirements(self):
+    def preflight_requirements(self) -> OperationRequirements:
         """Packages and weights this detector loads (run preflight, spec §3/§5).
 
-        SAM3's weights are gated by the SAM License. See ``BaseOperation.preflight_requirements``.
+        SAM3's weights are gated by the SAM License. See
+        ``BaseOperation.preflight_requirements``.
+
+        Returns:
+            The detector's packages, extra and weights, added to the
+            inherited input-layer requirement.
         """
         import dataclasses
 

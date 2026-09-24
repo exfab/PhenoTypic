@@ -497,11 +497,11 @@ enforces this for ruff, but the rule binds regardless of the tool.
   stages, and
   [contrib_guide/gpu_detectors.md](docs/source/contrib_guide/gpu_detectors.md)
   for authoring one.
-- **Staged-GPU env vars:** `PHENOTYPIC_PRELOAD_MODULES` lets a fresh SLURM worker
-  resolve
-  custom op classes defined outside the `phenotypic` namespace (a self-registering
-  module
-  it imports before `from_json`); `PHENOTYPIC_ACCEPT_MODEL_LICENSE` +
+- **Staged-GPU env vars:** `PHENOTYPIC_PRELOAD_MODULES` lets every process that
+  deserializes a pipeline (the CLI, SLURM workers, local loky workers, the
+  finalizer) resolve custom op classes defined outside the `phenotypic` namespace:
+  class resolution imports the listed self-registering modules before its first
+  lookup (`sdk_/_preload.py`); `PHENOTYPIC_ACCEPT_MODEL_LICENSE` +
   `require_license_acceptance`
   (`detect/nn/_checkpoint_manager.py`) gate gated-weight downloads — the hook for Spec
   2's

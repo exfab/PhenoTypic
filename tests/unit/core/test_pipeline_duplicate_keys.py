@@ -96,3 +96,15 @@ def test_bit_depth_16_parses_to_an_integer(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(phenotypicCLI, "ExecutionConfig", real, raising=False)
 
     assert seen["bit_depth"] == 16
+
+
+def test_a_duplicate_key_inside_a_nested_list_is_refused() -> None:
+    """Review C8: the walk descends into lists (a composite's ``ops``)."""
+    from phenotypic.detect import CompositeDetector
+
+    text = ImagePipeline(ops={"c": CompositeDetector(ops=[OtsuDetector()])}).to_json()
+    assert text.count('"ignore_zeros": false,') == 1
+    text = text.replace('"ignore_zeros": false,', '"ignore_zeros": false, "ignore_zeros": true,')
+
+    with pytest.raises(ValueError, match=r"ops\[0\]\.params\.ignore_zeros"):
+        ImagePipeline.from_json(text)

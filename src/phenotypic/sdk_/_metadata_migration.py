@@ -544,12 +544,17 @@ def _normalize_json_column_reference(
 
 
 def _serialized_class(class_name: str) -> type[Any] | None:
-    """Resolve a public serialized class without importing custom code."""
+    """Resolve a public serialized class without importing custom code.
+
+    Uses the lookup without the ``PHENOTYPIC_PRELOAD_MODULES`` preload, so an
+    unknown class stays opaque here rather than importing (or failing to
+    import) whatever the variable names (review C5).
+    """
     from phenotypic._core._pipeline_parts._serializable_pipeline import (
         SerializablePipeline,
     )
 
-    candidate = SerializablePipeline._find_class_in_phenotypic(class_name)
+    candidate = SerializablePipeline._search_phenotypic_namespace(class_name)
     return candidate if isinstance(candidate, type) else None
 
 
