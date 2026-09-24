@@ -1636,8 +1636,11 @@ def _print_process_only_dry_run_plan(
 )
 @click.option(
     "--bit-depth",
-    type=int,
+    type=click.Choice(["8", "16"]),
     default=None,
+    # Only 8 and 16 mean anything downstream (``_image_data_manager.py``);
+    # any other integer used to be accepted and fail per image (spec F15).
+    callback=lambda _ctx, _param, value: None if value is None else int(value),
     help="Bit depth of input images (8 or 16)",
 )
 @click.option(

@@ -5,7 +5,7 @@ import json
 import importlib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Union, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Union, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
@@ -276,7 +276,7 @@ class SerializablePipeline(NapariPipelineViewer):
 
             # Parse JSON
             try:
-                config = json.loads(json_data)
+                config = _loads_rejecting_duplicate_keys(json_data)
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid JSON data: {e}")
 
@@ -894,3 +894,60 @@ class SerializablePipeline(NapariPipelineViewer):
                 )
             entries.append(parsed)
         return entries
+
+
+class _KeyTrackingObject(dict):
+    """A parsed JSON object that remembers which of its keys were repeated."""
+
+    duplicates: list[str]
+
+
+def _track_duplicate_keys(pairs: list[tuple[str, Any]]) -> _KeyTrackingObject:
+    obj = _KeyTrackingObject()
+    obj.duplicates = []
+    for key, value in pairs:
+        if key in obj:
+            obj.duplicates.append(key)
+        obj[key] = value
+    return obj
+
+
+def _loads_rejecting_duplicate_keys(text: str | bytes) -> Any:
+    """``json.loads`` that refuses a repeated key anywhere in the document.
+
+    Plain ``json.loads`` keeps the last duplicate silently, and because a dict
+    keeps a key's *first* insertion position, the surviving operation also
+    runs in the wrong place: ``det, blur, det`` executes the second ``det``
+    before ``blur`` (spec ``2026-09-24-cli-preflight`` F14). A pipeline that
+    never ran as written is refused rather than reinterpreted.
+
+    Args:
+        text: The JSON document.
+
+    Returns:
+        The parsed document, as plain ``dict``/``list`` values.
+
+    Raises:
+        ValueError: A key is repeated; the message names each repeat's path.
+        json.JSONDecodeError: The text is not valid JSON.
+    """
+    tracked = json.loads(text, object_pairs_hook=_track_duplicate_keys)
+    repeats: list[str] = []
+
+    def visit(node: Any, path: str) -> None:
+        if isinstance(node, _KeyTrackingObject):
+            repeats.extend(f"{path}.{key}" if path else key for key in node.duplicates)
+            for key, value in node.items():
+                visit(value, f"{path}.{key}" if path else key)
+        elif isinstance(node, list):
+            for index, value in enumerate(node):
+                visit(value, f"{path}[{index}]")
+
+    visit(tracked, "")
+    if repeats:
+        raise ValueError(
+            "Pipeline JSON repeats a key, so one entry would silently replace "
+            f"another and change the execution order: {', '.join(repeats)}. "
+            "Remove or rename the duplicate."
+        )
+    return json.loads(text)
