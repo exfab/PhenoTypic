@@ -43,7 +43,7 @@ def test_selectable_axis_columns_excludes_measurement_prefixes() -> None:
     Every excluded column here carries cardinality 3, so exclusion can only
     be coming from the prefix and never from the ``[2, 50]`` cardinality
     gate. The texture column is spelled the way ``TEXTURE.get_headers``
-    actually emits it (``Texture_<label>-deg###-scale##``); an earlier
+    actually emits it (``Texture_<scale>px-deg###-<label>``); an earlier
     revision pinned ``TextureGray_AvgContrast``, a header no schema
     declares, which is exactly why real ``Texture_`` columns were reaching
     the axis pickers.
@@ -55,7 +55,7 @@ def test_selectable_axis_columns_excludes_measurement_prefixes() -> None:
             "Shape_Area": [10, 20, 30],
             "Size_Area": [11, 21, 31],
             "Intensity_Mean": [0.1, 0.2, 0.3],
-            "Texture_Contrast-deg000-scale05": [0.0, 0.1, 0.2],
+            "Texture_05px-deg000-Contrast": [0.0, 0.1, 0.2],
             "Grid_RowNum": [1, 2, 1],
         }
     )
@@ -70,7 +70,7 @@ def test_selectable_axis_columns_excludes_measurement_prefixes() -> None:
     assert "Shape_Area" not in out
     assert "Size_Area" not in out
     assert "Intensity_Mean" not in out
-    assert "Texture_Contrast-deg000-scale05" not in out
+    assert "Texture_05px-deg000-Contrast" not in out
     # Metadata_* and Grid_* survive.
     assert str(GENETIC.STRAIN) in out
     assert "Grid_RowNum" in out

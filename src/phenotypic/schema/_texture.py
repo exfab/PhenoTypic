@@ -5,10 +5,21 @@ import re
 from ._measurement_info import Entry
 from ._tiers import DiscriminativeFeature
 
-# ``scale`` is emitted with ``{scale:02d}`` (a *minimum* width), so scales >= 100
-# render more than two digits — match ``\d{2,}`` so large GLCM offsets stay
-# recognizable rather than silently degrading to unrecognized columns.
+# Current spelling: ``{cat}_{scale:02d}px-deg{angle:03d}-{label}`` and
+# ``{cat}_{scale:02d}px-avg-{label}``. Only the canonical emitted spelling is
+# accepted: ``{scale:02d}`` is a *minimum* width, so the scale is ``0[1-9]``
+# (1-9) or ``[1-9]\d+`` (10 and up, including 3+ digit scales), never ``5``,
+# ``005`` or ``00``; the angle is one of the four GLCM directions.
 _TEXTURE_HEADER_RE = re.compile(
+    r"^(?P<cat>[A-Za-z0-9]+)_(?:0[1-9]|[1-9]\d+)px-"
+    r"(?:deg(?:000|045|090|135)|avg)-(?P<label>[A-Za-z0-9]+)$"
+)
+
+# Legacy spelling ``{cat}_{label}-deg###-scale##`` / ``{cat}_{label}-avg-scale##``,
+# written by every run before the rename. Still recognized so stored tables keep
+# their texture ownership; if it stopped matching, those columns would fall
+# through the "unknown external header" classifiers and be treated as metadata.
+_LEGACY_TEXTURE_HEADER_RE = re.compile(
     r"^(?P<cat>[A-Za-z0-9]+)_(?P<label>[^-]+)-(?:deg\d{3}|avg)-scale\d{2,}$"
 )
 
@@ -16,7 +27,7 @@ _TEXTURE_HEADER_RE = re.compile(
 class TEXTURE(DiscriminativeFeature):
     """Second-order texture features derived from the gray-level co-occurrence matrix (GLCM).
 
-    All features assume normalized GLCMs computed at one or more pixel offsets and averaged
+    All features assume normalized GLCMs computed at one pixel offset per measurer and averaged
     across directions unless otherwise noted. Values depend on quantization, window size,
     and scale; interpret ranges comparatively within the same imaging setup.
 
@@ -28,11 +39,17 @@ class TEXTURE(DiscriminativeFeature):
     example, a scale of 10 with 40 px-per-mm means that the measurement is the texture
     measured across every 0.25 mm on the surface of an object.
 
-    Texture_<feature_name>-deg<axis>-scale<scale>
+    Texture_<scale>px-deg<axis>-<feature_name>
 
-    We also average the texture across all degrees to provide:
+    where ``<scale>`` is zero-padded to at least two digits (``05px``, ``10px``,
+    ``100px``) and ``<axis>`` to three (``deg000``, ``deg045``, ``deg090``,
+    ``deg135``). We also average the texture across all degrees to provide:
 
-    Texture_<feature_name>-avg-scale<scale>
+    Texture_<scale>px-avg-<feature_name>
+
+    For example, ``Texture_05px-deg045-Contrast`` and ``Texture_05px-avg-Contrast``.
+    Columns written before this spelling (``Texture_Contrast-deg000-scale05``,
+    ``Texture_Contrast-avg-scale05``) are still recognized.
 
     """
 
@@ -146,9 +163,20 @@ class TEXTURE(DiscriminativeFeature):
 
     @classmethod
     def member_for_header(cls, column: str):
-        """Recognize TEXTURE's ``{cat}_{label}-deg###-scale##`` / ``-avg-scale##``."""
-        match = _TEXTURE_HEADER_RE.match(column)
-        if match is None or match.group("cat") != cls.category():
+        """Return the member that owns an emitted texture column, or ``None``.
+
+        Recognizes the current ``{cat}_{scale:02d}px-deg{angle:03d}-{label}`` /
+        ``{cat}_{scale:02d}px-avg-{label}`` spelling first, then the legacy
+        ``{cat}_{label}-deg###-scale##`` / ``{cat}_{label}-avg-scale##`` spelling
+        that stored tables still carry.
+        """
+        for pattern in (_TEXTURE_HEADER_RE, _LEGACY_TEXTURE_HEADER_RE):
+            match = pattern.match(column)
+            if match is not None:
+                break
+        else:
+            return None
+        if match.group("cat") != cls.category():
             return None
         label = match.group("label")
         for member in cls:
@@ -158,18 +186,31 @@ class TEXTURE(DiscriminativeFeature):
 
     @classmethod
     def get_headers(cls, scale: int, matrix_name=None) -> list[str]:
-        """Return full texture labels with angles in order 0, 45, 90, 135 for each feature and the
-        average across degrees of each feature at the end."""
+        """Return the 65 texture column names for one GLCM ``scale``.
+
+        Ordering contract: the first 52 names are feature-outer x angle-inner
+        (every feature in ``get_labels()`` order, each at 0, 45, 90, 135
+        degrees), followed by the 13 direction averages in the same feature
+        order. ``MeasureTexture`` fills values by position (``[:-13]`` /
+        ``[-13:]``, a feature-major ravel, and 4-wide averaging strides), so
+        reordering these names silently mislabels the values.
+
+        Args:
+            scale: GLCM pixel offset; emitted zero-padded to at least two
+                digits with a ``px`` suffix (``05px``).
+            matrix_name: Unused; kept for call-site compatibility.
+
+        Returns:
+            list[str]: e.g. ``Texture_05px-deg000-AngularSecondMoment`` first and
+            ``Texture_05px-avg-InfoCorrelation2`` last.
+        """
         angles = [0, 45, 90, 135]
+        prefix = f"{cls.category()}_{scale:02d}px"
         labels: list[str] = []
         for member in cls.get_labels():
             for angle in angles:
-                labels.append(
-                        f"{cls.category()}_{member}-deg{angle:03d}-scale{scale:02d}"
-                )
+                labels.append(f"{prefix}-deg{angle:03d}-{member}")
 
         for member in cls.get_labels():
-            labels.append(
-                    f"{cls.category()}_{member}-avg-scale{scale:02d}"
-            )
+            labels.append(f"{prefix}-avg-{member}")
         return labels

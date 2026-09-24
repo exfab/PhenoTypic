@@ -1,5 +1,7 @@
 """Dynamic output-header emission and scheme-aware recognition."""
 
+import pytest
+
 import phenotypic.schema as schema
 from phenotypic.schema import (
     LINEAR_CAP_AND_LAG_MODEL,
@@ -43,26 +45,86 @@ def test_static_scheme_is_default():
     assert not SHAPE.owns_header("Shape_Area_extra")
 
 
-def test_texture_scheme_recognition():
+def test_texture_get_headers_emits_scale_direction_feature_order():
+    """Exact spelling and order: feature-outer x angle-inner (52), then 13 averages.
+
+    ``MeasureTexture._compute_haralick`` fills values by *position*, so this
+    order is a contract, not a presentation detail.
+    """
     headers = TEXTURE.get_headers(scale=5, matrix_name="Gray")
-    directional = headers[0]  # e.g. Texture_AngularSecondMoment-deg000-scale05
+    labels = TEXTURE.get_labels()
     assert TEXTURE.header_scheme() == "texture"
-    assert TEXTURE.owns_header(directional)
-    member = TEXTURE.member_for_header(directional)
-    assert member is not None and member.label in directional
-    avg = next(h for h in headers if "-avg-scale" in h)
-    assert TEXTURE.owns_header(avg)
-    # a bare base label is not an emitted texture header
-    assert not TEXTURE.owns_header("Texture_AngularSecondMoment")
+    assert len(headers) == 65
+    assert headers[0] == "Texture_05px-deg000-AngularSecondMoment"
+    assert headers[1] == "Texture_05px-deg045-AngularSecondMoment"
+    assert headers[3] == "Texture_05px-deg135-AngularSecondMoment"
+    assert headers[4] == f"Texture_05px-deg000-{labels[1]}"
+    assert headers[52] == "Texture_05px-avg-AngularSecondMoment"
+    expected = [
+        f"Texture_05px-deg{angle:03d}-{label}"
+        for label in labels
+        for angle in (0, 45, 90, 135)
+    ] + [f"Texture_05px-avg-{label}" for label in labels]
+    assert headers == expected
 
 
-def test_texture_scheme_recognizes_scale_over_two_digits():
-    """``scale`` is emitted with min-width ``:02d``; scales >= 100 (3+ digits)
-    must still round-trip through the recognizer."""
-    for scale in (5, 100, 250):
+def test_texture_scale_zero_padding_is_a_minimum_width():
+    assert TEXTURE.get_headers(scale=1)[0] == "Texture_01px-deg000-AngularSecondMoment"
+    assert TEXTURE.get_headers(scale=10)[-1] == "Texture_10px-avg-InfoCorrelation2"
+    assert TEXTURE.get_headers(scale=100)[0] == "Texture_100px-deg000-AngularSecondMoment"
+
+
+def test_texture_headers_round_trip_to_their_member():
+    """Every emitted header resolves to the member whose label ends it.
+
+    Scales >= 100 emit three digits (``{scale:02d}`` is a minimum width) and
+    must still be recognized.
+    """
+    for scale in (1, 5, 10, 100, 250):
         for header in TEXTURE.get_headers(scale=scale, matrix_name="Gray"):
+            member = TEXTURE.member_for_header(header)
+            assert member is not None, header
+            assert header.endswith("-" + member.label), (header, member)
             assert TEXTURE.owns_header(header), header
-            assert TEXTURE.member_for_header(header) is not None
+
+
+def test_texture_legacy_spelling_is_still_recognized():
+    """Stored tables written before the rename keep their texture ownership.
+
+    Without this, legacy columns fall through to the metadata classifiers and
+    get renamed ``Metadata_Texture_...``.
+    """
+    for header in (
+        "Texture_Contrast-deg000-scale05",
+        "Texture_Contrast-deg135-scale05",
+        "Texture_Contrast-avg-scale05",
+        "Texture_Contrast-avg-scale100",
+    ):
+        assert TEXTURE.member_for_header(header) is TEXTURE.CONTRAST, header
+        assert TEXTURE.owns_header(header), header
+
+
+@pytest.mark.parametrize(
+    "header",
+    [
+        "Texture_Contrast",  # bare base label
+        "Texture_05px-Contrast",  # no direction token
+        "Texture_05px-deg000",  # no feature label
+        "Texture_05px-avg-Nope",  # unknown feature
+        "Shape_05px-avg-Contrast",  # wrong category
+        "TextureGray_Contrast-deg000-scale05",  # older legacy prefix
+        "Texture_05-deg000-Contrast",  # missing px
+        "Texture_5px-deg0-Contrast",  # unpadded scale and angle
+        "Texture_05px-deg45-Contrast",  # unpadded angle
+        "Texture_005px-deg000-Contrast",  # over-padded scale
+        "Texture_00px-avg-Contrast",  # scale 0
+        "Texture_05px-deg030-Contrast",  # non-emitted angle
+        "Texture_05px-deg0000-Contrast",  # over-padded angle
+    ],
+)
+def test_texture_rejects_non_canonical_headers(header):
+    assert TEXTURE.member_for_header(header) is None
+    assert not TEXTURE.owns_header(header)
 
 
 def test_no_label_is_underscore_suffix_of_another_label():

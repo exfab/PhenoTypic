@@ -47,7 +47,8 @@ def test_pipeline_on_image(plate_grid_images):
                 "MeasureColor"    : MeasureColor(),
                 "MeasureShape"    : MeasureShape(),
                 "MeasureIntensity": MeasureIntensity(),
-                "MeasureTexture"  : MeasureTexture(scale=[3, 4], quant_lvl=8),
+                "MeasureTexture3" : MeasureTexture(scale=3, quant_lvl=8),
+                "MeasureTexture4" : MeasureTexture(scale=4, quant_lvl=8),
             },
     )
     output = pipe.apply(plate_grid_images)
@@ -95,6 +96,35 @@ def test_pipeline_on_image(plate_grid_images):
         else:
             # For non-numeric, use equals
             assert o_series.equals(c_series), f"Column {col} has different values"
+
+
+def test_multi_scale_texture_via_repeated_measurers(synth_plate):
+    """Several scales = one ``MeasureTexture`` per scale in one pipeline.
+
+    Different scales share no texture column, so the per-measurer frames merge
+    on ``Object_Label`` only: every header of both scales is present, and
+    nothing picks up a ``_merged`` collision suffix.
+    """
+    from phenotypic.schema import TEXTURE
+    from phenotypic.util import split_measurements
+
+    pipe = ImagePipeline(
+            ops=[OtsuDetector()],
+            meas=[MeasureTexture(scale=3), MeasureTexture(scale=5)],
+    )
+    assert list(pipe._meas) == ["MeasureTexture", "MeasureTexture_1"]
+
+    output = pipe.apply_and_measure(synth_plate.copy())
+
+    columns = set(output.columns)
+    assert set(TEXTURE.get_headers(3)) <= columns
+    assert set(TEXTURE.get_headers(5)) <= columns
+    assert not [c for c in output.columns if "_merged" in c]
+
+    splits = split_measurements(output)
+    texture_group = set(splits["MeasureTexture"].columns)
+    assert set(TEXTURE.get_headers(3)) <= texture_group
+    assert set(TEXTURE.get_headers(5)) <= texture_group
 
 
 @timeit
