@@ -594,3 +594,98 @@ def test_nested_payload_with_omitted_fields_uses_current_defaults():
 def test_canonical_parameter_validation(kwargs):
     with pytest.raises(ValueError):
         MeasureSymZones(**kwargs)
+
+
+@pytest.mark.parametrize(
+    ("min_crossings", "min_resultant"),
+    [(3, 0.15), (20, 0.15), (3, 0.9)],
+)
+def test_measurement_profile_applies_the_ring_support_thresholds(
+    min_crossings, min_resultant
+):
+    """A ring yields a consensus tilt exactly when it passes ring support."""
+    image = _radial_spoke_image()
+    mask = image.objmap[:] == 1
+    source = image.detect_mat[:].astype(np.float64)
+    fitted = fit_orientation_zones(
+        mask,
+        source,
+        (90.0, 90.0),
+        OrientationChangePointParams(
+            ring_width=4.0,
+            minimum_segment=2,
+            min_crossings=min_crossings,
+            min_resultant=min_resultant,
+        ),
+    )
+    assert fitted.context is not None
+    profile = fitted.context.measurement_profile
+    expected = (profile.crossing_count >= min_crossings) & (
+        np.nan_to_num(profile.resultant, nan=-np.inf) >= min_resultant
+    )
+    np.testing.assert_array_equal(np.isfinite(profile.consensus_tilt), expected)
+
+
+def test_stricter_ring_support_removes_measurement_rings():
+    image = _radial_spoke_image()
+    mask = image.objmap[:] == 1
+    source = image.detect_mat[:].astype(np.float64)
+
+    def supported_rings(min_crossings: int) -> int:
+        fitted = fit_orientation_zones(
+            mask,
+            source,
+            (90.0, 90.0),
+            OrientationChangePointParams(
+                ring_width=4.0,
+                minimum_segment=2,
+                min_crossings=min_crossings,
+            ),
+        )
+        assert fitted.context is not None
+        tilt = fitted.context.measurement_profile.consensus_tilt
+        return int(np.isfinite(tilt).sum())
+
+    assert supported_rings(20) < supported_rings(3)
+
+
+@pytest.mark.parametrize("legacy_mode", [False, True])
+def test_orientation_zone_min_fields_reach_the_outward_rotation_profile(
+    monkeypatch, legacy_mode
+):
+    """Both measurement paths build OutwardRotation* from zone_min_* values."""
+    import phenotypic.measure._orientation_zone_segmentation as resolver
+    import phenotypic.measure._orientation_zones._operation as operation
+
+    recorded: list[tuple[int, float]] = []
+
+    def recording(module):
+        original = module.literal_crossing_ring_profile
+
+        def record(transform, *, minimum_points, minimum_resultant, **kwargs):
+            recorded.append((minimum_points, minimum_resultant))
+            return original(
+                transform,
+                minimum_points=minimum_points,
+                minimum_resultant=minimum_resultant,
+                **kwargs,
+            )
+
+        monkeypatch.setattr(module, "literal_crossing_ring_profile", record)
+
+    recording(resolver)
+    recording(operation)
+    op = MeasureOrientationZones(
+        legacy_mode=legacy_mode,
+        center_detector=None,
+        radial_ring_width=4.0,
+        zone_minimum_segment=2,
+        zone_min_crossings=5,
+        zone_min_resultant=0.4,
+    )
+    op.measure(_radial_spoke_image())
+
+    # The canonical resolver also builds a permissive zoning profile (1, 0.0);
+    # every other profile must carry the configured ring thresholds.
+    assert (5, 0.4) in recorded
+    assert set(recorded) <= {(5, 0.4), (1, 0.0)}

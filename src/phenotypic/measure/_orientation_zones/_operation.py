@@ -56,8 +56,6 @@ from ._common import (
 )
 from ._figures import _OrientationZonesFigures
 
-_LITERAL_CROSSING_MIN_POINTS = 3
-
 
 class MeasureOrientationZones(CanonicalZoneMeasure, _OrientationZonesFigures):
     """Measure absolute and radial-relative hyphal orientation by growth zone.
@@ -97,8 +95,12 @@ class MeasureOrientationZones(CanonicalZoneMeasure, _OrientationZonesFigures):
         radial_ring_width: Width in pixels of each center-origin Sholl-style
             annular band.
         zone_minimum_segment: Minimum ring count in every change-point segment.
-        zone_min_crossings: Minimum literal crossings for ring support.
+        zone_min_crossings: Minimum literal crossings for ring support. The
+            same threshold decides which rings yield a consensus tilt for the
+            ``OutwardRotation*`` columns.
         zone_min_resultant: Minimum ring-level axial resultant for support.
+            The same threshold decides which rings yield a consensus tilt for
+            the ``OutwardRotation*`` columns.
         zone_min_ring_coherence: Minimum reliable-pixel mean coherence for
             ring support.
         zone_support_weight: Weight of the Boolean orientation-support feature.
@@ -627,8 +629,8 @@ class MeasureOrientationZones(CanonicalZoneMeasure, _OrientationZonesFigures):
             )
             profile = literal_crossing_ring_profile(
                     transform,
-                    minimum_points=_LITERAL_CROSSING_MIN_POINTS,
-                    minimum_resultant=MIN_AXIAL_RESULTANT,
+                    minimum_points=self.zone_min_crossings,
+                    minimum_resultant=self.zone_min_resultant,
             )
             bounds = {
                 "Overall": (inner_radius, outer_radius),

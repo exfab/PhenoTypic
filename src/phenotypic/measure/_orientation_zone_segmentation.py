@@ -469,6 +469,9 @@ def fit_orientation_zones(
 
     # Stage 3: calculate literal skeleton/ring intersections once. Separate
     # profiles retain permissive zoning evidence and stricter measurements.
+    # The measurement profile applies the same ring-level thresholds as ring
+    # support (zone_min_crossings / zone_min_resultant), so a ring that counts
+    # as orientation support is exactly a ring that yields a consensus tilt.
     transform = literal_skeleton_ring_crossings(
         mask,
         fiber_axis,
@@ -486,8 +489,8 @@ def fit_orientation_zones(
     )
     measurement_profile = literal_crossing_ring_profile(
         transform,
-        minimum_points=3,
-        minimum_resultant=MIN_AXIAL_RESULTANT,
+        minimum_points=params.min_crossings,
+        minimum_resultant=params.min_resultant,
     )
 
     # Stage 4: assemble one seven-feature row for each Sholl-style ring.
