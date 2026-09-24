@@ -10,9 +10,13 @@ from ._tiers import DiscriminativeFeature
 # accepted: ``{scale:02d}`` is a *minimum* width, so the scale is ``0[1-9]``
 # (1-9) or ``[1-9]\d+`` (10 and up, including 3+ digit scales), never ``5``,
 # ``005`` or ``00``; the angle is one of the four GLCM directions.
+#
+# Both patterns are applied with ``fullmatch``, never ``match`` + ``$``: ``$``
+# also matches before a trailing newline, so ``"...-Contrast\n"`` would be
+# claimed as texture while every static header is compared exactly.
 _TEXTURE_HEADER_RE = re.compile(
-    r"^(?P<cat>[A-Za-z0-9]+)_(?:0[1-9]|[1-9]\d+)px-"
-    r"(?:deg(?:000|045|090|135)|avg)-(?P<label>[A-Za-z0-9]+)$"
+    r"(?P<cat>[A-Za-z0-9]+)_(?:0[1-9]|[1-9]\d+)px-"
+    r"(?:deg(?:000|045|090|135)|avg)-(?P<label>[A-Za-z0-9]+)"
 )
 
 # Legacy spelling ``{cat}_{label}-deg###-scale##`` / ``{cat}_{label}-avg-scale##``,
@@ -20,7 +24,7 @@ _TEXTURE_HEADER_RE = re.compile(
 # their texture ownership; if it stopped matching, those columns would fall
 # through the "unknown external header" classifiers and be treated as metadata.
 _LEGACY_TEXTURE_HEADER_RE = re.compile(
-    r"^(?P<cat>[A-Za-z0-9]+)_(?P<label>[^-]+)-(?:deg\d{3}|avg)-scale\d{2,}$"
+    r"(?P<cat>[A-Za-z0-9]+)_(?P<label>[^-]+)-(?:deg\d{3}|avg)-scale\d{2,}"
 )
 
 
@@ -171,7 +175,7 @@ class TEXTURE(DiscriminativeFeature):
         that stored tables still carry.
         """
         for pattern in (_TEXTURE_HEADER_RE, _LEGACY_TEXTURE_HEADER_RE):
-            match = pattern.match(column)
+            match = pattern.fullmatch(column)
             if match is not None:
                 break
         else:

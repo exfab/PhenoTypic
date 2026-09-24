@@ -134,6 +134,9 @@ class MeasureTexture(MeasureFeatures):
         empty or multi-element one is refused: a multi-element list only ever
         measured its first scale, and one ``MeasureTexture`` now measures one
         scale.
+
+        A ``bool`` (bare or as the single element) is refused: pydantic's lax
+        mode would otherwise read ``True`` as distance ``1``.
         """
         if isinstance(scale, (list, tuple)):
             if len(scale) != 1:
@@ -141,7 +144,12 @@ class MeasureTexture(MeasureFeatures):
                         "MeasureTexture measures one scale; add one MeasureTexture "
                         f"per scale (got scale={list(scale)!r})"
                 )
-            return scale[0]
+            scale = scale[0]
+        if isinstance(scale, (bool, np.bool_)):
+            raise ValueError(
+                    f"MeasureTexture scale must be an integer pixel offset, "
+                    f"not a bool (got scale={scale!r})"
+            )
         return scale
 
     def _operate(self, image: Image) -> pd.DataFrame:

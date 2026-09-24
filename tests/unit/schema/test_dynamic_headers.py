@@ -120,6 +120,11 @@ def test_texture_legacy_spelling_is_still_recognized():
         "Texture_00px-avg-Contrast",  # scale 0
         "Texture_05px-deg030-Contrast",  # non-emitted angle
         "Texture_05px-deg0000-Contrast",  # over-padded angle
+        # `$` matches before a trailing newline; `fullmatch` must not.
+        "Texture_05px-avg-Contrast\n",  # current spelling + newline
+        "Texture_05px-deg045-Contrast\n",
+        "Texture_Contrast-avg-scale05\n",  # legacy spelling + newline
+        "Texture_Contrast-deg000-scale05\n",
     ],
 )
 def test_texture_rejects_non_canonical_headers(header):

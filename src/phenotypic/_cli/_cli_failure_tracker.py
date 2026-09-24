@@ -207,6 +207,27 @@ def file_sha256(path: Path) -> str:
 #:         ``tiff`` continuations -- deliberate; invalidating too much is safe.
 PROCESS_LAYER_SEMANTICS_REVISION = 3
 
+#: Bumped when the MEASUREMENT COLUMNS an unchanged pipeline emits change
+#: spelling or meaning, so a run resumed across the upgrade re-measures its
+#: images instead of mixing old- and new-spelled columns in one aggregate.
+#:
+#: The pipeline fingerprint is the user file's bytes and cannot see this: the
+#: same ``pipeline.json`` produces different headers under the new code.
+#:
+#: Unlike ``PROCESS_LAYER_SEMANTICS_REVISION``, this sits in the BASE payload
+#: of :func:`processing_configuration_digest_from_values`, so it invalidates
+#: every in-flight continuation -- ``full``, ``measure`` and ``process`` alike,
+#: texture or not (user decision D9; invalidating too much is safe). It lives
+#: in this digest rather than in :func:`compute_work_id` because this digest
+#: is also ``per_image_config_digest`` (``_cli_identity.py``), so the work id
+#: and the processing generation move together, as spec §5.4 requires.
+#:
+#: 0 -> 1: ``MeasureTexture`` columns renamed from
+#:         ``Texture_{Feature}-{deg###|avg}-scale{NN}`` to
+#:         ``Texture_{NN}px-{deg###|avg}-{Feature}``
+#:         (plan 2026-09-23-texture-column-naming, D9).
+MEASUREMENT_HEADER_REVISION = 1
+
 
 def processing_configuration_digest_from_values(
     *,
@@ -231,6 +252,9 @@ def processing_configuration_digest_from_values(
         "bit_depth": bit_depth,
         "detect_mode": detect_mode,
         "drop_originals": drop_originals,
+        # In the base payload ON PURPOSE, unlike every mode-scoped key below:
+        # see ``MEASUREMENT_HEADER_REVISION``.
+        "measurement_header_revision": MEASUREMENT_HEADER_REVISION,
     }
     if process_only_layer is not None:
         payload.update(
