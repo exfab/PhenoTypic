@@ -26,6 +26,9 @@ from phenotypic.sdk_ import (
     STDOUT_LOG,
     STORE_SUFFIX,
     atomic_write_json,
+    measurements_csv_path,
+    pipeline_json_path,
+    pipeline_publication_lock_path,
     progress_dir,
 )
 
@@ -128,6 +131,31 @@ def _build_nested_empty_store(root: Path) -> None:
     )
 
 
+def _seed_pipeline_config(root: Path) -> None:
+    """What a forward run writes into ``deliverables/`` before any image."""
+    config = pipeline_json_path(root)
+    config.parent.mkdir(parents=True, exist_ok=True)
+    config.write_bytes(b"{}")
+    pipeline_publication_lock_path(config).write_bytes(b"")
+
+
+def _build_seeded_pipeline_config(root: Path) -> None:
+    _build_scaffolding_only(root)
+    _seed_pipeline_config(root)
+
+
+def _build_seeded_config_beside_a_deliverable(root: Path) -> None:
+    _build_seeded_pipeline_config(root)
+    measurements_csv_path(root).write_bytes(b"Size_Area\n12\n")
+
+
+def _build_config_name_outside_deliverables(root: Path) -> None:
+    """Only the canonical path is exempt, not any file of that name."""
+    stray = root / "results" / "plate1" / pipeline_json_path(root).name
+    stray.parent.mkdir(parents=True)
+    stray.write_bytes(b"{}")
+
+
 @pytest.mark.parametrize(
     ("build", "expected"),
     (
@@ -156,6 +184,19 @@ def _build_nested_empty_store(root: Path) -> None:
         ),
         pytest.param(
             _build_nested_empty_store, True, id="nested-empty-store"
+        ),
+        pytest.param(
+            _build_seeded_pipeline_config, False, id="seeded-pipeline-config"
+        ),
+        pytest.param(
+            _build_seeded_config_beside_a_deliverable,
+            True,
+            id="seeded-config-beside-a-deliverable",
+        ),
+        pytest.param(
+            _build_config_name_outside_deliverables,
+            True,
+            id="config-name-outside-deliverables",
         ),
     ),
 )
@@ -404,10 +445,11 @@ def test_a_root_symlink_is_prior_science(tmp_path: Path) -> None:
 def test_the_runs_own_pipeline_copy_is_not_prior_science(
     tmp_path: Path,
 ) -> None:
-    """``_copy_pipeline_to_output`` writes the source basename at the root.
+    """Output trees from before the seed moved keep a root copy of the source.
 
-    Without this, the guard fires on every run that ever started, because the
-    copy is made before any image is processed.
+    Runs used to copy ``--pipeline`` to the root under its own basename before
+    any image was processed; without this exemption the guard fires on every
+    such tree that ever started. New runs seed ``deliverables/`` instead.
     """
     root = tmp_path / "out"
     root.mkdir()

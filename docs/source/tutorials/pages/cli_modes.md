@@ -85,12 +85,13 @@ out/
 │   ├── measurements_by_feature/            # one file per measurer
 │   ├── overlays/<dataset>/                 # detection overlay PNGs
 │   ├── dashboard.html, processing_report.html
+│   ├── pipeline.json.pht-pipe              # your --pipeline, copied in when the run starts
 │   └── README.md                           # generated column documentation
 ├── results/<dataset>/
 │   ├── zarr/               # one <stem>.ome.zarr store per image — the
 │   │                       #   reusable segmentation
 │   └── measurements/       # one parquet per image
-└── .phenotypic/            # machine state: progress manifest, event log, pipeline copy
+└── .phenotypic/            # machine state: progress manifest, event log
 ```
 
 The `zarr/` directory is what makes the other modes cheap: each store holds that

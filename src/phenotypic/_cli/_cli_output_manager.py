@@ -614,7 +614,7 @@ def _persist_pipeline_to_output_dir(
     output_dir: Path,
     pipeline: "ImagePipeline",
 ) -> Optional[Path]:
-    """Atomically write a copy of *pipeline*'s JSON to ``<output>/pipeline.json``.
+    """Atomically write *pipeline*'s JSON to ``deliverables/pipeline.json.pht-pipe``.
 
     The canonical pipeline JSON is the source of truth for analysis recipes
     and reproducibility — it captures filters/model alongside the
