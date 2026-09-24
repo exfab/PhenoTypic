@@ -1,4 +1,4 @@
-# Plan: MeasureTexture column naming — `Texture_{scale}px-{deg{angle}|avg}-{Feature}`
+# Plan: MeasureTexture column naming — `Texture_{scale:02d}px-{deg{angle:03d}|avg}-{Feature}`
 
 Worktree: `.worktrees/texture-column-naming` · branch `feat/texture-column-naming`
 
@@ -10,8 +10,8 @@ Worktree: `.worktrees/texture-column-naming` · branch `feat/texture-column-nami
 
 | | Current | New |
 |---|---|---|
-| directional | `Texture_Contrast-deg000-scale05` | `Texture_5px-deg0-Contrast` |
-| average | `Texture_Contrast-avg-scale05` | `Texture_5px-avg-Contrast` |
+| directional | `Texture_Contrast-deg000-scale05` | `Texture_05px-deg000-Contrast` |
+| average | `Texture_Contrast-avg-scale05` | `Texture_05px-avg-Contrast` |
 
 Grouping moves from *feature-first* to *scale → direction → feature*, so a scale's
 columns read as one block and the feature label ends the name.
@@ -20,8 +20,8 @@ columns read as one block and the feature label ends the name.
 
 | # | Decision | Rationale |
 |---|---|---|
-| D1 | **No zero-padding**: `Texture_5px-deg0-…`, `deg45`, `deg135`. | Literal reading of the template. Trade-off: plain `sorted()` (results-viewer dropdowns, REMBI catalog) orders `Texture_10px-…` before `Texture_5px-…` and `deg135` before `deg45`. Padding (`Texture_05px-deg000-…`) would fix lexical sort. |
-| D2 | **Unit suffix `px` on the scale** (`Texture_5px-…`). | User decision: tells readers the scale is a pixel offset. The literal `px` also makes the new pattern unambiguous against any bare-digit token. |
+| D1 | **Zero-padded, same widths as today**: scale `{scale:02d}` (`05px`, `10px`), angle `{angle:03d}` (`deg000`, `deg045`, `deg090`, `deg135`). | User decision: plain `sorted()` (results-viewer dropdowns, REMBI catalog) then orders scales and angles numerically. `:02d` is a *minimum* width, so scales ≥ 100 emit 3 digits and sort out of order past 99 — same limitation as today. The recognizer is strict on padding (`\d{2,}` scale, `\d{3}` angle) so `parse(emit(x)) == x` is the only accepted spelling. |
+| D2 | **Unit suffix `px` on the scale** (`Texture_05px-…`). | User decision: tells readers the scale is a pixel offset. The literal `px` also makes the new pattern unambiguous against any bare-digit token. |
 | D3 | **Recognize both formats, emit new only.** | *Required, not optional* — see "Why D3 is required" below. |
 | D4 | **No `--mode migrate` rewrite** of stored columns. | Migrate is provenance-only; D3 keeps old tables valid. |
 | D5 | `category()` stays `"Texture"`; `get_headers(scale, matrix_name=None)` signature unchanged. | Every prefix consumer derives `Texture_` from `category()`. |
@@ -49,9 +49,9 @@ Tasks 1 and 3 guard both directions.
 
 | Site | Change |
 |---|---|
-| `schema/_texture.py:11-13` `_TEXTURE_HEADER_RE` | Two patterns: new `^(?P<cat>[A-Za-z0-9]+)_(?P<scale>\d+)px-(?:deg(?P<angle>\d+)\|avg)-(?P<label>[A-Za-z0-9]+)$`; legacy kept as `_LEGACY_TEXTURE_HEADER_RE`. Unambiguous: legacy ends `-scale\d+`, new ends in a label. |
+| `schema/_texture.py:11-13` `_TEXTURE_HEADER_RE` | Two patterns: new `^(?P<cat>[A-Za-z0-9]+)_(?P<scale>\d{2,})px-(?:deg(?P<angle>\d{3})\|avg)-(?P<label>[A-Za-z0-9]+)$`; legacy kept as `_LEGACY_TEXTURE_HEADER_RE`. Unambiguous: legacy ends `-scale\d+`, new ends in a label. |
 | `schema/_texture.py:147-157` `member_for_header` | Try new, then legacy; same `cat`/`label` lookup. |
-| `schema/_texture.py:159-175` `get_headers` | Emit `f"{cat}_{scale}px-deg{angle}-{label}"` / `f"{cat}_{scale}px-avg-{label}"`. **Keep order exactly**: feature-outer × angle-inner (52), then 13 averages in feature order. |
+| `schema/_texture.py:159-175` `get_headers` | Emit `f"{cat}_{scale:02d}px-deg{angle:03d}-{label}"` / `f"{cat}_{scale:02d}px-avg-{label}"`. **Keep order exactly**: feature-outer × angle-inner (52), then 13 averages in feature order. |
 | `measure/_measure_texture.py:140-144` | Assign the merge result (D6). |
 
 ### Order-dependent, no edit (guard with a test)
@@ -72,11 +72,11 @@ If `get_headers` order changes, values land under the wrong names **silently**.
   `_MEASUREMENT_PREFIXES` → `"Texture_"`.
 - `analysis/_error_cutoffs.py:34-42,122-127` — bare `"Texture"` prefix.
 - `util/_measurement_outputs.py:259-270` `metric_token` — a growth fit on a texture column now
-  yields e.g. `LogGrowthModel_5px-avg-Contrast_r` (was `…_Contrast-avg-scale05_r`);
+  yields e.g. `LogGrowthModel_05px-avg-Contrast_r` (was `…_Contrast-avg-scale05_r`);
   `parse_qualified_header` anchors on the member-label suffix, so a leading digit is fine. Cosmetic.
-- `sdk_/_rembi_manifest.py:94` — catalog now lists `5px-avg-Contrast` etc.; cosmetic ordering.
+- `sdk_/_rembi_manifest.py:94` — catalog now lists `05px-avg-Contrast` etc.; cosmetic ordering.
 - `refine/_remove_by_feature.py:163` — bare-label suffix match (`col.split("_",1)[-1]`) never matched
-  texture labels before (`Contrast-deg000-scale05`) and still doesn't (`5px-avg-Contrast`); full names work.
+  texture labels before (`Contrast-deg000-scale05`) and still doesn't (`05px-avg-Contrast`); full names work.
   **User-config note:** a saved `RemoveByFeature(value="Texture_Contrast-avg-scale05")` no longer
   matches new runs — changelog item.
 - `sdk_/_metadata_helpers.py:111-157`, `_gui/run_console/_request_safety.py:383`,
@@ -122,26 +122,26 @@ If `get_headers` order changes, values land under the wrong names **silently**.
 ## Tasks (TDD)
 
 1. **Schema emit + recognize** (`schema/_texture.py`, `test_dynamic_headers.py`)
-   - Red first: exact expected headers for `get_headers(5)` — `[0] == "Texture_5px-deg0-AngularSecondMoment"`,
-     `[52] == "Texture_5px-avg-AngularSecondMoment"`, length 65.
+   - Red first: exact expected headers for `get_headers(5)` — `[0] == "Texture_05px-deg000-AngularSecondMoment"`,
+     `[52] == "Texture_05px-avg-AngularSecondMoment"`, length 65.
    - Round-trip: every header of `get_headers(s)` for s ∈ {1, 5, 10, 100, 250} resolves to the
      member whose label it ends in.
    - Legacy: `Texture_Contrast-deg000-scale05` / `…-avg-scale05` → `TEXTURE.CONTRAST`.
-   - Negatives: `Texture_Contrast`, `Texture_5px-Contrast`, `Texture_5px-deg0`, `Texture_5px-avg-Nope`,
-     `Shape_5px-avg-Contrast`, `TextureGray_Contrast-deg000-scale05`, `Texture_5-deg0-Contrast` (missing `px`).
-   - Mutation proof: break the new regex (e.g. `deg\d{3}`) → round-trip red; drop the legacy
+   - Negatives: `Texture_Contrast`, `Texture_05px-Contrast`, `Texture_05px-deg000` (no label), `Texture_05px-avg-Nope`,
+     `Shape_05px-avg-Contrast`, `TextureGray_Contrast-deg000-scale05`, `Texture_05-deg000-Contrast` (missing `px`), `Texture_5px-deg0-Contrast` and `Texture_05px-deg45-Contrast` (unpadded).
+   - Mutation proof: break the new regex (e.g. `deg\d{2}`) → round-trip red; drop the legacy
      branch → legacy test red.
    - Update the docstrings and comment in the first three text rows.
 2. **Producer** (`measure/_measure_texture.py`, new `tests/unit/measure/test_measure_texture.py`)
    - Red first on `load_synth_yeast_plate()` + a detector: `MeasureTexture(scale=[5, 10])` returns
      exactly `{Object_Label} ∪ get_headers(5) ∪ get_headers(10)` (131 columns) — fails today (D6).
-   - **Order guard:** per object, `Texture_5px-avg-F == mean(Texture_5px-deg{0,45,90,135}-F)` for every
+   - **Order guard:** per object, `Texture_05px-avg-F == mean(Texture_05px-deg{000,045,090,135}-F)` for every
      feature F. Mutation-prove by swapping two angles in `get_headers`.
    - Every emitted column satisfies `TEXTURE.owns_header`.
    - Fix the merge; update the Returns docstring.
 3. **Downstream recognition guards** (tests only)
    - `_is_gui_metadata_column` and `_is_layout_metadata_column` return False for both
-     `Texture_5px-avg-Contrast` and `Texture_Contrast-avg-scale05`. Mutation-prove by deleting the
+     `Texture_05px-avg-Contrast` and `Texture_Contrast-avg-scale05`. Mutation-prove by deleting the
      legacy branch.
    - `split_measurements` puts new-format texture columns under `MeasureTexture`.
    - Update `test_scatter_grouping.py` and `test_grid.py` literals/docstrings.
