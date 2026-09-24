@@ -2,7 +2,9 @@
 
 - **Date:** 2026-09-24
 - **Branch:** `claude/modest-mccarthy-jz0ylw`, off `81d19ec`
-- **Status:** design drafted, awaiting review
+- **Status:** revised after independent review; awaiting approval
+- **Review:** `docs/superpowers/reports/2026-09-24-cli-preflight/spec-plan-review.md`
+  (findings R1-R38; the disposition of each is in the table at the end of this spec)
 - **Evidence:** `docs/superpowers/reports/2026-09-24-cli-preflight/claim-verification.md`
   (empirical probes, scripts under
   `docs/superpowers/plans/2026-09-24-cli-preflight/baseline_probes/`)
@@ -99,7 +101,7 @@ must be confirmed on the target cluster (plan Task 13).
 | F2 | `--restart --dry-run` clears `.phenotypic/` and bumps the restart epoch | R `:2370`, `:2438`; `_cli_identity.py` docstring "gate finding F8" | 1 |
 | F3 | `--overwrite` with `--input` inside `--output` deletes the inputs in `full` mode; only `process` mode refuses the overlap | R `:1865-1883`, `:2399` | 1 |
 | F4 | Grid operations under `--image-type Image` fail every image | R the four ABC raises above | 4 |
-| F5 | A pipeline with `nrows`/`ncols` under `--image-type Image` fails every image: `measure()` injects `CenteredAutoGridFinder` | R `_image_pipeline_core.py:1293-1326`; to be confirmed by plan Task 5 | 4 |
+| F5 | A pipeline preset with **both** `nrows` and `ncols` under `--image-type Image` fails every image: `measure()` injects `CenteredAutoGridFinder` unless `meas` already holds a `GridFinder` | P (review R5); `_image_pipeline_core.py:1305-1316` | 4 |
 | F6 | A `full`-mode pipeline with no object-producing op fails every image with `NoObjectsError` | P §3; `_image_pipeline_core.py:1268-1272` | 4 |
 | F7 | An RGB-requiring `--detect-mode` fails every grayscale input, and `--dry-run` does not notice | P §4 | 7 |
 | F8 | RGB-requiring operations fail every grayscale input | P §6 (`MeasureColor`, `CalibrateColorRpcc`) | 7 |
@@ -121,6 +123,9 @@ must be confirmed on the target cluster (plan Task 13).
 | F24 | RAW files never reach `rawpy`: the RAW suffixes are in `IO.ACCEPTED_FILE_EXTENSIONS`, which the first `imread` branch tests, and a 16-bit file read this way arrives as 8-bit | P §5; `sdk_/constants_.py:96-101`, `_image_io_handler.py:732-736` | 7, 10 |
 | F25 | Nothing checks that the output location is writable, has space, or is shared storage on a SLURM run | R (no `disk_usage`, `statvfs` or `os.access` under `_cli/`) | 9 |
 | F26 | The dry-run SBATCH preview re-implements directive formatting and diverges from what is submitted | R `_cli/_cli_interactive.py:53-84` vs `sdk_/slurm/_sbatch.py:102-165` | 6 |
+| F27 | `--overwrite` deletes a `--pipeline`, `--metadata` or `--image-manifest` file stored under `--output` before the run reads it; `--restart` does the same to one under `.phenotypic/` | R (review R10); `phenotypicCLI.py:2393-2399`, `sdk_/_io_constants.py:1347-1356` | 1 |
+| F28 | Two inputs with the same stem in one dataset (`a.png`, `a.tif`) map to one store and one join key | R (review R29); whether a later stage refuses it is unverified (plan Task 10) | 7 |
+| F29 | On a SLURM run, an input, pipeline, metadata CSV or `JoinMetadata` table on node-local storage is invisible to every worker | R (review R30) | 9 |
 
 ## Design
 
@@ -143,11 +148,27 @@ the objective rules out. A warning lists the affected inputs (the first 20, then
 **A broken check never blocks a run.** If a check raises, the preflight records a warning
 (`PF-CHECK-CRASHED`) naming the check and the exception. It does not refuse on a defect in the checker.
 
+**Checks are scoped to what the mode runs.** Each CLI mode executes a different part of the
+pipeline. `full` applies `ops` and then measures (`meas`, `post`, `filters`, `model`);
+`process` only applies `ops` (`_cli_process_only.py:347`) and ignores `--metadata`; `measure`
+only measures a stored image (`_cli_process_single.py:441-446`), takes the image class from
+the store, and never applies `--detect-mode`. A requirement is checked only over the slots
+the mode will execute, and an option is checked only in the modes that read it. Without this
+rule a valid `process` run carrying `MeasureColor` in `meas` would be refused for a
+measurement it never takes (review R4).
+
 **`--skip-validation` skips the preflight.** It keeps its meaning ("skip pipeline
-validation, for advanced users") and extends to every check in this spec, with three
+validation, for advanced users") and extends to every check in this spec, with four
 exceptions that are structural rather than advisory. The first is the ordering in §1. The
-second is option-type validation (`--bit-depth`, `--gpu-slurm` time). The third is the
-existing unstageable-GPU refusal.
+second is the destructive-overlap refusals of §1, which protect the run's own inputs. The
+third is option-type validation (`--bit-depth`, `--gpu-slurm` time, and the minimal
+metadata parse of §10.5). The fourth is the existing unstageable-GPU refusal.
+
+**Naming.** "Preflight" already names three things in this codebase: `preflight_plot_backends`,
+the GUI's `build_metadata_preflight`, and the unstageable-GPU check that `_cli/CLAUDE.md`
+calls "the preflight". User-facing text calls this change the **run preflight**; code keeps
+the `_cli_preflight` module name, and docs refer to the GPU check as the "GPU placement
+refusal".
 
 ### §1 Ordering: nothing mutates before the preflight and the dry-run exit
 
@@ -177,10 +198,13 @@ justified by "`--restart` has already run `clear_machine_state` by this point, s
 under it has written to the tree regardless", and after this change that premise is false.
 The docstring is updated to say a dry run exits before the mint.
 
-The overlap refusal that `process` mode already applies (`:1865-1883`) is extended to
-`--overwrite` in every mode. When `--overwrite` is set and the canonical input lies inside
-the canonical output, or equals it, the run is refused, because the delete would remove the
-inputs (F3).
+The overlap refusal that `process` mode already applies (`:1865-1883`) is extended to every
+file the run itself reads (F3, F27). Under `--overwrite`, the run is refused when the
+canonical `--input`, `--pipeline`, `--metadata` or `--image-manifest` path equals or lies
+inside the canonical `--output`, because the delete would remove it before the run reads it.
+Under `--restart`, the same paths are refused when they lie inside `.phenotypic/` and are not
+among the entries `clear_machine_state` preserves (`_PRESERVED_ON_RESTART`,
+`sdk_/_io_constants.py:1313-1315`). These refusals are not skippable (§0).
 
 ### §2 The preflight module
 
@@ -209,18 +233,38 @@ class PreflightReport:
     def warnings(self) -> tuple[PreflightFinding, ...]: ...
     def render(self, console) -> None: ...   # grouped by category, errors first
 
+RunMode = Literal["full", "measure", "process"]
+
+#: The pipeline slots each mode executes (§0, "Checks are scoped to what the mode runs").
+MODE_SLOTS: dict[RunMode, frozenset[str]] = {
+    "full": frozenset({"ops", "meas", "post", "filters", "model"}),
+    "process": frozenset({"ops"}),
+    "measure": frozenset({"meas", "post", "filters", "model"}),
+}
+
 @dataclass(frozen=True)
 class PreflightContext:
     config: ExecutionConfig
     pipeline: ImagePipeline
     datasets: Sequence[Dataset]
-    mode: Literal["full", "measure", "process"]
+    mode: RunMode
 
 def run_preflight(context: PreflightContext) -> PreflightReport: ...
 ```
 
 `run_preflight` calls each check in a fixed order (pipeline, environment, cluster, inputs,
-metadata, output) and wraps each call as §0 describes. Checks are plain functions
+metadata, output) and wraps each call as §0 describes. A shared helper,
+`operations_in_scope(context)`, walks the tree with `walk_operations` and keeps only the
+operations reached through a slot in `MODE_SLOTS[context.mode]`; every requirement check
+iterates that, never the whole tree.
+
+The preflight needs the loaded pipeline, which `validate_pipeline` currently discards
+(`_cli_validation.py:29-83`, it returns `(bool, str)`). A new
+`load_pipeline_for_validation(path) -> tuple[ImagePipeline | None, PreflightFinding | None]`
+does the load and the existing emptiness and plot-backend checks once, and
+`validate_pipeline` becomes a thin wrapper over it for its existing callers. When the load
+fails, no other check can run, so the CLI renders a report holding that single finding;
+this is how `PF-CUSTOM-OP` and a JSON error reach the user through the same report format. Checks are plain functions
 `check_<subject>(context) -> list[PreflightFinding]`, one per finding family, so each is
 unit-testable against a hand-built context without a CLI invocation.
 
@@ -281,15 +325,24 @@ overrides the method:
 | `Sam3` | `transformers`, `torch`; gated weights `facebook/sam3` | override |
 | `DinoSam2Detector` | `transformers`, `sam2`, `torch`; DINO weights for `dino_version`/`dino_size` (gated when v3), SAM2 weights for `sam2_model_size` | override |
 | `FssDinoDetector`, `Insid3Detector` | `transformers`, `torch`; DINO weights (gated when v3) | override on a shared helper |
-| `MicroSamDetector` | `micro_sam`; weights `<model_type>`; RGB never (`input_layer="gray"`) | override |
+| `MicroSamDetector` | `micro_sam`; weights `<model_type>`; RGB through the inherited `GpuDetector` rule (its `input_layer` defaults to `"gray"` but a user may set `"rgb"`) | override, calling the `GpuDetector` one |
 | `FilFinderDetector` | `fil_finder`, `astropy` (extra `topology`) | class variables |
 
 A ratchet test prevents a new RGB-reading operation from shipping undeclared. It lists every
 concrete operation class whose module source contains `.rgb[` or `.color.` and requires that
 the class set `_requires_rgb_input` *explicitly*, in its own `__dict__`, even when the value
-is `False`. That is what `BayesShrinkCorrector`, `VisuShrinkCorrector` and `PadImage`
-(conditional readers that tolerate gray) will do. The test is a heuristic and says so in its
+is `False`. At `81d19ec` it flags `BayesShrinkCorrector`, `VisuShrinkCorrector`,
+`DenoiseBlockMatch` and `MeasureSymZones` (a plot-only RGB read), all gray-tolerant, which set
+`False` explicitly (review, "Claims verified"). `PadImage` and `ColorDenoise` are not flagged
+by the heuristic and are declared by hand. The test is a heuristic and says so in its
 docstring: it catches the common spelling of an RGB read, not every one.
+
+The grid rule covers sixteen concrete classes at `81d19ec`, each deriving from one of the four
+raising ABCs: `FilamentousFungiDetector`, `TwoKFilamentousDetector`, `ManualGridPointDetector`,
+`GridAligner`, `GridApply`, `GridOversizedObjectRemover`, `KeepSectionLargest`,
+`MergeWithinSection`, `ReduceSectionsByLine`, `RemoveGridOutliers`, `MeasureGridSpread`,
+`MeasureGridLinRegStats`, `MeasureNeighborDist`, `AutoGridFinder`, `CenteredAutoGridFinder`,
+and `ManualGridFinder`.
 
 Declaring requirements on the operation instead of in a checker-side table follows the
 distinction `_CHILD_CONTRACT` draws in `_cli_validation.py`. That table restates a
@@ -299,29 +352,29 @@ does. They belong beside the code that creates them.
 
 ### §4 Pipeline checks
 
-These read only the loaded `ImagePipeline` and `ExecutionConfig`. The requirement walk uses
-`walk_operations` / `find_operations` (`sdk_/_operation_tree.py`), which reach nested
-pipelines, composites, and the `meas`, `post`, `filters` and `model` slots.
+These read only the loaded `ImagePipeline` and `ExecutionConfig`, over
+`operations_in_scope(context)` (§2).
 
 | Code | Condition | Severity |
 |---|---|---|
-| `PF-GRID-IMAGE` | `image_type == "Image"` and any operation in the tree has `grid_image` | error |
-| `PF-GRID-PRESET` | `image_type == "Image"` and the pipeline sets `nrows` or `ncols` (F5) | error, once plan Task 5 confirms the injection raises; otherwise dropped |
+| `PF-GRID-IMAGE` | the effective image class is `Image` and an in-scope operation has `grid_image`. In `full` and `process` mode the class is `config.image_type`; in `measure` mode it is each store's recorded `phenotypic.image_class`, with `--image-type` only as the fallback the worker uses (`_cli_process_single.py:414-416`), so the finding lists affected stores | error when every image is affected, else warning |
+| `PF-GRID-PRESET` | the effective image class is `Image`, the mode calls `measure()` (`full` or `measure`), `pipeline.nrows` **and** `pipeline.ncols` are both set, and no `GridFinder` is in `meas` (F5). Under `--image-type Image` the CLI does not apply `--nrows`/`--ncols` to the pipeline (`_cli_process_single.py:264-275`), so only the preset matters | error |
 | `PF-NO-DETECTOR` | mode is `full` (forward, CPU or staged) and no `ObjectDetector` exists anywhere in `ops` | error |
 
 `PF-NO-DETECTOR` does not fire in `measure` mode, which measures stored objmaps
 (`_cli_process_single.py:404-449`), or in `process` mode, which never calls `measure()`
 (`_cli_process_only.py:347`). Its hint names the one legitimate exception, a custom
 non-detector operation that writes the objmap itself, and points to `--skip-validation`.
-The probes showed that `GridImage` fails the same way as `Image` under the default
-`CenteredAutoGridFinder` (`grid/_centered_auto_grid_finder.py:339`), so the check applies to
-both image types.
+The review's probe showed that `GridImage` fails the same way as `Image` under the default
+`CenteredAutoGridFinder` (`grid/_centered_auto_grid_finder.py:339`); the claim-verification
+report had probed only `Image`. The check therefore applies to both image types.
 
 ### §5 Environment checks
 
 **Custom operations resolve.** The preflight runs after `preload_custom_operation_modules()`,
 which §10.2 adds to the main process. When `from_json` fails with the "not found in
-phenotypic namespace" error, the finding (`PF-CUSTOM-OP`, error) names the class. Its hint
+phenotypic namespace" error, `load_pipeline_for_validation` (§2) returns the finding
+(`PF-CUSTOM-OP`, error) naming the class, and the CLI renders it as a one-finding report. Its hint
 explains both halves of the contract: the module must be listed in
 `PHENOTYPIC_PRELOAD_MODULES`, and importing it must attach the class to the `phenotypic`
 namespace, as `tests/_fakes/register_fake_gpu.py` does. A module that merely defines the
@@ -341,12 +394,21 @@ runtime path prompts, so an unaccepted license fails every image.
 **Weights are cached.** For each `WeightRequirement`, `is_cached()` is consulted
 (`PF-WEIGHTS-UNCACHED`, warning). The finding is a warning, not an error, because some
 clusters give compute nodes network access. Its hint names the pre-download command in
-`phenotypic.detect.nn`'s CLI. The cache probes reuse what exists:
-`Sam2CheckpointManager.is_cached` (`_checkpoint_manager.py:241`),
-`MicroSamCheckpointManager.list_cached` (`:460`), and, for Hugging Face repos,
-`huggingface_hub.try_to_load_from_cache` on the repo's `config.json`. That last probe
-returns `None` from `is_cached` when `huggingface_hub` is absent, in which case
-`PF-MISSING-MODULE` has already fired.
+`phenotypic.detect.nn`'s CLI.
+
+The cache probes must not import `torch` or `micro_sam` in the submitting process: the
+existing `Sam2CheckpointManager.cache_dir()` imports `torch.hub`
+(`_checkpoint_manager.py:232`) and `MicroSamCheckpointManager.cache_dir()` imports
+`micro_sam.util` (`:409`), which imports `torch` (review R8). The probes therefore resolve
+directories from the environment alone. For SAM2 the directory is `$TORCH_HOME/hub/checkpoints`,
+else `$XDG_CACHE_HOME/torch/hub/checkpoints`, else `~/.cache/torch/hub/checkpoints`, which is
+`torch.hub.get_dir()`'s documented resolution order (plan Task 8 pins it against real
+`torch.hub.get_dir()` when torch is installed). For micro-sam it is `MICROSAM_CACHEDIR` or the
+`platformdirs` fallback the manager already uses (`:417-425`). For Hugging Face repos it is
+`huggingface_hub.try_to_load_from_cache` on the repo's `config.json`, which returns `None`
+from `is_cached` when `huggingface_hub` is absent; `PF-MISSING-MODULE` has then already fired.
+The existing managers' `cache_dir()` methods are changed to call the same resolver, so the
+probe and the runtime agree by construction rather than by parallel code.
 
 ### §6 Cluster checks
 
@@ -358,23 +420,37 @@ check and runs even under `--skip-validation`.
 
 **`sbatch` accepts each profile.** For each profile the run will submit (the CPU profile
 from `--slurm`; for a staged GPU run also the GPU profile from `resolve_stage_slurm_args`),
-the preflight renders a directive block with `format_sbatch_directives` and a trivial body,
-then pipes it to `sbatch --test-only` on standard input (`PF-SBATCH-REJECTED`, error, with
-`sbatch`'s stderr in the message). Slurm documents `--test-only` as validating the script
+the preflight renders a script of three parts: a `#!/bin/bash` line, which
+`format_sbatch_directives` does not emit and `sbatch` requires; that function's directive
+block, with `/dev/null` as both log paths; and a `true` body. It pipes the script to
+`sbatch --test-only` on standard input, with `env=sbatch_submission_environment()` as
+`submit_script` uses (`sdk_/slurm/_sbatch.py:228-235`), so that `SBATCH_*` variables affect
+the test and the real submission identically. A nonzero exit is `PF-SBATCH-REJECTED`, an
+error with `sbatch`'s stderr in the message. Slurm documents `--test-only` as validating the script
 and estimating a start time without submitting a job, and `sbatch` reads the script from
 standard input when no file is named. So this check writes no file and catches a misspelled
 key, an unknown partition, account or QoS, and an unsatisfiable GPU or memory request (F17)
 in one call per profile. The subprocess has a 30-second timeout. When `sbatch` is not on
-`PATH`, or times out, the finding is a warning (`PF-SBATCH-UNAVAILABLE`), because the
-strategies will report the submission failure themselves.
+`PATH`, times out, or fails with a controller-communication error (for example "Socket timed
+out" or "Unable to contact slurm controller"), the finding is the warning
+`PF-SBATCH-UNAVAILABLE`, because a transient controller fault says nothing about the
+configuration and the strategies will report a real submission failure themselves. The list
+of communication-error patterns is a module constant with its own test.
 
-**Time fits the partition.** Slurm's `EnforcePartLimits` defaults to `NO`, under which a
-job whose time limit exceeds the partition's `MaxTime` is accepted and then pends with
-reason `PartitionTimeLimit` (F19). `--test-only` may therefore pass such a request. The
-preflight reads `scontrol show partition <p>` (timeout 10 s) and compares `MaxTime` with the
-requested time (`PF-TIME-OVER-PARTITION`, error). Plan Task 13 confirms both Slurm
-behaviors on the target cluster before the severity is fixed; if `EnforcePartLimits` is set
-there, the check still costs one call and cannot misfire.
+**Time fits the partition.** Where `EnforcePartLimits` is `NO`, which the author and the
+reviewer both recall as Slurm's default, a job whose time limit exceeds the partition's
+`MaxTime` is accepted and then pends with reason `PartitionTimeLimit` (F19); neither could
+reach Slurm's documentation to confirm it, so it is UNVERIFIED until plan Task 13. The
+severity is therefore decided at run time on the user's cluster, not fixed from one cluster
+at implementation time (review R11). The preflight reads `EnforcePartLimits` from
+`scontrol show config` and the partition's `MaxTime` from `scontrol show partition <p>`
+(10 s timeout each). When the requested time exceeds `MaxTime`, the finding
+`PF-TIME-OVER-PARTITION` is a warning, not an error: a QOS with `Flags=PartitionTimeLimit`
+can legitimately override the partition limit (also UNVERIFIED), and the preflight does not
+resolve QOS flags. The warning's text states whether `EnforcePartLimits` is off, in which
+case the job would pend rather than be rejected. The parser handles `MaxTime=UNLIMITED`,
+a comma-separated partition list, and the absence of `slurm_partition` (the default
+partition, read from `scontrol show partition` output's `Default=YES`).
 
 **Limits the strategies already enforce, enforced earlier.** The staged strategy refuses
 `MaxSubmitJobs < 3` and `--gpu-shards` above the chunk limit (`_cli_staged_slurm.py:558-573`),
@@ -414,6 +490,21 @@ workers, a module constant). It records the channel count, dtype, and shape:
 `_accessor_io_handler.py:335`) but arrives only transitively through scikit-image. §10
 adds it to `[project] dependencies` so the preflight does not depend on a transitive pin.
 
+A header reports what the file stores, which is not always what `imread` returns: a
+palette PNG stores one band but decodes to RGB, and a multi-page TIFF's first page need not
+be the array `skimage.io.imread` returns (review R25). The checks below therefore use the
+**decoded** channel count, which the header reader derives through a small table mapping
+header facts to decoded shape (PIL mode `P` to three channels, and so on). Plan Task 10 builds
+that table from probes of `imread` itself, and a test compares the table's prediction with
+`imread`'s actual result on each probe file.
+
+The input checks run in `full` and `process` mode, where inputs are read from `--input`. In
+`measure` mode the inputs are stores already under `--output`, their image class and channel
+layout are recorded in the store, and `--detect-mode` is not applied, so only
+`PF-RGB-OP-GRAY` runs there, over the stores' recorded channel count. With `--sample`, the
+checks still cover every input: a sample is a trial of the full run, and a user should learn
+from it what the full run will meet (review R26).
+
 The findings apply the severity rule of §0. Each is an error when every input is affected
 and a warning listing the affected inputs otherwise:
 
@@ -425,6 +516,7 @@ and a warning listing the affected inputs otherwise:
 | `PF-RAW-NO-RAWPY` | the input is RAW and `rawpy` is not importable |
 | `PF-CHANNELS` | the channel count is one the reader refuses; plan Task 10 establishes that set by probe before the check is written |
 | `PF-BIT-DEPTH` | `--bit-depth` disagrees with the header dtype, or dtypes are mixed across inputs; the severity and wording follow from what plan Task 10's probe shows `imread` does with the mismatch |
+| `PF-STEM-COLLISION` | two inputs in one dataset share a stem (`a.png`, `a.tif`) and would map to one store and one metadata key (F28). This is read from the scan, not from headers. It is an error because it corrupts outputs rather than failing an image, unless plan Task 10 finds that a later stage already refuses it, in which case the check moves that refusal earlier with the same wording |
 
 The header pass costs one small read per input. On a forward run it is small next to what
 startup already does: `_prepare_incremental_startup` computes `work_id_for_image` for every
@@ -437,17 +529,32 @@ implemented by `AppendString`, `PrependString`, `ExpandMetadata` and `MergeMetad
 already-normalized column fields) and by `JoinMetadata` (its `on` keys).
 
 The preflight computes the set of columns the master table will carry when post runs. That
-set has three sources: the headers of every measurer's declared info classes, the intrinsic
-image metadata that `measure()` inserts, and the headers of `--metadata` after
-normalization. It then walks the post chain in order, adding the columns each op creates
-(`ExpandMetadata.labels`, `MergeMetadata.label`, `JoinMetadata`'s joined columns) before
-checking the next op.
+set has four known sources: the headers of every measurer's declared info classes, the
+intrinsic image metadata that `measure()` inserts, the `Metadata_Dataset` column the CLI adds
+when the dataset column is on (`_cli_output_manager.py:1764-1767`, `:1918-1922`), and the
+headers of `--metadata` after normalization. It then walks the post chain in order, adding the
+columns each op creates (`ExpandMetadata.labels`, `MergeMetadata.label`, `JoinMetadata`'s
+joined columns) before checking the next op.
 
-For the four metadata-string ops, a required column absent from that set is an error
-(`PF-POST-COLUMN`). Metadata columns come only from the three sources above, so the set is
-complete for them, and at run time the absence would silently discard every post op's
-output (F23). For `JoinMetadata.on`, which may name a measurement header, an absent column
-is a warning, because the measurement half of the set is not always complete:
+The set is not always complete for metadata (review R6). Reading a PhenoTypic-exported file or
+store restores its public metadata into the image (`_image_io_handler.py:797-824`), and
+`insert_metadata` writes every public and protected key as a column
+(`_metadata_accessor.py:366-376`); a custom operation may also set `image.metadata[...]`. So
+for the four metadata-string ops, a required column absent from the set is an error
+(`PF-POST-COLUMN`) only when the set is provably complete: no in-scope operation is a class
+defined outside the `phenotypic` package, and no input is an OME-Zarr store or carries
+PhenoTypic metadata in its header (the header reader of §7 reports this from the TIFF tag or
+PNG text chunk under `IO.PHENOTYPIC_METADATA_KEY`, without decoding pixels). Otherwise the
+same finding is a warning. The error case matters because at run time the absence would
+silently discard every post op's output (F23).
+
+`JoinMetadata` keeps its `on` keys in the *table's* spelling after validation and re-spells
+them against the frame at run time (`post/_join_metadata.py:193-203`, `:258-263`). Its
+`required_columns()` therefore applies the same
+`external_metadata_preserved_columns` / `ensure_metadata_prefix` rule its `_normalized_table`
+uses, rather than returning `on` verbatim. For `JoinMetadata.on`, which may name a
+measurement header, an absent column is a warning, because the measurement half of the set is
+not always complete either:
 `TEXTURE.get_headers` needs a `scale` argument (`schema/_texture.py:160`), grid finders
 declare no info class, and custom measurers may declare nothing. Membership is a set test on
 already-canonical headers, so no header string is parsed for a `Metadata_` prefix, as the
@@ -467,7 +574,9 @@ def analyze_metadata_join(
 ) -> MetadataJoinAnalysis: ...
 ```
 
-It reads the CSV with the shared reader of §10.5, normalizes headers with the SDK functions
+The metadata checks run only in `full` mode; `process` mode ignores `--metadata`
+(`phenotypicCLI.py:1918-1926`), and `measure` mode joins nothing new. The analysis reads the
+CSV with the shared reader of §10.5, normalizes headers with the SDK functions
 the GUI's wrapper uses, builds the source key frame (`IMAGE.IMAGE_NAME` from
 `source_image_stem`, `IMAGE.SUFFIX`, `EXPERIMENT.DATASET`), and calls
 `prepare_metadata_join_keys`. The GUI's `build_metadata_preflight` keeps its signature and
@@ -478,27 +587,48 @@ source-key projection.
 |---|---|---|
 | `PF-META-PARSE` | the CSV does not parse with full schema inference | error |
 | `PF-META-ALIAS` | header normalization raises (conflicting legacy and canonical aliases); finalization would fail the same way | error |
-| `PF-META-NO-KEYS` | no column is shared with the source key frame, so nothing joins | error |
-| `PF-META-DUP-KEYS` | duplicate join keys, which fan measured rows out | error |
+| `PF-META-NO-KEYS` | no column is shared with the source key frame, so nothing joins | error when the CSV has no measurement-level key column (`unverified_join_columns` is empty); otherwise warning |
+| `PF-META-DUP-KEYS` | duplicate join keys among the verifiable columns, which fan measured rows out | error when `unverified_join_columns` is empty; otherwise warning |
 | `PF-META-UNMATCHED` | images with no metadata row; their rows are dropped from `measurements.csv` | warning, listing images |
 | `PF-META-ORPHANS` | metadata rows matching no image; they appear as metadata-only rows | warning |
 | `PF-META-UNVERIFIED` | a join column that only a measurement can supply (e.g. `Grid_RowNum`), which the preflight cannot verify | warning |
 
-`PF-META-NO-KEYS` and `PF-META-DUP-KEYS` refuse runs the CLI accepts today. Both produce
-tables that are wrong rather than incomplete, and `--skip-validation` remains the escape.
+The source key frame holds only `ImageName`, `Suffix` and `Dataset`, while the production
+join runs against the measurement frame, which also carries headers such as `Grid_RowNum` and
+`Grid_ColNum`, and `normalize_external_metadata_columns` deliberately keeps those as join keys
+(`_cli/_metadata_join.py:107-129`). A per-well plate map keyed on
+`ImageName + Grid_RowNum + Grid_ColNum` therefore *looks* duplicated to the source frame, and a
+plate layout keyed only on `Grid_RowNum + Grid_ColNum` *looks* keyless, yet the real join
+matches both without duplicates (review R1, reproduced). That is why the two findings are
+errors only when no measurement-level key column exists. In that case they are real: with no
+shared column `join_metadata` skips the join and publishes the table without metadata
+(`_cli_output_manager.py:336-341`), and duplicate keys fan rows out. `--skip-validation`
+remains the escape.
+
+The moved `_unverified_measurement_join_columns` (`_request_safety.py:367-388`) filters on
+`"_" in column` before calling `metadata_member_for_header`. That is a test of whether a name
+is qualified, not a metadata-prefix test, so it does not break the schema-ownership rule; the
+moved docstring says so, so that a later reader does not "fix" it into a prefix check.
 
 **Output location** (`PF-OUTPUT-*`). The preflight checks the nearest existing ancestor of
 `--output`, since the directory itself may not exist yet, with three read-only probes:
 
 - `os.access(ancestor, os.W_OK | os.X_OK)` must hold (error).
-- `shutil.disk_usage(ancestor).free` below the total size of the inputs is a warning,
-  labelled a lower bound: every run that writes per-image outputs writes at least one
-  output per input. It is not
-  an estimate of the run's footprint, and `disk_usage` cannot see GPFS user quotas, which
-  the hint says.
-- On a SLURM run, an output under `tempfile.gettempdir()`, `/dev/shm`, `$TMPDIR`, or
-  `$SCRATCH` is a warning, because workers on other nodes cannot see node-local storage
-  (`_cli/CLAUDE.md`, "One writer per artifact").
+- In `full` mode only, `shutil.disk_usage(ancestor).free` below the total size of the inputs
+  is a warning. It is a heuristic, not a bound: a forward run stores each input's pixels
+  (unless `--drop-originals`) with compression, so the true footprint may be smaller or
+  larger. `process --layer objmap` writes far less than its input, and `measure` mode's
+  inputs are already inside `--output`, so neither mode runs this check (review R21). The hint
+  also says that `disk_usage` cannot see GPFS user quotas.
+- On a SLURM run, a path on node-local storage is a warning, because workers on other nodes
+  cannot see it (`_cli/CLAUDE.md`, "One writer per artifact"). Node-local is decided by the
+  filesystem type of the path's mount, read from `/proc/self/mounts` (Linux only; other
+  platforms skip the check): `tmpfs` and local disk types (`ext4`, `xfs`, `btrfs`) are
+  node-local, while `gpfs`, `lustre`, `nfs`, `nfs4`, `beegfs` and `cifs` are shared. A name
+  heuristic such as `$SCRATCH` would misfire on clusters where scratch is a shared parallel
+  filesystem (review R21). The check covers `--output`, and also `--input`, `--pipeline`,
+  `--metadata` and every `JoinMetadata` table path, since workers read those too (F29,
+  review R30).
 
 ### §10 Defects fixed alongside
 
@@ -508,14 +638,32 @@ describe them, so this change fixes each at its source.
 **§10.1 RAW decoding (F24).** In `_image_io_handler.py` the RAW branch is tested before the
 general branch, and `IO.ACCEPTED_FILE_EXTENSIONS` keeps its meaning for the scanner. A RAW
 suffix with `rawpy` present decodes through `rawpy`; with `rawpy` absent it raises
-`UnsupportedFileTypeError`, naming the missing package. §12 covers continuation.
+`UnsupportedFileTypeError`, naming the missing package. The branch copies `rawpy_params`
+before popping from it, instead of mutating the caller's dict.
 
-**§10.2 Custom-op preload (F13).** `preload_custom_operation_modules()` is called in the
-main CLI immediately after `load_runtime_dependencies()` (`phenotypicCLI.py:1805`), and at
-the top of every worker entry point that loads a pipeline and does not call it today:
-`_cli_process_single.main`, `_cli_chunk_writer`, `_cli_recompile_worker`, and the
-non-staged finalizer path in `_cli_checkpoint_handler`. The worker list is derived by
-grepping for `from_json(` under `_cli/` (plan Task 7), not from this paragraph.
+The `rawpy` branch has never run in production, because it was unreachable (review R9). Its
+parameters (linear gamma `(1, 1)`, `output_bps=16`, automatic brightness) were written but
+never exercised, so enabling it without a real decode would ship an untested scientific
+path. Plan Task 9 therefore decodes at least one real camera RAW file and checks shape,
+`uint16` dtype and a plausible intensity range before the branch is enabled; if no redistributable
+RAW sample can be committed, the test reads a path from an environment variable and the
+change is gated on a recorded manual run. §12 covers continuation and the Windows
+consequence.
+
+**§10.2 Custom-op preload (F13).** Preloading must happen in every *process* that
+deserializes a pipeline, not only in every entry point. Local runs execute images through
+joblib's default loky backend (`_cli_execution_strategies.py:375`; the staged strategy at
+`_cli_staged_strategy.py:214`, `:351`), whose workers are fresh processes that never pass
+through `main`; the review reproduced a local `--njobs 2` run failing every image even with
+the main process preloaded (R2). `preload_custom_operation_modules()` is therefore made
+idempotent (a module-level set of already-imported names) and called in two kinds of place:
+in the main CLI immediately after `load_runtime_dependencies()` (`phenotypicCLI.py:1805`),
+and at the top of every function that calls `ImagePipeline.from_json` in a worker, such as
+`process_single_image_core` (`_cli_process_single.py:261`), the measure-mode core, the
+process-only core, the staged Stage-1 and Stage-3 callables, `_cli_chunk_writer`,
+`_cli_recompile_worker` and the non-staged finalizer path. The list is derived by grepping for
+`from_json(` and for `phenotypic._cli._cli_` module strings under `_cli/` (plan Task 7), not
+from this paragraph.
 
 **§10.3 No prompt inside a pipeline (F10, F11).** The two DINOv3 runtime call sites pass
 `interactive=False`, which is what `Dinov3CheckpointManager.download`'s own docstring says
@@ -533,7 +681,16 @@ never ran as written.
 in `_cli/_metadata_join.py` reads with `infer_schema_length=None`. The worker
 (`_embedded_measurement_tables.py:85`), `join_metadata` (`_cli_output_manager.py:333`), the
 GUI preflight, and the new CLI preflight all call it. The pandas parse at
-`phenotypicCLI.py:2149-2160` is removed, because `PF-META-PARSE` supersedes it.
+`phenotypicCLI.py:2149-2160` is replaced by a call to `read_metadata_csv` in the same place,
+outside the skippable block, so that an unreadable CSV is still refused under
+`--skip-validation` as it is today (review R22). `PF-META-PARSE` reports the same failure in
+the report when validation runs.
+
+Full-scan inference can also *change* a column's inferred dtype where the 100-row sample
+would not have raised, for example a column whose first 100 rows are null. Whether a worker's
+embedded table carries metadata dtypes that aggregation later compares across stores is not
+yet established (review R23, open question 4); plan Task 11 settles it before the reader
+changes, and adds a work-id fence like §12's if a continuation could mix the two rules.
 `_snapshot_metadata_csv` keeps its byte-for-byte copy, as the metadata-snapshot rule in
 `CLAUDE.md` requires.
 
@@ -552,16 +709,45 @@ as it does today, so no chrome changes.
 ### §12 Compatibility and continuation
 
 **RAW inputs change meaning.** After §10.1, the same RAW file yields different pixels, so a
-resumed run must not reuse an output decoded the old way. `work_id_for_image` adds a
-`RAW_DECODE_REVISION = 2` to the digest input for inputs with a RAW suffix only. This
-follows the precedent of `PROCESS_LAYER_SEMANTICS_REVISION`, scoped per image instead of
-per run, so continuations of non-RAW runs are untouched.
+resumed run must not reuse an output decoded the old way. The work id has two producers:
+`work_id_for_image`, and the SLURM worker's `_worker_work_identity`
+(`_cli_process_single.py:123-170`), which calls `compute_work_id` directly and refuses any
+mismatch ("SLURM task work identity does not match worklist", `:814-838`). A revision added to
+only one producer would fail every RAW image on SLURM (review R3). The revision therefore lives
+inside `compute_work_id` itself (`_cli_failure_tracker.py:293`): when the suffix of
+`relative_image_path` is a RAW suffix, the digest payload gains
+`"raw_decode_revision": RAW_DECODE_REVISION`; for any other suffix the payload, and so the
+digest, is byte-identical to today's. `RAW_DECODE_REVISION` is `2` because the pre-fix
+decoding is implicitly revision 1. This follows the precedent of
+`PROCESS_LAYER_SEMANTICS_REVISION`, scoped per image instead of per run, so continuations of
+non-RAW runs are untouched.
 
-**Refusals that are new.** `PF-NO-DETECTOR`, `PF-GRID-IMAGE`, `PF-META-NO-KEYS`,
-`PF-META-DUP-KEYS`, `PF-POST-COLUMN` and the §10.4 duplicate-key error refuse runs that
-start today. Each of those runs either fails every image or publishes a wrong table, so the
+**RAW on Windows.** `rawpy` is not installed on Windows (`pyproject.toml:55`). Today a RAW
+file there is read through Pillow, which returns an embedded preview or fails; after §10.1 it
+raises `UnsupportedFileTypeError`, and `PF-RAW-NO-RAWPY` reports it before the run. This is a
+deliberate change: the previous result was not the sensor data.
+
+**Refusals that are new.** `PF-NO-DETECTOR`, `PF-GRID-IMAGE`, `PF-GRID-PRESET`,
+`PF-STEM-COLLISION`, `PF-META-NO-KEYS` and `PF-META-DUP-KEYS` (each only in the cases §9 makes
+errors), `PF-POST-COLUMN` (only when the column set is provably complete, §8), the §1 overlap
+refusals, and the §10.4 duplicate-key error refuse runs that start today. Each of those runs
+fails every image, publishes a wrong or incomplete table, or deletes its own inputs, so the
 refusal changes when the user learns, not whether the run succeeds. `--skip-validation`
-bypasses all but §10.4, which is a load error.
+bypasses all but the §1 overlap refusals and §10.4, which is a load error.
+
+Two further refusals change what a working run does, and are called out separately in the
+user docs and the change log:
+
+- **SAM3 now requires license acceptance** (review R7). Today `Sam3` loads gated weights
+  through `from_pretrained` without PhenoTypic's gate (`detect/nn/_sam3.py:178-205`), so a user
+  with Hugging Face access and cached weights runs without setting
+  `PHENOTYPIC_ACCEPT_MODEL_LICENSE`. After §10.3 that run is refused by `PF-LICENSE`. This is
+  the contract the class's own docstring already states. The remedy is one line:
+  `export PHENOTYPIC_ACCEPT_MODEL_LICENSE=sam3`.
+- **A pipeline with a duplicate JSON key can no longer be recompiled or reloaded** (review
+  R24). `--mode recompile` and the GUI reload the pipeline from
+  `deliverables/pipeline.json.pht-pipe`, which holds the user's original bytes. The error
+  names the key; removing the duplicate that did not run restores the file.
 
 **Dry runs that exit 1.** A `--dry-run` whose preflight finds an error exits 1, as a
 dry run with an unloadable pipeline already does today.
@@ -578,8 +764,8 @@ end-to-end with the probe's own scenario: a sentinel file survives
 report becomes a regression test that fails on `81d19ec` and passes after its task.
 
 No logic-validation script is written. `CLAUDE.md` asks for one when a design rests on a
-numeric invariant, and this design has none; its one quantity, the disk-space bound, is
-labelled a lower bound rather than an estimate.
+numeric invariant, and this design has none; its one quantity, the disk-space comparison, is
+labelled a heuristic and only warns.
 
 ## Decisions
 
@@ -594,16 +780,38 @@ labelled a lower bound rather than an estimate.
 | D7 | Duplicate JSON keys refused in `from_json`, library-wide | A CLI-only check leaves notebooks reordering silently |
 | D8 | RAW decode fenced per image in the work id | A run-wide revision would cold-start every in-flight continuation |
 | D9 | Headroom helpers not adopted | No timeouts, and they expect keys the CLI never produces |
+| D10 | Checks scoped to the slots each mode executes (§0, §2) | Walking the whole tree refuses valid `process` and `measure` runs (review R4) |
+| D11 | RAW revision inside `compute_work_id`, keyed on suffix | Adding it to one of two producers breaks SLURM (review R3); `_cli/CLAUDE.md` "One producer per derived value" |
+| D12 | Metadata key findings are errors only when no measurement-level key exists | The source key frame cannot see measurement keys, so errors would refuse valid plate maps (review R1) |
+| D13 | Partition-time finding is a warning whose text depends on the live `EnforcePartLimits` | Fixing severity from one cluster ships a false positive to others (review R11) |
+| D14 | Node-local storage detected by filesystem type, not path name | `$SCRATCH` is shared storage on many clusters (review R21) |
 
 ## Open questions
 
-1. **`PF-GRID-PRESET`.** F5 is traced, not run. Plan Task 5 runs it; if the injection does
-   not raise, the code is dropped.
+1. **`PF-GRID-PRESET`.** Resolved by the review's probe (R5): the injection raises when both
+   `nrows` and `ncols` are set, and not otherwise. Kept with the corrected condition.
 2. **`PF-CHANNELS` and `PF-BIT-DEPTH`.** What `imread` does with RGBA, palette PNG, and a
    `--bit-depth` that disagrees with the dtype is not yet known. Plan Task 10 probes it and
    the checks mirror the observed behavior; the spec does not guess.
-3. **Slurm behavior on the target cluster.** `--test-only` semantics and the
-   `EnforcePartLimits` setting are confirmed there in plan Task 13 before the severity of
-   `PF-TIME-OVER-PARTITION` is fixed.
-</content>
-</invoke>
+3. **Slurm behavior.** `--test-only` semantics, `sbatch` reading standard input, and
+   `EnforcePartLimits` defaulting to `NO` are recalled by both author and reviewer but were
+   not checked against Slurm's documentation (unreachable from this environment). Plan
+   Task 13 checks them on a real cluster. The design no longer depends on the default,
+   because §6 reads the live setting.
+4. **Metadata dtype drift (§10.5).** Whether full-scan inference can change a stored table in
+   a way aggregation notices across a continuation. Plan Task 11 Step 1 settles it.
+5. **Same-stem inputs (F28).** Whether a later stage already refuses them. Plan Task 10
+   settles it.
+
+## Disposition of the review (R1-R38)
+
+Every finding in `spec-plan-review.md` was accepted. The ones that changed this design are
+cited inline as "review Rn". The rest change only the plan, and are listed here so that none
+is lost:
+
+| Finding | Where it is addressed |
+|---|---|
+| R1, R4, R5, R6, R7, R8, R9, R10, R11, R21, R22, R23, R24, R25, R26, R27, R28, R29, R30, R34, R35, R36, R38 | this spec, at the sections citing them |
+| R2, R3 | this spec (§10.2, §12) and plan Tasks 7 and 9 |
+| R12, R13, R16, R17, R18, R19, R20, R31, R32, R33, R37 | plan only (fixtures, test names, test scope, grep patterns, citations) |
+| R14, R15 | this spec (§3 table, §6) and plan Tasks 8 and 13 |

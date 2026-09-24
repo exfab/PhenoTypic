@@ -51,5 +51,3 @@ yet, and a file nothing reads is a file nobody keeps correct.
 `execute_dry_run` estimates output size from hard-coded megabytes per image
 (`_cli_interactive.py:236-250`) that predate the per-image OME-Zarr layout. Correcting it
 needs measured store sizes, which this change does not produce.
-</content>
-</invoke>
