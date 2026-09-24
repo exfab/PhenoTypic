@@ -207,4 +207,4 @@ ops: [('det', 'TriangleDetector'), ('blur', 'BlurGauss')]
 warnings raised: []
 validate_pipeline: (True, None)
 ```
-`from_json` uses a plain `json.loads` (`_serializable_pipeline.py:283`) with no `object_pairs_hook`, so the last duplicate silently wins. Because a Python dict keeps a key's first insertion position, **TriangleDetector now runs before BlurGauss**, although it appears after it in the file. The CLI validator accepts the file.
+`from_json` uses a plain `json.loads` (`_serializable_pipeline.py:279` at `81d19ec`; this report first said `:283`, which is the `_deserialize_pipeline_config` call below it, corrected per review R31) with no `object_pairs_hook`, so the last duplicate silently wins. Because a Python dict keeps a key's first insertion position, **TriangleDetector now runs before BlurGauss**, although it appears after it in the file. The CLI validator accepts the file.
