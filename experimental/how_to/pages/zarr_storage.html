@@ -764,6 +764,92 @@ python<span class="w"> </span>-m<span class="w"> </span>http.server<span class="
 readers. In every case the pyramid is what makes a whole-plate view cheap: the
 viewer reads a coarse level rather than decoding full resolution.</p>
 </section>
+<section id="reading-an-images-figures">
+<h2>Reading an image’s figures<a class="headerlink" href="#reading-an-images-figures" title="Link to this heading">#</a></h2>
+<p>When a CLI run’s pipeline includes a per-image plot (a <code class="docutils literal notranslate"><span class="pre">PlotImage</span></code>, such as
+<code class="docutils literal notranslate"><span class="pre">MeasureSymZones</span></code> listed in <code class="docutils literal notranslate"><span class="pre">plots=</span></code>), the store also holds that plot’s
+rendered figures. <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">process</span> <span class="pre">--process-format</span> <span class="pre">zarr</span></code> stores them too. A
+dashboard can therefore show a plate’s figures from the store alone:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>plate_01.ome.zarr/
+├── zarr.json                      &lt;- attributes.phenotypic.figures describes everything below
+└── figures/
+    ├── 2026-09-22-3f9a1c2b7e04/   &lt;- one run: {UTC date}-{first 12 hex of the pipeline sha256}
+    │   └── sym/                   &lt;- one plot binding
+    │       └── default.plotly.json
+    └── 2026-10-03-a07bc5e91d22/   &lt;- a later run with another pipeline
+</pre></div>
+</div>
+<p>Each folder level is an empty Zarr group, so Zarr readers see an ordinary
+group tree, and <code class="docutils literal notranslate"><span class="pre">figures</span></code> is not listed in <code class="docutils literal notranslate"><span class="pre">ome.series</span></code>. Nothing is read from
+the folder names. Read the store as follows:</p>
+<ol class="arabic simple">
+<li><p><strong>Read the descriptor.</strong> Open the root <code class="docutils literal notranslate"><span class="pre">zarr.json</span></code> and take
+<code class="docutils literal notranslate"><span class="pre">attributes.phenotypic.figures</span></code>. A store without the key has no figures:
+it was written before this feature, or by a pipeline with no per-image
+plot. <code class="docutils literal notranslate"><span class="pre">schema_version</span></code> is <code class="docutils literal notranslate"><span class="pre">1</span></code>. Refuse a version you do not know rather than
+guessing at its layout.</p></li>
+<li><p><strong>Choose a run.</strong> <code class="docutils literal notranslate"><span class="pre">runs</span></code> maps each run folder to its entry. Every entry
+records the <code class="docutils literal notranslate"><span class="pre">date</span></code> the run started and the <code class="docutils literal notranslate"><span class="pre">pipeline_sha256</span></code> of the pipeline
+file it ran. An entry written by any CLI mode except <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">process</span></code> also
+records the run’s initial call, as <code class="docutils literal notranslate"><span class="pre">initiated_at_utc</span></code> and <code class="docutils literal notranslate"><span class="pre">initiated_pid</span></code>.
+There is no “latest” pointer: choose by date, by pipeline, or both. A later
+run never deletes an earlier one, so older entries stay beside newer ones.
+The exception is <code class="docutils literal notranslate"><span class="pre">--overwrite</span></code>, which starts the output folder over.</p></li>
+<li><p><strong>Pick a file by <code class="docutils literal notranslate"><span class="pre">media_type</span></code>.</strong> Each binding lists <code class="docutils literal notranslate"><span class="pre">pages</span></code>, and each page
+lists <code class="docutils literal notranslate"><span class="pre">files</span></code>. Dispatch on <code class="docutils literal notranslate"><span class="pre">media_type</span></code>, never on the file extension:
+<code class="docutils literal notranslate"><span class="pre">application/vnd.plotly.v1+json</span></code> is a Plotly figure (<code class="docutils literal notranslate"><span class="pre">plotly.io.from_json</span></code>),
+and <code class="docutils literal notranslate"><span class="pre">image/png</span></code> is a PNG. Skip a type you cannot display.</p></li>
+<li><p><strong>Verify the <code class="docutils literal notranslate"><span class="pre">sha256</span></code>.</strong> The root records each file’s digest, so a file
+that does not match has changed since the store was written.</p></li>
+</ol>
+<p>A run entry also says what is missing. <code class="docutils literal notranslate"><span class="pre">failed</span></code> lists each figure, page or
+format that could not be rendered, with its error. <code class="docutils literal notranslate"><span class="pre">unavailable</span></code> lists the
+plots that can only be drawn in the process that applied their operation, such
+as <code class="docutils literal notranslate"><span class="pre">CalibrateColorRpcc</span></code>’s tile overlay, and that this run could not draw. An
+earlier run’s folder may still hold that figure.</p>
+<p>This needs only the standard library:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="n">store</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;plate_01.ome.zarr&quot;</span><span class="p">)</span>
+<span class="n">root</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">((</span><span class="n">store</span> <span class="o">/</span> <span class="s2">&quot;zarr.json&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span>
+<span class="n">figures</span> <span class="o">=</span> <span class="n">root</span><span class="p">[</span><span class="s2">&quot;attributes&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;phenotypic&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;figures&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">figures</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">figures</span><span class="p">[</span><span class="s2">&quot;schema_version&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;unknown figures schema_version </span><span class="si">{</span><span class="n">figures</span><span class="p">[</span><span class="s1">&#39;schema_version&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">choose_run</span><span class="p">(</span><span class="n">runs</span><span class="p">,</span> <span class="n">pipeline_sha256</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The most recent run, optionally only among one pipeline&#39;s runs.</span>
+
+<span class="sd">    Pass hashlib.sha256(Path(&quot;pipeline.json&quot;).read_bytes()).hexdigest()</span>
+<span class="sd">    to restrict the choice to runs of that pipeline file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">candidates</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">run</span>
+        <span class="k">for</span> <span class="n">run</span> <span class="ow">in</span> <span class="n">runs</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">pipeline_sha256</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">run</span><span class="p">[</span><span class="s2">&quot;pipeline_sha256&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">pipeline_sha256</span>
+    <span class="p">]</span>
+    <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="n">candidates</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">run</span><span class="p">:</span> <span class="n">run</span><span class="p">[</span><span class="s2">&quot;date&quot;</span><span class="p">],</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+
+<span class="n">displayable</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;application/vnd.plotly.v1+json&quot;</span><span class="p">,</span> <span class="s2">&quot;image/png&quot;</span><span class="p">}</span>
+<span class="n">run</span> <span class="o">=</span> <span class="n">choose_run</span><span class="p">(</span><span class="n">figures</span><span class="p">[</span><span class="s2">&quot;runs&quot;</span><span class="p">])</span> <span class="k">if</span> <span class="n">figures</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+<span class="k">for</span> <span class="n">binding_id</span><span class="p">,</span> <span class="n">binding</span> <span class="ow">in</span> <span class="p">(</span><span class="n">run</span><span class="p">[</span><span class="s2">&quot;bindings&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="n">run</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">binding</span><span class="p">[</span><span class="s2">&quot;pages&quot;</span><span class="p">]:</span>
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">page</span><span class="p">[</span><span class="s2">&quot;files&quot;</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;media_type&quot;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">displayable</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="p">(</span><span class="n">store</span> <span class="o">/</span> <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">read_bytes</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span> <span class="o">!=</span> <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;sha256&quot;</span><span class="p">]:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;changed since written, skipped:&quot;</span><span class="p">,</span> <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">])</span>
+                <span class="k">continue</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">binding_id</span><span class="p">,</span> <span class="n">page</span><span class="p">[</span><span class="s2">&quot;key&quot;</span><span class="p">],</span> <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;media_type&quot;</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Several runs can share a date when the pipeline changed within a day. Filter
+by <code class="docutils literal notranslate"><span class="pre">pipeline_sha256</span></code> to tell them apart.</p>
+</section>
 <section id="in-a-cli-run">
 <h2>In a CLI run<a class="headerlink" href="#in-a-cli-run" title="Link to this heading">#</a></h2>
 <p>A forward run writes one store per input image:</p>
@@ -807,7 +893,9 @@ as absent, never as partial.</p></li>
 <li><p><strong>A store is replaced wholesale, never merged into.</strong> A re-publish — a
 re-measure included — builds a new <code class="docutils literal notranslate"><span class="pre">.part</span></code> and replaces the directory. The
 refreshed root is written last there too, so a store is never left
-describing content it does not have.</p></li>
+describing content it does not have. Figure run folders from earlier runs
+are carried into that new <code class="docutils literal notranslate"><span class="pre">.part</span></code> (hard-linked, or copied where links are
+refused), never written into the old directory.</p></li>
 </ol>
 <p>Because of (1) and (2), both the per-image completion marker and the results
 viewer’s staleness scan identify a store by its root <code class="docutils literal notranslate"><span class="pre">zarr.json</span></code> alone. Add a
@@ -885,6 +973,7 @@ command rather than converting as a side effect.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#why-ome-zarr">Why OME-Zarr</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-the-store-looks-like-on-disk">What the store looks like on disk</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#open-a-store-in-another-tool">Open a store in another tool</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reading-an-images-figures">Reading an image’s figures</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#in-a-cli-run">In a CLI run</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#invariants-if-you-are-writing-code-against-a-store">Invariants, if you are writing code against a store</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#removed">Removed</a></li>

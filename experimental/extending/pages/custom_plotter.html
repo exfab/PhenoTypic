@@ -861,7 +861,7 @@ plot’s does.</p>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PlotImage</span></code>, one figure</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">&lt;dataset&gt;/&lt;stem&gt;-&lt;hash&gt;.html</span></code> and <code class="docutils literal notranslate"><span class="pre">.png</span></code>, with no manifest</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&lt;dataset&gt;/&lt;stem&gt;-&lt;hash&gt;.&lt;ext&gt;</span></code>, one file per stored format, plus <code class="docutils literal notranslate"><span class="pre">.html</span></code> for a stored <code class="docutils literal notranslate"><span class="pre">plotly-json</span></code>; no manifest</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PlotImage</span></code>, a multi-page <code class="docutils literal notranslate"><span class="pre">PlotOutput</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">&lt;dataset&gt;/&lt;stem&gt;-&lt;hash&gt;/</span></code>, holding the pages and a <code class="docutils literal notranslate"><span class="pre">manifest.json</span></code></p></td>
@@ -882,8 +882,144 @@ each manifest directory and <code class="docutils literal notranslate"><span cla
 plots root. They serialise concurrent writers, for example SLURM workers
 publishing into the same run, and are not plot output.</p>
 </section>
+<section id="storing-figures-with-the-image">
+<h2>Storing figures with the image<a class="headerlink" href="#storing-figures-with-the-image" title="Link to this heading">#</a></h2>
+<p>A <code class="docutils literal notranslate"><span class="pre">PlotImage</span></code> figure is written <strong>into the image’s OME-Zarr store</strong>, so a
+dashboard can show a plate’s figures from its <code class="docutils literal notranslate"><span class="pre">.ome.zarr</span></code> alone. The CLI does
+this in <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">full</span></code>, <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">measure</span></code>, staged GPU runs, and
+<code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">process</span> <span class="pre">--process-format</span> <span class="pre">zarr</span></code>. A flat <code class="docutils literal notranslate"><span class="pre">--process-format</span> <span class="pre">tiff</span></code> export
+has no store, so it has no figures. <code class="docutils literal notranslate"><span class="pre">deliverables/plots/&lt;id&gt;/</span></code> is a <strong>copy</strong> of
+the store’s files, made once the store is in place. Aggregate plots
+(<code class="docutils literal notranslate"><span class="pre">PlotMeas</span></code>, <code class="docutils literal notranslate"><span class="pre">PlotAnalysis</span></code>, <code class="docutils literal notranslate"><span class="pre">PlotQc</span></code>) have no per-image store and still
+publish straight to <code class="docutils literal notranslate"><span class="pre">deliverables/plots/</span></code>, as described under <strong>Two renderings</strong>.</p>
+<section id="choosing-the-formats-store">
+<h3>Choosing the formats: <code class="docutils literal notranslate"><span class="pre">store=</span></code><a class="headerlink" href="#choosing-the-formats-store" title="Link to this heading">#</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">&#64;figure</span></code> takes a <code class="docutils literal notranslate"><span class="pre">store=</span></code> tuple naming the formats to keep. The set is closed:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Format</p></th>
+<th class="head"><p>File in the store</p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">media_type</span></code></p></th>
+<th class="head"><p>Backends</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">plotly-json</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&lt;page&gt;.plotly.json</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">application/vnd.plotly.v1+json</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">plotly</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">png</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&lt;page&gt;.png</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">image/png</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">plotly</span></code> (needs Chrome), <code class="docutils literal notranslate"><span class="pre">mpl</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Leave <code class="docutils literal notranslate"><span class="pre">store</span></code> out and each backend stores its default. For <code class="docutils literal notranslate"><span class="pre">backend=&quot;plotly&quot;</span></code>
+that is <code class="docutils literal notranslate"><span class="pre">(&quot;plotly-json&quot;,)</span></code>: lossless, interactive in any Plotly consumer, and
+needing no Chrome. For <code class="docutils literal notranslate"><span class="pre">backend=&quot;mpl&quot;</span></code> it is <code class="docutils literal notranslate"><span class="pre">(&quot;png&quot;,)</span></code>. Both formats are
+byte-stable: the same figure serializes to the same bytes in every process.</p>
+<p>A declaration the store cannot honour raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> when the class is
+defined. That covers a bare string (<code class="docutils literal notranslate"><span class="pre">store=&quot;png&quot;</span></code>, write <code class="docutils literal notranslate"><span class="pre">store=(&quot;png&quot;,)</span></code>),
+an empty tuple, an unknown or repeated name, and <code class="docutils literal notranslate"><span class="pre">&quot;plotly-json&quot;</span></code> on
+<code class="docutils literal notranslate"><span class="pre">backend=&quot;mpl&quot;</span></code>. An empty tuple is refused because <code class="docutils literal notranslate"><span class="pre">deliverables/plots/</span></code> is
+copied from the store, so a figure that stores nothing would appear nowhere.</p>
+<p>Two consequences are easy to miss:</p>
+<ul class="simple">
+<li><p><strong>A default Plotly figure has no PNG in <code class="docutils literal notranslate"><span class="pre">deliverables/</span></code>, even on a machine
+with Chrome.</strong> The copy-out never renders; it copies what was stored and
+writes an <code class="docutils literal notranslate"><span class="pre">.html</span></code> page from each stored <code class="docutils literal notranslate"><span class="pre">plotly-json</span></code>. To get a PNG, declare
+<code class="docutils literal notranslate"><span class="pre">store=(&quot;plotly-json&quot;,</span> <span class="pre">&quot;png&quot;)</span></code>. On a machine without Chrome, that declared PNG
+is then recorded as a failure, because you asked for it.</p></li>
+<li><p><strong>A Plotly figure built on the plate image is MB-sized as JSON.</strong> Its size
+follows the figure, and a trace-only figure such as a histogram is KB-sized.
+But <code class="docutils literal notranslate"><span class="pre">px.imshow(...,</span> <span class="pre">binary_string=True)</span></code>, which the zone measurers use for
+their plate overview, embeds the whole image as a base64 PNG data URI, so the
+stored <code class="docutils literal notranslate"><span class="pre">plotly-json</span></code> is at least as large as a PNG of the plate.</p></li>
+</ul>
+<p>The binding stores what the figure its <code class="docutils literal notranslate"><span class="pre">inspect()</span></code> renders declares. That is
+the decorated <code class="docutils literal notranslate"><span class="pre">inspect()</span></code> override if there is one, or else the primary figure.
+An <strong>undecorated</strong> <code class="docutils literal notranslate"><span class="pre">inspect()</span></code> override declares nothing. Each page it returns
+is stored in the default for that page’s own backend, and a page whose figure
+type is neither Plotly nor matplotlib is recorded as a failed page.</p>
+<p>The histogram of colony areas below keeps a PNG beside the Plotly JSON:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">plotly.graph_objects</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">go</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">ConfigDict</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImagePipeline</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">PlotImage</span><span class="p">,</span> <span class="n">figure</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_synth_yeast_plate</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">PlotColonySizes</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">,</span> <span class="n">PlotImage</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Distribution of colony areas on one plate, in pixels.&quot;&quot;&quot;</span>
+
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">extra</span><span class="o">=</span><span class="s2">&quot;forbid&quot;</span><span class="p">)</span>
+
+    <span class="nd">@figure</span><span class="p">(</span>
+        <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Colony sizes&quot;</span><span class="p">,</span>
+        <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;plotly&quot;</span><span class="p">,</span>
+        <span class="n">store</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;plotly-json&quot;</span><span class="p">,</span> <span class="s2">&quot;png&quot;</span><span class="p">),</span>
+        <span class="n">primary</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">colony_sizes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">):</span>
+        <span class="n">areas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span><span class="o">.</span><span class="n">ravel</span><span class="p">())[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="k">return</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">(</span><span class="n">go</span><span class="o">.</span><span class="n">Histogram</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">areas</span><span class="p">[</span><span class="n">areas</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Area (px)&quot;</span><span class="p">))</span>
+
+
+<span class="n">sizes</span> <span class="o">=</span> <span class="n">PlotColonySizes</span><span class="p">()</span>
+<span class="n">pipeline</span> <span class="o">=</span> <span class="n">ImagePipeline</span><span class="p">(</span><span class="n">ops</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;detect&quot;</span><span class="p">:</span> <span class="n">OtsuDetector</span><span class="p">()},</span> <span class="n">plots</span><span class="o">=</span><span class="p">[</span><span class="n">sizes</span><span class="p">])</span>
+
+<span class="n">plate</span> <span class="o">=</span> <span class="n">load_synth_yeast_plate</span><span class="p">()</span>
+<span class="n">pipeline</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">plate</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">sizes</span><span class="o">.</span><span class="n">inspect</span><span class="p">(</span><span class="n">plate</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">([</span><span class="n">spec</span><span class="o">.</span><span class="n">store</span> <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">sizes</span><span class="o">.</span><span class="n">iter_figures</span><span class="p">()])</span>
+<span class="c1"># [(&#39;plotly-json&#39;, &#39;png&#39;)]</span>
+</pre></div>
+</div>
+<p>A CLI run of this pipeline stores <code class="docutils literal notranslate"><span class="pre">PlotColonySizes/default.plotly.json</span></code> and
+<code class="docutils literal notranslate"><span class="pre">PlotColonySizes/default.png</span></code> in each plate’s run folder, and publishes both
+under <code class="docutils literal notranslate"><span class="pre">deliverables/plots/PlotColonySizes/&lt;dataset&gt;/</span></code>, next to an <code class="docutils literal notranslate"><span class="pre">.html</span></code> page
+generated from the JSON.</p>
+</section>
+<section id="run-folders">
+<h3>Run folders<a class="headerlink" href="#run-folders" title="Link to this heading">#</a></h3>
+<p>A store keeps one folder per run: <code class="docutils literal notranslate"><span class="pre">figures/&lt;date&gt;-&lt;hash&gt;/</span></code>. <code class="docutils literal notranslate"><span class="pre">&lt;date&gt;</span></code> is the
+UTC date the run started, and <code class="docutils literal notranslate"><span class="pre">&lt;hash&gt;</span></code> is the first 12 hex characters of the
+pipeline’s sha256. The date is recorded once per run, so a run resumed on a
+later day, or one that crosses midnight, still writes a single folder. Folders
+are never deleted. A rerun with another pipeline or on another day adds a
+folder beside the earlier ones, and a rerun with the same pipeline on the same
+day replaces its own. <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">measure</span></code> with the same pipeline as an earlier run
+reuses that run’s folder. The one exception is <code class="docutils literal notranslate"><span class="pre">--overwrite</span></code>, which deletes the
+whole output folder, figures included. <code class="docutils literal notranslate"><span class="pre">deliverables/plots/</span></code> holds a copy of
+<strong>this run’s</strong> folder only. Reading a store’s figures directly, including
+choosing among its runs, is covered in
+<a class="reference internal" href="../../how_to/pages/zarr_storage.html"><span class="std std-doc">Store Results in OME-Zarr</span></a>.</p>
+</section>
+<section id="figures-that-can-only-be-drawn-where-the-operation-ran">
+<h3>Figures that can only be drawn where the operation ran<a class="headerlink" href="#figures-that-can-only-be-drawn-where-the-operation-ran" title="Link to this heading">#</a></h3>
+<p>Some figures cannot be redrawn from the finished image. <code class="docutils literal notranslate"><span class="pre">CalibrateColorRpcc</span></code>’s
+tile overlay shows the as-shot checker pixels, and the colour correction then
+overwrites them. A provider like that raises <code class="docutils literal notranslate"><span class="pre">FigureInputUnavailable</span></code> (from
+<code class="docutils literal notranslate"><span class="pre">phenotypic.abc_.plotting</span></code>) from <code class="docutils literal notranslate"><span class="pre">inspect()</span></code> when it is given an image its own
+<code class="docutils literal notranslate"><span class="pre">apply()</span></code> did not just process in this process. Keep the reference to that
+image weak.</p>
+<p>The exception is not a failure. The CLI keeps the figure already stored in
+this run’s folder, for example the overlay staged Stage 1 drew before Stage 3
+rewrote the store. If this run’s folder holds none, the CLI lists the binding
+in the run’s <code class="docutils literal notranslate"><span class="pre">unavailable</span></code> list, and any earlier run’s folder keeps its copy.</p>
+</section>
+</section>
 <section id="two-renderings">
 <h2>Two renderings<a class="headerlink" href="#two-renderings" title="Link to this heading">#</a></h2>
+<p>This section describes aggregate plots (<code class="docutils literal notranslate"><span class="pre">PlotMeas</span></code>, <code class="docutils literal notranslate"><span class="pre">PlotAnalysis</span></code>,
+<code class="docutils literal notranslate"><span class="pre">PlotQc</span></code>). An image plot publishes what its store holds; see
+<strong>Storing figures with the image</strong>.</p>
 <p>A Plotly binding always publishes an interactive <code class="docutils literal notranslate"><span class="pre">.html</span></code> page. It publishes a
 <code class="docutils literal notranslate"><span class="pre">.png</span></code> as well when Kaleido can drive Chrome to rasterise the figure. A
 matplotlib binding publishes <code class="docutils literal notranslate"><span class="pre">.png</span></code> only, because matplotlib has no HTML export.</p>
@@ -914,8 +1050,9 @@ can render:</p>
 <ul class="simple">
 <li><p><strong>Chrome missing</strong> is not an error. Validation logs one warning that names
 the Plotly bindings that will publish HTML without PNG, and suggests
-<code class="docutils literal notranslate"><span class="pre">plotly_get_chrome</span></code> to install it. For single-figure image plots, which have no
-manifest, this warning is the only record of why no PNG exists.</p></li>
+<code class="docutils literal notranslate"><span class="pre">plotly_get_chrome</span></code> to install it. An image plot is named only if it
+declares a Plotly <code class="docutils literal notranslate"><span class="pre">png</span></code>. Such a plot is listed as recording that PNG as
+failed, or, if <code class="docutils literal notranslate"><span class="pre">png</span></code> is its only format, as publishing nothing.</p></li>
 <li><p><strong>A declared backend whose library cannot be imported</strong> fails validation
 with <code class="docutils literal notranslate"><span class="pre">Plot</span> <span class="pre">backend</span> <span class="pre">unavailable:</span> <span class="pre">…</span></code>, naming the bindings that declared it.
 Such a plot could not publish anything, so the run stops before it starts.</p></li>
@@ -952,7 +1089,12 @@ wrote there. The manifest is at <code class="docutils literal notranslate"><span
 what landed on disk. A Plotly directory has <code class="docutils literal notranslate"><span class="pre">html:</span> <span class="pre">&quot;available&quot;</span></code> and a <code class="docutils literal notranslate"><span class="pre">png</span></code>
 verdict of <code class="docutils literal notranslate"><span class="pre">&quot;available&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;unavailable:</span> <span class="pre">chrome</span> <span class="pre">not</span> <span class="pre">found&quot;</span></code>. A matplotlib
 directory has only <code class="docutils literal notranslate"><span class="pre">png:</span> <span class="pre">&quot;available&quot;</span></code>. A directory that mixes both backends
-without Chrome reads <code class="docutils literal notranslate"><span class="pre">&quot;available:</span> <span class="pre">matplotlib</span> <span class="pre">only;</span> <span class="pre">chrome</span> <span class="pre">not</span> <span class="pre">found&quot;</span></code>.</p></li>
+without Chrome reads <code class="docutils literal notranslate"><span class="pre">&quot;available:</span> <span class="pre">matplotlib</span> <span class="pre">only;</span> <span class="pre">chrome</span> <span class="pre">not</span> <span class="pre">found&quot;</span></code>. A
+manifest copied out for a multi-page image plot never probes Chrome. It
+records <code class="docutils literal notranslate"><span class="pre">html:</span> <span class="pre">&quot;available&quot;</span></code> when a page is Plotly and <code class="docutils literal notranslate"><span class="pre">png:</span> <span class="pre">&quot;available&quot;</span></code> when
+a page is matplotlib. Its <code class="docutils literal notranslate"><span class="pre">files</span></code> show which stored formats were copied, and
+<code class="docutils literal notranslate"><span class="pre">partial</span></code> lists the errors of the formats that failed for that page, whether
+the store recorded them or the copy hit them.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">pages</span></code> lists each published page. <code class="docutils literal notranslate"><span class="pre">files</span></code> maps each format to the file it
 produced. It omits <code class="docutils literal notranslate"><span class="pre">png</span></code> when Chrome was unavailable and <code class="docutils literal notranslate"><span class="pre">html</span></code> for a
 matplotlib page. <code class="docutils literal notranslate"><span class="pre">backend</span></code> is <code class="docutils literal notranslate"><span class="pre">&quot;plotly&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;matplotlib&quot;</span></code>.</p></li>
@@ -980,6 +1122,15 @@ multi-page output failed to render, whichever of those four was running.
 <code class="docutils literal notranslate"><span class="pre">dataset</span></code> and <code class="docutils literal notranslate"><span class="pre">image_stem</span></code> appear only for image-lifecycle entries.
 <code class="docutils literal notranslate"><span class="pre">plot_class</span></code> is <code class="docutils literal notranslate"><span class="pre">&lt;unresolved&gt;</span></code> when a QC plot failed before its class could be
 determined.</p>
+<p>An image-lifecycle entry may also carry <code class="docutils literal notranslate"><span class="pre">page</span></code> and <code class="docutils literal notranslate"><span class="pre">format</span></code>: the page key, and
+the store format that failed, or <code class="docutils literal notranslate"><span class="pre">html</span></code> for the page generated from a stored
+<code class="docutils literal notranslate"><span class="pre">plotly-json</span></code>. A failure the store recorded is copied with its <code class="docutils literal notranslate"><span class="pre">error</span></code> text
+exactly as stored. A stored file that no longer matches its recorded sha256 is
+recorded under its own binding, page and format, and is not copied. Two
+binding ids are not plots. <code class="docutils literal notranslate"><span class="pre">&lt;store&gt;</span></code> means the store’s figures descriptor could
+not be read, for example because its <code class="docutils literal notranslate"><span class="pre">schema_version</span></code> is newer than this
+release knows. <code class="docutils literal notranslate"><span class="pre">&lt;run&gt;</span></code> means the image’s run folder could not be named, so the
+image was written without figures.</p>
 <p>Some refusals are not plot failures. When the GUI’s snapshot check or a SLURM
 worker’s lifecycle fence refuses a publication, the process can no longer
 confirm that it owns the output, so the whole refresh is abandoned and nothing
@@ -1017,6 +1168,12 @@ is written to <code class="docutils literal notranslate"><span class="pre">.fail
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#escape-hatch-override-inspect-without-the-decorator">Escape hatch: override <code class="docutils literal notranslate"><span class="pre">inspect()</span></code> without the decorator</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#where-plots-are-published">Where plots are published</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#storing-figures-with-the-image">Storing figures with the image</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#choosing-the-formats-store">Choosing the formats: <code class="docutils literal notranslate"><span class="pre">store=</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#run-folders">Run folders</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#figures-that-can-only-be-drawn-where-the-operation-ran">Figures that can only be drawn where the operation ran</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#two-renderings">Two renderings</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#preflight">Preflight</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-plot-manifest">The plot manifest</a></li>

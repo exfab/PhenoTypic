@@ -632,12 +632,14 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">weakref</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">overload</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">PrivateAttr</span><span class="p">,</span> <span class="n">field_validator</span><span class="p">,</span> <span class="n">model_validator</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">...abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageCorrector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">...abc_.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">FigureInputUnavailable</span><span class="p">,</span> <span class="n">PlotImage</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">...sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">...util</span><span class="w"> </span><span class="kn">import</span> <span class="n">MedoidCandidates</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._calibration_overlay</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
@@ -694,7 +696,7 @@
 
 <div class="viewcode-block" id="CalibrateColorRpcc">
 <a class="viewcode-back" href="../../../../api_reference/api/phenotypic.correction.CalibrateColorRpcc.html#phenotypic.correction.CalibrateColorRpcc">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">CalibrateColorRpcc</span><span class="p">(</span><span class="n">ImageCorrector</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CalibrateColorRpcc</span><span class="p">(</span><span class="n">ImageCorrector</span><span class="p">,</span> <span class="n">PlotImage</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Fit and apply a root-polynomial correction from this frame&#39;s own chart.</span>
 
 <span class="sd">    Best For:</span>
@@ -754,7 +756,11 @@
 <span class="sd">        Image: ``rgb`` corrected, with ``gray`` and ``detect_mat`` recomputed.</span>
 <span class="sd">        ``fitted_profile`` and ``qc`` are populated on the operation.</span>
 <span class="sd">        ``calibration_record`` holds the tile overlay of the last run, even a</span>
-<span class="sd">        refused one, and ``show_tiles()`` draws it.</span>
+<span class="sd">        refused one, and ``show_tiles()`` draws it.  Listed under</span>
+<span class="sd">        ``ImagePipeline(plots=...)``, the overlay is saved with each image as</span>
+<span class="sd">        a PNG; ``inspect(image)`` draws it only for the image the last</span>
+<span class="sd">        ``apply()`` ran on, because correction overwrites the as-shot pixels</span>
+<span class="sd">        it shows.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: If any ROI fails the gate under ``on_qc_fail=&quot;raise&quot;``,</span>
@@ -785,6 +791,9 @@
 
     <span class="n">_diagnostics</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
     <span class="n">_calibration_record</span><span class="p">:</span> <span class="n">CalibrationOverlayRecord</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="c1"># Which image the record describes. Weak: the record owns its crops, so</span>
+    <span class="c1"># nothing here may keep a whole plate alive (abc_ image-cache rule).</span>
+    <span class="n">_record_image</span><span class="p">:</span> <span class="n">weakref</span><span class="o">.</span><span class="n">ReferenceType</span><span class="p">[</span><span class="n">Image</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
 
     <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;rois&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;before&quot;</span><span class="p">)</span>
     <span class="nd">@classmethod</span>
@@ -876,6 +885,62 @@
         <span class="k">return</span> <span class="n">render_calibration_overlay</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span></div>
 
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_figure_subject</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The image the last ``apply()`` calibrated, while it is alive.&quot;&quot;&quot;</span>
+        <span class="n">ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_record_image</span>
+        <span class="k">return</span> <span class="n">ref</span><span class="p">()</span> <span class="k">if</span> <span class="n">ref</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="CalibrateColorRpcc.inspect">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.correction.CalibrateColorRpcc.html#phenotypic.correction.CalibrateColorRpcc.inspect">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">inspect</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">subject</span><span class="p">:</span> <span class="n">Image</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="o">*</span><span class="p">,</span>
+            <span class="n">for_save</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">overrides</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Figure</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Draw the tile overlay for *subject*, the image ``apply()`` ran on.</span>
+
+<span class="sd">        Deliberately not ``@figure``: the approved overlay look must not be</span>
+<span class="sd">        wrapped in a theme context, and its matplotlib figure stores as PNG.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            subject: The image the last ``apply()`` calibrated; ``None`` means</span>
+<span class="sd">                that image, if it is still alive.</span>
+<span class="sd">            for_save: Accepted for the plotting contract; ignored.</span>
+<span class="sd">            **overrides: None are accepted.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            What :meth:`show_tiles` returns.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            FigureInputUnavailable: If no ``apply()`` has kept a record, or the</span>
+<span class="sd">                record is for another image. The overlay shows the as-shot</span>
+<span class="sd">                pixels that correction overwrites, so it cannot be redrawn</span>
+<span class="sd">                from the corrected image.</span>
+<span class="sd">            ValueError: If any override is passed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">overrides</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;inspect(): unknown override(s) </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">overrides</span><span class="p">)</span><span class="si">}</span><span class="s2">; &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">.inspect takes none&quot;</span>
+            <span class="p">)</span>
+        <span class="n">calibrated</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_figure_subject</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calibration_record</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">calibrated</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">FigureInputUnavailable</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> holds no calibration record for a live &quot;</span>
+                    <span class="s2">&quot;image: the overlay shows as-shot pixels only apply() sees, &quot;</span>
+                    <span class="s2">&quot;so it is drawn in the process that applied it&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_subject</span><span class="p">(</span><span class="n">subject</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">calibrated</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">FigureInputUnavailable</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&#39;s calibration record is for another &quot;</span>
+                    <span class="s2">&quot;image: the overlay is drawn only for the image the last &quot;</span>
+                    <span class="s2">&quot;apply() ran on&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">show_tiles</span><span class="p">()</span></div>
+
+
     <span class="nd">@overload</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">,</span> <span class="n">inplace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span> <span class="o">...</span>
 
@@ -931,6 +996,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">qc</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_diagnostics</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_calibration_record</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_record_image</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="n">ref_lab</span><span class="p">,</span> <span class="n">ref_linear</span><span class="p">,</span> <span class="n">_wp</span> <span class="o">=</span> <span class="n">_load_reference_data</span><span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">checker_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_illuminant</span>
@@ -971,6 +1037,7 @@
                     <span class="n">impurity_limit</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">qc_limits</span><span class="o">.</span><span class="n">max_tile_impurity</span><span class="p">,</span>
                     <span class="n">core_trim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">core_trim</span><span class="p">,</span>
             <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_record_image</span> <span class="o">=</span> <span class="n">weakref</span><span class="o">.</span><span class="n">ref</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">roi</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rois</span><span class="p">):</span>
             <span class="c1"># The as-shot pixels, owned: correction below runs in place, and a</span>

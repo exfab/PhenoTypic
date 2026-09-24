@@ -1828,6 +1828,15 @@
             <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">sparse_end_radius</span><span class="p">)</span>
         <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">sparse_end_radius</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">symmetric_radius</span><span class="p">))</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_lacks_zone_evidence</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">seg</span><span class="p">:</span> <span class="n">ZoneSegmentation</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;True for a canonical failure, which figure rasters must skip.</span>
+
+<span class="sd">        Its stand-in orientation field can be ``(1, 1)``, too small for</span>
+<span class="sd">        ``np.gradient``, and its NaN radii select no pixels anyway. This is the</span>
+<span class="sd">        same predicate :meth:`_fill_metrics` uses to leave zone metrics empty.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="n">seg</span><span class="o">.</span><span class="n">zones_computed</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">legacy_mode</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_prep</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Regionprops + label→grid-section map, computed ONCE per image.</span>
 
@@ -3184,6 +3193,8 @@
         <span class="n">raw_peaks</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span> <span class="k">for</span> <span class="n">_scale</span> <span class="ow">in</span> <span class="n">scales</span><span class="p">]</span>
         <span class="k">for</span> <span class="n">analysis</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_analyze_objects</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
             <span class="n">seg</span> <span class="o">=</span> <span class="n">analysis</span><span class="o">.</span><span class="n">segmentation</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lacks_zone_evidence</span><span class="p">(</span><span class="n">seg</span><span class="p">):</span>
+                <span class="k">continue</span>
             <span class="n">inner_radius</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">seg</span><span class="o">.</span><span class="n">core_end_radius</span><span class="p">)</span>
             <span class="n">outer_radius</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_orientation_outer_radius</span><span class="p">(</span><span class="n">seg</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">inner_radius</span> <span class="o">&lt;=</span> <span class="n">_EPS</span> <span class="ow">or</span> <span class="n">outer_radius</span> <span class="o">&lt;=</span> <span class="n">inner_radius</span><span class="p">:</span>
@@ -3438,6 +3449,8 @@
         <span class="n">full_range</span> <span class="o">=</span> <span class="mf">0.0</span>
         <span class="k">for</span> <span class="n">analysis</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_analyze_objects</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
             <span class="n">seg</span> <span class="o">=</span> <span class="n">analysis</span><span class="o">.</span><span class="n">segmentation</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lacks_zone_evidence</span><span class="p">(</span><span class="n">seg</span><span class="p">):</span>
+                <span class="k">continue</span>
             <span class="n">_tilt</span><span class="p">,</span> <span class="n">signed_turning</span><span class="p">,</span> <span class="n">_magnitude</span><span class="p">,</span> <span class="n">_polar</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="n">signed_radial_relative_field</span><span class="p">(</span>
                     <span class="n">analysis</span><span class="o">.</span><span class="n">orientation</span><span class="p">,</span>
@@ -3576,6 +3589,8 @@
         <span class="n">full_range</span> <span class="o">=</span> <span class="mf">0.0</span>
         <span class="k">for</span> <span class="n">analysis</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_analyze_objects</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
             <span class="n">seg</span> <span class="o">=</span> <span class="n">analysis</span><span class="o">.</span><span class="n">segmentation</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lacks_zone_evidence</span><span class="p">(</span><span class="n">seg</span><span class="p">):</span>
+                <span class="k">continue</span>
             <span class="n">signed_tilt</span><span class="p">,</span> <span class="n">_turning</span><span class="p">,</span> <span class="n">_magnitude</span><span class="p">,</span> <span class="n">polar_angle</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="n">signed_radial_relative_field</span><span class="p">(</span>
                     <span class="n">analysis</span><span class="o">.</span><span class="n">orientation</span><span class="p">,</span>
@@ -3731,6 +3746,8 @@
         <span class="n">bridge_y</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">analysis</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_analyze_objects</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">props</span><span class="p">,</span> <span class="n">label2section</span><span class="p">):</span>
             <span class="n">seg</span> <span class="o">=</span> <span class="n">analysis</span><span class="o">.</span><span class="n">segmentation</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lacks_zone_evidence</span><span class="p">(</span><span class="n">seg</span><span class="p">):</span>
+                <span class="k">continue</span>
             <span class="n">_signed_tilt</span><span class="p">,</span> <span class="n">_turning</span><span class="p">,</span> <span class="n">_magnitude</span><span class="p">,</span> <span class="n">polar_angle</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="n">signed_radial_relative_field</span><span class="p">(</span>
                     <span class="n">analysis</span><span class="o">.</span><span class="n">orientation</span><span class="p">,</span>

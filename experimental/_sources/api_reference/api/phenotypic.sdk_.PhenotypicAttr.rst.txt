@@ -27,6 +27,7 @@ phenotypic.sdk\_.PhenotypicAttr
    .. autosummary::
    
       ~PhenotypicAttr.DETECT_MODE
+      ~PhenotypicAttr.FIGURES
       ~PhenotypicAttr.GAMMA
       ~PhenotypicAttr.GRID
       ~PhenotypicAttr.ILLUMINANT

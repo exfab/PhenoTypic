@@ -696,6 +696,12 @@
 <span class="p">)</span>
 <span class="n">METADATA_TABLE_SCHEMA_VERSION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
 
+<span class="c1">#: Per-image figures (spec 2026-09-22 §1). A Zarr v3 group holding non-Zarr</span>
+<span class="c1">#: files, exactly as `tables/` holds `table.parquet`; described by</span>
+<span class="c1">#: `attributes.phenotypic.figures`, never by `ome.series`.</span>
+<span class="n">FIGURES_GROUP</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;figures&quot;</span>
+<span class="n">FIGURES_SCHEMA_VERSION</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
 
 <span class="k">class</span><span class="w"> </span><span class="nc">EmbeddedMeasurementParquetMetadataKeys</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Stable Parquet key/value metadata names for join provenance.&quot;&quot;&quot;</span>
@@ -1083,6 +1089,7 @@
     <span class="n">PUBLICATION_PROTOCOL</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;publication_protocol&quot;</span>
     <span class="n">PROVENANCE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;provenance&quot;</span>
     <span class="n">TABLES</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;tables&quot;</span>
+    <span class="n">FIGURES</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;figures&quot;</span>
     <span class="n">SERIES</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;series&quot;</span>
     <span class="n">LABELS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;labels&quot;</span>
     <span class="n">PYRAMID</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pyramid&quot;</span>

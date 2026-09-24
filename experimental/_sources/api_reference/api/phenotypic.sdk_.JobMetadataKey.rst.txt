@@ -30,10 +30,13 @@ phenotypic.sdk\_.JobMetadataKey
       ~JobMetadataKey.CHUNK_SCRIPTS
       ~JobMetadataKey.DATASETS
       ~JobMetadataKey.EXECUTION_MODE
+      ~JobMetadataKey.FIGURES_RUN_DATE
       ~JobMetadataKey.GUI_RECORD_GENERATION
       ~JobMetadataKey.IMAGE_TASK_MAPPING
       ~JobMetadataKey.IMAGE_TYPE
       ~JobMetadataKey.INCLUDE_DATASET_COLUMN
+      ~JobMetadataKey.INITIATED_AT_UTC
+      ~JobMetadataKey.INITIATED_PID
       ~JobMetadataKey.INPUT_PATH
       ~JobMetadataKey.METADATA_CSV
       ~JobMetadataKey.NCOLS

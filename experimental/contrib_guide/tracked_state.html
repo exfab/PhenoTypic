@@ -807,6 +807,42 @@ other fact about a run can be re-derived by looking at the tree; this cannot.</p
 operation it fences is not a fence</strong>. <code class="docutils literal notranslate"><span class="pre">legacy-v2/</span></code> is preserved because a
 restart is not a revert.</p>
 </section>
+<section id="configuration-recorded-beside-the-inventory-is-not-tracked-state">
+<h3>Configuration recorded beside the inventory is not tracked state<a class="headerlink" href="#configuration-recorded-beside-the-inventory-is-not-tracked-state" title="Link to this heading">#</a></h3>
+<p>The processing state’s <code class="docutils literal notranslate"><span class="pre">config</span></code> block also records <strong>configuration</strong>: values
+the run was started with, which say nothing about its progress. Three of them
+record the run’s initial CLI call, which names the per-image figure folders
+(spec <code class="docutils literal notranslate"><span class="pre">2026-09-22-figures-in-ome-zarr</span></code> §1a):</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Value</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">figures_run_date</span></code></p></td>
+<td><p>the UTC date the run started, <code class="docutils literal notranslate"><span class="pre">YYYY-MM-DD</span></code>: every store’s figure run folder is <code class="docutils literal notranslate"><span class="pre">figures/&lt;figures_run_date&gt;-&lt;pipeline</span> <span class="pre">sha[:12]&gt;/</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">initiated_at_utc</span></code></p></td>
+<td><p>the call’s UTC timestamp, ISO-8601 with a trailing <code class="docutils literal notranslate"><span class="pre">Z</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">initiated_pid</span></code></p></td>
+<td><p>the call’s process id</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">create_initial_state</span></code> writes them once, and a resume rewrites them unchanged.
+<code class="docutils literal notranslate"><span class="pre">--restart</span></code> and <code class="docutils literal notranslate"><span class="pre">--overwrite</span></code> start a new call. Measure mode keeps no processing
+state, so on SLURM its submitter writes the same three keys into
+<code class="docutils literal notranslate"><span class="pre">job_metadata.json</span></code> instead. Workers in another process read them back with
+<code class="docutils literal notranslate"><span class="pre">recorded_run_initiation</span></code> / <code class="docutils literal notranslate"><span class="pre">metadata_run_initiation</span></code>
+(<code class="docutils literal notranslate"><span class="pre">_cli_state_management.py</span></code>), and never from a command line.</p>
+<p>They are not a fifth tracked state: <code class="docutils literal notranslate"><span class="pre">resolve_run_state</span></code> never reads them, and
+no verdict is derived from them. They are <strong>excluded from the work-id
+digest</strong> (<code class="docutils literal notranslate"><span class="pre">processing_configuration_digest</span></code>) and from <code class="docutils literal notranslate"><span class="pre">processing_generation</span></code>:
+a resume on a later day must not invalidate a single finished image.</p>
+</section>
 </section>
 <hr class="docutils" />
 <section id="b-content-proofs-evidence-not-tracked-state">
@@ -1278,6 +1314,7 @@ being wrong.</p>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#a-tracked-state-written-down-and-irreducibly-so">(a) Tracked state — written down, and irreducibly so</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#what-survives-restart">What survives <code class="docutils literal notranslate"><span class="pre">--restart</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#configuration-recorded-beside-the-inventory-is-not-tracked-state">Configuration recorded beside the inventory is not tracked state</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#b-content-proofs-evidence-not-tracked-state">(b) Content proofs — evidence, not tracked state</a><ul class="visible nav section-nav flex-column">

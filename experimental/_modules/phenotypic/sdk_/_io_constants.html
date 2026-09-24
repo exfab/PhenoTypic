@@ -3506,7 +3506,16 @@
     <span class="n">PIPELINE_PATH</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;pipeline_path&quot;</span>
     <span class="n">IMAGE_TYPE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;image_type&quot;</span>
     <span class="n">NROWS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;nrows&quot;</span>
-    <span class="n">NCOLS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ncols&quot;</span></div>
+    <span class="n">NCOLS</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ncols&quot;</span>
+    <span class="c1">#: The initial CLI call of a measure-mode SLURM invocation (figures spec</span>
+    <span class="c1">#: §1a): its UTC date (the figure-folder ``{date}``), UTC timestamp and</span>
+    <span class="c1">#: pid. Measure mode keeps no processing state, so its workers read these</span>
+    <span class="c1">#: instead; written with the rest of this file, before fan-out. The same</span>
+    <span class="c1">#: three names key ``state.config`` for every other mode</span>
+    <span class="c1">#: (``_cli_state_management.RUN_INITIATION_KEYS``).</span>
+    <span class="n">FIGURES_RUN_DATE</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;figures_run_date&quot;</span>
+    <span class="n">INITIATED_AT_UTC</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;initiated_at_utc&quot;</span>
+    <span class="n">INITIATED_PID</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;initiated_pid&quot;</span></div>
 
 
 

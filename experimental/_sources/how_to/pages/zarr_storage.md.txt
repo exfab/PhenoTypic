@@ -128,6 +128,97 @@ QuPath and Fiji read the same layout through their Bio-Formats/OME-Zarr
 readers. In every case the pyramid is what makes a whole-plate view cheap: the
 viewer reads a coarse level rather than decoding full resolution.
 
+## Reading an image's figures
+
+When a CLI run's pipeline includes a per-image plot (a `PlotImage`, such as
+`MeasureSymZones` listed in `plots=`), the store also holds that plot's
+rendered figures. `--mode process --process-format zarr` stores them too. A
+dashboard can therefore show a plate's figures from the store alone:
+
+```text
+plate_01.ome.zarr/
+├── zarr.json                      <- attributes.phenotypic.figures describes everything below
+└── figures/
+    ├── 2026-09-22-3f9a1c2b7e04/   <- one run: {UTC date}-{first 12 hex of the pipeline sha256}
+    │   └── sym/                   <- one plot binding
+    │       └── default.plotly.json
+    └── 2026-10-03-a07bc5e91d22/   <- a later run with another pipeline
+```
+
+Each folder level is an empty Zarr group, so Zarr readers see an ordinary
+group tree, and `figures` is not listed in `ome.series`. Nothing is read from
+the folder names. Read the store as follows:
+
+1. **Read the descriptor.** Open the root `zarr.json` and take
+   `attributes.phenotypic.figures`. A store without the key has no figures:
+   it was written before this feature, or by a pipeline with no per-image
+   plot. `schema_version` is `1`. Refuse a version you do not know rather than
+   guessing at its layout.
+2. **Choose a run.** `runs` maps each run folder to its entry. Every entry
+   records the `date` the run started and the `pipeline_sha256` of the pipeline
+   file it ran. An entry written by any CLI mode except `--mode process` also
+   records the run's initial call, as `initiated_at_utc` and `initiated_pid`.
+   There is no "latest" pointer: choose by date, by pipeline, or both. A later
+   run never deletes an earlier one, so older entries stay beside newer ones.
+   The exception is `--overwrite`, which starts the output folder over.
+3. **Pick a file by `media_type`.** Each binding lists `pages`, and each page
+   lists `files`. Dispatch on `media_type`, never on the file extension:
+   `application/vnd.plotly.v1+json` is a Plotly figure (`plotly.io.from_json`),
+   and `image/png` is a PNG. Skip a type you cannot display.
+4. **Verify the `sha256`.** The root records each file's digest, so a file
+   that does not match has changed since the store was written.
+
+A run entry also says what is missing. `failed` lists each figure, page or
+format that could not be rendered, with its error. `unavailable` lists the
+plots that can only be drawn in the process that applied their operation, such
+as `CalibrateColorRpcc`'s tile overlay, and that this run could not draw. An
+earlier run's folder may still hold that figure.
+
+This needs only the standard library:
+
+```python
+import hashlib
+import json
+from pathlib import Path
+
+store = Path("plate_01.ome.zarr")
+root = json.loads((store / "zarr.json").read_text(encoding="utf-8"))
+figures = root["attributes"].get("phenotypic", {}).get("figures")
+if figures is not None and figures["schema_version"] != 1:
+    raise ValueError(f"unknown figures schema_version {figures['schema_version']}")
+
+
+def choose_run(runs, pipeline_sha256=None):
+    """The most recent run, optionally only among one pipeline's runs.
+
+    Pass hashlib.sha256(Path("pipeline.json").read_bytes()).hexdigest()
+    to restrict the choice to runs of that pipeline file.
+    """
+    candidates = [
+        run
+        for run in runs.values()
+        if pipeline_sha256 is None or run["pipeline_sha256"] == pipeline_sha256
+    ]
+    return max(candidates, key=lambda run: run["date"], default=None)
+
+
+displayable = {"application/vnd.plotly.v1+json", "image/png"}
+run = choose_run(figures["runs"]) if figures is not None else None
+for binding_id, binding in (run["bindings"] if run is not None else {}).items():
+    for page in binding["pages"]:
+        for entry in page["files"]:
+            if entry["media_type"] not in displayable:
+                continue
+            data = (store / entry["path"]).read_bytes()
+            if hashlib.sha256(data).hexdigest() != entry["sha256"]:
+                print("changed since written, skipped:", entry["path"])
+                continue
+            print(binding_id, page["key"], entry["media_type"], len(data))
+```
+
+Several runs can share a date when the pipeline changed within a day. Filter
+by `pipeline_sha256` to tell them apart.
+
 ## In a CLI run
 
 A forward run writes one store per input image:
@@ -174,7 +265,9 @@ violation on its own** — so breaking one is silent:
 2. **A store is replaced wholesale, never merged into.** A re-publish — a
    re-measure included — builds a new `.part` and replaces the directory. The
    refreshed root is written last there too, so a store is never left
-   describing content it does not have.
+   describing content it does not have. Figure run folders from earlier runs
+   are carried into that new `.part` (hard-linked, or copied where links are
+   refused), never written into the old directory.
 
 Because of (1) and (2), both the per-image completion marker and the results
 viewer's staleness scan identify a store by its root `zarr.json` alone. Add a

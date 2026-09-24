@@ -21,8 +21,11 @@ phenotypic.correction.CalibrateColorRpcc
       ~CalibrateColorRpcc.construct
       ~CalibrateColorRpcc.copy
       ~CalibrateColorRpcc.dict
+      ~CalibrateColorRpcc.figures
       ~CalibrateColorRpcc.from_json
       ~CalibrateColorRpcc.from_orm
+      ~CalibrateColorRpcc.inspect
+      ~CalibrateColorRpcc.iter_figures
       ~CalibrateColorRpcc.json
       ~CalibrateColorRpcc.model_construct
       ~CalibrateColorRpcc.model_copy
@@ -39,6 +42,7 @@ phenotypic.correction.CalibrateColorRpcc
       ~CalibrateColorRpcc.parse_obj
       ~CalibrateColorRpcc.parse_raw
       ~CalibrateColorRpcc.patch_census
+      ~CalibrateColorRpcc.report
       ~CalibrateColorRpcc.schema
       ~CalibrateColorRpcc.schema_json
       ~CalibrateColorRpcc.show_tiles

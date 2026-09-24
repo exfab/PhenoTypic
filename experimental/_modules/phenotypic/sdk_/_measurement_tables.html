@@ -604,12 +604,13 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Literal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Literal</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
@@ -619,6 +620,11 @@
     <span class="n">atomic_write_json</span><span class="p">,</span>
     <span class="n">atomic_write_with_writer</span><span class="p">,</span>
 <span class="p">)</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">._image_figures</span><span class="w"> </span><span class="kn">import</span> <span class="n">StoredFigures</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 <span class="n">JoinStatus</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;not_requested&quot;</span><span class="p">,</span> <span class="s2">&quot;joined&quot;</span><span class="p">,</span> <span class="s2">&quot;no_common_keys&quot;</span><span class="p">]</span>
 
@@ -1266,12 +1272,18 @@
     <span class="n">plan</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]],</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Path</span><span class="p">],</span> <span class="kc">None</span><span class="p">]],</span>
     <span class="n">durable</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">commit_guard</span><span class="p">:</span> <span class="n">CommitGuard</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">clear_figure_run</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Re-promote one store with refreshed embedded tables, root written last.</span>
 
 <span class="sd">    *plan* is handed the store&#39;s ``attributes.phenotypic`` block. It validates</span>
 <span class="sd">    and **mutates** it -- before any part exists, so a refusal costs nothing --</span>
 <span class="sd">    and returns the writer that populates the part.</span>
+
+<span class="sd">    *clear_figure_run* drops the part&#39;s copy of that one run folder,</span>
+<span class="sd">    ``figures/&lt;run&gt;/``, before *plan*&#39;s writer rewrites it (spec 2026-09-22</span>
+<span class="sd">    §1a). Every other run folder is carried across unchanged, as are all of</span>
+<span class="sd">    them when it is ``None``.</span>
 
 <span class="sd">    **There is no in-place fast path, and its removal is the point (CAN-3 /</span>
 <span class="sd">    C5).** The branch this replaces fired whenever the measurement</span>
@@ -1311,6 +1323,16 @@
         <span class="c1"># These are hard links into the promoted store, so unlinking them in</span>
         <span class="c1"># the part leaves the live store untouched.</span>
         <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">part</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">TABLES_GROUP</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">clear_figure_run</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># The copied figure files are HARD LINKS into the live store, like</span>
+            <span class="c1"># everything copytree cloned above. Removing this run&#39;s folder</span>
+            <span class="c1"># here means it is rewritten as new files; writing through a link</span>
+            <span class="c1"># would change the published store before its new root exists.</span>
+            <span class="c1"># Other runs&#39; folders are never touched (spec §1a).</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span>
+                <span class="n">ngff_</span><span class="o">.</span><span class="n">long_path</span><span class="p">(</span><span class="n">part</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">FIGURES_GROUP</span> <span class="o">/</span> <span class="n">clear_figure_run</span><span class="p">),</span>
+                <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
         <span class="n">populate</span><span class="p">(</span><span class="n">part</span><span class="p">)</span>
         <span class="n">atomic_write_json</span><span class="p">(</span><span class="n">part</span> <span class="o">/</span> <span class="n">ngff_</span><span class="o">.</span><span class="n">STORE_ROOT_JSON</span><span class="p">,</span> <span class="n">root_document</span><span class="p">)</span>
         <span class="n">ngff_</span><span class="o">.</span><span class="n">promote_store</span><span class="p">(</span>
@@ -1332,6 +1354,7 @@
     <span class="n">store_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
     <span class="n">tables</span><span class="p">:</span> <span class="n">PreparedImageTables</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
+    <span class="n">figures</span><span class="p">:</span> <span class="n">StoredFigures</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">objmap_target</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">durable</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">commit_guard</span><span class="p">:</span> <span class="n">CommitGuard</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -1341,11 +1364,17 @@
 <span class="sd">    The ``--mode measure`` analogue of the promote-time writer: both tables</span>
 <span class="sd">    and the root&#39;s ``metadata_table`` block move as one root-last</span>
 <span class="sd">    transaction, so the store never certifies a table it does not have or a</span>
-<span class="sd">    snapshot it was not built against.</span>
+<span class="sd">    snapshot it was not built against. When *figures* is given, its run</span>
+<span class="sd">    folder is written in the same transaction.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        store_path: A promoted ``*.ome.zarr`` store.</span>
 <span class="sd">        tables: The split payload to write.</span>
+<span class="sd">        figures: One run&#39;s per-image figures. They replace that run&#39;s folder</span>
+<span class="sd">            and descriptor entry only; every other run is carried across</span>
+<span class="sd">            unchanged (spec 2026-09-22 §1a). ``None`` adds no run and</span>
+<span class="sd">            touches no figure, and so does a store whose figures descriptor</span>
+<span class="sd">            has a ``schema_version`` this writer does not know.</span>
 <span class="sd">        objmap_target: Store-relative path of the label image the measurement</span>
 <span class="sd">            table indexes. ``None`` reads it from the store.</span>
 <span class="sd">        durable: ``fsync`` before promoting. ``None`` auto-detects SLURM.</span>
@@ -1370,14 +1399,39 @@
                 <span class="n">phenotypic</span><span class="p">,</span>
                 <span class="n">write_image_tables</span><span class="p">(</span><span class="n">part</span><span class="p">,</span> <span class="n">tables</span><span class="p">,</span> <span class="n">objmap_target</span><span class="o">=</span><span class="n">target</span><span class="p">),</span>
             <span class="p">)</span>
+            <span class="k">if</span> <span class="n">figures</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">._image_figures</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+                <span class="n">apply_image_figures_attributes</span><span class="p">,</span>
+                <span class="n">write_image_figures</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="n">apply_image_figures_attributes</span><span class="p">(</span>
+                <span class="n">phenotypic</span><span class="p">,</span> <span class="n">write_image_figures</span><span class="p">(</span><span class="n">part</span><span class="p">,</span> <span class="n">figures</span><span class="p">)</span>
+            <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">_populate</span>
+
+    <span class="k">if</span> <span class="n">figures</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">._image_figures</span><span class="w"> </span><span class="kn">import</span> <span class="n">known_figures_schema</span><span class="p">,</span> <span class="n">read_image_figures_descriptor</span>
+
+        <span class="n">descriptor</span> <span class="o">=</span> <span class="n">read_image_figures_descriptor</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">store_path</span><span class="p">))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">known_figures_schema</span><span class="p">(</span><span class="n">descriptor</span><span class="p">):</span>
+            <span class="c1"># Clearing &quot;this run&#39;s folder&quot; in a layout this writer cannot read</span>
+            <span class="c1"># could delete anything; the store&#39;s figures stay as they are.</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;Adding no figure run to </span><span class="si">%s</span><span class="s2">: its figures schema_version </span><span class="si">%r</span><span class="s2"> is &quot;</span>
+                <span class="s2">&quot;not one this writer knows&quot;</span><span class="p">,</span>
+                <span class="n">store_path</span><span class="p">,</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;schema_version&quot;</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="n">figures</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">return</span> <span class="n">_rewrite_store_tables</span><span class="p">(</span>
         <span class="n">store_path</span><span class="p">,</span>
         <span class="n">plan</span><span class="o">=</span><span class="n">_plan</span><span class="p">,</span>
         <span class="n">durable</span><span class="o">=</span><span class="n">durable</span><span class="p">,</span>
         <span class="n">commit_guard</span><span class="o">=</span><span class="n">commit_guard</span><span class="p">,</span>
+        <span class="n">clear_figure_run</span><span class="o">=</span><span class="n">figures</span><span class="o">.</span><span class="n">run</span><span class="o">.</span><span class="n">run_id</span> <span class="k">if</span> <span class="n">figures</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span></div>
 
 
