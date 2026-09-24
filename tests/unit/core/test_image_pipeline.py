@@ -382,7 +382,11 @@ def test_benchmark_no_memory_when_disabled(plate_12hr_grid_image):
 
 @timeit
 def test_grid_preset_auto_injects_grid_finder(synth_plate_detected):
-    """measure() auto-injects CenteredAutoGridFinder when preset set and none configured."""
+    """The preset injects CenteredAutoGridFinder for an image without a grid.
+
+    A GridImage gets no injected finder: its image-info already carries the
+    Grid_* columns from its own grid_finder (see test_measurement_merge.py).
+    """
     from phenotypic.grid import CenteredAutoGridFinder
 
     pipe = ImagePipeline(meas=[MeasureShape()], nrows=8, ncols=12)
@@ -390,15 +394,15 @@ def test_grid_preset_auto_injects_grid_finder(synth_plate_detected):
 
     df = pipe.measure(synth_plate_detected.copy())
 
-    # CenteredAutoGridFinder ran first, so the result has grid columns.
+    # The GridImage's own grid supplies the grid columns.
     assert "Grid_RowNum" in df.columns and "Grid_ColNum" in df.columns
     # _meas itself was not mutated.
     assert "CenteredAutoGridFinder" not in pipe._meas
     # Sanity: the preset is reachable on the pipeline instance.
     assert pipe.nrows == 8 and pipe.ncols == 12
-    # Auto-injected step uses the preset values: build a fresh run order and
-    # confirm the injected instance carries them.
-    run_order = pipe._build_measurement_run_order()
+    # Auto-injected step uses the preset values: build a fresh run order for a
+    # plain Image and confirm the injected instance carries them.
+    run_order = pipe._build_measurement_run_order(Image(synth_plate_detected.rgb[:]))
     injected = run_order["CenteredAutoGridFinder"]
     assert isinstance(injected, CenteredAutoGridFinder)
     assert injected.nrows == 8 and injected.ncols == 12
@@ -413,7 +417,8 @@ def test_grid_preset_does_not_override_existing_grid_finder(synth_plate_detected
     # Preset says 16x24 but explicit says 4x6 — explicit must win.
     pipe = ImagePipeline(meas=[explicit], nrows=16, ncols=24)
 
-    run_order = pipe._build_measurement_run_order()
+    # A plain Image, so the image's own grid is not what suppresses injection.
+    run_order = pipe._build_measurement_run_order(Image(synth_plate_detected.rgb[:]))
     finders = [m for m in run_order.values() if isinstance(m, AutoGridFinder)]
     assert len(finders) == 1
     assert finders[0] is explicit
@@ -421,12 +426,12 @@ def test_grid_preset_does_not_override_existing_grid_finder(synth_plate_detected
 
 
 @timeit
-def test_grid_preset_no_op_when_unset():
+def test_grid_preset_no_op_when_unset(synth_plate_detected):
     """Without the preset, measure() does not auto-inject anything."""
     from phenotypic.grid import AutoGridFinder
 
     pipe = ImagePipeline(meas=[MeasureShape()])
-    run_order = pipe._build_measurement_run_order()
+    run_order = pipe._build_measurement_run_order(Image(synth_plate_detected.rgb[:]))
 
     assert all(not isinstance(m, AutoGridFinder) for m in run_order.values())
     assert list(run_order.keys()) == list(pipe._meas.keys())

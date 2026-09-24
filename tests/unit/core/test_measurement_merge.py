@@ -12,6 +12,11 @@ silently dropped rows) and suffixed every NaN-bearing one with ``_merged``.
 ``ImagePipeline`` also refuses two ``MeasureTexture`` measurers at the same
 ``scale``: their ``Texture_{scale:02d}px-*`` columns are spelled identically,
 so they would either be merged as one or collide (plan D8′).
+
+A conflict names both producers (measurement keys, and ``'image info'``), and
+the ``nrows``/``ncols`` preset no longer injects a grid finder into a
+``GridImage``'s measurements: the image's own grid is authoritative, and a
+second finder could only duplicate or contradict it (phase-2 review I-1, I-2).
 """
 
 from __future__ import annotations
@@ -243,3 +248,155 @@ def test_from_json_refuses_same_scale_texture_measurers():
 
     with pytest.raises(ValueError, match=r"scale=5"):
         ImagePipeline.from_json(json.dumps(config))
+
+
+# --------------------------------------------------------------------------- #
+# Conflict messages name the producers (phase-2 review I-2)                   #
+# --------------------------------------------------------------------------- #
+
+
+def test_conflict_message_names_both_producers_count_and_an_example_label():
+    left = pd.DataFrame({LABEL: [1, 2, 3, 4], "Bbox_MinRR": [4.0, 5.0, 6.0, 7.0]})
+    middle = pd.DataFrame({LABEL: [1, 2, 3, 4], "Shape_Area": [1.0, 2.0, 3.0, 4.0]})
+    right = pd.DataFrame({LABEL: [1, 2, 3, 4], "Bbox_MinRR": [4.0, 5.5, 6.0, 7.5]})
+
+    with pytest.raises(ValueError) as excinfo:
+        ImagePipelineCore._merge_on_object_labels(
+                [left, middle, right], producers=["bounds", "shape", "image info"],
+        )
+    message = str(excinfo.value)
+    # The left copy belongs to the frame that first emitted the column, not to
+    # whichever frame happens to precede the conflicting one.
+    assert "'bounds'" in message
+    assert "'image info'" in message
+    assert "'shape'" not in message
+    assert "Bbox_MinRR" in message
+    assert "2 of 4 objects" in message
+    assert f"{LABEL}=2" in message
+    # Bbox_* is not a grid column, so no grid hint.
+    assert "GridFinder" not in message
+
+
+def test_grid_column_conflict_adds_a_grid_finder_hint():
+    left = pd.DataFrame({LABEL: [1, 2], "Grid_RowNum": [0, 1]})
+    right = pd.DataFrame({LABEL: [1, 2], "Grid_RowNum": [0, 2]})
+
+    with pytest.raises(ValueError) as excinfo:
+        ImagePipelineCore._merge_on_object_labels(
+                [left, right], producers=["my_grid", "image info"],
+        )
+    message = str(excinfo.value)
+    assert "GridFinder" in message
+    assert "nrows/ncols" in message
+
+
+def test_producers_must_match_the_frames_one_to_one():
+    frame = pd.DataFrame({LABEL: [1], "A": [0.0]})
+    with pytest.raises(ValueError, match="producer"):
+        ImagePipelineCore._merge_on_object_labels([frame, frame], producers=["a"])
+
+
+# --------------------------------------------------------------------------- #
+# nrows/ncols preset vs a GridImage's own grid (phase-2 review I-1)           #
+# --------------------------------------------------------------------------- #
+
+GRID_HEADERS = [
+    "Grid_RowNum", "Grid_ColNum", "Grid_RowMajorIdx", "Grid_ColMajorIdx",
+]
+
+
+@pytest.fixture(scope="module")
+def detected_plate():
+    """Synth plate (8x12 GridImage, CenteredAutoGridFinder) after Otsu detection."""
+    image = load_synth_yeast_plate()
+    OtsuDetector().apply(image, inplace=True)
+    return image
+
+
+def _measure(image, **preset) -> pd.DataFrame:
+    pipe = ImagePipeline(meas=[MeasureBounds(), MeasureShape()], **preset)
+    return pipe.measure(image.copy())
+
+
+def test_gridimage_measure_ignores_a_preset_that_differs_from_its_grid(
+        detected_plate,
+):
+    """The CLI's --nrows/--ncols reshape the image but not the pipeline preset.
+
+    The preset used to inject a 16x24 finder whose Grid_* disagreed with the
+    image's own 8x12 grid: 2 of 552 rows survived the old inner join, and the
+    value-checked merge raised on every image. The image's grid is authoritative.
+    """
+    df = _measure(detected_plate, nrows=16, ncols=24)
+    baseline = _measure(detected_plate)
+
+    assert len(df) == detected_plate.num_objects
+    own_grid = detected_plate.grid.info().set_index(LABEL)[GRID_HEADERS]
+    got = df.set_index(LABEL)[GRID_HEADERS]
+    pd.testing.assert_frame_equal(got, own_grid.loc[got.index])
+    pd.testing.assert_frame_equal(df, baseline)
+
+
+def test_gridimage_matching_preset_is_identical_to_no_preset(detected_plate):
+    pd.testing.assert_frame_equal(
+            _measure(detected_plate, nrows=8, ncols=12),
+            _measure(detected_plate),
+            check_dtype=True,
+    )
+
+
+def test_preset_still_injects_a_grid_finder_for_a_plain_image(detected_plate):
+    """A plain Image has no grid of its own, so the preset stays in the run order.
+
+    Only the run order is asserted: ``GridFinder.measure`` refuses a
+    non-``GridImage``, so measuring a plain Image with a preset fails exactly as
+    it did before this change.
+    """
+    from phenotypic import Image
+    from phenotypic.grid import CenteredAutoGridFinder
+
+    plain = Image(detected_plate.rgb[:])
+    pipe = ImagePipeline(meas=[MeasureShape()], nrows=8, ncols=12)
+
+    run_order = pipe._build_measurement_run_order(plain)
+    assert list(run_order) == ["CenteredAutoGridFinder", "MeasureShape"]
+    injected = run_order["CenteredAutoGridFinder"]
+    assert isinstance(injected, CenteredAutoGridFinder)
+    assert (injected.nrows, injected.ncols) == (8, 12)
+
+    assert list(pipe._build_measurement_run_order(detected_plate)) == [
+        "MeasureShape"
+    ]
+
+
+def test_explicit_grid_finder_disagreeing_with_the_image_grid_raises_clearly(
+        detected_plate,
+):
+    """An explicit GridFinder in meas is a second grid definition: refuse it loudly."""
+    from phenotypic.grid import AutoGridFinder
+
+    finder = AutoGridFinder(nrows=8, ncols=12)
+    pipe = ImagePipeline(meas={"my_grid": finder, "shape": MeasureShape()})
+
+    # Independent witness: which objects the two grid definitions place differently.
+    theirs = finder.measure(detected_plate.copy()).set_index(LABEL)[GRID_HEADERS]
+    ours = detected_plate.grid.info().set_index(LABEL)[GRID_HEADERS]
+    ours = ours.loc[theirs.index]
+    per_column = {h: theirs[h].astype("int64").to_numpy()
+                  != ours[h].astype("int64").to_numpy() for h in GRID_HEADERS}
+    differs = np.logical_or.reduce(list(per_column.values()))
+    n_differ = int(differs.sum())
+    assert n_differ > 0, "fixture no longer exercises a grid conflict"
+
+    with pytest.raises(ValueError) as excinfo:
+        pipe.measure(detected_plate.copy())
+    message = str(excinfo.value)
+    assert "'my_grid'" in message
+    assert "'image info'" in message
+    assert "'shape'" not in message
+    for header, mask in per_column.items():
+        assert (header in message) == bool(mask.any())
+    assert f"{n_differ} of {len(theirs)} objects" in message
+    example = int(message.split(f"{LABEL}=")[1].split(")")[0])
+    assert bool(differs[theirs.index.get_loc(example)])
+    assert "GridFinder" in message
