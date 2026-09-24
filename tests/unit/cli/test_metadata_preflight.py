@@ -174,3 +174,105 @@ def test_skip_validation_still_refuses_an_unreadable_csv(tmp_path: Path) -> None
 
     assert result.exit_code != 0
     assert "Cannot read metadata CSV" in result.output
+
+
+# --- the join is only partly knowable (review D2, D4) ----------------------------
+
+
+def test_a_csv_keyed_on_metadata_the_images_carry_is_not_refused(tmp_path: Path) -> None:
+    """Review D2: PhenoTypic exports restore ``Strain``, which the join keys on."""
+    from phenotypic import Image
+    import numpy as np
+
+    paths = []
+    for name, strain in (("p0", "WT"), ("p1", "mut")):
+        image = Image(np.full((16, 16, 3), 40, dtype=np.uint8), name=name)
+        image.metadata["Strain"] = strain
+        path = tmp_path / "images" / "plate1" / f"{name}.png"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        image.rgb.imsave(path)
+        paths.append(path)
+    csv = _csv(tmp_path / "m.csv", "Strain,Media\nWT,YPD\nmut,SC\n")
+
+    findings = _by_code(check_metadata_join(
+        make_context(_pipeline(), "full", make_datasets(*paths), metadata_csv=csv)
+    ))
+
+    assert findings["PF-META-NO-KEYS"].severity == "warning"
+    assert not [f for f in findings.values() if f.severity == "error"]
+
+
+def test_a_qualified_attribute_is_not_a_measurement_key(tmp_path: Path) -> None:
+    """Review D4: ``Strain_ID`` is joined as an attribute, so nothing keys the join."""
+    csv = _csv(tmp_path / "m.csv", "Strain_ID,Media\nS1,YPD\n")
+
+    findings = _by_code(check_metadata_join(_context(tmp_path, csv, "img001.tiff")))
+
+    assert findings["PF-META-NO-KEYS"].severity == "error"
+    assert "PF-META-UNVERIFIED" not in findings
+
+
+def test_a_custom_operation_may_emit_a_qualified_key(tmp_path: Path) -> None:
+    """Review D4: with a custom op in scope, any qualified column may be its output."""
+    from phenotypic.abc_ import ObjectDetector
+
+    class _LabDetector(ObjectDetector):
+        def _operate(self, image):
+            return image
+
+    _LabDetector.__module__ = "my_lab.detectors"
+    csv = _csv(tmp_path / "m.csv", "Plate_Barcode,Media\nB1,YPD\n")
+    datasets = make_datasets(tmp_path / "images" / "plate1" / "img001.tiff")
+    pipeline = ImagePipeline(ops={"d": _LabDetector()}, meas={"s": MeasureSize()})
+
+    findings = _by_code(check_metadata_join(
+        make_context(pipeline, "full", datasets, metadata_csv=csv)
+    ))
+
+    assert findings["PF-META-NO-KEYS"].severity == "warning"
+    assert "PF-META-UNVERIFIED" in findings
+
+
+def test_the_startup_parse_uses_the_shared_reader(tmp_path: Path) -> None:
+    """Review D6 (M3): a long FIRST data row, which pandas reads as an index
+    column but the shared reader refuses (a longer later row fails both)."""
+    from click.testing import CliRunner
+
+    from phenotypic.phenotypicCLI import phenotypic_cli
+
+    pipeline = tmp_path / "p.json"
+    pipeline.write_text(_pipeline().to_json(), encoding="utf-8")
+    (tmp_path / "in").mkdir()
+    csv = tmp_path / "m.csv"
+    csv.write_text("ImageName,Strain\nimg001,WT,extra\nimg002,mut\n", encoding="utf-8")
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        ["--pipeline", str(pipeline), "--input", str(tmp_path / "in"),
+         "--output", str(tmp_path / "out"), "--metadata", str(csv), "--skip-validation"],
+    )
+
+    assert result.exit_code != 0
+    assert "Cannot read metadata CSV" in result.output
+
+
+def test_process_mode_does_not_parse_the_metadata_it_ignores(tmp_path: Path) -> None:
+    """Review D8: process mode never reads --metadata, so it cannot refuse it."""
+    from click.testing import CliRunner
+
+    from phenotypic.phenotypicCLI import phenotypic_cli
+
+    pipeline = tmp_path / "p.json"
+    pipeline.write_text(_pipeline().to_json(), encoding="utf-8")
+    (tmp_path / "in").mkdir()
+    csv = tmp_path / "m.csv"
+    csv.write_bytes(b"ImageName,Strain\n\"unterminated,WT\n")
+
+    result = CliRunner().invoke(
+        phenotypic_cli,
+        ["--mode", "process", "--layer", "gray", "--pipeline", str(pipeline),
+         "--input", str(tmp_path / "in"), "--output", str(tmp_path / "out"),
+         "--metadata", str(csv), "--dry-run"],
+    )
+
+    assert "Cannot read metadata CSV" not in result.output

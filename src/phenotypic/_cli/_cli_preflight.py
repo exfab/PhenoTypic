@@ -994,13 +994,22 @@ def check_bit_depth(context: PreflightContext) -> list[PreflightFinding]:
     ``imread`` accepts the contradiction silently and records the wrong bit
     depth for the data (header-behavior.md), so every intensity normalized by
     it is off by a factor of 256 in one direction or the other.
+
+    JPEG is exempt: ``imread`` sets ``bit_depth = 8`` for a JPEG whatever the
+    flag says (``_image_io_handler.py``), so nothing is mislabelled (review
+    D3).
     """
+    from phenotypic.sdk_.constants_ import IO
+
     bit_depth = context.config.bit_depth
     if context.mode == "measure" or bit_depth is None:
         return []
+    jpeg = {suffix.lower() for suffix in IO.JPEG_FILE_EXTENSIONS}
     affected = [
         h.path for h in _input_headers(context)
-        if h.bits is not None and h.bits != int(bit_depth)
+        if h.bits is not None
+        and h.bits != int(bit_depth)
+        and Path(h.path).suffix.lower() not in jpeg
     ]
     return _reach_finding(
         "PF-BIT-DEPTH", context, affected,
@@ -1067,12 +1076,21 @@ def check_metadata_join(context: PreflightContext) -> list[PreflightFinding]:
     with the one shared reader and normalized exactly as the production join
     normalizes it (``prepare_metadata_join_keys``).
 
-    The key findings are errors only when the CSV has no measurement-level key
-    column. A per-well plate map keyed on ``ImageName + Grid_RowNum +
-    Grid_ColNum`` looks duplicated against the source-only key frame, and a
-    layout keyed on grid position alone looks keyless, yet both join correctly
-    against the measurement frame; with an unverifiable column present the
-    same findings are warnings.
+    The key findings are errors only when the join is fully knowable here.
+    A per-well plate map keyed on ``ImageName + Grid_RowNum + Grid_ColNum``
+    looks duplicated against the source-only key frame, and a layout keyed on
+    grid position alone looks keyless, yet both join correctly against the
+    measurement frame; with such a measurement-level column present the same
+    findings are warnings. They are warnings too when the run's metadata set
+    is not known (``_metadata_set_is_complete``): inputs that restore
+    PhenoTypic metadata, or a custom operation, can carry the very columns the
+    CSV is keyed on (review D2; the same rule §8 applies to post columns).
+
+    A qualified CSV column counts as a possible measurement key only when it
+    is a known schema header (``Grid_RowNum``), which is when the production
+    join keeps its raw spelling (``external_metadata_preserved_columns``);
+    any other, such as ``Strain_ID``, is joined as an attribute. With a custom
+    operation in scope any qualified column may be one it emits (review D4).
     """
     metadata_csv = context.config.metadata_csv
     if context.mode != "full" or metadata_csv is None:
@@ -1091,22 +1109,36 @@ def check_metadata_join(context: PreflightContext) -> list[PreflightFinding]:
         return [PreflightFinding("PF-META-ALIAS", "error", str(exc))]
 
     unverified = analysis.unverified_join_columns
-    key_severity: Severity = "warning" if unverified else "error"
+    if not _custom_operation_in_scope(context):
+        import phenotypic.schema as _schema
+
+        known_headers = _schema.header_to_module()
+        unverified = tuple(c for c in unverified if c in known_headers)
+    complete = _metadata_set_is_complete(context)
+    key_severity: Severity = "error" if complete and not unverified else "warning"
+    if unverified:
+        caveat = "; it may still join on the measurement-level columns below"
+    elif not complete:
+        caveat = (
+            "; the inputs restore PhenoTypic metadata or a custom operation "
+            "may set it, so a key may still be carried by the images"
+        )
+    else:
+        caveat = ", so without a measurement-level key nothing would join"
     findings: list[PreflightFinding] = []
     if not analysis.join_columns:
         findings.append(PreflightFinding(
             "PF-META-NO-KEYS", key_severity,
             f"{metadata_csv} shares no column with the images' ImageName, "
-            "FileSuffix or Dataset"
-            + (", so without a measurement-level key nothing would join" if not unverified
-               else "; it may still join on the measurement-level columns below"),
+            "FileSuffix or Dataset" + caveat,
         ))
     if analysis.duplicate_key_count:
         findings.append(PreflightFinding(
             "PF-META-DUP-KEYS", key_severity,
             f"{analysis.duplicate_key_count} metadata row(s) repeat a key on "
             f"{', '.join(analysis.join_columns)}"
-            + (" (possibly distinguished by the measurement-level columns below)" if unverified else ""),
+            + ("" if key_severity == "error" else " (they may be distinguished by "
+               "columns only the measurements carry)"),
         ))
     if analysis.unmatched_images:
         findings.append(PreflightFinding(
@@ -1198,12 +1230,17 @@ def _metadata_set_is_complete(context: PreflightContext) -> bool:
     may set ``image.metadata``), and not when an input restores PhenoTypic
     metadata on read (a store, or a file carrying the ``phenotypic`` key).
     """
-    if context.mode == "measure":
+    if context.mode == "measure" or _custom_operation_in_scope(context):
         return False
-    for _, operation in operations_in_scope(context):
-        if not type(operation).__module__.startswith("phenotypic."):
-            return False
     return not any(h.carries_phenotypic_metadata for h in _input_headers(context))
+
+
+def _custom_operation_in_scope(context: PreflightContext) -> bool:
+    """Whether an operation this run executes is a class from outside ``phenotypic``."""
+    return any(
+        not type(operation).__module__.startswith("phenotypic.")
+        for _, operation in operations_in_scope(context)
+    )
 
 
 def check_post_columns(context: PreflightContext) -> list[PreflightFinding]:

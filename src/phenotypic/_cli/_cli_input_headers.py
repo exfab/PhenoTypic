@@ -6,10 +6,12 @@ behavior every rule here mirrors was established by probe and is recorded in
 
 A header says what a file *stores*, which is not always what ``Image.imread``
 *returns*: a palette PNG stores one band and decodes to RGB, an RGBA file
-decodes to RGB, a multi-page TIFF decodes its first page. The checks need the
-decoded answer, so :func:`read_input_header` maps header facts to it. Pillow
-parses a header lazily and decodes nothing until ``load()``; ``tifffile``
-reads one page's tags; a PhenoTypic OME-Zarr store answers from its root
+decodes to RGB, and a TIFF decodes its first *series* -- which for a Fiji
+composite is a stack of single-sample pages that decodes to RGB. The checks
+need the decoded answer, so :func:`read_input_header` maps header facts to it.
+Pillow parses a header lazily and decodes nothing until ``load()``;
+``tifffile`` reads the first series' shape from its tags; a PhenoTypic
+OME-Zarr store answers from its root
 ``zarr.json``. A file whose header parses but whose pixel data is truncated is
 therefore NOT caught here -- only a decode finds that, and the CLI already
 isolates it as a per-image failure.
@@ -130,23 +132,69 @@ def _png_bit_depth(path: Path) -> Optional[int]:
 
 
 def _tiff_header(path: Path) -> InputHeader:
+    """Predict ``Image.imread``'s result from the first series' metadata.
+
+    ``skimage.io.imread`` returns ``series[0]`` of a TIFF, so the prediction
+    starts from that series' shape, not the first page's samples: a Fiji
+    composite or an OME-TIFF stores a ``(3, H, W)`` channel stack as three
+    single-sample pages of ONE series and decodes to RGB (review D1). The
+    shape is then passed through :func:`_skimage_axis_order` and
+    :func:`_channels_for_shape`, which transcribe the two rules ``imread``
+    applies. Reading ``series[0].shape`` parses tags only.
+    """
     import numpy as np
     import tifffile
 
     from phenotypic.sdk_.constants_ import IO
 
     with tifffile.TiffFile(path) as tif:
-        page = tif.pages[0]
-        samples = int(page.samplesperpixel)
-        itemsize = np.dtype(page.dtype).itemsize if page.dtype is not None else None
-        description = page.tags.get("ImageDescription")
+        series = tif.series[0]
+        shape = tuple(int(n) for n in series.shape)
+        itemsize = np.dtype(series.dtype).itemsize if series.dtype is not None else None
+        description = tif.pages[0].tags.get("ImageDescription")
         carries = bool(description) and IO.PHENOTYPIC_METADATA_KEY in str(description.value)
     bits = {1: 8, 2: 16}.get(itemsize or 0)
-    if samples == 1:
-        return InputHeader(str(path), channels=1, bits=bits, carries_phenotypic_metadata=carries)
-    if samples in (3, 4):
-        return InputHeader(str(path), channels=3, bits=bits, carries_phenotypic_metadata=carries)
-    return InputHeader(str(path), raw_channels=samples, bits=bits, carries_phenotypic_metadata=carries)
+    channels, raw_channels = _channels_for_shape(_skimage_axis_order(shape))
+    return InputHeader(
+        str(path),
+        channels=channels,
+        raw_channels=raw_channels,
+        bits=bits,
+        carries_phenotypic_metadata=carries,
+    )
+
+
+def _skimage_axis_order(shape: tuple[int, ...]) -> tuple[int, ...]:
+    """The shape ``skimage.io.imread`` returns for an array of *shape*.
+
+    Transcribes ``skimage/io/_io.py`` (0.25): when ``ndim > 2``, the last axis
+    is not 3 or 4 long and the third-from-last is, it swaps axes ``-1, -3``
+    then ``-2, -3``, moving a leading channel axis to the end.
+    """
+    if len(shape) > 2 and shape[-1] not in (3, 4) and shape[-3] in (3, 4):
+        return (*shape[:-3], shape[-2], shape[-1], shape[-3])
+    return shape
+
+
+def _channels_for_shape(shape: tuple[int, ...]) -> tuple[Optional[int], Optional[int]]:
+    """``(channels, raw_channels)`` the ``Image`` constructor makes of *shape*.
+
+    Transcribes ``ImageDataManager._guess_image_format``: 2-D is grayscale; a
+    3-D last axis of 1 is grayscale, of 3 or 4 is RGB, and of any other length
+    raises ``"Image with {c} channels"``, which ``raw_channels`` reports. More
+    dimensions (a Z or time stack) also raise, with no channel count to name,
+    so the prediction is left unknown rather than guessed.
+    """
+    if len(shape) == 2:
+        return 1, None
+    if len(shape) == 3:
+        last = shape[-1]
+        if last == 1:
+            return 1, None
+        if last in (3, 4):
+            return 3, None
+        return None, last
+    return None, None
 
 
 def _store_header(path: Path) -> InputHeader:
@@ -156,9 +204,20 @@ def _store_header(path: Path) -> InputHeader:
     ``imread``'s own NGFF projection at run time, so this reports unknown
     channels rather than re-deriving that projection.
     """
-    from phenotypic.sdk_.ngff_ import PhenotypicAttr
+    from phenotypic.sdk_.ngff_ import PhenotypicAttr, _zarr_v2_marker
 
-    root = json.loads((path / "zarr.json").read_text(encoding="utf-8"))
+    root_path = path / "zarr.json"
+    if not root_path.is_file() and (marker := _zarr_v2_marker(path)) is not None:
+        # Image.imread refuses a v2 store too; say so rather than "not found"
+        # (review D9).
+        return InputHeader(
+            str(path),
+            error=(
+                f"a Zarr v2 (NGFF 0.4) store ({marker}, no zarr.json), which "
+                "Image.imread does not read; convert it to Zarr v3 / NGFF 0.5"
+            ),
+        )
+    root = json.loads(root_path.read_text(encoding="utf-8"))
     block = root.get("attributes", {}).get(PhenotypicAttr.ROOT)
     if not isinstance(block, dict):
         return InputHeader(str(path))

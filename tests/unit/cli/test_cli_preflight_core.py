@@ -218,12 +218,22 @@ def write_tripwire(monkeypatch: pytest.MonkeyPatch):
     yield
 
 
-def test_the_preflight_writes_nothing(cli_inputs, write_tripwire) -> None:
+@pytest.fixture
+def tripwire_metadata(cli_inputs) -> Path:
+    """A metadata CSV, written before the tripwire arms (review D7)."""
+    tree, _ = cli_inputs
+    csv = tree.parent / "metadata.csv"
+    csv.write_text("ImageName,Strain\nimg001,WT\n", encoding="utf-8")
+    return csv
+
+
+def test_the_preflight_writes_nothing(cli_inputs, tripwire_metadata, write_tripwire) -> None:
     """Every registered check runs under a tripwire that refuses any write.
 
-    ``cli_inputs`` is requested before ``write_tripwire``, so its real input
-    image is written before the tripwire arms; the checks then read it (the
-    header pass included) with every write refused.
+    ``cli_inputs`` and ``tripwire_metadata`` are requested before
+    ``write_tripwire``, so the real input image and metadata CSV are written
+    before the tripwire arms; the checks then read them (the header pass and
+    the metadata join included) with every write refused.
     """
     tree, _ = cli_inputs
     datasets = make_datasets(tree / "plate1" / "img001.tiff")
@@ -233,7 +243,9 @@ def test_the_preflight_writes_nothing(cli_inputs, write_tripwire) -> None:
         post={"tag": AppendString(column="Strain", value="_x")},
     )
     for mode in ("full", "process", "measure"):
-        report = run_preflight(make_context(pipeline, mode, datasets))
+        report = run_preflight(
+            make_context(pipeline, mode, datasets, metadata_csv=tripwire_metadata)
+        )
         assert not [f for f in report.findings if f.code == "PF-CHECK-CRASHED"], (
             report.render_lines()
         )

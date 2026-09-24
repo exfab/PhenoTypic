@@ -78,3 +78,11 @@ def test_the_prediction_agrees_with_the_operation(op) -> None:
     assert op.preflight_columns(list(absent.columns))[0]
     with pytest.raises(KeyError):
         op.apply(absent)
+
+
+def test_a_legacy_spelling_resolves_as_the_op_resolves_it() -> None:
+    """Review D6 (M31): an exact-name lookup would call this column missing."""
+    from phenotypic.post._utils import missing_metadata_columns
+
+    assert missing_metadata_columns(["Metadata_ImageName"], ["MetadataImage_ImageName"]) == ()
+    assert missing_metadata_columns(["Metadata_ImageName"], ["NoSuchColumn"]) == ("NoSuchColumn",)

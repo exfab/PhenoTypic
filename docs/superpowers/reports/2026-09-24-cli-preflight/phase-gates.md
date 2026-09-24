@@ -83,3 +83,39 @@ equals `81d19ec`) before attribution.
   **7343 passed, 68 skipped, 21 xfailed, 12 failed, 3 errors** (13:34).
 - The 12 failures and 3 errors are the environment baseline recorded under Phase D
   (`napari` and `pytest-qt` not installed). Nothing attributable to the fixes.
+
+## Phase E (after `2197543`; Tasks 13-15)
+
+- **Surface, derived from importers** of `_cli_execution_strategies`, `_cli_interactive`,
+  `_cli_staged_slurm`, `sdk_.slurm` and `run_console._callbacks`: `tests/unit/cli`,
+  `tests/integration/cli`, `tests/unit/gui`, `tests/integration/gui`, `tests/unit/sdk_`,
+  `tests/unit/tune`, `tests/unit/abc_`, `tests/unit/ci`, `tests/integration/packaging`,
+  `tests/unit/test_docs_preflight_codes.py`. **8744 passed, 151 skipped, 23 xfailed,
+  21 failed, 3 errors** (19:53).
+- All 21 failures are `tests/unit/tune` (`test_distributed_finalize_task2.py` 16,
+  `test_engine.py` 3, `test_distributed_lifecycle_task2.py` 1, `test_journal_backend_task1.py`
+  1), each `ModuleNotFoundError: No module named 'optuna'` (the `tune` extra is not
+  installed). The 3 errors are the `qtbot` baseline. Nothing attributable to this change.
+- **Browser tests** (first gate to run them; `PLAYWRIGHT=1`, the preinstalled headless shell
+  aliased through a scratch `PLAYWRIGHT_BROWSERS_PATH`): `tests/e2e/gui/test_run_console.py`
+  and `test_run_console_fake_slurm.py`, **20 passed**.
+
+## Docs build (Task 16 Step 4, at `d3bd6ee`)
+
+- `sphinx-build -b html -j 4 -q -D nbsphinx_execute=never`, in a scratch worktree with its
+  own virtual environment (`uv sync --group dev --group docs --extra gui`), so the shared
+  environment was not changed under a running gate. The first attempt stopped at
+  `PandocMissing`; with a `pypandoc_binary` pandoc on `PATH` it exits 0.
+- 680 warnings outside the unreachable intersphinx inventories (the proxy refuses those
+  hosts); none names a page this change touched. The five new `{ref}` links to *Run
+  Preflight Checks* resolve in the HTML, and the finding-code table renders.
+
+## Phase D review fixes (D1-D9)
+
+- **Surface:** `tests/unit/cli`, `tests/integration/cli`, `tests/unit/post`,
+  `tests/unit/gui/run_console`, `tests/integration/gui/test_run_console_callbacks.py`,
+  `tests/unit/test_docs_preflight_codes.py`, `tests/unit/ci`. First run: **4155 passed,
+  1 failed**: `test_invalid_metadata_never_replaces_existing_snapshot`, a real regression
+  from the D8 change (Polars accepts `b'"unterminated'`, which the removed pandas parse
+  refused). The pandas parse was restored; the file then passes (21 passed with the
+  metadata preflight tests).

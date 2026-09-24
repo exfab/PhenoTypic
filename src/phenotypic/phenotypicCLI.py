@@ -716,6 +716,11 @@ def _snapshot_metadata_csv(
     from phenotypic.sdk_._file_locking import exclusive_path_lock
 
     payload = source.read_bytes()
+    # Kept although the startup parse already ran the shared reader: pandas
+    # refuses an unterminated quote that Polars reads as a header, and this
+    # parse is what keeps such bytes from replacing a valid snapshot (review
+    # D8 proposed removing it; test_invalid_metadata_never_replaces_existing_
+    # snapshot is the counterexample).
     pd.read_csv(io.BytesIO(payload))
     expected_digest = hashlib.sha256(payload).hexdigest()
     state_path = resolve_processing_state_path(output_dir)
@@ -2345,8 +2350,9 @@ def phenotypic_cli(
         # Validate metadata CSV early, outside --skip-validation, with the one
         # reader every metadata consumer uses (full-file dtype inference).
         # The old pandas parse accepted CSVs the Polars readers later failed
-        # on (spec §10.5, F22; review R22).
-        if metadata_csv is not None:
+        # on (spec §10.5, F22; review R22). Process mode ignores --metadata,
+        # so it does not parse a file it will never read (review D8).
+        if metadata_csv is not None and process_only_layer is None:
             from phenotypic._cli._metadata_join import read_metadata_csv
 
             try:

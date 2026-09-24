@@ -112,13 +112,13 @@ a position the staged GPU engine cannot run), the refusal of a `--restart` or
 | `PF-CHANNELS` | An input has 2, or 5 or more, channels, which `Image.imread` refuses | by reach | Convert the files to grayscale or RGB(A) |
 | `PF-DETECT-MODE-GRAY` | A color `--detect-mode` is set, but inputs are grayscale | by reach | `--detect-mode gray`, or supply RGB images |
 | `PF-RGB-OP-GRAY` | A color operation or measurer runs on grayscale inputs | by reach | Supply RGB images, or remove the color operations |
-| `PF-BIT-DEPTH` | `--bit-depth` contradicts the depth the files store | by reach | Drop `--bit-depth`, or set it to the stored depth |
+| `PF-BIT-DEPTH` | `--bit-depth` contradicts the depth the files store (JPEG is exempt: it is always read as 8-bit) | by reach | Drop `--bit-depth`, or set it to the stored depth |
 | `PF-RAW-NO-RAWPY` | RAW inputs, but `rawpy` is not installed (it is not installed on Windows) | by reach | Install `rawpy`, or convert the RAW files to TIFF |
 | `PF-STEM-COLLISION` | Two inputs in one dataset share a name without extension (e.g. `a.png`, `a.tif`) | error | Rename or move one file of each pair |
 | `PF-META-PARSE` | The `--metadata` CSV does not parse | error | Fix the CSV |
 | `PF-META-ALIAS` | The CSV has a legacy and a current spelling of one column, with conflicting values | error | Keep one spelling |
-| `PF-META-NO-KEYS` | The CSV shares no column that identifies an image | error; warning when its keys are measurement columns such as `Grid_RowNum` | Add an `ImageName` column |
-| `PF-META-DUP-KEYS` | A join key repeats in the CSV | error; warning when its keys are measurement columns | Make each key unique |
+| `PF-META-NO-KEYS` | The CSV shares no column that identifies an image | error; warning when its keys may be measurement columns such as `Grid_RowNum`, or metadata the images carry themselves (PhenoTypic exports, custom operations) | Add an `ImageName` column |
+| `PF-META-DUP-KEYS` | A join key repeats in the CSV | as `PF-META-NO-KEYS` | Make each key unique |
 | `PF-META-UNMATCHED` | Some images have no metadata row | warning | Add rows, or match `ImageName` to the file names |
 | `PF-META-ORPHANS` | Some metadata rows match no image | warning | Expected for wells that grew nothing |
 | `PF-META-UNVERIFIED` | The CSV joins on columns only measurements carry | warning | None needed; the join is checked at finalization |

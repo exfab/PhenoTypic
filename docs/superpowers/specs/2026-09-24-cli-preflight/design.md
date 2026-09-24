@@ -494,9 +494,26 @@ workers, a module constant). It records the channel count, dtype, and shape:
 | Input kind | How the header is read |
 |---|---|
 | PNG, JPEG | `PIL.Image.open(path)`, which parses the header lazily and decodes nothing until `load()` |
-| TIFF | `tifffile.TiffFile(path).pages[0]`: `samplesperpixel`, `dtype`, `shape` |
+| TIFF | `tifffile.TiffFile(path).series[0]`: `shape` and `dtype` (tags only), then skimage's axis move and `Image`'s channel rule (see *As implemented* below) |
 | RAW | no header read; after §10.1 a RAW file decodes to 16-bit RGB when `rawpy` is importable |
 | OME-Zarr store | the root and series `zarr.json` documents via the existing `ngff_` helpers, stopping before `zarr.open_array`; channel count comes from `project_ngff_axes` |
+
+*As implemented* (plan Task 10, corrected after the Phase D review, D1, D5, D9):
+
+- **TIFF from the first series, not the first page.** `skimage.io.imread` returns
+  `series[0]`, and a Fiji composite, an OME-TIFF with `CYX` axes, or any single-series
+  `(3,H,W)` stack stores its channels as single-sample pages of one series, which decode
+  to RGB. The first implementation read `pages[0].samplesperpixel` and called them
+  grayscale, so `PF-RGB-OP-GRAY` and `PF-DETECT-MODE-GRAY` refused runs that complete
+  (D1, reproduced end to end by the reviewer). The header now transcribes the two rules
+  `imread` applies: skimage's axis move (`skimage/io/_io.py`) and
+  `ImageDataManager._guess_image_format`. A 4-D series is reported unknown.
+- **Stores.** A PhenoTypic store's channels come from its recorded `series` block; a
+  third-party store's are reported unknown rather than re-derived through
+  `project_ngff_axes`, which can only weaken a check. A Zarr v2 store is reported as
+  unreadable with its format named.
+- **No shape field.** `InputHeader` records channels, refused channel count, bits, and
+  whether the input restores PhenoTypic metadata; nothing consumes a shape.
 
 `tifffile` is imported directly in two modules already (`_color_space_accessor.py:9`,
 `_accessor_io_handler.py:335`) but arrives only transitively through scikit-image. Adding it
@@ -559,7 +576,14 @@ for the four metadata-string ops, a required column absent from the set is an er
 defined outside the `phenotypic` package, and no input is an OME-Zarr store or carries
 PhenoTypic metadata in its header (the header reader of §7 reports this from the TIFF tag or
 PNG text chunk under `IO.PHENOTYPIC_METADATA_KEY`, without decoding pixels). Otherwise the
-same finding is a warning. The error case matters because at run time the absence would
+same finding is a warning.
+
+*As implemented* (plan Task 12, review D5): the API is
+`PostMeasurement.preflight_columns(available) -> (missing, produced)` rather than
+`required_columns()`, with a `_preflight_reads_metadata_only` class variable. Each op answers
+through its own resolution rules against the columns known so far, and reports the columns
+it adds, so a later op in the chain finds them. Where this section says `required_columns()`
+below, read `preflight_columns`. The error case matters because at run time the absence would
 silently discard every post op's output (F23).
 
 `JoinMetadata` keeps its `on` keys in the *table's* spelling after validation and re-spells
@@ -601,8 +625,8 @@ source-key projection.
 |---|---|---|
 | `PF-META-PARSE` | the CSV does not parse with full schema inference | error |
 | `PF-META-ALIAS` | header normalization raises (conflicting legacy and canonical aliases); finalization would fail the same way | error |
-| `PF-META-NO-KEYS` | no column is shared with the source key frame, so nothing joins | error when the CSV has no measurement-level key column (`unverified_join_columns` is empty); otherwise warning |
-| `PF-META-DUP-KEYS` | duplicate join keys among the verifiable columns, which fan measured rows out | error when `unverified_join_columns` is empty; otherwise warning |
+| `PF-META-NO-KEYS` | no column is shared with the source key frame, so nothing joins | error only when the CSV has no measurement-level key column **and** the run's metadata set is complete (§8's rule); otherwise warning |
+| `PF-META-DUP-KEYS` | duplicate join keys among the verifiable columns, which fan measured rows out | as `PF-META-NO-KEYS` |
 | `PF-META-UNMATCHED` | images with no metadata row; their rows are dropped from `measurements.csv` | warning, listing images |
 | `PF-META-ORPHANS` | metadata rows matching no image; they appear as metadata-only rows | warning |
 | `PF-META-UNVERIFIED` | a join column that only a measurement can supply (e.g. `Grid_RowNum`), which the preflight cannot verify | warning |
@@ -618,6 +642,27 @@ errors only when no measurement-level key column exists. In that case they are r
 shared column `join_metadata` skips the join and publishes the table without metadata
 (`_cli_output_manager.py:336-341`), and duplicate keys fan rows out. `--skip-validation`
 remains the escape.
+
+*As implemented* (plan Task 11, corrected after the Phase D review, D2, D4, D5):
+
+- **Completeness (D2).** The production join intersects the CSV with the *measurement*
+  frame, which carries every metadata key the images restore on read and any a custom
+  operation sets. So the key findings are errors only when `_metadata_set_is_complete`
+  holds, the same predicate §8 applies to post columns (review R6). A CSV keyed on `Strain`
+  over PhenoTypic PNG exports that carry `Strain` is a warning; the reviewer showed such a
+  run joins correctly.
+- **Which qualified columns may be keys (D4).** A qualified CSV column counts as a possible
+  measurement key only when it is a known schema header, which is exactly when
+  `external_metadata_preserved_columns` keeps its raw spelling in the production join;
+  `Strain_ID` is joined as an attribute and no longer softens the key errors. With a custom
+  operation in scope, every qualified column still counts. This filter is applied in the
+  CLI check; the shared helper and the GUI's direct use of it are unchanged, and the GUI's
+  Validate runs the CLI dry-run, which applies it.
+- **The GUI (D5).** `build_metadata_preflight` reuses `source_join_key_frame` and
+  `unverified_measurement_join_columns` and calls `prepare_metadata_join_keys` after its own
+  input normalization; it does not call `analyze_metadata_join`. The duplicated source-key
+  projection is gone, which was the purpose; the reviewer compared the two analyses on seven
+  CSV shapes and they agree.
 
 The moved `_unverified_measurement_join_columns` (`_request_safety.py:367-388`) filters on
 `"_" in column` before calling `metadata_member_for_header`. That is a test of whether a name
@@ -871,3 +916,20 @@ with changes". Every finding was accepted.
 | C14 | Fixed in both `CLAUDE.md` files |
 | C15 | §4 table updated to the implemented severity rule |
 | C16 | Fixed. `torch_hub_checkpoint_dir` transcribes `torch.hub._get_torch_home` (verified against `torch/hub.py` on `main`); an empty `TORCH_HOME` is pinned by a test |
+
+## Disposition of the Phase D adherence review (D1-D9)
+
+`docs/superpowers/reports/2026-09-24-cli-preflight/phase-d-adherence.md`, verdict "changes
+required". Every finding was accepted.
+
+| Finding | Disposition |
+|---|---|
+| D1 (Blocking) | Fixed. TIFF headers predict from `series[0]` through skimage's axis move and `Image`'s channel rule; five stack cases and an RGBA TIFF join `CASES`, which compares every prediction with `imread`. §7 |
+| D2 (Major) | Fixed. Key findings are errors only when the metadata set is complete. §9 |
+| D3 (Major) | Fixed. JPEG is exempt from `PF-BIT-DEPTH`. `header-behavior.md` gains a JPEG row |
+| D4 | Fixed in the CLI check (known schema headers only, unless a custom op is in scope). §9 |
+| D5 | Spec updated (§7, §8, §9 *As implemented*) |
+| D6 | Tests added for M3 (a long first data row, which only pandas accepts), M11, M14, M19, M22, M23 and M31; each now fails under its mutation |
+| D7 | The write tripwire's context carries a metadata CSV |
+| D8 | Partly accepted. Process mode no longer parses the `--metadata` it ignores. The snapshot keeps its pandas parse: the finding's premise, that the shared reader is stricter on every input, has a counterexample (`b'"unterminated'`, which Polars reads as a one-column header and pandas refuses), pinned by `test_invalid_metadata_never_replaces_existing_snapshot` |
+| D9 | A Zarr v2 store's header error names the format |

@@ -65,6 +65,24 @@ def _write(path: Path, kind: str) -> Path:
             for _ in range(3):
                 writer.write(RNG.integers(0, 255, (16, 16), dtype=np.uint8),
                              photometric="minisblack")
+    elif kind == "fiji_composite":
+        tifffile.imwrite(path, RNG.integers(0, 255, (3, 16, 16), dtype=np.uint8),
+                         imagej=True, metadata={"axes": "CYX"})
+    elif kind == "ome_cyx":
+        tifffile.imwrite(path, RNG.integers(0, 255, (3, 16, 16), dtype=np.uint8),
+                         ome=True, metadata={"axes": "CYX"})
+    elif kind == "stack3_tiff":
+        tifffile.imwrite(path, RNG.integers(0, 255, (3, 16, 16), dtype=np.uint8),
+                         photometric="minisblack")
+    elif kind == "stack4_tiff":
+        tifffile.imwrite(path, RNG.integers(0, 255, (4, 16, 16), dtype=np.uint8),
+                         photometric="minisblack")
+    elif kind == "stack2_tiff":
+        tifffile.imwrite(path, RNG.integers(0, 255, (2, 16, 24), dtype=np.uint8),
+                         photometric="minisblack")
+    elif kind == "rgba_tiff":
+        tifffile.imwrite(path, RNG.integers(0, 255, (16, 16, 4), dtype=np.uint8),
+                         photometric="rgb", extrasamples=["unassalpha"])
     elif kind == "empty":
         path.write_bytes(b"")
     else:  # pragma: no cover - test authoring error
@@ -86,6 +104,15 @@ CASES = {
     "two_ch_tiff": (".tiff", None, 2, 8),
     "five_ch_tiff": (".tiff", None, 5, 8),
     "multipage_gray_tiff": (".tiff", 1, None, 8),
+    # One series of single-sample pages: skimage moves a leading axis of 3 or 4
+    # to the end, so these decode to RGB (review D1).
+    "fiji_composite": (".tif", 3, None, 8),
+    "ome_cyx": (".ome.tif", 3, None, 8),
+    "stack3_tiff": (".tiff", 3, None, 8),
+    "stack4_tiff": (".tiff", 3, None, 8),
+    # A 2-plane stack is not moved; imread then reads the width as a channel count.
+    "stack2_tiff": (".tiff", None, 24, 8),
+    "rgba_tiff": (".tiff", 3, None, 8),
 }
 
 
@@ -116,7 +143,8 @@ def test_the_header_prediction_matches_imread(kind: str, tmp_path: Path) -> None
 def test_an_empty_file_is_an_unreadable_header(tmp_path: Path) -> None:
     header = read_input_header(_write(tmp_path / "e.png", "empty"))
 
-    assert header.error and "empty" in header.error
+    # startswith, not "in": tmp_path's own name contains "empty" (review D6).
+    assert header.error and header.error.startswith("the file is empty")
 
 
 def test_a_garbage_file_is_an_unreadable_header(tmp_path: Path) -> None:
@@ -271,3 +299,63 @@ def test_sample_mode_still_checks_every_input(tmp_path: Path) -> None:
     )
 
     assert finding.severity == "error"
+
+
+def test_a_z_stack_is_left_unknown(tmp_path: Path) -> None:
+    """More than three dimensions: imread refuses, with no channel count to name."""
+    path = tmp_path / "z.tiff"
+    tifffile.imwrite(path, RNG.integers(0, 255, (5, 16, 16, 3), dtype=np.uint8), photometric="rgb")
+
+    header = read_input_header(path)
+
+    assert (header.channels, header.raw_channels, header.error) == (None, None, None)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        with pytest.raises(ValueError):
+            Image.imread(path)
+
+
+def test_a_zarr_v2_store_names_its_format(tmp_path: Path) -> None:
+    """Review D9: the header error says why, not only that a file is missing."""
+    store = tmp_path / "legacy.ome.zarr"
+    store.mkdir()
+    (store / ".zgroup").write_text('{"zarr_format": 2}', encoding="utf-8")
+
+    header = read_input_header(store)
+
+    assert header.error and "Zarr v2" in header.error
+
+
+def test_an_rgb_measurer_accepts_a_fiji_composite(tmp_path: Path) -> None:
+    """Review D1, end to end through the check: no false PF-RGB-OP-GRAY."""
+    pipeline = ImagePipeline(ops={"d": OtsuDetector()}, meas={"c": MeasureColor()})
+    datasets = _tree(tmp_path, "fiji_composite", "stack3_tiff")
+
+    assert check_rgb_ops_on_gray(make_context(pipeline, datasets=datasets)) == []
+    assert check_detect_mode_on_gray(
+        make_context(_detector(), datasets=datasets, detect_mode="red")
+    ) == []
+
+
+def test_the_same_stem_in_two_datasets_is_not_a_collision(tmp_path: Path) -> None:
+    """Review D6 (M14): ``plate1/a.png`` beside ``plate2/a.png`` is the ordinary layout."""
+    from phenotypic._cli._cli_types import Dataset
+
+    datasets = tuple(
+        Dataset(name=name, images=[tmp_path / name / "a.png"], input_dir=tmp_path / name,
+                output_dir=Path("out") / name)
+        for name in ("plate1", "plate2")
+    )
+
+    assert check_stem_collisions(make_context(_detector(), datasets=datasets)) == []
+
+
+def test_bit_depth_is_not_checked_for_jpeg(tmp_path: Path) -> None:
+    """Review D3: imread records 8 bits for a JPEG whatever --bit-depth says."""
+    datasets = _tree(tmp_path, "rgb_jpg", "rgb_jpg")
+
+    assert check_bit_depth(make_context(_detector(), datasets=datasets, bit_depth=16)) == []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        image = Image.imread(datasets[0].images[0], bit_depth=16)
+    assert image.bit_depth == 8

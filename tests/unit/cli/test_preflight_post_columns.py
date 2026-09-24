@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+import pytest
 import tifffile
 
 from phenotypic import Image, ImagePipeline
@@ -122,3 +123,25 @@ def test_process_mode_never_runs_post(tmp_path: Path) -> None:
     assert check_post_columns(
         make_context(_pipeline(tag=AppendString(column="DoesNotExist", value="_x")), "process", datasets)
     ) == []
+
+
+def _phenotypic_export(path: Path) -> Path:
+    """A PNG or TIFF written by PhenoTypic, carrying its metadata on read."""
+    image = Image(np.full((16, 16, 3), 40, dtype=np.uint8), name=path.stem)
+    image.metadata["Strain"] = "WT"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    image.rgb.imsave(path)
+    return path
+
+
+@pytest.mark.parametrize("suffix", [".png", ".tiff"])
+def test_a_file_carrying_phenotypic_metadata_softens_to_a_warning(tmp_path: Path, suffix: str) -> None:
+    """Review D6 (M22, M23): the PNG text chunk and the TIFF description count too."""
+    export = _phenotypic_export(tmp_path / "plate1" / f"img001{suffix}")
+
+    (finding,) = check_post_columns(
+        make_context(_pipeline(tag=AppendString(column="DoesNotExist", value="_x")),
+                     datasets=make_datasets(export))
+    )
+
+    assert finding.severity == "warning"
