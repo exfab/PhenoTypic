@@ -25,7 +25,9 @@ columns read as one block and the feature label ends the name.
 | D3 | **Recognize both formats, emit new only.** | *Required, not optional* — see "Why D3 is required" below. |
 | D4 | **No `--mode migrate` rewrite** of stored columns. | Migrate is provenance-only; D3 keeps old tables valid. |
 | D5 | `category()` stays `"Texture"`; `get_headers(scale, matrix_name=None)` signature unchanged. | Every prefix consumer derives `Texture_` from `category()`. |
-| D6 | **Fix the multi-scale merge bug** in the same change (Task 2). | Pre-existing: `measure/_measure_texture.py:143` discards the `merge` result, so `scale=[5, 10]` silently returns only scale 5. The new name exists to make scale legible; shipping it while multi-scale is broken would be odd. Separable if preferred. |
+| D6 | **One scale per `MeasureTexture`.** `scale: int = 5` (validity bound `ge=1`). Multi-scale = several `MeasureTexture` entries in one pipeline, e.g. `meas=[MeasureTexture(scale=3), MeasureTexture(scale=5)]`. | User decision. This removes the multi-scale loop instead of fixing it. The loop was broken anyway: `measure/_measure_texture.py:143` discards the `merge` result, so `scale=[5, 10]` has only ever emitted scale 5. |
+| D7 | **Legacy list input:** a **one-element** list (`[5]`) is coerced to `5`; a **multi-element** list raises `ValidationError`: "MeasureTexture measures one scale; add one MeasureTexture per scale." | Every saved `pipeline.json` today serializes `"scale": [5]` (the field was `List[int]`). That JSON is re-read by recompile/finalize (`phenotypicCLI.py:3202,3310`), the results-viewer QC recompute (`_gui/results_viewer/_app.py:438`, degrades to a warning) and the QC rebuild (`_qc_tab/_rebuild.py:380`, raises). Rejecting `[5]` would break every existing run folder. **Cost:** a run folder whose pipeline used `scale=[3, 4]` stops loading in those three paths. Alternative: coerce a multi-element list to its first element with a warning, which is exactly what those runs produced. Rejected here because "one scale" should be unambiguous. |
+| D8 | **Two measurers with the same scale are not guarded.** | Same-scale duplicates emit identical columns. `_merge_on_object_labels` (`_image_pipeline_core.py:1480-1497`) merges on columns whose values are equal, and adds `_merged` suffixes where they differ (e.g. NaN). This is user error with harmless-but-ugly output. The docstring says "one per distinct scale". A guard would need pipeline-core changes; out of scope unless requested. |
 
 ## Why D3 is required — legacy stores
 
@@ -52,7 +54,14 @@ Tasks 1 and 3 guard both directions.
 | `schema/_texture.py:11-13` `_TEXTURE_HEADER_RE` | Two patterns: new `^(?P<cat>[A-Za-z0-9]+)_(?P<scale>\d{2,})px-(?:deg(?P<angle>\d{3})\|avg)-(?P<label>[A-Za-z0-9]+)$`; legacy kept as `_LEGACY_TEXTURE_HEADER_RE`. Unambiguous: legacy ends `-scale\d+`, new ends in a label. |
 | `schema/_texture.py:147-157` `member_for_header` | Try new, then legacy; same `cat`/`label` lookup. |
 | `schema/_texture.py:159-175` `get_headers` | Emit `f"{cat}_{scale:02d}px-deg{angle:03d}-{label}"` / `f"{cat}_{scale:02d}px-avg-{label}"`. **Keep order exactly**: feature-outer × angle-inner (52), then 13 averages in feature order. |
-| `measure/_measure_texture.py:140-144` | Assign the merge result (D6). |
+| `measure/_measure_texture.py:96` | `scale: List[int] = [5]` → `scale: int = Field(5, ge=1)` (D6). |
+| `measure/_measure_texture.py:101-114` | Replace `_coerce_scale_to_list` with a `mode="before"` validator: 1-element list → int; longer list → `ValueError` with the D7 message. |
+| `measure/_measure_texture.py:140-144` | Delete the multi-scale loop; `return self._compute_haralick(scale=self.scale, …)` directly (drop the `functools.partial` if it no longer earns its keep). |
+| `measure/_measure_texture.py:33-47,60-66` | Docstring: "at one pixel-offset scale"; `scale` arg is a single int; add "for several scales, add one `MeasureTexture` per scale" with a runnable doctest example of two entries; Returns examples → `Texture_05px-deg000-Contrast` / `Texture_05px-avg-Contrast`. |
+| `prefab/_grid_section_pipeline.py:91,133,199-204` | `texture_scale: int \| list[int]` → `int`; docstring. |
+| `prefab/_heavy_round_peaks_pipeline.py:101,202,274-279` | Same. |
+| `prefab/_round_peaks_pipeline.py:52,104,129-134` | Same (`int \| List[int]` → `int`; drop unused `List` import if orphaned). |
+| `prefab/_filamentous_fungi_pipeline.py:130`, `_heavy_otsu_pipeline.py:80`, `_heavy_watershed_pipeline.py:76` | Already `int` — no change. |
 
 ### Order-dependent, no edit (guard with a test)
 
@@ -107,6 +116,9 @@ If `get_headers` order changes, values land under the wrong names **silently**.
 | `tests/gui/results_viewer/colony_view/test_grid.py:45-48,58,73` | Same; its docstring claims it matches `get_headers`. |
 | `tests/unit/util/test_measurement_outputs.py:133-176` | No literal; relies on `get_headers()[0]` being AngularSecondMoment — still true. Leave. |
 | `tests/unit/analysis/test_error_cutoffs.py:170` | `TextureGray_Contrast` (older legacy). Leave. |
+| `tests/unit/core/test_image_pipeline.py:50` | `MeasureTexture(scale=[3, 4], quant_lvl=8)` → would raise under D7. Replace with two entries, `"MeasureTexture3": MeasureTexture(scale=3, …)`, `"MeasureTexture4": MeasureTexture(scale=4, …)` — which also exercises repeated measurers through `measure()`/`_merge_on_object_labels`. |
+| `tests/unit/core/test_pipeline_serialization.py:137-148` | `test_list_parameters` uses `scale=[3, 5, 7]` as its list-param example. Replace with two `MeasureTexture` entries round-tripping (`scale` 3 and 5, keys deduped `MeasureTexture` / `MeasureTexture_1`); if list-param coverage matters, point the test at another list-typed field. |
+| `tests/unit/gui/results_viewer/test_scatter_grouping.py:14` | `"params": {"scale": [5]}` → `{"scale": 5}` (the `[5]` form keeps working via D7, but new pipeline.json writes an int). |
 
 ### Data / fixtures (leave, documented)
 
@@ -132,21 +144,41 @@ If `get_headers` order changes, values land under the wrong names **silently**.
    - Mutation proof: break the new regex (e.g. `deg\d{2}`) → round-trip red; drop the legacy
      branch → legacy test red.
    - Update the docstrings and comment in the first three text rows.
-2. **Producer** (`measure/_measure_texture.py`, new `tests/unit/measure/test_measure_texture.py`)
-   - Red first on `load_synth_yeast_plate()` + a detector: `MeasureTexture(scale=[5, 10])` returns
-     exactly `{Object_Label} ∪ get_headers(5) ∪ get_headers(10)` (131 columns) — fails today (D6).
-   - **Order guard:** per object, `Texture_05px-avg-F == mean(Texture_05px-deg{000,045,090,135}-F)` for every
-     feature F. Mutation-prove by swapping two angles in `get_headers`.
+2. **Producer: single scale** (`measure/_measure_texture.py`, new `tests/unit/measure/test_measure_texture.py`)
+   - Red first:
+     - `MeasureTexture(scale=5).scale == 5` (an int);
+     - `MeasureTexture(scale=[5]).scale == 5`;
+     - `MeasureTexture(scale=[3, 4])` raises `ValidationError` naming "one MeasureTexture per scale";
+     - `scale=0` raises.
+   - `MeasureTexture(scale=5).measure(image)` on `load_synth_yeast_plate()` plus a detector returns
+     exactly `{Object_Label} ∪ get_headers(5)` (66 columns).
+   - **Order guard:** per object, `Texture_05px-avg-F == mean(Texture_05px-deg{000,045,090,135}-F)`
+     for every feature F. Mutation-prove by swapping two angles in `get_headers`.
    - Every emitted column satisfies `TEXTURE.owns_header`.
-   - Fix the merge; update the Returns docstring.
-3. **Downstream recognition guards** (tests only)
+   - **Legacy JSON:** a pipeline JSON fragment with `"scale": [5]` loads via `ImagePipeline.from_json`.
+   - Implement the field/validator change, delete the loop, update the docstrings.
+3. **Multi-scale via repeated measurers** (`tests/unit/core/test_image_pipeline.py`,
+   `test_pipeline_serialization.py`)
+   - `ImagePipeline(meas=[MeasureTexture(scale=3), MeasureTexture(scale=5)])`: `measure()` output
+     contains both `get_headers(3)` and `get_headers(5)`, and no `_merged` columns.
+   - `to_json`/`from_json` round-trips both entries with their scales.
+   - Update the two existing list-scale tests (see the Tests table).
+   - `split_measurements` puts both scales' columns under the one `MeasureTexture` group. It groups
+     by class, so this should hold with no edit; pin it.
+4. **Prefabs** — narrow `texture_scale` to `int` in `_grid_section_pipeline.py`,
+   `_heavy_round_peaks_pipeline.py` and `_round_peaks_pipeline.py`; update their docstrings.
+   Run the prefab tests (`tests/unit/prefab`, if present) plus the serialization smoke test.
+5. **Downstream recognition guards** (tests only)
    - `_is_gui_metadata_column` and `_is_layout_metadata_column` return False for both
      `Texture_05px-avg-Contrast` and `Texture_Contrast-avg-scale05`. Mutation-prove by deleting the
      legacy branch.
    - `split_measurements` puts new-format texture columns under `MeasureTexture`.
    - Update `test_scatter_grouping.py` and `test_grid.py` literals/docstrings.
-4. **Text sweep** — `_measurement_info.py:382`, `schema/CLAUDE.md:136-137`,
-   `_error_cutoffs.py:30-31`; optional README generator + MCP spec line.
+6. **Text sweep** — `_measurement_info.py:382`, `schema/CLAUDE.md:136-137` (also its
+   `MeasureTexture` example at `:162-170`, which shows `scale: List[int] = [5]` /
+   `self.scale[0]`), `_error_cutoffs.py:30-31`; optional README generator + MCP spec line.
+   Changelog notes: new column names; `scale` is a single int; multi-element `scale` lists in old
+   `pipeline.json` no longer load (D7).
 
 ## Verification
 
@@ -154,11 +186,14 @@ If `get_headers` order changes, values land under the wrong names **silently**.
 - End, once: the affected surface via the `run-phenotypic-test` skill with
   `QT_QPA_PLATFORM=offscreen` — `tests/unit/schema tests/unit/measure tests/unit/util
   tests/unit/analysis tests/unit/gui/results_viewer tests/gui/results_viewer
-  tests/unit/core/test_image_pipeline.py tests/unit/core/test_pipeline_serialization.py`, plus
+  tests/unit/core/test_image_pipeline.py tests/unit/core/test_pipeline_serialization.py
+  tests/unit/prefab tests/smoke/test_serialization.py`, plus
   importers of `_metadata_context` / `_expected_vs_detected` (derive with grep).
 - `uv run ruff check --fix <changed paths>`; `uv run mypy src/phenotypic`.
 
 ## Out of scope
 
 Rewriting stored tables; the `TextureGray_` sample CSV and migration golden; renaming other
-measurers' columns.
+measurers' columns; a pipeline-level guard against two same-scale `MeasureTexture` entries (D8).
+The tune annotation-coverage gate covers only `detect/` + `enhance/`, so `scale` becoming a
+numeric `int` field does not enter it.
