@@ -22,7 +22,8 @@
 - Ties go to the smaller label.
 - On a `GridImage`, objects with `NaN` `Grid_RowNum` or `Grid_ColNum` keep a row but are never targets or candidates for the nearest search.
 - `MeasurementInfo` members: author `label` and `desc` only. Leave `bio_desc` as `""` and `image` unset (CLAUDE.md Gotchas).
-- **Timing (measured 2026-09-24):** one `MeasureNeighborDist().measure(synth_plate)` takes **~40 s**. 99.6% of that is the pre-existing directional pass, where `_section_bbox` → `_adv_get_grid_section_slices` → `get_row_edges`/`get_col_edges` re-fits the whole grid on each of 402 calls. The baseline test file takes **6 min 12 s** for 16 tests. Set a ≥600 s timeout on file-level runs, and share one measurement across read-only assertions (the `synth_neighbor_df` fixture in Task 3). This plan does **not** fix that hotspot; see the note in the handoff.
+- **`MeasureNeighborDist` uses only public `image.grid` members:** `info()`, `nrows`, `ncols`, `get_row_edges()`, `get_col_edges()`. No `grid._*` access anywhere in `_measure_neighbor_dist.py`; Task 0 adds a source-level guard test. Memoize locally rather than reaching into the accessor. (Tests may call private accessor methods as a reference oracle.)
+- **Timing (measured 2026-09-24):** before Task 0, one `MeasureNeighborDist().measure(synth_plate)` takes **~40–45 s**. The existing test file takes **6 min 12 s** for 16 tests, because every section lookup re-fits the grid (402 lookups, 804 fits). Until Task 0 lands, set a ≥600 s timeout on file-level runs. After Task 0, a measurement should take well under a second (the probe built all 88 cell windows in 0.09 s).
 - Keep the 8 existing directional columns' values byte-for-byte unchanged on a `GridImage`. The existing `TestEdtDistance` and `TestMeasureGridSpatialIntegration` classes must pass **without edits**.
 
 ## Review Focus
@@ -41,12 +42,199 @@
 | `src/phenotypic/analysis/_error_cutoffs.py` | add `"NeighborDist_"` prefix, keep `"GridSpatial_"` | 1 |
 | `tests/unit/analysis/test_error_cutoffs.py` | prefix drift guard covers both | 1 |
 | `tests/unit/measure/test_measure_grid_spatial.py` | add `TestNearestSchema`, `TestNearestObjectsHelper`, `TestNearestColumns`, `TestNearestProperty` | 1–3 |
-| `src/phenotypic/measure/_measure_neighbor_dist.py` | add `_nearest_objects`, `_nearest_relation`; base class change; `_operate` split; docstring | 2, 3 |
+| `src/phenotypic/measure/_measure_neighbor_dist.py` | public grid API only + memoized `_section_bboxes` (0); add `_nearest_objects`, `_nearest_relation` (2); base class change, `_operate` split, docstring (3) | 0, 2, 3 |
 | `docs/superpowers/specs/2026-09-01-results-scatter-tab/design.md` | dated note: column count is now 11 | 4 |
 
 ## Task DAG
 
-`Task 1 → Task 3`, `Task 2 → Task 3`, `Task 3 → Task 4`. Tasks 1 and 2 touch different source files but share the test file, so run them **sequentially** (1, then 2) to avoid merge tax.
+`Task 0 → Task 1 → Task 2 → Task 3 → Task 4`, **sequential**. Task 0 goes first so every later test run is fast. Tasks 0, 2 and 3 edit the same source file, and all tasks share the test file, so parallelism would only buy merge tax.
+
+---
+
+### Task 0: Public grid API only; memoize section windows (performance)
+
+**Why:** one `measure(synth_plate)` takes ~45 s. `_section_bbox` is called 402 times, and each call goes through the **private** `grid._adv_get_grid_section_slices`. That calls `get_row_edges()` and `get_col_edges()`, and on `CenteredAutoGridFinder` each of those re-fits the whole grid (`_fit_grid` → `MeasureBounds` over every colony). That's 804 identical full-plate fits. The user's constraint: **`MeasureNeighborDist` must use only public `image.grid` members** (`info()`, `nrows`, `ncols`, `get_row_edges()`, `get_col_edges()`) and memoize locally. Probe (2026-09-24): fetching the two public edge arrays once and building every occupied cell's window matched `_adv_get_grid_section_slices` on **88/88** synth-plate cells, in **0.09 s**.
+
+**Files:**
+- Modify: `src/phenotypic/measure/_measure_neighbor_dist.py` (`_operate`, `_collect_neighbors`; replace `_section_bbox` with `_section_bboxes`)
+- Test: `tests/unit/measure/test_measure_grid_spatial.py` (append a class)
+
+**Interfaces:**
+- Produces: `MeasureNeighborDist._section_bboxes(grid_info: pd.DataFrame, row_edges: np.ndarray, col_edges: np.ndarray, *, height: int, width: int) -> dict[tuple[int, int], tuple[int, int, int, int]]`. It's a staticmethod mapping `(grid_row, grid_col)` → inclusive `(min_rr, max_rr, min_cc, max_cc)` window for every occupied, on-grid cell. `_collect_neighbors(self, section_groups, section_bbox, target_row, target_col, nrows, ncols)`: the `image` and `grid_info` parameters are dropped. Directional output is **unchanged**.
+
+- [ ] **Step 1: Capture the pre-change output** (a throwaway golden; not committed):
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run python -c "from phenotypic.data import load_synth_yeast_plate; from phenotypic.measure import MeasureNeighborDist; MeasureNeighborDist().measure(load_synth_yeast_plate()).to_pickle('/tmp/nd_before.pkl')"
+```
+(~45 s.) Pickle is used only because it round-trips the enum column keys and dtypes exactly for `check_exact` comparison. The file is written by this step and read back once by Step 6 on the same machine; never load a pickle you didn't just write.
+
+- [ ] **Step 2: Write the failing tests.** Append:
+
+```python
+class TestPublicGridApiOnly:
+    """MeasureNeighborDist uses only public image.grid members and fits the
+    grid once per measurement, not once per section."""
+
+    def test_module_uses_no_private_grid_members(self):
+        import inspect
+        import phenotypic.measure._measure_neighbor_dist as mod
+        assert "grid._" not in inspect.getsource(mod)
+
+    def test_section_bboxes_match_grid_accessor_windows(self, synth_plate):
+        # Oracle: the accessor's private window helper, called from the TEST
+        # only, pins that the public-API reimplementation is exact.
+        grid = synth_plate.grid
+        info = grid.info(include_metadata=False)
+        got = MeasureNeighborDist._section_bboxes(
+                info, grid.get_row_edges(), grid.get_col_edges(),
+                height=synth_plate.shape[0], width=synth_plate.shape[1],
+        )
+        assert len(got) > 0
+        for (r, c), bbox in got.items():
+            (min_rr, min_cc), (max_rr, max_cc) = grid._adv_get_grid_section_slices(
+                    r * grid.ncols + c, info
+            )
+            want = tuple(int(np.asarray(v).item())
+                         for v in (min_rr, max_rr, min_cc, max_cc))
+            assert bbox == want, (r, c)
+
+    def test_edges_fetched_once_per_measurement(self, synth_plate, monkeypatch):
+        from phenotypic._core._image_parts.accessors import GridAccessor
+        calls = {"row": 0, "col": 0}
+        orig_row, orig_col = GridAccessor.get_row_edges, GridAccessor.get_col_edges
+
+        def row_spy(self):
+            calls["row"] += 1
+            return orig_row(self)
+
+        def col_spy(self):
+            calls["col"] += 1
+            return orig_col(self)
+
+        monkeypatch.setattr(GridAccessor, "get_row_edges", row_spy)
+        monkeypatch.setattr(GridAccessor, "get_col_edges", col_spy)
+        MeasureNeighborDist().measure(synth_plate)
+        # Before: 402 each (one pair per section lookup). After: exactly 1.
+        # grid.info() fits through the finder's _operate, not these getters.
+        assert calls == {"row": 1, "col": 1}
+```
+
+The spy test pins the mechanism (fetch the edges once) without timing anything, so it can't flake on a busy node.
+
+- [ ] **Step 3: Run them and confirm they fail.**
+Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/measure/test_measure_grid_spatial.py::TestPublicGridApiOnly -q --no-header -p no:randomly -o addopts= -m "not slow"`
+Expected: FAIL. `test_module_uses_no_private_grid_members` (source contains `grid._idx_ref_matrix`), `AttributeError: _section_bboxes`, and the spy count `{'row': 402, 'col': 402}`. (~45 s.)
+
+- [ ] **Step 4: Implement.** In `src/phenotypic/measure/_measure_neighbor_dist.py`, add `BBOX` to the schema import (`from phenotypic.schema import NEIGHBOR_DIST, GRID, BBOX`). Then:
+
+  1. At the top of `_operate`, after `nrows, ncols = ...`, add:
+
+```python
+        # Each public edge getter re-fits the grid, so fetch both once and
+        # memoize every occupied cell's window up front.
+        section_bbox = self._section_bboxes(
+                grid_info,
+                image.grid.get_row_edges(),
+                image.grid.get_col_edges(),
+                height=image.shape[0],
+                width=image.shape[1],
+        )
+```
+
+  2. In the per-section loop, delete `target_idx = int(image.grid._idx_ref_matrix[target_row, target_col])`. Replace `target_bbox = self._section_bbox(image, target_idx, grid_info)` with `target_bbox = section_bbox[(target_row, target_col)]`. Replace the `_collect_neighbors(...)` call with:
+
+```python
+            valid_neighbors = self._collect_neighbors(
+                    section_groups, section_bbox,
+                    target_row, target_col, nrows, ncols,
+            )
+```
+
+  3. Replace `_section_bbox` with:
+
+```python
+    @staticmethod
+    def _section_bboxes(
+            grid_info: pd.DataFrame,
+            row_edges: np.ndarray,
+            col_edges: np.ndarray,
+            *,
+            height: int,
+            width: int,
+    ) -> dict[tuple[int, int], tuple[int, int, int, int]]:
+        """Window (min_rr, max_rr, min_cc, max_cc) for every occupied grid cell.
+
+        The cell's grid rectangle, widened to cover every object assigned to
+        it (colonies may spill past a grid line), then clipped to the image.
+        Built from public grid members only, once per measurement.
+        """
+        bboxes: dict[tuple[int, int], tuple[int, int, int, int]] = {}
+        for (g_row, g_col), sec in grid_info.groupby(
+                [GRID.ROW_NUM, GRID.COL_NUM], observed=True
+        ):
+            if pd.isna(g_row) or pd.isna(g_col):
+                continue
+            r, c = int(g_row), int(g_col)
+            min_rr = max(min(row_edges[r], sec[BBOX.MIN_RR].min()), 0)
+            max_rr = min(max(row_edges[r + 1], sec[BBOX.MAX_RR].max()), height - 1)
+            min_cc = max(min(col_edges[c], sec[BBOX.MIN_CC].min()), 0)
+            max_cc = min(max(col_edges[c + 1], sec[BBOX.MAX_CC].max()), width - 1)
+            bboxes[(r, c)] = (int(min_rr), int(max_rr), int(min_cc), int(max_cc))
+        return bboxes
+```
+
+  4. Replace `_collect_neighbors` with:
+
+```python
+    def _collect_neighbors(
+            self,
+            section_groups: dict[tuple[int, int], pd.DataFrame],
+            section_bbox: dict[tuple[int, int], tuple[int, int, int, int]],
+            target_row: int,
+            target_col: int,
+            nrows: int,
+            ncols: int,
+    ) -> list[tuple[int, int, tuple[int, int, int, int], np.ndarray, str, str]]:
+        """Enumerate valid (in-bounds, non-empty) neighbor sections."""
+        valid: list[tuple[
+            int, int, tuple[int, int, int, int], np.ndarray, str, str
+        ]] = []
+        for d_row, d_col, label_col, dist_col in self._DIRECTIONS:
+            n_row, n_col = target_row + d_row, target_col + d_col
+            if not (0 <= n_row < nrows and 0 <= n_col < ncols):
+                continue
+            n_section_df = section_groups.get((n_row, n_col))
+            if n_section_df is None or n_section_df.empty:
+                continue
+            n_labels = n_section_df[OBJECT.LABEL].to_numpy().astype(np.int64)
+            valid.append((n_row, n_col, section_bbox[(n_row, n_col)],
+                          n_labels, label_col, dist_col))
+        return valid
+```
+
+  `section_groups` and `section_bbox` share their keys (same groupby, same `NaN` skip), so the lookup can't miss.
+
+- [ ] **Step 5: Run the whole file and confirm it passes.** The existing 16 tests pin the directional values:
+Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/measure/test_measure_grid_spatial.py -q --no-header -p no:randomly -o addopts= -m "not slow" --durations=5`
+Expected: PASS. The file should now take seconds, not ~6 min. Record the new durations in the commit body.
+
+- [ ] **Step 6: Compare against the golden:**
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run python -c "import pandas as pd; from phenotypic.data import load_synth_yeast_plate; from phenotypic.measure import MeasureNeighborDist; pd.testing.assert_frame_equal(MeasureNeighborDist().measure(load_synth_yeast_plate()), pd.read_pickle('/tmp/nd_before.pkl'), check_exact=True); print('identical')"
+```
+Expected: `identical`.
+
+- [ ] **Step 7: Mutation gate.** In `_section_bboxes`, change `max(row_edges[r + 1], sec[BBOX.MAX_RR].max())` to `row_edges[r + 1]` (drop the widen-to-colonies step). Confirm `test_section_bboxes_match_grid_accessor_windows` FAILS, then revert. If it passes, the synth plate has no colony spilling past a row line. In that case, instead mutate `height - 1` → `height - 2` and confirm the failure there, and say so in the commit body.
+
+- [ ] **Step 8: Commit.**
+
+```bash
+uv run ruff check --fix src/phenotypic/measure/_measure_neighbor_dist.py tests/unit/measure/test_measure_grid_spatial.py
+git add src/phenotypic/measure/_measure_neighbor_dist.py tests/unit/measure/test_measure_grid_spatial.py
+git commit -m "perf(measure): MeasureNeighborDist uses public grid API, fits grid once"
+```
 
 ---
 
@@ -495,7 +683,7 @@ git commit -m "feat(measure): exact branch-and-bound nearest-object helper"
 @pytest.fixture(scope="module")
 def synth_neighbor_df(synth_plate):
     """One MeasureNeighborDist run on the synth plate, shared by the
-    read-only assertions below: a run costs ~40 s (see Timing)."""
+    read-only assertions below (they only read the frame)."""
     return MeasureNeighborDist().measure(synth_plate)
 
 
@@ -662,7 +850,7 @@ from phenotypic.abc_ import MeasureFeatures
   2. Change the class line to `class MeasureNeighborDist(MeasureFeatures):`.
 
   3. Rename the existing `_operate` to `_measure_grid_directions(self, image: GridImage, grid_info: pd.DataFrame, objmap_full: np.ndarray) -> dict`. Make these edits and keep everything else unchanged:
-     - delete its first three statements (`grid_info = ...`, `objmap_full = ...` and `nrows, ncols = ...`), and replace them with `nrows, ncols = image.grid.nrows, image.grid.ncols`;
+     - delete its first two statements (`grid_info = ...` and `objmap_full = ...`), because they're now parameters. Keep `nrows, ncols = ...` and Task 0's `section_bbox = self._section_bboxes(...)` block as they are;
      - delete the final three lines (`df = pd.DataFrame(results)`, `df.insert(...)`, `return df`) and replace them with `return results`.
 
   The body in between (label bookkeeping, `section_groups`, the per-section EDT loop) is untouched.

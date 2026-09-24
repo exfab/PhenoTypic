@@ -256,6 +256,33 @@ prefixes, each `NaN` on the other side's rows. Re-measuring the older stores
 (`--mode measure`) brings them onto the new prefix. This is the same thing
 that happens when any column is added, so there's no special handling.
 
+### 3.10 Public grid API only; one grid fit per measurement
+
+**Found while planning.** One `measure(synth_plate)` (96 colonies, 600×800)
+took ~45 s, and 99.6% of that was the existing directional pass.
+`_section_bbox` ran 402 times, each through the **private**
+`grid._adv_get_grid_section_slices`. That calls `get_row_edges()` and
+`get_col_edges()`, and on `CenteredAutoGridFinder` each of those re-fits the
+whole grid (`_fit_grid` → `MeasureBounds` over every colony). That's 804
+identical full-plate fits, so the cost grows roughly with the square of plate
+size.
+
+**Rule.** `MeasureNeighborDist` uses only public `image.grid` members:
+`info()`, `nrows`, `ncols`, `get_row_edges()`, `get_col_edges()`. It memoizes
+locally rather than reaching into accessor internals. It fetches each edge
+array **once** per measurement and builds a `{(grid_row, grid_col): window}`
+dict for every occupied cell. Each window is the cell's grid rectangle,
+widened to cover its colonies and clipped to the image, exactly what the
+private helper returned. Cells are keyed by `(row, col)`, which removes the
+only use of `grid._idx_ref_matrix`.
+
+**Verified before planning.** On the synth plate the public-API windows
+matched `_adv_get_grid_section_slices` on 88/88 occupied cells, and building
+all of them took 0.09 s. Directional values are therefore unchanged. Tests pin
+three things: no `grid._` in the module source, window equality against the
+private helper (used as a test-side oracle), and exactly one call to each
+edge getter per measurement.
+
 ## 4. Edge cases
 
 | Case | Result |
