@@ -15,7 +15,14 @@ from typing import Any, Literal, TypeAlias
 import polars as pl
 
 from phenotypic._cli._cli_directory_scanner import scan_directory_structure
-from phenotypic._cli._metadata_join import prepare_metadata_join_keys
+from phenotypic._cli._metadata_join import (
+    prepare_metadata_join_keys,
+    read_metadata_csv,
+)
+from phenotypic._cli._metadata_preflight import (
+    source_join_key_frame,
+    unverified_measurement_join_columns,
+)
 from phenotypic._gui.shell._metadata_context import (
     MetadataResolutionState,
     normalize_metadata_input_columns,
@@ -23,15 +30,8 @@ from phenotypic._gui.shell._metadata_context import (
 )
 from phenotypic._gui.shell._sandbox import SandboxRoot
 from phenotypic._gui.shell._source_context import sandbox_fingerprint
-from phenotypic.schema import (
-    EXPERIMENT,
-    IMAGE,
-)
 from phenotypic.sdk_ import (
     STORE_SUFFIX,
-    metadata_member_for_header,
-    source_image_stem,
-    source_image_suffix,
     store_revision_identity,
 )
 
@@ -345,49 +345,6 @@ def _source_snapshot(
     return "resolved", resolved, f"sha256:{digest.hexdigest()}", images
 
 
-def _source_join_key_frame(
-    images: tuple[tuple[str, Path], ...],
-) -> pl.DataFrame:
-    """Project source inventory into keys emitted by CLI aggregation."""
-    return pl.DataFrame(
-        {
-            str(IMAGE.IMAGE_NAME): [
-                source_image_stem(image) for _dataset, image in images
-            ],
-            str(IMAGE.SUFFIX): [
-                source_image_suffix(image) for _dataset, image in images
-            ],
-            str(EXPERIMENT.DATASET): [
-                dataset for dataset, _image in images
-            ],
-        }
-    )
-
-
-def _unverified_measurement_join_columns(
-    metadata_columns: list[str],
-    source_columns: list[str],
-) -> tuple[str, ...]:
-    """Return non-source columns that may remain production join keys.
-
-    Every qualified name (``Prefix_Label``) is conservative join-key
-    territory because a built-in or external operation may emit that exact
-    column. This deliberately does not depend on the registered schema.
-    Unqualified bare labels are excluded because, when they are not common,
-    ``join_metadata`` prefixes them as metadata attributes.
-    """
-    source_set = set(source_columns)
-    return tuple(
-        sorted(
-            column
-            for column in metadata_columns
-            if column not in source_set
-            and "_" in column
-            and metadata_member_for_header(column) is None
-        )
-    )
-
-
 def _request_fingerprint(fields: dict[str, object]) -> str:
     """Hash the server-derived source/metadata preflight fields."""
     encoded = json.dumps(
@@ -443,7 +400,7 @@ def build_metadata_preflight(
             # belong to its metadata namespace. The normalizer copies and
             # rejects legacy/current conflicts before preflight uses it.
             metadata_frame = normalize_metadata_input_columns(
-                pl.read_csv(metadata_path)
+                read_metadata_csv(metadata_path)
             )
             metadata_rows = metadata_frame.height
         except (
@@ -463,7 +420,7 @@ def build_metadata_preflight(
                     "Select a valid image source to check metadata compatibility.",
                 )
             else:
-                source_frame = _source_join_key_frame(images)
+                source_frame = source_join_key_frame(images)
                 prepared = prepare_metadata_join_keys(
                     source_frame,
                     metadata_frame,
@@ -471,7 +428,7 @@ def build_metadata_preflight(
                 analysis = prepared.analysis
                 join_columns = analysis.columns
                 unverified_join_columns = (
-                    _unverified_measurement_join_columns(
+                    unverified_measurement_join_columns(
                         metadata_frame.columns,
                         source_frame.columns,
                     )

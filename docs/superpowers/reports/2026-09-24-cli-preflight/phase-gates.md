@@ -30,3 +30,22 @@ equals `81d19ec`) before attribution.
   installed); the same 12 fail at `425eb66`. Not attributable to this change.
 - Guards run with Task 4: `tests/unit/ci/test_startup_imports.py`,
   `test_deferred_imports.py`, `tests/unit/tune/test_annotation_coverage.py`: 240 passed.
+
+## Phase C (after `a18211a`; Tasks 5-8, plus Task 9 already committed)
+
+- **Surface:** `tests/unit/cli`, `tests/integration/cli`, `tests/unit/gui/run_console`,
+  `tests/integration/gui`, `tests/unit/detect/nn`, `tests/unit/core/test_pipeline_serialization.py`,
+  `tests/unit/ci`, `tests/unit/test_docs_staged_cli.py`: every place the new checks, the
+  duplicate-key refusal, the preload hook or the GPU-detector changes can reach a CLI run.
+  **4680 passed, 35 skipped, 16 xfailed, 1 failed** (9:29).
+- **The one failure is an artifact of this session, not of the change.**
+  `tests/integration/cli/test_migrate_end_to_end.py::test_fixture_shaped_run_completes_32_measured_and_four_zero_object_images`
+  failed with `NameError: name 'read_metadata_csv' is not defined`. The test spawns fresh
+  worker processes (`--njobs 2`), and one of them imported
+  `_embedded_measurement_tables.py` in the seconds between two edits Task 11 made to it
+  while the gate ran (the call site changed before its import was added). Re-run in
+  isolation on the finished code it passes (`1 passed`), and again in the Task 11 neighbor
+  run (`155 passed`). Lesson recorded: never edit a module a running gate can still
+  import fresh; a long-lived xdist worker is safe, a newly spawned process is not.
+- **Also verified in Phase C:** placeholder-image CLI tests (10 files) against the input
+  checks: 388 passed.

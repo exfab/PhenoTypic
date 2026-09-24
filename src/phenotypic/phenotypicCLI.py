@@ -2297,13 +2297,16 @@ def phenotypic_cli(
             click.echo(str(e), err=True)
             sys.exit(1)
 
-        # Validate metadata CSV early
+        # Validate metadata CSV early, outside --skip-validation, with the one
+        # reader every metadata consumer uses (full-file dtype inference).
+        # The old pandas parse accepted CSVs the Polars readers later failed
+        # on (spec §10.5, F22; review R22).
         if metadata_csv is not None:
-            import pandas as pd
+            from phenotypic._cli._metadata_join import read_metadata_csv
 
             try:
-                meta_df = pd.read_csv(metadata_csv)
-                if len(meta_df) == 0:
+                meta_df = read_metadata_csv(metadata_csv)
+                if meta_df.height == 0:
                     click.echo(
                         f"Warning: metadata CSV '{metadata_csv}' has zero rows",
                         err=True,

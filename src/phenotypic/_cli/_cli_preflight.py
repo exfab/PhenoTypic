@@ -61,6 +61,13 @@ FindingCode = Literal[
     "PF-BIT-DEPTH",
     "PF-RAW-NO-RAWPY",
     "PF-STEM-COLLISION",
+    "PF-META-PARSE",
+    "PF-META-ALIAS",
+    "PF-META-NO-KEYS",
+    "PF-META-DUP-KEYS",
+    "PF-META-UNMATCHED",
+    "PF-META-ORPHANS",
+    "PF-META-UNVERIFIED",
 ]
 
 #: One remedy per finding code, shown under the finding's message.
@@ -130,6 +137,36 @@ HINTS: dict[str, str] = {
     "PF-STEM-COLLISION": (
         "Rename or move one file of each pair listed: within a dataset, each "
         "input's name without its extension must be unique."
+    ),
+    "PF-META-PARSE": (
+        "Fix the CSV so it parses with full-file type inference; check for a "
+        "value that does not fit its column (e.g. text in a numeric column)."
+    ),
+    "PF-META-ALIAS": (
+        "The CSV carries both a legacy and a current spelling of one metadata "
+        "column with conflicting values; keep one spelling."
+    ),
+    "PF-META-NO-KEYS": (
+        "Add a column that identifies each image, e.g. ImageName (the file "
+        "name without its extension), optionally with Dataset."
+    ),
+    "PF-META-DUP-KEYS": (
+        "Make each join key unique in the CSV; duplicated keys copy every "
+        "measured row once per duplicate."
+    ),
+    "PF-META-UNMATCHED": (
+        "Add rows for the listed images, or check that ImageName values match "
+        "file names without extensions; unmatched images are dropped from "
+        "measurements.csv (the master table keeps them)."
+    ),
+    "PF-META-ORPHANS": (
+        "Expected when the CSV describes wells or strains that grew nothing; "
+        "they appear as metadata-only rows (QC_MetadataOnly)."
+    ),
+    "PF-META-UNVERIFIED": (
+        "These columns can only be matched against measurements, so the "
+        "preflight cannot check them; the production join uses any of them "
+        "that the measurements emit."
     ),
     "PF-NO-DETECTOR": (
         "Add an object detector (for example OtsuDetector) to the pipeline's "
@@ -664,6 +701,77 @@ def check_stem_collisions(context: PreflightContext) -> list[PreflightFinding]:
     ]
 
 
+def check_metadata_join(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-META-*``: how ``--metadata`` would join onto the scanned images.
+
+    Spec §9, F21 (review R1). Only ``full`` mode joins metadata: ``process``
+    ignores ``--metadata`` and ``measure`` joins nothing new. The CSV is read
+    with the one shared reader and normalized exactly as the production join
+    normalizes it (``prepare_metadata_join_keys``).
+
+    The key findings are errors only when the CSV has no measurement-level key
+    column. A per-well plate map keyed on ``ImageName + Grid_RowNum +
+    Grid_ColNum`` looks duplicated against the source-only key frame, and a
+    layout keyed on grid position alone looks keyless, yet both join correctly
+    against the measurement frame; with an unverifiable column present the
+    same findings are warnings.
+    """
+    metadata_csv = context.config.metadata_csv
+    if context.mode != "full" or metadata_csv is None:
+        return []
+    from ._metadata_join import read_metadata_csv
+    from ._metadata_preflight import analyze_metadata_join
+
+    try:
+        frame = read_metadata_csv(metadata_csv)
+    except Exception as exc:  # noqa: BLE001 -- any parse failure is the finding
+        return [PreflightFinding("PF-META-PARSE", "error", f"{metadata_csv} does not parse: {exc}")]
+    images = [(d.name, Path(p)) for d in context.datasets for p in d.images]
+    try:
+        analysis = analyze_metadata_join(images, frame)
+    except ValueError as exc:
+        return [PreflightFinding("PF-META-ALIAS", "error", str(exc))]
+
+    unverified = analysis.unverified_join_columns
+    key_severity: Severity = "warning" if unverified else "error"
+    findings: list[PreflightFinding] = []
+    if not analysis.join_columns:
+        findings.append(PreflightFinding(
+            "PF-META-NO-KEYS", key_severity,
+            f"{metadata_csv} shares no column with the images' ImageName, "
+            "FileSuffix or Dataset"
+            + (", so without a measurement-level key nothing would join" if not unverified
+               else "; it may still join on the measurement-level columns below"),
+        ))
+    if analysis.duplicate_key_count:
+        findings.append(PreflightFinding(
+            "PF-META-DUP-KEYS", key_severity,
+            f"{analysis.duplicate_key_count} metadata row(s) repeat a key on "
+            f"{', '.join(analysis.join_columns)}"
+            + (" (possibly distinguished by the measurement-level columns below)" if unverified else ""),
+        ))
+    if analysis.unmatched_images:
+        findings.append(PreflightFinding(
+            "PF-META-UNMATCHED", "warning",
+            f"{len(analysis.unmatched_images)} of {analysis.source_count} image(s) "
+            f"have no metadata row on {', '.join(analysis.join_columns)}",
+            subjects=analysis.unmatched_images,
+        ))
+    if analysis.metadata_only_count and analysis.join_columns:
+        findings.append(PreflightFinding(
+            "PF-META-ORPHANS", "warning",
+            f"{analysis.metadata_only_count} of {analysis.metadata_row_count} "
+            "metadata row(s) match no image",
+        ))
+    if unverified:
+        findings.append(PreflightFinding(
+            "PF-META-UNVERIFIED", "warning",
+            f"the CSV joins on measurement-level column(s) {', '.join(unverified)}, "
+            "which cannot be checked before measuring",
+        ))
+    return findings
+
+
 #: The checks :func:`run_preflight` runs, in order: pipeline, environment,
 #: cluster, inputs, metadata, output. Later tasks register theirs here.
 CHECKS: tuple[Check, ...] = (
@@ -680,6 +788,7 @@ CHECKS: tuple[Check, ...] = (
     check_detect_mode_on_gray,
     check_rgb_ops_on_gray,
     check_bit_depth,
+    check_metadata_join,
 )
 
 
