@@ -225,6 +225,10 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
         walkthrough of measuring and exporting colony data.
     """
 
+    #: Gray-tolerant: the only RGB read is in a figure helper, gated by
+    #: base_layer="rgb"; measurement never reads RGB. Declared for the run preflight (spec §3).
+    _requires_rgb_input: ClassVar[bool] = False
+
     _measurement_infoclass: ClassVar[type] = SYMMETRIC_ZONES
 
     intensity_source: Literal["gray", "detect_mat"] = "gray"

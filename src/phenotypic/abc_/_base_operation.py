@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any, ClassVar, Optional
 
 import importlib.util
 import json
@@ -17,6 +17,9 @@ from phenotypic.sdk_._io_constants import (
     ensure_typed_json_suffix,
 )
 from phenotypic.sdk_._json_io import read_json_source
+
+if TYPE_CHECKING:
+    from phenotypic.abc_._requirements import OperationRequirements
 
 # Check for optional dependencies
 PYMPLER_AVAILABLE = importlib.util.find_spec("pympler") is not None
@@ -318,6 +321,42 @@ class BaseOperation(BaseModel, ABC):
                 f"or a compatible class."
             )
         return op_class.model_validate(envelope.get("params", {}) or {})
+
+    #: The operation reads RGB pixels on every call and fails on a grayscale
+    #: image. A subclass whose requirement depends on a field overrides
+    #: :meth:`preflight_requirements` instead. Set it explicitly -- ``False``
+    #: included -- on any class that reads ``.rgb[`` or ``.color.``; the
+    #: ratchet in ``tests/unit/abc_/test_preflight_requirements.py`` checks.
+    _requires_rgb_input: ClassVar[bool] = False
+    #: Optional packages the operation imports lazily (import names).
+    _requires_modules: ClassVar[tuple[str, ...]] = ()
+    #: The ``pyproject`` extra providing :attr:`_requires_modules`.
+    _requires_extra: ClassVar[Optional[str]] = None
+
+    def preflight_requirements(self) -> "OperationRequirements":
+        """What this operation needs from the run that executes it.
+
+        Read by the CLI's run preflight, which refuses an incompatible run
+        before any image is processed (spec
+        ``2026-09-24-cli-preflight`` §3). ``grid_image`` is derived from the
+        type: every operation that rejects a plain ``Image`` derives from
+        ``GridOperation`` or ``GridMeasureFeatures``. The rest come from the
+        ``_requires_*`` class variables. Override, calling ``super()``, when a
+        requirement depends on a field.
+
+        Returns:
+            The operation's requirements.
+        """
+        from phenotypic.abc_._grid_measure import GridMeasureFeatures
+        from phenotypic.abc_._grid_operation import GridOperation
+        from phenotypic.abc_._requirements import OperationRequirements
+
+        return OperationRequirements(
+            grid_image=isinstance(self, (GridOperation, GridMeasureFeatures)),
+            rgb_input=self._requires_rgb_input,
+            modules=self._requires_modules,
+            extra=self._requires_extra,
+        )
 
     def _log_memory_usage(
             self,

@@ -13,7 +13,7 @@ References:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated
+from typing import ClassVar, TYPE_CHECKING, Annotated
 
 import numpy as np
 from pydantic import Field, model_validator
@@ -185,6 +185,10 @@ class FocusEdgeColorPhase(NormalizedOutputMixin, FocusEdge):
         :class:`FocusEdgeMonogenicPhase`, which this reduces to when both chroma weights are
         ``0.0``.
     """
+
+    #: Reads RGB on every call and fails on a grayscale image (run preflight, spec §3).
+    #: Reads image.rgb[:] and rejects a non-3-channel array.
+    _requires_rgb_input: ClassVar[bool] = True
 
     color_space: ColorSpaceName = "lab"
     fusion: PhaseFusion = "joint"
