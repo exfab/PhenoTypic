@@ -268,6 +268,21 @@ class JoinMetadata(PostMeasurement):
         rest = [c for c in table.columns if c not in keys]
         return table[[*keys, *rest]], keys
 
+    def preflight_columns(self, available):
+        """Keys this join would miss, and the columns it adds, given *available*.
+
+        Runs :meth:`_normalized_table` and the alias coalescing ``_operate``
+        runs, on an empty frame with the *available* columns, so the key
+        spelling is the frame's (``on`` holds the table's spelling after
+        validation; review R6). See ``PostMeasurement.preflight_columns``.
+        """
+        frame = pd.DataFrame(columns=[str(column) for column in available])
+        table, keys = self._normalized_table(frame.columns)
+        result = coalesce_metadata_aliases(frame, keys)
+        missing = tuple(key for key in keys if key not in result.columns)
+        produced = tuple(str(c) for c in table.columns if c not in keys)
+        return missing, produced
+
     def _operate(self, df: pd.DataFrame) -> pd.DataFrame:
         """Left-join the metadata columns onto ``df``.
 

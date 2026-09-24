@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, cast
+from typing import ClassVar, List, cast
 
 import pandas as pd
 from pydantic import field_validator
@@ -99,6 +99,16 @@ class MergeMetadata(PostMeasurement):
     def _prefix_label(cls, label: str) -> str:
         """Apply the schema category prefix (generic ``Metadata_`` fallback) to a non-empty label."""
         return ensure_metadata_prefix(label) if label else ""
+
+
+    #: Reads a metadata column by contract (run preflight, spec §8).
+    _preflight_reads_metadata_only: ClassVar[bool] = True
+
+    def preflight_columns(self, available):
+        """Needs every entry of ``columns``; adds ``label``. See ``PostMeasurement.preflight_columns``."""
+        from phenotypic.post._utils import missing_metadata_columns
+
+        return missing_metadata_columns(available, list(self.columns)), (self.label,) if self.label else ()
 
     def _operate(self, df: pd.DataFrame) -> pd.DataFrame:
         """Merge the specified columns into a new column.
