@@ -655,15 +655,20 @@ deserializes a pipeline, not only in every entry point. Local runs execute image
 joblib's default loky backend (`_cli_execution_strategies.py:375`; the staged strategy at
 `_cli_staged_strategy.py:214`, `:351`), whose workers are fresh processes that never pass
 through `main`; the review reproduced a local `--njobs 2` run failing every image even with
-the main process preloaded (R2). `preload_custom_operation_modules()` is therefore made
-idempotent (a module-level set of already-imported names) and called in two kinds of place:
-in the main CLI immediately after `load_runtime_dependencies()` (`phenotypicCLI.py:1805`),
-and at the top of every function that calls `ImagePipeline.from_json` in a worker, such as
-`process_single_image_core` (`_cli_process_single.py:261`), the measure-mode core, the
-process-only core, the staged Stage-1 and Stage-3 callables, `_cli_chunk_writer`,
-`_cli_recompile_worker` and the non-staged finalizer path. The list is derived by grepping for
-`from_json(` and for `phenotypic._cli._cli_` module strings under `_cli/` (plan Task 7), not
-from this paragraph.
+the main process preloaded (R2).
+
+*As implemented* (plan Task 7), the preload runs at the one step every such process passes
+through: class resolution. `SerializablePipeline._find_class_in_phenotypic` searches the
+`phenotypic` namespace; on a miss, if `PHENOTYPIC_PRELOAD_MODULES` names any module, it
+imports them and searches once more. This reaches the CLI, SLURM workers, loky workers and
+any future call site by construction, where the originally planned per-site calls would have
+needed a list that a new site could fall out of. Because `_core` may not import `_cli`, the
+function moved to `phenotypic.sdk_._preload`, and `_cli/_cli_preload.py` re-exports it for
+existing callers. The main CLI also calls it explicitly right after
+`load_runtime_dependencies()`, so a broken module name fails at startup with its own
+`ImportError`. An unresolved class raises `UnknownOperationClassError` (an `AttributeError`
+subclass) whose message names the registration contract, and `load_pipeline_for_validation`
+reports it as `PF-CUSTOM-OP`.
 
 **§10.3 No prompt inside a pipeline (F10, F11).** The two DINOv3 runtime call sites pass
 `interactive=False`, which is what `Dinov3CheckpointManager.download`'s own docstring says

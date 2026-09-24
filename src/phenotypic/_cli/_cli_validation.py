@@ -50,7 +50,7 @@ def validate_pipeline(
     if skip_validation:
         return True, None
 
-    pipeline, error = read_pipeline_file(pipeline_path)
+    pipeline, error, _ = read_pipeline_file(pipeline_path)
     if pipeline is None:
         return False, error
     error = check_loaded_pipeline(pipeline)
@@ -59,24 +59,25 @@ def validate_pipeline(
 
 def read_pipeline_file(
     pipeline_path: Path,
-) -> Tuple[Optional[ImagePipeline], Optional[str]]:
+) -> Tuple[Optional[ImagePipeline], Optional[str], Optional[BaseException]]:
     """Load a pipeline file, turning every load failure into a message.
 
     Args:
         pipeline_path: Path to pipeline JSON file.
 
     Returns:
-        ``(pipeline, None)`` on success, else ``(None, message)`` with the
-        wording ``validate_pipeline`` has always reported.
+        ``(pipeline, None, None)`` on success, else ``(None, message, error)``
+        with the wording ``validate_pipeline`` has always reported and the
+        exception, so a caller can classify it.
     """
     try:
-        return ImagePipeline.from_json(pipeline_path), None
-    except FileNotFoundError:
-        return None, f"Pipeline file not found: {pipeline_path}"
+        return ImagePipeline.from_json(pipeline_path), None, None
+    except FileNotFoundError as e:
+        return None, f"Pipeline file not found: {pipeline_path}", e
     except json.JSONDecodeError as e:
-        return None, f"Invalid JSON in pipeline file: {e}"
+        return None, f"Invalid JSON in pipeline file: {e}", e
     except Exception as e:
-        return None, f"Failed to load pipeline: {type(e).__name__}: {e}"
+        return None, f"Failed to load pipeline: {type(e).__name__}: {e}", e
 
 
 def check_loaded_pipeline(pipeline: ImagePipeline) -> Optional[str]:

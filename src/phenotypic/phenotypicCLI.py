@@ -1908,6 +1908,13 @@ def phenotypic_cli(
     # error. Every mode pays the import, usage errors included -- deliberate,
     # because a run that reaches an image has already paid it (spec A/P13).
     load_runtime_dependencies()
+    # Custom operations register on import; doing it here, before any
+    # pipeline is read, makes a broken PHENOTYPIC_PRELOAD_MODULES entry fail
+    # at startup with its own ImportError. Class resolution also preloads on
+    # a miss, which is what reaches worker processes (spec §10.2).
+    from phenotypic.sdk_._preload import preload_custom_operation_modules
+
+    preload_custom_operation_modules()
     _load_cli_runtime()
     try:
         _reject_unexpected_positional_args(ctx.args)

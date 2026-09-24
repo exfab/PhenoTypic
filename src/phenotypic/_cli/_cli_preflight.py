@@ -47,6 +47,7 @@ RunMode = Literal["full", "measure", "process"]
 FindingCode = Literal[
     "PF-CHECK-CRASHED",
     "PF-PIPELINE-LOAD",
+    "PF-CUSTOM-OP",
     "PF-GRID-IMAGE",
     "PF-GRID-PRESET",
     "PF-NO-DETECTOR",
@@ -61,6 +62,12 @@ HINTS: dict[str, str] = {
     "PF-PIPELINE-LOAD": (
         "Fix the pipeline file named above, then run again; nothing under "
         "--output was changed."
+    ),
+    "PF-CUSTOM-OP": (
+        "List a module in PHENOTYPIC_PRELOAD_MODULES whose import attaches the "
+        "class to the phenotypic namespace (for example "
+        "`phenotypic.MyDetector = MyDetector`). A module that only defines "
+        "the class is not enough: pipeline JSON records bare class names."
     ),
     "PF-GRID-IMAGE": (
         "Run with --image-type GridImage (and --nrows/--ncols for your plate "
@@ -456,13 +463,24 @@ def load_pipeline_for_validation(
 
     Returns:
         ``(pipeline, None)`` when the file loads and passes, else
-        ``(None, finding)`` with a ``PF-PIPELINE-LOAD`` error whose message
-        is the text ``validate_pipeline`` has always reported.
+        ``(None, finding)``: ``PF-CUSTOM-OP`` when an operation class cannot be
+        resolved, otherwise ``PF-PIPELINE-LOAD``, each carrying the text
+        ``validate_pipeline`` has always reported.
     """
+    from phenotypic._core._pipeline_parts._serializable_pipeline import (
+        UnknownOperationClassError,
+    )
+
     from ._cli_validation import check_loaded_pipeline, read_pipeline_file
 
-    pipeline, error = read_pipeline_file(pipeline_path)
+    pipeline, error, exc = read_pipeline_file(pipeline_path)
     if pipeline is None:
+        if isinstance(exc, UnknownOperationClassError):
+            return None, PreflightFinding(
+                code="PF-CUSTOM-OP",
+                severity="error",
+                message=error or str(exc),
+            )
         return None, _load_error(error)
     error = check_loaded_pipeline(pipeline)
     if error is not None:

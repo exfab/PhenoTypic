@@ -541,10 +541,7 @@ class SerializablePipeline(NapariPipelineViewer):
 
             op_class = SerializablePipeline._find_class_in_phenotypic(class_name)
             if op_class is None:
-                raise AttributeError(
-                        f"Class '{class_name}' not found in phenotypic namespace. "
-                        f"Make sure it's properly imported in phenotypic.__init__.py"
-                )
+                raise UnknownOperationClassError(class_name)
 
             params = SerializablePipeline._deserialize_value(
                 op_data.get("params", {}) or {}
@@ -633,12 +630,35 @@ class SerializablePipeline(NapariPipelineViewer):
         requested class. It checks the main phenotypic module as well as common
         submodules like detect, measure, enhance, refine, etc.
 
+        On a miss, the modules ``PHENOTYPIC_PRELOAD_MODULES`` names are
+        imported and the search runs once more. Resolution is the one step
+        every process that deserializes a pipeline passes through -- the CLI,
+        a SLURM worker, a joblib/loky worker that never ran the CLI's
+        ``main`` -- so honoring the variable here reaches all of them by
+        construction (spec ``2026-09-24-cli-preflight`` §10.2, review R2).
+
         Args:
             class_name: Name of the class to find.
 
         Returns:
             The class object if found, None otherwise.
         """
+        found = SerializablePipeline._search_phenotypic_namespace(class_name)
+        if found is not None:
+            return found
+        from phenotypic.sdk_._preload import (
+            preload_custom_operation_modules,
+            preload_module_names,
+        )
+
+        if not preload_module_names():
+            return None
+        preload_custom_operation_modules()
+        return SerializablePipeline._search_phenotypic_namespace(class_name)
+
+    @staticmethod
+    def _search_phenotypic_namespace(class_name: str):
+        """One pass of :meth:`_find_class_in_phenotypic`'s lookup, no preload."""
         import phenotypic
 
         if class_name in _LEGACY_CLASS_ALIASES:
@@ -951,3 +971,21 @@ def _loads_rejecting_duplicate_keys(text: str | bytes) -> Any:
             "Remove or rename the duplicate."
         )
     return json.loads(text)
+
+
+class UnknownOperationClassError(AttributeError):
+    """A pipeline names an operation class that no loaded module provides.
+
+    An ``AttributeError`` for compatibility with callers that caught the plain
+    one this replaced.
+    """
+
+    def __init__(self, class_name: str) -> None:
+        self.class_name = class_name
+        super().__init__(
+            f"Class '{class_name}' not found in phenotypic namespace. A custom "
+            "operation defined outside phenotypic must be registered: list a "
+            "module in PHENOTYPIC_PRELOAD_MODULES whose import attaches the "
+            f"class to the phenotypic namespace (e.g. phenotypic.{class_name} "
+            "= cls)."
+        )
