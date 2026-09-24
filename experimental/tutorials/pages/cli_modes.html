@@ -761,12 +761,13 @@ processing anything:</p>
 │   ├── measurements_by_feature/            # one file per measurer
 │   ├── overlays/&lt;dataset&gt;/                 # detection overlay PNGs
 │   ├── dashboard.html, processing_report.html
+│   ├── pipeline.json.pht-pipe              # your --pipeline, copied in when the run starts
 │   └── README.md                           # generated column documentation
 ├── results/&lt;dataset&gt;/
 │   ├── zarr/               # one &lt;stem&gt;.ome.zarr store per image — the
 │   │                       #   reusable segmentation
 │   └── measurements/       # one parquet per image
-└── .phenotypic/            # machine state: progress manifest, event log, pipeline copy
+└── .phenotypic/            # machine state: progress manifest, event log
 </pre></div>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">zarr/</span></code> directory is what makes the other modes cheap: each store holds that
