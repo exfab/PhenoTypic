@@ -417,3 +417,73 @@ class TestMeasureGridSpatialIntegration:
                         assert np.isclose(right_dist, left_dist), \
                             f"Distance mismatch: {obj_label} -> {right_neighbor} = {right_dist}, " \
                             f"but {right_neighbor} -> {obj_label} = {left_dist}"
+
+
+class TestPublicGridApiOnly:
+    """MeasureNeighborDist uses only public image.grid members and fits the
+    grid once per measurement, not once per section."""
+
+    def test_module_uses_no_private_grid_members(self):
+        import inspect
+        import phenotypic.measure._measure_neighbor_dist as mod
+        assert "grid._" not in inspect.getsource(mod)
+
+    @staticmethod
+    def _assert_windows_match_oracle(image):
+        # Oracle: the accessor's private window helper, called from the TEST
+        # only, pins that the public-API reimplementation is exact.
+        grid = image.grid
+        info = grid.info(include_metadata=False)
+        got = MeasureNeighborDist._section_bboxes(
+                info, grid.get_row_edges(), grid.get_col_edges(),
+                height=image.shape[0], width=image.shape[1],
+        )
+        assert len(got) > 0
+        for (r, c), bbox in got.items():
+            (min_rr, min_cc), (max_rr, max_cc) = grid._adv_get_grid_section_slices(
+                    r * grid.ncols + c, info
+            )
+            want = tuple(int(np.asarray(v).item())
+                         for v in (min_rr, max_rr, min_cc, max_cc))
+            assert bbox == want, (r, c)
+
+    def test_section_bboxes_match_grid_accessor_windows(self, synth_plate):
+        # The synth plate exercises only the column-widening terms.
+        self._assert_windows_match_oracle(synth_plate)
+
+    def test_section_bboxes_widen_rows_and_clip_to_image(self):
+        # Colonies spill past row line 50 in both directions (widening
+        # min_rr/max_rr), and the last grid edges sit at the image size, so
+        # every edge cell's window is clipped to height-1 / width-1.
+        image = _make_synthetic_grid_image(
+                height=100, width=100,
+                row_edges=np.array([0, 50, 100]),
+                col_edges=np.array([0, 50, 100]),
+                circles=[
+                    (1, 45, 25, 8),   # row 0, spills down to 53
+                    (2, 56, 75, 8),   # row 1, spills up to 48
+                    (3, 94, 25, 5),   # row 1, touches the bottom edge
+                    (4, 20, 94, 5),   # col 1, touches the right edge
+                ],
+        )
+        self._assert_windows_match_oracle(image)
+
+    def test_edges_fetched_once_per_measurement(self, synth_plate, monkeypatch):
+        from phenotypic._core._image_parts.accessors import GridAccessor
+        calls = {"row": 0, "col": 0}
+        orig_row, orig_col = GridAccessor.get_row_edges, GridAccessor.get_col_edges
+
+        def row_spy(self):
+            calls["row"] += 1
+            return orig_row(self)
+
+        def col_spy(self):
+            calls["col"] += 1
+            return orig_col(self)
+
+        monkeypatch.setattr(GridAccessor, "get_row_edges", row_spy)
+        monkeypatch.setattr(GridAccessor, "get_col_edges", col_spy)
+        MeasureNeighborDist().measure(synth_plate)
+        # Before: 402 each (one pair per section lookup). After: exactly 1.
+        # grid.info() fits through the finder's _operate, not these getters.
+        assert calls == {"row": 1, "col": 1}

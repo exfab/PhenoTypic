@@ -13,7 +13,7 @@ from scipy import ndimage as ndi
 
 from phenotypic.abc_ import GridMeasureFeatures
 from phenotypic.schema import OBJECT
-from phenotypic.schema import NEIGHBOR_DIST, GRID
+from phenotypic.schema import NEIGHBOR_DIST, GRID, BBOX
 
 
 class MeasureNeighborDist(GridMeasureFeatures):
@@ -80,6 +80,15 @@ class MeasureNeighborDist(GridMeasureFeatures):
         # Densify once; subsequent windowing is pure numpy slicing on this view.
         objmap_full = image.objmap[:]
         nrows, ncols = image.grid.nrows, image.grid.ncols
+        # Each public edge getter re-fits the grid, so fetch both once and
+        # memoize every occupied cell's window up front.
+        section_bbox = self._section_bboxes(
+                grid_info,
+                image.grid.get_row_edges(),
+                image.grid.get_col_edges(),
+                height=image.shape[0],
+                width=image.shape[1],
+        )
 
         labels = grid_info[OBJECT.LABEL].to_numpy()
         n_objs = len(labels)
@@ -107,15 +116,14 @@ class MeasureNeighborDist(GridMeasureFeatures):
             section_groups[(int(g_row), int(g_col))] = sec_df
 
         for (target_row, target_col), section_df in section_groups.items():
-            target_idx = int(image.grid._idx_ref_matrix[target_row, target_col])
             target_labels = section_df[OBJECT.LABEL].to_numpy().astype(np.int64)
             if target_labels.size == 0:
                 continue
 
-            target_bbox = self._section_bbox(image, target_idx, grid_info)
+            target_bbox = section_bbox[(target_row, target_col)]
 
             valid_neighbors = self._collect_neighbors(
-                    image, grid_info, section_groups,
+                    section_groups, section_bbox,
                     target_row, target_col, nrows, ncols,
             )
             if not valid_neighbors:
@@ -171,23 +179,33 @@ class MeasureNeighborDist(GridMeasureFeatures):
         return df
 
     @staticmethod
-    def _section_bbox(
-            image: GridImage, idx: int, grid_info: pd.DataFrame
-    ) -> tuple[int, int, int, int]:
-        """Return integer (min_rr, max_rr, min_cc, max_cc) for a grid section.
+    def _section_bboxes(
+            grid_info: pd.DataFrame,
+            row_edges: np.ndarray,
+            col_edges: np.ndarray,
+            *,
+            height: int,
+            width: int,
+    ) -> dict[tuple[int, int], tuple[int, int, int, int]]:
+        """Window (min_rr, max_rr, min_cc, max_cc) for every occupied grid cell.
 
-        Uses the object-fitting section slices so colonies that spill past
-        their grid line are not cropped at the boundary.
+        The cell's grid rectangle, widened to cover every object assigned to
+        it (colonies may spill past a grid line), then clipped to the image.
+        Built from public grid members only, once per measurement.
         """
-        (min_rr, min_cc), (max_rr, max_cc) = (
-            image.grid._adv_get_grid_section_slices(idx, grid_info)
-        )
-        return (
-            int(np.asarray(min_rr).item()),
-            int(np.asarray(max_rr).item()),
-            int(np.asarray(min_cc).item()),
-            int(np.asarray(max_cc).item()),
-        )
+        bboxes: dict[tuple[int, int], tuple[int, int, int, int]] = {}
+        for (g_row, g_col), sec in grid_info.groupby(
+                [GRID.ROW_NUM, GRID.COL_NUM], observed=True
+        ):
+            if pd.isna(g_row) or pd.isna(g_col):
+                continue
+            r, c = int(g_row), int(g_col)
+            min_rr = max(min(row_edges[r], sec[BBOX.MIN_RR].min()), 0)
+            max_rr = min(max(row_edges[r + 1], sec[BBOX.MAX_RR].max()), height - 1)
+            min_cc = max(min(col_edges[c], sec[BBOX.MIN_CC].min()), 0)
+            max_cc = min(max(col_edges[c + 1], sec[BBOX.MAX_CC].max()), width - 1)
+            bboxes[(r, c)] = (int(min_rr), int(max_rr), int(min_cc), int(max_cc))
+        return bboxes
 
     @staticmethod
     def _window_bbox(
@@ -204,9 +222,8 @@ class MeasureNeighborDist(GridMeasureFeatures):
 
     def _collect_neighbors(
             self,
-            image: GridImage,
-            grid_info: pd.DataFrame,
             section_groups: dict[tuple[int, int], pd.DataFrame],
+            section_bbox: dict[tuple[int, int], tuple[int, int, int, int]],
             target_row: int,
             target_col: int,
             nrows: int,
@@ -223,12 +240,9 @@ class MeasureNeighborDist(GridMeasureFeatures):
             n_section_df = section_groups.get((n_row, n_col))
             if n_section_df is None or n_section_df.empty:
                 continue
-            n_idx = int(image.grid._idx_ref_matrix[n_row, n_col])
-            n_bbox = self._section_bbox(image, n_idx, grid_info)
             n_labels = n_section_df[OBJECT.LABEL].to_numpy().astype(np.int64)
-            valid.append(
-                    (n_row, n_col, n_bbox, n_labels, label_col, dist_col)
-            )
+            valid.append((n_row, n_col, section_bbox[(n_row, n_col)],
+                          n_labels, label_col, dist_col))
         return valid
 
 
