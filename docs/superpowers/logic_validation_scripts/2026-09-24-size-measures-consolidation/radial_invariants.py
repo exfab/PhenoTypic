@@ -182,12 +182,38 @@ def check_05_angular_sampling_keeps_runner_inside_breakdown() -> None:
           f"{radii['max']:.3f} vs tip {np.hypot(reach, hw):.3f}")
 
 
+def check_06_wide_runner_separates_mean_from_robust_mean() -> None:
+    """Implementation plan's unit-test fixture: r=40, runner half-width 8 to x=100.
+
+    The unit test compares a rasterised colony against these values at a 0.6 px
+    tolerance (half-pixel contour offset), so it needs a mean-vs-robust gap well
+    above 2 x 0.6 = 1.2 px to catch a swap of the two estimators. Analytic gap:
+    42.35 - 40.00 = 2.35 px. The runner still covers only 5.6% of directions,
+    inside the 20% breakdown point, so the robust mean stays on the body radius.
+    """
+    sig = runner_signature(40, 8, 100)
+    radii = five_radii(sig, inscribed=40.0)
+    frac = float((sig > 45).mean())
+    check("06 wide runner inside breakdown", frac < TRIM and abs(frac - 0.0556) <= 0.0005,
+          f"{frac:.4f}")
+    check("06 robust mean on the body", abs(radii["robust_mean"] - 40.0) <= 0.01,
+          f"{radii['robust_mean']:.4f}")
+    check("06 mean pulled up by 2.35 px", abs(radii["mean"] - 42.348) <= 0.005,
+          f"{radii['mean']:.4f}")
+    check("06 gap exceeds twice the unit-test tolerance",
+          radii["mean"] - radii["robust_mean"] > 2 * 0.6,
+          f"gap {radii['mean'] - radii['robust_mean']:.3f}")
+    check("06 median on the body", abs(radii["median"] - 40.0) <= 1e-9,
+          f"{radii['median']:.4f}")
+
+
 def main_checks() -> int:
     check_01_edt_statistics_on_a_disk_are_not_radii()
     check_02_whole_objmap_edt_merges_touching_colonies()
     check_03_disk_all_five_radii_equal_r()
     check_04_elongated_colony_values()
     check_05_angular_sampling_keeps_runner_inside_breakdown()
+    check_06_wide_runner_separates_mean_from_robust_mean()
     print(f"\n{len(FAILURES)} failure(s)" + (f": {FAILURES}" if FAILURES else ""))
     return 1 if FAILURES else 0
 

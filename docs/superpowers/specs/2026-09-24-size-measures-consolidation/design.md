@@ -107,6 +107,13 @@ All five radii are statistics of one set of centre-to-edge distances.
   the nearest edge. It is the family's minimum. It is taken from the EDT rather than from
   the signature's minimum, because the nearest bin centre sits up to half a bin off the
   perpendicular and overshoots by h/cos(π/K) − h (script check 04).
+- **The image border counts as an edge.** Each EDT runs on a one-pixel-padded crop, so a
+  colony cut off by the image border measures its distances to that border. The old
+  whole-image EDT did not: scipy measures distance only to zero pixels *inside* the array.
+  So a border-touching colony now reports a smaller InscribedRadius and smaller
+  BoundaryDist values than before. For example, a 10-row band spanning the full image width
+  along the top edge reports 5 now and 10 before. This is deliberate, because the visible
+  part of the colony is all that is measured.
 
 ### 4.2 Why angle sampling
 
