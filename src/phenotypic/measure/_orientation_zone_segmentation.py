@@ -20,6 +20,7 @@ from phenotypic.sdk_.orientation_fields import (
     literal_skeleton_ring_crossings,
     orientation_field,
 )
+from phenotypic.sdk_._radial_geometry import distance_from_point
 
 
 FloatArray = NDArray[np.float64]
@@ -106,14 +107,6 @@ class OrientationZoneFit:
 
     result: OrientationZoneResult
     context: OrientationAnalysisContext | None
-
-
-def distance_from_center(
-    shape: tuple[int, int], center: tuple[float, float]
-) -> FloatArray:
-    """Return Euclidean distance from one row-column center."""
-    rows, cols = np.indices(shape, dtype=np.float64)
-    return np.hypot(rows - center[0], cols - center[1])
 
 
 def selected_outer_radius(
@@ -430,7 +423,7 @@ def fit_orientation_zones(
         return OrientationZoneFit(
             _missing_result(params, reason="invalid_object_mask"), None
         )
-    distance_map = distance_from_center(mask.shape, center)
+    distance_map = distance_from_point(mask.shape, center)
     outer, full_extent, retained = selected_outer_radius(
         mask, distance_map, params.outer_zone_percentile
     )
