@@ -1343,32 +1343,58 @@ def clear_machine_state(output_dir: Path) -> bool:
     removed = False
     # Current layout: clear each child so restart can preserve the append-only
     # terminal-failure journal. Explicit --overwrite removes the whole output
-    # directory through its separate destructive path.
+    # directory through its separate destructive path. The targets come from
+    # machine_state_restart_targets, which the CLI's --dry-run preview and its
+    # run-input overlap refusal read too, so the three cannot disagree.
+    for target in machine_state_restart_targets(output_dir):
+        if target.is_dir() and not target.is_symlink():
+            shutil.rmtree(target)
+        else:
+            target.unlink()
+        removed = True
+    cache = phenotypic_cache_dir(output_dir)
+    if cache.exists() and not any(cache.iterdir()):
+        cache.rmdir()
+    return removed
+
+
+def machine_state_restart_targets(output_dir: Path) -> list[Path]:
+    """Every existing path :func:`clear_machine_state` would remove, in order.
+
+    The single producer of "what does ``--restart`` delete". Read by
+    :func:`clear_machine_state` itself, by the ``--dry-run`` preview, and by
+    the CLI's refusal of a ``--pipeline``/``--metadata``/``--image-manifest``
+    that a restart would delete before the run reads it. Performs no write.
+
+    Args:
+        output_dir: The run's output directory.
+
+    Returns:
+        Existing paths only: each non-preserved child of ``.phenotypic/``, then
+        any pre-migration root-level machine-state.
+    """
+    targets: list[Path] = []
     cache = phenotypic_cache_dir(output_dir)
     if cache.exists():
-        for child in cache.iterdir():
-            if child.name in _PRESERVED_ON_RESTART:
-                continue
-            if child.is_dir() and not child.is_symlink():
-                shutil.rmtree(child)
-            else:
-                child.unlink()
-            removed = True
-        if not any(cache.iterdir()):
-            cache.rmdir()
+        targets.extend(
+            child
+            for child in sorted(cache.iterdir())
+            if child.name not in _PRESERVED_ON_RESTART
+        )
     # Pre-migration (legacy) root-level machine-state, if a legacy run is restarted.
-    legacy_progress = _legacy_progress_dir(output_dir)
-    if legacy_progress.exists():
-        shutil.rmtree(legacy_progress)
-        removed = True
-    for legacy_file in (
+    for legacy in (
+        _legacy_progress_dir(output_dir),
         _legacy_processing_state_path(output_dir),
         output_dir / PROCESSING_EVENTS_LOG,
     ):
-        if legacy_file.exists():
-            legacy_file.unlink()
-            removed = True
-    return removed
+        if legacy.exists():
+            targets.append(legacy)
+    return targets
+
+
+def preserved_on_restart_names() -> frozenset[str]:
+    """Names under ``.phenotypic/`` that ``--restart`` keeps (read-only view)."""
+    return _PRESERVED_ON_RESTART
 
 
 def master_measurements_parquet_path(output_dir: Path) -> Path:

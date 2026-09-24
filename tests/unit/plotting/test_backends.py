@@ -303,9 +303,9 @@ def test_validation_announces_missing_chrome_once_per_process(
 ) -> None:
     """The warning reaches a WARNING record naming the bindings, exactly once.
 
-    ``--dry-run`` validates the same pipeline twice in one process (the main
-    path, then ``execute_dry_run`` -> ``full_validation``); the second call
-    must not repeat the announcement.
+    A process may validate the same pipeline more than once (``--dry-run``
+    used to, through a second ``full_validation`` call that no longer
+    exists); a second call must not repeat the announcement.
     """
     import logging
 

@@ -199,6 +199,8 @@ from phenotypic.sdk_ import (
     source_image_stem,
     store_stem,
     clear_machine_state,
+    machine_state_restart_targets,
+    preserved_on_restart_names,
     atomic_write_bytes,
     atomic_write_json,
     metadata_csv_deliverable_path,
@@ -571,6 +573,108 @@ def _refuse_unmigrated_output(output_dir: Path, *, mode: str) -> None:
             f"--output {output_dir}"
         )
     refuse_unconverted_schema(output_dir, mode=mode)
+
+
+def _refuse_run_inputs_the_run_would_delete(
+    *,
+    output_dir: Path,
+    overwrite: bool,
+    restart: bool,
+    run_inputs: Sequence[tuple[str, Optional[Path]]],
+) -> None:
+    """Refuse a run whose own inputs ``--overwrite`` or ``--restart`` would delete.
+
+    ``--overwrite`` removes the whole output directory and ``--restart`` removes
+    the non-preserved machine state under ``.phenotypic/``, both before the run
+    reads its pipeline, metadata, image manifest or images. A run input stored
+    in either place would be deleted and then reported missing, or, for an
+    already-snapshotted manifest, silently lost (spec F3, F27). Placed outside
+    ``--skip-validation``: this protects the user's files, it does not advise.
+
+    The restart targets come from :func:`machine_state_restart_targets`, the
+    same list ``clear_machine_state`` deletes, so the refusal and the delete
+    cannot disagree.
+
+    Args:
+        output_dir: The run's ``--output``.
+        overwrite: Whether ``--overwrite`` was given.
+        restart: Whether ``--restart`` was given.
+        run_inputs: ``(option, path)`` pairs; ``None`` paths are skipped.
+
+    Raises:
+        click.UsageError: A run input lies where the run would delete it.
+    """
+    if not (overwrite or restart):
+        return
+    canonical_output = Path(output_dir).resolve(strict=False)
+    restart_targets = (
+        [target.resolve(strict=False) for target in machine_state_restart_targets(output_dir)]
+        if restart and output_dir.exists()
+        else []
+    )
+    for option, path in run_inputs:
+        if path is None:
+            continue
+        canonical = Path(path).resolve(strict=False)
+        if overwrite and (
+            canonical == canonical_output
+            or canonical.is_relative_to(canonical_output)
+        ):
+            raise click.UsageError(
+                f"{option} {path} lies inside --output {output_dir}, which "
+                "--overwrite deletes before the run reads it. Move it outside "
+                "the output directory, or choose a different --output."
+            )
+        for target in restart_targets:
+            if canonical == target or canonical.is_relative_to(target):
+                kept = ", ".join(sorted(preserved_on_restart_names()))
+                raise click.UsageError(
+                    f"{option} {path} lies inside the machine state that "
+                    f"--restart clears ({target}). Only {kept} are kept. Move "
+                    "it outside .phenotypic/ before restarting."
+                )
+
+
+def _print_dry_run_mutation_preview(
+    output_dir: Path, *, restart: bool, will_overwrite: bool
+) -> None:
+    """State what the real run would delete, without deleting it.
+
+    A ``--dry-run`` exits before the mutating half of :func:`phenotypic_cli`,
+    so ``--restart`` and ``--overwrite`` become previews (spec §1, D5). The
+    restart list is :func:`machine_state_restart_targets`, the same list
+    ``clear_machine_state`` deletes.
+
+    Args:
+        output_dir: The run's ``--output``.
+        restart: Whether ``--restart`` was given.
+        will_overwrite: Whether ``--overwrite`` would delete existing content.
+    """
+    if will_overwrite:
+        entries = sorted(output_dir.iterdir())
+        click.echo(
+            f"Dry run: --overwrite would delete {len(entries)} entries under "
+            f"{output_dir}:"
+        )
+        for entry in entries[:10]:
+            click.echo(f"  - {entry.name}")
+        if len(entries) > 10:
+            click.echo(f"  ... and {len(entries) - 10} more")
+    if restart:
+        targets = (
+            machine_state_restart_targets(output_dir)
+            if output_dir.exists()
+            else []
+        )
+        kept = ", ".join(sorted(preserved_on_restart_names()))
+        click.echo(
+            f"Dry run: --restart would clear {len(targets)} machine-state "
+            f"entries under {output_dir} (kept: {kept}):"
+        )
+        for target in targets[:10]:
+            click.echo(f"  - {target.relative_to(output_dir)}")
+        if len(targets) > 10:
+            click.echo(f"  ... and {len(targets) - 10} more")
 
 
 def _snapshot_metadata_csv(
@@ -1882,6 +1986,22 @@ def phenotypic_cli(
                     "the source can never be modified or deleted."
                 )
 
+        # Every run input --overwrite or --restart would delete is refused
+        # here, above every mutation and regardless of --skip-validation
+        # (spec §1, F3/F27).
+        if not migrate_only:
+            _refuse_run_inputs_the_run_would_delete(
+                output_dir=Path(output_dir),
+                overwrite=overwrite,
+                restart=restart,
+                run_inputs=(
+                    ("--input", input_path),
+                    ("--pipeline", pipeline_json),
+                    ("--metadata", metadata_csv),
+                    ("--image-manifest", image_manifest),
+                ),
+            )
+
         # Every mode that writes or reprocesses refuses an unconverted tree;
         # `migrate` is exempt because it is the remedy (ledger MIG-19). Placed
         # here so `full`, `measure`, `recompile` and `process` are all covered
@@ -2353,36 +2473,12 @@ def phenotypic_cli(
                         "--output directory to keep them."
                     )
 
-        # Handle restart mode - clear ALL previous machine-state so the
-        # orchestration re-runs cleanly (fresh state + event log + progress),
-        # while preserving any output artifacts (results/, deliverables/, qc/)
-        # that --restart intentionally keeps — unlike --overwrite, which wipes
-        # the whole dir. Clearing the event log here prevents the restart from
-        # appending to, and rebuilding its manifest/failure records from, the
-        # prior run's events.
-        if restart:
-            if output_dir.exists():
-                # The transient Stage-2 signal (retained raw .npy + consumable
-                # token) lives under .phenotypic/progress/, which
-                # clear_machine_state wipes -- so there is nothing extra to
-                # clear here. The old clear_stage2_sidecars() globbed
-                # results/*/objmap/*.npy and would now be a permanent no-op.
-                if clear_machine_state(output_dir):
-                    click.echo(
-                        f"✓ Cleared previous machine-state (.phenotypic/) from {output_dir}"
-                    )
-                else:
-                    click.echo(
-                        f"Note: No previous state found in {output_dir} (starting fresh)"
-                    )
-            else:
-                click.echo(
-                    f"Note: Output directory {output_dir} does not exist yet (starting fresh)"
-                )
-
         config.output_dir = output_dir
 
-        # Check existing contents only for a genuinely fresh run.
+        # Check existing contents only for a genuinely fresh run. Only the
+        # REFUSAL happens here, in the read-only half; the delete itself runs
+        # below the --dry-run exit, guarded by ``will_overwrite`` (spec §1).
+        will_overwrite = False
         if not config.resume and not restart and not measure_only:
             if output_dir.exists() and any(
                 not _is_ignorable_output_entry(
@@ -2391,12 +2487,7 @@ def phenotypic_cli(
                 for entry in output_dir.iterdir()
             ):
                 if overwrite:
-                    import shutil
-
-                    click.echo(
-                        f"Overwriting existing output directory: {output_dir}"
-                    )
-                    shutil.rmtree(output_dir)
+                    will_overwrite = True
                 else:
                     click.echo(
                         f"Error: Output directory already contains files: {output_dir}",
@@ -2408,40 +2499,6 @@ def phenotypic_cli(
                         err=True,
                     )
                     sys.exit(1)
-
-        # Mint ONCE per invocation, then thread the value (CAN-21).
-        # Every branch below READS `identity`; none mints. A second mint
-        # would give one run two generations and burn a restart epoch.
-        #
-        # BELOW the overwrite branch, and that placement is the fix for a
-        # bug this comment previously helped hide. The earlier version sat
-        # above it and reasoned at length about `clear_machine_state` --
-        # the destructive operation *above* the mint, which preserves the
-        # counter on purpose -- while `shutil.rmtree(output_dir)` seventeen
-        # lines *below* deleted the counter the mint had just read. The
-        # comment defended the neighbour it could see.
-        #
-        # The failure was silent because `--overwrite` and `--restart` are
-        # mutually exclusive, so the mint only READ and nothing raised:
-        # `state.config["restart_epoch"]` kept the pre-overwrite value while
-        # the counter file was gone. A live SLURM run then never reported
-        # `active` (the lifecycle record stamps 0, the identity says 1), and
-        # the next `--restart` bumped 0 -> 1 and re-minted the SAME
-        # generation the overwrite run had used -- so pre-restart workers
-        # passed the event-log fence, which is the failure D5 and §14 exist
-        # to prevent.
-        #
-        # Still dominates both resume sites: they are all below this point,
-        # and the overwrite branch above is guarded by `not config.resume
-        # and not restart and not measure_only`, so no path reaches a resume
-        # site without passing here first.
-        identity = mint_run_identity(config, restart=restart)
-        # One initial call for the whole run, every image and stage (figures
-        # spec §1a): the recorded one on a resume, else this one. Measure mode
-        # keeps no run state, so it always records its own.
-        config.run_initiation = _run_initiation(
-            None if measure_only else resume_state
-        )
 
         # Scan directory structure (or discover image stores in measure mode)
         if measure_only:
@@ -2543,13 +2600,88 @@ def phenotypic_cli(
             traceback.print_exc()
             sys.exit(1)
 
-        # Handle dry-run mode
+        # Handle dry-run mode. Everything above this line is read-only; every
+        # mutation of --output (restart clear, overwrite delete, identity
+        # mint, state and directory creation) sits below it (spec §1), so a
+        # dry run with --restart or --overwrite is a preview.
         if config.dry_run:
+            _print_dry_run_mutation_preview(
+                output_dir, restart=restart, will_overwrite=will_overwrite
+            )
             if config.process_only_layer:
                 _print_process_only_dry_run_plan(config, datasets, output_dir)
             else:
                 execute_dry_run(config, datasets, output_dir)
             sys.exit(0)
+
+        # ---- Mutating half: nothing above this line writes under --output.
+        #
+        # Handle restart mode - clear ALL previous machine-state so the
+        # orchestration re-runs cleanly (fresh state + event log + progress),
+        # while preserving any output artifacts (results/, deliverables/, qc/)
+        # that --restart intentionally keeps — unlike --overwrite, which wipes
+        # the whole dir. Clearing the event log here prevents the restart from
+        # appending to, and rebuilding its manifest/failure records from, the
+        # prior run's events.
+        if restart:
+            if output_dir.exists():
+                # The transient Stage-2 signal (retained raw .npy + consumable
+                # token) lives under .phenotypic/progress/, which
+                # clear_machine_state wipes -- so there is nothing extra to
+                # clear here. The old clear_stage2_sidecars() globbed
+                # results/*/objmap/*.npy and would now be a permanent no-op.
+                if clear_machine_state(output_dir):
+                    click.echo(
+                        f"✓ Cleared previous machine-state (.phenotypic/) from {output_dir}"
+                    )
+                else:
+                    click.echo(
+                        f"Note: No previous state found in {output_dir} (starting fresh)"
+                    )
+            else:
+                click.echo(
+                    f"Note: Output directory {output_dir} does not exist yet (starting fresh)"
+                )
+
+        if will_overwrite:
+            import shutil
+
+            click.echo(f"Overwriting existing output directory: {output_dir}")
+            shutil.rmtree(output_dir)
+
+        # Mint ONCE per invocation, then thread the value (CAN-21).
+        # Every branch below READS `identity`; none mints. A second mint
+        # would give one run two generations and burn a restart epoch.
+        #
+        # BELOW the overwrite branch, and that placement is the fix for a
+        # bug this comment previously helped hide. The earlier version sat
+        # above it and reasoned at length about `clear_machine_state` --
+        # the destructive operation *above* the mint, which preserves the
+        # counter on purpose -- while `shutil.rmtree(output_dir)` seventeen
+        # lines *below* deleted the counter the mint had just read. The
+        # comment defended the neighbour it could see.
+        #
+        # The failure was silent because `--overwrite` and `--restart` are
+        # mutually exclusive, so the mint only READ and nothing raised:
+        # `state.config["restart_epoch"]` kept the pre-overwrite value while
+        # the counter file was gone. A live SLURM run then never reported
+        # `active` (the lifecycle record stamps 0, the identity says 1), and
+        # the next `--restart` bumped 0 -> 1 and re-minted the SAME
+        # generation the overwrite run had used -- so pre-restart workers
+        # passed the event-log fence, which is the failure D5 and §14 exist
+        # to prevent.
+        #
+        # Still dominates both resume sites: they are all below this point,
+        # and the overwrite branch above is guarded by `not config.resume
+        # and not restart and not measure_only`, so no path reaches a resume
+        # site without passing here first.
+        identity = mint_run_identity(config, restart=restart)
+        # One initial call for the whole run, every image and stage (figures
+        # spec §1a): the recorded one on a resume, else this one. Measure mode
+        # keeps no run state, so it always records its own.
+        config.run_initiation = _run_initiation(
+            None if measure_only else resume_state
+        )
 
         # Handle sample mode
         if config.sample is not None:

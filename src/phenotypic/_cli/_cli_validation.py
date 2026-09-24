@@ -20,9 +20,9 @@ from ._cli_types import ExecutionConfig
 
 logger = logging.getLogger(__name__)
 
-#: Plot-backend warnings already logged by this process. ``--dry-run``
-#: validates the same pipeline twice (the main path, then ``full_validation``),
-#: and the announcement is meant to appear once.
+#: Plot-backend warnings already logged by this process. A process may validate
+#: the same pipeline more than once, and the announcement is meant to appear
+#: once.
 _ANNOUNCED_PLOT_WARNINGS: set[str] = set()
 
 
@@ -127,38 +127,6 @@ def validate_execution_config(
             pass
     
     return True, None
-
-
-def full_validation(
-    config: ExecutionConfig,
-) -> Tuple[bool, list[str]]:
-    """
-    Validate execution configuration and pipeline loading.
-
-    Args:
-        config: Execution configuration.
-
-    Returns:
-        Tuple of (is_valid, list_of_errors).
-        If valid, list_of_errors is empty.
-    """
-    errors = []
-
-    # Validate config
-    config_valid, config_error = validate_execution_config(config)
-    if not config_valid:
-        errors.append(config_error)
-        return False, errors
-
-    # Validate pipeline can be loaded
-    pipeline_valid, pipeline_error = validate_pipeline(
-        config.pipeline_json,
-        config.skip_validation
-    )
-    if not pipeline_valid:
-        errors.append(pipeline_error)
-
-    return len(errors) == 0, errors
 
 
 class UnstageableGpuDetectorError(ValueError):

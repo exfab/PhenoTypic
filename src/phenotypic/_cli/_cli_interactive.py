@@ -14,7 +14,6 @@ import click
 
 from phenotypic.schema import EXPERIMENT
 from ._cli_types import Dataset, ExecutionConfig
-from ._cli_validation import full_validation
 
 
 def _display_datasets_detail(datasets: List[Dataset]) -> int:
@@ -204,15 +203,12 @@ def execute_dry_run(
         _display_local_config(config)
 
     # Validation
+    # The main CLI path validated before reaching the dry-run exit and would
+    # have exited on a failure, so this reports that outcome rather than
+    # validating a second time.
     click.echo("\nPipeline Validation:")
     if not config.skip_validation:
-        is_valid, errors = full_validation(config)
-        if is_valid:
-            click.echo("  ✓ Configuration validation passed")
-        else:
-            click.echo("  ✗ Configuration validation FAILED:")
-            for error in errors:
-                click.echo(f"    - {error}")
+        click.echo("  ✓ Configuration validation passed (see above)")
     else:
         click.echo("  ⊘ Validation skipped (--skip-validation flag)")
 
