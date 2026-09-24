@@ -11,6 +11,17 @@ from typing import Any, Literal, Mapping, TypeAlias
 FigureLike: TypeAlias = Any
 
 
+class FigureInputUnavailable(RuntimeError):
+    """``inspect()`` cannot draw this figure here, for this image.
+
+    Raised by a provider whose figure is drawn from state only its own
+    ``apply()`` produces -- such as the as-shot pixels an image corrector
+    overwrites -- when that ``apply()`` did not run in this process on the
+    image it was given. It says where the figure can be drawn, not that the
+    figure failed: the CLI keeps a stored copy of it when one exists.
+    """
+
+
 def figure_backend_of(figure: Any) -> Literal["plotly", "mpl"] | None:
     """Return the rendering backend of ``figure``, or ``None`` if unknown.
 
@@ -128,6 +139,7 @@ def canonical_group_key(
 
 
 __all__ = [
+    "FigureInputUnavailable",
     "FigureLike",
     "PlotOutput",
     "PlotPage",

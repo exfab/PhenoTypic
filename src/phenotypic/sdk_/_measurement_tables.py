@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shutil
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import pandas as pd
 
@@ -18,6 +19,11 @@ from ._atomic_io import (
     atomic_write_json,
     atomic_write_with_writer,
 )
+
+if TYPE_CHECKING:
+    from ._image_figures import StoredFigures
+
+logger = logging.getLogger(__name__)
 
 JoinStatus = Literal["not_requested", "joined", "no_common_keys"]
 
@@ -635,12 +641,18 @@ def _rewrite_store_tables(
     plan: Callable[[dict[str, object]], Callable[[Path], None]],
     durable: bool | None,
     commit_guard: CommitGuard | None,
+    clear_figure_run: str | None = None,
 ) -> Path:
     """Re-promote one store with refreshed embedded tables, root written last.
 
     *plan* is handed the store's ``attributes.phenotypic`` block. It validates
     and **mutates** it -- before any part exists, so a refusal costs nothing --
     and returns the writer that populates the part.
+
+    *clear_figure_run* drops the part's copy of that one run folder,
+    ``figures/<run>/``, before *plan*'s writer rewrites it (spec 2026-09-22
+    §1a). Every other run folder is carried across unchanged, as are all of
+    them when it is ``None``.
 
     **There is no in-place fast path, and its removal is the point (CAN-3 /
     C5).** The branch this replaces fired whenever the measurement
@@ -680,6 +692,16 @@ def _rewrite_store_tables(
         # These are hard links into the promoted store, so unlinking them in
         # the part leaves the live store untouched.
         shutil.rmtree(part / ngff_.TABLES_GROUP, ignore_errors=True)
+        if clear_figure_run is not None:
+            # The copied figure files are HARD LINKS into the live store, like
+            # everything copytree cloned above. Removing this run's folder
+            # here means it is rewritten as new files; writing through a link
+            # would change the published store before its new root exists.
+            # Other runs' folders are never touched (spec §1a).
+            shutil.rmtree(
+                ngff_.long_path(part / ngff_.FIGURES_GROUP / clear_figure_run),
+                ignore_errors=True,
+            )
         populate(part)
         atomic_write_json(part / ngff_.STORE_ROOT_JSON, root_document)
         ngff_.promote_store(
@@ -699,6 +721,7 @@ def replace_image_tables(
     store_path: Path,
     tables: PreparedImageTables,
     *,
+    figures: StoredFigures | None = None,
     objmap_target: str | None = None,
     durable: bool | None = None,
     commit_guard: CommitGuard | None = None,
@@ -708,11 +731,17 @@ def replace_image_tables(
     The ``--mode measure`` analogue of the promote-time writer: both tables
     and the root's ``metadata_table`` block move as one root-last
     transaction, so the store never certifies a table it does not have or a
-    snapshot it was not built against.
+    snapshot it was not built against. When *figures* is given, its run
+    folder is written in the same transaction.
 
     Args:
         store_path: A promoted ``*.ome.zarr`` store.
         tables: The split payload to write.
+        figures: One run's per-image figures. They replace that run's folder
+            and descriptor entry only; every other run is carried across
+            unchanged (spec 2026-09-22 §1a). ``None`` adds no run and
+            touches no figure, and so does a store whose figures descriptor
+            has a ``schema_version`` this writer does not know.
         objmap_target: Store-relative path of the label image the measurement
             table indexes. ``None`` reads it from the store.
         durable: ``fsync`` before promoting. ``None`` auto-detects SLURM.
@@ -737,14 +766,39 @@ def replace_image_tables(
                 phenotypic,
                 write_image_tables(part, tables, objmap_target=target),
             )
+            if figures is None:
+                return
+            from ._image_figures import (
+                apply_image_figures_attributes,
+                write_image_figures,
+            )
+
+            apply_image_figures_attributes(
+                phenotypic, write_image_figures(part, figures)
+            )
 
         return _populate
+
+    if figures is not None:
+        from ._image_figures import known_figures_schema, read_image_figures_descriptor
+
+        descriptor = read_image_figures_descriptor(Path(store_path))
+        if not known_figures_schema(descriptor):
+            # Clearing "this run's folder" in a layout this writer cannot read
+            # could delete anything; the store's figures stay as they are.
+            logger.warning(
+                "Adding no figure run to %s: its figures schema_version %r is "
+                "not one this writer knows",
+                store_path, descriptor.get("schema_version"),
+            )
+            figures = None
 
     return _rewrite_store_tables(
         store_path,
         plan=_plan,
         durable=durable,
         commit_guard=commit_guard,
+        clear_figure_run=figures.run.run_id if figures is not None else None,
     )
 
 

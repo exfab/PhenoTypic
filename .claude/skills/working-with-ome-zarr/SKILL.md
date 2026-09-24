@@ -18,6 +18,7 @@ views agree.
 | Original pixels | A normal root-level multiscale image group, listed in `OME/zarr.json` → `ome.series` |
 | Scale metadata | Each multiscales dataset path and its array `dimension_names` describe the same axes |
 | Object measurements | `tables/measurements/table.parquet`, described by root `attributes.phenotypic.tables.measurements` |
+| Per-image figures | `figures/<run_id>/<binding>/<page>.<ext>`, described by root `attributes.phenotypic.figures.runs`; optional, and not listed in `ome.series` |
 
 `attributes.ome` is reserved OME-Zarr metadata. Never put PhenoTypic-specific
 provenance, pipeline history, table descriptors, or arbitrary application data
@@ -66,6 +67,34 @@ SHA-256, and the ordered baseline measurement columns. Preserve every measured
 row, exclude metadata-only rows from the embedded table, retain duplicate
 metadata-key fan-out with a warning, and leave measurements unchanged with a
 warning when no key is shared.
+
+## Per-image figures
+
+A store whose pipeline binds a `PlotImage` also holds that plot's rendered
+figures, one folder per run: `figures/<run_id>/`, where `<run_id>` is
+`{UTC run date}-{first 12 hex of the pipeline sha256}`. Every level is an empty
+Zarr v3 group document, like `tables/`. The descriptor at
+`attributes.phenotypic.figures` is `{"schema_version": 1, "runs": {run_id:
+entry}}`. Each entry carries `date`, `pipeline_sha256`, `bindings` (pages, and
+each page's `files`), `failed` and `unavailable`, plus `initiated_at_utc` and
+`initiated_pid` except in a process-mode store. **The media type is the
+contract**: a consumer dispatches on each file's `media_type`
+(`application/vnd.plotly.v1+json` or `image/png`), never on its extension or
+folder name. The root records each file's `sha256`, so the completion marker,
+which digests the root, binds them. Continuation never re-reads figure bytes,
+but the copy-out to `deliverables/plots/` verifies each file before it copies
+it. **Run folders are never wiped.** Every rewrite carries the other runs'
+folders and descriptor entries across unchanged: a full, Stage 1, Stage 3 or
+process save over an existing store, and a measure rewrite. The one exception
+is `--overwrite`, which deletes the whole output tree before the run. Neither
+`runs` nor `bindings` has a meaningful key order: the measure rewrite serializes
+the root with sorted keys. The key is additive and optional, so
+`store_schema_version` is not bumped. Test for the key's presence. A measure
+rewrite replaces only its own run folder. It first removes that folder from the
+`.part`, because the part's files are hard links into the live store, and then
+writes every file as a new inode. A descriptor whose figures `schema_version`
+this writer does not know is carried untouched with its files, and no run is
+added to it.
 
 ## Transaction and marker ordering
 

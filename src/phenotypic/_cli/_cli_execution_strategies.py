@@ -609,6 +609,7 @@ class LocalParallelStrategy(ExecutionStrategy):
                 cli_nrows=self.config.nrows,
                 cli_ncols=self.config.ncols,
                 process_format=self.config.process_format,
+                run_initiation=self.config.run_initiation,
             )
             _publish_local_image_success(
                 self.config,
@@ -1058,6 +1059,12 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
             "slurm_metadata_version": 2,
             "slurm_generation": generation,
         }
+        if measure_only:
+            # Measure mode keeps no processing state, so its workers read the
+            # invocation's initial call from here (figures spec §1a).
+            from ._cli_state_management import run_initiation_config
+
+            job_metadata |= run_initiation_config(self.config.run_initiation)
         atomic_write_json(metadata_path, job_metadata)
 
         # Fan-out begins HERE -- one writer, in the submitting process,

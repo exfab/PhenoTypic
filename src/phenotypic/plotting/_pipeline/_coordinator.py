@@ -7,24 +7,19 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from typing import Any, Mapping
 
 import pandas as pd
 
-from phenotypic.abc_.plotting import PlotAnalysis, PlotImage, PlotMeas, PlotQc
+from phenotypic.abc_.plotting import PlotAnalysis, PlotMeas, PlotQc
 from phenotypic.sdk_ import CommitGuard, plots_dir
 
-from ._adapter import FigureAdapter
 from ._analysis_registry import AnalysisRegistry
 from ._bindings import AnalysisInput, MeasurementInput, PlotBinding, PlotInput
-from ._failures import _format_error, record_plot_failure
-from ._output import normalize_plot_output
+from ._failures import record_plot_failure
 from ._writer import (
     PlotPublicationBlocked,
-    _remove_stale_sibling,
-    _render_page,
-    _require_plot_publication,
     publish_plot_output,
     safe_path_component,
 )
@@ -55,6 +50,9 @@ class QcPlotSubject:
 class PlotCoordinator:
     """Dispatch normalized pipeline bindings at their declared lifecycles.
 
+    Image plots publish through ``build_image_figures`` -> store ->
+    :meth:`publish_store_figures`; this class only performs the copy-out.
+
     Args:
         pipeline: Pipeline containing normalized plot bindings.
         output_dir: Full CLI output root. Used with :func:`plots_dir` unless
@@ -84,47 +82,37 @@ class PlotCoordinator:
         self._publication_guard = publication_guard
         self._commit_guard = commit_guard
 
-    def emit_image(
+    def publish_store_figures(
         self,
-        image: Any,
+        store_path: Path,
         *,
+        run_id: str | None,
         dataset: str,
         image_stem: str,
-        strict: bool = False,
+        bindings: Iterable[Any] | None = None,
     ) -> None:
-        """Emit every ``PlotImage`` after one image has been measured.
+        """Copy one run folder of a promoted store to deliverables (spec §3, §1a).
 
-        Args:
-            image: Image passed to each image plot binding.
-            dataset: Dataset name used in output paths.
-            image_stem: Image stem used in output paths.
-            strict: Re-raise publication failures instead of logging them.
+        ``run_id`` ``None`` -- this run built no figures -- publishes nothing.
+        *bindings* name the class of each recorded failure (spec §3); ``None``
+        means this coordinator's pipeline's. Staged Stage 3 passes Stage 1's
+        too, since its run folder keeps them.
         """
-        for binding in self._bindings(PlotImage):
-            try:
-                value = binding.plot.inspect(image, for_save=True)
-                self._publish_image_value(
-                    binding,
-                    value,
-                    dataset=dataset,
-                    image_stem=image_stem,
+        from ._store_copyout import publish_store_figures
+
+        if run_id is None:
+            return
+        publish_store_figures(
+            store_path, self._plots_base, run_id=run_id,
+            dataset=dataset, image_stem=image_stem,
+            plot_classes={
+                binding.id: type(binding.plot).__name__
+                for binding in (
+                    self._pipeline.get_plots() if bindings is None else bindings
                 )
-            except PlotPublicationBlocked:
-                # A refused guard or fence voids the whole refresh: this
-                # process may no longer own the output. It is not a plot
-                # failure, so it is never recorded -- recording would write
-                # into the tree the guard just refused. Same in every handler.
-                raise
-            except Exception as exc:  # noqa: BLE001 - plot output is best-effort
-                if strict:
-                    raise
-                self._record_failure(
-                    binding,
-                    exc,
-                    lifecycle="image",
-                    dataset=dataset,
-                    image_stem=image_stem,
-                )
+            },
+            publication_guard=self._publication_guard, commit_guard=self._commit_guard,
+        )
 
     def emit_measurements(self, measurements: pd.DataFrame) -> None:
         """Emit every ``PlotMeas`` from the current measurement mirror."""
@@ -192,6 +180,10 @@ class PlotCoordinator:
                 )
                 self._publish_aggregate(binding, value)
             except PlotPublicationBlocked:
+                # A refused guard or fence voids the whole refresh: this
+                # process may no longer own the output. It is not a plot
+                # failure, so it is never recorded -- recording would write
+                # into the tree the guard just refused. Same in every handler.
                 raise
             except Exception as exc:  # noqa: BLE001 - plot output is best-effort
                 self._record_failure(binding, exc, lifecycle="analysis")
@@ -453,78 +445,6 @@ class PlotCoordinator:
             publication_guard=self._publication_guard,
             commit_guard=self._commit_guard,
         )
-
-    def _publish_image_value(
-        self,
-        binding: PlotBinding,
-        value: Any,
-        *,
-        dataset: str,
-        image_stem: str,
-    ) -> None:
-        output = normalize_plot_output(value)
-        output_stem = _image_output_stem(dataset, image_stem)
-        base = (
-            self._plots_base
-            / safe_path_component(binding.id)
-            / safe_path_component(dataset)
-        )
-        if len(output.pages) != 1 or output.pages[0].key != "default":
-            self._publish_to_directory(binding, output, base / output_stem)
-            return
-        # The flat single-page path: every bare figure lands here, as
-        # `<stem>-<hash>.{html,png}` directly under `base`. Routing it through
-        # `publish_plot_output` per image, as the multi-page branch above does,
-        # would work, but costs a directory and a `manifest.json` per image and
-        # changes the documented layout to `<stem>-<hash>/default.*`. No
-        # manifest is written here, so a Chrome-less machine leaves HTML and no
-        # PNG with nothing recording why: that is a missing capability, not a
-        # failure, and the CLI preflight announces it.
-        figure = output.pages[0].figure
-        try:
-            _require_plot_publication(self._publication_guard)
-            base.mkdir(parents=True, exist_ok=True)
-            files, errors, backend = _render_page(
-                figure,
-                base,
-                output_stem,
-                plots_base=self._plots_base,
-                plot_id=binding.id,
-                publication_guard=self._publication_guard,
-                commit_guard=self._commit_guard,
-            )
-        finally:
-            FigureAdapter.close(figure)
-        if files:
-            # Same rule as the manifest path: only a page this run published
-            # has its leftover rendering removed. A rerun that produced
-            # nothing keeps the previous pair whole rather than half of it.
-            _remove_stale_sibling(
-                base, output_stem, backend, files,
-                publication_guard=self._publication_guard,
-                commit_guard=self._commit_guard,
-            )
-        # Recorded as raised: the class is the diagnostic, so never re-wrap.
-        for error in errors:
-            record_plot_failure(
-                self._plots_base,
-                binding_id=binding.id,
-                plot_class=type(binding.plot).__name__,
-                lifecycle="image",
-                error=error,
-                dataset=dataset,
-                image_stem=image_stem,
-            )
-        if not files:
-            # Recorded a second time by `emit_image`'s handler, deliberately:
-            # the entry above names the renderer, this one the image. It also
-            # keeps `strict=True` meaningful for this path, and `from` keeps
-            # the renderer's exception reachable for a strict caller.
-            raise RuntimeError(
-                f"plot {binding.id!r} produced no file for "
-                f"{dataset}/{image_stem}: "
-                + (_format_error(errors[0]) if errors else "no renderer")
-            ) from (errors[0] if errors else None)
 
 
 def _image_output_stem(dataset: str, image_stem: str) -> str:

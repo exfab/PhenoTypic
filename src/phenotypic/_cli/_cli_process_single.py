@@ -343,14 +343,24 @@ def process_single_image_core(
                 commit_guard=commit_guard,
             )
         from phenotypic.plotting._pipeline import PlotCoordinator
+        from phenotypic.plotting._pipeline._store_figures import (
+            build_image_figures,
+            name_figure_run,
+        )
+        from phenotypic.sdk_ import plots_dir
 
         _check_active(active_check)
-        PlotCoordinator(
-            pipeline, output_dir, commit_guard=commit_guard
-        ).emit_image(
+        run = name_figure_run(
+            pipeline.get_plots(),
             image,
+            initiation=output_manager.run_initiation,
+            pipeline_sha256=resolved_pipeline_identity["sha256"],
+            plots_base=plots_dir(output_dir),
             dataset=dataset_name,
             image_stem=image_stem,
+        )
+        figures = (
+            build_image_figures(pipeline, image, run=run) if run is not None else None
         )
         _check_active(active_check)
         set_provenance_status(image, "complete")
@@ -361,11 +371,21 @@ def process_single_image_core(
             work_id=work_id,
             commit_guard=commit_guard,
             measurements=measurements,
+            figures=figures,
         )
         if saved_store is None:
             raise RuntimeError(
                 f"Final image store publication failed for {dataset_name}/{image_stem}"
             )
+        # After promotion, before the completion record: a crash between the
+        # two re-runs the image, so deliverables never lag a certified store.
+        _check_active(active_check)
+        PlotCoordinator(pipeline, output_dir, commit_guard=commit_guard).publish_store_figures(
+            saved_store,
+            run_id=figures.run.run_id if figures is not None else None,
+            dataset=dataset_name,
+            image_stem=image_stem,
+        )
     except SlurmGenerationInactiveError:
         raise
     except MemoryError:
@@ -434,6 +454,43 @@ def process_single_store_measure_core(
     # nothing raises on.
     stem = store_stem(store_path)
 
+    from phenotypic.plotting._pipeline import PlotCoordinator
+    from phenotypic.plotting._pipeline._store_figures import (
+        build_image_figures,
+        name_figure_run,
+    )
+    from phenotypic.sdk_ import plots_dir
+    from phenotypic.sdk_._image_figures import (
+        latest_run_date,
+        read_image_figures_descriptor,
+    )
+
+    # Built BEFORE the table replace so the figures ride the same root-last
+    # transaction: a run folder and the table it sits beside come from the
+    # same pipeline (spec §3 "Measure mode semantics", §1a). The store's
+    # journal names the run that WROTE it, so this run's pipeline digest is
+    # read from the file it runs. A store that already has a folder for this
+    # pipeline gets it reused (the latest one), so its measurer figures are
+    # overwritten and its §3a figures kept (spec §1a, revision 14). The
+    # folder's date is then that run's; otherwise it is this call's. The
+    # run entry's timestamp and pid are always this call's.
+    pipeline_sha256 = pipeline_source_identity(pipeline_path)["sha256"]
+    run = name_figure_run(
+        pipeline.get_plots(),
+        image,
+        initiation=output_manager.run_initiation,
+        date=latest_run_date(read_image_figures_descriptor(store_path), pipeline_sha256),
+        pipeline_sha256=pipeline_sha256,
+        plots_base=plots_dir(output_dir),
+        dataset=dataset_name,
+        image_stem=stem,
+    )
+    figures = (
+        build_image_figures(pipeline, image, run=run, keep_from=store_path)
+        if run is not None
+        else None
+    )
+
     # Publish the authoritative tables inside the existing store, through a
     # root-last store transaction. There is no same-directory fast path: it
     # rewrote a promoted store's Parquet without refreshing the root, so the
@@ -444,13 +501,11 @@ def process_single_store_measure_core(
         measurements,
         dataset_name,
         commit_guard=commit_guard,
+        figures=figures,
     )
-    from phenotypic.plotting._pipeline import PlotCoordinator
-
-    PlotCoordinator(
-        pipeline, output_dir, commit_guard=commit_guard
-    ).emit_image(
-        image,
+    PlotCoordinator(pipeline, output_dir, commit_guard=commit_guard).publish_store_figures(
+        store_path,
+        run_id=figures.run.run_id if figures is not None else None,
         dataset=dataset_name,
         image_stem=stem,
     )
@@ -682,6 +737,21 @@ def main(
     commit_guard = _ordinary_slurm_commit_guard(output_dir)
     try:
         cli_mode = cast(CliMode, mode)
+        # The run's initial CLI call (figures spec §1a) is read back from what
+        # the submitter recorded before it launched any worker; it never
+        # travels on the command line. Measure mode keeps no processing state
+        # -- the state present is an earlier run's -- so its SLURM submitter
+        # records the call in the job metadata instead.
+        from ._cli_state_management import (
+            metadata_run_initiation,
+            recorded_run_initiation,
+        )
+
+        run_initiation = (
+            metadata_run_initiation(output_dir)
+            if cli_mode == "measure"
+            else recorded_run_initiation(output_dir)
+        )
         if drop_originals and cli_mode != "full":
             raise click.UsageError(
                 f"--drop-originals is not accepted with --mode {cli_mode}"
@@ -806,6 +876,7 @@ def main(
                 cli_ncols=ncols,
                 commit_guard=commit_guard,
                 process_format=resolved_process_format,
+                run_initiation=run_initiation,
             )
             work_id, relative_path = _worker_work_identity(
                 pipeline=pipeline,
@@ -896,6 +967,7 @@ def main(
                 overlay_alpha=overlay_alpha,
                 save_overlays=False,
                 durable_writes=durable_writes,
+                run_initiation=run_initiation,
             )
 
             click.echo(f"Measuring {image.name} (store rerun)...")
@@ -923,6 +995,7 @@ def main(
                 overlay_alpha=overlay_alpha,
                 save_overlays=save_overlays,
                 durable_writes=durable_writes,
+                run_initiation=run_initiation,
             )
 
             click.echo(f"Processing {image.name}...")

@@ -1225,6 +1225,15 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
             return float(seg.sparse_end_radius)
         return min(float(seg.sparse_end_radius), float(seg.symmetric_radius))
 
+    def _lacks_zone_evidence(self, seg: ZoneSegmentation) -> bool:
+        """True for a canonical failure, which figure rasters must skip.
+
+        Its stand-in orientation field can be ``(1, 1)``, too small for
+        ``np.gradient``, and its NaN radii select no pixels anyway. This is the
+        same predicate :meth:`_fill_metrics` uses to leave zone metrics empty.
+        """
+        return not seg.zones_computed and not self.legacy_mode
+
     def _prep(self, image):
         """Regionprops + label→grid-section map, computed ONCE per image.
 
@@ -2569,6 +2578,8 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
         raw_peaks = [0.0 for _scale in scales]
         for analysis in self._analyze_objects(image, props, label2section):
             seg = analysis.segmentation
+            if self._lacks_zone_evidence(seg):
+                continue
             inner_radius = float(seg.core_end_radius)
             outer_radius = self._orientation_outer_radius(seg)
             if inner_radius <= _EPS or outer_radius <= inner_radius:
@@ -2823,6 +2834,8 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
         full_range = 0.0
         for analysis in self._analyze_objects(image, props, label2section):
             seg = analysis.segmentation
+            if self._lacks_zone_evidence(seg):
+                continue
             _tilt, signed_turning, _magnitude, _polar = (
                 signed_radial_relative_field(
                     analysis.orientation,
@@ -2961,6 +2974,8 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
         full_range = 0.0
         for analysis in self._analyze_objects(image, props, label2section):
             seg = analysis.segmentation
+            if self._lacks_zone_evidence(seg):
+                continue
             signed_tilt, _turning, _magnitude, polar_angle = (
                 signed_radial_relative_field(
                     analysis.orientation,
@@ -3116,6 +3131,8 @@ class MeasureOrientationZones(CanonicalZoneMeasure, PlotImage):
         bridge_y: list[float | None] = []
         for analysis in self._analyze_objects(image, props, label2section):
             seg = analysis.segmentation
+            if self._lacks_zone_evidence(seg):
+                continue
             _signed_tilt, _turning, _magnitude, polar_angle = (
                 signed_radial_relative_field(
                     analysis.orientation,

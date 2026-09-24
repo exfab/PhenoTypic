@@ -480,3 +480,40 @@ def test_one_root_read_per_store_and_parallel_process_tree_dispatch(
     assert len(results) == 2
     assert failures == ()
     assert reads == {root: 1 for root in roots}
+
+
+def test_migrate_leaves_a_stores_figures_and_their_descriptor_untouched(
+    tmp_path: Path,
+) -> None:
+    """Spec §1 'optional', non-goal 'migrate never fabricates a figure'."""
+    from phenotypic._cli._cli_migrate import run_migrate
+
+    store = tmp_path / "direct.ome.zarr"
+    root = _write_store_root(store, {
+        "schema_version": 1,
+        "status": "complete",
+        "pipeline": None,
+        "retry_base_length": 0,
+        "operations": [],
+    }, root_version="")
+    run_id = "2026-09-22-3f9a1c2b7e04"
+    figure = store / "figures" / run_id / "sym" / "default.plotly.json"
+    figure.parent.mkdir(parents=True)
+    figure.write_bytes(b"{}")
+    document = json.loads(root.read_text(encoding="utf-8"))
+    descriptor = {"schema_version": 1, "runs": {run_id: {
+        "date": "2026-09-22", "pipeline_sha256": "3f9a1c2b7e04" + "0" * 52,
+        "bindings": {}, "failed": [], "unavailable": [],
+    }}}
+    document["attributes"]["phenotypic"]["figures"] = descriptor
+    root.write_text(json.dumps(document), encoding="utf-8")
+
+    report = run_migrate(store, njobs=1)
+
+    # The root WAS rewritten, so the descriptor survived a real rewrite rather
+    # than a refusal that never touched the file.
+    assert report.provenance_upgraded == 1
+    after = json.loads(root.read_text(encoding="utf-8"))["attributes"]["phenotypic"]
+    assert after["provenance"]["schema_version"] == 2
+    assert after["figures"] == descriptor
+    assert figure.read_bytes() == b"{}"

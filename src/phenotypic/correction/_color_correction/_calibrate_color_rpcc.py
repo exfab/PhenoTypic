@@ -31,12 +31,14 @@ from __future__ import annotations
 
 import logging
 import warnings
+import weakref
 from typing import TYPE_CHECKING, Annotated, Any, Literal, Sequence, overload
 
 import numpy as np
 from pydantic import Field, PrivateAttr, field_validator, model_validator
 
 from ...abc_ import ImageCorrector
+from ...abc_.plotting import FigureInputUnavailable, PlotImage
 from ...sdk_.typing_ import TuneSpec
 from ...util import MedoidCandidates
 from ._calibration_overlay import (
@@ -91,7 +93,7 @@ def _root_cause(exc: BaseException) -> BaseException:
     return exc
 
 
-class CalibrateColorRpcc(ImageCorrector):
+class CalibrateColorRpcc(ImageCorrector, PlotImage):
     """Fit and apply a root-polynomial correction from this frame's own chart.
 
     Best For:
@@ -151,7 +153,11 @@ class CalibrateColorRpcc(ImageCorrector):
         Image: ``rgb`` corrected, with ``gray`` and ``detect_mat`` recomputed.
         ``fitted_profile`` and ``qc`` are populated on the operation.
         ``calibration_record`` holds the tile overlay of the last run, even a
-        refused one, and ``show_tiles()`` draws it.
+        refused one, and ``show_tiles()`` draws it.  Listed under
+        ``ImagePipeline(plots=...)``, the overlay is saved with each image as
+        a PNG; ``inspect(image)`` draws it only for the image the last
+        ``apply()`` ran on, because correction overwrites the as-shot pixels
+        it shows.
 
     Raises:
         ValueError: If any ROI fails the gate under ``on_qc_fail="raise"``,
@@ -182,6 +188,9 @@ class CalibrateColorRpcc(ImageCorrector):
 
     _diagnostics: dict[str, Any] = PrivateAttr(default_factory=dict)
     _calibration_record: CalibrationOverlayRecord | None = PrivateAttr(default=None)
+    # Which image the record describes. Weak: the record owns its crops, so
+    # nothing here may keep a whole plate alive (abc_ image-cache rule).
+    _record_image: weakref.ReferenceType[Image] | None = PrivateAttr(default=None)
 
     @field_validator("rois", mode="before")
     @classmethod
@@ -270,6 +279,59 @@ class CalibrateColorRpcc(ImageCorrector):
             )
         return render_calibration_overlay(record, figsize=figsize)
 
+    def _figure_subject(self) -> Image | None:
+        """The image the last ``apply()`` calibrated, while it is alive."""
+        ref = self._record_image
+        return ref() if ref is not None else None
+
+    def inspect(
+            self,
+            subject: Image | None = None,
+            *,
+            for_save: bool = False,
+            **overrides: Any,
+    ) -> Figure:
+        """Draw the tile overlay for *subject*, the image ``apply()`` ran on.
+
+        Deliberately not ``@figure``: the approved overlay look must not be
+        wrapped in a theme context, and its matplotlib figure stores as PNG.
+
+        Args:
+            subject: The image the last ``apply()`` calibrated; ``None`` means
+                that image, if it is still alive.
+            for_save: Accepted for the plotting contract; ignored.
+            **overrides: None are accepted.
+
+        Returns:
+            What :meth:`show_tiles` returns.
+
+        Raises:
+            FigureInputUnavailable: If no ``apply()`` has kept a record, or the
+                record is for another image. The overlay shows the as-shot
+                pixels that correction overwrites, so it cannot be redrawn
+                from the corrected image.
+            ValueError: If any override is passed.
+        """
+        if overrides:
+            raise ValueError(
+                    f"inspect(): unknown override(s) {sorted(overrides)}; "
+                    f"{type(self).__name__}.inspect takes none"
+            )
+        calibrated = self._figure_subject()
+        if self._calibration_record is None or calibrated is None:
+            raise FigureInputUnavailable(
+                    f"{type(self).__name__} holds no calibration record for a live "
+                    "image: the overlay shows as-shot pixels only apply() sees, "
+                    "so it is drawn in the process that applied it"
+            )
+        if self._resolve_subject(subject) is not calibrated:
+            raise FigureInputUnavailable(
+                    f"{type(self).__name__}'s calibration record is for another "
+                    "image: the overlay is drawn only for the image the last "
+                    "apply() ran on"
+            )
+        return self.show_tiles()
+
     @overload
     def apply(self, image: GridImage, inplace: bool = False) -> GridImage: ...
 
@@ -322,6 +384,7 @@ class CalibrateColorRpcc(ImageCorrector):
         self.qc = []
         self._diagnostics = {}
         self._calibration_record = None
+        self._record_image = None
 
         ref_lab, ref_linear, _wp = _load_reference_data(
                 self.checker_type, self.target_illuminant
@@ -362,6 +425,7 @@ class CalibrateColorRpcc(ImageCorrector):
                     impurity_limit=self.qc_limits.max_tile_impurity,
                     core_trim=self.core_trim,
             )
+            self._record_image = weakref.ref(image)
 
         for index, roi in enumerate(self.rois):
             # The as-shot pixels, owned: correction below runs in place, and a

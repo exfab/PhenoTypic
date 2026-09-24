@@ -16,6 +16,7 @@ from datetime import datetime
 from ._cli_types import ProcessingState, DatasetState, Dataset, ExecutionConfig
 from ._cli_update_state import aggregate_state_from_events
 from phenotypic.sdk_ import (
+    JobMetadataKey,
     ProcessingStateKey,
     migrate_legacy_machine_state,
     processing_state_path,
@@ -28,6 +29,7 @@ from ._cli_directory_scanner import image_manifest_digest
 from ._cli_staged_resume import pipeline_content_digest
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
+    from ..sdk_._image_figures import RunInitiation
     from ..sdk_._state_types import RunIdentity
 
 logger = logging.getLogger(__name__)
@@ -118,6 +120,114 @@ def save_processing_state(
         atomic_write_json(state_file, state_dict)
     
     return state_file
+
+
+#: Where a run's initial CLI call is recorded (figures spec §1a): the same
+#: three names in ``state.config`` and in ``job_metadata.json``.
+RUN_INITIATION_KEYS: tuple[str, str, str] = (
+    JobMetadataKey.FIGURES_RUN_DATE,
+    JobMetadataKey.INITIATED_AT_UTC,
+    JobMetadataKey.INITIATED_PID,
+)
+
+
+def run_initiation_config(initiation: "RunInitiation | None") -> dict[str, Any]:
+    """The three entries recording *initiation*, in ``state.config`` or
+    ``job_metadata.json``."""
+    date_key, at_key, pid_key = RUN_INITIATION_KEYS
+    return {
+        date_key: initiation.date if initiation is not None else None,
+        at_key: initiation.at_utc if initiation is not None else None,
+        pid_key: initiation.pid if initiation is not None else None,
+    }
+
+
+def _read_json(path: Path) -> Any:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def run_initiation_from_config(config: Any) -> "RunInitiation | None":
+    """The run's initial CLI call, from a record of :data:`RUN_INITIATION_KEYS`.
+
+    The date names a folder, so a malformed one reads as unrecorded. A
+    malformed timestamp or pid reads as absent, as in a state recorded
+    before they were captured.
+
+    Args:
+        config: ``state.config``, or the parsed ``job_metadata.json``, which
+            records the same three keys.
+
+    Returns:
+        The recorded call, or ``None`` when it records none or a malformed
+        date. Never raises.
+    """
+    from phenotypic.sdk_._image_figures import (
+        RunInitiation,
+        is_initiation_timestamp,
+        is_run_date,
+    )
+
+    if not isinstance(config, dict):
+        return None
+    date_key, at_key, pid_key = RUN_INITIATION_KEYS
+    date, at_utc, pid = config.get(date_key), config.get(at_key), config.get(pid_key)
+    if not is_run_date(date):
+        return None
+    return RunInitiation(
+        date=date,
+        at_utc=at_utc if is_initiation_timestamp(at_utc) else None,
+        pid=(
+            pid
+            if isinstance(pid, int) and not isinstance(pid, bool) and pid > 0
+            else None
+        ),
+    )
+
+
+def recorded_run_initiation(output_dir: Path) -> "RunInitiation | None":
+    """The run's initial CLI call, as its processing state records it.
+
+    How a worker in another process learns the run's figure-folder date and
+    the call's timestamp and pid (figures spec §1a): the CLI records them in
+    ``state.config`` before any worker is submitted or launched, and they
+    never travel on a command line. A plain read-only JSON read -- unlike
+    :func:`load_processing_state` it neither migrates legacy state nor
+    aggregates events -- so it is cheap per image.
+
+    Args:
+        output_dir: The run's output root.
+
+    Returns:
+        The recorded call, or ``None`` when there is no state or it records
+        no valid date. Never raises.
+    """
+    state = _read_json(resolve_processing_state_path(Path(output_dir)))
+    config = state.get(ProcessingStateKey.CONFIG) if isinstance(state, dict) else None
+    return run_initiation_from_config(config)
+
+
+def metadata_run_initiation(output_dir: Path) -> "RunInitiation | None":
+    """A measure-mode SLURM invocation's initial call, from ``job_metadata.json``.
+
+    Measure mode keeps no processing state -- the state under its tree is
+    the earlier run's -- so its SLURM submitter records the call in the job
+    metadata it writes before fan-out (figures spec §1a). Read-only; never
+    raises.
+
+    Args:
+        output_dir: The run's output root.
+
+    Returns:
+        The recorded call, or ``None`` when the metadata is absent, corrupt
+        or records no valid date.
+    """
+    from phenotypic.sdk_ import job_metadata_path
+
+    metadata = _read_json(job_metadata_path(Path(output_dir)))
+    return run_initiation_from_config(metadata)
 
 
 def load_processing_state(output_dir: Path) -> Optional[ProcessingState]:
@@ -289,6 +399,11 @@ def create_initial_state(
             # gate no longer fires at all, which overstated one line into a
             # whole-gate guarantee.
             "restart_epoch": identity.restart_epoch,
+            # The run's initial CLI call -- figure-folder date, UTC timestamp,
+            # pid: recorded once here and reused on resume, so every image and
+            # stage writes one folder (figures spec §1a). Configuration, not
+            # tracked progress state.
+            **run_initiation_config(config.run_initiation),
         }
     )
     

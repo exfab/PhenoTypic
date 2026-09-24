@@ -48,8 +48,16 @@ each ROI's tiles, the chart patch each was matched to, and ΔE00 before and
 after. It draws from `op.calibration_record`, plain data that is kept even
 when the gate refuses the frame. `render_calibration_overlay(record)` in
 `_calibration_overlay.py` reads nothing else, so a record persisted elsewhere
-draws the same figure. Saving the record and CLI publication are not
-implemented yet.
+draws the same figure. `CalibrateColorRpcc` is also a `PlotImage`: listed
+under `ImagePipeline(plots=...)`, the CLI stores the rendered overlay PNG in
+each image's store (`figures/<run>/<id>/default.png`) and copies it to
+`deliverables/plots/`. The record itself is not saved. `inspect(image)` raises
+`FigureInputUnavailable` for any image but the one the last `apply()` ran on,
+so staged Stage 3 keeps the PNG Stage 1 drew in the same run folder.
+`--mode measure` with the **same pipeline** reuses that run's folder and keeps
+the PNG there. With a **different pipeline** it writes that pipeline's own run
+folder, which holds no overlay, so it lists the binding there as `unavailable`
+and leaves the earlier run's PNG where it is.
 
 ## Invariants a change here must not break
 

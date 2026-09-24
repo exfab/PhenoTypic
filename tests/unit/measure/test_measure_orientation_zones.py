@@ -958,6 +958,39 @@ def test_tiny_objects_are_all_nan():
     assert set(ORIENTATION_ZONE_PRIMARY.get_headers()).issubset(df.columns)
 
 
+def test_canonical_figures_skip_failed_one_pixel_objects():
+    """Otsu on the yeast plate leaves 1-3 px specks. In canonical mode each is
+    a zone failure whose stand-in orientation field is ``(1, 1)``, and every
+    figure raster used to pass it to ``np.gradient``, which raised -- so
+    ``inspect()`` failed on the whole plate while ``measure()`` succeeded."""
+    import plotly.graph_objects as go
+    from phenotypic.detect import OtsuDetector
+
+    image = Image(load_synth_yeast_plate())
+    OtsuDetector().apply(image, inplace=True)
+    op = MeasureOrientationZones()
+    props, _ = op._prep(image)
+    speck = min(props, key=lambda prop: prop.area)
+    resolution = op._resolve_object_zones(image, speck)
+    assert resolution.orientation_context is None
+    assert not resolution.segmentation.zones_computed
+    assert np.asarray(resolution.segmentation.obj_mask).shape == (1, 1), (
+        "the plate no longer holds the degenerate object this test guards"
+    )
+
+    figures = {
+        "inspect": op.inspect(image, for_save=True),
+        "cumulative_rotation_overlay": op.cumulative_rotation_overlay(image),
+        "matched_cumulative_rotation_overlay": (
+            op.matched_cumulative_rotation_overlay(image)
+        ),
+        "fiber_bend_overlay": op.fiber_bend_overlay(image),
+    }
+    for name, fig in figures.items():
+        assert isinstance(fig, go.Figure), name
+        assert len(fig.data) > 0, name
+
+
 def test_measure_cache_is_compact():
     # Guard against memory bloat: after measure(), the per-object cache must hold
     # NO full-res arrays and NO seg dataclass — only scalars + the block quiver.
@@ -1111,6 +1144,7 @@ def test_cumulative_rotation_overlay_uses_degrees_and_excludes_inoculum(
         sparse_end_radius=88.0,
         symmetric_radius=88.0,
         centroid_global=centre,
+        zones_computed=True,
     )
     op = MeasureOrientationZones(legacy_mode=True)
     monkeypatch.setattr(
@@ -1179,6 +1213,7 @@ def test_matched_cumulative_overlay_tracks_nearby_sectors_and_uses_full_range(
         sparse_end_radius=88.0,
         symmetric_radius=88.0,
         centroid_global=centre,
+        zones_computed=True,
     )
     op = MeasureOrientationZones(legacy_mode=True)
     monkeypatch.setattr(
@@ -1268,6 +1303,7 @@ def test_matched_cumulative_overlay_draws_gap_as_dashed_bridge(monkeypatch):
         sparse_end_radius=38.0,
         symmetric_radius=38.0,
         centroid_global=centre,
+        zones_computed=True,
     )
     radii = np.array([10.0, 20.0, 30.0])
     orientation = np.full((3, 36), np.nan)
@@ -1372,6 +1408,7 @@ def test_fiber_bend_overlay_is_multiscale_unsigned_and_excludes_core(
         sparse_end_radius=88.0,
         symmetric_radius=88.0,
         centroid_global=centre,
+        zones_computed=True,
     )
     base = np.exp(-((distance - 50.0) ** 2) / 40.0)
 

@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Literal
 
 from ._output import FigureLike, figure_backend_of
+from ._store_formats import StoreFormat, resolve_store_formats
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     import plotly.graph_objects as go
@@ -109,6 +110,8 @@ class FigureSpec:
         title: Human-readable figure title.
         section: Grouping tag used by report adapters.
         backend: Declared rendering backend, ``"plotly"`` or ``"mpl"``.
+        store: Formats a ``PlotImage`` publication stores for this figure
+            (spec §2).
         controls: Mapping from method keyword to its control.
         description: Optional renderer-neutral explanatory content.
         primary: Whether this is the default :meth:`PhtPlot.inspect` figure.
@@ -122,6 +125,7 @@ class FigureSpec:
     title: str
     section: str
     backend: Literal["plotly", "mpl"]
+    store: tuple[str, ...]
     controls: dict[str, Control]
     description: Any
     primary: bool
@@ -163,6 +167,7 @@ def figure(
     *,
     title: str,
     backend: Literal["plotly", "mpl"],
+    store: tuple[StoreFormat, ...] | None = None,
     section: str = "default",
     controls: dict[str, Control] | None = None,
     description: Any = None,
@@ -181,6 +186,9 @@ def figure(
             ``"mpl"``. Required: the backend decides how the figure is themed
             (Plotly themes the result, matplotlib themes the construction), so
             there is no default that is right for both.
+        store: Formats to store in the image's OME-Zarr store. ``None``
+            stores the backend default (``("plotly-json",)`` /
+            ``("png",)``). Validated when the class is defined.
         section: Grouping tag used by report adapters.
         controls: Mapping from method keyword to renderer-neutral control.
         description: Optional renderer-neutral explanatory content.
@@ -194,6 +202,7 @@ def figure(
     Raises:
         ValueError: If ``backend`` is not ``"plotly"`` or ``"mpl"``, or if a
             control key does not name a method parameter.
+        TypeError: If ``store`` is invalid.
     """
     if backend not in ("plotly", "mpl"):
         raise ValueError(
@@ -217,6 +226,9 @@ def figure(
                     f"@figure({fn.__name__!r}): control key {kwarg!r} is not a "
                     "parameter of the method"
                 )
+        resolved_store = resolve_store_formats(
+            store, backend=backend, owner=fn.__name__
+        )
 
         subject_param: str | None = None
         for parameter in params:
@@ -252,6 +264,7 @@ def figure(
         wrapper.__figure_spec__ = FigureSpec(  # type: ignore[attr-defined]
             title=title,
             backend=backend,
+            store=resolved_store,
             section=section,
             controls=declared_controls,
             description=description,

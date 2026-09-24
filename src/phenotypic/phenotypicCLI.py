@@ -246,6 +246,7 @@ if TYPE_CHECKING:
         exclude_terminal_failures_for_datasets,
         get_remaining_images_for_datasets,
         load_processing_state,
+        run_initiation_config,
         save_processing_state,
         update_state_from_events,
         validate_resume_compatibility,
@@ -259,6 +260,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image_parts.detection_modes import available_modes  # noqa: F401
     from phenotypic._core._image_pipeline import ImagePipeline
     from phenotypic._core._provenance import pipeline_source_identity
+    from phenotypic.sdk_._image_figures import RunInitiation
 
 #: Heavy names this module binds on first use. Each of these import statements reaches
 #: the image core, pandas or polars, so importing them at module level would make
@@ -281,6 +283,7 @@ _CLI_RUNTIME_IMPORTS: dict[str, tuple[str, ...]] = {
         "exclude_terminal_failures_for_datasets",
         "get_remaining_images_for_datasets",
         "load_processing_state",
+        "run_initiation_config",
         "save_processing_state",
         "update_state_from_events",
         "validate_resume_compatibility",
@@ -818,6 +821,33 @@ def _parse_slurm_args(slurm_args: Sequence[str]) -> dict:
     kept for backward compatibility within this module.
     """
     return parse_slurm_args(slurm_args)
+
+
+def _run_initiation(resume_state: Any | None) -> "RunInitiation":
+    """The run's initial CLI call (figures spec §1a).
+
+    A resume reuses the call its processing state recorded -- date, UTC
+    timestamp and pid unchanged -- so a run resumed on a later day still
+    writes one folder and names one call. Anything else -- a fresh run,
+    ``--restart``, ``--overwrite``, a state written before the call was
+    recorded or with a malformed date, or measure mode, which keeps no
+    state -- is a new call.
+
+    Args:
+        resume_state: The state being resumed, or ``None``.
+
+    Returns:
+        The call's :class:`~phenotypic.sdk_._image_figures.RunInitiation`.
+    """
+    from phenotypic._cli._cli_state_management import run_initiation_from_config
+    from phenotypic.sdk_._image_figures import mint_run_initiation
+
+    recorded = (
+        run_initiation_from_config(resume_state.config)
+        if resume_state is not None
+        else None
+    )
+    return recorded if recorded is not None else mint_run_initiation()
 
 
 def _output_was_migrated(output_dir: Path) -> bool:
@@ -2390,6 +2420,12 @@ def phenotypic_cli(
         # and not restart and not measure_only`, so no path reaches a resume
         # site without passing here first.
         identity = mint_run_identity(config, restart=restart)
+        # One initial call for the whole run, every image and stage (figures
+        # spec §1a): the recorded one on a resume, else this one. Measure mode
+        # keeps no run state, so it always records its own.
+        config.run_initiation = _run_initiation(
+            None if measure_only else resume_state
+        )
 
         # Scan directory structure (or discover image stores in measure mode)
         if measure_only:
@@ -2982,6 +3018,9 @@ def phenotypic_cli(
                     # the opposite of what a resume is for.
                     "processing_generation": identity.processing_generation,
                     "restart_epoch": identity.restart_epoch,
+                    # Reused, never re-minted: a resume on a later day
+                    # writes into the run's one figure folder (spec §1a).
+                    **run_initiation_config(config.run_initiation),
                     "metadata_sha256": (
                         file_sha256(config.metadata_csv)
                         if config.metadata_csv is not None
@@ -3038,6 +3077,7 @@ def phenotypic_cli(
             overlay_alpha=config.overlay_alpha,
             save_overlays=config.save_overlays,
             durable_writes=config.durable_writes,
+            run_initiation=config.run_initiation,
         )
         # Process-only runs export image layers mirroring the input tree and
         # write no results/ or deliverables/ structure; the worker creates its

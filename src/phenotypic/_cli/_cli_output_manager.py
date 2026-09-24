@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
     from phenotypic.plotting._pipeline import AnalysisResult
     from phenotypic.sdk_ import CommitGuard
+    from phenotypic.sdk_._image_figures import RunInitiation, StoredFigures
 
 from ._cli_types import Dataset
 from ._embedded_measurement_tables import prepare_image_tables
@@ -1560,6 +1561,7 @@ class OutputManager:
         overlay_alpha: float = 0.3,
         save_overlays: bool = True,
         durable_writes: bool | None = None,
+        run_initiation: RunInitiation | None = None,
     ):
         """
         Initialize OutputManager.
@@ -1582,6 +1584,12 @@ class OutputManager:
                 rather than passed per call so that no ``save_image_store``
                 site can be silently inert: every write this manager performs
                 inherits the run's resolved durability (spec §3.7).
+            run_initiation: The run's initial CLI call (figures spec §1a):
+                its date is the ``{date}`` of every figure run folder this run
+                writes, and its UTC timestamp and pid go into each run entry.
+                Carried here so every write this manager performs describes
+                the one call. ``None`` falls back to today's UTC date, with no
+                timestamp or pid.
         """
         self.base_dir = Path(base_dir)
         self.save_layers = save_layers
@@ -1590,6 +1598,7 @@ class OutputManager:
         self.overlay_alpha = overlay_alpha
         self.save_overlays = save_overlays
         self.durable_writes = durable_writes
+        self.run_initiation = run_initiation
 
         # Results directory for dataset outputs (images, measurements, overlays)
         self.results_dir = self.base_dir / DIR_RESULTS
@@ -1606,6 +1615,7 @@ class OutputManager:
         overlay_alpha: float = 0.3,
         save_overlays: bool = True,
         durable_writes: bool | None = None,
+        run_initiation: RunInitiation | None = None,
     ) -> "OutputManager":
         """Create an OutputManager configured for store-centric forward runs.
 
@@ -1638,6 +1648,11 @@ class OutputManager:
                 command line -- an unset flag re-detects correctly on its own,
                 but ``--no-durable-writes`` exists only in the submitting
                 process (spec §3.7).
+            run_initiation: See :meth:`__init__`. A worker in another
+                process passes what the run recorded
+                (``_cli_state_management.recorded_run_initiation``, or
+                ``metadata_run_initiation`` for measure mode); it never
+                travels on a command line.
         """
         return cls(
             base_dir=base_dir,
@@ -1647,6 +1662,7 @@ class OutputManager:
             overlay_alpha=overlay_alpha,
             save_overlays=save_overlays,
             durable_writes=durable_writes,
+            run_initiation=run_initiation,
         )
 
     def create_structure(self, datasets: List[Dataset]) -> None:
@@ -1849,6 +1865,7 @@ class OutputManager:
         durable: bool | None = None,
         commit_guard: CommitGuard | None = None,
         measurements: pd.DataFrame | None = None,
+        figures: StoredFigures | None = None,
     ) -> Optional[Path]:
         """Save a processed image as an OME-Zarr store under ``results/<ds>/zarr/``.
 
@@ -1876,6 +1893,10 @@ class OutputManager:
                 Deferring rather than re-defaulting to ``None`` here is what
                 makes the flag reach *every* write site: a caller that passes
                 nothing still gets the run's mode, so no site can be inert.
+            figures: One run's per-image figures, written inside the store's
+                transaction (spec 2026-09-22 §3); they replace that run's
+                folder only. ``None`` adds no run. Either way, every other
+                run already in the store is carried across (§1a).
 
         Returns:
             Path where the store was promoted, or ``None`` if saving failed.
@@ -1917,6 +1938,8 @@ class OutputManager:
             }
             if table is not None:
                 save_kwargs["measurement_table"] = table
+            if figures is not None:
+                save_kwargs["figures"] = figures
             saved = image.save2zarr(final_path, **save_kwargs)
             logger.info(
                 "Saved OME-Zarr store for %s/%s", dataset_name, image_stem
@@ -1944,6 +1967,7 @@ class OutputManager:
         measurements: pd.DataFrame,
         dataset_name: str,
         *,
+        figures: StoredFigures | None = None,
         durable: bool | None = None,
         commit_guard: CommitGuard | None = None,
     ) -> Path:
@@ -1955,6 +1979,21 @@ class OutputManager:
         **un-invert** every image ``--mode measure`` touches: a joined
         ``table.parquet`` and no ``pht-metadata.parquet``, on a tree whose
         other stores are inverted.
+
+        Args:
+            store_path: A promoted ``*.ome.zarr`` store.
+            measurements: The image's per-object measurements.
+            dataset_name: Dataset name.
+            figures: This run's per-image figures, written as one run folder
+                beside the store's others; ``None`` adds no run and touches
+                no figure (spec 2026-09-22 §1a). See
+                :func:`~phenotypic.sdk_.replace_image_tables`.
+            durable: ``fsync`` before promoting. ``None`` defers to
+                :attr:`durable_writes`.
+            commit_guard: Publication guard, checked at the commit point.
+
+        Returns:
+            The store's embedded measurement table path.
         """
         from phenotypic.sdk_ import (
             MEASUREMENT_TABLE_RELATIVE_PATH,
@@ -1979,6 +2018,7 @@ class OutputManager:
         replace_image_tables(
             store_path,
             tables,
+            figures=figures,
             durable=self.durable_writes if durable is None else durable,
             commit_guard=commit_guard,
         )

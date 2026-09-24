@@ -44,9 +44,11 @@ def record_plot_failure(
     binding_id: str,
     plot_class: str,
     lifecycle: str,
-    error: BaseException,
+    error: BaseException | str,
     dataset: str | None = None,
     image_stem: str | None = None,
+    page: str | None = None,
+    fmt: str | None = None,
 ) -> None:
     """Append one failure to ``<plots_base>/.failures.jsonl``.
 
@@ -78,9 +80,19 @@ def record_plot_failure(
             whichever of the four was running. The writer does not know which,
             which is why it is a fifth value rather than a subdivision of the
             other four.
-        error: The exception that was swallowed.
+        error: The exception that was swallowed. A ``str`` is recorded
+            verbatim; the store already spelled it with
+            ``normalize_figure_error``, and re-wrapping would prefix a class
+            twice.
         dataset: Dataset name, for the image lifecycle only.
         image_stem: Image stem, for the image lifecycle only.
+        page: The page key a per-image failure is about, recorded as the
+            ``page`` field.
+        fmt: The store format a per-image failure is about, recorded as the
+            ``format`` field. It may instead name a deliverable rendering
+            copy-out produces from a stored file -- ``"html"`` for the page
+            generated from a stored ``plotly-json`` -- so a failure to render
+            is never mistaken for a fault in the store.
     """
     try:
         # Inside the handler, not above it. A lazy import can fail -- a circular
@@ -94,12 +106,16 @@ def record_plot_failure(
             "binding_id": binding_id,
             "plot_class": plot_class,
             "lifecycle": lifecycle,
-            "error": _format_error(error),
+            "error": error if isinstance(error, str) else _format_error(error),
         }
         if dataset is not None:
             entry["dataset"] = dataset
         if image_stem is not None:
             entry["image_stem"] = image_stem
+        if page is not None:
+            entry["page"] = page
+        if fmt is not None:
+            entry["format"] = fmt
 
         plots_base.mkdir(parents=True, exist_ok=True)
         # default=str: a field that is not JSON-native must degrade, not

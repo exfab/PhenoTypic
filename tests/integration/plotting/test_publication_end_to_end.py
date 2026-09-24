@@ -3,13 +3,15 @@
 Unit tests prove each piece in isolation. These prove they compose on a real
 pipeline: a synthetic yeast plate, a real ``OtsuDetector``, real measurements.
 Nothing in the code under test is patched. Chrome is never assumed either way:
-every rendering assertion is written against ``chrome_available()``, the
-machine's real, freshly probed capability, so the same test is correct on a
-node with Chrome and on one without.
+every rendering assertion holds on a node with Chrome and on one without --
+the image plots store only their backend default, which needs no Chrome, and
+the aggregate assertions are written against ``chrome_available()``, the
+machine's real, freshly probed capability.
 """
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -21,6 +23,8 @@ from phenotypic.data import load_synth_yeast_plate
 from phenotypic.detect import OtsuDetector
 from phenotypic.measure import MeasureSize
 from phenotypic.plotting._pipeline import PlotCoordinator, chrome_available
+from phenotypic.plotting._pipeline._store_figures import build_image_figures
+from tests.unit.plotting._store_fixtures import TEST_RUN
 
 _OPS = {"detect": OtsuDetector()}
 _MEAS = {"size": MeasureSize()}
@@ -53,6 +57,28 @@ def measured_plate():
 
 def _plots(tmp_path: Path) -> Path:
     return tmp_path / "deliverables" / "plots"
+
+
+def _publish_through_store(
+    pipeline: ImagePipeline, image, tmp_path: Path, *, expect_clean: bool = True
+) -> None:
+    """build -> real store -> copy-out, the path every CLI mode takes.
+
+    The store sits beside ``tmp_path``, not in it, so the tree assertions
+    below see only deliverables. It is removed once copy-out has read it.
+    """
+    stored = build_image_figures(pipeline, image, run=TEST_RUN)
+    if expect_clean:
+        # Replaces `strict=True`: a failed build must not pass quietly.
+        assert stored.failed == ()
+    store = tmp_path.parent / f"{tmp_path.name}-store.ome.zarr"
+    try:
+        store = image.save2zarr(store, figures=stored)
+        PlotCoordinator(pipeline, tmp_path).publish_store_figures(
+            store, run_id=TEST_RUN.run_id, dataset="ds 1", image_stem="plate_01"
+        )
+    finally:
+        shutil.rmtree(store, ignore_errors=True)
 
 
 class ObjectCount(BaseModel, PlotImage):
@@ -93,9 +119,7 @@ def test_a_plotly_image_plot_publishes_html_and_one_hoisted_bundle(
     image, _measurements = measured_plate
     pipeline = ImagePipeline(ops=_OPS, meas=_MEAS, plots=[ObjectCount()])
 
-    PlotCoordinator(pipeline, tmp_path).emit_image(
-        image, dataset="ds 1", image_stem="plate_01", strict=True
-    )
+    _publish_through_store(pipeline, image, tmp_path)
 
     plots = _plots(tmp_path)
     directory = plots / "ObjectCount" / "ds-1"
@@ -105,8 +129,10 @@ def test_a_plotly_image_plot_publishes_html_and_one_hoisted_bundle(
     assert sorted(tmp_path.rglob("plotly.min.js")) == [plots / "plotly.min.js"]
     assert 'src="../../plotly.min.js"' in pages[0].read_text(encoding="utf-8")
 
-    # PNG presence tracks the real capability of this machine.
-    assert pages[0].with_suffix(".png").is_file() is chrome_available()
+    # The stored default is `plotly-json`, copied out beside its HTML; no
+    # PNG is stored, so none is published whatever this machine can render.
+    assert len(list(directory.glob("plate_01-*.plotly.json"))) == 1
+    assert list(directory.glob("*.png")) == []
 
     # The flat path writes no manifest, and nothing was recorded as failed.
     assert not (directory / "manifest.json").exists()
@@ -119,9 +145,7 @@ def test_a_matplotlib_image_plot_publishes_png_only_and_no_bundle(
     image, _measurements = measured_plate
     pipeline = ImagePipeline(ops=_OPS, meas=_MEAS, plots=[ObjectCountMpl()])
 
-    PlotCoordinator(pipeline, tmp_path).emit_image(
-        image, dataset="ds 1", image_stem="plate_01", strict=True
-    )
+    _publish_through_store(pipeline, image, tmp_path)
 
     directory = _plots(tmp_path) / "ObjectCountMpl" / "ds-1"
     assert len(list(directory.glob("plate_01-*.png"))) == 1
@@ -174,9 +198,7 @@ def test_a_failing_plot_is_recorded_once_and_does_not_stop_its_neighbour(
         ops=_OPS, meas=_MEAS, plots=[ExplodingImagePlot(), ObjectCount()]
     )
 
-    PlotCoordinator(pipeline, tmp_path).emit_image(
-        image, dataset="ds 1", image_stem="plate_01"
-    )
+    _publish_through_store(pipeline, image, tmp_path, expect_clean=False)
 
     plots = _plots(tmp_path)
     assert sorted(tmp_path.rglob(".failures.jsonl")) == [plots / ".failures.jsonl"]

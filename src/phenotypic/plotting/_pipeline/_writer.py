@@ -10,7 +10,7 @@ import re
 import uuid
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from typing import Any
 
 from phenotypic.sdk_._file_locking import exclusive_path_lock
@@ -143,11 +143,10 @@ def _render_page(
 ) -> tuple[dict[str, str], list[BaseException], str | None]:
     """Render one figure to every format its backend supports.
 
-    This is the single definition of "what files does a page produce". It is
-    called from :func:`_publish_plot_output_locked` for multi-page and aggregate
-    output, and from ``PlotCoordinator._publish_image_value`` for the flat
-    single-page image path -- which does not go through the writer, takes no
-    directory lock and writes no manifest, and would otherwise never gain HTML.
+    This is the single definition of "what files does a page produce" for
+    aggregate output. It is called from :func:`_publish_plot_output_locked`.
+    Image plots do not come here: they are serialized into the store and
+    copied out by ``_store_copyout``.
 
     HTML is attempted first: it needs no Chrome, so a page that can be published
     at all is on disk before anything that might fail is tried.
@@ -275,6 +274,38 @@ def _remove_stale_sibling(
             path.unlink(missing_ok=True)
 
 
+def unique_page_stems(names: Sequence[tuple[str, str]]) -> list[str]:
+    """Return one filesystem stem per page, unique under case folding.
+
+    Args:
+        names: ``(page_key, preferred_name)`` per page, in page order. The
+            manifest writer prefers the label; the store uses the key.
+
+    Returns:
+        Stems in the same order. Sanitization is many-to-one, so a collision
+        gets a digest suffix derived from the page key -- stable across reruns.
+    """
+    used: dict[str, str] = {}
+    stems: list[str] = []
+    for key, preferred in names:
+        try:
+            stem = safe_path_component(preferred)
+        except Exception:
+            stem = "page"
+        base_stem = stem
+        folded = stem.casefold()
+        attempt = 0
+        while folded in used and used[folded] != key:
+            digest_input = key if attempt == 0 else f"{key}:{attempt}"
+            digest = hashlib.sha256(digest_input.encode("utf-8")).hexdigest()[:8]
+            stem = f"{base_stem}-{digest}"
+            folded = stem.casefold()
+            attempt += 1
+        used[folded] = key
+        stems.append(stem)
+    return stems
+
+
 def publish_plot_output(
     value: Any | PlotOutput,
     directory: Path,
@@ -338,7 +369,6 @@ def _publish_plot_output_locked(
     # Function-scope import on purpose; see the note at this module's imports.
     from ._backends import chrome_available
 
-    used: dict[str, str] = {}
     pages: list[dict[str, Any]] = []
     failed: list[dict[str, Any]] = []
     backends: set[str | None] = set()
@@ -348,25 +378,10 @@ def _publish_plot_output_locked(
     # does so while emitting a correct-looking relative src.
     base = plots_base if plots_base is not None else directory
 
-    for page in output.pages:
-        label = page.label or page.key
-        try:
-            stem = safe_path_component(label)
-        except Exception:
-            stem = "page"
-        base_stem = stem
-        folded = stem.casefold()
-        attempt = 0
-        while folded in used and used[folded] != page.key:
-            digest_input = (
-                page.key if attempt == 0 else f"{page.key}:{attempt}"
-            )
-            digest = hashlib.sha256(digest_input.encode("utf-8")).hexdigest()[:8]
-            stem = f"{base_stem}-{digest}"
-            folded = stem.casefold()
-            attempt += 1
-        used[folded] = page.key
-
+    stems = unique_page_stems(
+        [(page.key, page.label or page.key) for page in output.pages]
+    )
+    for page, stem in zip(output.pages, stems):
         try:
             files, errors, backend = _render_page(
                 page.figure, directory, stem,
@@ -460,6 +475,21 @@ def _publish_plot_output_locked(
         "pages": pages,
         "failed": failed,
     }
+    _commit_manifest(
+        directory, manifest,
+        publication_guard=publication_guard, commit_guard=commit_guard,
+    )
+    return manifest
+
+
+def _commit_manifest(
+    directory: Path,
+    manifest: dict[str, Any],
+    *,
+    publication_guard: Callable[[], bool] | None,
+    commit_guard: CommitGuard | None,
+) -> None:
+    """Replace ``directory/manifest.json`` with *manifest*, guarded, last."""
     manifest_path = directory / "manifest.json"
     temporary_manifest = directory / f".manifest.{uuid.uuid4().hex}.tmp"
     try:
@@ -470,7 +500,6 @@ def _publish_plot_output_locked(
             os.replace(temporary_manifest, manifest_path)
     finally:
         temporary_manifest.unlink(missing_ok=True)
-    return manifest
 
 
 def _require_plot_publication(

@@ -663,3 +663,63 @@ def test_failed_status_cleanup_does_not_mask_apply_failure(
     assert caught.value.stage == "process"
     assert caught.value.cause is original
     assert caught.value.__cause__ is original
+
+
+def test_two_processes_with_a_figure_binding_write_byte_identical_stores(
+    tmp_path: Path, source_image: Path
+) -> None:
+    """Spec §4: byte identity now covers figures/, and holds across fresh
+    interpreters (fresh hash seeds, fresh object addresses). The run date is
+    pinned: identity is promised within one UTC day (spec §1a)."""
+    import os
+    import subprocess
+    import sys
+    import textwrap
+
+    from phenotypic.detect import OtsuDetector
+    from phenotypic.measure import MeasureSymZones
+
+    sym = MeasureSymZones()
+    pipeline = tmp_path / "plotted.json.pht-pipe"
+    ImagePipeline(
+        ops=[OtsuDetector()], meas={"sym": sym}, plots=[sym]
+    ).to_json(pipeline)
+
+    def run(out: Path, seed: str) -> Path:
+        # Same day, but each process's own call: a different timestamp and
+        # pid, which a process store must omit to stay byte-identical.
+        code = textwrap.dedent(f"""
+            import os
+            from datetime import datetime, timezone
+            from pathlib import Path
+            from phenotypic._cli._cli_process_only import process_single_apply_only_core
+            from phenotypic.sdk_._image_figures import RunInitiation
+            process_single_apply_only_core(
+                pipeline_path=Path({str(pipeline)!r}),
+                image_path=Path({str(source_image)!r}),
+                input_root=Path({str(source_image.parent)!r}),
+                output_dir=Path({str(out)!r}),
+                image_type="Image", layer="rgb", read_kwargs={{}},
+                process_format="zarr",
+                run_initiation=RunInitiation(
+                    "2026-09-22",
+                    datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                    os.getpid(),
+                ),
+            )
+        """)
+        subprocess.run(
+            [sys.executable, "-c", code],
+            check=True,
+            env={**os.environ, "PYTHONHASHSEED": seed},
+        )
+        return out / f"{source_image.stem}{ngff_.STORE_SUFFIX}"
+
+    first, second = run(tmp_path / "a", "1"), run(tmp_path / "b", "2")
+    left, right = _tree_bytes(first), _tree_bytes(second)
+    assert any(
+        name.startswith("figures/2026-09-22-") and name.endswith("/sym/default.plotly.json")
+        for name in left
+    )
+    assert sorted(left) == sorted(right)
+    assert [name for name in left if left[name] != right[name]] == []

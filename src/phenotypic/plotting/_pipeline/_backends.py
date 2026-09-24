@@ -176,6 +176,9 @@ def preflight_plot_backends(pipeline: Any) -> list[str]:
     backend is not declared -- most plots that override ``inspect`` directly
     -- has a backend decided only at render time, so it is named
     conditionally in the Chrome warning and never fails the import check.
+    Image plots are judged by their declared ``store`` instead: only one
+    storing a Plotly ``png`` needs Chrome, and it gets its own sentence,
+    since its deliverables are the stored files, not a rendered HTML page.
 
     :func:`chrome_available` is called only when some binding declares
     ``plotly`` or declares nothing; a pipeline that can only produce
@@ -190,10 +193,31 @@ def preflight_plot_backends(pipeline: Any) -> list[str]:
     Raises:
         PlotBackendUnavailable: If a declared backend's library is missing.
     """
+    from phenotypic.abc_.plotting import PlotImage
+
     plotly_ids: list[str] = []
     mpl_ids: list[str] = []
     undeclared_ids: list[str] = []
+    # Image plots with a declared Plotly PNG: that PNG fails without Chrome,
+    # and a plot storing nothing else publishes nothing at all.
+    image_png_ids: list[str] = []
+    image_png_only_ids: list[str] = []
     for binding in pipeline.get_plots():
+        if isinstance(binding.plot, PlotImage):
+            spec = declared_figure_spec(binding.plot)
+            # An image plot renders PNG only if it declared it (spec §2);
+            # an undeclared one stores its backend default, which for Plotly
+            # needs no Chrome.
+            if spec is not None and spec.backend == "plotly" and "png" in spec.store:
+                if "plotly-json" in spec.store:
+                    image_png_ids.append(binding.id)
+                else:
+                    image_png_only_ids.append(binding.id)
+            elif spec is not None and spec.backend == "mpl":
+                mpl_ids.append(binding.id)
+            elif spec is not None:
+                _require_importable("plotly", "plotly", [binding.id])
+            continue
         backend = _declared_backends(binding.plot)
         if backend == "plotly":
             plotly_ids.append(binding.id)
@@ -203,9 +227,13 @@ def preflight_plot_backends(pipeline: Any) -> list[str]:
             undeclared_ids.append(binding.id)
 
     _require_importable("matplotlib", "mpl", mpl_ids)
-    _require_importable("plotly", "plotly", plotly_ids)
+    _require_importable(
+        "plotly", "plotly", plotly_ids + image_png_ids + image_png_only_ids
+    )
 
-    if not (plotly_ids or undeclared_ids) or chrome_available():
+    if not (
+        plotly_ids or undeclared_ids or image_png_ids or image_png_only_ids
+    ) or chrome_available():
         return []
     parts = ["Chrome is not available;"]
     if plotly_ids:
@@ -213,9 +241,19 @@ def preflight_plot_backends(pipeline: Any) -> list[str]:
             f"{len(plotly_ids)} Plotly plots will publish HTML only, without "
             f"PNG: {', '.join(plotly_ids)}."
         )
+    if image_png_ids:
+        parts.append(
+            f"{len(image_png_ids)} image plots declare a PNG that will be "
+            f"recorded as failed: {', '.join(image_png_ids)}."
+        )
+    if image_png_only_ids:
+        parts.append(
+            f"{len(image_png_only_ids)} image plots declare only a PNG and "
+            f"will publish nothing: {', '.join(image_png_only_ids)}."
+        )
     if undeclared_ids:
         parts.append(
-            f"{len(undeclared_ids)} {'more ' if plotly_ids else ''}plots "
+            f"{len(undeclared_ids)} {'more ' if len(parts) > 1 else ''}plots "
             "declare no figure backend and will publish HTML only, without "
             f"PNG, if they return Plotly: {', '.join(undeclared_ids)}."
         )
@@ -248,6 +286,16 @@ def _declared_backends(plot: Any) -> str | None:
     normalize_plot_bindings admits no other non-PhtPlot, and requires ``cls``
     to subclass PlotQc.
     """
+    spec = declared_figure_spec(plot)
+    return spec.backend if spec is not None else None
+
+
+def declared_figure_spec(plot: Any) -> Any:
+    """Return the ``FigureSpec`` *plot*'s ``inspect()`` renders, if declared.
+
+    The three-step rule documented on :func:`_declared_backends`, returning
+    the spec rather than its backend so a caller can also read ``spec.store``.
+    """
     from phenotypic.abc_.plotting import PhtPlot
 
     if isinstance(plot, PhtPlot):
@@ -259,11 +307,11 @@ def _declared_backends(plot: Any) -> str | None:
     effective_inspect = owner.inspect
     declared = getattr(effective_inspect, "__figure_spec__", None)
     if declared is not None:
-        return declared.backend
+        return declared
     if effective_inspect is not PhtPlot.inspect:
         return None
     try:
-        return primary_spec().backend
+        return primary_spec()
     except RuntimeError:
         return None
 

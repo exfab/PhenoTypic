@@ -63,8 +63,19 @@ class _PreGpuPlot(BlurGauss, PlotImage):
     pass
 
 
-def test_pre_gpu_plot_reference_is_rejected():
+def test_a_pre_gpu_plot_goes_to_stage_one_only():
+    """Stage 1 applies the operation, so Stage 1 draws its figure and Stage 3
+    carries it (figures spec §3a); ``post_pipeline`` no longer holds the op,
+    so the binding could not even resolve there."""
     pre = _PreGpuPlot()
-    pipe = ImagePipeline(ops={"pre": pre, "gpu": FakeGpuDetector()}, plots=[pre])
-    with pytest.raises(ValueError, match="references pre-GPU operation"):
-        split_pipeline_at_gpu(pipe)
+    zones = MeasureSymZones()
+    pipe = ImagePipeline(
+            ops={"pre": pre, "gpu": FakeGpuDetector()},
+            meas={"zones": zones},
+            plots=[pre, zones],
+    )
+    plan = split_pipeline_at_gpu(pipe)
+    [stage1] = plan.pre_pipeline.get_plots()
+    assert (stage1.id, stage1.ref.key) == ("pre", "pre")
+    assert stage1.plot is pre is plan.pre_pipeline.get_ops()["pre"]
+    assert [b.id for b in plan.post_pipeline.get_plots()] == ["zones"]
