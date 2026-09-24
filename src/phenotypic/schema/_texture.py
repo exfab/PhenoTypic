@@ -174,13 +174,11 @@ class TEXTURE(DiscriminativeFeature):
         ``{cat}_{label}-deg###-scale##`` / ``{cat}_{label}-avg-scale##`` spelling
         that stored tables still carry.
         """
-        for pattern in (_TEXTURE_HEADER_RE, _LEGACY_TEXTURE_HEADER_RE):
-            match = pattern.fullmatch(column)
-            if match is not None:
-                break
-        else:
-            return None
-        if match.group("cat") != cls.category():
+        match = (
+                _TEXTURE_HEADER_RE.fullmatch(column)
+                or _LEGACY_TEXTURE_HEADER_RE.fullmatch(column)
+        )
+        if match is None or match.group("cat") != cls.category():
             return None
         label = match.group("label")
         for member in cls:

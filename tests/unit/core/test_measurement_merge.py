@@ -42,8 +42,8 @@ from phenotypic.schema import OBJECT
 LABEL = str(OBJECT.LABEL)
 
 
-def _merge(*frames: pd.DataFrame) -> pd.DataFrame:
-    return ImagePipelineCore._merge_on_object_labels(list(frames))
+def _merge(*frames: pd.DataFrame, producers: list[str] | None = None) -> pd.DataFrame:
+    return ImagePipelineCore._merge_on_object_labels(list(frames), producers=producers)
 
 
 # --------------------------------------------------------------------------- #
@@ -261,9 +261,7 @@ def test_conflict_message_names_both_producers_count_and_an_example_label():
     right = pd.DataFrame({LABEL: [1, 2, 3, 4], "Bbox_MinRR": [4.0, 5.5, 6.0, 7.5]})
 
     with pytest.raises(ValueError) as excinfo:
-        ImagePipelineCore._merge_on_object_labels(
-                [left, middle, right], producers=["bounds", "shape", "image info"],
-        )
+        _merge(left, middle, right, producers=["bounds", "shape", "image info"])
     message = str(excinfo.value)
     # The left copy belongs to the frame that first emitted the column, not to
     # whichever frame happens to precede the conflicting one.
@@ -282,9 +280,7 @@ def test_grid_column_conflict_adds_a_grid_finder_hint():
     right = pd.DataFrame({LABEL: [1, 2], "Grid_RowNum": [0, 2]})
 
     with pytest.raises(ValueError) as excinfo:
-        ImagePipelineCore._merge_on_object_labels(
-                [left, right], producers=["my_grid", "image info"],
-        )
+        _merge(left, right, producers=["my_grid", "image info"])
     message = str(excinfo.value)
     assert "GridFinder" in message
     assert "nrows/ncols" in message
@@ -293,7 +289,7 @@ def test_grid_column_conflict_adds_a_grid_finder_hint():
 def test_producers_must_match_the_frames_one_to_one():
     frame = pd.DataFrame({LABEL: [1], "A": [0.0]})
     with pytest.raises(ValueError, match="producer"):
-        ImagePipelineCore._merge_on_object_labels([frame, frame], producers=["a"])
+        _merge(frame, frame, producers=["a"])
 
 
 # --------------------------------------------------------------------------- #
@@ -341,7 +337,6 @@ def test_gridimage_matching_preset_is_identical_to_no_preset(detected_plate):
     pd.testing.assert_frame_equal(
             _measure(detected_plate, nrows=8, ncols=12),
             _measure(detected_plate),
-            check_dtype=True,
     )
 
 
