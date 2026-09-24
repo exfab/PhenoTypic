@@ -118,6 +118,19 @@ td .callers{font-family:var(--font-mono);font-size:12px;line-height:1.55}
   <div class="meta"><span>branch claude/happy-shannon-gne13b</span><span>traced 2026-09-24</span><span>method: AST call graph + repo-wide grep + git pickaxe (full history)</span></div>
 </header>
 
+<section id="status">
+  <h2>Status: Option B implemented</h2>
+  <div class="answer">
+    <p>Implemented on branch <code>claude/happy-shannon-gne13b</code>, in three commits after this page was first published:</p>
+    <ul class="facts">
+      <li><code>6a6271ac</code> moves the helpers and deletes the dead code. The arithmetic is bit-identical, and the 1e-10 orientation golden passes unchanged.</li>
+      <li><code>e77bc084</code> makes the <code>OutwardRotation*</code> evidence follow <code>zone_min_crossings</code> and <code>zone_min_resultant</code> (question 2). Defaults are unchanged.</li>
+      <li><code>85d6c093</code> makes Method B use the shared <code>distance_from_point</code>. Results agree within one ulp, and the goldens pass unchanged.</li>
+    </ul>
+    <p>The research scripts were left as they are; the orientation-field spec README records the relocation table (question 3). The correction below replaces this page's earlier claim about the 90° fix (question 1).</p>
+  </div>
+</section>
+
 <section id="answer">
   <h2>Short answer</h2>
   <div class="answer">
@@ -128,7 +141,7 @@ td .callers{font-family:var(--font-mono);font-size:12px;line-height:1.55}
     <div class="stat"><b>19</b><span>module-level functions in the orientation file, plus 2 private classes</span></div>
     <div class="stat"><b>0</b><span>of them imported by any other <code>src/</code> module</span></div>
     <div class="stat"><b>1,733</b><span>lines of figure code inside <code>MeasureOrientationZones</code> (L1997 to L3729)</span></div>
-    <div class="stat"><b>4</b><span>copies of the axial-difference formula; only 1 has the 90° sign fix</span></div>
+    <div class="stat"><b>4</b><span>copies of the axial-difference formula, each guarding the 90° case its own way</span></div>
     <div class="stat"><b>7</b><span>dead definitions in <code>_measure_symzones.py</code></span></div>
   </div>
 </section>
@@ -308,15 +321,15 @@ flowchart TD
 <section id="duplication">
   <h2>Duplication and dead code</h2>
   <div class="dup">
-    <div class="card sev-crit">
-      <h3>Axial difference, 4 copies</h3>
+    <div class="card sev-info">
+      <h3>Axial difference, 4 copies (now 1)</h3>
       <ul>
-        <li><code>_measure_orientation_zones.py:590</code> <code>_axial_change</code> (has the 90° fix)</li>
-        <li><code>util/_matched_ring_rotation.py:8</code> <code>_axial_difference</code></li>
-        <li><code>sdk_/orientation_fields/_literal_crossings.py:116</code> <code>_axial_difference</code></li>
-        <li><code>_orientation_zone_segmentation.py:465</code> inline <code>radial_tilt</code></li>
+        <li><code>_measure_orientation_zones.py:590</code> <code>_axial_change</code>: stores an exact 90° change as <code>+π/2</code></li>
+        <li><code>util/_matched_ring_rotation.py:8</code>: drops 90° candidates, and its tilt check uses <code>abs()</code></li>
+        <li><code>sdk_/orientation_fields/_literal_crossings.py:116</code>: breaks the run at a 90° step (<code>ambiguity_tolerance</code>)</li>
+        <li><code>_orientation_zone_segmentation.py:465</code> inline: used only through <code>exp(2j·tilt)</code>, which is sign-invariant</li>
       </ul>
-      <p>The measure <code>CLAUDE.md</code> documents why an exact 90° change must not be signed by <code>arctan2</code>. Three copies still do that. I have not tested whether an exact tie occurs in their inputs; the matched-ring copy only reaches figures, but the literal-crossing copy feeds the primary <code>OutwardRotation*</code> columns.</p>
+      <p><strong>Correction.</strong> This card first said three copies "still" signed a 90° change with <code>arctan2</code>, and that the literal-crossing copy put the <code>OutwardRotation*</code> columns at risk. That was wrong. Each copy already guards the case in its own way, so no measurement column reads an on-cut sign. The four copies are now one <code>axial_difference</code> in <code>sdk_/orientation_fields/_axial.py</code>, and each caller keeps its own guard.</p>
     </div>
     <div class="card sev-warn">
       <h3>Distance map, 2 copies</h3>
@@ -451,13 +464,13 @@ flowchart TD
 </section>
 
 <section id="questions">
-  <h2>Open questions for you</h2>
+  <h2>Questions, answered</h2>
   <ol class="q">
-    <li>Should the 90° fix also apply to the literal-crossing and matched-ring copies? That changes <code>OutwardRotation*</code> values wherever an exact tie occurs.</li>
-    <li>Should the op's 0.15 and 1.5 thresholds follow the <code>zone_min_*</code> fields, or are they meant to be fixed?</li>
-    <li>Do the research scripts need to stay runnable on the current tree?</li>
+    <li><strong>90° fix elsewhere:</strong> not needed. The other copies already drop or neutralise an exact 90° change (see the corrected card above), so nothing changed their behaviour.</li>
+    <li><strong>Thresholds:</strong> the ring-level ones (minimum crossings and ring resultant) now follow <code>zone_min_crossings</code> and <code>zone_min_resultant</code> in both canonical and legacy mode. The per-pixel coherence, per-crossing resultant and crossing half-width floors are a different level of evidence, so they stay fixed, now as one set of shared constants.</li>
+    <li><strong>Research scripts:</strong> documented, not updated. The spec README lists the 17 affected scripts and a table mapping each old import to its new location.</li>
   </ol>
-  <p class="note">Nothing in the repository was changed by this trace except this page. Numbers are from the tree at the time of tracing; line ranges will drift after the first edit.</p>
+  <p class="note">Line numbers and counts in the tables above describe the tree as traced at <code>fb3751f2</code>, before the refactor.</p>
 </section>
 </div>
 
