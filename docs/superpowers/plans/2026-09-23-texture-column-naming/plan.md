@@ -20,14 +20,14 @@ columns read as one block and the feature label ends the name.
 
 | # | Decision | Rationale |
 |---|---|---|
-| D1 | **Zero-padded, same widths as today**: scale `{scale:02d}` (`05px`, `10px`), angle `{angle:03d}` (`deg000`, `deg045`, `deg090`, `deg135`). | User decision: plain `sorted()` (results-viewer dropdowns, REMBI catalog) then orders scales and angles numerically. `:02d` is a *minimum* width, so scales ≥ 100 emit 3 digits and sort out of order past 99 — same limitation as today. The recognizer is strict on padding (`\d{2,}` scale, `\d{3}` angle) so `parse(emit(x)) == x` is the only accepted spelling. |
+| D1 | **Zero-padded, same widths as today**: scale `{scale:02d}` (`05px`, `10px`), angle `{angle:03d}` (`deg000`, `deg045`, `deg090`, `deg135`). | User decision: plain `sorted()` (results-viewer dropdowns, REMBI catalog) then orders scales and angles numerically. `:02d` is a *minimum* width, so scales ≥ 100 emit 3 digits and sort out of order past 99 — same limitation as today. The recognizer accepts only the canonical spelling: scale `(0[1-9]|[1-9]\d+)` (so `05`, `10`, `100`; not `5`, `005`, `00`), angle `(000|045|090|135)`. |
 | D2 | **Unit suffix `px` on the scale** (`Texture_05px-…`). | User decision: tells readers the scale is a pixel offset. The literal `px` also makes the new pattern unambiguous against any bare-digit token. |
 | D3 | **Recognize both formats, emit new only.** | *Required, not optional* — see "Why D3 is required" below. |
 | D4 | **No `--mode migrate` rewrite** of stored columns. | Migrate is provenance-only; D3 keeps old tables valid. |
 | D5 | `category()` stays `"Texture"`; `get_headers(scale, matrix_name=None)` signature unchanged. | Every prefix consumer derives `Texture_` from `category()`. |
 | D6 | **One scale per `MeasureTexture`.** `scale: int = 5` (validity bound `ge=1`). Multi-scale = several `MeasureTexture` entries in one pipeline, e.g. `meas=[MeasureTexture(scale=3), MeasureTexture(scale=5)]`. | User decision. This removes the multi-scale loop instead of fixing it. The loop was broken anyway: `measure/_measure_texture.py:143` discards the `merge` result, so `scale=[5, 10]` has only ever emitted scale 5. |
 | D7 | **Legacy list input:** a **one-element** list (`[5]`) is coerced to `5`; a **multi-element** list raises `ValidationError`: "MeasureTexture measures one scale; add one MeasureTexture per scale." | Every saved `pipeline.json` today serializes `"scale": [5]` (the field was `List[int]`). That JSON is re-read by recompile/finalize (`phenotypicCLI.py:3202,3310`), the results-viewer QC recompute (`_gui/results_viewer/_app.py:438`, degrades to a warning) and the QC rebuild (`_qc_tab/_rebuild.py:380`, raises). Rejecting `[5]` would break every existing run folder. **Cost:** a run folder whose pipeline used `scale=[3, 4]` stops loading in those three paths. Alternative: coerce a multi-element list to its first element with a warning, which is exactly what those runs produced. Rejected here because "one scale" should be unambiguous. |
-| D8 | **Two measurers with the same scale are not guarded.** | Same-scale duplicates emit identical columns. `_merge_on_object_labels` (`_image_pipeline_core.py:1480-1497`) merges on columns whose values are equal, and adds `_merged` suffixes where they differ (e.g. NaN). This is user error with harmless-but-ugly output. The docstring says "one per distinct scale". A guard would need pipeline-core changes; out of scope unless requested. |
+| D8 | **Two measurers with the same scale are not guarded.** | Same-scale duplicates emit identical columns. `_merge_on_object_labels` (`_image_pipeline_core.py:1480-1497`) adds every same-named column to the merge keys (its equality check compares the incoming frame's column with itself, so it is true unless the column holds NaN, in which case pandas appends `_merged` suffixes). Different-scale measurers share no texture columns and merge on `Object_Label` only. This is user error with harmless-but-ugly output. The docstring says "one per distinct scale". A guard would need pipeline-core changes; out of scope unless requested. |
 
 ## Why D3 is required — legacy stores
 
@@ -51,11 +51,11 @@ Tasks 1 and 3 guard both directions.
 
 | Site | Change |
 |---|---|
-| `schema/_texture.py:11-13` `_TEXTURE_HEADER_RE` | Two patterns: new `^(?P<cat>[A-Za-z0-9]+)_(?P<scale>\d{2,})px-(?:deg(?P<angle>\d{3})\|avg)-(?P<label>[A-Za-z0-9]+)$`; legacy kept as `_LEGACY_TEXTURE_HEADER_RE`. Unambiguous: legacy ends `-scale\d+`, new ends in a label. |
+| `schema/_texture.py:11-13` `_TEXTURE_HEADER_RE` | Two patterns: new (written here with `¦` for the regex alternation pipe, to survive the markdown table) `^(?P<cat>[A-Za-z0-9]+)_(?:0[1-9]¦[1-9]\d+)px-(?:deg(?:000¦045¦090¦135)¦avg)-(?P<label>[A-Za-z0-9]+)$`; legacy kept as `_LEGACY_TEXTURE_HEADER_RE`. Unambiguous: legacy ends `-scale\d+`, new ends in a label. |
 | `schema/_texture.py:147-157` `member_for_header` | Try new, then legacy; same `cat`/`label` lookup. |
 | `schema/_texture.py:159-175` `get_headers` | Emit `f"{cat}_{scale:02d}px-deg{angle:03d}-{label}"` / `f"{cat}_{scale:02d}px-avg-{label}"`. **Keep order exactly**: feature-outer × angle-inner (52), then 13 averages in feature order. |
 | `measure/_measure_texture.py:96` | `scale: List[int] = [5]` → `scale: int = Field(5, ge=1)` (D6). |
-| `measure/_measure_texture.py:101-114` | Replace `_coerce_scale_to_list` with a `mode="before"` validator: 1-element list → int; longer list → `ValueError` with the D7 message. |
+| `measure/_measure_texture.py:101-114` | Import `Field` from pydantic (keep `import functools`, still used by `@functools.cache`). Replace `_coerce_scale_to_list` with a `mode="before"` validator: 1-element list → int; longer list → `ValueError` with the D7 message. |
 | `measure/_measure_texture.py:140-144` | Delete the multi-scale loop; `return self._compute_haralick(scale=self.scale, …)` directly (drop the `functools.partial` if it no longer earns its keep). |
 | `measure/_measure_texture.py:33-47,60-66` | Docstring: "at one pixel-offset scale"; `scale` arg is a single int; add "for several scales, add one `MeasureTexture` per scale" with a runnable doctest example of two entries; Returns examples → `Texture_05px-deg000-Contrast` / `Texture_05px-avg-Contrast`. |
 | `prefab/_grid_section_pipeline.py:91,133,199-204` | `texture_scale: int \| list[int]` → `int`; docstring. |
@@ -140,8 +140,8 @@ If `get_headers` order changes, values land under the wrong names **silently**.
      member whose label it ends in.
    - Legacy: `Texture_Contrast-deg000-scale05` / `…-avg-scale05` → `TEXTURE.CONTRAST`.
    - Negatives: `Texture_Contrast`, `Texture_05px-Contrast`, `Texture_05px-deg000` (no label), `Texture_05px-avg-Nope`,
-     `Shape_05px-avg-Contrast`, `TextureGray_Contrast-deg000-scale05`, `Texture_05-deg000-Contrast` (missing `px`), `Texture_5px-deg0-Contrast` and `Texture_05px-deg45-Contrast` (unpadded).
-   - Mutation proof: break the new regex (e.g. `deg\d{2}`) → round-trip red; drop the legacy
+     `Shape_05px-avg-Contrast`, `TextureGray_Contrast-deg000-scale05`, `Texture_05-deg000-Contrast` (missing `px`), `Texture_5px-deg0-Contrast` and `Texture_05px-deg45-Contrast` (unpadded), `Texture_005px-deg000-Contrast`, `Texture_00px-avg-Contrast`, `Texture_05px-deg030-Contrast`, `Texture_05px-deg0000-Contrast` (over-padded / non-canonical).
+   - Mutation proof: drop `135` from the angle alternation → round-trip red; widen scale to `\d{2,}` → over-padded negatives red; drop the legacy
      branch → legacy test red.
    - Update the docstrings and comment in the first three text rows.
 2. **Producer: single scale** (`measure/_measure_texture.py`, new `tests/unit/measure/test_measure_texture.py`)
@@ -149,13 +149,18 @@ If `get_headers` order changes, values land under the wrong names **silently**.
      - `MeasureTexture(scale=5).scale == 5` (an int);
      - `MeasureTexture(scale=[5]).scale == 5`;
      - `MeasureTexture(scale=[3, 4])` raises `ValidationError` naming "one MeasureTexture per scale";
-     - `scale=0` raises.
+     - `scale=0` and `scale=[]` raise; `scale=(5,)` coerces to `5`.
+   - `to_json` of `MeasureTexture(scale=5)` writes `"scale": 5` (an int, not a list).
    - `MeasureTexture(scale=5).measure(image)` on `load_synth_yeast_plate()` plus a detector returns
      exactly `{Object_Label} ∪ get_headers(5)` (66 columns).
    - **Order guard:** per object, `Texture_05px-avg-F == mean(Texture_05px-deg{000,045,090,135}-F)`
-     for every feature F. Mutation-prove by swapping two angles in `get_headers`.
+     for every feature F, via `np.testing.assert_allclose(..., equal_nan=True)` (objects that fail
+     Haralick are all-NaN, `_measure_texture.py:211,238`). Mutation-prove by flipping `get_headers` to
+     angle-outer / feature-inner (swapping two angles does *not* change a 4-way mean, so it is not a
+     valid proof). Angle *labels* are unchanged by this work and stay unguarded (out of scope).
    - Every emitted column satisfies `TEXTURE.owns_header`.
-   - **Legacy JSON:** a pipeline JSON fragment with `"scale": [5]` loads via `ImagePipeline.from_json`.
+   - **Legacy JSON:** a pipeline JSON with `"scale": [5]` loads via `ImagePipeline.from_json`
+     (`model_validate`, `_serializable_pipeline.py:552`); one with `"scale": [3, 4]` raises.
    - Implement the field/validator change, delete the loop, update the docstrings.
 3. **Multi-scale via repeated measurers** (`tests/unit/core/test_image_pipeline.py`,
    `test_pipeline_serialization.py`)
@@ -178,7 +183,10 @@ If `get_headers` order changes, values land under the wrong names **silently**.
    `MeasureTexture` example at `:162-170`, which shows `scale: List[int] = [5]` /
    `self.scale[0]`), `_error_cutoffs.py:30-31`; optional README generator + MCP spec line.
    Changelog notes: new column names; `scale` is a single int; multi-element `scale` lists in old
-   `pipeline.json` no longer load (D7).
+   `pipeline.json` no longer load (D7); prefab `texture_scale` no longer accepts a list.
+   `docs/source/**` pages mentioning `MeasureTexture` (`prefab_pipelines_guide.md:28`,
+   `measurement_metrics_biological_meaning.md:98-101`, `image_pipeline_methods.rst:120,127`) were
+   checked: no format or list-scale text, no edit needed.
 
 ## Verification
 
@@ -197,3 +205,7 @@ Rewriting stored tables; the `TextureGray_` sample CSV and migration golden; ren
 measurers' columns; a pipeline-level guard against two same-scale `MeasureTexture` entries (D8).
 The tune annotation-coverage gate covers only `detect/` + `enhance/`, so `scale` becoming a
 numeric `int` field does not enter it.
+
+## Plan review
+
+`docs/superpowers/reports/2026-09-23-texture-column-naming/plan-review.md` — 0 critical, 3 important (I1 order-guard mutation, I2 regex strictness, I3 docs pages), all applied above; minors applied where they change the work.
