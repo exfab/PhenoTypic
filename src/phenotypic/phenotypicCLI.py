@@ -1746,7 +1746,11 @@ def _print_process_only_dry_run_plan(
 @click.option(
     "--dry-run",
     is_flag=True,
-    help="Preview processing plan without executing",
+    help=(
+        "Validate and run the run preflight, preview the processing plan, "
+        "then exit without changing anything under --output or submitting "
+        "any job"
+    ),
 )
 @click.option(
     "--sample",
@@ -1806,7 +1810,12 @@ def _print_process_only_dry_run_plan(
 @click.option(
     "--skip-validation",
     is_flag=True,
-    help="Skip pipeline validation (for advanced users)",
+    help=(
+        "Skip validation: the execution-config check, the pipeline load check "
+        "and the run preflight. Refusals that protect --output (a GPU detector "
+        "the staged engine cannot run, a --restart/--overwrite that would "
+        "delete the run's inputs) still apply."
+    ),
 )
 @click.option(
     "--no-qc",

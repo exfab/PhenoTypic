@@ -73,3 +73,13 @@ equals `81d19ec`) before attribution.
   32x32 TIFF; the test is about submit/cancel fencing, not image content. Run with the
   preinstalled headless shell, all 5 tests in the file pass. The Phase E and final
   surfaces include `tests/e2e/gui/test_run_console*.py`.
+
+## Phase C review fixes (`f508094`, C1-C16)
+
+- **Surface:** class resolution now preloads on every first lookup, so the surface is every
+  deserializing path: `tests/unit/cli`, `tests/integration/cli`, `tests/unit/core`,
+  `tests/unit/detect`, `tests/unit/sdk_`, `tests/unit/refine`, `tests/unit/ci`,
+  `tests/unit/gui/analysis`, `tests/integration/gui` (`-m "not slow" -n 4 -o addopts=`).
+  **7343 passed, 68 skipped, 21 xfailed, 12 failed, 3 errors** (13:34).
+- The 12 failures and 3 errors are the environment baseline recorded under Phase D
+  (`napari` and `pytest-qt` not installed). Nothing attributable to the fixes.
