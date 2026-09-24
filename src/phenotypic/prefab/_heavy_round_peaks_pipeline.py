@@ -98,7 +98,7 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
             mask_fill_structure: np.ndarray | None = None,
             mask_fill_origin: int = 0,
             # Measurements
-            texture_scale: int | list[int] = 5,
+            texture_scale: int = 5,
             texture_quant_lvl: Literal[8, 16, 32, 64] = 32,
             texture_enhance: bool = False,
             texture_warn: bool = False,
@@ -199,9 +199,9 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
                 more connected structures fill bigger holes. None uses the default cross-shaped
                 element.
             mask_fill_origin: Origin offset for the structuring element used in hole filling.
-            texture_scale: Defines the spatial scale(s) at which texture features are measured.
+            texture_scale: Defines the pixel-offset scale at which texture features are measured.
                 Larger scales focus on macro-textures; smaller scales enhance granular detail
-                assessment. Can be a list to compute features at multiple scales simultaneously.
+                assessment. For several scales, add one MeasureTexture to the pipeline per scale.
             texture_quant_lvl: Number of gray levels for quantizing intensity values in texture
                 analysis. Higher values capture finer intensity distinctions but increase
                 computation time and may be sensitive to noise.

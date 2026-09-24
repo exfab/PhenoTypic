@@ -379,7 +379,8 @@ class MeasurementInfo(str, Enum):
         ``"static"`` (default) → exact ``{category}_{label}``;
         ``"metric_qualified"`` → ``{category}_{metric}_{label}`` (growth
         models + model metrics, where ``{metric}`` is a runtime value);
-        ``"texture"`` → TEXTURE's ``-deg/-scale`` suffix scheme.
+        ``"texture"`` → TEXTURE's ``{category}_{scale:02d}px-{deg###|avg}-{label}``
+        scheme (legacy ``{category}_{label}-{deg###|avg}-scale##`` still recognized).
         """
         return "static"
 

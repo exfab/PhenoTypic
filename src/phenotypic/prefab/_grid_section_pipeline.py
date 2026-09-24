@@ -88,7 +88,7 @@ class GridSectionPipeline(PrefabPipeline):
             color_white_chroma_max: float = 4.0,
             color_chroma_min: float = 8.0,
             color_include_XYZ: bool = False,
-            texture_scale: int | list[int] = 5,
+            texture_scale: int = 5,
             texture_quant_lvl: Literal[8, 16, 32, 64] = 32,
             texture_enhance: bool = False,
             texture_warn: bool = False,
@@ -130,7 +130,8 @@ class GridSectionPipeline(PrefabPipeline):
             color_white_chroma_max (float): Maximum white chroma value for color measurement.
             color_chroma_min (float): Minimum chroma value for color measurement.
             color_include_XYZ (bool): Whether to include XYZ color space measurements.
-            texture_scale (int | list[int]): Scale parameter(s) for Haralick texture features.
+            texture_scale (int): Pixel-offset scale for Haralick texture features. For several
+                scales, add one MeasureTexture per scale to the pipeline.
             texture_quant_lvl (Literal[8, 16, 32, 64]): Quantization level for texture computation.
             texture_enhance (bool): Whether to enhance image before texture measurement.
             texture_warn (bool): Whether to warn on texture computation errors.
