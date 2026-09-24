@@ -100,20 +100,45 @@ This matters because the consumers fail **silently**:
 grouping looks correct and quietly computes the statistic over the wrong
 population.
 
-### Signed axial changes go through `_axial_change`
+### Signed axial changes go through `axial_change`
 
 A difference between two axial angles is wrapped with the doubled-angle
 `0.5 * arctan2(sin 2d, cos 2d)`, and an **exactly 90-degree** change lands on
 the `±π` branch cut, where the sign is floating-point noise that differs
-between CPUs. In `_measure_orientation_zones.py`, compute such changes with
-`_axial_change` (stores them canonically as `+π/2`) and average signed
-changes with `_signed_axial_mean` (counts them as directionless, 0), never with
-an inline `arctan2` and `np.mean`.
+between CPUs. Compute such differences with the one shared implementation in
+`sdk_/orientation_fields/_axial.py`, never with an inline `arctan2`:
+
+- keep a signed change → `axial_change` (stores an orthogonal change
+  canonically as `+π/2`) and average it with `signed_axial_mean` (counts it
+  as directionless, 0);
+- only need the wrapped value → `axial_difference`, and then either drop an
+  orthogonal step (`literal_crossing_ring_profile`,
+  `matched_ring_cumulative_rotation_profile` do) or use the value only through
+  sign-invariant doubled-angle sums (the Method B radial-tilt resultant does).
 
 This is not hypothetical: the synthetic radial-spoke case in
 `test_orientation_zone_migration_golden.py` has 8 of 208 long-range cells on
 the cut, and `SignedLongRangeRotation` differed by 180/208 degrees per flipped
-cell between the machine that captured the golden and the HPCC nodes. A golden
-of an orientation measurement is only portable if nothing in it depends on the
-sign of an exact tie — see also the Kendall tie tolerance in
-`sdk_/orientation_fields/_aggregates.py`.
+cell between the machine that captured the golden and the HPCC nodes
+(`6e694409`). A golden of an orientation measurement is only portable if
+nothing in it depends on the sign of an exact tie — see also the Kendall tie
+tolerance in `sdk_/orientation_fields/_aggregates.py`.
+
+### Where zone-measure helpers live
+
+`MeasureOrientationZones` is a package, `measure/_orientation_zones/`:
+`_operation.py` (the operation and its measurement path), `_figures.py` (the
+diagnostic figures, a private mixin whose `TYPE_CHECKING` block lists every
+operation attribute the figures read), `_report.py`, and `_common.py`.
+
+- A helper used by more than one production module, or a reusable numeric
+  primitive, lives in `sdk_`: orientation-field transforms, ring profiles and
+  axial math in `sdk_/orientation_fields/`, overlay geometry and the distance
+  map in `sdk_/_radial_geometry.py`, Okabe-Ito colours in `sdk_/_palette.py`
+  (plotly-free, so it is importable at module scope).
+- A helper that exists for one operation is a private (static)method on that
+  class and is called through `self._name(...)`, never `ClassName._name(...)`,
+  so a search for the name finds every caller.
+- Fixed per-pixel/per-crossing/per-cell evidence floors are the shared
+  constants in `sdk_/orientation_fields/_constants.py`. Ring-level support
+  thresholds are the `zone_min_*` fields and must never be hard-coded.

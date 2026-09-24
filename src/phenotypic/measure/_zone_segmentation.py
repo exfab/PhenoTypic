@@ -9,7 +9,7 @@ historical colony-ness thresholds. Legacy behavior is regression-guarded.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field, fields, replace
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -25,6 +25,7 @@ from phenotypic.measure._orientation_zone_segmentation import (
     OrientationZoneResult,
     fit_orientation_zones,
 )
+from phenotypic.sdk_._radial_geometry import distance_from_point
 
 # Zone-segmentation constants
 _N_ANGULAR_SECTORS = 360
@@ -79,6 +80,20 @@ class ZoneSegmentation:
     # ``gray_crop`` is ``(bbox_slice[0].start, bbox_slice[1].start)``).
     centroid_global: tuple[float, float] = (0.0, 0.0)
 
+    def with_owned_arrays(self) -> ZoneSegmentation:
+        """Return a copy whose arrays own their memory.
+
+        A cropped NumPy view can retain the complete plate-sized backing array.
+        Figure caches therefore copy every derived array before retaining the
+        per-object record. Scalar measurement results are unchanged.
+        """
+        owned = {
+            item.name: value.copy()
+            for item in fields(self)
+            if isinstance((value := getattr(self, item.name)), np.ndarray)
+        }
+        return replace(self, **owned)  # type: ignore[arg-type]
+
 
 @dataclass(frozen=True)
 class ZoneSegmentationParams:
@@ -110,22 +125,6 @@ class ZoneResolution:
 
 
 # ── shared pipeline for one object ───────────────────────────────
-
-
-def distance_from_point(
-        shape: tuple[int, int], center_rc: tuple[float, float]
-) -> np.ndarray:
-    """Euclidean distance from each pixel to a point.
-
-    Args:
-        shape: (height, width) of the array.
-        center_rc: (row, col) center coordinates.
-
-    Returns:
-        Float64 array of distances with the given shape.
-    """
-    rows, cols = np.indices(shape)
-    return np.sqrt((rows - center_rc[0]) ** 2 + (cols - center_rc[1]) ** 2)
 
 
 def expand_slice_around_center(

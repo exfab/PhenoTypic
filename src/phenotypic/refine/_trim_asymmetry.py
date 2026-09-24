@@ -18,10 +18,10 @@ from ..abc_ import ObjectRefiner
 from ..measure._zone_segmentation import (
     compute_radial_density_profile,
     compute_sholl_angular_profile,
-    distance_from_point,
     find_core_radius,
     find_symmetric_radius,
 )
+from ..sdk_._radial_geometry import distance_from_point
 from ..sdk_.typing_ import TuneSpec
 
 _log = logging.getLogger(__name__)

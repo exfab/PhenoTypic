@@ -96,3 +96,55 @@ The equal-sector axial mean/median ring-compounding prototype is intentionally d
 from the other Sholl-style views: it starts outside the inferred inoculum but extends to
 the first complete ring boundary beyond the farthest detected object pixel. It does not
 use the symmetric-growth or sparse-zone radius as its outer limit.
+
+## Helper relocation (2026-09-24)
+
+The zone-measure helpers these scripts import were reorganised: shared numeric
+primitives moved to `phenotypic.sdk_`, and helpers used only by
+`MeasureOrientationZones` became private methods of that class. The arithmetic of
+every moved function is unchanged; the orientation golden
+(`test_orientation_zone_migration_golden.py`, 1e-10 tolerance) passes before and after.
+
+**The scripts were deliberately not updated.** They are a record of the July session and
+import from the old locations, so they run as written only against commit `fb3751f2`
+(2026-09-24) or earlier:
+
+```bash
+git worktree add ../orientation-scripts fb3751f2
+```
+
+To port one to the current tree, apply this table:
+
+| Old import | New location |
+|---|---|
+| `measure._measure_orientation_zones.signed_radial_relative_field` | `sdk_.orientation_fields.signed_radial_relative_field` |
+| `…radial_ring_orientation_profile` | `sdk_.orientation_fields.radial_ring_orientation_profile` |
+| `…radial_ring_sector_field` | `sdk_.orientation_fields.radial_ring_sector_field` |
+| `…cumulative_ring_rotation_profile` | `sdk_.orientation_fields.cumulative_ring_rotation_profile` |
+| `…long_range_ring_rotation_profile` | `sdk_.orientation_fields.long_range_ring_rotation_profile` |
+| `…_FIBER_AXIS_OFFSET` | `sdk_.orientation_fields.FIBER_AXIS_OFFSET` |
+| `…_RADIAL_RELATIVE_MIN_COHERENCE` | `sdk_.orientation_fields.RELIABLE_PIXEL_COHERENCE` |
+| `…_RADIAL_RELATIVE_N_SECTORS` | `sdk_.orientation_fields.N_SECTORS` |
+| `…zone_selector` | `MeasureOrientationZones._zone_selector` |
+| `…aggregate_orientation` | `MeasureOrientationZones._aggregate_orientation` |
+| `…_resultant_direction` | `MeasureOrientationZones._resultant_direction` |
+| `…_BEND_SCALE_PRESETS` (module attribute) | `measure._orientation_zones._figures._BEND_SCALE_PRESETS` |
+| `…radial_relative_field` | removed; use `np.abs` of the first value of `signed_radial_relative_field` |
+| `util._orientation_field.orientation_field` | `sdk_.orientation_fields.orientation_field` |
+| `util._matched_ring_rotation.*` | `sdk_.orientation_fields.*` (same names) |
+| `util._nematic_bend.fiber_bend_field` | `sdk_.orientation_fields.fiber_bend_field` |
+| `measure._zone_segmentation.distance_from_point` | `sdk_._radial_geometry.distance_from_point` |
+
+`measure._zone_segmentation.compute_zone_segmentation` did not move.
+
+Affected scripts (17): in `scripts/`, `neurospora_orientation_samples.py`,
+`neurospora_radial_relative_samples.py`, `render_ced_point_crossing_comparison.py`,
+`render_cumulative_orientation_samples.py`, `render_long_range_orientation_samples.py`,
+`render_matched_ring_comparison.py`, `render_matched_rule_comparison.py`,
+`render_point_matched_ring_orientation.py`, `render_ring_compounded_median_colormaps.py`,
+`render_ring_compounded_rotation.py`, `render_ring_median_axial_change.py`,
+`render_sigma_16_32_48.py`, `render_skeletonized_ring_median_axial_change.py`,
+`render_tangential_method_comparison.py`, `scan_twok_long_scale_bend.py` and
+`verify_implemented_radial_metrics_real.py`; and, outside this folder,
+`docs/superpowers/artifacts/2026-09-01-zone-segmentation-improvement/make_extent_policy_comparison.py`.
+The `validation/` scripts do not import `phenotypic` and are unaffected.

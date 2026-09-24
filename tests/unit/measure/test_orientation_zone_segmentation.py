@@ -21,12 +21,11 @@ from phenotypic.measure._orientation_zone_segmentation import (
     fit_orientation_zones,
     selected_outer_radius,
 )
-from phenotypic.measure._measure_orientation_zones import (
-    radial_ring_orientation_profile,
-    zone_selector,
-)
 from phenotypic.measure._zone_segmentation import detected_center_coordinates
+from phenotypic.sdk_.orientation_fields import radial_ring_orientation_profile
 from phenotypic.sdk_.typing_ import OperationField
+
+zone_selector = MeasureOrientationZones._zone_selector
 
 
 def test_outer_percentile_uses_exact_full_extent_and_linear_percentile():

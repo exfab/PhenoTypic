@@ -9,20 +9,21 @@ import numpy as np
 from numpy.typing import NDArray
 
 from phenotypic.sdk_.orientation_fields import (
+    CROSSING_HALF_WIDTH,
+    FIBER_AXIS_OFFSET,
+    MIN_AXIAL_RESULTANT,
+    RELIABLE_PIXEL_COHERENCE,
     LiteralCrossingRingProfile,
     LiteralSkeletonRingCrossingTransform,
+    axial_difference,
     literal_crossing_ring_profile,
     literal_skeleton_ring_crossings,
+    orientation_field,
 )
-from phenotypic.util._orientation_field import orientation_field
 
 
 FloatArray = NDArray[np.float64]
 BoolArray = NDArray[np.bool_]
-
-_RELIABLE_PIXEL_COHERENCE = 0.15
-_CROSSING_HALF_WIDTH = 1.5
-_CROSSING_RESULTANT = 0.15
 
 
 @dataclass(frozen=True)
@@ -459,13 +460,12 @@ def fit_orientation_zones(
     phi, coherence, gradient = orientation_field(
         derivative_scaled, params.sigma_d, params.sigma_i
     )
-    fiber_axis = (phi + np.pi / 2.0 + np.pi / 2.0) % np.pi - np.pi / 2.0
+    fiber_axis = (phi + FIBER_AXIS_OFFSET + np.pi / 2.0) % np.pi - np.pi / 2.0
     rows, cols = np.indices(mask.shape, dtype=np.float64)
     azimuth = np.arctan2(rows - center[0], cols - center[1])
-    radial_tilt = 0.5 * np.arctan2(
-        np.sin(2.0 * (fiber_axis - azimuth)),
-        np.cos(2.0 * (fiber_axis - azimuth)),
-    )
+    # The tilt's sign is never read: it only enters the ring resultant through
+    # exp(2j * tilt), which is identical for +pi/2 and -pi/2.
+    radial_tilt = axial_difference(fiber_axis, azimuth)
 
     # Stage 3: calculate literal skeleton/ring intersections once. Separate
     # profiles retain permissive zoning evidence and stricter measurements.
@@ -477,9 +477,9 @@ def fit_orientation_zones(
         center,
         radii,
         selector=selected_mask,
-        minimum_coherence=_RELIABLE_PIXEL_COHERENCE,
-        crossing_half_width=_CROSSING_HALF_WIDTH,
-        minimum_crossing_resultant=_CROSSING_RESULTANT,
+        minimum_coherence=RELIABLE_PIXEL_COHERENCE,
+        crossing_half_width=CROSSING_HALF_WIDTH,
+        minimum_crossing_resultant=MIN_AXIAL_RESULTANT,
     )
     zoning_profile = literal_crossing_ring_profile(
         transform, minimum_points=1, minimum_resultant=0.0
@@ -487,7 +487,7 @@ def fit_orientation_zones(
     measurement_profile = literal_crossing_ring_profile(
         transform,
         minimum_points=3,
-        minimum_resultant=_CROSSING_RESULTANT,
+        minimum_resultant=MIN_AXIAL_RESULTANT,
     )
 
     # Stage 4: assemble one seven-feature row for each Sholl-style ring.
@@ -501,7 +501,7 @@ def fit_orientation_zones(
         reliable = (
             valid_selected
             & np.isfinite(coherence)
-            & (coherence >= _RELIABLE_PIXEL_COHERENCE)
+            & (coherence >= RELIABLE_PIXEL_COHERENCE)
         )
         if valid_selected.any():
             intensity_mean = float(np.mean(scaled[valid_selected]))

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from phenotypic.util._orientation_field import orientation_field
+from phenotypic.sdk_.orientation_fields import orientation_field
 
 
 def _parallel_stripes(n=64, period=8.0):

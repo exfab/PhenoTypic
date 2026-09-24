@@ -164,8 +164,17 @@ heavy library goes into `_LAZY_ATTRS`, never into an eager import at the top of 
   and the ipywidgets notebook shell (`viz.notebook.build_notebook_dashboard`).
   UI toolkits stay lazily imported; the theme imports plotly but no toolkit
   (enforced by `tests/unit/viz/test_import_rules.py`).
-- `orientation_fields/` — branch-tracking-free literal skeleton-ring crossing
-  transforms, equal-crossing outward profiles, and composable Matplotlib
-  diagnostics. Computation accepts explicit masks, orientation/coherence fields,
-  center, distance map, and radii; enhancement and object detection remain caller
-  responsibilities.
+- `orientation_fields/` — orientation-field primitives shared by the zone
+  measures: the structure-tensor `orientation_field`, seam-safe axial math
+  (`_axial.py`), radial and ring-sector profiles (`_ring_profiles.py`),
+  matched-ring rotation, multiscale fiber bend, branch-tracking-free literal
+  skeleton-ring crossings with their outward profiles, and composable
+  Matplotlib diagnostics. `_constants.py` holds the fixed per-pixel,
+  per-crossing and per-cell evidence floors. Computation accepts explicit
+  masks, orientation/coherence fields, center, distance map, and radii;
+  enhancement and object detection remain caller responsibilities.
+- `_palette.py` — Okabe-Ito colours and `hex_to_rgba` with no third-party
+  imports, so operation modules can import them at module scope;
+  `viz/figures/_theme.py` re-exports `OKABE_ITO` from here.
+- `_radial_geometry.py` — `distance_from_point` and the overlay `circle_xy`
+  shared by the zone measures and `TrimAsymmetry`.
