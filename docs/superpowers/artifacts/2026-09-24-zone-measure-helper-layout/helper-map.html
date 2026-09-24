@@ -1,0 +1,490 @@
+<title>Zone Measure Helper Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --navy:#003660; --blue:#1b75bc; --gold:#febc11;
+  --bg:#FBFEF8; --surface:#ffffff; --rule:#e8ecf2; --border:#dde3ed;
+  --muted:#5f6b80; --body:#2e3a4e; --ink:#0f2238;
+  --code-bg:#f1f4f8;
+  --ok:#009E73; --warn:#b07400; --crit:#D55E00; --sky:#56B4E9; --purple:#CC79A7;
+  --ok-bg:rgba(0,158,115,.10); --warn-bg:rgba(230,159,0,.14); --crit-bg:rgba(213,94,0,.10); --info-bg:rgba(27,117,188,.10);
+  --font-display:'Comfortaa',-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --font-body:'Comfortaa',-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,"SFMono-Regular",Menlo,"Liberation Mono",monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --navy:#8cc4f0; --blue:#6fb0e6; --gold:#febc11;
+    --bg:#0d1622; --surface:#142130; --rule:#22344a; --border:#2b3f57;
+    --muted:#9aa8bc; --body:#d5deea; --ink:#eef3fa; --code-bg:#1b2b3e;
+    --ok:#3fcf9f; --warn:#f0b43c; --crit:#ff8a4c;
+    --ok-bg:rgba(63,207,159,.14); --warn-bg:rgba(240,180,60,.16); --crit-bg:rgba(255,138,76,.14); --info-bg:rgba(111,176,230,.14);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --navy:#8cc4f0; --blue:#6fb0e6; --gold:#febc11;
+  --bg:#0d1622; --surface:#142130; --rule:#22344a; --border:#2b3f57;
+  --muted:#9aa8bc; --body:#d5deea; --ink:#eef3fa; --code-bg:#1b2b3e;
+  --ok:#3fcf9f; --warn:#f0b43c; --crit:#ff8a4c;
+  --ok-bg:rgba(63,207,159,.14); --warn-bg:rgba(240,180,60,.16); --crit-bg:rgba(255,138,76,.14); --info-bg:rgba(111,176,230,.14);
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--body);font-family:var(--font-body);font-size:15px;line-height:1.65;padding-inline:20px;padding-block:28px 64px}
+.wrap{max-width:1060px;margin:0 auto;display:flex;flex-direction:column;gap:44px}
+h1,h2,h3{font-family:var(--font-display);color:var(--ink);text-wrap:balance;margin:0;line-height:1.25}
+h1{font-size:30px;font-weight:700;color:var(--navy)}
+h2{font-size:21px;font-weight:700;color:var(--navy)}
+h3{font-size:16px;font-weight:700}
+p{margin:0;max-width:72ch}
+code,.mono{font-family:var(--font-mono);font-size:.86em}
+code{background:var(--code-bg);padding:1px 5px;border-radius:4px;color:var(--ink);overflow-wrap:anywhere}
+a{color:var(--blue)}
+.eyebrow{font-family:var(--font-mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+header{display:flex;flex-direction:column;gap:12px;border-bottom:2px solid var(--navy);padding-bottom:22px}
+header .meta{display:flex;flex-wrap:wrap;gap:6px 18px;font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+section{display:flex;flex-direction:column;gap:16px}
+.answer{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--navy);border-radius:6px;padding:18px 20px;display:flex;flex-direction:column;gap:10px}
+.answer p{max-width:none}
+ul.facts{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.stat{border:1px solid var(--border);background:var(--surface);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.stat b{font-family:var(--font-mono);font-size:22px;color:var(--navy);font-variant-numeric:tabular-nums;font-weight:600}
+.stat span{font-size:12.5px;color:var(--muted);line-height:1.4}
+.tablebox{overflow-x:auto;border:1px solid var(--border);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:760px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--rule)}
+th{font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--code-bg);position:sticky;top:0}
+tr:last-child td{border-bottom:0}
+td.name{font-family:var(--font-mono);font-size:12.5px;color:var(--ink);white-space:nowrap}
+td.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--muted);font-size:12px}
+td .callers{font-family:var(--font-mono);font-size:12px;line-height:1.55}
+.pill{display:inline-block;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;padding:1px 7px;border-radius:999px;white-space:nowrap;border:1px solid transparent}
+.p-meas{background:var(--info-bg);color:var(--blue);border-color:var(--blue)}
+.p-fig{background:var(--ok-bg);color:var(--ok);border-color:var(--ok)}
+.p-dead{background:var(--crit-bg);color:var(--crit);border-color:var(--crit)}
+.p-both{background:var(--warn-bg);color:var(--warn);border-color:var(--warn)}
+.dest{font-family:var(--font-mono);font-size:12px;font-weight:600}
+.d-sdk{color:var(--blue)} .d-cls{color:var(--ok)} .d-del{color:var(--crit)} .d-keep{color:var(--muted)}
+.filters{display:flex;flex-wrap:wrap;gap:8px}
+.filters button{font-family:var(--font-mono);font-size:12px;border:1px solid var(--border);background:var(--surface);color:var(--body);padding:5px 12px;border-radius:999px;cursor:pointer}
+.filters button[aria-pressed="true"]{background:var(--navy);color:var(--bg);border-color:var(--navy)}
+.filters button:focus-visible,.tabs button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.graph{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.lane{border:1px solid var(--border);border-radius:6px;background:var(--surface);padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.lane pre{margin:0;font-family:var(--font-mono);font-size:12px;line-height:1.6;color:var(--body);overflow-x:auto;white-space:pre}
+.lane .hl{color:var(--blue);font-weight:600}
+.lane .fx{color:var(--ok)}
+.timeline{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.timeline li{display:grid;grid-template-columns:104px 88px 1fr;gap:14px;padding:10px 0;border-bottom:1px solid var(--rule);align-items:baseline}
+.timeline .d{font-family:var(--font-mono);font-size:12.5px;color:var(--ink);font-variant-numeric:tabular-nums}
+.timeline .h{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.timeline .t{font-size:14px}
+.timeline .t small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.dup{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.card{border:1px solid var(--border);border-radius:6px;background:var(--surface);padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.card.sev-crit{border-top:3px solid var(--crit)} .card.sev-warn{border-top:3px solid var(--warn)} .card.sev-info{border-top:3px solid var(--blue)}
+.card ul{margin:0;padding-left:18px;font-size:13px;display:flex;flex-direction:column;gap:3px}
+.card p{font-size:13.5px}
+.rule{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.rule ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;border-bottom:1px solid var(--border)}
+.tabs button{font-family:var(--font-display);font-size:14px;font-weight:600;border:0;background:none;color:var(--muted);padding:8px 12px;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--navy);border-bottom-color:var(--navy)}
+.tree{font-family:var(--font-mono);font-size:12.5px;line-height:1.65;background:var(--code-bg);border-radius:6px;padding:14px 16px;overflow-x:auto;white-space:pre;color:var(--ink);margin:0}
+.tree .c{color:var(--muted)}
+.tree .n{color:var(--ok)}
+.tree .s{color:var(--blue)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.steps{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:10px}
+.steps li p{font-size:14px}
+.q{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px}
+.note{font-size:12.5px;color:var(--muted)}
+@media (max-width:720px){
+  .graph,.cols{grid-template-columns:1fr}
+  .timeline li{grid-template-columns:1fr;gap:2px}
+  h1{font-size:25px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+<header>
+  <span class="eyebrow">phenotypic.measure · helper audit · read-only trace</span>
+  <h1>Zone Measure Helper Map</h1>
+  <p>Where every helper in <code>_measure_orientation_zones.py</code> and <code>_measure_symzones.py</code> is called, when it was introduced, what is duplicated or dead, and a proposed layout that follows your rule: shared helpers in <code>sdk_</code>, operation-only helpers as private members of the class.</p>
+  <div class="meta"><span>branch claude/happy-shannon-gne13b</span><span>traced 2026-09-24</span><span>method: AST call graph + repo-wide grep + git pickaxe (full history)</span></div>
+</header>
+
+<section id="answer">
+  <h2>Short answer</h2>
+  <div class="answer">
+    <p><strong>In production code, every helper function in <code>_measure_orientation_zones.py</code> is used only by <code>MeasureOrientationZones</code> itself</strong> (directly, or through another helper it calls). No other module under <code>src/</code> imports any of them. One function, <code>radial_relative_field</code>, has no production caller at all; only tests call it.</p>
+    <p>The public-looking names exist because two other groups import them: the unit tests (12 names) and 15 research scripts under <code>docs/superpowers/specs/2026-07-15-orientation-field/scripts/</code> (12 names). The sharing between the two operations does not happen through imports. It happens through copies: the circle helper, the Okabe-Ito colors, the distance map, and the axial-difference formula each exist in two to four places.</p>
+  </div>
+  <div class="stats">
+    <div class="stat"><b>19</b><span>module-level functions in the orientation file, plus 2 private classes</span></div>
+    <div class="stat"><b>0</b><span>of them imported by any other <code>src/</code> module</span></div>
+    <div class="stat"><b>1,733</b><span>lines of figure code inside <code>MeasureOrientationZones</code> (L1997 to L3729)</span></div>
+    <div class="stat"><b>4</b><span>copies of the axial-difference formula; only 1 has the 90° sign fix</span></div>
+    <div class="stat"><b>7</b><span>dead definitions in <code>_measure_symzones.py</code></span></div>
+  </div>
+</section>
+
+<section id="modules">
+  <h2>How the two operations fit together</h2>
+  <p>Both operations inherit the same zone resolver. Only <code>MeasureOrientationZones</code> reaches into the orientation-field utilities. Arrows mean "imports from".</p>
+  <pre class="mermaid">
+flowchart TD
+  SZ["MeasureSymZones<br/>_measure_symzones.py · 939 L"]
+  OZ["MeasureOrientationZones<br/>_measure_orientation_zones.py · 3,911 L"]
+  CZ["CanonicalZoneMeasure<br/>_canonical_zone_measure.py"]
+  ZS["_zone_segmentation.py<br/>ZoneSegmentation, distance_from_point"]
+  OS["_orientation_zone_segmentation.py<br/>Method B fit, distance_from_center"]
+  OF["util/_orientation_field.py"]
+  MR["util/_matched_ring_rotation.py"]
+  NB["util/_nematic_bend.py"]
+  SDK["sdk_/orientation_fields/<br/>literal crossings, aggregates, plots"]
+  TA["refine/_trim_asymmetry.py"]
+  SZ --> CZ
+  OZ --> CZ
+  SZ --> ZS
+  OZ --> ZS
+  CZ --> ZS
+  CZ --> OS
+  ZS --> OS
+  OS --> OF
+  OS --> SDK
+  OZ --> OF
+  OZ --> SDK
+  OZ --> MR
+  OZ --> NB
+  TA --> ZS
+  </pre>
+  <p class="note">Three of the orientation utilities live in the public <code>util</code> package (as private modules) and one lives in <code>sdk_</code>. All four sit at the same conceptual level: transforms of an already computed orientation field.</p>
+</section>
+
+<section id="helpers">
+  <h2>Every helper in <code>_measure_orientation_zones.py</code></h2>
+  <p>"Callers" lists production call sites only. The path badge says whether the helper feeds measurement columns, only figures, or neither. "Proposed home" applies the rule in the proposals section below.</p>
+  <div class="filters" role="group" aria-label="Filter helpers by path">
+    <button type="button" id="f-all" data-f="all" aria-pressed="true">All 21</button>
+    <button type="button" id="f-meas" data-f="meas" aria-pressed="false">Feeds measurements</button>
+    <button type="button" id="f-fig" data-f="fig" aria-pressed="false">Figures only</button>
+    <button type="button" id="f-dead" data-f="dead" aria-pressed="false">No production caller</button>
+  </div>
+  <div class="tablebox">
+  <table id="helper-table">
+    <thead><tr><th>Helper</th><th>Lines</th><th>Path</th><th>Production callers</th><th>Tests / scripts</th><th>Introduced</th><th>Proposed home</th></tr></thead>
+    <tbody>
+      <tr data-p="fig"><td class="name">_circle_xy</td><td class="num">141–154</td><td><span class="pill p-fig">figure</span></td><td><div class="callers">_add_long_range_ring_traces<br>_add_zone_ring_traces</div></td><td class="num">– / –</td><td class="num">636e2156<br>2026-07-06</td><td><span class="dest d-sdk">sdk_</span> shared with SymZones copy</td></tr>
+      <tr data-p="meas"><td class="name">zone_selector</td><td class="num">157–189</td><td><span class="pill p-both">meas + fig</span></td><td><div class="callers">_fill_metrics · _fill_literal_crossing_metrics · _fill_long_range_metrics<br>_bend_scale_rasters · 3 × _add_*_trace</div></td><td class="num">2 files / 8</td><td class="num">af708c86<br>2026-07-06</td><td><span class="dest d-cls">class</span> <code>_zone_selector</code></td></tr>
+      <tr data-p="meas"><td class="name">aggregate_orientation</td><td class="num">192–218</td><td><span class="pill p-meas">measurement</span></td><td><div class="callers">_fill_metrics</div></td><td class="num">yes / 2</td><td class="num">af708c86<br>2026-07-06</td><td><span class="dest d-cls">class</span> <code>_aggregate_orientation</code></td></tr>
+      <tr data-p="dead"><td class="name">radial_relative_field</td><td class="num">221–249</td><td><span class="pill p-dead">none</span></td><td><div class="callers">(no production caller)</div></td><td class="num">yes / –</td><td class="num">c050b468<br>2026-07-15</td><td><span class="dest d-del">delete</span> tests move to the signed form</td></tr>
+      <tr data-p="meas"><td class="name">signed_radial_relative_field</td><td class="num">252–315</td><td><span class="pill p-both">meas + fig</span></td><td><div class="callers">_fill_metrics · radial_relative_field<br>3 × _add_*_trace</div></td><td class="num">yes / 7</td><td class="num">c050b468<br>2026-07-15</td><td><span class="dest d-sdk">sdk_/orientation_fields</span> resolver has an inline copy</td></tr>
+      <tr data-p="meas"><td class="name">aggregate_radial_relative</td><td class="num">318–415</td><td><span class="pill p-meas">measurement</span></td><td><div class="callers">_fill_metrics</div></td><td class="num">yes / –</td><td class="num">c050b468<br>2026-07-15</td><td><span class="dest d-cls">class</span> <code>_aggregate_radial_relative</code></td></tr>
+      <tr data-p="meas"><td class="name">_axial_sector_means</td><td class="num">418–488</td><td><span class="pill p-meas">measurement</span></td><td><div class="callers">radial_ring_orientation_profile<br>_fill_long_range_metrics</div></td><td class="num">– / –</td><td class="num">c050b468<br>2026-07-15</td><td><span class="dest d-sdk">sdk_/orientation_fields</span> with ring profiles</td></tr>
+      <tr data-p="meas"><td class="name">radial_ring_orientation_profile</td><td class="num">491–582</td><td><span class="pill p-both">meas + fig</span></td><td><div class="callers">_fill_long_range_metrics<br>_add_cumulative_rotation_trace · _add_matched_…_trace</div></td><td class="num">2 files / 6</td><td class="num">c050b468<br>2026-07-15</td><td><span class="dest d-sdk">sdk_/orientation_fields</span></td></tr>
+      <tr data-p="meas"><td class="name">_is_orthogonal_change</td><td class="num">585–587</td><td><span class="pill p-both">meas + fig</span></td><td><div class="callers">_axial_change · _signed_axial_mean<br>cumulative_ring_rotation_profile</div></td><td class="num">– / –</td><td class="num">6e694409<br>2026-09-17</td><td><span class="dest d-sdk">sdk_/orientation_fields</span> axial math</td></tr>
+      <tr data-p="meas"><td class="name">_axial_change</td><td class="num">590–605</td><td><span class="pill p-both">meas + fig</span></td><td><div class="callers">long_range_ring_rotation_profile · aggregate_paired_zone_rotation<br>cumulative_ring_rotation_profile</div></td><td class="num">– / –</td><td class="num">6e694409<br>2026-09-17</td><td><span class="dest d-sdk">sdk_/orientation_fields</span> replaces 3 copies</td></tr>
+      <tr data-p="meas"><td class="name">_signed_axial_mean</td><td class="num">608–618</td><td><span class="pill p-meas">measurement</span></td><td><div class="callers">aggregate_long_range_rotation · aggregate_paired_zone_rotation<br>_fill_long_range_metrics</div></td><td class="num">– / –</td><td class="num">6e694409<br>2026-09-17</td><td><span class="dest d-sdk">sdk_/orientation_fields</span> axial math</td></tr>
+      <tr data-p="fig"><td class="name">cumulative_ring_rotation_profile</td><td class="num">621–678</td><td><span class="pill p-fig">figure</span></td><td><div class="callers">_add_cumulative_rotation_trace</div></td><td class="num">yes / 2</td><td class="num">c050b468<br>2026-07-15</td><td><span class="dest d-sdk">sdk_/orientation_fields</span> ring profiles</td></tr>
+      <tr data-p="fig"><td class="name">radial_ring_sector_field</td><td class="num">681–751</td><td><span class="pill p-fig">figure</span></td><td><div class="callers">_add_cumulative_rotation_trace<br>_add_matched_cumulative_rotation_trace</div></td><td class="num">yes / 8</td><td class="num">c050b468<br>2026-07-15</td><td><span class="dest d-sdk">sdk_/orientation_fields</span> ring profiles</td></tr>
+      <tr data-p="meas"><td class="name">long_range_ring_rotation_profile</td><td class="num">754–807</td><td><span class="pill p-meas">measurement</span></td><td><div class="callers">_fill_long_range_metrics</div></td><td class="num">yes / 1</td><td class="num">c050b468<br>2026-07-15</td><td><span class="dest d-sdk">sdk_/orientation_fields</span> ring profiles</td></tr>
+      <tr data-p="meas"><td class="name">aggregate_long_range_rotation</td><td class="num">810–862</td><td><span class="pill p-meas">measurement</span></td><td><div class="callers">_fill_long_range_metrics</div></td><td class="num">yes / –</td><td class="num">c050b468<br>2026-07-15</td><td><span class="dest d-cls">class</span> <code>_aggregate_long_range_rotation</code></td></tr>
+      <tr data-p="meas"><td class="name">aggregate_paired_zone_rotation</td><td class="num">865–895</td><td><span class="pill p-meas">measurement</span></td><td><div class="callers">_fill_long_range_metrics</div></td><td class="num">yes / –</td><td class="num">c050b468<br>2026-07-15</td><td><span class="dest d-cls">class</span> <code>_aggregate_paired_zone_rotation</code></td></tr>
+      <tr data-p="fig"><td class="name">_downsample_quiver</td><td class="num">898–944</td><td><span class="pill p-fig">figure cache</span></td><td><div class="callers">_operate (builds the lean figure cache)</div></td><td class="num">– / –</td><td class="num">af708c86<br>2026-07-06</td><td><span class="dest d-cls">class</span> <code>_downsample_quiver</code></td></tr>
+      <tr data-p="fig"><td class="name">_resultant_direction</td><td class="num">947–967</td><td><span class="pill p-fig">figure cache</span></td><td><div class="callers">_fill_metrics (mean-axis glyph only)</div></td><td class="num">– / 2</td><td class="num">af708c86<br>2026-07-06</td><td><span class="dest d-cls">class</span> <code>_resultant_direction</code></td></tr>
+      <tr data-p="fig"><td class="name">_safe_nanmean</td><td class="num">3907–3911</td><td><span class="pill p-fig">figure</span></td><td><div class="callers">_OrientationZonesReport._panel_summary</div></td><td class="num">– / –</td><td class="num">3ec18e5f<br>2026-07-06</td><td><span class="dest d-cls">class</span> on <code>_OrientationZonesReport</code></td></tr>
+      <tr data-p="meas"><td class="name">_ObjectZoneAnalysis</td><td class="num">117–138</td><td><span class="pill p-both">meas + fig</span></td><td><div class="callers">_analyze_objects yields it to _operate and every figure</div></td><td class="num">– / –</td><td class="num">3d9b010a<br>2026-09-02</td><td><span class="dest d-keep">keep</span> private value type</td></tr>
+      <tr data-p="fig"><td class="name">_OrientationZonesReport</td><td class="num">3732–3904</td><td><span class="pill p-fig">figure</span></td><td><div class="callers">MeasureOrientationZones.report</div></td><td class="num">yes / –</td><td class="num">3ec18e5f<br>2026-07-06</td><td><span class="dest d-keep">keep</span> moves with the figure code</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="note">Test and script columns: "yes" or a file count means the name is imported directly. Script counts are over the 15 files in <code>docs/superpowers/specs/2026-07-15-orientation-field/scripts/</code>. Scripts also import three constants: <code>_FIBER_AXIS_OFFSET</code>, <code>_RADIAL_RELATIVE_MIN_COHERENCE</code>, <code>_RADIAL_RELATIVE_N_SECTORS</code>, and one reads <code>_BEND_SCALE_PRESETS</code> as a module attribute.</p>
+</section>
+
+<section id="callgraph">
+  <h2>Call paths inside <code>MeasureOrientationZones</code></h2>
+  <p>The class has two independent paths. Both start from <code>_analyze_objects</code>, which is the only place the heavy orientation compute runs. Each figure recomputes it rather than caching full-resolution arrays.</p>
+  <div class="graph">
+    <div class="lane">
+      <h3>Measurement path</h3>
+<pre><span class="hl">_operate</span>
+├─ _prep
+├─ _analyze_objects ─ _resolve_tile
+│                   └ <span class="fx">orientation_field</span>, <span class="fx">distance_from_point</span>
+├─ <span class="hl">_fill_metrics</span>
+│  ├─ zone_selector, aggregate_orientation
+│  ├─ signed_radial_relative_field
+│  ├─ aggregate_radial_relative
+│  ├─ _resultant_direction   <span class="c">(glyph cache)</span>
+│  ├─ <span class="hl">_fill_literal_crossing_metrics</span>
+│  │  └─ <span class="fx">literal_skeleton_ring_crossings</span>
+│  │     <span class="fx">literal_crossing_ring_profile</span>
+│  │     <span class="fx">aggregate_literal_crossing_zone</span>
+│  └─ <span class="hl">_fill_long_range_metrics</span>
+│     ├─ radial_ring_orientation_profile
+│     │  └─ _axial_sector_means
+│     ├─ long_range_ring_rotation_profile
+│     │  └─ _axial_change
+│     ├─ aggregate_long_range_rotation
+│     ├─ aggregate_paired_zone_rotation
+│     └─ _signed_axial_mean
+├─ _write_zone_resolution_diagnostics
+└─ _downsample_quiver   <span class="c">(figure cache)</span></pre>
+    </div>
+    <div class="lane">
+      <h3>Figure path</h3>
+<pre><span class="hl">inspect</span>
+├─ _add_mask_selector_trace
+├─ _add_quiver_trace ─ _tile_origin
+├─ _add_zone_ring_traces ─ _circle_xy
+├─ _add_long_range_ring_traces ─ _circle_xy
+├─ _add_mean_axis_traces
+├─ _add_metric_hover_trace
+└─ _add_signed_outward_turning_trace
+   └─ _analyze_objects, zone_selector,
+      signed_radial_relative_field
+<span class="hl">cumulative_rotation_overlay</span>
+└─ _add_cumulative_rotation_trace
+   └─ radial_ring_orientation_profile,
+      radial_ring_sector_field,
+      cumulative_ring_rotation_profile
+<span class="hl">matched_cumulative_rotation_overlay</span>
+└─ _add_matched_cumulative_rotation_trace
+   └─ <span class="fx">matched_ring_cumulative_rotation_profile</span>
+      <span class="fx">matched_tracks_to_ring_sector_values</span>
+<span class="hl">fiber_bend_overlay</span>
+└─ _bend_scale_rasters ─ <span class="fx">fiber_bend_field</span>
+<span class="hl">report</span> ─ _OrientationZonesReport</pre>
+    </div>
+  </div>
+  <p class="note">Green names are imported from other modules. Two ring helpers (<code>cumulative_ring_rotation_profile</code>, <code>radial_ring_sector_field</code>) and both <code>util/_matched_ring_rotation</code> functions reach figures only; no measurement column depends on them.</p>
+</section>
+
+<section id="symzones">
+  <h2>Every helper in <code>_measure_symzones.py</code></h2>
+  <div class="tablebox">
+  <table>
+    <thead><tr><th>Helper</th><th>Lines</th><th>Status</th><th>Callers</th><th>Introduced</th><th>Proposed home</th></tr></thead>
+    <tbody>
+      <tr><td class="name">_own_intermediate_arrays</td><td class="num">41–55</td><td><span class="pill p-fig">figure cache</span></td><td><div class="callers">_operate · inspect</div></td><td class="num">6ef4ba64<br>2026-07-20</td><td><span class="dest d-cls">ZoneSegmentation</span> method, it only operates on that dataclass</td></tr>
+      <tr><td class="name">_SymmetryIntermediates</td><td class="num">38</td><td><span class="pill p-dead">alias</span></td><td><div class="callers">type hints only; comment calls it "back-compat"</div></td><td class="num">6ef4ba64<br>2026-07-20</td><td><span class="dest d-del">delete</span> use <code>ZoneSegmentation</code></td></tr>
+      <tr><td class="name">_NEIGHBOR_KERNEL</td><td class="num">58</td><td><span class="pill p-dead">dead</span></td><td><div class="callers">never read</div></td><td class="num">cc650f4f<br>2026-04-16</td><td><span class="dest d-del">delete</span></td></tr>
+      <tr><td class="name">_OI_BLUE, _OI_GREY</td><td class="num">72, 75</td><td><span class="pill p-dead">dead</span></td><td><div class="callers">never read</div></td><td class="num">–</td><td><span class="dest d-del">delete</span></td></tr>
+      <tr><td class="name">_N_ANGULAR_SECTORS</td><td class="num">61</td><td><span class="pill p-both">duplicate</span></td><td><div class="callers">_polar_*_xy · _add_overlay_traces</div></td><td class="num">d2a276f4<br>2026-04-16</td><td><span class="dest d-keep">import</span> from <code>_zone_segmentation</code> (same value, L30)</td></tr>
+      <tr><td class="name">_compute_intermediates</td><td class="num">244–266</td><td><span class="pill p-both">thin wrapper</span></td><td><div class="callers">_operate · inspect; test monkeypatches it</div></td><td class="num">cc650f4f<br>2026-04-16</td><td><span class="dest d-cls">class</span> drop unused <code>object_label</code> arg</td></tr>
+      <tr><td class="name">_get_local_obj_mask<br>_get_local_dist_map<br>_get_global_offset</td><td class="num">368–382</td><td><span class="pill p-dead">dead</span></td><td><div class="callers">no caller in src, tests, or docs</div></td><td class="num">cc650f4f<br>2026-04-16</td><td><span class="dest d-del">delete</span></td></tr>
+      <tr><td class="name">_object_polygon_xy</td><td class="num">387–433</td><td><span class="pill p-fig">figure</span></td><td><div class="callers">_add_overlay_traces</div></td><td class="num">631d7de9<br>2026-04-17</td><td><span class="dest d-keep">keep</span> private staticmethod</td></tr>
+      <tr><td class="name">_polar_polygon_xy<br>_polar_annulus_xy</td><td class="num">436–511</td><td><span class="pill p-fig">figure</span></td><td><div class="callers">_add_overlay_traces (2 calls each)</div></td><td class="num">8aea2437<br>2026-04-23</td><td><span class="dest d-keep">keep</span> private staticmethods</td></tr>
+      <tr><td class="name">_add_overlay_traces</td><td class="num">668–934</td><td><span class="pill p-fig">figure</span></td><td><div class="callers">_build_plate_overview</div></td><td class="num">631d7de9<br>2026-04-17</td><td><span class="dest d-cls">class</span> split into per-layer <code>_add_*_trace</code> methods</td></tr>
+      <tr><td class="name">nested _circle_xy</td><td class="num">702–706</td><td><span class="pill p-both">duplicate</span></td><td><div class="callers">core-radius and symmetric-radius circles</div></td><td class="num">631d7de9<br>2026-04-17</td><td><span class="dest d-sdk">sdk_</span> one shared <code>circle_xy</code></td></tr>
+      <tr><td class="name">nested _hex_to_rgba</td><td class="num">708–711</td><td><span class="pill p-both">duplicate</span></td><td><div class="callers">zone fills</div></td><td class="num">631d7de9<br>2026-04-17</td><td><span class="dest d-sdk">sdk_</span> next to the palette</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="note"><code>_add_overlay_traces</code> and <code>_build_plate_overview</code> are staticmethods that call siblings as <code>MeasureSymZones._x(...)</code>. That spelling hides the dependency from a <code>self._x</code> search, which is the traceability problem you described.</p>
+</section>
+
+<section id="lineage">
+  <h2>Lineage</h2>
+  <p>The layout is the result of three separate growth phases, each adding helpers in the place that was convenient at the time. Dates and hashes come from <code>git log -S</code> over the full history.</p>
+  <ol class="timeline">
+    <li><span class="d">2026-04-16</span><span class="h">cc650f4f</span><span class="t"><code>MeasureSymmetricRadius</code> added with <code>_NEIGHBOR_KERNEL</code> and the three <code>_get_local_*</code> accessors.<small>Neither has been read since. The file was renamed twice: to <code>_measure_symmetric_zones.py</code> (631d7de9, 2026-04-17) and to <code>_measure_symzones.py</code> (8962baf5, 2026-08-05).</small></span></li>
+    <li><span class="d">2026-04-17</span><span class="h">631d7de9</span><span class="t">Overlay code arrives: <code>_object_polygon_xy</code>, <code>_add_overlay_traces</code>, and the nested <code>_circle_xy</code> / <code>_hex_to_rgba</code>.</span></li>
+    <li><span class="d">2026-07-03</span><span class="h">fd40f9dd</span><span class="t">Zone segmentation extracted from the symmetric-zones op into <code>_zone_segmentation.py</code>; <code>orientation_field</code> added to <code>util</code> (76a9d436).<small>This is the first time a zone helper left its class. The old name stayed behind as the <code>_SymmetryIntermediates</code> alias.</small></span></li>
+    <li><span class="d">2026-07-06</span><span class="h">af708c86</span><span class="t"><code>MeasureOrientationZones</code> added with <code>zone_selector</code>, <code>aggregate_orientation</code>, <code>_downsample_quiver</code>, <code>_resultant_direction</code>. The same day, inspect (636e2156) copied the circle helper.<small>The comment at L110 still points at <code>_measure_symmetric_zones._add_overlay_traces</code>, a path that no longer exists.</small></span></li>
+    <li><span class="d">2026-07-15</span><span class="h">c050b468</span><span class="t">"Preserve orientation field analysis" adds 11 radial and ring helpers as public-named module functions, plus <code>util/_matched_ring_rotation.py</code> and <code>util/_nematic_bend.py</code>.<small>The public names match the research scripts written alongside the orientation-field spec. This is where most of the module-level surface comes from.</small></span></li>
+    <li><span class="d">2026-07-16</span><span class="h">1e234939</span><span class="t"><code>sdk_/orientation_fields</code> created for literal ring crossings. It is the first orientation helper placed in <code>sdk_</code>, and it carries its own <code>_axial_difference</code>.</span></li>
+    <li><span class="d">2026-09-01</span><span class="h">a7f169e7</span><span class="t">Method B canonical resolver: <code>_canonical_zone_measure.py</code> and <code>_orientation_zone_segmentation.py</code>.<small>The resolver recomputes radial tilt inline (L465) and declares its own 0.15 / 1.5 threshold constants.</small></span></li>
+    <li><span class="d">2026-09-02</span><span class="h">3d9b010a</span><span class="t"><code>_ObjectZoneAnalysis</code> replaces positional tuples in the orientation op.</span></li>
+    <li><span class="d">2026-09-17</span><span class="h">6e694409</span><span class="t"><code>_axial_change</code>, <code>_is_orthogonal_change</code>, <code>_signed_axial_mean</code> fix the exact 90° sign ambiguity.<small>The fix went into the orientation op only. The copies in <code>util/_matched_ring_rotation.py</code> and <code>sdk_/orientation_fields/_literal_crossings.py</code> were not changed.</small></span></li>
+  </ol>
+</section>
+
+<section id="duplication">
+  <h2>Duplication and dead code</h2>
+  <div class="dup">
+    <div class="card sev-crit">
+      <h3>Axial difference, 4 copies</h3>
+      <ul>
+        <li><code>_measure_orientation_zones.py:590</code> <code>_axial_change</code> (has the 90° fix)</li>
+        <li><code>util/_matched_ring_rotation.py:8</code> <code>_axial_difference</code></li>
+        <li><code>sdk_/orientation_fields/_literal_crossings.py:116</code> <code>_axial_difference</code></li>
+        <li><code>_orientation_zone_segmentation.py:465</code> inline <code>radial_tilt</code></li>
+      </ul>
+      <p>The measure <code>CLAUDE.md</code> documents why an exact 90° change must not be signed by <code>arctan2</code>. Three copies still do that. I have not tested whether an exact tie occurs in their inputs; the matched-ring copy only reaches figures, but the literal-crossing copy feeds the primary <code>OutwardRotation*</code> columns.</p>
+    </div>
+    <div class="card sev-warn">
+      <h3>Distance map, 2 copies</h3>
+      <ul>
+        <li><code>_zone_segmentation.py:115</code> <code>distance_from_point</code>: <code>np.sqrt</code> on integer indices</li>
+        <li><code>_orientation_zone_segmentation.py:110</code> <code>distance_from_center</code>: <code>np.hypot</code> on float indices</li>
+      </ul>
+      <p>Same purpose, different arithmetic. They can differ in the last bits, so merging them is a numeric change.</p>
+    </div>
+    <div class="card sev-warn">
+      <h3>Thresholds with two names</h3>
+      <ul>
+        <li>0.15: <code>_RADIAL_RELATIVE_MIN_COHERENCE</code>, <code>_RADIAL_RING_MIN_RESULTANT</code> (op), <code>_RELIABLE_PIXEL_COHERENCE</code>, <code>_CROSSING_RESULTANT</code> (resolver), <code>zone_min_ring_coherence</code>, <code>zone_min_resultant</code> (fields)</li>
+        <li>1.5: <code>_LITERAL_CROSSING_HALF_WIDTH</code> and <code>_CROSSING_HALF_WIDTH</code></li>
+      </ul>
+      <p>If a user raises <code>zone_min_resultant</code>, the op's own 0.15 does not follow. The code does not say whether that is intended.</p>
+    </div>
+    <div class="card sev-info">
+      <h3>Plot utilities, 2 to 3 copies</h3>
+      <ul>
+        <li><code>_circle_xy</code>: orientation module and a nested copy in SymZones</li>
+        <li>Okabe-Ito hex constants: both ops and <code>sdk_/viz/figures/_theme.py</code> (<code>OKABE_ITO</code>)</li>
+        <li><code>BASE_LAYER</code> control: both ops, different defaults</li>
+        <li>Coherence-weighted doubled-angle mean: <code>aggregate_orientation</code>, <code>_resultant_direction</code>, <code>_downsample_quiver</code>, <code>_axial_sector_means</code></li>
+      </ul>
+    </div>
+    <div class="card sev-crit">
+      <h3>Dead code</h3>
+      <ul>
+        <li><code>radial_relative_field</code> (tests only)</li>
+        <li><code>_get_local_obj_mask</code>, <code>_get_local_dist_map</code>, <code>_get_global_offset</code></li>
+        <li><code>_NEIGHBOR_KERNEL</code>, <code>_OI_BLUE</code>, <code>_OI_GREY</code></li>
+        <li><code>_SymmetryIntermediates</code> alias and the unused <code>object_label</code> parameter</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="proposal">
+  <h2>Proposals for reformatting</h2>
+  <div class="rule">
+    <h3>Placement rule</h3>
+    <ol>
+      <li><strong>Shared goes to <code>sdk_</code>.</strong> A helper used by two or more production modules, or a numeric primitive that has its own unit tests, lives in <code>sdk_</code> and is exported from its subpackage <code>__init__</code>.</li>
+      <li><strong>Operation-only goes on the class.</strong> A helper that exists to build one operation's columns or figures becomes a private method (<code>@staticmethod</code> if it reads no state) and is called as <code>self._name(...)</code>, never as <code>ClassName._name(...)</code>.</li>
+      <li><strong>No public-looking names at module level in an operation file.</strong> Module scope keeps only private constants and private value types.</li>
+      <li><strong>Dead code is deleted, not kept for compatibility.</strong></li>
+    </ol>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="Layout options">
+    <button type="button" role="tab" id="tab-b" aria-selected="true" aria-controls="panel-b">Option B · recommended</button>
+    <button type="button" role="tab" id="tab-a" aria-selected="false" aria-controls="panel-a">Option A · everything on the class</button>
+  </div>
+
+  <div id="panel-b" role="tabpanel" aria-labelledby="tab-b" class="cols">
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <p>Numeric orientation-field primitives move to <code>sdk_/orientation_fields</code>, which already describes itself as "transforms on already-computed orientation fields". Everything that encodes this operation's vocabulary (Radial/Mask variants, zone names, column writers, figure traces) becomes private on the class. The 1,733 lines of figure code move to a private mixin so the class file reads as a measurement.</p>
+      <p><strong>Why not everything on the class:</strong> the ring-profile functions are tested one by one, are imported by 15 research scripts, and one of them already has a second copy in the resolver. They are shared in practice even though only one class calls them today.</p>
+      <p><strong>Trade-off:</strong> the orientation op becomes a small package, so the class and its figure mixin sit in two files. Every figure method is still reached through <code>self._add_*</code>, so a search for its name still finds every caller.</p>
+    </div>
+<pre class="tree"><span class="s">sdk_/orientation_fields/</span>
+  _axial.py          <span class="c"># axial_change, signed_axial_mean,</span>
+                     <span class="c"># is_orthogonal_change, radial_tilt</span>
+  _field.py          <span class="n">← util/_orientation_field.py</span>
+  _ring_profiles.py  <span class="c"># radial_ring_orientation_profile,</span>
+                     <span class="c"># axial_sector_means, radial_ring_sector_field,</span>
+                     <span class="c"># cumulative/long_range_ring_rotation_profile,</span>
+                     <span class="c"># signed_radial_relative_field</span>
+  _matched_rings.py  <span class="n">← util/_matched_ring_rotation.py</span>
+  _bend.py           <span class="n">← util/_nematic_bend.py</span>
+  _literal_crossings.py, _aggregates.py, _plots.py
+<span class="s">sdk_/_plot_geometry.py</span>   <span class="c"># circle_xy, hex_to_rgba (no plotly import)</span>
+<span class="s">sdk_/_palette.py</span>         <span class="c"># OKABE_ITO names; _theme.py imports it</span>
+<span class="s">sdk_/_radial_geometry.py</span> <span class="c"># one distance_from_point</span>
+
+<span class="s">measure/_orientation_zones/</span>
+  __init__.py        <span class="c"># re-exports MeasureOrientationZones</span>
+  _operation.py      <span class="c"># class + fields + measurement path</span>
+                     <span class="c">#   _zone_selector, _aggregate_orientation,</span>
+                     <span class="c">#   _aggregate_radial_relative,</span>
+                     <span class="c">#   _aggregate_long_range_rotation,</span>
+                     <span class="c">#   _aggregate_paired_zone_rotation,</span>
+                     <span class="c">#   _downsample_quiver, _resultant_direction</span>
+  _figures.py        <span class="c"># _OrientationZonesFigures mixin:</span>
+                     <span class="c">#   inspect, *_overlay, _add_*_trace</span>
+  _report.py         <span class="c"># _OrientationZonesReport (+ _safe_nanmean)</span>
+
+<span class="s">measure/_measure_symzones.py</span>
+  <span class="c"># dead code removed; _add_overlay_traces split into</span>
+  <span class="c"># _add_objmap_trace, _add_zone_traces, _add_radius_traces,</span>
+  <span class="c"># _add_envelope_trace; all called via self</span></pre>
+  </div>
+
+  <div id="panel-a" role="tabpanel" aria-labelledby="tab-a" class="cols" hidden>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <p>Apply rule 2 literally: every helper whose only production caller is <code>MeasureOrientationZones</code> becomes a private staticmethod on it, including the ring profiles and axial math. Only helpers with a second production caller (<code>_circle_xy</code>, the palette, <code>_hex_to_rgba</code>, the distance map) go to <code>sdk_</code>.</p>
+      <p><strong>Gain:</strong> one place to look, and every call site is a <code>self._x</code> reference.</p>
+      <p><strong>Cost:</strong> the class grows from about 2,760 to about 3,600 lines. The 12 test imports turn into tests of private members. The 15 research scripts lose their imports. The resolver keeps its inline radial-tilt copy, because it cannot call a private method of a subclass.</p>
+    </div>
+<pre class="tree"><span class="s">measure/_measure_orientation_zones.py</span>
+  class MeasureOrientationZones:
+    <span class="c"># measurement</span>
+    _zone_selector, _aggregate_orientation,
+    _signed_radial_relative_field,
+    _aggregate_radial_relative,
+    _axial_sector_means, _radial_ring_orientation_profile,
+    _axial_change, _signed_axial_mean, _is_orthogonal_change,
+    _long_range_ring_rotation_profile,
+    _aggregate_long_range_rotation,
+    _aggregate_paired_zone_rotation
+    <span class="c"># figures</span>
+    _cumulative_ring_rotation_profile,
+    _radial_ring_sector_field,
+    _downsample_quiver, _resultant_direction,
+    inspect, *_overlay, _add_*_trace ...
+<span class="s">sdk_/_plot_geometry.py</span>   <span class="c"># circle_xy, hex_to_rgba</span>
+<span class="s">sdk_/_palette.py</span>         <span class="c"># OKABE_ITO names</span>
+<span class="s">sdk_/_radial_geometry.py</span> <span class="c"># distance_from_point</span></pre>
+  </div>
+</section>
+
+<section id="order">
+  <h2>Suggested order of work</h2>
+  <p>The orientation golden test (<code>test_orientation_zone_migration_golden.py</code>) compares at <code>rtol = atol = 1e-10</code>. That tolerance is the check that separates a move from a behavior change, so the order below keeps the two apart.</p>
+  <ol class="steps">
+    <li><p><strong>Delete dead code.</strong> The seven SymZones definitions, <code>radial_relative_field</code>, and the stale L110 comment. No numeric effect.</p></li>
+    <li><p><strong>Move without changing arithmetic.</strong> Relocate functions to their new homes and convert call sites to <code>self._x</code>. The golden must pass unchanged. Update <code>tests/unit/ci/test_deferred_imports.py</code> for any moved function that imports lazily, and keep the palette and geometry modules free of plotly: <code>sdk_/viz/__init__.py</code> imports <code>.figures</code>, which imports plotly at module scope, so a module under <code>sdk_/viz/</code> would break the startup import gate.</p></li>
+    <li><p><strong>Consolidate the copies, one commit each.</strong> The single axial-difference function, the single distance map, and the resolver calling the shared radial-tilt helper. Each of these can change results in the last bits or at exact 90° ties, so each is a behavior decision with its golden re-checked.</p></li>
+    <li><p><strong>Update or retire the research scripts.</strong> Either repoint the 15 scripts' imports, or record in the spec folder that they run against commit <code>249d2d6</code> or earlier.</p></li>
+  </ol>
+</section>
+
+<section id="questions">
+  <h2>Open questions for you</h2>
+  <ol class="q">
+    <li>Should the 90° fix also apply to the literal-crossing and matched-ring copies? That changes <code>OutwardRotation*</code> values wherever an exact tie occurs.</li>
+    <li>Should the op's 0.15 and 1.5 thresholds follow the <code>zone_min_*</code> fields, or are they meant to be fixed?</li>
+    <li>Do the research scripts need to stay runnable on the current tree?</li>
+  </ol>
+  <p class="note">Nothing in the repository was changed by this trace except this page. Numbers are from the tree at the time of tracing; line ranges will drift after the first edit.</p>
+</section>
+</div>
+
+<script>
+(function(){
+  var rows=[].slice.call(document.querySelectorAll('#helper-table tbody tr'));
+  var btns=[].slice.call(document.querySelectorAll('.filters button'));
+  btns.forEach(function(b){
+    b.addEventListener('click',function(){
+      var f=b.getAttribute('data-f');
+      btns.forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});
+      rows.forEach(function(r){
+        var p=r.getAttribute('data-p');
+        var show=f==='all'||p===f||(f==='meas'&&p==='meas');
+        r.hidden=!show;
+      });
+    });
+  });
+  var tabs=[].slice.call(document.querySelectorAll('.tabs button'));
+  tabs.forEach(function(t){
+    t.addEventListener('click',function(){
+      tabs.forEach(function(x){
+        var on=x===t;
+        x.setAttribute('aria-selected',on?'true':'false');
+        document.getElementById(x.getAttribute('aria-controls')).hidden=!on;
+      });
+    });
+  });
+})();
+</script>
