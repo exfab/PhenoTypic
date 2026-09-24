@@ -345,3 +345,52 @@ class TestDetectMode:
         dst.set_image(src)
         assert dst.detect_mode == "red"
         np.testing.assert_array_equal(red_mat, dst.detect_mat[:])
+
+
+class TestSetImageUnderRgbDetectMode:
+    """``set_image`` must honor an RGB-only ``detect_mode`` the way the setter does.
+
+    ``set_detect_mode`` refuses an RGB-only mode on an image without RGB. Replacing
+    the pixels of an image already in such a mode with grayscale data reaches the
+    same state from the other side, so it must be refused the same way, with the
+    image left as it was, rather than raising ``IndexError`` from the mode's
+    channel indexing or silently switching the detection channel to gray.
+    """
+
+    @pytest.fixture()
+    def red_image(self):
+        rng = np.random.default_rng(0)
+        image = phenotypic.Image(rng.integers(0, 255, (32, 32, 3), dtype=np.uint8))
+        image.set_detect_mode("red")
+        return image
+
+    def test_gray_array_is_refused_with_value_error(self, red_image):
+        gray = red_image.rgb[:][..., 0].copy()
+        with pytest.raises(ValueError, match="Cannot use detect_mode 'red'.*no RGB data"):
+            red_image.set_image(gray)
+
+    def test_refused_gray_array_leaves_image_unchanged(self, red_image):
+        rgb_before = red_image.rgb[:].copy()
+        detect_before = red_image.detect_mat[:].copy()
+        with pytest.raises(ValueError):
+            red_image.set_image(np.zeros((16, 16), dtype=np.uint8))
+        assert red_image.detect_mode == "red"
+        np.testing.assert_array_equal(rgb_before, red_image.rgb[:])
+        np.testing.assert_array_equal(detect_before, red_image.detect_mat[:])
+
+    def test_gray_image_instance_adopts_its_own_detect_mode(self, red_image):
+        """An ``Image`` source carries its own mode, which ``set_image`` copies."""
+        src = phenotypic.Image(np.full((16, 16), 7, dtype=np.uint8))
+        red_image.set_image(src)
+        assert red_image.detect_mode == "gray"
+        assert red_image.rgb.isempty()
+        np.testing.assert_array_equal(src.detect_mat[:], red_image.detect_mat[:])
+
+    def test_rgb_array_keeps_red_mode(self, red_image):
+        rng = np.random.default_rng(1)
+        new_rgb = rng.integers(0, 255, (24, 24, 3), dtype=np.uint8)
+        red_image.set_image(new_rgb)
+        assert red_image.detect_mode == "red"
+        np.testing.assert_allclose(
+            red_image.detect_mat[:], new_rgb[..., 0].astype(np.float32) / 255
+        )

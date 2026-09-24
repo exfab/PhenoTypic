@@ -336,6 +336,12 @@ class ImageDataManager:
         if not self._is_image_handler(input_cls):
             raise ValueError("Input is not an Image object")
 
+        # Adopt the source's detect_mode before rebuilding the pixel layers: the
+        # deep copy below overwrites it anyway, and the source's mode is by
+        # construction valid for the source's data, whereas ours may require an
+        # RGB layer the source does not have.
+        self._data.detect_mode = input_cls._data.detect_mode
+
         # Determine format from whether RGB data exists
         if not input_cls.rgb.isempty():
             self._set_from_array(input_cls.rgb[:])
@@ -381,6 +387,9 @@ class ImageDataManager:
         """
         # Guess format from array shape
         format_enum = self._guess_image_format(arr)
+        if format_enum in (IMAGE_MODE.GRAYSCALE, IMAGE_MODE.GRAYSCALE_SINGLE_CHANNEL):
+            # Refuse before allocating, so a rejected input leaves the image intact.
+            self._require_rgb_for_detect_mode(self._data.detect_mode, has_rgb=False)
         self._allocate_data(shape=arr.shape)
 
         # Process based on detected format
@@ -423,14 +432,34 @@ class ImageDataManager:
         )
 
         # Respect current detect_mode (e.g. "red") instead of always using gray.
+        # _set_from_array has already refused a grayscale input under an
+        # RGB-only mode, so the mode's source channel is present here.
         from phenotypic._core._image_parts.detection_modes import get_detection_mode
 
-        mode = get_detection_mode(self._data.detect_mode)
-        has_rgb = self._data.rgb is not None and self._data.rgb.shape[0] > 0
-        if mode.requires_rgb and not has_rgb:
-            self._data.detect_mat = self._data.gray.copy()
-        else:
-            self._data.detect_mat = mode.compute(self)
+        self._data.detect_mat = get_detection_mode(self._data.detect_mode).compute(self)
+
+    @staticmethod
+    def _require_rgb_for_detect_mode(mode: str, *, has_rgb: bool) -> None:
+        """Refuse a detection mode that needs RGB data on an image without it.
+
+        Shared by ``set_detect_mode`` and ``set_image`` so that both routes to
+        an RGB-only mode on a grayscale image fail with the same error instead
+        of one of them silently changing the detection channel.
+
+        Args:
+            mode: A registered detection mode name (e.g. ``'red'``).
+            has_rgb: Whether the image has, or is about to have, RGB data.
+
+        Raises:
+            ValueError: If *mode* requires RGB data and *has_rgb* is False, or if
+                *mode* is not a recognised value.
+        """
+        from phenotypic._core._image_parts.detection_modes import get_detection_mode
+
+        if get_detection_mode(mode).requires_rgb and not has_rgb:
+            raise ValueError(
+                    f"Cannot use detect_mode '{mode}': image has no RGB data."
+            )
 
     @staticmethod
     def _guess_image_format(img: np.ndarray) -> IMAGE_MODE:

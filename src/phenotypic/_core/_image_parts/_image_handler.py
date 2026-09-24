@@ -392,13 +392,8 @@ class ImageHandler(ImageDataManager):
             ValueError: If *mode* requires RGB data and the image has none, or if
                 *mode* is not a recognised value.
         """
-        from phenotypic._core._image_parts.detection_modes import get_detection_mode
-
-        mode_obj = get_detection_mode(mode)  # raises ValueError if unknown
-        if mode_obj.requires_rgb and self.rgb.isempty():
-            raise ValueError(
-                    f"Cannot use detect_mode '{mode}': image has no RGB data."
-            )
+        # Raises ValueError if the mode is unknown or needs RGB the image lacks.
+        self._require_rgb_for_detect_mode(mode, has_rgb=not self.rgb.isempty())
         self._data.detect_mode = mode
         self.detect_mat.reset()
 
