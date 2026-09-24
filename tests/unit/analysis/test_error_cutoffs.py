@@ -166,8 +166,8 @@ def test_prefix_set_detects_phenotype_headers_and_excludes_position():
 
     pheno = [
         "Size_Area", "Shape_Circularity", "Intensity_MeanIntensity",
-        "SymZones_Foo", "GridSpatial_Foo", "RadialExpansion_Foo",
-        "TextureGray_Contrast",
+        "SymZones_Foo", "NeighborDist_Foo", "GridSpatial_Foo",
+        "RadialExpansion_Foo", "TextureGray_Contrast",
     ]
     df = pd.DataFrame({c: [1.0, 2.0, 3.0] for c in pheno})
     df[str(BBOX.CENTER_RR)] = [1.0, 2.0, 3.0]  # absolute plate position

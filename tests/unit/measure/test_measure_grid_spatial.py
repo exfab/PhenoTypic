@@ -487,3 +487,32 @@ class TestPublicGridApiOnly:
         # Before: 402 each (one pair per section lookup). After: exactly 1.
         # grid.info() fits through the finder's _operate, not these getters.
         assert calls == {"row": 1, "col": 1}
+
+
+class TestNearestSchema:
+    """NEIGHBOR_DIST declares the three nearest-object members, in order."""
+
+    def test_headers_append_nearest_members_after_directional(self):
+        headers = NEIGHBOR_DIST.get_headers()
+        assert headers[-3:] == [
+            "NeighborDist_NearestObjLabel",
+            "NeighborDist_NearestDistance",
+            "NeighborDist_NearestRelation",
+        ]
+        assert len(headers) == 11
+
+    def test_category_is_neighbor_dist_for_every_header(self):
+        assert NEIGHBOR_DIST.category() == "NeighborDist"
+        assert all(h.startswith("NeighborDist_")
+                   for h in NEIGHBOR_DIST.get_headers())
+
+    def test_nearest_members_have_no_authored_bio_desc(self):
+        for member in (NEIGHBOR_DIST.NEAREST_OBJ_LABEL,
+                       NEIGHBOR_DIST.NEAREST_DISTANCE,
+                       NEIGHBOR_DIST.NEAREST_RELATION):
+            assert member.bio_desc == ""
+
+    def test_relation_desc_documents_every_code(self):
+        desc = NEIGHBOR_DIST.NEAREST_RELATION.desc
+        for code in ("0", "1", "2", "3"):
+            assert code in desc
