@@ -1346,6 +1346,10 @@ def clear_machine_state(output_dir: Path) -> bool:
     # directory through its separate destructive path. The targets come from
     # machine_state_restart_targets, which the CLI's --dry-run preview and its
     # run-input overlap refusal read too, so the three cannot disagree.
+    # Dispatching on is_dir() per target also makes two pathological legacy
+    # layouts succeed where the previous code raised (a root-level `progress`
+    # that is a file or symlink; a legacy state/log path that is a directory);
+    # for every real layout the deleted set is unchanged (phase-A review A5).
     for target in machine_state_restart_targets(output_dir):
         if target.is_dir() and not target.is_symlink():
             shutil.rmtree(target)
@@ -1393,7 +1397,14 @@ def machine_state_restart_targets(output_dir: Path) -> list[Path]:
 
 
 def preserved_on_restart_names() -> frozenset[str]:
-    """Names under ``.phenotypic/`` that ``--restart`` keeps (read-only view)."""
+    """Names under ``.phenotypic/`` that ``--restart`` keeps.
+
+    A read-only view of the private :data:`_PRESERVED_ON_RESTART`, for the
+    CLI's dry-run preview and its run-input refusal.
+
+    Returns:
+        The preserved entry names.
+    """
     return _PRESERVED_ON_RESTART
 
 

@@ -235,3 +235,144 @@ def test_overlap_refusal_survives_skip_validation(
     assert result.exit_code != 0, result.output
     assert "--input" in result.output, result.output
     assert (inputs / "plate1" / "img001.tiff").exists()
+
+
+# --- phase-A review A1: symlinks stored under the deleted location --------------
+
+
+@pytest.mark.parametrize("option", ["--pipeline", "--metadata"])
+def test_overwrite_refuses_a_symlinked_input_stored_under_the_output(
+    option: str, valid_pipeline: Path, image_tree: Path, previous_run: Path, tmp_path: Path
+) -> None:
+    """``rmtree`` unlinks a link without following it, so the lexical path decides."""
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    if option == "--pipeline":
+        real = outside / "pipeline.json"
+        real.write_bytes(valid_pipeline.read_bytes())
+    else:
+        real = outside / "metadata.csv"
+        real.write_text("ImageName,Strain\nimg001,WT\n", encoding="utf-8")
+    link = previous_run / f"linked{real.suffix}"
+    link.symlink_to(real)
+    args = ["--pipeline", str(valid_pipeline), "--input", str(image_tree),
+            "--output", str(previous_run), "--overwrite"]
+    if option == "--pipeline":
+        args[1] = str(link)
+    else:
+        args += ["--metadata", str(link)]
+
+    result = _invoke(*args)
+
+    assert result.exit_code != 0, result.output
+    assert option in result.output, result.output
+    assert link.is_symlink()
+    assert (previous_run / PREVIOUS).read_text(encoding="utf-8") == "keep me"
+
+
+def test_restart_refuses_a_symlink_nested_in_a_cleared_state_directory(
+    valid_pipeline: Path, image_tree: Path, tmp_path: Path
+) -> None:
+    output_dir = tmp_path / "run"
+    nested = output_dir / ".phenotypic" / "progress" / "pipeline.json"
+    nested.parent.mkdir(parents=True)
+    nested.symlink_to(valid_pipeline)
+
+    result = _invoke(
+        "--pipeline", str(nested), "--input", str(image_tree),
+        "--output", str(output_dir), "--restart",
+    )
+
+    assert result.exit_code != 0, result.output
+    assert "--pipeline" in result.output
+    assert nested.is_symlink()
+
+
+# --- phase-A review A3: negative controls ------------------------------------------
+
+
+def test_restart_admits_an_input_in_a_preserved_state_entry(
+    valid_pipeline: Path, image_tree: Path, tmp_path: Path
+) -> None:
+    """``legacy-v2/`` survives ``--restart``, so a pipeline there is safe."""
+    output_dir = tmp_path / "run"
+    kept = output_dir / ".phenotypic" / "legacy-v2" / "pipeline.json"
+    kept.parent.mkdir(parents=True)
+    kept.write_bytes(valid_pipeline.read_bytes())
+
+    result = _invoke(
+        "--pipeline", str(kept), "--input", str(image_tree),
+        "--output", str(output_dir), "--restart", "--dry-run",
+    )
+
+    assert result.exit_code == 0, result.output
+    assert kept.exists()
+
+
+def test_restart_without_machine_state_refuses_nothing(
+    valid_pipeline: Path, image_tree: Path, tmp_path: Path
+) -> None:
+    result = _invoke(
+        "--pipeline", str(valid_pipeline), "--input", str(image_tree),
+        "--output", str(tmp_path / "fresh"), "--restart", "--dry-run",
+    )
+
+    assert result.exit_code == 0, result.output
+
+
+def test_a_relative_spelling_inside_the_output_is_still_refused(
+    valid_pipeline: Path, image_tree: Path, previous_run: Path, monkeypatch
+) -> None:
+    inside = previous_run / "pipeline.json"
+    inside.write_bytes(valid_pipeline.read_bytes())
+    monkeypatch.chdir(previous_run.parent)
+
+    result = _invoke(
+        "--pipeline", "out/pipeline.json", "--input", str(image_tree),
+        "--output", "out", "--overwrite",
+    )
+
+    assert result.exit_code != 0, result.output
+    assert "--pipeline" in result.output
+    assert inside.exists()
+
+
+def test_recompile_is_out_of_scope_for_the_refusal(
+    valid_pipeline: Path, previous_run: Path, monkeypatch
+) -> None:
+    """``--mode recompile`` exits before any delete, so it is not refused (A2)."""
+    from phenotypic import phenotypicCLI
+
+    reached: list[bool] = []
+    monkeypatch.setattr(
+        phenotypicCLI, "_handle_recompile", lambda *a, **k: reached.append(True)
+    )
+    metadata = previous_run / "deliverables" / "my_meta.csv"
+    metadata.parent.mkdir()
+    metadata.write_text("ImageName,Strain\nimg001,WT\n", encoding="utf-8")
+
+    result = _invoke(
+        "--mode", "recompile", "--output", str(previous_run),
+        "--metadata", str(metadata), "--overwrite",
+    )
+
+    assert "lies inside --output" not in result.output, result.output
+    assert metadata.exists()
+
+
+def test_process_mode_ignores_metadata_in_the_refusal(
+    valid_pipeline: Path, image_tree: Path, previous_run: Path
+) -> None:
+    """``--mode process`` ignores ``--metadata``, so it is not a run input (A6)."""
+    metadata = previous_run / "ignored.csv"
+    metadata.write_text("ImageName\nimg001\n", encoding="utf-8")
+
+    result = _invoke(
+        "--mode", "process", "--layer", "gray",
+        "--pipeline", str(valid_pipeline), "--input", str(image_tree),
+        "--output", str(previous_run), "--metadata", str(metadata),
+        "--overwrite", "--dry-run",
+    )
+
+    assert "lies inside --output" not in result.output, result.output
+    assert metadata.exists()

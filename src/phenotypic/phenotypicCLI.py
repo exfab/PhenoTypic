@@ -583,11 +583,21 @@ def _refuse_run_inputs_the_run_would_delete(
     """Refuse a run whose own inputs ``--overwrite`` or ``--restart`` would delete.
 
     ``--overwrite`` removes the whole output directory and ``--restart`` removes
-    the non-preserved machine state under ``.phenotypic/``, both before the run
-    reads its pipeline, metadata, image manifest or images. A run input stored
-    in either place would be deleted and then reported missing, or, for an
-    already-snapshotted manifest, silently lost (spec F3, F27). Placed outside
+    the non-preserved machine state under ``.phenotypic/``, both before the
+    run has finished reading its inputs (the metadata snapshot, startup
+    preparation and every worker read them later). A run input stored in
+    either place would be deleted and then reported missing, or, for an
+    already-snapshotted manifest, silently lost (spec F3, F27). Called only in
+    the modes that reach those deletes (``full`` and ``process``), and outside
     ``--skip-validation``: this protects the user's files, it does not advise.
+
+    **Both spellings of every path are compared** (phase-A review A1). The
+    *lexical* spelling (absolute, links not followed) is what a delete removes:
+    ``shutil.rmtree`` unlinks a symlink stored under ``--output`` without
+    following it, so the run then fails to read the link it named. The
+    *resolved* spelling catches an alias that reaches the output from outside
+    it. A path is refused when either spelling lies in either spelling of the
+    deleted location.
 
     The restart targets come from :func:`machine_state_restart_targets`, the
     same list ``clear_machine_state`` deletes, so the refusal and the delete
@@ -604,27 +614,35 @@ def _refuse_run_inputs_the_run_would_delete(
     """
     if not (overwrite or restart):
         return
-    canonical_output = Path(output_dir).resolve(strict=False)
+
+    def spellings(path: Path) -> set[Path]:
+        return {Path(os.path.abspath(path)), Path(path).resolve(strict=False)}
+
+    def inside(path: Path, roots: set[Path]) -> bool:
+        return any(
+            candidate == root or candidate.is_relative_to(root)
+            for candidate in spellings(path)
+            for root in roots
+        )
+
+    output_roots = spellings(Path(output_dir))
     restart_targets = (
-        [target.resolve(strict=False) for target in machine_state_restart_targets(output_dir)]
-        if restart and output_dir.exists()
+        machine_state_restart_targets(Path(output_dir))
+        if restart and Path(output_dir).exists()
         else []
     )
     for option, path in run_inputs:
         if path is None:
             continue
-        canonical = Path(path).resolve(strict=False)
-        if overwrite and (
-            canonical == canonical_output
-            or canonical.is_relative_to(canonical_output)
-        ):
+        if overwrite and inside(Path(path), output_roots):
             raise click.UsageError(
                 f"{option} {path} lies inside --output {output_dir}, which "
-                "--overwrite deletes before the run reads it. Move it outside "
-                "the output directory, or choose a different --output."
+                "--overwrite deletes before the run has finished reading it. "
+                "Move it outside the output directory, or choose a different "
+                "--output."
             )
         for target in restart_targets:
-            if canonical == target or canonical.is_relative_to(target):
+            if inside(Path(path), spellings(target)):
                 kept = ", ".join(sorted(preserved_on_restart_names()))
                 raise click.UsageError(
                     f"{option} {path} lies inside the machine state that "
@@ -1994,22 +2012,6 @@ def phenotypic_cli(
                     "the source can never be modified or deleted."
                 )
 
-        # Every run input --overwrite or --restart would delete is refused
-        # here, above every mutation and regardless of --skip-validation
-        # (spec §1, F3/F27).
-        if not migrate_only:
-            _refuse_run_inputs_the_run_would_delete(
-                output_dir=Path(output_dir),
-                overwrite=overwrite,
-                restart=restart,
-                run_inputs=(
-                    ("--input", input_path),
-                    ("--pipeline", pipeline_json),
-                    ("--metadata", metadata_csv),
-                    ("--image-manifest", image_manifest),
-                ),
-            )
-
         # Every mode that writes or reprocesses refuses an unconverted tree;
         # `migrate` is exempt because it is the remedy (ledger MIG-19). Placed
         # here so `full`, `measure`, `recompile` and `process` are all covered
@@ -2262,6 +2264,28 @@ def phenotypic_cli(
             raise click.UsageError(
                 f"{' and '.join(missing)} required unless --mode recompile is set.\n"
                 f"{_format_explicit_cli_usage_hint()}"
+            )
+
+        # Every run input --overwrite or --restart would delete is refused
+        # here: above every mutation, below the more specific usage errors
+        # (--restart with --overwrite, --mode measure with --overwrite), only
+        # in the modes that reach those deletes, and regardless of
+        # --skip-validation (spec §1, F3/F27; phase-A review A2). Process mode
+        # ignores --metadata, so it is not a run input there (A6).
+        if cli_mode in ("full", "process"):
+            _refuse_run_inputs_the_run_would_delete(
+                output_dir=Path(output_dir),
+                overwrite=overwrite,
+                restart=restart,
+                run_inputs=(
+                    ("--input", input_path),
+                    ("--pipeline", pipeline_json),
+                    (
+                        "--metadata",
+                        metadata_csv if cli_mode == "full" else None,
+                    ),
+                    ("--image-manifest", image_manifest),
+                ),
             )
 
         resume_state = None
@@ -2647,13 +2671,13 @@ def phenotypic_cli(
         # mint, state and directory creation) sits below it (spec §1), so a
         # dry run with --restart or --overwrite is a preview.
         if config.dry_run:
-            _print_dry_run_mutation_preview(
-                output_dir, restart=restart, will_overwrite=will_overwrite
-            )
             if config.process_only_layer:
                 _print_process_only_dry_run_plan(config, datasets, output_dir)
             else:
                 execute_dry_run(config, datasets, output_dir)
+            _print_dry_run_mutation_preview(
+                output_dir, restart=restart, will_overwrite=will_overwrite
+            )
             sys.exit(0)
 
         # ---- Mutating half: nothing above this line writes under --output.
@@ -2714,9 +2738,10 @@ def phenotypic_cli(
         # to prevent.
         #
         # Still dominates both resume sites: they are all below this point,
-        # and the overwrite branch above is guarded by `not config.resume
-        # and not restart and not measure_only`, so no path reaches a resume
-        # site without passing here first.
+        # and the overwrite delete above runs only when `will_overwrite`,
+        # which is computed under `not config.resume and not restart and not
+        # measure_only`, so no path reaches a resume site without passing
+        # here first.
         identity = mint_run_identity(config, restart=restart)
         # One initial call for the whole run, every image and stage (figures
         # spec §1a): the recorded one on a resume, else this one. Measure mode
