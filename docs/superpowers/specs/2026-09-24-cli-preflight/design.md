@@ -487,8 +487,10 @@ workers, a module constant). It records the channel count, dtype, and shape:
 | OME-Zarr store | the root and series `zarr.json` documents via the existing `ngff_` helpers, stopping before `zarr.open_array`; channel count comes from `project_ngff_axes` |
 
 `tifffile` is imported directly in two modules already (`_color_space_accessor.py:9`,
-`_accessor_io_handler.py:335`) but arrives only transitively through scikit-image. §10
-adds it to `[project] dependencies` so the preflight does not depend on a transitive pin.
+`_accessor_io_handler.py:335`) but arrives only transitively through scikit-image. Adding it
+to `[project] dependencies` was planned here and is **deferred**: `uv lock` could not
+re-resolve the project in the implementation environment for a reason unrelated to
+`tifffile` (see `DEFERRED.md`). It remains installed through scikit-image.
 
 A header reports what the file stores, which is not always what `imread` returns: a
 palette PNG stores one band but decodes to RGB, and a multi-page TIFF's first page need not

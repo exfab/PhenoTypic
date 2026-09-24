@@ -51,3 +51,16 @@ yet, and a file nothing reads is a file nobody keeps correct.
 `execute_dry_run` estimates output size from hard-coded megabytes per image
 (`_cli_interactive.py:236-250`) that predate the per-image OME-Zarr layout. Correcting it
 needs measured store sizes, which this change does not produce.
+
+## Declaring `tifffile` as a direct dependency
+
+Spec §7 planned to add `tifffile` to `[project] dependencies`, since it is
+imported directly but arrives only transitively through scikit-image. Plan
+Task 9 attempted it on 2026-09-24 and `uv lock` (uv 0.8.17) could not
+re-resolve the project in that environment: the Windows x86_64 split fails on
+`gudhi==3.13.0` (the `topology` extra), which has no compatible wheel there.
+The failure is independent of `tifffile` -- any re-resolution hits it, while
+the committed lockfile verifies with `uv lock --locked` because nothing forces
+a re-resolve. Editing `uv.lock` by hand is not an option. `tifffile` remains
+installed through scikit-image, so nothing breaks today; add the direct
+dependency in the change that next re-resolves the lockfile successfully.
