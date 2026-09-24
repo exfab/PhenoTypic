@@ -27,14 +27,18 @@ half is meaningful.
 - Changing the values of the eight existing directional columns on a
   `GridImage`. They keep their Voronoi-restricted semantics, including
   shielding (`test_shielded_target_returns_nan`).
-- Renaming the class or the `GridSpatial` category. `FilamentousFungiPipeline`
-  and the results-viewer scatter grouping key on both.
+- Renaming the class. `FilamentousFungiPipeline` and serialized pipelines
+  (`{"class": "MeasureNeighborDist"}`) key on it. (The schema **category** *is*
+  renamed; see §3.9.)
+- A general legacy-header alias layer for measurement columns. The existing
+  `LEGACY_HEADER_TO_MEMBER` registry covers metadata headers only; §3.9 names
+  the one consumer that keeps reading the old prefix.
 - Diagonal directional columns (`UpperLeftDistance`, …). The nearest-object
   relation code covers the diagonal case without four more column pairs.
 - A distance threshold or search radius parameter. The search is exact and
   cheap enough without one.
-- Physical units. Distances stay in pixels, like every other `GridSpatial`
-  column.
+- Physical units. Distances stay in pixels, like the existing directional
+  columns.
 
 ## 2. Current behaviour (as of `81d19ec66`)
 
@@ -71,7 +75,9 @@ defensive, and this design keeps it.
   `MeasureFeatures.measure` itself (`abc_/_measure_features.py:455`).
 - **Parameters:** none added. The class stays keyword-only-constructible with
   no fields.
-- **Name and category:** unchanged (`MeasureNeighborDist`, `GridSpatial_*`).
+- **Name:** unchanged (`MeasureNeighborDist`).
+- **Category:** renamed from `GridSpatial` to `NeighborDist`, so all 11 headers
+  become `NeighborDist_*` (§3.9).
 
 ### 3.2 Columns
 
@@ -79,7 +85,7 @@ Every call emits the same 11 measurement columns plus `Object_Label`,
 whatever the input type, so the schema is stable across `Image` and
 `GridImage`:
 
-| Column (`GridSpatial_…`) | `GridImage` | plain `Image` |
+| Column (`NeighborDist_…`) | `GridImage` | plain `Image` |
 |---|---|---|
 | 8 directional columns | unchanged | all `NaN` |
 | `NearestObjLabel` | label of the closest eligible other object | same, over all objects |
@@ -226,6 +232,30 @@ The existing directional body moves unchanged into
 `_measure_grid_directions`. Its behaviour is pinned by the existing
 `TestEdtDistance` suite, which must stay green without edits.
 
+### 3.9 Category rename: `GridSpatial` → `NeighborDist`
+
+`NEIGHBOR_DIST.category()` returns `"NeighborDist"`, so every header, old and
+new, is `NeighborDist_<Label>`. The measurer now also runs on images with no
+grid, so a "Grid" prefix would be wrong, and the new name matches the enum and
+the class.
+
+What reads the prefix (checked with `grep -rn GridSpatial src tests docs`):
+
+| Consumer | Behaviour after the rename | Change |
+|---|---|---|
+| `ErrorCutoffFinder.MEASUREMENT_PREFIXES` (`analysis/_error_cutoffs.py:40`) | hard-coded `"GridSpatial_"` | add `"NeighborDist_"`; **keep** `"GridSpatial_"` so tables written before the rename still count as phenotype columns |
+| `test_prefix_set_detects_phenotype_headers_and_excludes_position` (`tests/unit/analysis/test_error_cutoffs.py:169`) | lists `"GridSpatial_Foo"` | add `"NeighborDist_Foo"` and keep the old entry |
+| Results-viewer scatter grouping | resolves columns by asking the measurer, not by prefix | none; new-run columns group under `MeasureNeighborDist`. `GridSpatial_*` columns in an **older** run's table fall into "Unattributed", like any header the current schema doesn't declare |
+| Deliverables `README.md` generator | reads `MeasurementInfo` members | none; documents the new headers automatically |
+| User docs (`docs/` outside `superpowers/`) | no mentions | none |
+
+**Mixed-version runs.** Stores measured before and after the rename carry
+different headers for the same quantity. Aggregation takes the union of
+columns, so a run measured partly on each side of the rename shows both
+prefixes, each `NaN` on the other side's rows. Re-measuring the older stores
+(`--mode measure`) brings them onto the new prefix. This is the same thing
+that happens when any column is added, so there's no special handling.
+
 ## 4. Edge cases
 
 | Case | Result |
@@ -260,6 +290,9 @@ disc geometry (±1 px rasterisation slack, as the existing EDT tests use):
    pairs equal a brute-force all-pairs `cKDTree` over full masks.
 10. Schema: `NEIGHBOR_DIST.get_headers()` contains the three new headers, and
     the measurer output columns equal the schema's headers exactly.
+11. Category: `NEIGHBOR_DIST.category() == "NeighborDist"` and every header
+    starts with `NeighborDist_`. `ErrorCutoffFinder.measurement_columns`
+    selects both a `NeighborDist_` and a legacy `GridSpatial_` column.
 
 **Mutation gate:** before trusting (9), reintroduce an early exit in the
 branch and bound (stop after the first candidate) and confirm the
@@ -268,13 +301,20 @@ brute-force comparison fails. Then restore it.
 ## 6. Side updates
 
 - `docs/superpowers/specs/2026-09-01-results-scatter-tab/design.md` records
-  `MeasureNeighborDist | 8`. Add a dated note that it is now 11, rather than
-  rewriting the historical table.
+  `MeasureNeighborDist | 8` and "emits `GridSpatial_*`". Add a dated note that
+  it now emits 11 `NeighborDist_*` columns, rather than rewriting the
+  historical table.
+- `analysis/_error_cutoffs.py` prefix list and its drift-guard test (§3.9).
 - `FilamentousFungiPipeline`: no change, since the constructor is unchanged.
 - `abc_` docs mentioning grid measurers: no change needed. The class moves to
   a less restrictive base, and nothing else subclasses it.
 
 ## 7. Risks
+
+- **Header rename breaks external readers.** User scripts, notebooks, or R
+  analyses that select `GridSpatial_*` columns by name stop finding them on
+  newly measured data. The spec accepts this, deliberately: there is no alias
+  layer for measurement headers. The PR description must call out the rename.
 
 - **Base-class change — checked, low risk.** Nothing in `src/` routes on
   `isinstance(…, GridMeasureFeatures)`. Its only other subclasses are

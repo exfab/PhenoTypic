@@ -16,7 +16,7 @@
 - `uv` only. Never bare `python`/`pip`.
 - Test command form (the `run-phenotypic-test` skill): `QT_QPA_PLATFORM=offscreen uv run pytest <paths> -q --no-header -p no:randomly -o addopts= -m "not slow"`. Never `-n auto`. Never quote an `-x` run as a result.
 - `uv run ruff check --fix <explicit paths you changed>`. Never bare `ruff check --fix`.
-- Class name `MeasureNeighborDist` and schema category `GridSpatial` are unchanged.
+- Class name `MeasureNeighborDist` is unchanged. Schema category is **renamed** `GridSpatial` → `NeighborDist` (spec §3.9), so every header is `NeighborDist_<Label>`. `ErrorCutoffFinder.MEASUREMENT_PREFIXES` keeps `"GridSpatial_"` alongside the new `"NeighborDist_"`.
 - Distances are pixel-centre Euclidean, in pixels; touching (4-adjacent) objects = `1.0`.
 - `NearestRelation` codes: `0` same cell, `1` adjacent (`dr + dc == 1`), `2` diagonal (`dr == dc == 1`), `3` anything else. `NaN` on a plain `Image` or when there is no nearest.
 - Ties go to the smaller label.
@@ -37,7 +37,9 @@
 
 | File | Change | Task |
 |---|---|---|
-| `src/phenotypic/schema/_neighbor_dist.py` | add 3 members, rewrite class docstring | 1 |
+| `src/phenotypic/schema/_neighbor_dist.py` | category → `NeighborDist`, add 3 members, rewrite class docstring | 1 |
+| `src/phenotypic/analysis/_error_cutoffs.py` | add `"NeighborDist_"` prefix, keep `"GridSpatial_"` | 1 |
+| `tests/unit/analysis/test_error_cutoffs.py` | prefix drift guard covers both | 1 |
 | `tests/unit/measure/test_measure_grid_spatial.py` | add `TestNearestSchema`, `TestNearestObjectsHelper`, `TestNearestColumns`, `TestNearestProperty` | 1–3 |
 | `src/phenotypic/measure/_measure_neighbor_dist.py` | add `_nearest_objects`, `_nearest_relation`; base class change; `_operate` split; docstring | 2, 3 |
 | `docs/superpowers/specs/2026-09-01-results-scatter-tab/design.md` | dated note: column count is now 11 | 4 |
@@ -48,14 +50,16 @@
 
 ---
 
-### Task 1: Schema members
+### Task 1: Schema: `NeighborDist` category and nearest-object members
 
 **Files:**
 - Modify: `src/phenotypic/schema/_neighbor_dist.py`
 - Test: `tests/unit/measure/test_measure_grid_spatial.py` (append a class)
 
 **Interfaces:**
-- Produces: `NEIGHBOR_DIST.NEAREST_OBJ_LABEL` (header `GridSpatial_NearestObjLabel`), `NEIGHBOR_DIST.NEAREST_DISTANCE` (`GridSpatial_NearestDistance`), `NEIGHBOR_DIST.NEAREST_RELATION` (`GridSpatial_NearestRelation`), declared **after** `UNDER_DISTANCE`, so `get_headers()` lists the 8 directional headers first and then these 3.
+- Produces: `NEIGHBOR_DIST.category() == "NeighborDist"`. `NEIGHBOR_DIST.NEAREST_OBJ_LABEL` (header `NeighborDist_NearestObjLabel`), `NEIGHBOR_DIST.NEAREST_DISTANCE` (`NeighborDist_NearestDistance`), `NEIGHBOR_DIST.NEAREST_RELATION` (`NeighborDist_NearestRelation`), declared **after** `UNDER_DISTANCE`, so `get_headers()` lists the 8 directional headers first and then these 3. `ErrorCutoffFinder.MEASUREMENT_PREFIXES` contains both `"NeighborDist_"` and `"GridSpatial_"`.
+
+**Also modifies:** `src/phenotypic/analysis/_error_cutoffs.py:34-42` and `tests/unit/analysis/test_error_cutoffs.py:162-178`.
 
 - [ ] **Step 1: Write the failing test.** Append to the test file:
 
@@ -66,11 +70,16 @@ class TestNearestSchema:
     def test_headers_append_nearest_members_after_directional(self):
         headers = NEIGHBOR_DIST.get_headers()
         assert headers[-3:] == [
-            "GridSpatial_NearestObjLabel",
-            "GridSpatial_NearestDistance",
-            "GridSpatial_NearestRelation",
+            "NeighborDist_NearestObjLabel",
+            "NeighborDist_NearestDistance",
+            "NeighborDist_NearestRelation",
         ]
         assert len(headers) == 11
+
+    def test_category_is_neighbor_dist_for_every_header(self):
+        assert NEIGHBOR_DIST.category() == "NeighborDist"
+        assert all(h.startswith("NeighborDist_")
+                   for h in NEIGHBOR_DIST.get_headers())
 
     def test_nearest_members_have_no_authored_bio_desc(self):
         for member in (NEIGHBOR_DIST.NEAREST_OBJ_LABEL,
@@ -86,11 +95,40 @@ class TestNearestSchema:
 
 Before running, check that `Entry` members expose `.bio_desc` and `.desc` attributes: `grep -n "bio_desc\|def desc" src/phenotypic/schema/_measurement_info.py`. If the accessor names differ, use the real ones in the test. Don't add accessors.
 
-- [ ] **Step 2: Run it and confirm it fails.**
-Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/measure/test_measure_grid_spatial.py::TestNearestSchema -q --no-header -p no:randomly -o addopts= -m "not slow"`
-Expected: FAIL. `AttributeError: NEAREST_OBJ_LABEL`, or `len(headers) == 8`.
+In `tests/unit/analysis/test_error_cutoffs.py`, edit `test_prefix_set_detects_phenotype_headers_and_excludes_position`: change the `pheno` list to include **both** prefixes, keeping the legacy one:
 
-- [ ] **Step 3: Implement.** In `src/phenotypic/schema/_neighbor_dist.py`, replace the class docstring and append the members after `UNDER_DISTANCE`:
+```python
+    pheno = [
+        "Size_Area", "Shape_Circularity", "Intensity_MeanIntensity",
+        "SymZones_Foo", "NeighborDist_Foo", "GridSpatial_Foo",
+        "RadialExpansion_Foo", "TextureGray_Contrast",
+    ]
+```
+
+- [ ] **Step 2: Run them and confirm they fail.**
+Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/measure/test_measure_grid_spatial.py::TestNearestSchema tests/unit/analysis/test_error_cutoffs.py::test_prefix_set_detects_phenotype_headers_and_excludes_position -q --no-header -p no:randomly -o addopts= -m "not slow"`
+Expected: FAIL. `AttributeError: NEAREST_OBJ_LABEL` / `len(headers) == 8` / `category() == "GridSpatial"`, and the error-cutoff test fails because `NeighborDist_Foo` isn't selected.
+
+- [ ] **Step 3: Implement.**
+
+In `src/phenotypic/analysis/_error_cutoffs.py`, change `MEASUREMENT_PREFIXES` so it contains both prefixes:
+
+```python
+    "SymZones_",
+    "NeighborDist_",
+    "GridSpatial_",  # pre-2026-09-24 name of NeighborDist_; keeps older tables analysable
+    "RadialExpansion_",
+```
+
+In `src/phenotypic/schema/_neighbor_dist.py`, change `category()` to return `"NeighborDist"`:
+
+```python
+    @classmethod
+    def category(cls) -> str:
+        return "NeighborDist"
+```
+
+Then replace the class docstring and append the members after `UNDER_DISTANCE`:
 
 ```python
 class NEIGHBOR_DIST(QualityInfo):
@@ -135,16 +173,18 @@ class NEIGHBOR_DIST(QualityInfo):
     )
 ```
 
-- [ ] **Step 4: Run it and confirm it passes**, together with the schema classification guard, which asserts every `NEIGHBOR_DIST` member resolves as `quality`:
-Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/measure/test_measure_grid_spatial.py::TestNearestSchema tests/unit/schema/test_classification.py -q --no-header -p no:randomly -o addopts= -m "not slow"`
+- [ ] **Step 4: Run it and confirm it passes**, together with the schema classification guard (asserts every `NEIGHBOR_DIST` member resolves as `quality`) and the whole error-cutoff file:
+Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/measure/test_measure_grid_spatial.py::TestNearestSchema tests/unit/schema/test_classification.py tests/unit/analysis/test_error_cutoffs.py -q --no-header -p no:randomly -o addopts= -m "not slow"`
 Expected: PASS.
 
-- [ ] **Step 5: Commit.**
+- [ ] **Step 5: Confirm nothing else spells the old prefix.** Run `grep -rn "GridSpatial" src tests`. The only hits allowed are the kept legacy entry in `_error_cutoffs.py`, the legacy `"GridSpatial_Foo"` in its test, and the unchanged test class names `TestMeasureGridSpatial` / `TestMeasureGridSpatialIntegration`. Those class names are left alone so the existing tests stay unedited.
+
+- [ ] **Step 6: Commit.**
 
 ```bash
-uv run ruff check --fix src/phenotypic/schema/_neighbor_dist.py tests/unit/measure/test_measure_grid_spatial.py
-git add src/phenotypic/schema/_neighbor_dist.py tests/unit/measure/test_measure_grid_spatial.py
-git commit -m "feat(schema): NEIGHBOR_DIST nearest-object members"
+uv run ruff check --fix src/phenotypic/schema/_neighbor_dist.py src/phenotypic/analysis/_error_cutoffs.py tests/unit/measure/test_measure_grid_spatial.py tests/unit/analysis/test_error_cutoffs.py
+git add src/phenotypic/schema/_neighbor_dist.py src/phenotypic/analysis/_error_cutoffs.py tests/unit/measure/test_measure_grid_spatial.py tests/unit/analysis/test_error_cutoffs.py
+git commit -m "feat(schema): rename GridSpatial category to NeighborDist; add nearest-object members"
 ```
 
 ---
@@ -603,7 +643,7 @@ class TestNearestProperty:
 
 - [ ] **Step 2: Run them and confirm they fail.**
 Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/measure/test_measure_grid_spatial.py -k "NearestColumns or NearestProperty" -q --no-header -p no:randomly -o addopts= -m "not slow"`
-Expected: FAIL. `KeyError` on the `GridSpatial_Nearest*` columns, and `test_plain_image_emits_all_columns` fails with `OperationFailedError` wrapping `GridImageInputError`.
+Expected: FAIL. `KeyError` on the `NeighborDist_Nearest*` columns, and `test_plain_image_emits_all_columns` fails with `OperationFailedError` wrapping `GridImageInputError`.
 
 - [ ] **Step 3: Implement.** In `src/phenotypic/measure/_measure_neighbor_dist.py`:
 
@@ -743,13 +783,14 @@ git commit -m "feat(measure): MeasureNeighborDist nearest-object columns; accept
 - [ ] **Step 1: Add a dated note** directly under that table:
 
 ```markdown
-> **2026-09-24:** `MeasureNeighborDist` now emits 11 columns (adds
-> `GridSpatial_NearestObjLabel`, `_NearestDistance`, `_NearestRelation`;
-> spec `2026-09-24-measure-neighbor-nearest`). The counts above are the
-> historical record of the run they were taken from.
+> **2026-09-24:** `MeasureNeighborDist` now emits 11 columns under the
+> renamed `NeighborDist_*` prefix (was `GridSpatial_*`). It adds
+> `NeighborDist_NearestObjLabel`, `_NearestDistance`, and `_NearestRelation`
+> (spec `2026-09-24-measure-neighbor-nearest`). The counts and prefix above
+> are the historical record of the run they were taken from.
 ```
 
-- [ ] **Step 2: Run the affected surface once.** These are the measurer, schema, analysis (it treats `GridSpatial_*` as phenotype columns), the GUI scatter grouping (keys on the measurer), and the prefab that constructs it:
+- [ ] **Step 2: Run the affected surface once.** These are the measurer, schema, analysis (it treats `NeighborDist_*` and legacy `GridSpatial_*` as phenotype columns), the GUI scatter grouping (keys on the measurer), and the prefab that constructs it:
 Run: `QT_QPA_PLATFORM=offscreen uv run pytest tests/unit/measure tests/unit/schema tests/unit/analysis/test_error_cutoffs.py tests/unit/gui/results_viewer/test_scatter_grouping.py -q --no-header -p no:randomly -o addopts= -m "not slow"`
 Then find and run any prefab test: `grep -rln "FilamentousFungiPipeline" tests | head`.
 Expected: PASS. Run any failure in isolation before attributing it to this change.
