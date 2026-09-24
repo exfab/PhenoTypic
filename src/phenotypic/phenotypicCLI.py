@@ -260,7 +260,6 @@ if TYPE_CHECKING:
     from phenotypic._cli._cli_validation import (
         UnstageableGpuDetectorError,
         validate_execution_config,
-        validate_pipeline,
     )
     from phenotypic._core._image_parts.detection_modes import available_modes  # noqa: F401
     from phenotypic._core._image_pipeline import ImagePipeline
@@ -312,7 +311,6 @@ _CLI_RUNTIME_IMPORTS: dict[str, tuple[str, ...]] = {
     "phenotypic._cli._cli_validation": (
         "UnstageableGpuDetectorError",
         "validate_execution_config",
-        "validate_pipeline",
     ),
     "phenotypic._cli._cli_stage2_token": ("staged_detector_slot",),
 }
@@ -2568,21 +2566,55 @@ def phenotypic_cli(
                 sys.exit(1)
             console.print("[green]✓ Execution configuration validated")
 
-            # Step 2: Validate pipeline loading
+            # Step 2: Load the pipeline once, for validation and the run
+            # preflight alike (spec §2).
+            from phenotypic._cli._cli_preflight import (
+                PreflightContext,
+                load_pipeline_for_validation,
+                run_mode_of,
+                run_preflight,
+            )
+
             with console.status(
                 "[bold cyan]Loading pipeline config...", spinner="dots"
             ):
-                pipeline_valid, pipeline_error = validate_pipeline(
-                    config.pipeline_json, config.skip_validation
+                loaded_pipeline, load_finding = load_pipeline_for_validation(
+                    config.pipeline_json
                 )
 
-            if not pipeline_valid:
+            if loaded_pipeline is None:
                 console.print(
                     "[bold red]✗ Pipeline loading failed:", style="bold red"
                 )
-                console.print(f"  - {pipeline_error}", style="red")
+                assert load_finding is not None
+                console.print(f"  - {load_finding.message}", style="red")
                 sys.exit(1)
             console.print("[green]✓ Pipeline loaded successfully")
+
+            # Step 3: The run preflight -- read-only checks over the pipeline,
+            # environment, cluster, input headers, metadata and output
+            # location. Errors refuse the run; warnings are reported.
+            with console.status(
+                "[bold cyan]Running preflight checks...", spinner="dots"
+            ):
+                preflight_report = run_preflight(
+                    PreflightContext(
+                        config=config,
+                        pipeline=loaded_pipeline,
+                        datasets=tuple(datasets),
+                        mode=run_mode_of(config),
+                    )
+                )
+            for line in preflight_report.render_lines():
+                console.print(line, highlight=False, markup=False)
+            if preflight_report.errors:
+                console.print(
+                    f"[bold red]✗ Preflight found {len(preflight_report.errors)} "
+                    "error(s); nothing under --output was changed.",
+                    style="bold red",
+                )
+                sys.exit(1)
+            console.print("[green]✓ Preflight checks passed")
 
             console.print()  # Add blank line after validation
         else:
