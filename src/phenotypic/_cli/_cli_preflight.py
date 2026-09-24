@@ -26,7 +26,7 @@ startup-import guards): checks import what they need inside their bodies.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence
 
@@ -54,6 +54,13 @@ FindingCode = Literal[
     "PF-MISSING-MODULE",
     "PF-LICENSE",
     "PF-WEIGHTS-UNCACHED",
+    "PF-HEADER-UNREADABLE",
+    "PF-CHANNELS",
+    "PF-DETECT-MODE-GRAY",
+    "PF-RGB-OP-GRAY",
+    "PF-BIT-DEPTH",
+    "PF-RAW-NO-RAWPY",
+    "PF-STEM-COLLISION",
 ]
 
 #: One remedy per finding code, shown under the finding's message.
@@ -96,6 +103,33 @@ HINTS: dict[str, str] = {
         "which requires network access on the compute node. Pre-download them "
         "on a node with network access: `uv run python -m phenotypic.detect.nn "
         "download --help`."
+    ),
+    "PF-HEADER-UNREADABLE": (
+        "Replace or remove the files listed; they cannot be opened as images. "
+        "A truncated file whose header still parses is not caught here."
+    ),
+    "PF-CHANNELS": (
+        "Convert the listed files to grayscale or RGB(A); Image.imread refuses "
+        "2-channel and 5-or-more-channel images."
+    ),
+    "PF-DETECT-MODE-GRAY": (
+        "Use --detect-mode gray for grayscale images, or supply RGB images."
+    ),
+    "PF-RGB-OP-GRAY": (
+        "Supply RGB images, or remove the colour operations listed above for "
+        "grayscale runs."
+    ),
+    "PF-BIT-DEPTH": (
+        "Drop --bit-depth to let each image report its own depth, or set it to "
+        "the depth the files actually store."
+    ),
+    "PF-RAW-NO-RAWPY": (
+        "Install rawpy (`uv sync`; it is a core dependency except on Windows), "
+        "or convert the RAW files to TIFF first."
+    ),
+    "PF-STEM-COLLISION": (
+        "Rename or move one file of each pair listed: within a dataset, each "
+        "input's name without its extension must be unique."
     ),
     "PF-NO-DETECTOR": (
         "Add an object detector (for example OtsuDetector) to the pipeline's "
@@ -193,6 +227,9 @@ class PreflightContext:
     pipeline: "ImagePipeline"
     datasets: Sequence["Dataset"]
     mode: RunMode
+    #: Per-preflight memo shared by the checks (e.g. input headers, read once).
+    #: Excluded from equality and repr; the context itself stays frozen.
+    scratch: dict[str, Any] = field(default_factory=dict, compare=False, repr=False)
 
 
 Check = Callable[[PreflightContext], "list[PreflightFinding]"]
@@ -448,6 +485,185 @@ def check_model_weights_cached(context: PreflightContext) -> list[PreflightFindi
     return findings
 
 
+def _severity_for(affected: int, total: int) -> Severity:
+    """``error`` when every input is affected, else ``warning`` (spec §0)."""
+    return "error" if total and affected >= total else "warning"
+
+
+def _input_paths(context: PreflightContext) -> list[str]:
+    return [str(path) for dataset in context.datasets for path in dataset.images]
+
+
+def _input_headers(context: PreflightContext) -> list[Any]:
+    """Every input's header, read once per preflight and shared by the checks.
+
+    ``full`` and ``process`` read ``--input``; ``measure`` reads the stores it
+    will re-measure. Headers only: see ``_cli_input_headers``.
+    """
+    if "headers" not in context.scratch:
+        from ._cli_input_headers import read_input_headers
+
+        context.scratch["headers"] = read_input_headers(_input_paths(context))
+    return context.scratch["headers"]
+
+
+def _reach_finding(
+    code: str, context: PreflightContext, affected: list[str], message: str
+) -> list[PreflightFinding]:
+    if not affected:
+        return []
+    total = len(_input_paths(context))
+    return [
+        PreflightFinding(
+            code=code,
+            severity=_severity_for(len(affected), total),
+            message=f"{message} ({len(affected)} of {total} input(s))",
+            subjects=tuple(affected),
+        )
+    ]
+
+
+def check_input_headers_readable(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-HEADER-UNREADABLE``: inputs whose header cannot be parsed (spec §7).
+
+    A zero-byte or unidentifiable file. A truncated file whose header parses is
+    not caught here; only a decode finds it (header-behavior.md).
+    """
+    if context.mode == "measure":
+        return []
+    affected = [h.path for h in _input_headers(context) if h.error]
+    return _reach_finding(
+        "PF-HEADER-UNREADABLE", context, affected,
+        "these inputs have an unreadable header and will fail to load",
+    )
+
+
+def check_input_channels(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-CHANNELS``: channel counts ``imread`` refuses (2, or 5 and more)."""
+    if context.mode == "measure":
+        return []
+    affected = [h.path for h in _input_headers(context) if h.raw_channels is not None]
+    return _reach_finding(
+        "PF-CHANNELS", context, affected,
+        "these inputs store a channel count Image.imread refuses "
+        "(\"Image with N channels (unknown format)\")",
+    )
+
+
+def _gray_inputs(context: PreflightContext) -> list[str]:
+    return [h.path for h in _input_headers(context) if h.channels == 1]
+
+
+def check_detect_mode_on_gray(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-DETECT-MODE-GRAY``: a colour ``--detect-mode`` over grayscale inputs.
+
+    Spec §7, F7. Every forward and process worker calls ``set_detect_mode``
+    after reading, which raises on an image without RGB; ``measure`` never
+    applies ``--detect-mode``.
+    """
+    if context.mode == "measure" or context.config.detect_mode == "gray":
+        return []
+    from phenotypic._core._image_parts.detection_modes import get_detection_mode
+
+    if not get_detection_mode(context.config.detect_mode).requires_rgb:
+        return []
+    return _reach_finding(
+        "PF-DETECT-MODE-GRAY", context, _gray_inputs(context),
+        f"--detect-mode {context.config.detect_mode} needs RGB, but these inputs "
+        "are grayscale and would each fail with \"image has no RGB data\"",
+    )
+
+
+def check_rgb_ops_on_gray(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-RGB-OP-GRAY``: an in-scope RGB-reading operation over grayscale inputs.
+
+    Spec §7, F8. In ``measure`` mode the inputs are stores, whose recorded
+    series say whether they hold RGB.
+    """
+    readers = [
+        "/".join(path)
+        for path, operation in operations_in_scope(context)
+        if operation.preflight_requirements().rgb_input
+    ]
+    if not readers:
+        return []
+    return _reach_finding(
+        "PF-RGB-OP-GRAY", context, _gray_inputs(context),
+        f"{', '.join(readers)} read(s) RGB, but these inputs are grayscale",
+    )
+
+
+def check_bit_depth(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-BIT-DEPTH``: ``--bit-depth`` that contradicts the stored dtype.
+
+    ``imread`` accepts the contradiction silently and records the wrong bit
+    depth for the data (header-behavior.md), so every intensity normalized by
+    it is off by a factor of 256 in one direction or the other.
+    """
+    bit_depth = context.config.bit_depth
+    if context.mode == "measure" or bit_depth is None:
+        return []
+    affected = [
+        h.path for h in _input_headers(context)
+        if h.bits is not None and h.bits != int(bit_depth)
+    ]
+    return _reach_finding(
+        "PF-BIT-DEPTH", context, affected,
+        f"--bit-depth {bit_depth} contradicts these inputs' stored sample depth, "
+        "which Image.imread would silently mislabel",
+    )
+
+
+def check_raw_needs_rawpy(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-RAW-NO-RAWPY``: camera-RAW inputs without ``rawpy`` (spec §7, §12)."""
+    if context.mode == "measure":
+        return []
+    import importlib.util
+
+    from phenotypic.sdk_.constants_ import IO
+
+    raw_suffixes = {s.lower() for s in IO.RAW_FILE_EXTENSIONS}
+    raw = [p for p in _input_paths(context) if Path(p).suffix.lower() in raw_suffixes]
+    if not raw or importlib.util.find_spec("rawpy") is not None:
+        return []
+    return _reach_finding(
+        "PF-RAW-NO-RAWPY", context, raw,
+        "these camera-RAW inputs need the optional package 'rawpy', which is not installed",
+    )
+
+
+def check_stem_collisions(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-STEM-COLLISION``: two inputs of one dataset share a stem (F28).
+
+    They map to one store and one metadata key; a probe showed both written to
+    one ``<stem>.ome.zarr`` and the run failing only at publication
+    (header-behavior.md). An error: it corrupts outputs, it does not fail one image.
+    """
+    if context.mode == "measure":
+        return []
+    from phenotypic.sdk_ import source_image_stem
+
+    groups: dict[tuple[str, str], list[str]] = {}
+    for dataset in context.datasets:
+        for path in dataset.images:
+            groups.setdefault((dataset.name, source_image_stem(Path(path))), []).append(str(path))
+    clashes = {key: paths for key, paths in groups.items() if len(paths) > 1}
+    if not clashes:
+        return []
+    names = ", ".join(f"{ds}/{stem}" for ds, stem in clashes)
+    return [
+        PreflightFinding(
+            code="PF-STEM-COLLISION",
+            severity="error",
+            message=(
+                f"inputs share a stem within a dataset ({names}); each group "
+                "would be written to one store and one metadata key"
+            ),
+            subjects=tuple(p for paths in clashes.values() for p in paths),
+        )
+    ]
+
+
 #: The checks :func:`run_preflight` runs, in order: pipeline, environment,
 #: cluster, inputs, metadata, output. Later tasks register theirs here.
 CHECKS: tuple[Check, ...] = (
@@ -457,6 +673,13 @@ CHECKS: tuple[Check, ...] = (
     check_optional_modules,
     check_model_licenses,
     check_model_weights_cached,
+    check_input_headers_readable,
+    check_input_channels,
+    check_stem_collisions,
+    check_raw_needs_rawpy,
+    check_detect_mode_on_gray,
+    check_rgb_ops_on_gray,
+    check_bit_depth,
 )
 
 

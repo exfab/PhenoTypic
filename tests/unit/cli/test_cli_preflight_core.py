@@ -37,7 +37,7 @@ from phenotypic.enhance import BlurGauss
 from phenotypic.measure import MeasureSize
 from phenotypic.phenotypicCLI import phenotypic_cli
 from phenotypic.post import AppendString
-from tests.unit.cli._preflight_support import make_context
+from tests.unit.cli._preflight_support import make_context, make_datasets
 
 
 def _context(pipeline: ImagePipeline, mode: str = "full") -> PreflightContext:
@@ -218,19 +218,22 @@ def write_tripwire(monkeypatch: pytest.MonkeyPatch):
     yield
 
 
-def test_the_preflight_writes_nothing(tmp_path: Path, write_tripwire) -> None:
+def test_the_preflight_writes_nothing(cli_inputs, write_tripwire) -> None:
     """Every registered check runs under a tripwire that refuses any write.
 
-    Built before the tripwire arms: the fixture's inputs are written first by
-    pytest's own ``tmp_path`` machinery, and this test then only reads.
+    ``cli_inputs`` is requested before ``write_tripwire``, so its real input
+    image is written before the tripwire arms; the checks then read it (the
+    header pass included) with every write refused.
     """
+    tree, _ = cli_inputs
+    datasets = make_datasets(tree / "plate1" / "img001.tiff")
     pipeline = ImagePipeline(
         ops={"det": OtsuDetector()},
         meas={"size": MeasureSize()},
         post={"tag": AppendString(column="Strain", value="_x")},
     )
     for mode in ("full", "process", "measure"):
-        report = run_preflight(_context(pipeline, mode))
+        report = run_preflight(make_context(pipeline, mode, datasets))
         assert not [f for f in report.findings if f.code == "PF-CHECK-CRASHED"], (
             report.render_lines()
         )
