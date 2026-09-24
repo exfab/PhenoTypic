@@ -45,6 +45,7 @@ phenotypic.correction.CalibrateColorRpcc
       ~CalibrateColorRpcc.report
       ~CalibrateColorRpcc.schema
       ~CalibrateColorRpcc.schema_json
+      ~CalibrateColorRpcc.show_delta_bar_plot
       ~CalibrateColorRpcc.show_tiles
       ~CalibrateColorRpcc.to_json
       ~CalibrateColorRpcc.update_forward_refs

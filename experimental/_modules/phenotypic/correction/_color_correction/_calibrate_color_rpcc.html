@@ -639,7 +639,7 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span><span class="p">,</span> <span class="n">PrivateAttr</span><span class="p">,</span> <span class="n">field_validator</span><span class="p">,</span> <span class="n">model_validator</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">...abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageCorrector</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">...abc_.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">FigureInputUnavailable</span><span class="p">,</span> <span class="n">PlotImage</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">...abc_.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">FigureInputUnavailable</span><span class="p">,</span> <span class="n">PlotImage</span><span class="p">,</span> <span class="n">PlotOutput</span><span class="p">,</span> <span class="n">PlotPage</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">...sdk_.typing_</span><span class="w"> </span><span class="kn">import</span> <span class="n">TuneSpec</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">...util</span><span class="w"> </span><span class="kn">import</span> <span class="n">MedoidCandidates</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._calibration_overlay</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
@@ -648,6 +648,7 @@
     <span class="n">Verdict</span><span class="p">,</span>
     <span class="n">build_overlay_record</span><span class="p">,</span>
     <span class="n">render_calibration_overlay</span><span class="p">,</span>
+    <span class="n">render_delta_e_bars</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._checker_detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">fit_lattice</span><span class="p">,</span> <span class="n">refine</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">._checker_identity</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
@@ -756,11 +757,12 @@
 <span class="sd">        Image: ``rgb`` corrected, with ``gray`` and ``detect_mat`` recomputed.</span>
 <span class="sd">        ``fitted_profile`` and ``qc`` are populated on the operation.</span>
 <span class="sd">        ``calibration_record`` holds the tile overlay of the last run, even a</span>
-<span class="sd">        refused one, and ``show_tiles()`` draws it.  Listed under</span>
-<span class="sd">        ``ImagePipeline(plots=...)``, the overlay is saved with each image as</span>
-<span class="sd">        a PNG; ``inspect(image)`` draws it only for the image the last</span>
-<span class="sd">        ``apply()`` ran on, because correction overwrites the as-shot pixels</span>
-<span class="sd">        it shows.</span>
+<span class="sd">        refused one; ``show_tiles()`` draws it and ``show_delta_bar_plot()``</span>
+<span class="sd">        charts each patch&#39;s ΔE00 before and after.  Listed under</span>
+<span class="sd">        ``ImagePipeline(plots=...)``, both are saved with each image as PNG</span>
+<span class="sd">        pages ``tiles`` and ``delta_e``; ``inspect(image)`` draws them only</span>
+<span class="sd">        for the image the last ``apply()`` ran on, because correction</span>
+<span class="sd">        overwrites the as-shot pixels the overlay shows.</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        ValueError: If any ROI fails the gate under ``on_qc_fail=&quot;raise&quot;``,</span>
@@ -885,6 +887,40 @@
         <span class="k">return</span> <span class="n">render_calibration_overlay</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span></div>
 
 
+<div class="viewcode-block" id="CalibrateColorRpcc.show_delta_bar_plot">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.correction.CalibrateColorRpcc.html#phenotypic.correction.CalibrateColorRpcc.show_delta_bar_plot">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">show_delta_bar_plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">figsize</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Figure</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Chart each patch&#39;s ΔE00 before and after the last ``apply()``&#39;s correction.</span>
+
+<span class="sd">        Paired bars per scored tile, in the overlay key&#39;s order, with the good</span>
+<span class="sd">        and fair bands marked and the mean over fitted patches in the title.</span>
+<span class="sd">        A patch outlier rejection removed is hatched: its after-value is held</span>
+<span class="sd">        out, not fitted. A refused or skipped frame still draws, saying why</span>
+<span class="sd">        there is nothing to chart.</span>
+
+<span class="sd">        .. code-block:: python</span>
+
+<span class="sd">            corrected = op.apply(plate)</span>
+<span class="sd">            op.show_delta_bar_plot().savefig(&quot;calibration_delta_e.png&quot;, dpi=160)</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            figsize: Optional ``(width, height)`` in inches; by default the</span>
+<span class="sd">                width grows with the number of patches.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A ``matplotlib.figure.Figure``.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            RuntimeError: If ``apply()`` has not run on this instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">record</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calibration_record</span>
+        <span class="k">if</span> <span class="n">record</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="s2">&quot;show_delta_bar_plot() draws the last apply(); call apply() first.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">render_delta_e_bars</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span></div>
+
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_figure_subject</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;The image the last ``apply()`` calibrated, while it is alive.&quot;&quot;&quot;</span>
         <span class="n">ref</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_record_image</span>
@@ -898,8 +934,8 @@
             <span class="o">*</span><span class="p">,</span>
             <span class="n">for_save</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
             <span class="o">**</span><span class="n">overrides</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Figure</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Draw the tile overlay for *subject*, the image ``apply()`` ran on.</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PlotOutput</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Draw the tile overlay and ΔE00 chart for *subject*, the image ``apply()`` ran on.</span>
 
 <span class="sd">        Deliberately not ``@figure``: the approved overlay look must not be</span>
 <span class="sd">        wrapped in a theme context, and its matplotlib figure stores as PNG.</span>
@@ -911,7 +947,9 @@
 <span class="sd">            **overrides: None are accepted.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            What :meth:`show_tiles` returns.</span>
+<span class="sd">            Two pages: ``&quot;tiles&quot;``, what :meth:`show_tiles` returns, and</span>
+<span class="sd">            ``&quot;delta_e&quot;``, what :meth:`show_delta_bar_plot` returns. Both are</span>
+<span class="sd">            always present, so every image stores the same pages.</span>
 
 <span class="sd">        Raises:</span>
 <span class="sd">            FigureInputUnavailable: If no ``apply()`` has kept a record, or the</span>
@@ -938,7 +976,14 @@
                     <span class="s2">&quot;image: the overlay is drawn only for the image the last &quot;</span>
                     <span class="s2">&quot;apply() ran on&quot;</span>
             <span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">show_tiles</span><span class="p">()</span></div>
+        <span class="c1"># Both pages or neither: a failure in either fails the whole binding,</span>
+        <span class="c1"># which publishes nothing. A tiles-only output would publish flat for</span>
+        <span class="c1"># this image and flip the copy-out layout against every other image.</span>
+        <span class="k">return</span> <span class="n">PlotOutput</span><span class="p">(</span><span class="n">pages</span><span class="o">=</span><span class="p">(</span>
+            <span class="n">PlotPage</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;tiles&quot;</span><span class="p">,</span> <span class="n">figure</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">show_tiles</span><span class="p">(),</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Tile overlay&quot;</span><span class="p">),</span>
+            <span class="n">PlotPage</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;delta_e&quot;</span><span class="p">,</span> <span class="n">figure</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">show_delta_bar_plot</span><span class="p">(),</span>
+                     <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Delta E00 before and after&quot;</span><span class="p">),</span>
+        <span class="p">))</span></div>
 
 
     <span class="nd">@overload</span>

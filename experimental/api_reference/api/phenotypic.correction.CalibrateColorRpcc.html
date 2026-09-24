@@ -1360,11 +1360,12 @@ the frame.</p></li>
 <dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">rgb</span></code> corrected, with <code class="docutils literal notranslate"><span class="pre">gray</span></code> and <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> recomputed.
 <code class="docutils literal notranslate"><span class="pre">fitted_profile</span></code> and <code class="docutils literal notranslate"><span class="pre">qc</span></code> are populated on the operation.
 <code class="docutils literal notranslate"><span class="pre">calibration_record</span></code> holds the tile overlay of the last run, even a
-refused one, and <code class="docutils literal notranslate"><span class="pre">show_tiles()</span></code> draws it.  Listed under
-<code class="docutils literal notranslate"><span class="pre">ImagePipeline(plots=...)</span></code>, the overlay is saved with each image as
-a PNG; <code class="docutils literal notranslate"><span class="pre">inspect(image)</span></code> draws it only for the image the last
-<code class="docutils literal notranslate"><span class="pre">apply()</span></code> ran on, because correction overwrites the as-shot pixels
-it shows.</p>
+refused one; <code class="docutils literal notranslate"><span class="pre">show_tiles()</span></code> draws it and <code class="docutils literal notranslate"><span class="pre">show_delta_bar_plot()</span></code>
+charts each patch’s ΔE00 before and after.  Listed under
+<code class="docutils literal notranslate"><span class="pre">ImagePipeline(plots=...)</span></code>, both are saved with each image as PNG
+pages <code class="docutils literal notranslate"><span class="pre">tiles</span></code> and <code class="docutils literal notranslate"><span class="pre">delta_e</span></code>; <code class="docutils literal notranslate"><span class="pre">inspect(image)</span></code> draws them only
+for the image the last <code class="docutils literal notranslate"><span class="pre">apply()</span></code> ran on, because correction
+overwrites the as-shot pixels the overlay shows.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Image</p>
@@ -1404,7 +1405,7 @@ it shows.</p>
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.inspect" title="phenotypic.correction.CalibrateColorRpcc.inspect"><code class="xref py py-obj docutils literal notranslate"><span class="pre">inspect</span></code></a></p></td>
-<td><p>Draw the tile overlay for <em>subject</em>, the image <code class="docutils literal notranslate"><span class="pre">apply()</span></code> ran on.</p></td>
+<td><p>Draw the tile overlay and ΔE00 chart for <em>subject</em>, the image <code class="docutils literal notranslate"><span class="pre">apply()</span></code> ran on.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.iter_figures" title="phenotypic.correction.CalibrateColorRpcc.iter_figures"><code class="xref py py-obj docutils literal notranslate"><span class="pre">iter_figures</span></code></a></p></td>
 <td><p>Return all visible figure specs in definition order.</p></td>
@@ -1466,19 +1467,22 @@ it shows.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.schema_json" title="phenotypic.correction.CalibrateColorRpcc.schema_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema_json</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.show_tiles" title="phenotypic.correction.CalibrateColorRpcc.show_tiles"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show_tiles</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.show_delta_bar_plot" title="phenotypic.correction.CalibrateColorRpcc.show_delta_bar_plot"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show_delta_bar_plot</span></code></a></p></td>
+<td><p>Chart each patch's ΔE00 before and after the last <code class="docutils literal notranslate"><span class="pre">apply()</span></code>'s correction.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.show_tiles" title="phenotypic.correction.CalibrateColorRpcc.show_tiles"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show_tiles</span></code></a></p></td>
 <td><p>Draw where the last <code class="docutils literal notranslate"><span class="pre">apply()</span></code> measured each tile and what it matched.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.to_json" title="phenotypic.correction.CalibrateColorRpcc.to_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_json</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.to_json" title="phenotypic.correction.CalibrateColorRpcc.to_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_json</span></code></a></p></td>
 <td><p>Serialize this operation to JSON.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.update_forward_refs" title="phenotypic.correction.CalibrateColorRpcc.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.update_forward_refs" title="phenotypic.correction.CalibrateColorRpcc.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.validate" title="phenotypic.correction.CalibrateColorRpcc.validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.validate" title="phenotypic.correction.CalibrateColorRpcc.validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.widget" title="phenotypic.correction.CalibrateColorRpcc.widget"><code class="xref py py-obj docutils literal notranslate"><span class="pre">widget</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.widget" title="phenotypic.correction.CalibrateColorRpcc.widget"><code class="xref py py-obj docutils literal notranslate"><span class="pre">widget</span></code></a></p></td>
 <td><p>Return (and optionally display) the root widget.</p></td>
 </tr>
 </tbody>
@@ -1691,9 +1695,39 @@ the size the labels need.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.correction.CalibrateColorRpcc.show_delta_bar_plot">
+<span class="sig-name descname"><span class="pre">show_delta_bar_plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="reference internal" href="../../_modules/phenotypic/correction/_color_correction/_calibrate_color_rpcc.html#CalibrateColorRpcc.show_delta_bar_plot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.correction.CalibrateColorRpcc.show_delta_bar_plot" title="Link to this definition">#</a></dt>
+<dd><p>Chart each patch’s ΔE00 before and after the last <code class="docutils literal notranslate"><span class="pre">apply()</span></code>’s correction.</p>
+<p>Paired bars per scored tile, in the overlay key’s order, with the good
+and fair bands marked and the mean over fitted patches in the title.
+A patch outlier rejection removed is hatched: its after-value is held
+out, not fitted. A refused or skipped frame still draws, saying why
+there is nothing to chart.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">corrected</span> <span class="o">=</span> <span class="n">op</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">plate</span><span class="p">)</span>
+<span class="n">op</span><span class="o">.</span><span class="n">show_delta_bar_plot</span><span class="p">()</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">&quot;calibration_delta_e.png&quot;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">160</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>figsize</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – Optional <code class="docutils literal notranslate"><span class="pre">(width,</span> <span class="pre">height)</span></code> in inches; by default the
+width grows with the number of patches.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <code class="docutils literal notranslate"><span class="pre">matplotlib.figure.Figure</span></code>.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">apply()</span></code> has not run on this instance.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Figure</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.correction.CalibrateColorRpcc.inspect">
-<span class="sig-name descname"><span class="pre">inspect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subject</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">for_save</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">overrides</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span></span></span><a class="reference internal" href="../../_modules/phenotypic/correction/_color_correction/_calibrate_color_rpcc.html#CalibrateColorRpcc.inspect"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.correction.CalibrateColorRpcc.inspect" title="Link to this definition">#</a></dt>
-<dd><p>Draw the tile overlay for <em>subject</em>, the image <code class="docutils literal notranslate"><span class="pre">apply()</span></code> ran on.</p>
+<span class="sig-name descname"><span class="pre">inspect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subject</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">for_save</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">overrides</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../core/visualization_plotting.html#phenotypic.abc_.plotting.PlotOutput" title="phenotypic.abc_.plotting.PlotOutput"><span class="pre">PlotOutput</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/correction/_color_correction/_calibrate_color_rpcc.html#CalibrateColorRpcc.inspect"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.correction.CalibrateColorRpcc.inspect" title="Link to this definition">#</a></dt>
+<dd><p>Draw the tile overlay and ΔE00 chart for <em>subject</em>, the image <code class="docutils literal notranslate"><span class="pre">apply()</span></code> ran on.</p>
 <p>Deliberately not <code class="docutils literal notranslate"><span class="pre">&#64;figure</span></code>: the approved overlay look must not be
 wrapped in a theme context, and its matplotlib figure stores as PNG.</p>
 <dl class="field-list simple">
@@ -1706,19 +1740,21 @@ that image, if it is still alive.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>What <a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.show_tiles" title="phenotypic.correction.CalibrateColorRpcc.show_tiles"><code class="xref py py-meth docutils literal notranslate"><span class="pre">show_tiles()</span></code></a> returns.</p>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">&quot;tiles&quot;</span></code>, what <a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.show_tiles" title="phenotypic.correction.CalibrateColorRpcc.show_tiles"><code class="xref py py-meth docutils literal notranslate"><span class="pre">show_tiles()</span></code></a> returns, and
+<code class="docutils literal notranslate"><span class="pre">&quot;delta_e&quot;</span></code>, what <a class="reference internal" href="#phenotypic.correction.CalibrateColorRpcc.show_delta_bar_plot" title="phenotypic.correction.CalibrateColorRpcc.show_delta_bar_plot"><code class="xref py py-meth docutils literal notranslate"><span class="pre">show_delta_bar_plot()</span></code></a> returns. Both are
+always present, so every image stores the same pages.</p>
 </dd>
-<dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Two pages</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
 <li><p><strong>FigureInputUnavailable</strong> – If no <code class="docutils literal notranslate"><span class="pre">apply()</span></code> has kept a record, or the
     record is for another image. The overlay shows the as-shot
     pixels that correction overwrites, so it cannot be redrawn
     from the corrected image.</p></li>
 <li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If any override is passed.</p></li>
 </ul>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>Figure</p>
 </dd>
 </dl>
 </dd></dl>
@@ -2733,6 +2769,7 @@ that degree must then be the same for all of them.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.CalibrateColorRpcc.diagnostics"><code class="docutils literal notranslate"><span class="pre">CalibrateColorRpcc.diagnostics</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.CalibrateColorRpcc.calibration_record"><code class="docutils literal notranslate"><span class="pre">CalibrateColorRpcc.calibration_record</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.CalibrateColorRpcc.show_tiles"><code class="docutils literal notranslate"><span class="pre">CalibrateColorRpcc.show_tiles()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.CalibrateColorRpcc.show_delta_bar_plot"><code class="docutils literal notranslate"><span class="pre">CalibrateColorRpcc.show_delta_bar_plot()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.CalibrateColorRpcc.inspect"><code class="docutils literal notranslate"><span class="pre">CalibrateColorRpcc.inspect()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.CalibrateColorRpcc.apply"><code class="docutils literal notranslate"><span class="pre">CalibrateColorRpcc.apply()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.correction.CalibrateColorRpcc.__copy__"><code class="docutils literal notranslate"><span class="pre">CalibrateColorRpcc.__copy__()</span></code></a></li>
