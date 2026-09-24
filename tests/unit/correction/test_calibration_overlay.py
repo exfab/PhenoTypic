@@ -21,6 +21,7 @@ from phenotypic.correction._color_correction._calibration_overlay import (
     TileOverlay,
     build_overlay_record,
     render_calibration_overlay,
+    render_delta_e_bars,
 )
 from phenotypic.correction._color_correction._checker_measure import TileMeasurement
 from phenotypic.correction._color_correction._checker_roi import CheckerLattice
@@ -750,3 +751,134 @@ def test_show_tiles_works_after_a_refusal() -> None:
     with pytest.raises(RuntimeError):
         quietly(operation, Image(arr=render_frame(gain=1.6)))
     assert operation.show_tiles() is not None
+
+
+def test_a_16_bit_frame_draws_its_pixels_not_white() -> None:
+    """imshow reads integers as 0-255, so the crop is scaled by its bit depth.
+
+    Without it a 16-bit plate photograph draws as a white field with speckle.
+    The record keeps the as-shot uint16 pixels; only the drawing is scaled.
+    """
+    frame8 = render_frame()
+    assert frame8.dtype == np.uint8
+    frame16 = frame8.astype(np.uint16) * 257  # same picture, 16-bit
+    shown = {}
+    for bits, frame in ((8, frame8), (16, frame16)):
+        operation = frozen_op(degree=1, on_qc_fail="warn")
+        quietly(operation, Image(arr=frame))
+        record = operation.calibration_record
+        assert record.rois[0].crop.dtype == frame.dtype
+        fig = render_calibration_overlay(record)
+        shown[bits] = [np.asarray(ax.images[0].get_array()) for ax in fig.axes if ax.images]
+    for a8, a16 in zip(shown[8], shown[16]):
+        assert a16.max() <= 1.0
+        np.testing.assert_allclose(a16, a8, atol=1e-6)
+
+
+# -- the ΔE00 bar chart -------------------------------------------------------
+def bar_series(fig) -> dict[str, list]:
+    """The chart's bar containers by label, each a list of Rectangles."""
+    (ax,) = fig.axes
+    return {c.get_label(): list(c) for c in ax.containers}
+
+
+def test_bars_are_the_records_delta_e_one_pair_per_scored_tile() -> None:
+    record = calibrated(planted_faults(), on_qc_fail="warn").calibration_record
+    scored = [
+        t for roi in record.rois for t in sorted(roi.tiles, key=lambda t: (t.col, t.row))
+        if t.delta_e_after is not None
+    ]
+    assert len(scored) == 24  # 21 fitted + 3 rejected neutrals
+    series = bar_series(render_delta_e_bars(record))
+    assert list(series) == ["before", "after"]
+    assert [b.get_height() for b in series["before"]] == [t.delta_e_before for t in scored]
+    assert [b.get_height() for b in series["after"]] == [t.delta_e_after for t in scored]
+    (ax,) = render_delta_e_bars(record).axes
+    ticks = [label.get_text() for label in ax.get_xticklabels()]
+    assert ticks == [t.patch + (" (rejected)" if t.status == "rejected" else "")
+                     for t in scored]
+
+
+def test_rejected_tiles_are_hatched_and_left_out_of_the_mean() -> None:
+    record = calibrated(planted_faults(), on_qc_fail="warn").calibration_record
+    fig = render_delta_e_bars(record)
+    series = bar_series(fig)
+    scored = [
+        t for roi in record.rois for t in sorted(roi.tiles, key=lambda t: (t.col, t.row))
+        if t.delta_e_after is not None
+    ]
+    for label in ("before", "after"):
+        hatched = [bool(b.get_hatch()) for b in series[label]]
+        assert hatched == [t.status == "rejected" for t in scored]
+    fitted = [t for t in scored if t.status != "rejected"]
+    mean_after = np.mean([t.delta_e_after for t in fitted])
+    assert f"-> {mean_after:.2f} over {len(fitted)} fitted patches" in fig._suptitle.get_text()
+
+
+@pytest.mark.parametrize("policy", ["raise", "skip"])
+def test_a_frame_with_no_fit_draws_no_bars_and_says_why(policy) -> None:
+    operation = frozen_op(on_qc_fail=policy)
+    frame = Image(arr=render_frame(gain=1.6))  # saturated card
+    if policy == "raise":
+        with pytest.raises(RuntimeError, match="quality gate failed"):
+            quietly(operation, frame)
+    else:
+        quietly(operation, frame)
+    assert operation.calibration_record.verdict == {"raise": "refused", "skip": "skipped"}[policy]
+    fig = operation.show_delta_bar_plot()
+    (ax,) = fig.axes
+    assert ax.containers == []
+    texts = [t.get_text() for t in ax.texts]
+    assert any("not fitted" in t for t in texts)
+    if policy == "raise":
+        assert any("quality gate failed" in t for t in texts)
+
+
+def test_the_bar_chart_labels_do_not_overlap_or_clip() -> None:
+    """No text leaves the figure; no two upright texts collide.
+
+    The rotated tick labels are excluded from the overlap half only: their
+    axis-aligned extents overlap by construction while the glyphs do not.
+    The planted frame's rejected neutrals stretch the y-range to ~40, which
+    squeezes the good and fair lines to a few pixels apart.
+    """
+    fig = render_delta_e_bars(calibrated(planted_faults(), on_qc_fail="warn").calibration_record)
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    frame = fig.bbox
+    upright = []
+    for t in fig.findobj(Text):
+        if not (t.get_visible() and t.get_text().strip()):
+            continue
+        box = t.get_window_extent(renderer)
+        assert box.x0 >= frame.x0 - 0.5 and box.x1 <= frame.x1 + 0.5, f"clipped: {t.get_text()!r}"
+        assert box.y0 >= frame.y0 - 0.5 and box.y1 <= frame.y1 + 0.5, f"clipped: {t.get_text()!r}"
+        if t.get_rotation() == 0:
+            upright.append((t.get_text(), box))
+    assert {"good <= 2", "fair <= 5"} <= {text for text, _ in upright}
+    for i, (a_text, a) in enumerate(upright):
+        for b_text, b in upright[i + 1:]:
+            dx = min(a.x1, b.x1) - max(a.x0, b.x0)
+            dy = min(a.y1, b.y1) - max(a.y0, b.y0)
+            assert dx <= 0.5 or dy <= 0.5, f"{a_text!r} overlaps {b_text!r}"
+
+
+def test_a_16_bit_frame_charts_the_same_delta_e_as_its_8_bit_twin() -> None:
+    frame8 = render_frame()
+    heights = {}
+    for bits, frame in ((8, frame8), (16, frame8.astype(np.uint16) * 257)):
+        fig = render_delta_e_bars(calibrated(frame).calibration_record)
+        series = bar_series(fig)
+        heights[bits] = {k: [b.get_height() for b in v] for k, v in series.items()}
+        # Nothing rejected on a clean frame: no hatch, and no rejected key entry.
+        assert not any(b.get_hatch() for bars in series.values() for b in bars)
+        (ax,) = fig.axes
+        assert [t.get_text() for t in ax.get_legend().get_texts()] == ["before", "after"]
+    # uint8 * 257 is exact in [0, 1]: the same normed pixels, the same fit.
+    for label in ("before", "after"):
+        np.testing.assert_allclose(heights[16][label], heights[8][label], atol=1e-9)
+
+
+def test_show_delta_bar_plot_needs_an_apply() -> None:
+    with pytest.raises(RuntimeError, match="call apply"):
+        frozen_op().show_delta_bar_plot()

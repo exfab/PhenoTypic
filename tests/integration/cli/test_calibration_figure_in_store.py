@@ -95,17 +95,25 @@ def _runs(store: Path) -> dict:
     return read_image_figures_descriptor(store)["runs"]
 
 
-def _overlay(store: Path, run_id: str) -> tuple[dict, bytes]:
-    """The overlay's descriptor entry in one run folder, and its PNG."""
+#: The binding's two pages, and the file each is copied out to (its label).
+PAGES = {"tiles": "Tile-overlay.png", "delta_e": "Delta-E00-before-and-after.png"}
+
+
+def _overlay(store: Path, run_id: str) -> tuple[dict, dict[str, bytes]]:
+    """The binding's descriptor entry in one run folder, and each page's PNG."""
     entry = _runs(store)[run_id]["bindings"]["cal"]
-    [page] = entry["pages"]
-    [stored] = page["files"]
-    return entry, (store / stored["path"]).read_bytes()
+    pngs = {}
+    for page in entry["pages"]:
+        [stored] = page["files"]
+        pngs[page["key"]] = (store / stored["path"]).read_bytes()
+    return entry, pngs
 
 
-def _deliverable(out: Path) -> bytes:
-    [copy] = (out / "deliverables" / "plots" / "cal" / "ds").glob("plate-*.png")
-    return copy.read_bytes()
+def _deliverable(out: Path) -> dict[str, bytes]:
+    """Each page's copy-out, by page key: two pages publish as a manifest dir."""
+    [directory] = (out / "deliverables" / "plots" / "cal" / "ds").glob("plate-*")
+    assert (directory / "manifest.json").is_file()
+    return {key: (directory / name).read_bytes() for key, name in PAGES.items()}
 
 
 def test_full_mode_stores_the_overlay_png_and_copies_it_out(tmp_path):
@@ -117,12 +125,15 @@ def test_full_mode_stores_the_overlay_png_and_copies_it_out(tmp_path):
     assert run["failed"] == [] and run["unavailable"] == []
     entry, data = _overlay(store, run_id)
     assert entry["class"] == "CalibrateColorRpcc"
-    [page] = entry["pages"]
-    assert (page["key"], page["backend"]) == ("default", "mpl")
-    assert [(f["format"], f["path"]) for f in page["files"]] == [
-        ("png", f"figures/{run_id}/cal/default.png")
+    assert [(p["key"], p["backend"]) for p in entry["pages"]] == [
+        ("tiles", "mpl"), ("delta_e", "mpl"),
     ]
-    assert data.startswith(b"\x89PNG")
+    for page in entry["pages"]:
+        assert [(f["format"], f["path"]) for f in page["files"]] == [
+            ("png", f"figures/{run_id}/cal/{page['key']}.png")
+        ]
+    assert all(png.startswith(b"\x89PNG") for png in data.values())
+    assert data["tiles"] != data["delta_e"]
     assert _deliverable(out) == data
 
 
@@ -140,11 +151,12 @@ def test_process_mode_zarr_stores_the_overlay(tmp_path):
     run_id = _run_of(pipeline)
     assert _runs(store)[run_id]["failed"] == []
     _entry, data = _overlay(store, run_id)
-    assert data.startswith(b"\x89PNG")
+    assert list(data) == ["tiles", "delta_e"]
+    assert all(png.startswith(b"\x89PNG") for png in data.values())
 
 
 def test_measure_with_the_same_pipeline_keeps_the_overlay_in_its_folder(tmp_path):
-    """Revision 14: the same pipeline reuses the folder; §3a keeps the overlay."""
+    """Revision 14: the same pipeline reuses the folder; §3a keeps both pages."""
     image, pipeline = _write_inputs(tmp_path)
     out = tmp_path / "out"
     store = _full(out, pipeline, image)
@@ -222,7 +234,8 @@ def test_staged_stage1_draws_the_overlay_and_stage3_keeps_it(tmp_path, fake_gpu,
     assert list(_runs(store)) == [run_id]
     assert _runs(store)[run_id]["failed"] == []
     stage1 = _overlay(store, run_id)
-    assert stage1[1].startswith(b"\x89PNG")
+    assert list(stage1[1]) == ["tiles", "delta_e"]
+    assert all(png.startswith(b"\x89PNG") for png in stage1[1].values())
 
     plan.gpu_detector._ensure_model_loaded()
     stage2_detect_core(plan.gpu_detector, out, "ds", "plate", detector_slot(plan.gpu_path))

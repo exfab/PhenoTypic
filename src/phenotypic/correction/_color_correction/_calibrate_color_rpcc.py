@@ -38,7 +38,7 @@ import numpy as np
 from pydantic import Field, PrivateAttr, field_validator, model_validator
 
 from ...abc_ import ImageCorrector
-from ...abc_.plotting import FigureInputUnavailable, PlotImage
+from ...abc_.plotting import FigureInputUnavailable, PlotImage, PlotOutput, PlotPage
 from ...sdk_.typing_ import TuneSpec
 from ...util import MedoidCandidates
 from ._calibration_overlay import (
@@ -47,6 +47,7 @@ from ._calibration_overlay import (
     Verdict,
     build_overlay_record,
     render_calibration_overlay,
+    render_delta_e_bars,
 )
 from ._checker_detect import fit_lattice, refine
 from ._checker_identity import (
@@ -153,11 +154,12 @@ class CalibrateColorRpcc(ImageCorrector, PlotImage):
         Image: ``rgb`` corrected, with ``gray`` and ``detect_mat`` recomputed.
         ``fitted_profile`` and ``qc`` are populated on the operation.
         ``calibration_record`` holds the tile overlay of the last run, even a
-        refused one, and ``show_tiles()`` draws it.  Listed under
-        ``ImagePipeline(plots=...)``, the overlay is saved with each image as
-        a PNG; ``inspect(image)`` draws it only for the image the last
-        ``apply()`` ran on, because correction overwrites the as-shot pixels
-        it shows.
+        refused one; ``show_tiles()`` draws it and ``show_delta_bar_plot()``
+        charts each patch's ΔE00 before and after.  Listed under
+        ``ImagePipeline(plots=...)``, both are saved with each image as PNG
+        pages ``tiles`` and ``delta_e``; ``inspect(image)`` draws them only
+        for the image the last ``apply()`` ran on, because correction
+        overwrites the as-shot pixels the overlay shows.
 
     Raises:
         ValueError: If any ROI fails the gate under ``on_qc_fail="raise"``,
@@ -279,6 +281,37 @@ class CalibrateColorRpcc(ImageCorrector, PlotImage):
             )
         return render_calibration_overlay(record, figsize=figsize)
 
+    def show_delta_bar_plot(self, *, figsize: tuple[float, float] | None = None) -> Figure:
+        """Chart each patch's ΔE00 before and after the last ``apply()``'s correction.
+
+        Paired bars per scored tile, in the overlay key's order, with the good
+        and fair bands marked and the mean over fitted patches in the title.
+        A patch outlier rejection removed is hatched: its after-value is held
+        out, not fitted. A refused or skipped frame still draws, saying why
+        there is nothing to chart.
+
+        .. code-block:: python
+
+            corrected = op.apply(plate)
+            op.show_delta_bar_plot().savefig("calibration_delta_e.png", dpi=160)
+
+        Args:
+            figsize: Optional ``(width, height)`` in inches; by default the
+                width grows with the number of patches.
+
+        Returns:
+            A ``matplotlib.figure.Figure``.
+
+        Raises:
+            RuntimeError: If ``apply()`` has not run on this instance.
+        """
+        record = self._calibration_record
+        if record is None:
+            raise RuntimeError(
+                    "show_delta_bar_plot() draws the last apply(); call apply() first."
+            )
+        return render_delta_e_bars(record, figsize=figsize)
+
     def _figure_subject(self) -> Image | None:
         """The image the last ``apply()`` calibrated, while it is alive."""
         ref = self._record_image
@@ -290,8 +323,8 @@ class CalibrateColorRpcc(ImageCorrector, PlotImage):
             *,
             for_save: bool = False,
             **overrides: Any,
-    ) -> Figure:
-        """Draw the tile overlay for *subject*, the image ``apply()`` ran on.
+    ) -> PlotOutput:
+        """Draw the tile overlay and ΔE00 chart for *subject*, the image ``apply()`` ran on.
 
         Deliberately not ``@figure``: the approved overlay look must not be
         wrapped in a theme context, and its matplotlib figure stores as PNG.
@@ -303,7 +336,9 @@ class CalibrateColorRpcc(ImageCorrector, PlotImage):
             **overrides: None are accepted.
 
         Returns:
-            What :meth:`show_tiles` returns.
+            Two pages: ``"tiles"``, what :meth:`show_tiles` returns, and
+            ``"delta_e"``, what :meth:`show_delta_bar_plot` returns. Both are
+            always present, so every image stores the same pages.
 
         Raises:
             FigureInputUnavailable: If no ``apply()`` has kept a record, or the
@@ -330,7 +365,14 @@ class CalibrateColorRpcc(ImageCorrector, PlotImage):
                     "image: the overlay is drawn only for the image the last "
                     "apply() ran on"
             )
-        return self.show_tiles()
+        # Both pages or neither: a failure in either fails the whole binding,
+        # which publishes nothing. A tiles-only output would publish flat for
+        # this image and flip the copy-out layout against every other image.
+        return PlotOutput(pages=(
+            PlotPage(key="tiles", figure=self.show_tiles(), label="Tile overlay"),
+            PlotPage(key="delta_e", figure=self.show_delta_bar_plot(),
+                     label="Delta E00 before and after"),
+        ))
 
     @overload
     def apply(self, image: GridImage, inplace: bool = False) -> GridImage: ...
