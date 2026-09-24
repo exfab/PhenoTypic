@@ -97,6 +97,38 @@ def _normalize_operation_collection(
     )
 
 
+#: Suffix for the right-hand copy of a shared column while
+#: ``_merge_on_object_labels`` compares it with the left copy; never survives.
+_MERGE_RIGHT_SUFFIX = "__phenotypic_merge_right"
+
+
+def _columns_agree(left: pd.Series, right: pd.Series) -> bool:
+    """Return whether two label-aligned columns hold the same values.
+
+    Missing values (``NaN``, ``None``, ``pd.NA``) in the same row agree;
+    every other pair must compare exactly equal. No float tolerance: two
+    sources of one column are expected to compute it identically. Values are
+    compared, not dtypes: image-info emits ``Grid_RowNum`` as an ordered
+    categorical where ``MeasureGridLinRegStats`` emits ``int64``, and a
+    categorical is compared by its values because pandas refuses to compare
+    categoricals whose category sets differ.
+
+    Args:
+        left: The earlier frame's copy of the column.
+        right: The later frame's copy, aligned row-for-row with ``left``.
+
+    Returns:
+        True when every row agrees.
+    """
+    if isinstance(left.dtype, pd.CategoricalDtype):
+        left = left.astype(object)
+    if isinstance(right.dtype, pd.CategoricalDtype):
+        right = right.astype(object)
+    both_missing = left.isna().to_numpy() & right.isna().to_numpy()
+    equal = (left == right).to_numpy(dtype=bool, na_value=False)
+    return bool(np.all(equal | both_missing))
+
+
 def _layers_modified_by(operation: BaseOperation) -> tuple[str, ...] | None:
     """Return layer names modified by this operation, or None for read-only ops.
 
@@ -269,6 +301,51 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         return _normalize_operation_collection(
                 value, "measurements", MeasureFeatures
         )
+
+    @field_validator("meas", mode="after")
+    @classmethod
+    def _refuse_same_scale_texture(
+            cls, value: Dict[str, MeasureFeatures]
+    ) -> Dict[str, MeasureFeatures]:
+        """Refuse two ``MeasureTexture`` measurers that share a ``scale``.
+
+        Texture columns are spelled ``Texture_{scale:02d}px-...`` and carry no
+        other parameter, so two measurers at one scale (differing only in
+        ``quant_lvl`` or ``enhance``, say) emit identically named columns
+        holding different values. Runs on construction, ``from_json`` (which
+        constructs the pipeline) and every ``meas`` assignment, including
+        :meth:`set_meas`. Only this pipeline's own measurements are checked;
+        nested pipelines in ``ops`` validate themselves.
+
+        Args:
+            value: The normalized, name-keyed measurement dict.
+
+        Returns:
+            ``value`` unchanged.
+
+        Raises:
+            ValueError: If two ``MeasureTexture`` entries (subclasses
+                included) share a ``scale``; the message names the scale and
+                both keys.
+        """
+        if len(value) < 2:
+            return value
+        # Deferred: _core must not import phenotypic.measure at module load.
+        from phenotypic.measure._measure_texture import MeasureTexture
+
+        key_by_scale: Dict[int, str] = {}
+        for key, measurement in value.items():
+            if not isinstance(measurement, MeasureTexture):
+                continue
+            first_key = key_by_scale.setdefault(measurement.scale, key)
+            if first_key != key:
+                raise ValueError(
+                        f"measurements {first_key!r} and {key!r} are both "
+                        f"MeasureTexture at scale={measurement.scale}; their "
+                        f"Texture_{measurement.scale:02d}px-* columns would "
+                        "collide. Give each MeasureTexture a distinct scale."
+                )
+        return value
 
     @field_validator("post", mode="before")
     @classmethod
@@ -1459,17 +1536,32 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
     @staticmethod
     def _merge_on_object_labels(dataframes_list: List[pd.DataFrame]) -> pd.DataFrame:
-        """
-        Merge multiple DataFrames only if share object labels
+        """Join per-measurer frames into one row per object on ``Object_Label``.
+
+        Frames are merged left to right with an inner join on ``Object_Label``
+        alone. A frame indexed by ``Object_Label`` has the index moved into a
+        column first. Every measurer returns one row per object, so the inner
+        join keeps every object; in general it keeps the labels present in
+        every frame, in the first frame's row order.
+
+        Measurers routinely emit the same column (image-info, ``MeasureBounds``
+        and ``MeasureGridLinRegStats`` all emit the ``Bbox_*`` columns). Each
+        shared column is compared after aligning rows by label: missing values
+        in the same rows agree, everything else must be exactly equal. Agreeing
+        columns keep a single copy, the one from the earlier frame; a
+        disagreement raises instead of choosing a value.
 
         Args:
-            dataframes_list: List of pandas DataFrames to merge
+            dataframes_list: The frames to merge, each carrying
+                ``Object_Label`` as a column or as its index.
 
         Returns:
-            Merged DataFrame containing only the data from DataFrames with matching index names
+            The merged frame with a fresh ``RangeIndex``. Columns are the first
+            frame's, followed by each later frame's new columns in their order.
 
         Raises:
-            ValueError: If no DataFrames are provided or if no matching index names are found
+            ValueError: If no frames are given, if an entry is not a DataFrame,
+                or if two frames hold different values for a shared column.
         """
         if not dataframes_list or not all(
                 [isinstance(x, pd.DataFrame) for x in dataframes_list]
@@ -1479,21 +1571,31 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         if new_df.index.name == OBJECT.LABEL:
             new_df = new_df.reset_index(drop=False)
 
-        if len(dataframes_list) > 1:
-            for df in dataframes_list[1:]:
-                if df.index.name == OBJECT.LABEL:
-                    df = df.reset_index(drop=False)
-
-                cols_to_merge_on = [OBJECT.LABEL]  # Resets each new other df
-
-                for col_new_df in new_df.columns:
-                    if col_new_df != OBJECT.LABEL:  # skip the object label
-                        for col_other_df in df.columns:
-                            if col_new_df == col_other_df and np.all(
-                                    df[col_new_df] == df[col_other_df]
-                            ):
-                                cols_to_merge_on.append(col_other_df)
-
-                new_df = new_df.merge(df, on=cols_to_merge_on, suffixes=("", "_merged"))
+        for df in dataframes_list[1:]:
+            if df.index.name == OBJECT.LABEL:
+                df = df.reset_index(drop=False)
+            shared = [
+                col for col in df.columns
+                if col != OBJECT.LABEL and col in new_df.columns
+            ]
+            # pandas names the right copy of an overlapping column f"{col}{suffix}".
+            new_df = new_df.merge(
+                    df, on=OBJECT.LABEL, how="inner",
+                    suffixes=("", _MERGE_RIGHT_SUFFIX),
+            )
+            if not shared:
+                continue
+            right_copies = [f"{col}{_MERGE_RIGHT_SUFFIX}" for col in shared]
+            conflicting = [
+                str(col) for col, right in zip(shared, right_copies)
+                if not _columns_agree(new_df[col], new_df[right])
+            ]
+            if conflicting:
+                raise ValueError(
+                        "two measurements emitted conflicting values for the "
+                        f"shared column(s) {conflicting}; each column name must "
+                        "mean one value per object"
+                )
+            new_df = new_df.drop(columns=right_copies)
 
         return new_df
