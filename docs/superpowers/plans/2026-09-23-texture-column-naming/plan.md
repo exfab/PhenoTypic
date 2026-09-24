@@ -209,3 +209,18 @@ numeric `int` field does not enter it.
 ## Plan review
 
 `docs/superpowers/reports/2026-09-23-texture-column-naming/plan-review.md` — 0 critical, 3 important (I1 order-guard mutation, I2 regex strictness, I3 docs pages), all applied above; minors applied where they change the work.
+
+## Phase 2 — implementation-review follow-ups (user decisions 2026-09-24)
+
+Source: `docs/superpowers/reports/2026-09-23-texture-column-naming/implementation-test-review.md`.
+
+| # | Decision |
+|---|---|
+| D8′ (replaces D8) | **Both** a pre-check and a merge fix. (a) `ImagePipeline` refuses, at construction *and* `from_json`, two `MeasureTexture` entries with the same `scale` (`ValueError` naming the scale and both keys). (b) `_merge_on_object_labels` (`_image_pipeline_core.py:1461-1498`) is fixed: merge on `Object_Label` only; for each shared column, align on label and compare NaN-aware — equal → keep one copy, different → `ValueError` naming the column. Today the equality check compares the incoming frame with itself, so NaN-bearing shared columns (`Bbox_*`, `Grid_*`, emitted by image-info + `MeasureBounds` / `MeasureGrid*` in nearly every pipeline) get duplicated as `<col>_merged`, and conflicting ones become inner-join keys that silently drop rows. |
+| D9 | **Invalidate all in-flight continuations** across the upgrade: a named revision folded into the base work-id payload (`_cli/_cli_failure_tracker.py`), bumped with a changelog-style comment like `PROCESS_LAYER_SEMANTICS_REVISION`. Reason: the pipeline fingerprint is the user file's bytes (`:367`), which the rename does not change, so a resumed run would mix old and new texture spellings. |
+| R-I2 | Add a test that `scale` reaches the GLCM distance (hard-coding `distance=5` currently leaves every test green). |
+| R-minor | Refuse `scale=True`/`False`; match headers with `fullmatch` (the `$` anchor accepts a trailing newline). |
+
+### Tasks
+7. **Merge fix + pre-check** (`_core/_pipeline_parts/_image_pipeline_core.py`, new `tests/unit/core/test_measurement_merge.py`).
+8. **Continuation revision + review fixes** (`_cli/_cli_failure_tracker.py`, `_cli/CLAUDE.md`, its tests; `schema/_texture.py`, `measure/_measure_texture.py`, `tests/unit/measure/test_measure_texture.py`, `tests/unit/schema/test_dynamic_headers.py`).
