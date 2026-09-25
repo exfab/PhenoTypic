@@ -309,7 +309,7 @@ def join_metadata(
     Bare, live, and future-flat known metadata names resolve through the central
     metadata normalizer. Unknown attributes receive the generic ``Metadata_``
     prefix. Raw shared join keys and non-metadata schema headers such as
-    ``Grid_RowNum`` / ``Shape_Area`` keep their names.
+    ``Grid_RowNum`` / ``Size_Area`` keep their names.
 
     Args:
         df: Measurements DataFrame (must have columns to join on).

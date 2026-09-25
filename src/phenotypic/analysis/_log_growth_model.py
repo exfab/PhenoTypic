@@ -55,7 +55,7 @@ class LogGrowthModel(ModelFitter):
     Output column naming:
         ``analyze`` emits metric-qualified columns
         ``LogGrowthModel_<metric>_<parameter>`` (e.g. fitting
-        ``on="Shape_Area"`` yields ``LogGrowthModel_Area_r`` and
+        ``on="Size_Area"`` yields ``LogGrowthModel_Area_r`` and
         ``LogGrowthModel_Area_µmax``), plus qualified fit-quality columns
         ``ModelMetrics_<metric>_<label>``. The ``<metric>`` segment is
         ``self.on`` with a recognized measurement-category prefix stripped.

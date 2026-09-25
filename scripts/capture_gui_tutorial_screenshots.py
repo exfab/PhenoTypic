@@ -186,13 +186,13 @@ PIPELINE_DOC = {
     "filters"  : {
         "TukeyOutlierRemover": {
             "class" : "TukeyOutlierRemover",
-            "params": {"on": "Shape_Area", "groupby": ["Metadata_StrainID"], "k": 3.0},
+            "params": {"on": "Size_Area", "groupby": ["Metadata_StrainID"], "k": 3.0},
         },
     },
     "model"    : {
         "class" : "LogGrowthModel",
         "params": {
-            "on"        : "Shape_Area",
+            "on"        : "Size_Area",
             "groupby"   : ["Metadata_StrainID"],
             "time_label": "Metadata_RunDate",
             "n_jobs"    : 1,
@@ -1335,11 +1335,14 @@ def _capture_scatter(context, base_url: str) -> None:
     # for every row and the default figure is legitimately empty. Bind two
     # measurements instead -- asked of `phenotypic.schema`, never spelled.
     # Both come from `MeasureShape`, which `PIPELINE_DOC` above configures,
-    # so they are columns this run really emits. `MeasureSize` would do for
-    # the tutorial dataset but not for the verification run, which does not
-    # configure it; staying inside one measurer keeps the two in step.
+    # so they are columns this run really emits. They are also the only
+    # choice that serves the verification run: it predates 0.20.0 and
+    # configures only `MeasureShape`, so it carries no `Size_*` column at
+    # all, while Solidity and Circularity kept their `Shape_*` names across
+    # the move of area and perimeter to `MeasureSize`. Staying inside one
+    # measurer keeps the two runs in step.
     bound = page.evaluate(
-            _SCATTER_BIND_ROLES_JS, [str(SHAPE.PERIMETER), str(SHAPE.AREA)]
+            _SCATTER_BIND_ROLES_JS, [str(SHAPE.SOLIDITY), str(SHAPE.CIRCULARITY)]
     )
     print(f"[shot]   scatter roles: {bound}")
     page.wait_for_timeout(600)

@@ -45,7 +45,7 @@ class MADOutlierRemover(SetAnalyzer):
     removed.
 
     Args:
-        on: Name of measurement column to test for outliers (e.g., 'Shape_Area',
+        on: Name of measurement column to test for outliers (e.g., 'Size_Area',
             'Intensity_IntegratedIntensity').
         groupby: List of column names to group by (e.g., ['StrainID', 'Time']).
         threshold: Modified Z-score cutoff. Iglewicz & Hoaglin (1993) recommend

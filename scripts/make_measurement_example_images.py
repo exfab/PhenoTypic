@@ -24,8 +24,8 @@ _OUT = (
 )
 
 
-def _shape_area() -> None:
-    """A colony crop with its detected pixel area shaded — illustrates Shape_Area."""
+def _size_area() -> None:
+    """A colony crop with its detected pixel area shaded — illustrates Size_Area."""
     image = load_synth_yeast_plate()
     detected = OtsuDetector(ignore_zeros=True).apply(image)
     objmap = detected.objmap[:]
@@ -47,7 +47,7 @@ def _shape_area() -> None:
     # leaving the underlying colony visible.
     ax.imshow(crop_mask, cmap="cool", alpha=0.30 * crop_mask)
     ax.contour(crop_mask, levels=[0.5], colors="#d81b60", linewidths=1.2)
-    ax.set_title(f"Shape_Area = {int(mask.sum())} px (shaded)", fontsize=9)
+    ax.set_title(f"Size_Area = {int(mask.sum())} px (shaded)", fontsize=9)
     ax.axis("off")
     dest = _OUT / "shape" / "area.png"
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -58,4 +58,4 @@ def _shape_area() -> None:
 
 
 if __name__ == "__main__":
-    _shape_area()
+    _size_area()

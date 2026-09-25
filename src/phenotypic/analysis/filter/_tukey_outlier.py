@@ -24,7 +24,7 @@ class TukeyOutlierRemover(SetAnalyzer):
     (typically 1.5 for outliers or 3.0 for extreme outliers).
 
     Args:
-        on: Name of measurement column to test for outliers (e.g., 'Shape_Area', 'Intensity_IntegratedIntensity').
+        on: Name of measurement column to test for outliers (e.g., 'Size_Area', 'Intensity_IntegratedIntensity').
         groupby: List of column names to group by (e.g., ['StrainID', 'Time']).
         k: IQR multiplier for fence calculation. Default is 1.5 (standard outliers).
             Use 3.0 for extreme outliers only.

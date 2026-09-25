@@ -5,7 +5,7 @@ Public, blessed API for PhenoTypic's measurement naming conventions.
 - `MeasurementInfo` (`_measurement_info.py`) — `str, Enum` base. Subclasses
   declare members as `Entry(label, desc, *, bio_desc="", image=None, tier=None,
   derivation_type=None, derives_from=None)` plus a `category()` classmethod; the
-  enum value is the category-prefixed header (e.g. `Shape_Area`). `Entry` (a
+  enum value is the category-prefixed header (e.g. `Size_Area`). `Entry` (a
   frozen dataclass, also in `_measurement_info.py` and exported from the package)
   is the **only** legal member value — raw tuples raise `TypeError` at import.
   `desc` is the technical/algorithm description; **`bio_desc` is human-authored
@@ -128,7 +128,7 @@ base:
 
 Emission (write side) lives with the enum or as shared functions in `_measurement_info.py`:
 
-- **static** — the header *is* `member.value` (`Shape_Area`); base default, no override.
+- **static** — the header *is* `member.value` (`Size_Area`); base default, no override.
 - **metric_qualified** — `{cat}_{metric}_{label}` (e.g. `LinearLagModel_Area_v`):
   `qualified_header(member, token)` / `parse_qualified_header(info_cls, column)`; the enum
   sets `header_scheme() -> "metric_qualified"` (the 3 growth models + `MODEL_METRICS`).
@@ -176,7 +176,7 @@ header strings.
 Downstream users import headers directly:
 
     from phenotypic.schema import SHAPE, MeasurementInfo
-    SHAPE.get_headers()  # ['Shape_Area', 'Shape_Perimeter', ...]
+    SHAPE.get_headers()  # ['Shape_Circularity', 'Shape_MinFeretDiameter', ...]
 
 Conventions: one class per file (or per file under a grouping subpackage like
 `_experimental_tags/`); bodies are pure data and inherit their category; import **only**
