@@ -133,8 +133,7 @@ Emission (write side) lives with the enum or as shared functions in `_measuremen
   sets `header_scheme() -> "metric_qualified"` (the 3 growth models + `MODEL_METRICS`).
   The token comes from `metric_token(on)` in `util/_measurement_outputs.py`
   (strips the longest known category prefix from `self.on`).
-- **texture** — `{cat}_{scale:02d}px-deg###-{label}` / `-avg-{label}` (legacy
-  `{cat}_{label}-deg###-scale##` / `-avg-scale##` still recognized):
+- **texture** — `{cat}_{label}-deg###-scale##` / `-avg-scale##`:
   `TEXTURE.get_headers(scale, matrix_name)` plus a `member_for_header` regex override.
 
 **Invariant:** the format must be invertible — `parse(emit(member, token)) == (token,
@@ -162,9 +161,9 @@ A `MeasureFeatures` emits via the enum (never hand-built strings):
 
     class MeasureTexture(MeasureFeatures):
         _measurement_infoclass: ClassVar[type] = TEXTURE
-        scale: int = 5
+        scale: List[int] = [5]
         def _operate(self, image):
-            cols = TEXTURE.get_headers(self.scale, "Gray")   # runtime params -> headers
+            cols = TEXTURE.get_headers(self.scale[0], "Gray")   # runtime params -> headers
             meas = pd.DataFrame(data, columns=cols)
             meas.insert(loc=0, column=OBJECT.LABEL, value=image.objects.labels2series())
             return meas

@@ -52,24 +52,6 @@ details that are load-bearing rather than incidental:
   bump also invalidates `--layer gray` continuations; invalidating too much is
   safe, so that is a cost, not a bug.
 
-**Measurement-column renames are fenced in the base payload.**
-`MEASUREMENT_HEADER_REVISION` (`_cli_failure_tracker.py`, currently `1`; 0 → 1
-is the texture rename `Texture_Contrast-deg000-scale05` →
-`Texture_05px-deg000-Contrast`, plan 2026-09-23-texture-column-naming D9) sits
-in the **base** payload of `processing_configuration_digest_from_values`, the
-one deliberate exception to the rule above: the pipeline fingerprint is the
-user file's bytes, which a rename does not touch, so without it a resumed run
-would reuse stores measured under the old spelling and aggregate both. A bump
-cold-starts every in-flight `full`, `measure` and `process` continuation, and —
-because that digest *is* `per_image_config_digest` — mints a new processing
-generation too. Bump it whenever an unchanged pipeline would emit different
-columns. One consequence is inherited, not new: a store left with an
-unfinished (`failed`/`in_progress`) provenance application under the old
-`work_id` is refused by `resume_provenance_application` ("work identity does
-not match") exactly as after a pipeline edit (pinned by
-`test_retry_refuses_checkpoint_from_a_different_work_id`), so those images fail
-until their store is removed, e.g. by `--overwrite`.
-
 ## Staged GPU engine
 
 When a CLI pipeline contains a `GpuDetector`, the **CLI** (not `ImagePipeline`)
