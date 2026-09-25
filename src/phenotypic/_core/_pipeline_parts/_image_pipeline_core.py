@@ -16,7 +16,7 @@ from pydantic import (
     model_validator,
 )
 
-from phenotypic.schema import OBJECT
+from phenotypic.schema import GRID, OBJECT
 
 if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
 
 import pandas as pd
-from typing import Dict, List, Tuple
+from typing import Dict, List, Sequence, Tuple, TypeGuard
 import inspect
 import time
 import sys
@@ -95,6 +95,88 @@ def _normalize_operation_collection(
     raise TypeError(
             f"{kind} must be a list or a dictionary, got {type(value)}"
     )
+
+
+#: Suffix for the right-hand copy of a shared column while
+#: ``_merge_on_object_labels`` compares it with the left copy; never survives.
+_MERGE_RIGHT_SUFFIX = "__phenotypic_merge_right"
+
+#: Producer name ``measure()`` gives the image-info frame in merge errors.
+_IMAGE_INFO_PRODUCER = "image info"
+
+
+def _disagreeing_rows(left: pd.Series, right: pd.Series) -> np.ndarray:
+    """Return a boolean mask of the rows where two label-aligned columns differ.
+
+    Missing values (``NaN``, ``None``, ``pd.NA``) in the same row agree;
+    every other pair must compare exactly equal. No float tolerance: two
+    sources of one column are expected to compute it identically. Values are
+    compared, not dtypes: image-info emits ``Grid_RowNum`` as an ordered
+    categorical where ``MeasureGridLinRegStats`` emits ``int64``, and a
+    categorical is compared by its values because pandas refuses to compare
+    categoricals whose category sets differ.
+
+    Args:
+        left: The earlier frame's copy of the column.
+        right: The later frame's copy, aligned row-for-row with ``left``.
+
+    Returns:
+        A boolean array, True where the row's two values disagree.
+    """
+    if isinstance(left.dtype, pd.CategoricalDtype):
+        left = left.astype(object)
+    if isinstance(right.dtype, pd.CategoricalDtype):
+        right = right.astype(object)
+    both_missing = left.isna().to_numpy() & right.isna().to_numpy()
+    equal = (left == right).to_numpy(dtype=bool, na_value=False)
+    return ~(equal | both_missing)
+
+
+def _describe_merge_conflict(
+        merged: pd.DataFrame,
+        conflicts: Dict[str, np.ndarray],
+        owners: Dict[str, str],
+        producer: str,
+) -> str:
+    """Build the error message for shared columns whose two copies disagree.
+
+    Args:
+        merged: The frame after the inner join, holding both copies.
+        conflicts: Conflicting column name -> mask of its disagreeing rows.
+        owners: Column name -> the producer that first emitted it, whose copy
+            is the left one.
+        producer: The producer of the incoming (right) frame.
+
+    Returns:
+        One sentence per left-hand producer naming both producers, the
+        columns, how many objects disagree and one example ``Object_Label``,
+        plus a grid-finder hint when any ``Grid_*`` column is involved.
+    """
+    labels = merged[OBJECT.LABEL].to_numpy()
+    by_owner: Dict[str, List[str]] = {}
+    for col in conflicts:
+        by_owner.setdefault(owners[col], []).append(col)
+
+    parts = []
+    for owner, cols in by_owner.items():
+        rows = np.logical_or.reduce([conflicts[col] for col in cols])
+        parts.append(
+                f"'{owner}' and '{producer}' emitted conflicting values for the "
+                f"shared column(s) {cols}: {int(rows.sum())} of {len(merged)} "
+                f"objects differ (e.g. {OBJECT.LABEL}={labels[rows][0]})"
+        )
+    message = "; ".join(parts) + "; each column name must mean one value per object."
+
+    if set(conflicts) & set(GRID.get_headers()):
+        message += (
+                " The Grid_* columns disagree: a GridFinder in the measurement "
+                "list assigns grid cells differently from the image's own "
+                "grid_finder (different nrows/ncols or fitting method). The "
+                "image already supplies the Grid_* columns, so remove the "
+                "GridFinder from meas or configure it identically to the "
+                "image's grid_finder."
+        )
+    return message
 
 
 def _layers_modified_by(operation: BaseOperation) -> tuple[str, ...] | None:
@@ -269,6 +351,51 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         return _normalize_operation_collection(
                 value, "measurements", MeasureFeatures
         )
+
+    @field_validator("meas", mode="after")
+    @classmethod
+    def _refuse_same_scale_texture(
+            cls, value: Dict[str, MeasureFeatures]
+    ) -> Dict[str, MeasureFeatures]:
+        """Refuse two ``MeasureTexture`` measurers that share a ``scale``.
+
+        Texture columns are spelled ``Texture_{scale:02d}px-...`` and carry no
+        other parameter, so two measurers at one scale (differing only in
+        ``quant_lvl`` or ``enhance``, say) emit identically named columns
+        holding different values. Runs on construction, ``from_json`` (which
+        constructs the pipeline) and every ``meas`` assignment, including
+        :meth:`set_meas`. Only this pipeline's own measurements are checked;
+        nested pipelines in ``ops`` validate themselves.
+
+        Args:
+            value: The normalized, name-keyed measurement dict.
+
+        Returns:
+            ``value`` unchanged.
+
+        Raises:
+            ValueError: If two ``MeasureTexture`` entries (subclasses
+                included) share a ``scale``; the message names the scale and
+                both keys.
+        """
+        if len(value) < 2:
+            return value
+        # Deferred: _core must not import phenotypic.measure at module load.
+        from phenotypic.measure._measure_texture import MeasureTexture
+
+        key_by_scale: Dict[int, str] = {}
+        for key, measurement in value.items():
+            if not isinstance(measurement, MeasureTexture):
+                continue
+            first_key = key_by_scale.setdefault(measurement.scale, key)
+            if first_key != key:
+                raise ValueError(
+                        f"measurements {first_key!r} and {key!r} are both "
+                        f"MeasureTexture at scale={measurement.scale}; their "
+                        f"Texture_{measurement.scale:02d}px-* columns would "
+                        "collide. Give each MeasureTexture a distinct scale."
+                )
+        return value
 
     @field_validator("post", mode="before")
     @classmethod
@@ -1144,7 +1271,9 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
             self._measurement_memory = {}
             self._measurement_rss = {}
 
-        meas_to_run: Dict[str, MeasureFeatures] = self._build_measurement_run_order()
+        meas_to_run: Dict[str, MeasureFeatures] = self._build_measurement_run_order(
+                image
+        )
 
         # Print message if verbose and benchmark are enabled
         if self._benchmark and self._verbose:
@@ -1248,7 +1377,10 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         if self._benchmark and self._verbose and has_tqdm:
             pbar.close()
 
-        df = self._merge_on_object_labels(measurements)
+        df = self._merge_on_object_labels(
+                measurements,
+                producers=[*meas_to_run, _IMAGE_INFO_PRODUCER],
+        )
 
         # Metadata (and, downstream, external-joined metadata) belongs at the
         # front, ahead of the measurements; the info block stays last. Ordering
@@ -1266,9 +1398,18 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         return df
 
     @staticmethod
+    def _has_own_grid(image: Image) -> TypeGuard[GridImage]:
+        """Return whether *image* carries a grid, i.e. is a ``GridImage``.
+
+        Duck-typed on the ``grid`` accessor. When True, image-info emits the
+        ``Grid_*`` columns from the image's own ``grid_finder``.
+        """
+        return hasattr(image, "grid")
+
+    @staticmethod
     def _get_image_info(image: Image, include_metadata: bool) -> pd.DataFrame:
         return (image.grid.info(include_metadata=include_metadata)
-                if hasattr(image, "grid")
+                if ImagePipelineCore._has_own_grid(image)
                 else image.objects.info(include_metadata=include_metadata))
 
     @staticmethod
@@ -1290,21 +1431,36 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
 
         return df[order_measurement_columns(list(df.columns))]
 
-    def _build_measurement_run_order(self) -> Dict[str, MeasureFeatures]:
+    def _build_measurement_run_order(self, image: Image) -> Dict[str, MeasureFeatures]:
         """Return the measurements to execute for this ``measure()`` call.
 
-        Returns a copy of ``self._meas`` with one optional addition: when both
-        ``self._nrows`` and ``self._ncols`` are set and no existing measurement
-        is an instance of :class:`GridFinder`, an ``AutoGridFinder`` configured
-        with the preset is prepended so it runs before downstream grid-aware
-        measurements. The persistent ``self._meas`` mapping is never mutated,
-        which keeps repeat ``measure()`` calls idempotent and serialization
-        unaffected.
+        Returns ``self._meas`` with one optional addition: when both
+        ``self._nrows`` and ``self._ncols`` are set, *image* has no grid of
+        its own, and no existing measurement is an instance of
+        :class:`GridFinder`, a ``CenteredAutoGridFinder`` configured with the
+        preset is prepended so it runs before downstream grid-aware
+        measurements.
+
+        A ``GridImage`` never gets the injected finder. Its image-info frame
+        already carries the ``Grid_*`` columns from the image's own
+        ``grid_finder``, so a second finder could only duplicate them or, when
+        the preset differs from the image's grid (the CLI's ``--nrows`` /
+        ``--ncols`` reshape the image, not the preset), contradict them.
+
+        The persistent ``self._meas`` mapping is never mutated, which keeps
+        repeat ``measure()`` calls idempotent and serialization unaffected.
+
+        Args:
+            image: The image about to be measured.
 
         Returns:
             Dict[str, MeasureFeatures]: Ordered measurement dict for this run.
         """
-        if self._nrows is None or self._ncols is None:
+        if (
+                self._nrows is None
+                or self._ncols is None
+                or self._has_own_grid(image)
+        ):
             return self._meas
 
         # Lazy imports to avoid circular dependency with phenotypic.grid.
@@ -1458,42 +1614,87 @@ class ImagePipelineCore(BaseOperation, LazyWidgetMixin):
         return df
 
     @staticmethod
-    def _merge_on_object_labels(dataframes_list: List[pd.DataFrame]) -> pd.DataFrame:
-        """
-        Merge multiple DataFrames only if share object labels
+    def _merge_on_object_labels(
+            dataframes_list: List[pd.DataFrame],
+            producers: Optional[Sequence[str]] = None,
+    ) -> pd.DataFrame:
+        """Join per-measurer frames into one row per object on ``Object_Label``.
+
+        Frames are merged left to right with an inner join on ``Object_Label``
+        alone. A frame indexed by ``Object_Label`` has the index moved into a
+        column first. Every measurer returns one row per object, so the inner
+        join keeps every object; in general it keeps the labels present in
+        every frame, in the first frame's row order.
+
+        Measurers routinely emit the same column (image-info, ``MeasureBounds``
+        and ``MeasureGridLinRegStats`` all emit the ``Bbox_*`` columns). Each
+        shared column is compared after aligning rows by label: missing values
+        in the same rows agree, everything else must be exactly equal. Agreeing
+        columns keep a single copy, the one from the earlier frame; a
+        disagreement raises instead of choosing a value. The error names the
+        producer that first emitted the column and the producer that
+        contradicts it, the columns, how many objects disagree and one example
+        ``Object_Label``.
 
         Args:
-            dataframes_list: List of pandas DataFrames to merge
+            dataframes_list: The frames to merge, each carrying
+                ``Object_Label`` as a column or as its index.
+            producers: One name per frame, used in conflict errors
+                (``measure()`` passes the measurement keys followed by
+                ``"image info"``). Defaults to ``"frame 0"``, ``"frame 1"``, ….
 
         Returns:
-            Merged DataFrame containing only the data from DataFrames with matching index names
+            The merged frame with a fresh ``RangeIndex``. Columns are the first
+            frame's, followed by each later frame's new columns in their order.
 
         Raises:
-            ValueError: If no DataFrames are provided or if no matching index names are found
+            ValueError: If no frames are given, if an entry is not a DataFrame,
+                if ``producers`` does not name every frame exactly once, or if
+                two frames hold different values for a shared column.
         """
         if not dataframes_list or not all(
                 [isinstance(x, pd.DataFrame) for x in dataframes_list]
         ):
             raise ValueError("No DataFrames provided")
+        if producers is None:
+            producers = [f"frame {i}" for i in range(len(dataframes_list))]
+        elif len(producers) != len(dataframes_list):
+            raise ValueError(
+                    f"got {len(producers)} producer names for "
+                    f"{len(dataframes_list)} frames; name each frame once"
+            )
         new_df = dataframes_list[0]
         if new_df.index.name == OBJECT.LABEL:
             new_df = new_df.reset_index(drop=False)
+        # Column -> the producer whose copy survives (the first to emit it).
+        owners = {str(col): producers[0] for col in new_df.columns}
 
-        if len(dataframes_list) > 1:
-            for df in dataframes_list[1:]:
-                if df.index.name == OBJECT.LABEL:
-                    df = df.reset_index(drop=False)
-
-                cols_to_merge_on = [OBJECT.LABEL]  # Resets each new other df
-
-                for col_new_df in new_df.columns:
-                    if col_new_df != OBJECT.LABEL:  # skip the object label
-                        for col_other_df in df.columns:
-                            if col_new_df == col_other_df and np.all(
-                                    df[col_new_df] == df[col_other_df]
-                            ):
-                                cols_to_merge_on.append(col_other_df)
-
-                new_df = new_df.merge(df, on=cols_to_merge_on, suffixes=("", "_merged"))
+        for producer, df in zip(producers[1:], dataframes_list[1:]):
+            if df.index.name == OBJECT.LABEL:
+                df = df.reset_index(drop=False)
+            shared = [
+                col for col in df.columns
+                if col != OBJECT.LABEL and col in new_df.columns
+            ]
+            # pandas names the right copy of an overlapping column f"{col}{suffix}".
+            new_df = new_df.merge(
+                    df, on=OBJECT.LABEL, how="inner",
+                    suffixes=("", _MERGE_RIGHT_SUFFIX),
+            )
+            for col in df.columns:
+                owners.setdefault(str(col), producer)
+            if not shared:
+                continue
+            right_copies = [f"{col}{_MERGE_RIGHT_SUFFIX}" for col in shared]
+            conflicts = {
+                str(col): mask
+                for col, right in zip(shared, right_copies)
+                if (mask := _disagreeing_rows(new_df[col], new_df[right])).any()
+            }
+            if conflicts:
+                raise ValueError(
+                        _describe_merge_conflict(new_df, conflicts, owners, producer)
+                )
+            new_df = new_df.drop(columns=right_copies)
 
         return new_df

@@ -735,3 +735,19 @@ def test_measurement_frame_normalization_preserves_feature_columns() -> None:
         "ExternalMeasure_BatchKey",
         "Metadata_CustomBatch",
     ]
+
+
+def test_texture_columns_are_not_gui_metadata() -> None:
+    """Both texture spellings stay measurements, never ``Metadata_Texture_...``.
+
+    Neither spelling fits the two-segment PascalCase "external header" shape
+    (both contain ``-``), so only ``TEXTURE.owns_header`` keeps them out of
+    the metadata namespace. The legacy spelling is what every stored table
+    written before the rename carries.
+    """
+    from phenotypic._gui.shell._metadata_context import _is_gui_metadata_column
+
+    assert _is_gui_metadata_column("Texture_05px-avg-Contrast") is False
+    assert _is_gui_metadata_column("Texture_05px-deg135-Contrast") is False
+    assert _is_gui_metadata_column("Texture_Contrast-avg-scale05") is False
+    assert _is_gui_metadata_column("Texture_Contrast-deg000-scale05") is False

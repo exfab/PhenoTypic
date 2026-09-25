@@ -11,7 +11,7 @@ MEAS = {
         "class": "MeasureColor",
         "params": {"include_XYZ": False, "include_xy": False},
     },
-    "MeasureTexture": {"class": "MeasureTexture", "params": {"scale": [5]}},
+    "MeasureTexture": {"class": "MeasureTexture", "params": {"scale": 5}},
     "MeasureNeighborDist": {"class": "MeasureNeighborDist", "params": {}},
 }
 
@@ -40,8 +40,8 @@ def test_parameterized_schemas_fall_back_to_category() -> None:
     Naively this raises TypeError and dumps every Texture_ column into
     Unattributed -- 65 of 148 columns on the verification fixture.
     """
-    groups = group_columns(["Texture_Contrast-deg000-scale05"], MEAS)
-    assert groups["MeasureTexture"] == ["Texture_Contrast-deg000-scale05"]
+    groups = group_columns(["Texture_05px-deg000-Contrast"], MEAS)
+    assert groups["MeasureTexture"] == ["Texture_05px-deg000-Contrast"]
 
 
 def test_measurer_params_change_the_claimed_headers() -> None:

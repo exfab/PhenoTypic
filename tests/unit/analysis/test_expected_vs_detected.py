@@ -418,3 +418,30 @@ class TestClassFlags:
         )
         assert chk.warn_threshold == 0.02
         assert chk.fail_threshold == 0.20
+
+
+class TestLayoutColumnClassification:
+    """Measurement columns in a layout frame keep their measurement names."""
+
+    @pytest.mark.parametrize(
+        "column",
+        [
+            "Texture_05px-avg-Contrast",
+            "Texture_05px-deg135-Contrast",
+            "Texture_Contrast-avg-scale05",
+            "Texture_Contrast-deg000-scale05",
+        ],
+    )
+    def test_texture_columns_are_not_layout_metadata(self, column: str) -> None:
+        """Both texture spellings stay out of the ``Metadata_`` namespace.
+
+        Neither fits the two-segment PascalCase external-header shape, so
+        only ``TEXTURE.owns_header`` keeps them from being renamed
+        ``Metadata_Texture_...``. The legacy spelling is what pre-rename
+        stored tables carry.
+        """
+        from phenotypic.analysis.qc._expected_vs_detected import (
+            _is_layout_metadata_column,
+        )
+
+        assert _is_layout_metadata_column(column) is False

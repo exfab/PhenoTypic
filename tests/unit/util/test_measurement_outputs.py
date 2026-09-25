@@ -130,7 +130,7 @@ def test_split_measurements_groups_model_metrics_with_linear_softplus() -> None:
 
 
 def test_split_measurements_recognizes_texture_dynamic_headers() -> None:
-    """MeasureTexture's runtime -deg/-scale headers are now recognized."""
+    """MeasureTexture's runtime ``Texture_05px-deg000-...`` headers are recognized."""
     headers = TEXTURE.get_headers(scale=5, matrix_name="Gray")[:3]
     frame = pd.DataFrame(
         {str(OBJECT.LABEL): [1], **{h: [0.0] for h in headers}}
@@ -140,6 +140,34 @@ def test_split_measurements_recognizes_texture_dynamic_headers() -> None:
 
     assert "MeasureTexture" in splits
     assert all(h in splits["MeasureTexture"].columns for h in headers)
+
+
+def test_split_measurements_groups_every_texture_scale_under_one_measurer() -> None:
+    """Multi-scale texture (one MeasureTexture per scale) is one split group.
+
+    Grouping is by producer class through ``owns_header``, so both scales --
+    and a legacy-spelled column from a pre-rename table -- land under
+    ``MeasureTexture`` rather than falling out as context columns. An
+    unrecognized column is copied into *every* group as context, so the
+    ``MeasureShape`` group is what tells "owned" apart from "context".
+    """
+    scale3 = TEXTURE.get_headers(scale=3)
+    scale5 = TEXTURE.get_headers(scale=5)
+    legacy = "Texture_Contrast-avg-scale05"
+    frame = pd.DataFrame(
+        {
+            str(OBJECT.LABEL): [1],
+            str(SHAPE.AREA): [10.0],
+            **{h: [0.0] for h in (*scale3, *scale5, legacy)},
+        }
+    )
+
+    splits = split_measurements(frame)
+
+    grouped = set(splits["MeasureTexture"].columns)
+    assert {*scale3, *scale5, legacy} <= grouped
+    shape_group = set(splits["MeasureShape"].columns)
+    assert shape_group.isdisjoint({*scale3, *scale5, legacy})
 
 
 def test_generate_output_key_returns_known_measurement_descriptions() -> None:

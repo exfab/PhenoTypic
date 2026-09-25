@@ -135,17 +135,43 @@ class TestParameterSerialization:
         assert "EnhanceLocalContrast" in loaded_pipe._ops
 
     def test_list_parameters(self):
-        """Test serialization of list parameters."""
-        # MeasureTexture accepts scale as a list
-        from phenotypic.measure import MeasureTexture
+        """Test serialization of sequence parameters (JSON list <-> tuple)."""
+        from phenotypic.enhance import FocusEdgeSato
 
-        pipe = ImagePipeline(meas=[MeasureTexture(scale=[3, 5, 7], quant_lvl=8)])
+        pipe = ImagePipeline(ops=[FocusEdgeSato(sigmas=(1.0, 2.5, 4.0))])
         json_str = pipe.to_json()
 
+        params = json.loads(json_str)["pipe_cfgs"]["FocusEdgeSato"]["params"]
+        assert params["sigmas"] == [1.0, 2.5, 4.0]
+
         loaded_pipe = ImagePipeline.from_json(json_str)
-        texture = loaded_pipe._meas["MeasureTexture"]
-        assert texture.scale == [3, 5, 7]
-        assert texture.quant_lvl == 8
+        assert loaded_pipe._ops["FocusEdgeSato"].sigmas == (1.0, 2.5, 4.0)
+
+    def test_repeated_measurer_parameters(self):
+        """Two ``MeasureTexture`` entries (one per scale) round-trip separately.
+
+        ``scale`` is a single int; multi-scale texture is one measurer per
+        scale, keyed ``MeasureTexture`` / ``MeasureTexture_1``.
+        """
+        from phenotypic.measure import MeasureTexture
+
+        pipe = ImagePipeline(
+                meas=[
+                    MeasureTexture(scale=3, quant_lvl=8),
+                    MeasureTexture(scale=5, quant_lvl=8),
+                ]
+        )
+        json_str = pipe.to_json()
+
+        params = json.loads(json_str)["meas"]
+        assert params["MeasureTexture"]["params"]["scale"] == 3
+        assert params["MeasureTexture_1"]["params"]["scale"] == 5
+
+        loaded_pipe = ImagePipeline.from_json(json_str)
+        assert list(loaded_pipe._meas) == ["MeasureTexture", "MeasureTexture_1"]
+        assert loaded_pipe._meas["MeasureTexture"].scale == 3
+        assert loaded_pipe._meas["MeasureTexture_1"].scale == 5
+        assert loaded_pipe._meas["MeasureTexture_1"].quant_lvl == 8
 
     def test_dict_parameters(self):
         """Test serialization with dict-style operations input."""
