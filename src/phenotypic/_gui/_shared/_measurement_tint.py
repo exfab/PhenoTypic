@@ -174,7 +174,7 @@ def format_measurement_value(value: float) -> str:
 
     The one rule, applied to every column: an integral value renders without
     a decimal point, anything else to four significant figures, and a
-    magnitude outside ``[1e-4, 1e6)`` in scientific notation. ``Shape_Area``
+    magnitude outside ``[1e-4, 1e6)`` in scientific notation. ``Size_Area``
     and ``ColorLab_DeltaE2000MedianFromMedoid`` would each read better under
     their own rule, but a grid of cards is scanned across columns as often as
     down one, and a format that changes per column defeats that.

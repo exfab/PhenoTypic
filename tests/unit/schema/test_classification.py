@@ -118,20 +118,20 @@ def test_derived_growth_models_and_edge_correction():
         assert m.resolved_tier is None
 
 
-def test_shape_straddles_tier1_and_tier2():
-    from phenotypic.schema import SHAPE
+def test_shape_is_uniformly_tier2_and_the_feret_diameters_are_size():
+    """0.20.0: the Feret diameters moved to SIZE, so SHAPE no longer straddles
+    tiers -- every member is a tier-2 form descriptor, and the calipers resolve
+    to tier 1 through SIZE(DirectPhenotype) without an Entry tag."""
+    from phenotypic.schema import SHAPE, SIZE
 
-    tier1 = {SHAPE.AREA, SHAPE.CONVEX_AREA, SHAPE.MEDIAN_RADIUS, SHAPE.MEAN_RADIUS,
-             SHAPE.MAX_RADIUS, SHAPE.MIN_FERET_DIAMETER, SHAPE.MAX_FERET_DIAMETER,
-             SHAPE.MAJOR_AXIS_LENGTH, SHAPE.MINOR_AXIS_LENGTH, SHAPE.BBOX_AREA,
-             SHAPE.PERIMETER}
     tier2 = {SHAPE.CIRCULARITY, SHAPE.ECCENTRICITY, SHAPE.SOLIDITY, SHAPE.EXTENT,
-             SHAPE.COMPACTNESS, SHAPE.ORIENTATION}
-    for m in tier1:
-        assert m.resolved_tier == 1, m
+             SHAPE.COMPACTNESS, SHAPE.ORIENTATION, SHAPE.MEAN_BOUNDARY_DIST,
+             SHAPE.MEDIAN_BOUNDARY_DIST}
+    assert tier2 == set(SHAPE)  # full coverage, no member missed
     for m in tier2:
         assert m.resolved_tier == 2, m
-    assert tier1 | tier2 == set(SHAPE)  # full coverage, no member missed
+    for m in (SIZE.MIN_FERET_DIAMETER, SIZE.MAX_FERET_DIAMETER):
+        assert (m.resolved_kind, m.resolved_tier) == ("primary", 1), m
 
 
 def test_tier3_primary_enums():

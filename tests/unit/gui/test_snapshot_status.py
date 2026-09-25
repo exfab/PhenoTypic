@@ -123,7 +123,7 @@ def _seed_full_run(root: Path) -> Path:
             "Metadata_Dataset": ["d1"],
             str(IMAGE.IMAGE_NAME): ["plate"],
             "Object_Label": [1],
-            "Shape_Area": [100.0],
+            "Size_Area": [100.0],
         }
     )
     write_master(root, frame)
@@ -217,7 +217,7 @@ def test_a_rewritten_processing_product_shows_changed_on_disk(
                 "Metadata_Dataset": ["d1", "d1"],
                 str(IMAGE.IMAGE_NAME): ["plate", "plate"],
                 "Object_Label": [1, 2],
-                "Shape_Area": [100.0, 200.0],
+                "Size_Area": [100.0, 200.0],
             }
         ),
     )

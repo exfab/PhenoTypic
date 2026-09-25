@@ -21,7 +21,7 @@ from phenotypic.schema import (
 
 
 def _q(member):
-    """Qualified header for tests that fit on ``Shape_Area`` (token ``Area``)."""
+    """Qualified header for tests that fit on ``Size_Area`` (token ``Area``)."""
     return qualified_header(member, "Area")
 
 
@@ -55,7 +55,7 @@ def _build_group(
             rows.append(
                 {
                     "Metadata_Time": float(ti),
-                    "Shape_Area": float(yi),
+                    "Size_Area": float(yi),
                     "Metadata_Dataset": "Test",
                     "Metadata_Strain": strain,
                     "Metadata_Replicate": rep,
@@ -101,10 +101,10 @@ def noisy_fixture():
 class TestBasics:
     def test_initialization(self):
         m = LinearCapAndLagModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
         )
-        assert m.on == "Shape_Area"
+        assert m.on == "Size_Area"
         assert m.groupby == ["Metadata_Dataset", "Metadata_Strain"]
         assert m.smax is None
         assert m.beta is None
@@ -122,7 +122,7 @@ class TestBasics:
 
     def test_schema(self, noisy_fixture):
         m = LinearCapAndLagModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
         )
         results = m.analyze(noisy_fixture)
@@ -147,11 +147,11 @@ class TestBasics:
 
     def test_no_pruning_attr(self):
         """LinearCapAndLagModel does not prune — saturation IS the model."""
-        m = LinearCapAndLagModel(on="Shape_Area", groupby=["Metadata_Strain"])
+        m = LinearCapAndLagModel(on="Size_Area", groupby=["Metadata_Strain"])
         # Sanity: ``_prepare_group`` is the base no-op (returns group unchanged).
         df = pd.DataFrame({
             "Metadata_Time": np.linspace(0, 20, 30),
-            "Shape_Area": np.linspace(1, 50, 30),
+            "Size_Area": np.linspace(1, 50, 30),
             "Metadata_Strain": "A",
         })
         out = m._prepare_group(df)
@@ -164,7 +164,7 @@ class TestBasics:
 class TestParameterRecovery:
     def test_recovers_ground_truth(self, clean_fixture):
         m = LinearCapAndLagModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
         )
         results = m.analyze(clean_fixture).set_index("Metadata_Strain")
@@ -186,7 +186,7 @@ class TestParameterRecovery:
 class TestSmaxFallback:
     def test_per_group_observed_max(self, clean_fixture):
         m = LinearCapAndLagModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
         )
         results = m.analyze(clean_fixture).set_index("Metadata_Strain")
@@ -195,7 +195,7 @@ class TestSmaxFallback:
 
     def test_explicit_smax_overrides(self, clean_fixture):
         m = LinearCapAndLagModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             smax=100.0,
         )
@@ -215,7 +215,7 @@ class TestModeDispatch:
             noise_sigma=0.1, strain="Saturated", rng=rng, n_replicates=2,
         )
         m = LinearCapAndLagModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
         )
         res = m.analyze(df)
@@ -233,7 +233,7 @@ class TestModeDispatch:
             noise_sigma=0.0, strain="OpenWithSmax", rng=rng, n_replicates=1,
         )
         m = LinearCapAndLagModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             smax=50.0,
         )
@@ -250,7 +250,7 @@ class TestModeDispatch:
             noise_sigma=0.0, strain="SatButPinned", rng=rng, n_replicates=1,
         )
         m = LinearCapAndLagModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
             beta=7.0,
         )
@@ -271,7 +271,7 @@ class TestModeDispatch:
         )
         df = pd.concat([g_sharp, g_soft], ignore_index=True)
         m = LinearCapAndLagModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
         )
         res = m.analyze(df).set_index("Metadata_Strain")
@@ -286,7 +286,7 @@ class TestModeDispatch:
         for bad in (0.0, -1.0, float("nan"), float("inf")):
             with pytest.raises(ValueError, match="beta must be None or"):
                 LinearCapAndLagModel(
-                    on="Shape_Area",
+                    on="Size_Area",
                     groupby=["Metadata_Dataset", "Metadata_Strain"],
                     beta=bad,
                 )
@@ -295,7 +295,7 @@ class TestModeDispatch:
         for bad in (0.0, -0.1, 1.0, 1.5, float("nan")):
             with pytest.raises(ValueError, match="shoulder_slope_ratio"):
                 LinearCapAndLagModel(
-                    on="Shape_Area",
+                    on="Size_Area",
                     groupby=["Metadata_Dataset", "Metadata_Strain"],
                     shoulder_slope_ratio=bad,
                 )
@@ -312,12 +312,12 @@ class TestShoulderDetection:
     @pytest.fixture
     def model(self):
         return LinearCapAndLagModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
         )
 
     def _wrap(self, t, y) -> pd.DataFrame:
-        return pd.DataFrame({"Metadata_Time": t, "Shape_Area": y})
+        return pd.DataFrame({"Metadata_Time": t, "Size_Area": y})
 
     def test_saturating_curve_detected(self, model):
         t = np.linspace(0, 20, 30)
@@ -352,7 +352,7 @@ class TestInoculumPrior:
     def test_cv_sigma_xor_validation(self):
         with pytest.raises(ValueError, match="mutually exclusive"):
             LinearCapAndLagModel(
-                on="Shape_Area",
+                on="Size_Area",
                 groupby=["Metadata_Dataset", "Metadata_Strain"],
                 s0_prior=1.0,
                 s0_prior_cv=0.05,
@@ -361,7 +361,7 @@ class TestInoculumPrior:
 
     def test_direct_sigma_branch(self):
         m = LinearCapAndLagModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["G"],
             s0_prior=10.0,
             s0_prior_sigma=2.5,
@@ -373,7 +373,7 @@ class TestInoculumPrior:
 
     def test_cv_branch(self):
         m = LinearCapAndLagModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["G"],
             s0_prior=5.0,
             s0_prior_cv=0.1,
@@ -394,14 +394,14 @@ class TestDegenerateInput:
             rows.append(
                 {
                     "Metadata_Time": float(ti),
-                    "Shape_Area": float("nan"),
+                    "Size_Area": float("nan"),
                     "Metadata_Dataset": "Test",
                     "Metadata_Strain": "Broken",
                 }
             )
         df = pd.DataFrame(rows)
         m = LinearCapAndLagModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Dataset", "Metadata_Strain"],
         )
         res = m.analyze(df)

@@ -8,9 +8,9 @@ from phenotypic._gui.analysis._layout import filter_items_for_kind
 def _pipeline_with_both():
     p = ImagePipeline()
     p.set_filters({
-        "t0": TukeyOutlierRemover(on="Shape_Area", groupby=["Metadata_Strain"]),
-        "e0": EdgeCorrector(on="Shape_Area", groupby=["Metadata_Strain"]),
-        "t1": TukeyOutlierRemover(on="Shape_Area", groupby=["Metadata_Strain"]),
+        "t0": TukeyOutlierRemover(on="Size_Area", groupby=["Metadata_Strain"]),
+        "e0": EdgeCorrector(on="Size_Area", groupby=["Metadata_Strain"]),
+        "t1": TukeyOutlierRemover(on="Size_Area", groupby=["Metadata_Strain"]),
     })
     return p
 

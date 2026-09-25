@@ -50,7 +50,7 @@ def _synthetic_growth_master() -> pl.DataFrame:
                     "Metadata_Strain": strain,
                     "Metadata_Time": float(t),
                     "Object_Label": rep,
-                    "Shape_Area": float(n + (rep - 1) * 5),
+                    "Size_Area": float(n + (rep - 1) * 5),
                 })
     return pl.DataFrame(rows)
 
@@ -68,7 +68,7 @@ class TestPersistPipelineJson:
         self, tmp_path: Path
     ) -> None:
         model = LogGrowthModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Strain"],
             time_label="Metadata_Time",
             n_jobs=1,
@@ -98,7 +98,7 @@ class TestEmitAnalysisOutputs:
         master = _synthetic_growth_master()
         pipeline = ImagePipeline(
             model=LogGrowthModel(
-                on="Shape_Area",
+                on="Size_Area",
                 groupby=["Metadata_Strain"],
                 time_label="Metadata_Time",
                 n_jobs=1,
@@ -121,13 +121,13 @@ class TestEmitAnalysisOutputs:
         pipeline = ImagePipeline(
             filters=[
                 TukeyOutlierRemover(
-                    on="Shape_Area",
+                    on="Size_Area",
                     groupby=["Metadata_Strain"],
                     k=3.0,
                 ),
             ],
             model=LogGrowthModel(
-                on="Shape_Area",
+                on="Size_Area",
                 groupby=["Metadata_Strain"],
                 time_label="Metadata_Time",
                 n_jobs=1,
@@ -154,7 +154,7 @@ class TestEmitAnalysisOutputs:
         master = _synthetic_growth_master()
         pipeline = ImagePipeline(
             model=LogGrowthModel(
-                on="Shape_Area",
+                on="Size_Area",
                 groupby=["Metadata_Strain"],
                 time_label="Metadata_Time",
                 n_jobs=1,
@@ -181,7 +181,7 @@ class TestEmitAnalysisOutputs:
         master = pl.DataFrame({"Metadata_Strain": ["A"], "Object_Label": [1]})
         pipeline = ImagePipeline(
             model=LogGrowthModel(
-                on="Shape_Area",  # not present in the frame
+                on="Size_Area",  # not present in the frame
                 groupby=["Metadata_Strain"],
                 time_label="Metadata_Time",
                 n_jobs=1,
@@ -201,7 +201,7 @@ class TestEmitAnalysisOutputs:
         master = _synthetic_growth_master()
         pipeline = ImagePipeline(
             model=LogGrowthModel(
-                on="Shape_Area",
+                on="Size_Area",
                 groupby=["Metadata_Strain"],
                 time_label="Metadata_Time",
                 n_jobs=1,
@@ -229,7 +229,7 @@ class TestEmitAnalysisOutputs:
         master = _synthetic_growth_master()
         pipeline = ImagePipeline(
             model=LogGrowthModel(
-                on="Shape_Area",
+                on="Size_Area",
                 groupby=["Metadata_Strain"],
                 time_label="Metadata_Time",
                 n_jobs=1,
@@ -263,7 +263,7 @@ class TestEmitAnalysisOutputs:
         master = _synthetic_growth_master()
         pipeline = ImagePipeline(
             model=LogGrowthModel(
-                on="Shape_Area",
+                on="Size_Area",
                 groupby=["Metadata_Strain"],
                 time_label="Metadata_Time",
                 n_jobs=1,
@@ -280,7 +280,7 @@ class TestEmitAnalysisOutputs:
             manifest_path.read_bytes(),
         )
         changed = master.with_columns(
-            (pl.col("Shape_Area") * 1.5).alias("Shape_Area")
+            (pl.col("Size_Area") * 1.5).alias("Size_Area")
         )
         checks = 0
 
@@ -312,7 +312,7 @@ class TestEmitAnalysisOutputs:
         master = _synthetic_growth_master()
         pipeline = ImagePipeline(
             model=LogGrowthModel(
-                on="Shape_Area",
+                on="Size_Area",
                 groupby=["Metadata_Strain"],
                 time_label="Metadata_Time",
                 n_jobs=1,
@@ -336,7 +336,7 @@ class TestEmitAnalysisOutputs:
             plotting_pipeline, "publish_analysis_manifest_entry", fail_manifest
         )
         changed = master.with_columns(
-            (pl.col("Shape_Area") * 1.5).alias("Shape_Area")
+            (pl.col("Size_Area") * 1.5).alias("Size_Area")
         )
 
         assert _emit_analysis_outputs(tmp_path, changed, pipeline) is None

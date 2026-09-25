@@ -40,7 +40,7 @@ def _seed_output(
             "Metadata_Dataset": ["dataset"],
             str(IMAGE.IMAGE_NAME): ["plate"],
             "Object_Label": [1],
-            "Shape_Area": [100.0],
+            "Size_Area": [100.0],
         }
     )
     seed_output_dir(
@@ -303,7 +303,7 @@ def test_nan_parameter_feedback_returns_no_update_without_save(
                 name="nan-feedback",
                 filters={
                     "edge": EdgeCorrector(
-                        on="Shape_Area",
+                        on="Size_Area",
                         groupby=["Metadata_Strain"],
                         pvalue=float("nan"),
                     )
@@ -345,7 +345,7 @@ def test_matching_array_feedback_returns_no_update_without_save(
             pipeline=ImagePipeline(
                 name="array-feedback",
                 model=LinearLagModel(
-                    on="Shape_Area",
+                    on="Size_Area",
                     groupby=["Metadata_Strain"],
                 ),
             ),
@@ -443,7 +443,7 @@ def test_blocked_render_and_concurrent_mutation_are_revision_coherent(
             pipeline=ImagePipeline(
                 name="before",
                 model=LinearLagModel(
-                    on="Shape_Area",
+                    on="Size_Area",
                     groupby=["Metadata_Strain"],
                 ),
             ),
@@ -657,7 +657,7 @@ def test_external_recipe_cas_reconciles_every_model_callback_output(
     external = ImagePipeline(
         name="external",
         model=LinearLagModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Strain"],
         ),
     )
@@ -755,16 +755,16 @@ def test_external_recipe_cas_reconciles_add_stack_and_control(
         ],
         filters={
             "external_filter": TukeyOutlierRemover(
-                on="Shape_Area",
+                on="Size_Area",
                 groupby=["Metadata_Strain"],
             ),
             "external_edge": EdgeCorrector(
-                on="Shape_Area",
+                on="Size_Area",
                 groupby=["Metadata_Strain"],
             ),
         },
         model=LinearLagModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Strain"],
         ),
     )
@@ -887,7 +887,7 @@ def test_external_recipe_cas_reconciles_all_remove_stacks(
         name="before-remove",
         filters={
             "old_filter": TukeyOutlierRemover(
-                on="Shape_Area",
+                on="Size_Area",
                 groupby=["Metadata_Strain"],
             )
         },
@@ -898,7 +898,7 @@ def test_external_recipe_cas_reconciles_all_remove_stacks(
         name="external-remove",
         filters={
             "new_filter": TukeyOutlierRemover(
-                on="Shape_Area",
+                on="Size_Area",
                 groupby=["Metadata_Strain"],
             )
         },

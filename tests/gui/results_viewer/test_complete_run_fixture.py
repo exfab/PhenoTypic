@@ -33,7 +33,7 @@ def _seed(root: Path, images: list[str]) -> None:
             "Metadata_Dataset": ["ds1"] * len(images),
             "Metadata_ImageName": images,
             "Object_Label": list(range(1, len(images) + 1)),
-            "Shape_Area": [100.0 + index for index in range(len(images))],
+            "Size_Area": [100.0 + index for index in range(len(images))],
         }
     )
     write_master(root, frame)

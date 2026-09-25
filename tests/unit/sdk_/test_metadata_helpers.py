@@ -37,7 +37,7 @@ def test_is_metadata_header_true_for_live_enum_value():
 
 
 def test_is_metadata_header_false_for_measurement_columns():
-    assert not is_metadata_header("Shape_Area")
+    assert not is_metadata_header("Size_Area")
     assert not is_metadata_header("Object_Label")
     assert not is_metadata_header("Intensity_MeanIntensity")
 
@@ -166,7 +166,7 @@ def test_canonical_headers_use_owner_and_member_order():
     assert rank["Metadata_Strain"] == rank[str(GENETIC.STRAIN)]
 
     columns = [
-        "Shape_Area",
+        "Size_Area",
         "Metadata_Strain",
         "Metadata_UnknownTag",
         "Metadata_ImageName",
@@ -176,7 +176,7 @@ def test_canonical_headers_use_owner_and_member_order():
         "Metadata_SampleID",
         "Metadata_Strain",
         "Metadata_UnknownTag",
-        "Shape_Area",
+        "Size_Area",
         "Metadata_ImageName",
     ]
 

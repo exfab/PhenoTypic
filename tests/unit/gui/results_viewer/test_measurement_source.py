@@ -42,14 +42,14 @@ def _table() -> PreparedImageTables:
         measurements=pd.DataFrame(
             {
                 str(OBJECT.LABEL): [1, 2],
-                "Shape_Area": [12.0, 512.0],
+                "Size_Area": [12.0, 512.0],
                 "ColorLab_MedoidColorHex": ["#a08866", "#62605f"],
             }
         ),
         metadata=None,
         measurement_columns=(
             str(OBJECT.LABEL),
-            "Shape_Area",
+            "Size_Area",
             "ColorLab_MedoidColorHex",
         ),
         join_status="not_requested",
@@ -73,7 +73,7 @@ def run_template(tmp_path_factory) -> Path:
                     UNMEASURED,
                 ],
                 "Object_Label": [1, 2, 1, 2],
-                "Shape_Area": [12.0, 512.0, 1.0, 2.0],
+                "Size_Area": [12.0, 512.0, 1.0, 2.0],
                 "ColorLab_MedoidColorHex": ["#a08866", "#62605f"] * 2,
                 "Bbox_CenterRR": [16.0] * 4,
                 "Bbox_CenterCC": [16.0] * 4,
@@ -113,7 +113,7 @@ def test_the_picker_offers_the_stores_own_numeric_columns(run: Path) -> None:
     columns = displayable_measurement_columns(
         output_root, [(DATASET, MEASURED)]
     )
-    assert "Shape_Area" in columns
+    assert "Size_Area" in columns
     # A declared column with no scale over it. Filtered out of the picker
     # rather than offered text-only -- the smaller of the two options the
     # spec left open.
@@ -143,7 +143,7 @@ def test_one_unmeasured_image_does_not_empty_the_picker(run: Path) -> None:
     columns = displayable_measurement_columns(
         output_root, [(DATASET, UNMEASURED), (DATASET, MEASURED)]
     )
-    assert "Shape_Area" in columns
+    assert "Size_Area" in columns
 
 
 def test_a_newer_store_schema_does_not_empty_the_picker(
@@ -173,7 +173,7 @@ def test_a_newer_store_schema_does_not_empty_the_picker(
 def test_values_are_keyed_by_dataset_image_and_object_label(run: Path) -> None:
     output_root = _output_root(run)
     values = measurement_values_for(
-        output_root, [(DATASET, MEASURED)], "Shape_Area"
+        output_root, [(DATASET, MEASURED)], "Size_Area"
     )
     assert values == {
         (DATASET, MEASURED, 1): 12.0,
@@ -184,7 +184,7 @@ def test_values_are_keyed_by_dataset_image_and_object_label(run: Path) -> None:
 def test_an_unmeasured_image_contributes_no_keys(run: Path) -> None:
     output_root = _output_root(run)
     values = measurement_values_for(
-        output_root, [(DATASET, MEASURED), (DATASET, UNMEASURED)], "Shape_Area"
+        output_root, [(DATASET, MEASURED), (DATASET, UNMEASURED)], "Size_Area"
     )
     assert set(values) == {
         (DATASET, MEASURED, 1),
@@ -210,7 +210,7 @@ def test_duplicate_stems_in_two_datasets_keep_distinct_values(
         lambda store, _identity, _column: ((1, 10.0 if store == "d1" else 20.0),),
     )
     values = measurement_values_for(
-        _output_root(run), [("d1", "same"), ("d2", "same")], "Shape_Area"
+        _output_root(run), [("d1", "same"), ("d2", "same")], "Size_Area"
     )
     assert values == {
         ("d1", "same", 1): 10.0,
@@ -241,7 +241,7 @@ def test_a_rewritten_table_is_read_fresh(run: Path) -> None:
 
     output_root = _output_root(run)
     first = measurement_values_for(
-        output_root, [(DATASET, MEASURED)], "Shape_Area"
+        output_root, [(DATASET, MEASURED)], "Size_Area"
     )
     assert first[(DATASET, MEASURED, 1)] == 12.0
 
@@ -250,13 +250,13 @@ def test_a_rewritten_table_is_read_fresh(run: Path) -> None:
     )
     table = pq.read_table(payload)
     rewritten = table.set_column(
-        table.column_names.index("Shape_Area"),
-        "Shape_Area",
+        table.column_names.index("Size_Area"),
+        "Size_Area",
         pa.array([99.0, 512.0], type=pa.float64()),
     ).replace_schema_metadata(table.schema.metadata)
     pq.write_table(rewritten, payload)
 
     second = measurement_values_for(
-        output_root, [(DATASET, MEASURED)], "Shape_Area"
+        output_root, [(DATASET, MEASURED)], "Size_Area"
     )
     assert second[(DATASET, MEASURED, 1)] == 99.0

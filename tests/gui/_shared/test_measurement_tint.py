@@ -73,7 +73,7 @@ def test_the_ramp_clamps_rather_than_extrapolating(fraction: float) -> None:
         (5.0, "5"),
         (0.0, "0"),
         # Everything else to four significant figures, one rule for every
-        # column -- Shape_Area and a Delta-E share it.
+        # column -- Size_Area and a Delta-E share it.
         (0.535051, "0.5351"),
         (3.2, "3.200"),
         (-0.5, "-0.5000"),
@@ -98,7 +98,7 @@ def test_a_non_finite_value_reads_as_not_available() -> None:
 
 
 def test_a_scale_spans_only_the_values_it_was_given() -> None:
-    scale = MeasurementScale.over("Shape_Area", [100.0, 400.0, 200.0])
+    scale = MeasurementScale.over("Size_Area", [100.0, 400.0, 200.0])
     assert scale is not None
     assert (scale.minimum, scale.maximum) == (100.0, 400.0)
     assert scale.fraction_of(100.0) == 0.0
@@ -108,20 +108,20 @@ def test_a_scale_spans_only_the_values_it_was_given() -> None:
 
 def test_a_scale_over_no_values_is_none() -> None:
     """Nothing to tint, and nothing to legend."""
-    assert MeasurementScale.over("Shape_Area", []) is None
-    assert MeasurementScale.over("Shape_Area", [float("nan")]) is None
+    assert MeasurementScale.over("Size_Area", []) is None
+    assert MeasurementScale.over("Size_Area", [float("nan")]) is None
 
 
 def test_a_flat_scale_maps_everything_to_zero() -> None:
     """One shade is the honest rendering of "no variation here"."""
-    scale = MeasurementScale.over("Shape_Area", [7.0, 7.0])
+    scale = MeasurementScale.over("Size_Area", [7.0, 7.0])
     assert scale is not None
     assert scale.fraction_of(7.0) == 0.0
 
 
 def test_ink_flips_so_the_label_stays_readable_at_both_ends() -> None:
     """The ramp runs near-white to navy; one fixed ink fails at one end."""
-    scale = MeasurementScale.over("Shape_Area", [0.0, 1.0])
+    scale = MeasurementScale.over("Size_Area", [0.0, 1.0])
     assert scale is not None
     low = scale.measurement_for(0.0)
     high = scale.measurement_for(1.0)

@@ -38,7 +38,7 @@ def _seed_cli_output(parent: Path) -> Path:
         str(IMAGE.IMAGE_NAME): ["a", "b"],
         "Metadata_Strain": ["A", "B"],
         "Object_Label": [1, 1],
-        "Shape_Area": [100.0, 200.0],
+        "Size_Area": [100.0, 200.0],
     })
     seed_output_dir(out, df, mirror=df, pipeline=ImagePipeline(name="t"))
     (out / "results" / "ds1" / "measurements").mkdir(parents=True, exist_ok=True)

@@ -71,7 +71,7 @@ def test_join_accepts_bare_current_and_future_flat_keys(
     )
     original_bytes = source.read_bytes()
     measurements = pl.DataFrame(
-        {str(IMAGE.IMAGE_NAME): ["plate_a"], "Shape_Area": [12.0]}
+        {str(IMAGE.IMAGE_NAME): ["plate_a"], "Size_Area": [12.0]}
     )
 
     joined = join_metadata(measurements, source)
@@ -96,7 +96,7 @@ def test_join_coalesces_complementary_current_and_future_columns(
         encoding="utf-8",
     )
     measurements = pl.DataFrame(
-        {"plate": ["A", "B"], "Shape_Area": [10.0, 11.0]}
+        {"plate": ["A", "B"], "Size_Area": [10.0, 11.0]}
     )
 
     joined = join_metadata(measurements, source)
@@ -120,7 +120,7 @@ def test_join_rejects_conflicting_duplicate_columns_without_mutating_source(
 
     with pytest.raises(ValueError, match="conflicting non-null values"):
         join_metadata(
-            pl.DataFrame({"plate": ["A"], "Shape_Area": [10.0]}),
+            pl.DataFrame({"plate": ["A"], "Size_Area": [10.0]}),
             source,
         )
 
@@ -130,7 +130,7 @@ def test_join_rejects_conflicting_duplicate_columns_without_mutating_source(
 def test_prepare_join_normalizes_on_copies() -> None:
     """In-memory measurement and external frames remain byte-for-byte logical copies."""
     measurements = pl.DataFrame(
-        {_legacy_header(IMAGE.IMAGE_NAME): ["plate_a"], "Shape_Area": [1.0]}
+        {_legacy_header(IMAGE.IMAGE_NAME): ["plate_a"], "Size_Area": [1.0]}
     )
     metadata = pl.DataFrame(
         {IMAGE.IMAGE_NAME.label: ["plate_a"], GENETIC.STRAIN.label: ["WT"]}

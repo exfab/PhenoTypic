@@ -31,7 +31,7 @@ from phenotypic.schema import (
 def _generator_with_model() -> READMEGenerator:
     pipe = ImagePipeline()
     pipe.set_model(
-        LinearLagModel(on="Shape_Area", groupby=["Metadata_Strain"])
+        LinearLagModel(on="Size_Area", groupby=["Metadata_Strain"])
     )
     return READMEGenerator(config=SimpleNamespace(), pipeline=pipe)
 
@@ -40,7 +40,7 @@ def test_model_section_documents_qualified_headers():
     section = _generator_with_model()._generate_model_section()
     assert "## Models & Analysis" in section
     assert "LinearLagModel" in section
-    assert "Shape_Area" in section
+    assert "Size_Area" in section
     assert f"`{qualified_header(LINEAR_LAG_MODEL.v, 'Area')}`" in section
     assert f"`{qualified_header(MODEL_METRICS.RMSE, 'Area')}`" in section
 

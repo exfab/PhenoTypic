@@ -91,7 +91,7 @@ def test_inline_builtin_round_trip_uses_module_and_qualname() -> None:
 
 def test_colony_metric_plot_round_trip_preserves_on_and_overrides() -> None:
     plot = PlotColonyMetricOverTime(
-            on="Shape_MedianRadius",
+            on="Shape_MedianBoundaryDist",
             groupby=["Metadata_Treatment"],
             replicate_label="Metadata_TechnicalReplicate",
     )

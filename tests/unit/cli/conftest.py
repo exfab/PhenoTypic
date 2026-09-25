@@ -694,7 +694,7 @@ def _measurements(
     columns: dict[str, object] = {}
     if include_well:
         columns["Metadata_Well"] = wells
-    columns["Shape_Area"] = areas
+    columns["Size_Area"] = areas
     columns["Metadata_ImageName"] = [f"{stem}.tiff"] * len(labels)
     columns["Object_Label"] = labels
     frame = pd.DataFrame(columns)

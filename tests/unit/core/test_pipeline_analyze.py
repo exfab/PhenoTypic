@@ -23,7 +23,7 @@ from phenotypic.analysis import (
 def area_measurements() -> pd.DataFrame:
     """Real per-image measurement frame shipped with the repo.
 
-    Columns include ``Metadata_Strain``, ``Metadata_Time``, ``Shape_Area``
+    Columns include ``Metadata_Strain``, ``Metadata_Time``, ``Size_Area``
     and the grouping/metadata columns the analysis classes rely on.
     """
     data_path = (
@@ -49,7 +49,7 @@ class TestAnalyzeContract:
         pipe = ImagePipeline(
             filters=[
                 TukeyOutlierRemover(
-                    on="Shape_Area",
+                    on="Size_Area",
                     groupby=["Metadata_Strain"],
                     k=3.0,
                 ),
@@ -66,13 +66,13 @@ class TestAnalyzeContract:
         pipe = ImagePipeline(
             filters=[
                 TukeyOutlierRemover(
-                    on="Shape_Area",
+                    on="Size_Area",
                     groupby=["Metadata_Strain"],
                     k=3.0,
                 ),
             ],
             model=LogGrowthModel(
-                on="Shape_Area",
+                on="Size_Area",
                 groupby=["Metadata_Strain"],
                 time_label="Metadata_Time",
                 n_jobs=1,
@@ -88,13 +88,13 @@ class TestAnalyzeContract:
         pipe = ImagePipeline(
             filters=[
                 TukeyOutlierRemover(
-                    on="Shape_Area",
+                    on="Size_Area",
                     groupby=["Metadata_Strain"],
                     k=3.0,
                 ),
             ],
             model=LogGrowthModel(
-                on="Shape_Area",
+                on="Size_Area",
                 groupby=["Metadata_Strain"],
                 time_label="Metadata_Time",
                 n_jobs=1,
@@ -111,15 +111,15 @@ class TestSetters:
     def test_set_filters_list_dedupes(self):
         pipe = ImagePipeline()
         pipe.set_filters([
-            TukeyOutlierRemover(on="Shape_Area", groupby=["x"]),
-            TukeyOutlierRemover(on="Shape_Area", groupby=["x"]),
+            TukeyOutlierRemover(on="Size_Area", groupby=["x"]),
+            TukeyOutlierRemover(on="Size_Area", groupby=["x"]),
         ])
         keys = list(pipe.get_filters().keys())
         assert keys == ["TukeyOutlierRemover", "TukeyOutlierRemover_1"]
 
     def test_set_filters_dict_preserves_keys(self):
         pipe = ImagePipeline()
-        flt = TukeyOutlierRemover(on="Shape_Area", groupby=["x"])
+        flt = TukeyOutlierRemover(on="Size_Area", groupby=["x"])
         pipe.set_filters({"my_tukey": flt})
         assert "my_tukey" in pipe.get_filters()
 
@@ -146,19 +146,19 @@ class TestSetters:
 class TestJSONRoundTrip:
     def test_filters_and_model_round_trip(self):
         edge = EdgeCorrector(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Plate"],
             top_n=5,
             nrows=16,
             ncols=24,
         )
         tukey = TukeyOutlierRemover(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Plate"],
             k=2.0,
         )
         model = LogGrowthModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Plate"],
             time_label="Metadata_Time",
             lam=1.5,
@@ -215,7 +215,7 @@ class TestJSONRoundTrip:
             "model": {
                 "class": "EdgeCorrector",
                 "params": {
-                    "on": "Shape_Area",
+                    "on": "Size_Area",
                     "groupby": ["Metadata_Plate"],
                 },
             },
@@ -229,7 +229,7 @@ class TestJSONRoundTrip:
         # the ``n_jobs`` key and round-trips without consulting the alias
         # map.
         model = LinearLagModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Plate"],
             time_label="Metadata_Time",
             n_jobs=2,
@@ -246,7 +246,7 @@ class TestJSONRoundTrip:
         # ``_ANALYZER_INIT_ALIASES`` must translate it to ``n_jobs`` so
         # such payloads still load.
         seed_model = LinearLagModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Plate"],
             time_label="Metadata_Time",
             n_jobs=1,

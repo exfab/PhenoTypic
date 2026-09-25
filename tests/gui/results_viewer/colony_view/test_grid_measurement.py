@@ -31,7 +31,7 @@ from phenotypic.schema import IMAGE
 
 from tests._output_layout import write_master
 
-COLUMN = "Shape_Area"
+COLUMN = "Size_Area"
 
 #: The four colonies the grid renders, and the areas they carry.
 IN_VIEW: dict[tuple[str, str, int], float] = {

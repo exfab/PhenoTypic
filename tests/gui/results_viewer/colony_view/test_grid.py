@@ -52,7 +52,7 @@ def test_selectable_axis_columns_excludes_measurement_prefixes() -> None:
         {
             "Metadata_Strain": ["A", "B", "A"],
             "Bbox_MinRR": [1, 2, 3],
-            "Shape_Area": [10, 20, 30],
+            "Shape_Circularity": [10, 20, 30],
             "Size_Area": [11, 21, 31],
             "Intensity_Mean": [0.1, 0.2, 0.3],
             "Texture_Contrast-deg000-scale05": [0.0, 0.1, 0.2],
@@ -67,7 +67,7 @@ def test_selectable_axis_columns_excludes_measurement_prefixes() -> None:
     out = selectable_axis_columns(df, column_value_sets)
 
     assert "Bbox_MinRR" not in out
-    assert "Shape_Area" not in out
+    assert "Shape_Circularity" not in out
     assert "Size_Area" not in out
     assert "Intensity_Mean" not in out
     assert "Texture_Contrast-deg000-scale05" not in out

@@ -63,7 +63,7 @@ def test_final_store_embeds_an_interoperable_measurement_table(
     measurements = pd.DataFrame(
         {
             str(OBJECT.LABEL): [1, 2],
-            "Shape_Area": [4.0, 4.0],
+            "Size_Area": [4.0, 4.0],
             "Metadata_ImageName": ["plate.tif", "plate.tif"],
         }
     )
@@ -100,7 +100,7 @@ def test_final_store_embeds_an_interoperable_measurement_table(
         "path": "tables/measurements/table.parquet",
         "measurement_columns": [
             "Object_Label",
-            "Shape_Area",
+            "Size_Area",
             "Metadata_ImageName",
             "Metadata_Dataset",
         ],
@@ -131,7 +131,7 @@ def test_final_store_embeds_an_interoperable_measurement_table(
     duckdb_rows = (
         duckdb.connect()
         .execute(
-            "SELECT Object_Label, Shape_Area FROM read_parquet(?) ORDER BY Object_Label",
+            "SELECT Object_Label, Size_Area FROM read_parquet(?) ORDER BY Object_Label",
             [str(table_path)],
         )
         .fetchall()
@@ -149,13 +149,13 @@ def test_metadata_is_right_joined_before_embedding(tmp_path: Path) -> None:
     baseline = pd.DataFrame(
         {
             "Object_Label": [1, 2],
-            "Shape_Area": [8.0, 9.0],
+            "Size_Area": [8.0, 9.0],
         }
     )
 
     prepared = prepare_embedded_measurement_table(baseline, metadata_csv)
 
-    assert prepared.measurement_columns == ("Object_Label", "Shape_Area")
+    assert prepared.measurement_columns == ("Object_Label", "Size_Area")
     assert prepared.join_status == "joined"
     assert prepared.join_keys == ("Object_Label",)
     assert (
@@ -177,7 +177,7 @@ def test_duplicate_metadata_keys_fan_out_with_a_warning(
         "Object_Label,Metadata_Strain\n1,WT-a\n1,WT-b\n",
         encoding="utf-8",
     )
-    baseline = pd.DataFrame({"Object_Label": [1], "Shape_Area": [8.0]})
+    baseline = pd.DataFrame({"Object_Label": [1], "Size_Area": [8.0]})
 
     with caplog.at_level(logging.WARNING):
         prepared = prepare_embedded_measurement_table(baseline, metadata_csv)
@@ -192,7 +192,7 @@ def test_no_common_metadata_keys_keeps_measurements_unchanged(
     """Inventing a join key must not discard or expand measured rows."""
     metadata_csv = tmp_path / "metadata.csv"
     metadata_csv.write_text("Metadata_Strain\nWT\n", encoding="utf-8")
-    baseline = pd.DataFrame({"Object_Label": [1], "Shape_Area": [8.0]})
+    baseline = pd.DataFrame({"Object_Label": [1], "Size_Area": [8.0]})
 
     with caplog.at_level(logging.WARNING):
         prepared = prepare_embedded_measurement_table(baseline, metadata_csv)
@@ -210,7 +210,7 @@ def test_zero_object_table_is_valid_and_keeps_its_ordered_schema(
     measurements = pd.DataFrame(
         {
             "Object_Label": pd.Series(dtype="int64"),
-            "Shape_Area": pd.Series(dtype="float64"),
+            "Size_Area": pd.Series(dtype="float64"),
         }
     )
     store = _manager(tmp_path).save_image_store(
@@ -226,7 +226,7 @@ def test_zero_object_table_is_valid_and_keeps_its_ordered_schema(
     ]
     assert descriptor["measurement_columns"] == [
         "Object_Label",
-        "Shape_Area",
+        "Size_Area",
         "Metadata_Dataset",
     ]
     table = pq.read_table(store / MEASUREMENT_TABLE_RELATIVE_PATH)

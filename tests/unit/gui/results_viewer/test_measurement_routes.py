@@ -55,14 +55,14 @@ def _table() -> PreparedImageTables:
         measurements=pd.DataFrame(
             {
                 str(OBJECT.LABEL): labels,
-                "Shape_Area": [AREAS[label] for label in labels],
+                "Size_Area": [AREAS[label] for label in labels],
                 "ColorLab_MedoidColorHex": ["#a08866"] * len(labels),
             }
         ),
         metadata=None,
         measurement_columns=(
             str(OBJECT.LABEL),
-            "Shape_Area",
+            "Size_Area",
             "ColorLab_MedoidColorHex",
         ),
         join_status="not_requested",
@@ -139,10 +139,10 @@ def route(run_template: Path, tmp_path: Path) -> RouteFixture:
 
 def test_serves_one_column_keyed_by_object_label(route: RouteFixture) -> None:
     """Every declared label maps to the value written for THAT label."""
-    resp = route.get(column="Shape_Area")
+    resp = route.get(column="Size_Area")
     assert resp.status_code == 200
     payload = json.loads(resp.data)
-    assert payload["column"] == "Shape_Area"
+    assert payload["column"] == "Size_Area"
     assert payload["n"] == len(AREAS)
     assert payload["min"] == min(AREAS.values())
     assert payload["max"] == max(AREAS.values())
@@ -155,7 +155,7 @@ def test_serves_one_column_keyed_by_object_label(route: RouteFixture) -> None:
 
 def test_serves_only_the_requested_column(route: RouteFixture) -> None:
     """The other columns of the table do not ride along."""
-    payload = json.loads(route.get(column="Shape_Area").data)
+    payload = json.loads(route.get(column="Size_Area").data)
     assert set(payload) == {"column", "values", "min", "max", "n"}
     assert "ColorLab_MedoidColorHex" not in json.dumps(payload)
 
@@ -171,7 +171,7 @@ def test_non_finite_values_are_valid_json_nulls(
         "read_embedded_measurement_column",
         lambda *_args: {1: float("nan"), 2: float("inf"), 3: float("-inf")},
     )
-    response = route.get(column="Shape_Area")
+    response = route.get(column="Size_Area")
     assert response.status_code == 200
     assert b"NaN" not in response.data
     assert b"Infinity" not in response.data
@@ -224,7 +224,7 @@ def test_a_missing_column_parameter_is_400(route: RouteFixture) -> None:
 
 def test_an_unsafe_path_component_is_400(route: RouteFixture) -> None:
     assert route.client.get(
-        f"/measurements/{DATASET}/..?column=Shape_Area"
+        f"/measurements/{DATASET}/..?column=Size_Area"
     ).status_code in (400, 404)
 
 
@@ -234,14 +234,14 @@ def test_an_unsafe_path_component_is_400(route: RouteFixture) -> None:
 
 
 def test_an_unknown_image_is_404(route: RouteFixture) -> None:
-    assert route.get(stem="img-nope", column="Shape_Area").status_code == 404
+    assert route.get(stem="img-nope", column="Size_Area").status_code == 404
 
 
 def test_a_store_with_no_tables_descriptor_is_404(
     route: RouteFixture,
 ) -> None:
     """A ``--mode process`` run never measures. That is 404, not 'pending'."""
-    resp = route.get(stem=UNMEASURED_STEM, column="Shape_Area")
+    resp = route.get(stem=UNMEASURED_STEM, column="Size_Area")
     assert resp.status_code == 404
 
 
@@ -258,7 +258,7 @@ def test_a_store_this_build_cannot_decode_is_422(
     block = document["attributes"][PhenotypicAttr.ROOT]
     block[PhenotypicAttr.STORE_SCHEMA_VERSION] = 999_999
     root_json.write_text(json.dumps(document), encoding="utf-8")
-    assert route.get(column="Shape_Area").status_code == 422
+    assert route.get(column="Size_Area").status_code == 422
 
 
 def test_a_store_with_no_phenotypic_block_is_404(
@@ -273,4 +273,4 @@ def test_a_store_with_no_phenotypic_block_is_404(
     document = json.loads(root_json.read_text(encoding="utf-8"))
     document["attributes"].pop(PhenotypicAttr.ROOT)
     root_json.write_text(json.dumps(document), encoding="utf-8")
-    assert route.get(column="Shape_Area").status_code == 404
+    assert route.get(column="Size_Area").status_code == 404

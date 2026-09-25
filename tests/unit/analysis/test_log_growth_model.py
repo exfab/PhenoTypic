@@ -9,7 +9,7 @@ from phenotypic.schema import LOG_GROWTH_MODEL, MODEL_METRICS, qualified_header
 
 
 def _q(member):
-    """Qualified header for tests that fit on ``Shape_Area`` (token ``Area``)."""
+    """Qualified header for tests that fit on ``Size_Area`` (token ``Area``)."""
     return qualified_header(member, "Area")
 
 
@@ -66,7 +66,7 @@ class TestLogGrowthModel:
         df = pd.DataFrame(
                 {
                     "Metadata_Time"     : t_data,
-                    "Shape_Area"        : size_data,
+                    "Size_Area"        : size_data,
                     "Metadata_Dataset"  : ["Test"]*len(t_data),
                     "Metadata_Strain"   : ["Strain1"]*len(t_data),
                     "Metadata_Replicate": list(range(len(t_data))),
@@ -79,10 +79,10 @@ class TestLogGrowthModel:
         """Test LogGrowthModel initialization with various parameters."""
         # Test basic initialization
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+                on="Size_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
 
-        assert model.on == "Shape_Area"
+        assert model.on == "Size_Area"
         assert model.groupby == ["Metadata_Dataset", "Metadata_Strain"]
         assert model.time_label == "Metadata_Time"
         assert model.Kmax_label is None
@@ -120,7 +120,7 @@ class TestLogGrowthModel:
     def test_analyze_basic(self, sample_data):
         """Test basic model analysis functionality."""
         model = LogGrowthModel(
-                on="Shape_Area",
+                on="Size_Area",
                 groupby=["Metadata_Dataset", "Metadata_Strain"],
                 verbose=False,
         )
@@ -177,7 +177,7 @@ class TestLogGrowthModel:
         sample_data_with_kmax["Kmax_Value"] = 1200  # Higher than actual max
 
         model = LogGrowthModel(
-                on="Shape_Area",
+                on="Size_Area",
                 groupby=["Metadata_Dataset", "Metadata_Strain"],
                 Kmax_label="Kmax_Value",
         )
@@ -190,7 +190,7 @@ class TestLogGrowthModel:
     def test_parallel_processing(self, sample_data):
         """Test parallel processing functionality."""
         model_parallel = LogGrowthModel(
-                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"],
+                on="Size_Area", groupby=["Metadata_Dataset", "Metadata_Strain"],
                 n_jobs=2
         )
 
@@ -198,7 +198,7 @@ class TestLogGrowthModel:
 
         # Compare with single-threaded results
         model_single = LogGrowthModel(
-                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"],
+                on="Size_Area", groupby=["Metadata_Dataset", "Metadata_Strain"],
                 n_jobs=1
         )
 
@@ -212,7 +212,7 @@ class TestLogGrowthModel:
     def test_results_method(self, sample_data):
         """Test the results() method."""
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+                on="Size_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
 
         # Should return empty DataFrame if analyze hasn't been called
@@ -230,7 +230,7 @@ class TestLogGrowthModel:
     def test_show_method(self, sample_data):
         """Test the show() method for visualization."""
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+                on="Size_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
 
         model.analyze(sample_data)
@@ -259,7 +259,7 @@ class TestLogGrowthModel:
         combined_data = pd.concat([multi_strain_data, strain2_data], ignore_index=True)
 
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+                on="Size_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
 
         model.analyze(combined_data)
@@ -307,13 +307,13 @@ class TestLogGrowthModel:
         # But regularization and penalty terms will still contribute
         assert len(loss) > len(y)  # Should include regularization terms
 
-    @pytest.mark.parametrize("missing_column", ["Shape_Area", "Metadata_Time"])
+    @pytest.mark.parametrize("missing_column", ["Size_Area", "Metadata_Time"])
     def test_missing_columns(self, sample_data, missing_column):
         """Test behavior with missing required columns."""
         data_missing_col = sample_data.drop(columns=[missing_column])
 
         model = LogGrowthModel(
-                on="Shape_Area" if missing_column != "Shape_Area" else "Missing_Column",
+                on="Size_Area" if missing_column != "Size_Area" else "Missing_Column",
                 groupby=["Metadata_Dataset", "Metadata_Strain"],
         )
 
@@ -325,14 +325,14 @@ class TestLogGrowthModel:
         empty_df = pd.DataFrame(
                 columns=[
                     "Metadata_Time",
-                    "Shape_Area",
+                    "Size_Area",
                     "Metadata_Dataset",
                     "Metadata_Strain",
                 ]
         )
 
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+                on="Size_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
 
         with pytest.raises((ValueError, KeyError)):
@@ -343,14 +343,14 @@ class TestLogGrowthModel:
         single_point_df = pd.DataFrame(
                 {
                     "Metadata_Time"   : [0],
-                    "Shape_Area"      : [100],
+                    "Size_Area"      : [100],
                     "Metadata_Dataset": ["Test"],
                     "Metadata_Strain" : ["Strain1"],
                 }
         )
 
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+                on="Size_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
 
         # Should handle gracefully, possibly returning NaN values
@@ -369,7 +369,7 @@ class TestLogGrowthModel:
 
         if not real_subset.empty:
             model = LogGrowthModel(
-                    on="Shape_Area",
+                    on="Size_Area",
                     groupby=["Metadata_Condition", "Metadata_Strain"],
                     time_label="Metadata_Time",
                     verbose=False,
@@ -388,7 +388,7 @@ class TestLogGrowthModel:
     def test_verbose_output(self, sample_data, capsys):
         """Test verbose output functionality."""
         model = LogGrowthModel(
-                on="Shape_Area",
+                on="Size_Area",
                 groupby=["Metadata_Dataset", "Metadata_Strain"],
                 verbose=True,
         )
@@ -411,14 +411,14 @@ class TestLogGrowthModel:
         df = pd.DataFrame(
                 {
                     "Metadata_Time"   : t,
-                    "Shape_Area"      : y,
+                    "Size_Area"      : y,
                     "Metadata_Dataset": ["Test"]*len(t),
                     "Metadata_Strain" : ["Strain1"]*len(t),
                 }
         )
 
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+                on="Size_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
 
         results = model.analyze(df)
@@ -438,7 +438,7 @@ class TestLogGrowthModel:
         """Test different aggregation functions."""
         # Test with mean aggregation (default)
         model_mean = LogGrowthModel(
-                on="Shape_Area",
+                on="Size_Area",
                 groupby=["Metadata_Dataset", "Metadata_Strain"],
                 agg_func="mean",
         )
@@ -447,7 +447,7 @@ class TestLogGrowthModel:
 
         # Test with median aggregation
         model_median = LogGrowthModel(
-                on="Shape_Area",
+                on="Size_Area",
                 groupby=["Metadata_Dataset", "Metadata_Strain"],
                 agg_func="median",
         )
@@ -467,7 +467,7 @@ class TestLogGrowthModel:
         go = pytest.importorskip("plotly.graph_objects")
 
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+                on="Size_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
         model.analyze(sample_data)
 
@@ -487,7 +487,7 @@ class TestLogGrowthModel:
         )
 
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+                on="Size_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
         model.analyze(combined_data)
 
@@ -501,7 +501,7 @@ class TestLogGrowthModel:
         go = pytest.importorskip("plotly.graph_objects")
 
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+                on="Size_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
         model.analyze(sample_data)
 
@@ -515,7 +515,7 @@ class TestLogGrowthModel:
         pytest.importorskip("plotly.graph_objects")
 
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+                on="Size_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
         model.analyze(sample_data)
 
@@ -537,7 +537,7 @@ class TestLogGrowthModel:
         pytest.importorskip("plotly.graph_objects")
 
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+                on="Size_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
         model.analyze(sample_data)
 
@@ -551,7 +551,7 @@ class TestLogGrowthModel:
         pytest.importorskip("plotly.graph_objects")
 
         model = LogGrowthModel(
-                on="Shape_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
+                on="Size_Area", groupby=["Metadata_Dataset", "Metadata_Strain"]
         )
         model.analyze(sample_data)
 
@@ -566,7 +566,7 @@ def test_non_plotting_set_analyzer_has_no_legacy_dash_api():
     """Non-plotting analyzers do not inherit the plotting lifecycle."""
     from phenotypic.analysis.filter._tukey_outlier import TukeyOutlierRemover
 
-    analyzer = TukeyOutlierRemover(on="Shape_Area", groupby=["Group"], k=1.5)
+    analyzer = TukeyOutlierRemover(on="Size_Area", groupby=["Group"], k=1.5)
     assert not hasattr(analyzer, "dash")
     assert not hasattr(analyzer, "inspect")
     assert not hasattr(analyzer, "report")

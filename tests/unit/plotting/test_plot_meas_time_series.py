@@ -242,7 +242,7 @@ def _radius_frame() -> pd.DataFrame:
                                 "Metadata_Treatment": treatment,
                                 "Metadata_BioReplicate": replicate,
                                 "Metadata_Time": time,
-                                "Shape_MeanRadius": float(
+                                "Shape_MeanBoundaryDist": float(
                                     10 * strain_index
                                     + 3 * medium_index
                                     + 2 * treatment_index
@@ -259,7 +259,7 @@ def test_colony_radius_pages_group_conditions_and_preserve_replicates(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     plot = PlotColonyMetricOverTime(
-        on="Shape_MeanRadius",
+        on="Shape_MeanBoundaryDist",
         groupby=[
             "Metadata_Media",
             "Metadata_Treatment",
@@ -273,7 +273,7 @@ def test_colony_radius_pages_group_conditions_and_preserve_replicates(
         & (frame["Metadata_BioReplicate"] == "bio-1")
         & (frame["Metadata_Time"] == 12)
     ].copy()
-    duplicate["Shape_MeanRadius"] = 99.0
+    duplicate["Shape_MeanBoundaryDist"] = 99.0
     frame = pd.concat([frame, duplicate], ignore_index=True)
 
     output = plot.inspect(frame)
@@ -374,7 +374,7 @@ def test_colony_metric_rejects_removed_grouping_fields(
 ) -> None:
     with pytest.raises(ValidationError, match=removed_name):
         PlotColonyMetricOverTime(
-            on="Shape_MeanRadius",
+            on="Shape_MeanBoundaryDist",
             **{removed_name: value},
         )
 

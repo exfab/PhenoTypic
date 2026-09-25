@@ -33,7 +33,7 @@ class TestColumnsForParquet:
         df = pl.DataFrame(
             {
                 "Metadata_Strain": ["a", "b"],
-                "Shape_Area": [1.0, 2.0],
+                "Size_Area": [1.0, 2.0],
                 "Metadata_Time": [0, 1],
             }
         )
@@ -42,7 +42,7 @@ class TestColumnsForParquet:
         schema = MeasurementSchema(output_root=output_root)
         assert schema.columns_for("measurements") == [
             "Metadata_Strain",
-            "Shape_Area",
+            "Size_Area",
             "Metadata_Time",
         ]
 

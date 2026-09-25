@@ -211,7 +211,7 @@ def test_preflight_uses_every_source_level_production_join_key(
             {
                 image_key: ["plate_a"],
                 dataset_key: [source.name],
-                "Shape_Area": [1.0],
+                "Size_Area": [1.0],
             }
         ),
         metadata,
@@ -360,7 +360,7 @@ def test_preflight_warns_for_unregistered_custom_measurement_key(
             {
                 image_key: ["plate_a"],
                 custom_key: ["measurement-value"],
-                "Shape_Area": [1.0],
+                "Size_Area": [1.0],
             }
         ),
         metadata,

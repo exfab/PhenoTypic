@@ -64,7 +64,7 @@ def _logistic_growth_frame() -> pl.DataFrame:
                     "Metadata_Strain": strain,
                     "Metadata_Time": float(t),
                     "Object_Label": rep,
-                    "Shape_Area": float(n + (rep - 1) * 5),
+                    "Size_Area": float(n + (rep - 1) * 5),
                 })
     return pl.DataFrame(rows)
 
@@ -80,13 +80,13 @@ def output_root(tmp_path: Path) -> OutputRoot:
     pipeline = ImagePipeline(name="t")
     pipeline.set_filters({
         "tukey": TukeyOutlierRemover(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Strain"],
         )
     })
     pipeline.set_model(
         LogGrowthModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Strain"],
             time_label="Metadata_Time",
         )
@@ -179,9 +179,9 @@ class TestPreviewFlow:
         self, output_root: OutputRoot
     ) -> None:
         pipeline = ImagePipeline(name="t")
-        edge = EdgeCorrector(on="Shape_Area", groupby=["Metadata_Strain"])
+        edge = EdgeCorrector(on="Size_Area", groupby=["Metadata_Strain"])
         model = LogGrowthModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Strain"],
             time_label="Metadata_Time",
         )
@@ -199,7 +199,7 @@ class TestPreviewFlow:
         self, output_root: OutputRoot
     ) -> None:
         model = LogGrowthModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Strain"],
             time_label="Metadata_Time",
         )
@@ -241,7 +241,7 @@ class TestPreviewFlow:
         # A bad cmap pref must surface as an inline error card, proving the
         # plotting prefs are actually threaded into the viz call.
         model = LogGrowthModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Strain"],
             time_label="Metadata_Time",
         )
