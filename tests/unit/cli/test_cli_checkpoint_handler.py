@@ -602,6 +602,85 @@ class TestRunFinalizeCoercion:
         assert attempts == 2
 
 
+class TestRunFinalizeStepLogging:
+    """Each finalizer step logs its start and its duration.
+
+    The start line is what matters: a finalizer killed at its walltime never
+    logs "done", so the last "started" line names the step it was in.
+    """
+
+    _STEPS = (
+        "finalize: wait for image completion",
+        "finalize: wait for aggregation shards",
+        "finalize: aggregate measurements",
+        "finalize: build manifest",
+        "finalize: generate dashboard",
+    )
+
+    def _run_logged(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture, **patches
+    ) -> list[str]:
+        output_dir = tmp_path / "out"
+        progress_dir = output_dir / "progress"
+        _write_job_metadata(progress_dir, NESTED_DATASETS)
+        with (
+            patch(
+                "phenotypic._cli._cli_checkpoint_handler._wait_for_completion"
+            ),
+            patch("phenotypic._cli._cli_output_manager.aggregate_measurements"),
+            patch(
+                "phenotypic._cli._dashboard._manifest_builder.build_manifest",
+                **patches,
+            ),
+            patch("phenotypic._cli._dashboard._generator.generate_dashboard"),
+            caplog.at_level(
+                "INFO", logger="phenotypic._cli._cli_checkpoint_handler"
+            ),
+        ):
+            _run_finalize(output_dir, progress_dir)
+        return [record.getMessage() for record in caplog.records]
+
+    def test_every_step_logs_start_then_duration_in_order(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        messages = self._run_logged(tmp_path, caplog)
+
+        step_lines = [m for m in messages if m.startswith("finalize: ")]
+        expected = []
+        for step in self._STEPS:
+            expected += [f"{step}: started", f"{step}: done in"]
+        assert [
+            line if line.endswith(": started") else line.rsplit(" ", 1)[0]
+            for line in step_lines
+        ] == expected
+        assert all(
+            line.endswith("s")
+            for line in step_lines
+            if ": done in " in line
+        )
+
+    def test_a_failing_step_logs_its_failure_and_still_raises(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with pytest.raises(RuntimeError, match="manifest exploded"):
+            self._run_logged(
+                tmp_path,
+                caplog,
+                side_effect=RuntimeError("manifest exploded"),
+            )
+
+        messages = [record.getMessage() for record in caplog.records]
+        assert "finalize: build manifest: started" in messages
+        assert any(
+            m.startswith("finalize: build manifest: failed after ")
+            for m in messages
+        )
+        assert not any(
+            m.startswith("finalize: build manifest: done in") for m in messages
+        )
+        assert "finalize: generate dashboard: started" not in messages
+
+
 class TestProcessExportManifestRejectsIncompleteRun:
     """The process/export finalizer must fail when a chunk failed.
 

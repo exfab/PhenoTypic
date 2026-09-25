@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 import json
 import subprocess
+import time
 from collections.abc import Collection, Mapping
 from dataclasses import asdict
 from datetime import datetime
@@ -496,6 +497,18 @@ def build_manifest(
         processing_generation: Durable processing generation. Tagged events
             from other generations are excluded.
     """
+    # Phase checkpoints rather than wrapped blocks: the gap between two lines is
+    # that phase's duration, and the last line in a walltime-killed job's log
+    # names the phase it died in (one did, 24 minutes in, with no log line).
+    build_started = time.monotonic()
+
+    def _phase_done(phase: str) -> None:
+        logger.info(
+            "build_manifest: %s (%.1fs elapsed)",
+            phase,
+            time.monotonic() - build_started,
+        )
+
     event_log = resolve_event_log_path(output_dir)
     if dataset_inventory is not None:
         inventory_totals = {
@@ -517,6 +530,16 @@ def build_manifest(
     )
     dataset_states = aggregation.datasets
     diagnostics = aggregation.diagnostics
+    _phase_done(
+        "event log aggregated, "
+        + ", ".join(
+            f"{name}: {len(state.completed)} completed / "
+            f"{len(state.failed)} failed / {len(state.in_progress)} in progress"
+            for name, state in dataset_states.items()
+        )
+        if dataset_states
+        else "event log aggregated, no current-generation events"
+    )
     if (
         diagnostics.malformed_events
         or diagnostics.unknown_image_events
@@ -524,10 +547,12 @@ def build_manifest(
     ):
         logger.warning(
             "Ignored processing events while building manifest: malformed=%d, "
-            "unknown_images=%d, other_generations=%d, samples=%s",
+            "unknown_images=%d, other_generations=%d (current generation=%s), "
+            "samples=%s",
             diagnostics.malformed_events,
             diagnostics.unknown_image_events,
             diagnostics.other_generation_events,
+            processing_generation,
             diagnostics.samples,
         )
 
@@ -560,6 +585,7 @@ def build_manifest(
 
     terminal_by_work_id = terminal_failure_index(output_dir)
     matched_terminal_records = []
+    _phase_done("work ids and terminal-failure journal loaded")
 
     # 3-4. SLURM-specific queries.
     is_slurm = execution_mode == "slurm"
@@ -591,8 +617,15 @@ def build_manifest(
         # always provide a mapping; in that case we skip detection.
         # detect_silent_failures is called by the orchestrator which has
         # the mapping available; here we only do chunk-state queries.
+        _phase_done("SLURM chunk states resolved")
 
     # 5. Build the manifest dict.
+    if success_markers_required:
+        logger.info(
+            "build_manifest: verifying the success record of each of %d "
+            "images",
+            sum(datasets.values()),
+        )
     total_images = sum(datasets.values())
     global_completed = 0
     global_failed = 0
@@ -713,6 +746,10 @@ def build_manifest(
     global_pending = (
         total_images - global_completed - global_failed - global_in_progress
     )
+    _phase_done(
+        f"per-image tally done: {global_completed} successful, "
+        f"{global_failed} terminal-failed"
+    )
 
     if (global_completed + global_failed) > 0:
         success_rate = global_completed / (global_completed + global_failed)
@@ -726,6 +763,7 @@ def build_manifest(
     )
 
     aggregate_marker = valid_aggregate_snapshot(output_dir)
+    _phase_done("aggregate proof checked")
     # P6 Task 0: NOT `resolve_run_state(...).completion`. This site asks
     # *"have the accepted images succeeded?"* -- see the comment below, which
     # compares **marker evidence** against a counting path -- and it runs
@@ -734,6 +772,7 @@ def build_manifest(
     # question and is `False` here for a reason that has nothing to do with
     # the images.
     marker_completion = _all_accepted_images_succeeded(output_dir)
+    _phase_done("accepted-image success checked")
     is_complete = (
         global_completed == total_images
         if marker_completion is None
@@ -824,6 +863,7 @@ def build_manifest(
     # 6. Write manifest atomically.
     manifest_path = progress_dir / MANIFEST_JSON
     atomic_write_json(manifest_path, manifest, sort_keys=False)
+    _phase_done("manifest written")
 
     logger.debug(
         "Wrote manifest: %d/%d completed, %d failed, %d pending",
