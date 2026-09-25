@@ -49,12 +49,34 @@ def _display_execution_backend(config: ExecutionConfig) -> str:
     return "slurm" if is_slurm else "local"
 
 
-def _display_slurm_config(slurm_args: dict) -> None:
+def _submitted_slurm_profiles(config: ExecutionConfig) -> list[tuple[str, dict]]:
+    """Every SBATCH profile the run submits, as the run preflight computes them.
+
+    One definition (``_cli_preflight._slurm_profiles``): a staged GPU run adds
+    the GPU stage's profile, and a GPU pipeline the non-staged strategy runs
+    submits ``--slurm`` with a GPU request added (Phase E review E9). Falls
+    back to the ``--slurm`` profile alone when the pipeline cannot be read;
+    the validation above reports that.
+    """
+    from ._cli_preflight import PreflightContext, _slurm_profiles, run_mode_of
+
+    try:
+        from phenotypic import ImagePipeline
+
+        pipeline = ImagePipeline.from_json(config.pipeline_json)
+        return _slurm_profiles(
+            PreflightContext(config=config, pipeline=pipeline, datasets=(), mode=run_mode_of(config))
+        )
+    except Exception:  # noqa: BLE001 -- a preview must not fail the dry run
+        return [("CPU profile (--slurm)", dict(config.slurm_args))]
+
+
+def _display_slurm_config(slurm_args: dict, label: str = "") -> None:
     """Display SLURM configuration parameters as table."""
     if not slurm_args:
         return
 
-    click.echo("\n  SLURM Configuration Parameters:")
+    click.echo(f"\n  SLURM Configuration Parameters{f' ({label})' if label else ''}:")
     for key, value in slurm_args.items():
         click.echo(f"    {key:.<30} {value}")
 
@@ -191,7 +213,8 @@ def execute_dry_run(
 
     # Backend-specific configuration
     if backend == "slurm":
-        _display_slurm_config(config.slurm_args)
+        for label, profile in _submitted_slurm_profiles(config):
+            _display_slurm_config(profile, label)
     else:
         _display_local_config(config)
 

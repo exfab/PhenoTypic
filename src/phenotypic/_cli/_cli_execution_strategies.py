@@ -906,20 +906,25 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         if not measure_only and pipeline_requires_gpu(
             self.config.pipeline_json
         ):
-            slurm_args = dict(self.config.slurm_args)
+            from phenotypic.sdk_.slurm import (
+                effective_sbatch_option,
+                with_default_gpu_request,
+            )
 
-            if "slurm_gpus_per_node" not in slurm_args:
-                slurm_args["slurm_gpus_per_node"] = 1
+            if "slurm_gpus_per_node" not in self.config.slurm_args:
                 console.print(
                     "[yellow]Pipeline contains GPU operations — "
                     "auto-requesting --gpus-per-node=1[/yellow]"
                 )
+            slurm_args = with_default_gpu_request(self.config.slurm_args)
 
-            partition = slurm_args.get("slurm_partition")
+            # The partition sbatch will use, in either spelling (review E3).
+            partition = effective_sbatch_option(slurm_args, "partition")
             if partition:
-                # The shared check reads sinfo's exit status first, so an
-                # unknown partition is reported as such rather than as "no
-                # GPUs"; sinfo absent or hung still proceeds (spec F18).
+                # The shared check refuses only when sinfo positively lists
+                # the partition's GRES and none is a GPU; an unknown partition,
+                # a hidden one, or an absent or failing sinfo proceeds, and
+                # sbatch reports the real fault (spec F18, review E5/E6).
                 from phenotypic.sdk_.slurm._config import partition_gres_error
 
                 gres_error = partition_gres_error(partition)

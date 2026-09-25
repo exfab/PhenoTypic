@@ -287,40 +287,49 @@ def partition_gres_error(
     partition: str,
     run: "Callable[..., subprocess.CompletedProcess[str]] | None" = None,
 ) -> Optional[str]:
-    """Why *partition* cannot serve a GPU request, or ``None`` if it can.
+    """Why *partition* cannot serve a GPU request, or ``None`` if it can or if unknown.
 
     The one GRES check, shared by ``AutonomousSLURMStrategy`` and the run
-    preflight (spec 2026-09-24-cli-preflight §6, F18). ``sinfo``'s exit status
-    is read FIRST: an unknown partition leaves ``stdout`` empty, and reading
-    only ``stdout`` reported that as "has no GPUs", naming the wrong fault.
+    preflight (spec 2026-09-24-cli-preflight §6, F18). It answers only when
+    ``sinfo`` positively lists the partition's GRES and none is a GPU; every
+    other outcome is "cannot tell" and returns ``None``, because this result
+    refuses a run (Phase E review E5, E6):
+
+    - ``sinfo`` exits 0 with empty output for an unknown partition (it filters
+      locally and has no error path for a name that matches nothing), and
+      also when a site hides node data (``PrivateData=nodes``). ``sbatch
+      --test-only`` reports an unknown partition precisely.
+    - A nonzero exit is a controller or client fault, not a GRES fact.
+    - ``--Format=gres`` truncates to 20 characters, which can cut a later
+      ``gpu`` entry off (``shard:a100:64(S:0-1),gpu:...``); ``-o %G`` does
+      not truncate. A GPU is a GRES entry NAMED ``gpu``, not the substring.
 
     Args:
-        partition: The ``slurm_partition`` value.
+        partition: The partition the job will run in.
         run: Runs ``(command, timeout=...)`` and returns a completed process;
             defaults to ``subprocess.run`` capturing text output.
 
     Returns:
-        A message naming the problem, or ``None`` when the partition lists a
-        GPU GRES, or when ``sinfo`` is absent or times out (nothing to say).
+        A message naming the problem, or ``None``.
     """
+    import re
+
     runner = run or (
         lambda command, timeout: subprocess.run(
             command, capture_output=True, text=True, timeout=timeout
         )
     )
     try:
-        result = runner(
-            ["sinfo", "-p", partition, "--Format=gres", "--noheader"], timeout=10
-        )
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+        result = runner(["sinfo", "-p", partition, "-h", "-o", "%G"], timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
         return None
-    if result.returncode != 0:
-        detail = (result.stderr or result.stdout or "").strip()
-        return f"sinfo could not read partition {partition!r}: {detail}"
-    gres = (result.stdout or "").strip()
-    if "gpu" not in gres.lower():
+    rows = [row.strip() for row in (result.stdout or "").splitlines() if row.strip()]
+    if result.returncode != 0 or not rows:
+        return None
+    gpu_entry = re.compile(r"(?:^|,)\s*gpu(?::|\(|,|$)")
+    if not any(gpu_entry.search(row) for row in rows):
         return (
-            f"partition {partition!r} has no GPUs (sinfo gres: {gres!r}); use "
-            "a GPU partition for the GPU stage"
+            f"partition {partition!r} has no GPUs (sinfo GRES: {', '.join(rows)!r}); "
+            "use a GPU partition for the GPU stage"
         )
     return None

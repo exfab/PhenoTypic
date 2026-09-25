@@ -2002,3 +2002,34 @@ def test_local_validate_carries_no_cluster_options(
     (argv,) = started
     assert "--dry-run" in argv
     assert _cluster_tokens(argv) == []
+
+
+def test_slurm_validate_with_an_empty_slurm_form_is_refused_like_run(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Review E12 asked for this refusal; it already holds, from the form-state
+    validation (``_state.py``), before any argv is built. Pinned here so
+    Validate can never dry-run a local run for an empty SLURM form."""
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+    runner = LocalRunner()
+    app = create_app(sandbox, registry=registry, runner=runner)
+    pipeline = tmp_path / "pipeline.json"
+    images = tmp_path / "images"
+    output = tmp_path / "output"
+    pipeline.write_text('{"operations": []}', encoding="utf-8")
+    images.mkdir()
+    output.mkdir()
+    values: list[Any] = [None] * 20
+    values[:5] = [str(pipeline), str(images), str(output), "slurm", []]
+    values[18] = 1
+    controls = _guard_action_controls(sandbox, tuple(values))
+    started: list[list[str]] = []
+    monkeypatch.setattr(runner, "start", lambda run_id, argv, **kwargs: started.append(argv))
+
+    response = _callback_by_name(app, "click_action")(1, 0, *controls, 0)
+
+    assert started == []
+    assert "SLURM mode requires a nonempty CPU SLURM profile" in response[1]
+    assert registry.list() == []

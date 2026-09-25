@@ -15,11 +15,30 @@ import pytest
 
 from phenotypic import ImagePipeline
 from phenotypic._cli import _cli_preflight
-from phenotypic._cli._cli_preflight import check_output_location
+from phenotypic._cli._cli_preflight import (
+    CHECKS,
+    check_node_local_paths,
+    check_output_space,
+    check_output_writable,
+)
 from phenotypic.detect import OtsuDetector
 from phenotypic.measure import MeasureSize
 from phenotypic.post import JoinMetadata
 from tests.unit.cli._preflight_support import make_context, make_datasets
+
+
+def check_output_location(context):
+    """The three output-location checks together, as the preflight runs them."""
+    return [
+        *check_output_writable(context),
+        *check_output_space(context),
+        *check_node_local_paths(context),
+    ]
+
+
+def test_the_three_checks_are_registered_separately() -> None:
+    """Review E13: one check's fault must not hide another's finding."""
+    assert {check_output_writable, check_output_space, check_node_local_paths} <= set(CHECKS)
 
 
 def _pipeline(**post) -> ImagePipeline:
@@ -48,6 +67,16 @@ def test_an_unwritable_ancestor_is_an_error(tmp_path: Path) -> None:
 
     assert finding.code == "PF-OUTPUT-UNWRITABLE" and finding.severity == "error"
     assert str(locked) in finding.message
+
+
+def test_an_unwritable_ancestor_is_an_error_whoever_runs_the_test(tmp_path: Path, monkeypatch) -> None:
+    """Review E10 (M20): the test above skips as root, as CI containers often run."""
+    monkeypatch.setattr(os, "access", lambda path, mode: False)
+
+    (finding,) = check_output_writable(make_context(_pipeline(), output_dir=tmp_path / "run" / "out"))
+
+    assert finding.code == "PF-OUTPUT-UNWRITABLE" and finding.severity == "error"
+    assert str(tmp_path) in finding.message
 
 
 def test_a_writable_output_that_does_not_exist_yet_is_fine(tmp_path: Path) -> None:
@@ -92,6 +121,14 @@ def test_the_space_heuristic_runs_in_full_mode_only(tmp_path: Path, monkeypatch,
     ) == []
 
 
+def test_exactly_enough_space_is_fine(tmp_path: Path, monkeypatch) -> None:
+    """Review E10 (M23b): the boundary: free space equal to the inputs' size."""
+    datasets = _big_input(tmp_path, size=4096)
+    _short_on_space(monkeypatch, free=4096)
+
+    assert check_output_space(make_context(_pipeline(), datasets=datasets, output_dir=tmp_path / "out")) == []
+
+
 def test_enough_space_is_fine(tmp_path: Path) -> None:
     datasets = _big_input(tmp_path)
 
@@ -112,6 +149,10 @@ MOUNTS = "\n".join(
         "lustre /lus lustre rw 0 0",
         "home:/export /rhome nfs4 rw 0 0",
         "tmpfs /bigdata/with\\040space tmpfs rw 0 0",
+        "tmpfs /bigdata/with\\011tab tmpfs rw 0 0",
+        "/dev/sdb1 /over xfs rw 0 0",
+        "gpfs1 /over gpfs rw 0 0",
+        "overlay /image overlay rw 0 0",
     ]
 ) + "\n"
 
@@ -201,3 +242,18 @@ def test_the_longest_mount_wins() -> None:
 
     assert fs == "tmpfs"
     assert _cli_preflight._filesystem_type(Path("/bigdata/x"), MOUNTS) == "gpfs"
+
+
+def test_a_later_mount_at_the_same_point_wins() -> None:
+    """Review E8: a later entry covers an earlier one at the same mount point."""
+    assert _cli_preflight._filesystem_type(Path("/over/run"), MOUNTS) == "gpfs"
+
+
+def test_every_octal_escape_is_decoded() -> None:
+    """Review E8: /proc/self/mounts escapes tab, newline and backslash too."""
+    assert _cli_preflight._filesystem_type(Path("/bigdata/with\ttab/x"), MOUNTS) == "tmpfs"
+
+
+def test_a_container_image_path_is_not_node_local(mounts) -> None:
+    """Review E8: overlay is a container image's root, shared by every worker running it."""
+    assert _node_local(check_output_location(_slurm_context(pipeline_json=Path("/image/p.json")))) is None

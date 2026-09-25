@@ -189,8 +189,9 @@ HINTS: dict[str, str] = {
         "misspelled key); nothing was submitted."
     ),
     "PF-SBATCH-UNAVAILABLE": (
-        "The profile could not be checked; the run will still report a real "
-        "submission failure when it submits."
+        "The profile could not be confirmed. If sbatch's message names drained or "
+        "unavailable nodes, the job will queue until they return; otherwise the "
+        "run still reports a real submission failure when it submits."
     ),
     "PF-TIME-OVER-PARTITION": (
         "Lower the requested time to the partition's MaxTime, or choose a "
@@ -201,8 +202,9 @@ HINTS: dict[str, str] = {
         "GPU engine needs 3 submission slots and one GPU array chunk."
     ),
     "PF-GPU-PARTITION": (
-        "Point the GPU stage at a partition with GPUs: "
-        "--gpu-slurm slurm_partition=<gpu-partition>."
+        "Point the GPU job at a partition with GPUs: "
+        "--gpu-slurm slurm_partition=<gpu-partition> for a staged run, or "
+        "--slurm slurm_partition=<gpu-partition> for --mode process."
     ),
     "PF-OUTPUT-UNWRITABLE": (
         "Choose an --output you can write to, or fix the directory's permissions."
@@ -215,7 +217,8 @@ HINTS: dict[str, str] = {
     "PF-NODE-LOCAL": (
         "Put these paths on shared storage (e.g. /bigdata or a home "
         "directory): compute nodes cannot see another node's local disk or "
-        "tmpfs."
+        "tmpfs. On a login node that itself exports the path over NFS, the "
+        "warning can be spurious: compute nodes then see it as nfs."
     ),
     "PF-NO-DETECTOR": (
         "Add an object detector (for example OtsuDetector) to the pipeline's "
@@ -595,6 +598,21 @@ SBATCH_COMMUNICATION_PATTERNS: tuple[str, ...] = (
     "Transport endpoint is not connected",
 )
 
+#: ``sbatch --test-only`` failures that name a configuration fault a real
+#: submission rejects in the same way, matched case-insensitively. Only these
+#: are errors (Phase E review E1). The controller strings are Slurm's
+#: ``slurm_errno.c`` (SchedMD/slurm ``master``, read 2026-09-25, lines 221,
+#: 415, 427, 521); the last two are ``sbatch``'s own option parsing, which
+#: reads the same script either way.
+SBATCH_REJECTION_PATTERNS: tuple[str, ...] = (
+    "invalid partition name specified",
+    "invalid account or account/partition combination specified",
+    "invalid qos specification",
+    "invalid generic resource (gres) specification",
+    "unrecognized option",
+    "invalid option",
+)
+
 
 def _scheduler_available(name: str) -> bool:
     """Whether the Slurm client *name* is on ``PATH``."""
@@ -635,10 +653,35 @@ def _staged_slurm_run(context: PreflightContext) -> bool:
         return False  # an unstageable placement is refused before this runs
 
 
+def _autonomous_gpu_run(context: PreflightContext) -> bool:
+    """A GPU pipeline that ``AutonomousSLURMStrategy`` runs (not staged, not ``measure``).
+
+    That strategy submits the ``--slurm`` profile with a GPU request added
+    (``with_default_gpu_request``), so the preflight tests that profile, not
+    the bare one (Phase E review E2). ``--mode process`` is this case.
+    """
+    config = context.config
+    if context.mode == "measure" or not config.is_slurm_mode() or _staged_slurm_run(context):
+        return False
+    from ._cli_validation import find_gpu_detectors
+
+    try:
+        return bool(find_gpu_detectors(context.pipeline))
+    except ValueError:
+        return False
+
+
 def _slurm_profiles(context: PreflightContext) -> list[tuple[str, dict[str, Any]]]:
     """``(label, args)`` for every SBATCH profile the run will submit."""
     if not context.config.is_slurm_mode():
         return []
+    if _autonomous_gpu_run(context):
+        from phenotypic.sdk_.slurm import with_default_gpu_request
+
+        return [(
+            "profile (--slurm, with the GPU request the run adds)",
+            with_default_gpu_request(context.config.slurm_args),
+        )]
     profiles = [("CPU profile (--slurm)", dict(context.config.slurm_args))]
     if _staged_slurm_run(context):
         from ._cli_staged_slurm import resolve_stage_slurm_args
@@ -673,11 +716,20 @@ def render_test_script(profile: dict[str, Any]) -> str:
 def check_slurm_profiles(context: PreflightContext) -> list[PreflightFinding]:
     """``PF-SBATCH-REJECTED``: ``sbatch --test-only`` refuses a profile.
 
-    Spec §6, F17. Validates partition, account, QoS, time, memory, GPU requests
-    and misspelled keys in one call per profile, without submitting a job and
-    without writing a file (the script goes on stdin). The environment is the
-    one ``submit_script`` uses, so ``SBATCH_*`` variables apply identically.
-    Anything that is not a clear rejection is ``PF-SBATCH-UNAVAILABLE``.
+    Spec §6, F17. Tests each profile the run submits in one call, without
+    submitting a job and without writing a file (the script goes on stdin).
+    The environment is the one ``submit_script`` uses, so ``SBATCH_*``
+    variables apply identically.
+
+    Only a failure in ``SBATCH_REJECTION_PATTERNS`` is an error. Every other
+    failure is the ``PF-SBATCH-UNAVAILABLE`` warning, carrying sbatch's
+    message, because ``--test-only`` fails where a real submission queues:
+    its will-run test ignores DOWN and DRAINED nodes ("Requested node
+    configuration is not available" during a maintenance drain), it does not
+    retry a full queue or a busy controller as ``sbatch`` does, and it reports
+    controller and authentication faults that say nothing about the profile
+    (Phase E review E1, from Slurm's ``job_scheduler.c``, ``job_mgr.c`` and
+    ``sbatch.c``).
     """
     profiles = _slurm_profiles(context)
     if not profiles:
@@ -713,12 +765,17 @@ def check_slurm_profiles(context: PreflightContext) -> list[PreflightFinding]:
         if result.returncode == 0:
             continue
         detail = (result.stderr or result.stdout or "").strip()
-        if any(pattern in detail for pattern in SBATCH_COMMUNICATION_PATTERNS):
-            findings.append(unavailable(detail))
-        else:
+        if any(pattern in detail.lower() for pattern in SBATCH_REJECTION_PATTERNS):
             findings.append(PreflightFinding(
                 "PF-SBATCH-REJECTED", "error",
                 f"sbatch --test-only rejected the {label}: {detail}",
+            ))
+        elif any(pattern in detail for pattern in SBATCH_COMMUNICATION_PATTERNS):
+            findings.append(unavailable(detail))
+        else:
+            findings.append(unavailable(
+                f"sbatch --test-only did not accept the {label}, for a reason a "
+                f"real submission may queue through (e.g. drained nodes): {detail}"
             ))
     return findings
 
@@ -775,30 +832,50 @@ def _enforce_part_limits() -> "str | None":
     return match.group(1).upper() if match else None
 
 
+def _effective_option(profile: dict[str, Any], option: str, env_var: str) -> "str | None":
+    """What ``sbatch`` will use for ``--<option>``: its ``SBATCH_*`` variable, else the script.
+
+    ``sbatch`` lets input environment variables override options set in the
+    batch script (``sbatch.1``, INPUT ENVIRONMENT VARIABLES, NOTE), and the
+    preflight hands ``sbatch`` the submission environment, so the variable
+    comes first. The script's value is read back from the rendered
+    directives, so either key spelling counts (Phase E review E3, E7).
+    """
+    from phenotypic.sdk_.slurm import effective_sbatch_option, sbatch_submission_environment
+
+    return (
+        sbatch_submission_environment().get(env_var)
+        or effective_sbatch_option(profile, option)
+    )
+
+
 def check_partition_time(context: PreflightContext) -> list[PreflightFinding]:
     """``PF-TIME-OVER-PARTITION``: a time limit above the partition's ``MaxTime``.
 
     Spec §6, F19 (review R11). A warning, not an error: a QOS with
     ``Flags=PartitionTimeLimit`` may override the partition limit, and the
-    preflight does not resolve QOS flags. The wording follows the live
-    ``EnforcePartLimits``: under ``NO`` the job is accepted and pends
-    indefinitely; otherwise it is rejected at submission.
+    preflight does not resolve QOS flags.
+
+    For a partition list the rule is ``EnforcePartLimits``'s (``slurm.conf.5``):
+    under ``ALL`` the job must satisfy every requested partition, so the
+    tightest ``MaxTime`` decides and the job is rejected; under ``ANY`` it is
+    accepted if it satisfies one, and under ``NO`` it stays queued only when it
+    exceeds all of them, so the loosest decides (Phase E review E7).
     """
     profiles = _slurm_profiles(context)
     if not profiles or not _scheduler_available("scontrol"):
         return []
-    from phenotypic.sdk_.slurm import parse_slurm_time
-
     findings: list[PreflightFinding] = []
     enforce: "str | None" = None
     for label, profile in profiles:
-        requested = profile.get("slurm_time", profile.get("time"))
+        requested = _effective_option(profile, "time", "SBATCH_TIMELIMIT")
         if requested is None:
             continue
-        minutes = parse_slurm_duration_minutes(parse_slurm_time(requested) or "")
+        minutes = parse_slurm_duration_minutes(requested)
         if minutes is None:
             continue
-        names = [n for n in str(profile.get("slurm_partition", "")).split(",") if n]
+        partition = _effective_option(profile, "partition", "SBATCH_PARTITION")
+        names = [n for n in str(partition or "").split(",") if n]
         if names:
             blocks = []
             for name in names:
@@ -813,22 +890,31 @@ def check_partition_time(context: PreflightContext) -> list[PreflightFinding]:
             (b.get("PartitionName", "?"), b.get("MaxTime", ""), parse_slurm_duration_minutes(b.get("MaxTime", "")))
             for b in blocks
         ]
-        limits = [entry for entry in limits if entry[2] is not None]
         if not limits:
             continue
-        name, max_time, limit = min(limits, key=lambda entry: entry[2])
-        if minutes <= limit:
+        # An UNLIMITED partition satisfies any time, and so does any list holding one.
+        bounded = [entry for entry in limits if entry[2] is not None]
+        tightest = min(bounded, key=lambda entry: entry[2]) if bounded else None
+        if tightest is None or minutes <= tightest[2]:
             continue
         if enforce is None:
             enforce = _enforce_part_limits() or "UNKNOWN"
-        outcome = {
-            "NO": "accepted and then pend indefinitely (EnforcePartLimits=NO)",
-            "UNKNOWN": "pend or be rejected (EnforcePartLimits could not be read)",
-        }.get(enforce, f"be rejected at submission (EnforcePartLimits={enforce})")
+        if enforce == "ALL":
+            name, max_time, _ = tightest
+        else:
+            if len(bounded) < len(limits):
+                continue
+            name, max_time, loosest = max(bounded, key=lambda entry: entry[2])
+            if minutes <= loosest:
+                continue
+        consequence = {
+            "NO": "the job would be accepted and then pend indefinitely (EnforcePartLimits=NO)",
+            "UNKNOWN": "the job would pend or be rejected (EnforcePartLimits could not be read)",
+        }.get(enforce, f"the job would be rejected at submission (EnforcePartLimits={enforce})")
         findings.append(PreflightFinding(
             "PF-TIME-OVER-PARTITION", "warning",
             f"the {label} requests {requested}, above MaxTime {max_time} of "
-            f"partition {name}; the job would be {outcome}",
+            f"partition {name}; {consequence}",
         ))
     return findings
 
@@ -860,21 +946,35 @@ def check_staged_slurm_limits(context: PreflightContext) -> list[PreflightFindin
 
 
 def check_gpu_partition(context: PreflightContext) -> list[PreflightFinding]:
-    """``PF-GPU-PARTITION``: the GPU stage's partition cannot serve GPUs.
+    """``PF-GPU-PARTITION``: the GPU profile's partition lists no GPU.
 
-    Spec §6, F18. Staged forward runs never reached the strategy's own GRES
-    check; this asks the same shared function, which reads ``sinfo``'s exit
-    status first so an unknown partition is not reported as "no GPUs".
+    Spec §6, F18. The staged GPU stage's profile, or, for a GPU pipeline the
+    non-staged strategy runs (``--mode process``), the profile with the GPU
+    request that strategy adds (Phase E review E2). The partition is the one
+    ``sbatch`` will use (review E3), and ``partition_gres_error`` answers only
+    when ``sinfo`` positively lists that partition's GRES (review E5, E6).
     """
-    if not _staged_slurm_run(context) or not _scheduler_available("sinfo"):
+    if not _scheduler_available("sinfo"):
         return []
+    if _staged_slurm_run(context):
+        from ._cli_staged_slurm import resolve_stage_slurm_args
+
+        profile = resolve_stage_slurm_args(
+            context.config.gpu_slurm_args, context.config.slurm_args
+        )
+        which = "the GPU stage's"
+    elif _autonomous_gpu_run(context):
+        (_, profile), = _slurm_profiles(context)
+        which = "the GPU pipeline's"
+    else:
+        return []
+    from phenotypic.sdk_.slurm import effective_sbatch_option
     from phenotypic.sdk_.slurm._config import partition_gres_error
 
-    from ._cli_staged_slurm import resolve_stage_slurm_args
-
-    profile = resolve_stage_slurm_args(context.config.gpu_slurm_args, context.config.slurm_args)
-    partition = profile.get("slurm_partition")
-    if not partition or not profile.get("slurm_gpus_per_node"):
+    if effective_sbatch_option(profile, "gpus-per-node") in (None, "0"):
+        return []  # no GPU requested (an explicit slurm_gpus_per_node=0)
+    partition = _effective_option(profile, "partition", "SBATCH_PARTITION")
+    if not partition:
         return []
     message = partition_gres_error(
         str(partition),
@@ -882,7 +982,7 @@ def check_gpu_partition(context: PreflightContext) -> list[PreflightFinding]:
     )
     if message is None:
         return []
-    return [PreflightFinding("PF-GPU-PARTITION", "error", f"the GPU stage's {message}")]
+    return [PreflightFinding("PF-GPU-PARTITION", "error", f"{which} {message}")]
 
 
 def _input_paths(context: PreflightContext) -> list[str]:
@@ -1289,8 +1389,11 @@ def check_post_columns(context: PreflightContext) -> list[PreflightFinding]:
 
 #: Filesystem types that live on one node. Shared types (gpfs, lustre, nfs,
 #: nfs4, beegfs, cifs, cephfs, ...) and anything unrecognized produce nothing.
+#: ``overlay`` is deliberately absent: it is the root of a container image,
+#: and a path baked into the image is visible to workers running the same
+#: image (Phase E review E8).
 _NODE_LOCAL_FILESYSTEMS = frozenset(
-    {"tmpfs", "ramfs", "devtmpfs", "ext2", "ext3", "ext4", "xfs", "btrfs", "overlay"}
+    {"tmpfs", "ramfs", "devtmpfs", "ext2", "ext3", "ext4", "xfs", "btrfs"}
 )
 _MOUNTS = Path("/proc/self/mounts")
 
@@ -1303,18 +1406,30 @@ def _mounts_text() -> "str | None":
         return None
 
 
+def _unescape_mount_field(field: str) -> str:
+    """Decode ``/proc/self/mounts``' octal escapes (``\\040`` space, ``\\011`` tab, ...)."""
+    import re
+
+    return re.sub(r"\\([0-7]{3})", lambda match: chr(int(match.group(1), 8)), field)
+
+
 def _filesystem_type(path: Path, mounts: str) -> "str | None":
-    """The filesystem type of the longest mount point containing *path*."""
+    """The filesystem type of the mount that contains *path*.
+
+    The longest containing mount point wins, and of two entries for the same
+    point the later one, because a later mount covers an earlier one there
+    (review E8).
+    """
     resolved = Path(os.path.abspath(path)).resolve(strict=False)
     best: "tuple[int, str] | None" = None
     for line in mounts.splitlines():
         fields = line.split()
         if len(fields) < 3:
             continue
-        mount_point = Path(fields[1].replace("\\040", " "))
+        mount_point = Path(_unescape_mount_field(fields[1]))
         if resolved == mount_point or resolved.is_relative_to(mount_point):
             depth = len(mount_point.parts)
-            if best is None or depth > best[0]:
+            if best is None or depth >= best[0]:
                 best = (depth, fields[2])
     return best[1] if best else None
 
@@ -1326,77 +1441,97 @@ def _nearest_existing_ancestor(path: Path) -> Path:
     return current
 
 
-def check_output_location(context: PreflightContext) -> list[PreflightFinding]:
-    """``PF-OUTPUT-*`` and ``PF-NODE-LOCAL``: where the run writes and reads.
+def check_output_writable(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-OUTPUT-UNWRITABLE``: ``--output`` cannot be created or written.
 
-    Spec §9, F25, F29 (review R21, R30). Read-only probes of the nearest
-    existing ancestor of ``--output`` (the directory itself may not exist
-    yet): permissions; free space against the inputs' total size, in ``full``
-    mode only and labelled a heuristic; and, on a SLURM run, every path a
-    worker reads or writes that sits on node-local storage, judged by the
-    filesystem type of its mount rather than by its name.
+    Spec §9, F25. The directory may not exist yet, so the probe is
+    ``os.access`` on its nearest existing ancestor; ``access(2)`` consults
+    ACLs and, on NFS, the server. The three output-location checks are
+    separate so that a fault in one cannot hide another's finding (review
+    E13).
+    """
+    if context.config.output_dir is None:
+        return []
+    anchor = _nearest_existing_ancestor(Path(context.config.output_dir))
+    if os.access(anchor, os.W_OK | os.X_OK):
+        return []
+    return [PreflightFinding(
+        "PF-OUTPUT-UNWRITABLE", "error",
+        f"{anchor} (the nearest existing directory of --output) is not writable",
+    )]
+
+
+def check_output_space(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-OUTPUT-SPACE``: less free space than the inputs' size (``full`` only).
+
+    Spec §9, R21: a heuristic, labelled so, and blind to GPFS quotas.
     """
     import shutil
 
-    config = context.config
-    findings: list[PreflightFinding] = []
-    output_dir = Path(config.output_dir) if config.output_dir is not None else None
-    if output_dir is not None:
-        anchor = _nearest_existing_ancestor(output_dir)
-        if not os.access(anchor, os.W_OK | os.X_OK):
-            findings.append(PreflightFinding(
-                "PF-OUTPUT-UNWRITABLE", "error",
-                f"{anchor} (the nearest existing directory of --output) is not writable",
-            ))
-        elif context.mode == "full":
-            total = 0
-            for path in _input_paths(context):
-                try:
-                    if Path(path).is_file():
-                        total += Path(path).stat().st_size
-                except OSError:
-                    continue
-            free = shutil.disk_usage(anchor).free
-            if total and free < total:
-                findings.append(PreflightFinding(
-                    "PF-OUTPUT-SPACE", "warning",
-                    f"{anchor} has {free / 2**30:.1f} GiB free, less than the inputs' "
-                    f"{total / 2**30:.1f} GiB (a heuristic, not an estimate of the "
-                    "run's footprint)",
-                ))
-    if config.is_slurm_mode():
-        mounts = _mounts_text()
-        if mounts is not None:
-            candidates: list[tuple[str, Path]] = []
-            if output_dir is not None:
-                candidates.append(("--output", output_dir))
-            candidates += [
-                (option, Path(value))
-                for option, value in (
-                    ("--input", config.input_path),
-                    ("--pipeline", config.pipeline_json),
-                    ("--metadata", config.metadata_csv),
-                )
-                if value is not None
-            ]
-            from phenotypic.post import JoinMetadata
+    if context.mode != "full" or context.config.output_dir is None:
+        return []
+    anchor = _nearest_existing_ancestor(Path(context.config.output_dir))
+    if not os.access(anchor, os.W_OK | os.X_OK):
+        return []  # check_output_writable reports this
+    total = 0
+    for path in _input_paths(context):
+        try:
+            if Path(path).is_file():
+                total += Path(path).stat().st_size
+        except OSError:
+            continue
+    free = shutil.disk_usage(anchor).free
+    if not total or free >= total:
+        return []
+    return [PreflightFinding(
+        "PF-OUTPUT-SPACE", "warning",
+        f"{anchor} has {free / 2**30:.1f} GiB free, less than the inputs' "
+        f"{total / 2**30:.1f} GiB (a heuristic, not an estimate of the "
+        "run's footprint)",
+    )]
 
-            for path, operation in operations_in_scope(context):
-                if isinstance(operation, JoinMetadata):
-                    candidates.append((f"{'/'.join(path)} table", Path(operation.metadata)))
-            local = [
-                f"{label} {candidate} ({fs})"
-                for label, candidate in candidates
-                if (fs := _filesystem_type(candidate, mounts)) in _NODE_LOCAL_FILESYSTEMS
-            ]
-            if local:
-                findings.append(PreflightFinding(
-                    "PF-NODE-LOCAL", "warning",
-                    "on a SLURM run these paths are on node-local storage, which "
-                    "workers on other nodes cannot see",
-                    subjects=tuple(local),
-                ))
-    return findings
+
+def check_node_local_paths(context: PreflightContext) -> list[PreflightFinding]:
+    """``PF-NODE-LOCAL``: a SLURM run's paths on storage other nodes cannot see.
+
+    Spec §9, F29 (review R30): ``--output``, ``--input``, ``--pipeline``,
+    ``--metadata`` and every in-scope ``JoinMetadata`` table, judged by the
+    filesystem type of its mount rather than by its name.
+    """
+    config = context.config
+    if not config.is_slurm_mode():
+        return []
+    mounts = _mounts_text()
+    if mounts is None:
+        return []
+    candidates: list[tuple[str, Path]] = [
+        (option, Path(value))
+        for option, value in (
+            ("--output", config.output_dir),
+            ("--input", config.input_path),
+            ("--pipeline", config.pipeline_json),
+            ("--metadata", config.metadata_csv),
+        )
+        if value is not None
+    ]
+    from phenotypic.post import JoinMetadata
+
+    for path, operation in operations_in_scope(context):
+        if isinstance(operation, JoinMetadata):
+            candidates.append((f"{'/'.join(path)} table", Path(operation.metadata)))
+    local = [
+        f"{label} {candidate} ({fs})"
+        for label, candidate in candidates
+        if (fs := _filesystem_type(candidate, mounts)) in _NODE_LOCAL_FILESYSTEMS
+    ]
+    if not local:
+        return []
+    return [PreflightFinding(
+        "PF-NODE-LOCAL", "warning",
+        "on a SLURM run these paths are on node-local storage, which "
+        "workers on other nodes cannot see",
+        subjects=tuple(local),
+    )]
 
 
 #: The checks :func:`run_preflight` runs, in order: pipeline, environment,
@@ -1421,7 +1556,9 @@ CHECKS: tuple[Check, ...] = (
     check_bit_depth,
     check_metadata_join,
     check_post_columns,
-    check_output_location,
+    check_output_writable,
+    check_output_space,
+    check_node_local_paths,
 )
 
 

@@ -103,11 +103,11 @@ a position the staged GPU engine cannot run), the refusal of a `--restart` or
 | `PF-MISSING-MODULE` | An operation needs a package that is not installed | error | Install the extra the message names |
 | `PF-LICENSE` | A detector needs gated weights whose license the run has not accepted | error | `export PHENOTYPIC_ACCEPT_MODEL_LICENSE=<name>` |
 | `PF-WEIGHTS-UNCACHED` | A detector's weights are not in the local cache | warning | Pre-download them on a node with network access |
-| `PF-SBATCH-REJECTED` | `sbatch --test-only` rejects a `--slurm` or `--gpu-slurm` profile | error | Fix the option `sbatch` names |
-| `PF-SBATCH-UNAVAILABLE` | A profile could not be tested: no `sbatch`, a timeout, or a controller fault | warning | None needed; a real submission still reports failures |
-| `PF-TIME-OVER-PARTITION` | The requested time exceeds the partition's `MaxTime` | warning | Lower the time, or choose another partition |
+| `PF-SBATCH-REJECTED` | `sbatch --test-only` names a configuration fault in a profile the run submits: an invalid partition, account, QoS, GRES or option | error | Fix the option `sbatch` names |
+| `PF-SBATCH-UNAVAILABLE` | A profile could not be confirmed: no `sbatch`, a timeout, a controller fault, or a failure a real submission may queue through (e.g. every node of the partition drained) | warning | Read `sbatch`'s message; a real submission still reports real failures |
+| `PF-TIME-OVER-PARTITION` | The requested time exceeds the partition's `MaxTime` (for a partition list, per the cluster's `EnforcePartLimits`) | warning | Lower the time, or choose another partition |
 | `PF-SLURM-LIMIT` | The staged GPU engine cannot fit the cluster's `MaxSubmitJobs` or array limit | error | Reduce `--gpu-shards`, or ask for a higher limit |
-| `PF-GPU-PARTITION` | The GPU stage's partition has no GPUs, or does not exist | error | `--gpu-slurm slurm_partition=<gpu-partition>` |
+| `PF-GPU-PARTITION` | `sinfo` lists the GRES of the partition a GPU job runs in, and none is a GPU | error | `--gpu-slurm slurm_partition=<gpu-partition>` (or `--slurm` for `--mode process`) |
 | `PF-HEADER-UNREADABLE` | An input file's header cannot be read | by reach | Replace or remove the files listed |
 | `PF-CHANNELS` | An input has 2, or 5 or more, channels, which `Image.imread` refuses | by reach | Convert the files to grayscale or RGB(A) |
 | `PF-DETECT-MODE-GRAY` | A color `--detect-mode` is set, but inputs are grayscale | by reach | `--detect-mode gray`, or supply RGB images |

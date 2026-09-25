@@ -482,6 +482,42 @@ keeps calling it, so `--skip-validation` does not remove the guard.
 (`_cli_interactive.py:53-84`) is replaced with the output of `format_sbatch_directives`, so
 the preview is the text that will be submitted (F26).
 
+*As implemented* (plan Tasks 13-14, corrected after the Phase E review, E1-E3, E5-E9,
+E13; Slurm behavior read from Slurm's source and manual pages, see `slurm-behavior.md`):
+
+- **Which `--test-only` failures are errors (E1).** Only a message naming a configuration
+  fault that a real submission rejects the same way: an invalid partition, account, QoS or
+  GRES specification (`slurm_errno.c`) and `sbatch`'s own option-parsing errors
+  (`SBATCH_REJECTION_PATTERNS`). Every other failure is `PF-SBATCH-UNAVAILABLE`, carrying
+  `sbatch`'s message. The first implementation made every nonzero exit an error, but the
+  will-run test ignores DOWN and DRAINED nodes, so during a maintenance drain it refused
+  runs that a real submission queues. A job-submit plugin's site-specific message is
+  therefore a warning too: it cannot be told apart from a transient one.
+- **Which profiles (E2).** A GPU pipeline that `AutonomousSLURMStrategy` runs (`--mode
+  process` on SLURM) submits `--slurm` with `slurm_gpus_per_node=1` added; the preflight
+  tests that profile, through the one definition `with_default_gpu_request`, and runs the
+  GPU-partition check on it. The dry-run preview shows every profile the run submits (E9).
+- **Which partition and time (E3, E7).** Read back from the rendered directives
+  (`effective_sbatch_option`), so the GUI's `partition=`/`time=` count and the last
+  directive wins, as in `sbatch`; an `SBATCH_PARTITION` or `SBATCH_TIMELIMIT` in the
+  submission environment overrides both (`sbatch.1`). For a partition list the rule is
+  `EnforcePartLimits`'s: the tightest `MaxTime` under `ALL`, the loosest otherwise.
+- **The GRES check (E5, E6).** It refuses only when `sinfo -h -o %G` (untruncated; the
+  `--Format` default truncates at 20 characters) positively lists the partition's GRES and
+  no entry is named `gpu`. Empty output (an unknown or hidden partition) and a failing
+  `sinfo` are "cannot tell"; `sbatch --test-only` reports an unknown partition precisely.
+  The strategy uses the same function, so this also stops the strategy refusing a GPU run
+  for an unreadable partition.
+- **Output location (E8, E13).** Three separately registered checks, so one's fault cannot
+  hide another's finding. A later mount at the same point wins, every octal escape in
+  `/proc/self/mounts` is decoded, and `overlay` (a container image's root) is not
+  node-local.
+- **Known limit, not changed (E4).** `PF-SLURM-LIMIT` inherits the staged strategy's
+  `get_slurm_max_submit_jobs`, which takes the smallest `MaxSubmitJobsPerUser` over every
+  QoS on the cluster. The strategy refuses the same runs later, so the preflight adds no
+  refusal; resolving the job's own QoS changes the strategy's chunking and is left to a
+  separate change.
+
 The unused helpers in `sdk_/slurm/_slurm_headroom.py` are **not** adopted. Their
 `subprocess.run` calls have no timeout, and `validate_submission` expects submitit-style
 unprefixed keys (`partition`, `cpus_per_task`) that the CLI never produces.
@@ -933,3 +969,23 @@ required". Every finding was accepted.
 | D7 | The write tripwire's context carries a metadata CSV |
 | D8 | Partly accepted. Process mode no longer parses the `--metadata` it ignores. The snapshot keeps its pandas parse: the finding's premise, that the shared reader is stricter on every input, has a counterexample (`b'"unterminated'`, which Polars reads as a one-column header and pandas refuses), pinned by `test_invalid_metadata_never_replaces_existing_snapshot` |
 | D9 | A Zarr v2 store's header error names the format |
+
+## Disposition of the Phase E adherence review (E1-E13)
+
+`docs/superpowers/reports/2026-09-24-cli-preflight/phase-e-adherence.md`, verdict "changes
+required". All findings but E4 and E12 were fixed; see §6 *As implemented*.
+
+| Finding | Disposition |
+|---|---|
+| E1 (Blocking) | Fixed. Errors only for named configuration faults; the reviewer's eight other messages are warnings, each pinned by a test, and a CLI test drives both verdicts through a fake `sbatch` on `PATH` |
+| E2 (Major) | Fixed. `with_default_gpu_request` is shared by the strategy and the preflight |
+| E3 (Major) | Fixed. `effective_sbatch_option` reads the rendered directives; the strategy's GRES check uses it too |
+| E4 (Major) | Not fixed: a pre-existing limit of the staged strategy, which refuses the same runs; recorded in §6 and proposed as a separate change |
+| E5, E6 | Fixed in `partition_gres_error` |
+| E7 | Fixed: `EnforcePartLimits` rule for lists, `SBATCH_*` precedence, full-sentence wording test |
+| E8 | Fixed |
+| E9 | Fixed: the preview reuses the preflight's profile list |
+| E10 | Tests added for M9, M13, M20 (patched `os.access`), M23b, M26b and M28b, plus the CLI `sbatch` test; the browser fake scheduler still accepts everything, and the CLI test covers the subprocess path instead |
+| E11 | `slurm-behavior.md` records what the documentation settles; the probe gains cases 8-9 |
+| E12 | Does not reproduce: the form-state validation (`_state.py:479`) already refuses an empty SLURM profile before any argv is built; pinned by a test |
+| E13 | Fixed: three output checks; `partition_gres_error` catches `OSError` |
