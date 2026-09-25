@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import functools
 import warnings
-from typing import Any, ClassVar, Literal, TYPE_CHECKING
+from typing import ClassVar, List, Literal, TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
-from pydantic import Field, field_validator
+from pydantic import field_validator
 from skimage import exposure
 
 from phenotypic.abc_ import MeasureFeatures
@@ -33,22 +33,16 @@ class MeasureTexture(MeasureFeatures):
     """Measure colony surface texture using Haralick features from gray-level co-occurrence matrices.
 
     Compute 13 second-order Haralick texture features per colony at one
-    pixel-offset scale, across four directional angles (0, 45, 90, 135
-    degrees), plus direction-averaged values. These features quantify
-    surface roughness, regularity, and directional patterns that
-    distinguish colony morphotypes.
-
-    Each ``MeasureTexture`` measures exactly one scale. To measure several
-    scales, add one ``MeasureTexture`` per distinct scale to the pipeline;
-    their columns never collide because the scale is part of every column
-    name.
+    or more pixel-offset scales, across four directional angles (0, 45,
+    90, 135 degrees), plus direction-averaged values. These features
+    quantify surface roughness, regularity, and directional patterns
+    that distinguish colony morphotypes.
 
     Args:
-        scale: Pixel offset for the co-occurrence matrix, a single positive
-            integer. Small values (1--2) capture fine texture; large values
-            (5--10) capture coarse patterns. A one-element list (``[5]``, as
-            written by older ``pipeline.json`` files) is accepted and
-            unwrapped; a longer list is refused. Default: ``5``.
+        scale: Pixel offset(s) for the co-occurrence matrix. A single
+            integer or list of integers. Small values (1--2) capture fine
+            texture; large values (5--10) capture coarse patterns.
+            Default: ``5``.
         quant_lvl: Number of gray-level bins for quantization. Accepted
             values: ``8``, ``16``, ``32``, ``64``. Lower values are
             faster; higher values preserve texture nuance but are more
@@ -64,30 +58,11 @@ class MeasureTexture(MeasureFeatures):
     Returns:
         pd.DataFrame: Object-level texture measurements with columns:
 
-            - ``Object_Label``: unique object identifier.
+            - Label: unique object identifier.
             - 13 Haralick features x 4 angles = 52 directional columns
-              (e.g., ``Texture_05px-deg000-Contrast``).
-            - 13 direction-averaged columns (e.g.,
-              ``Texture_05px-avg-Contrast``).
-
-    Examples:
-        Measure colony texture at a fine and a coarse scale by adding one
-        measurer per scale:
-
-        >>> from phenotypic import ImagePipeline
-        >>> from phenotypic.data import load_synth_yeast_plate
-        >>> from phenotypic.detect import OtsuDetector
-        >>> from phenotypic.measure import MeasureTexture
-        >>> plate = load_synth_yeast_plate()
-        >>> pipe = ImagePipeline(
-        ...     ops=[OtsuDetector()],
-        ...     meas=[MeasureTexture(scale=2), MeasureTexture(scale=8)],
-        ... )
-        >>> table = pipe.apply_and_measure(plate)
-        >>> "Texture_02px-avg-Contrast" in table.columns
-        True
-        >>> "Texture_08px-avg-Contrast" in table.columns
-        True
+              per scale (e.g., ``Contrast-deg000-scale05``).
+            - 13 direction-averaged columns per scale (e.g.,
+              ``Contrast-avg-scale05``).
 
     References:
         [1] R. M. Haralick, K. Shanmugam, and I. Dinstein, "Textural
@@ -118,38 +93,24 @@ class MeasureTexture(MeasureFeatures):
 
     _measurement_infoclass: ClassVar[type] = TEXTURE
 
-    scale: int = Field(5, ge=1)
+    scale: List[int] = [5]
     quant_lvl: Literal[8, 16, 32, 64] = 32
     enhance: bool = False
     warn: bool = False
 
     @field_validator("scale", mode="before")
     @classmethod
-    def _unwrap_single_scale(cls, scale: Any) -> Any:
-        """Unwrap a one-element ``scale`` list; refuse any other list.
+    def _coerce_scale_to_list(cls, scale: int | List[int]) -> List[int]:
+        """Normalize a bare integer ``scale`` to a single-element list.
 
-        ``scale`` used to be declared ``List[int]``, so every ``pipeline.json``
-        written before it became an ``int`` stores ``"scale": [5]``. A
-        one-element list or tuple is unwrapped so those files still load. An
-        empty or multi-element one is refused: a multi-element list only ever
-        measured its first scale, and one ``MeasureTexture`` now measures one
-        scale.
-
-        A ``bool`` (bare or as the single element) is refused: pydantic's lax
-        mode would otherwise read ``True`` as distance ``1``.
+        The legacy constructor stored ``scale`` as a list regardless of
+        whether the caller passed an ``int`` or a ``list[int]`` (the
+        ``_operate`` body indexes ``self.scale[0]`` / ``self.scale[1:]``).
+        This validator reproduces that coercion so both call styles keep
+        working while the declared field type stays an honest list.
         """
-        if isinstance(scale, (list, tuple)):
-            if len(scale) != 1:
-                raise ValueError(
-                        "MeasureTexture measures one scale; add one MeasureTexture "
-                        f"per scale (got scale={list(scale)!r})"
-                )
-            scale = scale[0]
-        if isinstance(scale, (bool, np.bool_)):
-            raise ValueError(
-                    f"MeasureTexture scale must be an integer pixel offset, "
-                    f"not a bool (got scale={scale!r})"
-            )
+        if not hasattr(scale, "__getitem__"):  # coerce iterable input
+            return [scale]
         return scale
 
     def _operate(self, image: Image) -> pd.DataFrame:
@@ -166,15 +127,21 @@ class MeasureTexture(MeasureFeatures):
             pd.DataFrame: A DataFrame containing texture measurements for each object in the image.
                 The nrows are indexed by object labels, and columns represent different texture features.
         """
-        return self._compute_haralick(
+        compute_haralick = functools.partial(
+                self._compute_haralick,
                 image=image,
                 foreground_array=image.gray.foreground(),
                 foreground_name="Gray",
-                scale=self.scale,
                 quant_lvl=self.quant_lvl,
                 enhance=self.enhance,
                 warn=self.warn,
         )
+
+        meas = compute_haralick(scale=self.scale[0])
+        if len(self.scale) > 1:
+            for scale in self.scale[1:]:
+                meas.merge(compute_haralick(scale=scale), on=OBJECT.LABEL, how="outer")
+        return meas
 
     @staticmethod
     def _compute_haralick(

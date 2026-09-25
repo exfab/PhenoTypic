@@ -28,8 +28,7 @@ from scipy.stats import f_oneway, false_discovery_control
 #: Absolute position (``Bbox_`` centroids/corners) is intentionally **excluded**
 #: (resolved decision) — a "cutoff" on plate position is a spatial artifact, not
 #: a phenotype filter. ``Texture`` (no trailing ``_``) matches the whole
-#: ``Texture``-prefixed namespace — columns are ``Texture_<scale>px-...`` (or the
-#: legacy ``Texture_<label>-...-scale##`` spelling); the bare prefix matches both. This
+#: ``Texture``-prefixed namespace regardless of the matrix/scale suffix. This
 #: list is defined independently — the colony grid's ``_MEASUREMENT_PREFIXES``
 #: is a UI axis-exclusion list, not an authoritative phenotype-measurement set.
 MEASUREMENT_PREFIXES: tuple[str, ...] = (

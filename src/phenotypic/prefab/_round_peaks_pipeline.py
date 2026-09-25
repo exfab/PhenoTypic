@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import List, Literal
 
 from phenotypic.abc_ import PrefabPipeline
 from phenotypic.enhance import BlurGauss
@@ -49,8 +49,7 @@ class RoundPeaksPipeline(PrefabPipeline):
             auto-estimates. Default: ``None``.
         detector_edge_refinement: Refine grid edges using local profiles.
             Default: ``True``.
-        texture_scale: Pixel-offset scale for Haralick texture features. For several
-            scales, add one MeasureTexture per scale to the pipeline. Default: 5.
+        texture_scale: Scale(s) for Haralick texture features. Default: 5.
         texture_quant_lvl: Quantization level (8, 16, 32, 64).
             Default: 32.
         texture_enhance: Enhance contrast before texture measurement.
@@ -102,7 +101,7 @@ class RoundPeaksPipeline(PrefabPipeline):
             detector_min_peak_distance: int | None = None,
             detector_peak_prominence: float | None = None,
             detector_edge_refinement: bool = True,
-            texture_scale: int = 5,
+            texture_scale: int | List[int] = 5,
             texture_quant_lvl: Literal[8, 16, 32, 64] = 32,
             texture_enhance: bool = False,
             texture_warn: bool = False,
