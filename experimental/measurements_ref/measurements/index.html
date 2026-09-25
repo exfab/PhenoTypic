@@ -1249,7 +1249,7 @@
 <section id="neighbor-dist">
 <span id="measurement-info-neighbor-dist"></span><h2><a class="reference internal" href="../../api_reference/api/phenotypic.schema.NEIGHBOR_DIST.html"><span class="doc">NEIGHBOR_DIST</span></a><a class="headerlink" href="#neighbor-dist" title="Link to this heading">#</a></h2>
 <div class="pst-scrollable-table-container"><table class="table" id="id20">
-<caption><span class="caption-text">Category: <strong>GridSpatial</strong></span><a class="headerlink" href="#id20" title="Link to this table">#</a></caption>
+<caption><span class="caption-text">Category: <strong>NeighborDist</strong></span><a class="headerlink" href="#id20" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Column label</p></th>
 <th class="head"><p>Description</p></th>
@@ -1257,36 +1257,48 @@
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GridSpatial_LeftNeighborObjLabel</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NeighborDist_LeftNeighborObjLabel</span></code></p></td>
 <td><p>The object label of the left neighbor colony</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">GridSpatial_LeftDistance</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NeighborDist_LeftDistance</span></code></p></td>
 <td><p>The minimum pixel-to-pixel distance to the left neighbor colony, computed via a Euclidean distance transform of object pixel masks</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GridSpatial_RightNeighborObjLabel</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NeighborDist_RightNeighborObjLabel</span></code></p></td>
 <td><p>The object label of the right neighbor colony</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">GridSpatial_RightDistance</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NeighborDist_RightDistance</span></code></p></td>
 <td><p>The minimum pixel-to-pixel distance to the right neighbor colony, computed via a Euclidean distance transform of object pixel masks</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GridSpatial_AboveNeighborObjLabel</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NeighborDist_AboveNeighborObjLabel</span></code></p></td>
 <td><p>The object label of the above neighbor colony</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">GridSpatial_AboveDistance</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NeighborDist_AboveDistance</span></code></p></td>
 <td><p>The minimum pixel-to-pixel distance to the above neighbor colony, computed via a Euclidean distance transform of object pixel masks</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GridSpatial_UnderNeighborObjLabel</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NeighborDist_UnderNeighborObjLabel</span></code></p></td>
 <td><p>The object label of the under neighbor colony</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">GridSpatial_UnderDistance</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NeighborDist_UnderDistance</span></code></p></td>
 <td><p>The minimum pixel-to-pixel distance to the under neighbor colony, computed via a Euclidean distance transform of object pixel masks</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NeighborDist_NearestObjLabel</span></code></p></td>
+<td><p>The object label of the closest other object anywhere on the plate, by minimum pixel-to-pixel distance between object masks. On a GridImage only objects assigned to a grid cell are considered; on a plain Image every object is. NaN when fewer than two eligible objects exist. Ties resolve to the smaller label.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NeighborDist_NearestDistance</span></code></p></td>
+<td><p>The minimum Euclidean distance, in pixels, between the pixel centres of this object’s mask and the nearest object’s mask. Two objects whose masks share an edge report 1. Always less than or equal to every non-NaN directional distance for the same object.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NeighborDist_NearestRelation</span></code></p></td>
+<td><p>Integer code for where the nearest object sits relative to this object’s grid cell, from the absolute row offset dr and column offset dc between the two cells: 0 = same cell (dr = dc = 0); 1 = edge-adjacent cell (dr + dc = 1); 2 = diagonal cell (dr = dc = 1); 3 = any cell further away. NaN on a plain Image (no grid) or when there is no nearest object.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
 </tbody>

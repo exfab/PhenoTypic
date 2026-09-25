@@ -1397,7 +1397,7 @@ that standardize <code class="docutils literal notranslate"><span class="pre">Me
 <td><p>Evaluate grid alignment quality using row-wise and column-wise linear regression.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.schema.NEIGHBOR_DIST.html#phenotypic.schema.NEIGHBOR_DIST" title="phenotypic.schema.NEIGHBOR_DIST"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NEIGHBOR_DIST</span></code></a></p></td>
-<td><p>Measure pixel-to-pixel distances to neighbors in adjacent grid cells.</p></td>
+<td><p>Measure distances from each colony to its grid neighbours and its nearest object.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="phenotypic.schema.GRID_SPREAD.html#phenotypic.schema.GRID_SPREAD" title="phenotypic.schema.GRID_SPREAD"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GRID_SPREAD</span></code></a></p></td>
 <td><p>Quantify within-well colony dispersion using pairwise centroid distances.</p></td>
@@ -22813,14 +22813,16 @@ do not classify (e.g. enums that subclass <code class="docutils literal notransl
 <dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.schema.</span></span><span class="sig-name descname"><span class="pre">NEIGHBOR_DIST</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/schema/_neighbor_dist.html#NEIGHBOR_DIST"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">QualityInfo</span></code></p>
-<p>Measure pixel-to-pixel distances to neighbors in adjacent grid cells.</p>
-<p>For each detected colony, identify the nearest object in the left,
-right, above, and below grid cells and report the minimum Euclidean
-distance between their pixel masks. Distances are computed via a
-per-section distance transform over a local window covering the target
-cell and its immediate neighbors, so round colonies are not
-over-estimated by their bounding boxes. Edge and corner colonies report
-<code class="docutils literal notranslate"><span class="pre">NaN</span></code> for directions beyond the plate boundary.</p>
+<p>Measure distances from each colony to its grid neighbours and its nearest object.</p>
+<p>Two families of columns. The directional columns report, for each colony,
+the nearest object in the left, right, above, and below grid cells and the
+minimum Euclidean distance between their pixel masks, computed via a
+per-section distance transform so round colonies are not over-estimated by
+their bounding boxes; edge and corner colonies report <code class="docutils literal notranslate"><span class="pre">NaN</span></code> beyond the
+plate boundary. The nearest-object columns report the single closest other
+object anywhere on the plate (same cell, diagonal, or further away) and its
+grid relation to the colony. On a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> only the nearest label and
+distance are populated.</p>
 <dl class="py method">
 <dt class="sig sig-object py">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">append_rst_to_doc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span></dt>
@@ -23483,12 +23485,12 @@ left untouched.  Characters mapped to None are deleted.</p>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">ABOVE_DISTANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'GridSpatial_AboveDistance'</span></em></dt>
+<span class="sig-name descname"><span class="pre">ABOVE_DISTANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NeighborDist_AboveDistance'</span></em></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">ABOVE_NEIGHBOR_OBJ_LABEL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'GridSpatial_AboveNeighborObjLabel'</span></em></dt>
+<span class="sig-name descname"><span class="pre">ABOVE_NEIGHBOR_OBJ_LABEL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NeighborDist_AboveNeighborObjLabel'</span></em></dt>
 <dd></dd></dl>
 
 <dl class="py property">
@@ -23510,32 +23512,47 @@ which category it belongs to without explicitly referencing the class.</p>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">LEFT_DISTANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'GridSpatial_LeftDistance'</span></em></dt>
+<span class="sig-name descname"><span class="pre">LEFT_DISTANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NeighborDist_LeftDistance'</span></em></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">LEFT_NEIGHBOR_OBJ_LABEL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'GridSpatial_LeftNeighborObjLabel'</span></em></dt>
+<span class="sig-name descname"><span class="pre">LEFT_NEIGHBOR_OBJ_LABEL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NeighborDist_LeftNeighborObjLabel'</span></em></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">RIGHT_DISTANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'GridSpatial_RightDistance'</span></em></dt>
+<span class="sig-name descname"><span class="pre">NEAREST_DISTANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NeighborDist_NearestDistance'</span></em></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">RIGHT_NEIGHBOR_OBJ_LABEL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'GridSpatial_RightNeighborObjLabel'</span></em></dt>
+<span class="sig-name descname"><span class="pre">NEAREST_OBJ_LABEL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NeighborDist_NearestObjLabel'</span></em></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">UNDER_DISTANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'GridSpatial_UnderDistance'</span></em></dt>
+<span class="sig-name descname"><span class="pre">NEAREST_RELATION</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NeighborDist_NearestRelation'</span></em></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">UNDER_NEIGHBOR_OBJ_LABEL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'GridSpatial_UnderNeighborObjLabel'</span></em></dt>
+<span class="sig-name descname"><span class="pre">RIGHT_DISTANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NeighborDist_RightDistance'</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">RIGHT_NEIGHBOR_OBJ_LABEL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NeighborDist_RightNeighborObjLabel'</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">UNDER_DISTANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NeighborDist_UnderDistance'</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">UNDER_NEIGHBOR_OBJ_LABEL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NeighborDist_UnderNeighborObjLabel'</span></em></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">

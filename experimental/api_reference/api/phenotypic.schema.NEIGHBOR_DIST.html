@@ -1293,14 +1293,16 @@
 <dt class="sig sig-object py" id="phenotypic.schema.NEIGHBOR_DIST">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.schema.</span></span><span class="sig-name descname"><span class="pre">NEIGHBOR_DIST</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/schema/_neighbor_dist.html#NEIGHBOR_DIST"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.NEIGHBOR_DIST" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">QualityInfo</span></code></p>
-<p>Measure pixel-to-pixel distances to neighbors in adjacent grid cells.</p>
-<p>For each detected colony, identify the nearest object in the left,
-right, above, and below grid cells and report the minimum Euclidean
-distance between their pixel masks. Distances are computed via a
-per-section distance transform over a local window covering the target
-cell and its immediate neighbors, so round colonies are not
-over-estimated by their bounding boxes. Edge and corner colonies report
-<code class="docutils literal notranslate"><span class="pre">NaN</span></code> for directions beyond the plate boundary.</p>
+<p>Measure distances from each colony to its grid neighbours and its nearest object.</p>
+<p>Two families of columns. The directional columns report, for each colony,
+the nearest object in the left, right, above, and below grid cells and the
+minimum Euclidean distance between their pixel masks, computed via a
+per-section distance transform so round colonies are not over-estimated by
+their bounding boxes; edge and corner colonies report <code class="docutils literal notranslate"><span class="pre">NaN</span></code> beyond the
+plate boundary. The nearest-object columns report the single closest other
+object anywhere on the plate (same cell, diagonal, or further away) and its
+grid relation to the colony. On a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> only the nearest label and
+distance are populated.</p>
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
@@ -1529,31 +1531,40 @@ over-estimated by their bounding boxes. Edge and corner colonies report
 <tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.NEIGHBOR_DIST.UNDER_DISTANCE" title="phenotypic.schema.NEIGHBOR_DIST.UNDER_DISTANCE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UNDER_DISTANCE</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.NEIGHBOR_DIST.label" title="phenotypic.schema.NEIGHBOR_DIST.label"><code class="xref py py-obj docutils literal notranslate"><span class="pre">label</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.NEIGHBOR_DIST.NEAREST_OBJ_LABEL" title="phenotypic.schema.NEIGHBOR_DIST.NEAREST_OBJ_LABEL"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NEAREST_OBJ_LABEL</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.NEIGHBOR_DIST.desc" title="phenotypic.schema.NEIGHBOR_DIST.desc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">desc</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.NEIGHBOR_DIST.NEAREST_DISTANCE" title="phenotypic.schema.NEIGHBOR_DIST.NEAREST_DISTANCE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NEAREST_DISTANCE</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.NEIGHBOR_DIST.bio_desc" title="phenotypic.schema.NEIGHBOR_DIST.bio_desc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bio_desc</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.NEIGHBOR_DIST.NEAREST_RELATION" title="phenotypic.schema.NEIGHBOR_DIST.NEAREST_RELATION"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NEAREST_RELATION</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.NEIGHBOR_DIST.image" title="phenotypic.schema.NEIGHBOR_DIST.image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">image</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.NEIGHBOR_DIST.label" title="phenotypic.schema.NEIGHBOR_DIST.label"><code class="xref py py-obj docutils literal notranslate"><span class="pre">label</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.NEIGHBOR_DIST.pair" title="phenotypic.schema.NEIGHBOR_DIST.pair"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pair</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.NEIGHBOR_DIST.desc" title="phenotypic.schema.NEIGHBOR_DIST.desc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">desc</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.NEIGHBOR_DIST.tier_override" title="phenotypic.schema.NEIGHBOR_DIST.tier_override"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tier_override</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.NEIGHBOR_DIST.bio_desc" title="phenotypic.schema.NEIGHBOR_DIST.bio_desc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bio_desc</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.NEIGHBOR_DIST.derivation_type" title="phenotypic.schema.NEIGHBOR_DIST.derivation_type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">derivation_type</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.NEIGHBOR_DIST.image" title="phenotypic.schema.NEIGHBOR_DIST.image"><code class="xref py py-obj docutils literal notranslate"><span class="pre">image</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.NEIGHBOR_DIST.derives_from" title="phenotypic.schema.NEIGHBOR_DIST.derives_from"><code class="xref py py-obj docutils literal notranslate"><span class="pre">derives_from</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.NEIGHBOR_DIST.pair" title="phenotypic.schema.NEIGHBOR_DIST.pair"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pair</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.NEIGHBOR_DIST.rembi_module_override" title="phenotypic.schema.NEIGHBOR_DIST.rembi_module_override"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rembi_module_override</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.NEIGHBOR_DIST.tier_override" title="phenotypic.schema.NEIGHBOR_DIST.tier_override"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tier_override</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.NEIGHBOR_DIST.derivation_type" title="phenotypic.schema.NEIGHBOR_DIST.derivation_type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">derivation_type</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.NEIGHBOR_DIST.derives_from" title="phenotypic.schema.NEIGHBOR_DIST.derives_from"><code class="xref py py-obj docutils literal notranslate"><span class="pre">derives_from</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.NEIGHBOR_DIST.rembi_module_override" title="phenotypic.schema.NEIGHBOR_DIST.rembi_module_override"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rembi_module_override</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -1586,42 +1597,57 @@ the full header name (e.g., ‘Shape_Area’).</p>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.schema.NEIGHBOR_DIST.LEFT_NEIGHBOR_OBJ_LABEL">
-<span class="sig-name descname"><span class="pre">LEFT_NEIGHBOR_OBJ_LABEL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'GridSpatial_LeftNeighborObjLabel'</span></em><a class="headerlink" href="#phenotypic.schema.NEIGHBOR_DIST.LEFT_NEIGHBOR_OBJ_LABEL" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">LEFT_NEIGHBOR_OBJ_LABEL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NeighborDist_LeftNeighborObjLabel'</span></em><a class="headerlink" href="#phenotypic.schema.NEIGHBOR_DIST.LEFT_NEIGHBOR_OBJ_LABEL" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.schema.NEIGHBOR_DIST.LEFT_DISTANCE">
-<span class="sig-name descname"><span class="pre">LEFT_DISTANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'GridSpatial_LeftDistance'</span></em><a class="headerlink" href="#phenotypic.schema.NEIGHBOR_DIST.LEFT_DISTANCE" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">LEFT_DISTANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NeighborDist_LeftDistance'</span></em><a class="headerlink" href="#phenotypic.schema.NEIGHBOR_DIST.LEFT_DISTANCE" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.schema.NEIGHBOR_DIST.RIGHT_NEIGHBOR_OBJ_LABEL">
-<span class="sig-name descname"><span class="pre">RIGHT_NEIGHBOR_OBJ_LABEL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'GridSpatial_RightNeighborObjLabel'</span></em><a class="headerlink" href="#phenotypic.schema.NEIGHBOR_DIST.RIGHT_NEIGHBOR_OBJ_LABEL" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">RIGHT_NEIGHBOR_OBJ_LABEL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NeighborDist_RightNeighborObjLabel'</span></em><a class="headerlink" href="#phenotypic.schema.NEIGHBOR_DIST.RIGHT_NEIGHBOR_OBJ_LABEL" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.schema.NEIGHBOR_DIST.RIGHT_DISTANCE">
-<span class="sig-name descname"><span class="pre">RIGHT_DISTANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'GridSpatial_RightDistance'</span></em><a class="headerlink" href="#phenotypic.schema.NEIGHBOR_DIST.RIGHT_DISTANCE" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">RIGHT_DISTANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NeighborDist_RightDistance'</span></em><a class="headerlink" href="#phenotypic.schema.NEIGHBOR_DIST.RIGHT_DISTANCE" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.schema.NEIGHBOR_DIST.ABOVE_NEIGHBOR_OBJ_LABEL">
-<span class="sig-name descname"><span class="pre">ABOVE_NEIGHBOR_OBJ_LABEL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'GridSpatial_AboveNeighborObjLabel'</span></em><a class="headerlink" href="#phenotypic.schema.NEIGHBOR_DIST.ABOVE_NEIGHBOR_OBJ_LABEL" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">ABOVE_NEIGHBOR_OBJ_LABEL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NeighborDist_AboveNeighborObjLabel'</span></em><a class="headerlink" href="#phenotypic.schema.NEIGHBOR_DIST.ABOVE_NEIGHBOR_OBJ_LABEL" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.schema.NEIGHBOR_DIST.ABOVE_DISTANCE">
-<span class="sig-name descname"><span class="pre">ABOVE_DISTANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'GridSpatial_AboveDistance'</span></em><a class="headerlink" href="#phenotypic.schema.NEIGHBOR_DIST.ABOVE_DISTANCE" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">ABOVE_DISTANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NeighborDist_AboveDistance'</span></em><a class="headerlink" href="#phenotypic.schema.NEIGHBOR_DIST.ABOVE_DISTANCE" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.schema.NEIGHBOR_DIST.UNDER_NEIGHBOR_OBJ_LABEL">
-<span class="sig-name descname"><span class="pre">UNDER_NEIGHBOR_OBJ_LABEL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'GridSpatial_UnderNeighborObjLabel'</span></em><a class="headerlink" href="#phenotypic.schema.NEIGHBOR_DIST.UNDER_NEIGHBOR_OBJ_LABEL" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">UNDER_NEIGHBOR_OBJ_LABEL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NeighborDist_UnderNeighborObjLabel'</span></em><a class="headerlink" href="#phenotypic.schema.NEIGHBOR_DIST.UNDER_NEIGHBOR_OBJ_LABEL" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.schema.NEIGHBOR_DIST.UNDER_DISTANCE">
-<span class="sig-name descname"><span class="pre">UNDER_DISTANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'GridSpatial_UnderDistance'</span></em><a class="headerlink" href="#phenotypic.schema.NEIGHBOR_DIST.UNDER_DISTANCE" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">UNDER_DISTANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NeighborDist_UnderDistance'</span></em><a class="headerlink" href="#phenotypic.schema.NEIGHBOR_DIST.UNDER_DISTANCE" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.schema.NEIGHBOR_DIST.NEAREST_OBJ_LABEL">
+<span class="sig-name descname"><span class="pre">NEAREST_OBJ_LABEL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NeighborDist_NearestObjLabel'</span></em><a class="headerlink" href="#phenotypic.schema.NEIGHBOR_DIST.NEAREST_OBJ_LABEL" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.schema.NEIGHBOR_DIST.NEAREST_DISTANCE">
+<span class="sig-name descname"><span class="pre">NEAREST_DISTANCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NeighborDist_NearestDistance'</span></em><a class="headerlink" href="#phenotypic.schema.NEIGHBOR_DIST.NEAREST_DISTANCE" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.schema.NEIGHBOR_DIST.NEAREST_RELATION">
+<span class="sig-name descname"><span class="pre">NEAREST_RELATION</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'NeighborDist_NearestRelation'</span></em><a class="headerlink" href="#phenotypic.schema.NEIGHBOR_DIST.NEAREST_RELATION" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -2399,6 +2425,9 @@ must be a string, whose characters will be mapped to None in the result.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.NEIGHBOR_DIST.ABOVE_DISTANCE"><code class="docutils literal notranslate"><span class="pre">NEIGHBOR_DIST.ABOVE_DISTANCE</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.NEIGHBOR_DIST.UNDER_NEIGHBOR_OBJ_LABEL"><code class="docutils literal notranslate"><span class="pre">NEIGHBOR_DIST.UNDER_NEIGHBOR_OBJ_LABEL</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.NEIGHBOR_DIST.UNDER_DISTANCE"><code class="docutils literal notranslate"><span class="pre">NEIGHBOR_DIST.UNDER_DISTANCE</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.NEIGHBOR_DIST.NEAREST_OBJ_LABEL"><code class="docutils literal notranslate"><span class="pre">NEIGHBOR_DIST.NEAREST_OBJ_LABEL</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.NEIGHBOR_DIST.NEAREST_DISTANCE"><code class="docutils literal notranslate"><span class="pre">NEIGHBOR_DIST.NEAREST_DISTANCE</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.NEIGHBOR_DIST.NEAREST_RELATION"><code class="docutils literal notranslate"><span class="pre">NEIGHBOR_DIST.NEAREST_RELATION</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.NEIGHBOR_DIST.kind"><code class="docutils literal notranslate"><span class="pre">NEIGHBOR_DIST.kind()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.NEIGHBOR_DIST.tier"><code class="docutils literal notranslate"><span class="pre">NEIGHBOR_DIST.tier()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.NEIGHBOR_DIST.rembi_module"><code class="docutils literal notranslate"><span class="pre">NEIGHBOR_DIST.rembi_module()</span></code></a></li>

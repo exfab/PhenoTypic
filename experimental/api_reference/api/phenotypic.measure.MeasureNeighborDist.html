@@ -1292,16 +1292,18 @@
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.measure.MeasureNeighborDist">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.measure.</span></span><span class="sig-name descname"><span class="pre">MeasureNeighborDist</span></span><a class="reference internal" href="../../_modules/phenotypic/measure/_measure_neighbor_dist.html#MeasureNeighborDist"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.measure.MeasureNeighborDist" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.GridMeasureFeatures.html#phenotypic.abc_.GridMeasureFeatures" title="phenotypic.abc_._grid_measure.GridMeasureFeatures"><code class="xref py py-class docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code></a></p>
-<p>Measure pixel-to-pixel distances to neighbors in adjacent grid cells.</p>
+<dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.MeasureFeatures.html#phenotypic.abc_.MeasureFeatures" title="phenotypic.abc_._measure_features.MeasureFeatures"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureFeatures</span></code></a></p>
+<p>Measure distances to grid neighbours and to the nearest object.</p>
 <blockquote>
-<div><p>For each detected colony, identify the nearest object in the left,
-right, above, and below grid cells and report the minimum Euclidean
-distance between their pixel masks. Distances are computed via a
-per-section distance transform over a local window covering the target
-cell and its immediate neighbors, so round colonies are not
-over-estimated by their bounding boxes. Edge and corner colonies report
-<code class="docutils literal notranslate"><span class="pre">NaN</span></code> for directions beyond the plate boundary.</p>
+<div><p>For each detected colony, report (a) the nearest object in the left,
+right, above, and below grid cells with the minimum Euclidean distance
+between their pixel masks, and (b) the single closest other object
+anywhere on the plate, with its distance and its grid relation (same cell,
+adjacent, diagonal, or further). Directional distances use a per-section
+distance transform over a local window; the nearest-object search is an
+exact branch and bound over mask boundaries. Works on a <code class="docutils literal notranslate"><span class="pre">GridImage</span></code>
+(objects without a grid cell are excluded from the nearest search) and on a
+plain <code class="docutils literal notranslate"><span class="pre">Image</span></code>, where only the nearest label and distance are populated.</p>
 <dl>
 <dt>Returns:</dt><dd><p>pd.DataFrame: Object-level neighbor measurements with columns:</p>
 <blockquote>
@@ -1311,9 +1313,10 @@ over-estimated by their bounding boxes. Edge and corner colonies report
 <li><p>RightNeighborObjLabel, RightDistance.</p></li>
 <li><p>AboveNeighborObjLabel, AboveDistance.</p></li>
 <li><p>UnderNeighborObjLabel, UnderDistance.</p></li>
+<li><p>NearestObjLabel, NearestDistance, NearestRelation.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">NaN</span></code> where no neighbor exists (out of plate, empty
-neighbor cell, or the colony is shielded by another colony
-in the same cell).</p></li>
+neighbor cell, shielded by a cellmate, no grid, or fewer than
+two eligible objects).</p></li>
 </ul>
 </div></blockquote>
 </dd>
@@ -1322,6 +1325,8 @@ in the same cell).</p></li>
 competition risk on arrayed plates, especially for round or
 irregular colony shapes where bounding-box geometry overstates
 proximity.</p></li>
+<li><p>Screening for satellite colonies, fragments, and contaminants:
+a small <code class="docutils literal notranslate"><span class="pre">NearestDistance</span></code> with a same-cell <code class="docutils literal notranslate"><span class="pre">NearestRelation</span></code>.</p></li>
 <li><p>Flagging closely spaced colonies that may cross-contaminate.</p></li>
 <li><p>Enabling neighbor-aware paired statistical comparisons for
 competition or cooperation studies.</p></li>
@@ -1342,7 +1347,7 @@ walkthrough of grid-level measurements.</p>
 </dl>
 </div></blockquote>
 <div class="pst-scrollable-table-container"><table class="table" id="id1">
-<caption><span class="caption-text">Category: <strong>GridSpatial</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
+<caption><span class="caption-text">Category: <strong>NeighborDist</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
@@ -1382,6 +1387,18 @@ walkthrough of grid-level measurements.</p>
 <td><p>The minimum pixel-to-pixel distance to the under neighbor colony, computed via a Euclidean distance transform of object pixel masks</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
 </tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NearestObjLabel</span></code></p></td>
+<td><p>The object label of the closest other object anywhere on the plate, by minimum pixel-to-pixel distance between object masks. On a GridImage only objects assigned to a grid cell are considered; on a plain Image every object is. NaN when fewer than two eligible objects exist. Ties resolve to the smaller label.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NearestDistance</span></code></p></td>
+<td><p>The minimum Euclidean distance, in pixels, between the pixel centres of this object’s mask and the nearest object’s mask. Two objects whose masks share an edge report 1. Always less than or equal to every non-NaN directional distance for the same object.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NearestRelation</span></code></p></td>
+<td><p>Integer code for where the nearest object sits relative to this object’s grid cell, from the absolute row offset dr and column offset dc between the two cells: 0 = same cell (dr = dc = 0); 1 = edge-adjacent cell (dr + dc = 1); 2 = diagonal cell (dr = dc = 1); 3 = any cell further away. NaN on a plain Image (no grid) or when there is no nearest object.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-secondary sd-bg-text-secondary reference internal" href="../../explanation/measurement_classification_system.html#measurement-classification"><span class="std std-ref">Quality</span></a></p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -1413,7 +1430,7 @@ walkthrough of grid-level measurements.</p>
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.measure.MeasureNeighborDist.measure" title="phenotypic.measure.MeasureNeighborDist.measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measure</span></code></a></p></td>
-<td><p>Compute grid edges and assign each detected object to a grid cell.</p></td>
+<td><p>Execute the measurement operation on a detected-object image.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.measure.MeasureNeighborDist.model_construct" title="phenotypic.measure.MeasureNeighborDist.model_construct"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_construct</span></code></a></p></td>
 <td><p>Creates a new instance of the <cite>Model</cite> class with validated data.</p></td>
@@ -1845,16 +1862,94 @@ operation instance.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.measure.MeasureNeighborDist.measure">
-<span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.measure.MeasureNeighborDist.measure" title="Link to this definition">#</a></dt>
-<dd><p>Compute grid edges and assign each detected object to a grid cell.</p>
+<span class="sig-name descname"><span class="pre">measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_meta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.measure.MeasureNeighborDist.measure" title="Link to this definition">#</a></dt>
+<dd><p>Execute the measurement operation on a detected-object image.</p>
+<p>This is the main public API method for extracting measurements. It handles:
+input validation, parameter extraction via introspection, calling the
+subclass-specific <cite>_operate()</cite> method, optional metadata merging, and
+exception handling.</p>
+<p><strong>How it works (for users):</strong></p>
+<ol class="arabic simple">
+<li><p>Pass your processed Image (with detected objects) to measure()</p></li>
+<li><p>The method calls your subclass’s _operate() implementation</p></li>
+<li><p>Results are validated and returned as a pandas DataFrame</p></li>
+<li><p>If include_meta=True, image metadata (filename, grid info) is merged in</p></li>
+</ol>
+<p><strong>How it works (for developers):</strong></p>
+<p>When you subclass MeasureFeatures, you only implement _operate(). This
+measure() method automatically:</p>
+<ul class="simple">
+<li><p>Calls _operate(), which reads its parameters from <code class="docutils literal notranslate"><span class="pre">self</span></code></p></li>
+<li><p>Validates the Image has detected objects (objmap)</p></li>
+<li><p>Wraps exceptions in OperationFailedError with context</p></li>
+<li><p>Merges grid/object metadata if requested</p></li>
+</ul>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>image</strong> – Image with detected objects.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<em>Image</em>) – A PhenoTypic Image object with detected objects (must
+have non-empty objmap from a prior detection operation).</p></li>
+<li><p><strong>include_meta</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If True, merge image metadata columns
+(filename, grid position, etc.) into the results DataFrame.
+Defaults to False.</p></li>
+</ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>DataFrame with grid assignments (ROW_NUM, COL_NUM, ROW_MAJOR_IDX).</p>
+<dd class="field-even"><p><p>Measurement results with structure:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>First column: OBJECT.LABEL (integer IDs from image.objmap[:])</p></li>
+<li><p>Remaining columns: Measurement values (float, int, or string)</p></li>
+<li><p>One row per detected object</p></li>
+</ul>
+<p>If include_meta=True, additional metadata columns are prepended
+before OBJECT.LABEL (e.g., Filename, GridRow, GridCol).</p>
+</div></blockquote>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pd.DataFrame</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.sdk_.exceptions_.OperationFailedError.html#phenotypic.sdk_.exceptions_.OperationFailedError" title="phenotypic.sdk_.exceptions_.OperationFailedError"><strong>OperationFailedError</strong></a> – If _operate() raises any exception, it is caught
+    and re-raised as OperationFailedError with details including the
+    original exception type, message, image name, and operation class.
+    This provides consistent error handling across all measurers.</p>
 </dd>
 </dl>
+<div class="admonition-notes admonition">
+<p class="admonition-title">Notes</p>
+<ul class="simple">
+<li><p>This method is the main entry point; do not override in subclasses</p></li>
+<li><p>Subclasses implement _operate() only, not this method</p></li>
+<li><p>Automatic memory profiling is available via logging configuration</p></li>
+<li><p>Image must have detected objects (image.objmap should be non-empty)</p></li>
+</ul>
+</div>
+<div class="admonition-examples admonition">
+<p class="admonition-title">Examples</p>
+<p>Basic measurement extraction:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureSize</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.detect</span><span class="w"> </span><span class="kn">import</span> <span class="n">OtsuDetector</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Load and detect</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">image</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="s1">&#39;plate.jpg&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">image</span> <span class="o">=</span> <span class="n">OtsuDetector</span><span class="p">()</span><span class="o">.</span><span class="n">operate</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Extract measurements</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">measurer</span> <span class="o">=</span> <span class="n">MeasureSize</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">measurer</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>Include metadata in measurements:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># With image metadata (filename, grid info)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">df_with_meta</span> <span class="o">=</span> <span class="n">measurer</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">include_meta</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">df_with_meta</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+<span class="go"># Output: [&#39;Filename&#39;, &#39;GridRow&#39;, &#39;GridCol&#39;, &#39;OBJECT.LABEL&#39;,</span>
+<span class="go">#          &#39;Area&#39;, &#39;IntegratedIntensity&#39;, ...]</span>
+</pre></div>
+</div>
+</div>
 </dd></dl>
 
 <dl class="py attribute">

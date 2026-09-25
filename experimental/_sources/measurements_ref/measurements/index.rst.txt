@@ -494,35 +494,44 @@ Measurements
 :doc:`NEIGHBOR_DIST </api_reference/api/phenotypic.schema.NEIGHBOR_DIST>`
 -------------------------------------------------------------------------
 
-.. list-table:: Category: **GridSpatial**
+.. list-table:: Category: **NeighborDist**
    :header-rows: 1
 
    * - Column label
      - Description
      - Type
-   * - ``GridSpatial_LeftNeighborObjLabel``
+   * - ``NeighborDist_LeftNeighborObjLabel``
      - The object label of the left neighbor colony
      - :bdg-ref-secondary:`Quality <measurement-classification>`
-   * - ``GridSpatial_LeftDistance``
+   * - ``NeighborDist_LeftDistance``
      - The minimum pixel-to-pixel distance to the left neighbor colony, computed via a Euclidean distance transform of object pixel masks
      - :bdg-ref-secondary:`Quality <measurement-classification>`
-   * - ``GridSpatial_RightNeighborObjLabel``
+   * - ``NeighborDist_RightNeighborObjLabel``
      - The object label of the right neighbor colony
      - :bdg-ref-secondary:`Quality <measurement-classification>`
-   * - ``GridSpatial_RightDistance``
+   * - ``NeighborDist_RightDistance``
      - The minimum pixel-to-pixel distance to the right neighbor colony, computed via a Euclidean distance transform of object pixel masks
      - :bdg-ref-secondary:`Quality <measurement-classification>`
-   * - ``GridSpatial_AboveNeighborObjLabel``
+   * - ``NeighborDist_AboveNeighborObjLabel``
      - The object label of the above neighbor colony
      - :bdg-ref-secondary:`Quality <measurement-classification>`
-   * - ``GridSpatial_AboveDistance``
+   * - ``NeighborDist_AboveDistance``
      - The minimum pixel-to-pixel distance to the above neighbor colony, computed via a Euclidean distance transform of object pixel masks
      - :bdg-ref-secondary:`Quality <measurement-classification>`
-   * - ``GridSpatial_UnderNeighborObjLabel``
+   * - ``NeighborDist_UnderNeighborObjLabel``
      - The object label of the under neighbor colony
      - :bdg-ref-secondary:`Quality <measurement-classification>`
-   * - ``GridSpatial_UnderDistance``
+   * - ``NeighborDist_UnderDistance``
      - The minimum pixel-to-pixel distance to the under neighbor colony, computed via a Euclidean distance transform of object pixel masks
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``NeighborDist_NearestObjLabel``
+     - The object label of the closest other object anywhere on the plate, by minimum pixel-to-pixel distance between object masks. On a GridImage only objects assigned to a grid cell are considered; on a plain Image every object is. NaN when fewer than two eligible objects exist. Ties resolve to the smaller label.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``NeighborDist_NearestDistance``
+     - The minimum Euclidean distance, in pixels, between the pixel centres of this object's mask and the nearest object's mask. Two objects whose masks share an edge report 1. Always less than or equal to every non-NaN directional distance for the same object.
+     - :bdg-ref-secondary:`Quality <measurement-classification>`
+   * - ``NeighborDist_NearestRelation``
+     - Integer code for where the nearest object sits relative to this object's grid cell, from the absolute row offset dr and column offset dc between the two cells: 0 = same cell (dr = dc = 0); 1 = edge-adjacent cell (dr + dc = 1); 2 = diagonal cell (dr = dc = 1); 3 = any cell further away. NaN on a plain Image (no grid) or when there is no nearest object.
      - :bdg-ref-secondary:`Quality <measurement-classification>`
 
 .. _measurement-info-grid-spread:

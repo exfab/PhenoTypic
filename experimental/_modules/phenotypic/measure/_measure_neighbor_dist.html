@@ -600,32 +600,140 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">cast</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">ndimage</span> <span class="k">as</span> <span class="n">ndi</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.spatial</span><span class="w"> </span><span class="kn">import</span> <span class="n">cKDTree</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridMeasureFeatures</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureFeatures</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">NEIGHBOR_DIST</span><span class="p">,</span> <span class="n">GRID</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">NEIGHBOR_DIST</span><span class="p">,</span> <span class="n">GRID</span><span class="p">,</span> <span class="n">BBOX</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_boundary_coords</span><span class="p">(</span>
+        <span class="n">objmap</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">sl</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">slice</span><span class="p">,</span> <span class="nb">slice</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Full-image (row, col) coordinates of ``label``&#39;s 4-connected boundary.</span>
+
+<span class="sd">    A pixel is boundary when at least one 4-neighbour is outside the object;</span>
+<span class="sd">    hole edges count. The minimum distance between two disjoint masks is always</span>
+<span class="sd">    attained on these pixels (spec §3.6 C1). Pixels on the crop edge are</span>
+<span class="sd">    boundary because ``binary_erosion`` treats outside-the-crop as background,</span>
+<span class="sd">    which is correct for the tight ``find_objects`` slice.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">objmap</span><span class="p">[</span><span class="n">sl</span><span class="p">]</span> <span class="o">==</span> <span class="n">label</span>
+    <span class="n">edge</span> <span class="o">=</span> <span class="n">mask</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">ndi</span><span class="o">.</span><span class="n">binary_erosion</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+    <span class="n">coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">edge</span><span class="p">)</span>
+    <span class="n">coords</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="n">sl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">start</span>
+    <span class="n">coords</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">sl</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">start</span>
+    <span class="k">return</span> <span class="n">coords</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_nearest_objects</span><span class="p">(</span>
+        <span class="n">objmap</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">eligible</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Exact nearest other object for every eligible label.</span>
+
+<span class="sd">    Branch and bound: candidates are visited in ascending (bounding-box lower</span>
+<span class="sd">    bound, label) order, and the search stops at the first candidate whose</span>
+<span class="sd">    lower bound strictly exceeds the best exact distance found. The box gap</span>
+<span class="sd">    never exceeds the mask distance (C2), so no nearer object is skipped, and</span>
+<span class="sd">    equal-distance candidates are still visited for the smaller-label</span>
+<span class="sd">    tie-break (C3).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        objmap: 2-D integer label map.</span>
+<span class="sd">        eligible: 1-D labels to search among; only these are targets or</span>
+<span class="sd">            candidates.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``(nearest_label, nearest_distance)`` float arrays aligned to</span>
+<span class="sd">        ``eligible``; ``NaN`` where no other eligible object exists.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If an eligible label has no pixels in ``objmap``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">eligible</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">eligible</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">eligible</span><span class="o">.</span><span class="n">size</span>
+    <span class="n">nearest_label</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="n">nearest_dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">nearest_label</span><span class="p">,</span> <span class="n">nearest_dist</span>
+
+    <span class="n">slices</span> <span class="o">=</span> <span class="n">ndi</span><span class="o">.</span><span class="n">find_objects</span><span class="p">(</span><span class="n">objmap</span><span class="p">)</span>
+    <span class="n">boundaries</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">bboxes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">n</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>  <span class="c1"># inclusive min_r, max_r, min_c, max_c</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">eligible</span><span class="p">):</span>
+        <span class="n">sl</span> <span class="o">=</span> <span class="n">slices</span><span class="p">[</span><span class="n">label</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">label</span> <span class="o">&lt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">slices</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">sl</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;eligible label </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> has no pixels in objmap&quot;</span><span class="p">)</span>
+        <span class="n">coords</span> <span class="o">=</span> <span class="n">_boundary_coords</span><span class="p">(</span><span class="n">objmap</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="p">),</span> <span class="n">sl</span><span class="p">)</span>
+        <span class="n">boundaries</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">coords</span><span class="p">)</span>
+        <span class="n">bboxes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">coords</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">coords</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span>
+                     <span class="n">coords</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">coords</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+
+    <span class="n">trees</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">cKDTree</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="n">gap_r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">bboxes</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">bboxes</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+                                         <span class="n">bboxes</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">bboxes</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]))</span>
+        <span class="n">gap_c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">bboxes</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">bboxes</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+                                         <span class="n">bboxes</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">bboxes</span><span class="p">[:,</span> <span class="mi">3</span><span class="p">]))</span>
+        <span class="c1"># sqrt of an exact integer sum, the same rounding path cKDTree uses, so</span>
+        <span class="c1"># a lower bound equal to a true distance compares equal rather than</span>
+        <span class="c1"># 1 ulp high (np.hypot is not guaranteed correctly rounded on every libm),</span>
+        <span class="c1"># and tied candidates are never skipped.</span>
+        <span class="n">lower</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">gap_r</span> <span class="o">*</span> <span class="n">gap_r</span> <span class="o">+</span> <span class="n">gap_c</span> <span class="o">*</span> <span class="n">gap_c</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">))</span>
+        <span class="n">lower</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+        <span class="n">best</span><span class="p">,</span> <span class="n">best_j</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">lexsort</span><span class="p">((</span><span class="n">eligible</span><span class="p">,</span> <span class="n">lower</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">j</span> <span class="o">==</span> <span class="n">i</span> <span class="ow">or</span> <span class="n">lower</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">best</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="c1"># Distance is symmetric: query the shorter boundary against the</span>
+            <span class="c1"># longer one&#39;s tree, so a large object (plate rim, spreading</span>
+            <span class="c1"># colony) is indexed once rather than queried per candidate.</span>
+            <span class="n">small</span><span class="p">,</span> <span class="n">big</span> <span class="o">=</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">boundaries</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&lt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">boundaries</span><span class="p">[</span><span class="n">j</span><span class="p">])</span> <span class="k">else</span> <span class="p">(</span><span class="n">j</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">big</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">trees</span><span class="p">:</span>
+                <span class="n">trees</span><span class="p">[</span><span class="n">big</span><span class="p">]</span> <span class="o">=</span> <span class="n">cKDTree</span><span class="p">(</span><span class="n">boundaries</span><span class="p">[</span><span class="n">big</span><span class="p">])</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">trees</span><span class="p">[</span><span class="n">big</span><span class="p">]</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">boundaries</span><span class="p">[</span><span class="n">small</span><span class="p">],</span> <span class="n">k</span><span class="o">=</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]))</span>
+            <span class="k">if</span> <span class="n">d</span> <span class="o">&lt;</span> <span class="n">best</span> <span class="ow">or</span> <span class="p">(</span><span class="n">d</span> <span class="o">==</span> <span class="n">best</span> <span class="ow">and</span> <span class="n">eligible</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">eligible</span><span class="p">[</span><span class="n">best_j</span><span class="p">]):</span>
+                <span class="n">best</span><span class="p">,</span> <span class="n">best_j</span> <span class="o">=</span> <span class="n">d</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
+        <span class="n">nearest_label</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">eligible</span><span class="p">[</span><span class="n">best_j</span><span class="p">]</span>
+        <span class="n">nearest_dist</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">best</span>
+    <span class="k">return</span> <span class="n">nearest_label</span><span class="p">,</span> <span class="n">nearest_dist</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_nearest_relation</span><span class="p">(</span><span class="n">self_rc</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">nearest_rc</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Grid relation code per spec §3.4 from (row, col) cell positions.&quot;&quot;&quot;</span>
+    <span class="n">dr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">nearest_rc</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">self_rc</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span>
+    <span class="n">dc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">nearest_rc</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">self_rc</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])</span>
+    <span class="n">step</span> <span class="o">=</span> <span class="n">dr</span> <span class="o">+</span> <span class="n">dc</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">select</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">step</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="n">step</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="n">dr</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dc</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)],</span>
+            <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">],</span>
+            <span class="n">default</span><span class="o">=</span><span class="mf">3.0</span><span class="p">,</span>
+    <span class="p">)</span>
 
 
 <div class="viewcode-block" id="MeasureNeighborDist">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.measure.MeasureNeighborDist.html#phenotypic.measure.MeasureNeighborDist">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">MeasureNeighborDist</span><span class="p">(</span><span class="n">GridMeasureFeatures</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure pixel-to-pixel distances to neighbors in adjacent grid cells.</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MeasureNeighborDist</span><span class="p">(</span><span class="n">MeasureFeatures</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure distances to grid neighbours and to the nearest object.</span>
 
-<span class="sd">    For each detected colony, identify the nearest object in the left,</span>
-<span class="sd">    right, above, and below grid cells and report the minimum Euclidean</span>
-<span class="sd">    distance between their pixel masks. Distances are computed via a</span>
-<span class="sd">    per-section distance transform over a local window covering the target</span>
-<span class="sd">    cell and its immediate neighbors, so round colonies are not</span>
-<span class="sd">    over-estimated by their bounding boxes. Edge and corner colonies report</span>
-<span class="sd">    ``NaN`` for directions beyond the plate boundary.</span>
+<span class="sd">    For each detected colony, report (a) the nearest object in the left,</span>
+<span class="sd">    right, above, and below grid cells with the minimum Euclidean distance</span>
+<span class="sd">    between their pixel masks, and (b) the single closest other object</span>
+<span class="sd">    anywhere on the plate, with its distance and its grid relation (same cell,</span>
+<span class="sd">    adjacent, diagonal, or further). Directional distances use a per-section</span>
+<span class="sd">    distance transform over a local window; the nearest-object search is an</span>
+<span class="sd">    exact branch and bound over mask boundaries. Works on a ``GridImage``</span>
+<span class="sd">    (objects without a grid cell are excluded from the nearest search) and on a</span>
+<span class="sd">    plain ``Image``, where only the nearest label and distance are populated.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        pd.DataFrame: Object-level neighbor measurements with columns:</span>
@@ -635,15 +743,18 @@
 <span class="sd">            - RightNeighborObjLabel, RightDistance.</span>
 <span class="sd">            - AboveNeighborObjLabel, AboveDistance.</span>
 <span class="sd">            - UnderNeighborObjLabel, UnderDistance.</span>
+<span class="sd">            - NearestObjLabel, NearestDistance, NearestRelation.</span>
 <span class="sd">            - ``NaN`` where no neighbor exists (out of plate, empty</span>
-<span class="sd">              neighbor cell, or the colony is shielded by another colony</span>
-<span class="sd">              in the same cell).</span>
+<span class="sd">              neighbor cell, shielded by a cellmate, no grid, or fewer than</span>
+<span class="sd">              two eligible objects).</span>
 
 <span class="sd">    Best For:</span>
 <span class="sd">        - Quantifying colony spacing and crowding to assess nutrient</span>
 <span class="sd">          competition risk on arrayed plates, especially for round or</span>
 <span class="sd">          irregular colony shapes where bounding-box geometry overstates</span>
 <span class="sd">          proximity.</span>
+<span class="sd">        - Screening for satellite colonies, fragments, and contaminants:</span>
+<span class="sd">          a small ``NearestDistance`` with a same-cell ``NearestRelation``.</span>
 <span class="sd">        - Flagging closely spaced colonies that may cross-contaminate.</span>
 <span class="sd">        - Enabling neighbor-aware paired statistical comparisons for</span>
 <span class="sd">          competition or cooperation studies.</span>
@@ -675,11 +786,77 @@
          <span class="n">NEIGHBOR_DIST</span><span class="o">.</span><span class="n">UNDER_DISTANCE</span><span class="p">),</span>
     <span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-        <span class="n">grid_info</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">include_metadata</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
         <span class="c1"># Densify once; subsequent windowing is pure numpy slicing on this view.</span>
-        <span class="n">objmap_full</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
+        <span class="n">objmap</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
+        <span class="n">directional</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">lab</span><span class="p">,</span> <span class="n">dist</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_DIRECTIONS</span>
+                       <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="p">(</span><span class="n">lab</span><span class="p">,</span> <span class="n">dist</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="s2">&quot;grid&quot;</span><span class="p">):</span>
+            <span class="n">info</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">include_metadata</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_measure_grid_directions</span><span class="p">(</span>
+                    <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;GridImage&quot;</span><span class="p">,</span> <span class="n">image</span><span class="p">),</span> <span class="n">info</span><span class="p">,</span> <span class="n">objmap</span>
+            <span class="p">)</span>
+            <span class="n">grid_rc</span> <span class="o">=</span> <span class="n">info</span><span class="p">[[</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">,</span> <span class="n">GRID</span><span class="o">.</span><span class="n">COL_NUM</span><span class="p">]]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+            <span class="n">eligible_rows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">grid_rc</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">image</span><span class="o">.</span><span class="n">num_objects</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># image.objects raises on an empty map; the spec&#39;d result is no rows.</span>
+            <span class="n">info</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)})</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="p">{</span><span class="n">col</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">directional</span><span class="p">}</span>
+            <span class="n">grid_rc</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">eligible_rows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">info</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">include_metadata</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="p">{</span><span class="n">col</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">info</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">directional</span><span class="p">}</span>
+            <span class="n">grid_rc</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">eligible_rows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">info</span><span class="p">))</span>
+
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+        <span class="n">n_objs</span> <span class="o">=</span> <span class="n">labels</span><span class="o">.</span><span class="n">size</span>
+        <span class="n">nearest_label</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_objs</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+        <span class="n">nearest_dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_objs</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+        <span class="n">relation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_objs</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+
+        <span class="n">e_label</span><span class="p">,</span> <span class="n">e_dist</span> <span class="o">=</span> <span class="n">_nearest_objects</span><span class="p">(</span><span class="n">objmap</span><span class="p">,</span> <span class="n">labels</span><span class="p">[</span><span class="n">eligible_rows</span><span class="p">])</span>
+        <span class="n">nearest_label</span><span class="p">[</span><span class="n">eligible_rows</span><span class="p">]</span> <span class="o">=</span> <span class="n">e_label</span>
+        <span class="n">nearest_dist</span><span class="p">[</span><span class="n">eligible_rows</span><span class="p">]</span> <span class="o">=</span> <span class="n">e_dist</span>
+
+        <span class="k">if</span> <span class="n">grid_rc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">label_to_row</span> <span class="o">=</span> <span class="p">{</span><span class="nb">int</span><span class="p">(</span><span class="n">lab</span><span class="p">):</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">lab</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">labels</span><span class="p">)}</span>
+            <span class="n">found</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">e_label</span><span class="p">)</span>
+            <span class="n">rows_self</span> <span class="o">=</span> <span class="n">eligible_rows</span><span class="p">[</span><span class="n">found</span><span class="p">]</span>
+            <span class="n">rows_near</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">label_to_row</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">lab</span><span class="p">)]</span> <span class="k">for</span> <span class="n">lab</span> <span class="ow">in</span> <span class="n">e_label</span><span class="p">[</span><span class="n">found</span><span class="p">]],</span>
+                    <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">relation</span><span class="p">[</span><span class="n">rows_self</span><span class="p">]</span> <span class="o">=</span> <span class="n">_nearest_relation</span><span class="p">(</span>
+                    <span class="n">grid_rc</span><span class="p">[</span><span class="n">rows_self</span><span class="p">],</span> <span class="n">grid_rc</span><span class="p">[</span><span class="n">rows_near</span><span class="p">]</span>
+            <span class="p">)</span>
+
+        <span class="n">results</span><span class="p">[</span><span class="n">NEIGHBOR_DIST</span><span class="o">.</span><span class="n">NEAREST_OBJ_LABEL</span><span class="p">]</span> <span class="o">=</span> <span class="n">nearest_label</span>
+        <span class="n">results</span><span class="p">[</span><span class="n">NEIGHBOR_DIST</span><span class="o">.</span><span class="n">NEAREST_DISTANCE</span><span class="p">]</span> <span class="o">=</span> <span class="n">nearest_dist</span>
+        <span class="n">results</span><span class="p">[</span><span class="n">NEIGHBOR_DIST</span><span class="o">.</span><span class="n">NEAREST_RELATION</span><span class="p">]</span> <span class="o">=</span> <span class="n">relation</span>
+
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">,</span> <span class="n">info</span><span class="p">[</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">df</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_measure_grid_directions</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">,</span>
+            <span class="n">grid_info</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+            <span class="n">objmap_full</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The eight directional columns, keyed in enum order.&quot;&quot;&quot;</span>
         <span class="n">nrows</span><span class="p">,</span> <span class="n">ncols</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">nrows</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">ncols</span>
+        <span class="c1"># Each public edge getter re-fits the grid, so fetch both once and</span>
+        <span class="c1"># memoize every occupied cell&#39;s window up front.</span>
+        <span class="n">section_bbox</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_section_bboxes</span><span class="p">(</span>
+                <span class="n">grid_info</span><span class="p">,</span>
+                <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">get_row_edges</span><span class="p">(),</span>
+                <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">get_col_edges</span><span class="p">(),</span>
+                <span class="n">height</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="n">width</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+        <span class="p">)</span>
 
         <span class="n">labels</span> <span class="o">=</span> <span class="n">grid_info</span><span class="p">[</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
         <span class="n">n_objs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
@@ -707,15 +884,14 @@
             <span class="n">section_groups</span><span class="p">[(</span><span class="nb">int</span><span class="p">(</span><span class="n">g_row</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">g_col</span><span class="p">))]</span> <span class="o">=</span> <span class="n">sec_df</span>
 
         <span class="k">for</span> <span class="p">(</span><span class="n">target_row</span><span class="p">,</span> <span class="n">target_col</span><span class="p">),</span> <span class="n">section_df</span> <span class="ow">in</span> <span class="n">section_groups</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">target_idx</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">_idx_ref_matrix</span><span class="p">[</span><span class="n">target_row</span><span class="p">,</span> <span class="n">target_col</span><span class="p">])</span>
             <span class="n">target_labels</span> <span class="o">=</span> <span class="n">section_df</span><span class="p">[</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">target_labels</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="k">continue</span>
 
-            <span class="n">target_bbox</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_section_bbox</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">target_idx</span><span class="p">,</span> <span class="n">grid_info</span><span class="p">)</span>
+            <span class="n">target_bbox</span> <span class="o">=</span> <span class="n">section_bbox</span><span class="p">[(</span><span class="n">target_row</span><span class="p">,</span> <span class="n">target_col</span><span class="p">)]</span>
 
             <span class="n">valid_neighbors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_collect_neighbors</span><span class="p">(</span>
-                    <span class="n">image</span><span class="p">,</span> <span class="n">grid_info</span><span class="p">,</span> <span class="n">section_groups</span><span class="p">,</span>
+                    <span class="n">section_groups</span><span class="p">,</span> <span class="n">section_bbox</span><span class="p">,</span>
                     <span class="n">target_row</span><span class="p">,</span> <span class="n">target_col</span><span class="p">,</span> <span class="n">nrows</span><span class="p">,</span> <span class="n">ncols</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">valid_neighbors</span><span class="p">:</span>
@@ -766,28 +942,37 @@
                     <span class="n">results</span><span class="p">[</span><span class="n">label_col</span><span class="p">][</span><span class="n">row_idx</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">cand_obj</span><span class="p">[</span><span class="n">argmin</span><span class="p">])</span>
                     <span class="n">results</span><span class="p">[</span><span class="n">dist_col</span><span class="p">][</span><span class="n">row_idx</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">cand_dt</span><span class="p">[</span><span class="n">argmin</span><span class="p">])</span>
 
-        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
-        <span class="n">df</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">df</span>
+        <span class="k">return</span> <span class="n">results</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">_section_bbox</span><span class="p">(</span>
-            <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">,</span> <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">grid_info</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return integer (min_rr, max_rr, min_cc, max_cc) for a grid section.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_section_bboxes</span><span class="p">(</span>
+            <span class="n">grid_info</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+            <span class="n">row_edges</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="n">col_edges</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+            <span class="o">*</span><span class="p">,</span>
+            <span class="n">height</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+            <span class="n">width</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Window (min_rr, max_rr, min_cc, max_cc) for every occupied grid cell.</span>
 
-<span class="sd">        Uses the object-fitting section slices so colonies that spill past</span>
-<span class="sd">        their grid line are not cropped at the boundary.</span>
+<span class="sd">        The cell&#39;s grid rectangle, widened to cover every object assigned to</span>
+<span class="sd">        it (colonies may spill past a grid line), then clipped to the image.</span>
+<span class="sd">        Built from public grid members only, once per measurement.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="p">(</span><span class="n">min_rr</span><span class="p">,</span> <span class="n">min_cc</span><span class="p">),</span> <span class="p">(</span><span class="n">max_rr</span><span class="p">,</span> <span class="n">max_cc</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">_adv_get_grid_section_slices</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">grid_info</span><span class="p">)</span>
-        <span class="p">)</span>
-        <span class="k">return</span> <span class="p">(</span>
-            <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">min_rr</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()),</span>
-            <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">max_rr</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()),</span>
-            <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">min_cc</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()),</span>
-            <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">max_cc</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()),</span>
-        <span class="p">)</span>
+        <span class="n">bboxes</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">sec</span> <span class="ow">in</span> <span class="n">grid_info</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_NUM</span><span class="p">,</span> <span class="n">GRID</span><span class="o">.</span><span class="n">COL_NUM</span><span class="p">],</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">):</span>
+            <span class="n">g_row</span><span class="p">,</span> <span class="n">g_col</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="s2">&quot;tuple[float, float]&quot;</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">isna</span><span class="p">(</span><span class="n">g_row</span><span class="p">)</span> <span class="ow">or</span> <span class="n">pd</span><span class="o">.</span><span class="n">isna</span><span class="p">(</span><span class="n">g_col</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="n">r</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">g_row</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">g_col</span><span class="p">)</span>
+            <span class="n">min_rr</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">row_edges</span><span class="p">[</span><span class="n">r</span><span class="p">],</span> <span class="n">sec</span><span class="p">[</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MIN_RR</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()),</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">max_rr</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">row_edges</span><span class="p">[</span><span class="n">r</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span> <span class="n">sec</span><span class="p">[</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MAX_RR</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()),</span> <span class="n">height</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">min_cc</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">col_edges</span><span class="p">[</span><span class="n">c</span><span class="p">],</span> <span class="n">sec</span><span class="p">[</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MIN_CC</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()),</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">max_cc</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">col_edges</span><span class="p">[</span><span class="n">c</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span> <span class="n">sec</span><span class="p">[</span><span class="n">BBOX</span><span class="o">.</span><span class="n">MAX_CC</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()),</span> <span class="n">width</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">bboxes</span><span class="p">[(</span><span class="n">r</span><span class="p">,</span> <span class="n">c</span><span class="p">)]</span> <span class="o">=</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">min_rr</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">max_rr</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">min_cc</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">max_cc</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">bboxes</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_window_bbox</span><span class="p">(</span>
@@ -804,9 +989,8 @@
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_collect_neighbors</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>
-            <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">,</span>
-            <span class="n">grid_info</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
             <span class="n">section_groups</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">],</span>
+            <span class="n">section_bbox</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]],</span>
             <span class="n">target_row</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
             <span class="n">target_col</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
             <span class="n">nrows</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
@@ -823,12 +1007,9 @@
             <span class="n">n_section_df</span> <span class="o">=</span> <span class="n">section_groups</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">n_row</span><span class="p">,</span> <span class="n">n_col</span><span class="p">))</span>
             <span class="k">if</span> <span class="n">n_section_df</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">n_section_df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
                 <span class="k">continue</span>
-            <span class="n">n_idx</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">_idx_ref_matrix</span><span class="p">[</span><span class="n">n_row</span><span class="p">,</span> <span class="n">n_col</span><span class="p">])</span>
-            <span class="n">n_bbox</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_section_bbox</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">n_idx</span><span class="p">,</span> <span class="n">grid_info</span><span class="p">)</span>
             <span class="n">n_labels</span> <span class="o">=</span> <span class="n">n_section_df</span><span class="p">[</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
-            <span class="n">valid</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-                    <span class="p">(</span><span class="n">n_row</span><span class="p">,</span> <span class="n">n_col</span><span class="p">,</span> <span class="n">n_bbox</span><span class="p">,</span> <span class="n">n_labels</span><span class="p">,</span> <span class="n">label_col</span><span class="p">,</span> <span class="n">dist_col</span><span class="p">)</span>
-            <span class="p">)</span>
+            <span class="n">valid</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">n_row</span><span class="p">,</span> <span class="n">n_col</span><span class="p">,</span> <span class="n">section_bbox</span><span class="p">[(</span><span class="n">n_row</span><span class="p">,</span> <span class="n">n_col</span><span class="p">)],</span>
+                          <span class="n">n_labels</span><span class="p">,</span> <span class="n">label_col</span><span class="p">,</span> <span class="n">dist_col</span><span class="p">))</span>
         <span class="k">return</span> <span class="n">valid</span></div>
 
 
