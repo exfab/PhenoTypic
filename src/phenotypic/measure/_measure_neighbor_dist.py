@@ -96,9 +96,13 @@ def _nearest_objects(
         for j in np.lexsort((eligible, lower)):
             if j == i or lower[j] > best:
                 break
-            if j not in trees:
-                trees[j] = cKDTree(boundaries[j])
-            d = float(np.min(trees[j].query(boundaries[i], k=1)[0]))
+            # Distance is symmetric: query the shorter boundary against the
+            # longer one's tree, so a large object (plate rim, spreading
+            # colony) is indexed once rather than queried per candidate.
+            small, big = (i, j) if len(boundaries[i]) <= len(boundaries[j]) else (j, i)
+            if big not in trees:
+                trees[big] = cKDTree(boundaries[big])
+            d = float(np.min(trees[big].query(boundaries[small], k=1)[0]))
             if d < best or (d == best and eligible[j] < eligible[best_j]):
                 best, best_j = d, int(j)
         nearest_label[i] = eligible[best_j]
@@ -194,6 +198,12 @@ class MeasureNeighborDist(MeasureFeatures):
             )
             grid_rc = info[[GRID.ROW_NUM, GRID.COL_NUM]].to_numpy(dtype=float)
             eligible_rows = np.flatnonzero(~np.isnan(grid_rc).any(axis=1))
+        elif image.num_objects == 0:
+            # image.objects raises on an empty map; the spec'd result is no rows.
+            info = pd.DataFrame({OBJECT.LABEL: np.empty(0, dtype=np.int64)})
+            results = {col: np.empty(0) for col in directional}
+            grid_rc = None
+            eligible_rows = np.empty(0, dtype=np.int64)
         else:
             info = image.objects.info(include_metadata=False)
             results = {col: np.full(len(info), np.nan) for col in directional}

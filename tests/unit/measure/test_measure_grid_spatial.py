@@ -803,3 +803,92 @@ class TestNearestProperty:
                 df[NEIGHBOR_DIST.NEAREST_OBJ_LABEL].to_numpy(), want_label)
         np.testing.assert_array_equal(
                 df[NEIGHBOR_DIST.NEAREST_DISTANCE].to_numpy(), want_dist)
+
+
+class TestNearestEdgeCases:
+    """Spec §4 edge cases driven through measure(), plus the large-object cost."""
+
+    _COLUMNS = [str(OBJECT.LABEL)] + NEIGHBOR_DIST.get_headers()
+
+    def test_empty_plain_image_returns_no_rows(self):
+        image = Image(arr=np.zeros((50, 50, 3), dtype=np.uint8))
+        df = MeasureNeighborDist().measure(image)
+        assert len(df) == 0
+        assert [str(c) for c in df.columns] == self._COLUMNS
+
+    def test_empty_grid_image_returns_no_rows(self):
+        image = _make_synthetic_grid_image(
+                height=100, width=100,
+                row_edges=np.array([0, 50, 100]), col_edges=np.array([0, 50, 100]),
+                circles=[],
+        )
+        df = MeasureNeighborDist().measure(image)
+        assert len(df) == 0
+        assert [str(c) for c in df.columns] == self._COLUMNS
+
+    def test_off_grid_object_keeps_row_and_is_never_nearest(self, monkeypatch):
+        # No shipped grid finder yields a NaN grid position (spec §2), so
+        # blank one row of the real grid.info() frame. Label 2 sits 7 px from
+        # label 1 and is NOT the last row, so both "search everything" and a
+        # misaligned scatter back into the frame change the result.
+        from phenotypic._core._image_parts.accessors import GridAccessor
+        orig_info = GridAccessor.info
+
+        def info_with_off_grid(self, include_metadata=True):
+            df = orig_info(self, include_metadata=include_metadata)
+            df.loc[df[OBJECT.LABEL] == 2, GRID.ROW_NUM] = np.nan
+            return df
+
+        monkeypatch.setattr(GridAccessor, "info", info_with_off_grid)
+        image = _make_synthetic_grid_image(
+                height=100, width=150,
+                row_edges=np.array([0, 100]),
+                col_edges=np.array([0, 50, 100, 150]),
+                circles=[(1, 50, 25, 5), (2, 50, 40, 3), (3, 50, 125, 5)],
+        )
+        df = MeasureNeighborDist().measure(image)
+
+        assert sorted(df[OBJECT.LABEL].tolist()) == [1, 2, 3]
+        off = _row(df, 2)
+        for col in (NEIGHBOR_DIST.NEAREST_OBJ_LABEL,
+                    NEIGHBOR_DIST.NEAREST_DISTANCE,
+                    NEIGHBOR_DIST.NEAREST_RELATION):
+            assert pd.isna(off[col])
+        assert _row(df, 1)[NEIGHBOR_DIST.NEAREST_OBJ_LABEL] == 3
+        assert _row(df, 3)[NEIGHBOR_DIST.NEAREST_OBJ_LABEL] == 1
+        on_grid = df[df[OBJECT.LABEL] != 2]
+        assert on_grid[NEIGHBOR_DIST.NEAREST_RELATION].tolist() == [3.0, 3.0]
+
+    def test_large_object_boundary_is_never_the_query_side(self, monkeypatch):
+        # A plate-rim ring encloses nine small colonies, so every colony's box
+        # lower bound against the rim is 0 and the rim visits all nine. The
+        # rim's long boundary must go into a tree, never be queried nine times.
+        import phenotypic.measure._measure_neighbor_dist as mod
+        queried: list[int] = []
+
+        class SpyTree(cKDTree):
+            def query(self, x, *args, **kwargs):
+                queried.append(len(x))
+                return super().query(x, *args, **kwargs)
+
+        monkeypatch.setattr(mod, "cKDTree", SpyTree)
+        objmap = np.zeros((200, 200), np.int32)
+        rr, cc = np.ogrid[:200, :200]
+        r2 = (rr - 100) ** 2 + (cc - 100) ** 2
+        objmap[(r2 <= 98 ** 2) & (r2 > 94 ** 2)] = 1
+        label = 2
+        for r in (70, 100, 130):
+            for c in (70, 100, 130):
+                _circle(objmap, label, r, c, 5)
+                label += 1
+        eligible = np.arange(1, label, dtype=np.int64)
+
+        got = _nearest_objects(objmap, eligible)
+
+        rim = objmap == 1
+        from scipy import ndimage as ndi
+        rim_boundary = int((rim & ~ndi.binary_erosion(rim)).sum())
+        assert max(queried) < rim_boundary
+        want = _brute_nearest(objmap, eligible)
+        np.testing.assert_array_equal(got[0], want[0])
+        np.testing.assert_array_equal(got[1], want[1])
