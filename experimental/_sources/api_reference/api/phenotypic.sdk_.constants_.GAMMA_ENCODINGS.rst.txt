@@ -20,6 +20,7 @@ phenotypic.sdk\_.constants\_.GAMMA\_ENCODINGS
       ~GAMMA_ENCODINGS.kind
       ~GAMMA_ENCODINGS.tier
       ~GAMMA_ENCODINGS.rembi_module
+      ~GAMMA_ENCODINGS.change_note
       ~GAMMA_ENCODINGS.header_scheme
       ~GAMMA_ENCODINGS.member_for_header
       ~GAMMA_ENCODINGS.owns_header

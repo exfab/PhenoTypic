@@ -20,6 +20,7 @@ phenotypic.schema.INTENSITY
       ~INTENSITY.kind
       ~INTENSITY.category
       ~INTENSITY.rembi_module
+      ~INTENSITY.change_note
       ~INTENSITY.header_scheme
       ~INTENSITY.member_for_header
       ~INTENSITY.owns_header

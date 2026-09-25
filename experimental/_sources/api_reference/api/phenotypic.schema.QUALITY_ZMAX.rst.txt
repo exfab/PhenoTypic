@@ -20,6 +20,7 @@ phenotypic.schema.QUALITY\_ZMAX
       ~QUALITY_ZMAX.category
       ~QUALITY_ZMAX.tier
       ~QUALITY_ZMAX.rembi_module
+      ~QUALITY_ZMAX.change_note
       ~QUALITY_ZMAX.header_scheme
       ~QUALITY_ZMAX.member_for_header
       ~QUALITY_ZMAX.owns_header

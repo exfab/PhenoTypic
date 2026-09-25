@@ -20,6 +20,7 @@ phenotypic.schema.Colorxy
       ~Colorxy.kind
       ~Colorxy.category
       ~Colorxy.rembi_module
+      ~Colorxy.change_note
       ~Colorxy.header_scheme
       ~Colorxy.member_for_header
       ~Colorxy.owns_header

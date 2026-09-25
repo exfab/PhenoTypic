@@ -58,5 +58,8 @@ phenotypic.measure.MeasureSize
       ~MeasureSize.model_extra
       ~MeasureSize.model_fields
       ~MeasureSize.model_fields_set
+      ~MeasureSize.angular_bins
+      ~MeasureSize.trim_proportion
+      ~MeasureSize.plateau_tolerance
    
    

@@ -20,6 +20,7 @@ phenotypic.schema.GRID\_SPREAD
       ~GRID_SPREAD.category
       ~GRID_SPREAD.tier
       ~GRID_SPREAD.rembi_module
+      ~GRID_SPREAD.change_note
       ~GRID_SPREAD.header_scheme
       ~GRID_SPREAD.member_for_header
       ~GRID_SPREAD.owns_header

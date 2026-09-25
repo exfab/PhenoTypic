@@ -20,6 +20,7 @@ phenotypic.schema.SIZE
       ~SIZE.kind
       ~SIZE.category
       ~SIZE.rembi_module
+      ~SIZE.change_note
       ~SIZE.header_scheme
       ~SIZE.member_for_header
       ~SIZE.owns_header
@@ -92,6 +93,18 @@ phenotypic.schema.SIZE
       ~SIZE.use_badge
       ~SIZE.AREA
       ~SIZE.INTEGRATED_INTENSITY
+      ~SIZE.PERIMETER
+      ~SIZE.CONVEX_AREA
+      ~SIZE.BBOX_AREA
+      ~SIZE.MAJOR_AXIS_LENGTH
+      ~SIZE.MINOR_AXIS_LENGTH
+      ~SIZE.MIN_FERET_DIAMETER
+      ~SIZE.MAX_FERET_DIAMETER
+      ~SIZE.INSCRIBED_RADIUS
+      ~SIZE.MEDIAN_RADIUS
+      ~SIZE.MEAN_RADIUS
+      ~SIZE.ROBUST_MEAN_RADIUS
+      ~SIZE.MAX_RADIUS
       ~SIZE.label
       ~SIZE.desc
       ~SIZE.bio_desc

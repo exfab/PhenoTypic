@@ -20,6 +20,7 @@ phenotypic.schema.METADATA\_MATCH
       ~METADATA_MATCH.category
       ~METADATA_MATCH.tier
       ~METADATA_MATCH.rembi_module
+      ~METADATA_MATCH.change_note
       ~METADATA_MATCH.header_scheme
       ~METADATA_MATCH.member_for_header
       ~METADATA_MATCH.owns_header

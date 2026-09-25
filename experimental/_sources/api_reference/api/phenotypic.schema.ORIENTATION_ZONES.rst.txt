@@ -20,6 +20,7 @@ phenotypic.schema.ORIENTATION\_ZONES
       ~ORIENTATION_ZONES.category
       ~ORIENTATION_ZONES.tier
       ~ORIENTATION_ZONES.rembi_module
+      ~ORIENTATION_ZONES.change_note
       ~ORIENTATION_ZONES.header_scheme
       ~ORIENTATION_ZONES.member_for_header
       ~ORIENTATION_ZONES.owns_header

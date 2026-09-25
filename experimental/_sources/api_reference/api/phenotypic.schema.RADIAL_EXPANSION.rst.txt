@@ -20,6 +20,7 @@ phenotypic.schema.RADIAL\_EXPANSION
       ~RADIAL_EXPANSION.kind
       ~RADIAL_EXPANSION.category
       ~RADIAL_EXPANSION.rembi_module
+      ~RADIAL_EXPANSION.change_note
       ~RADIAL_EXPANSION.header_scheme
       ~RADIAL_EXPANSION.member_for_header
       ~RADIAL_EXPANSION.owns_header

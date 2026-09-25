@@ -20,6 +20,7 @@ phenotypic.schema.QUALITY\_TUKEY
       ~QUALITY_TUKEY.category
       ~QUALITY_TUKEY.tier
       ~QUALITY_TUKEY.rembi_module
+      ~QUALITY_TUKEY.change_note
       ~QUALITY_TUKEY.header_scheme
       ~QUALITY_TUKEY.member_for_header
       ~QUALITY_TUKEY.owns_header

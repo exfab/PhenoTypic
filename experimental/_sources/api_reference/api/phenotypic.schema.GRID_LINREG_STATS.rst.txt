@@ -20,6 +20,7 @@ phenotypic.schema.GRID\_LINREG\_STATS
       ~GRID_LINREG_STATS.category
       ~GRID_LINREG_STATS.tier
       ~GRID_LINREG_STATS.rembi_module
+      ~GRID_LINREG_STATS.change_note
       ~GRID_LINREG_STATS.header_scheme
       ~GRID_LINREG_STATS.member_for_header
       ~GRID_LINREG_STATS.owns_header

@@ -21,6 +21,7 @@ phenotypic.schema.CULTURE
       ~CULTURE.kind
       ~CULTURE.tier
       ~CULTURE.rembi_module
+      ~CULTURE.change_note
       ~CULTURE.header_scheme
       ~CULTURE.member_for_header
       ~CULTURE.owns_header

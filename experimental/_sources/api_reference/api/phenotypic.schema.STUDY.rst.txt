@@ -21,6 +21,7 @@ phenotypic.schema.STUDY
       ~STUDY.kind
       ~STUDY.tier
       ~STUDY.rembi_module
+      ~STUDY.change_note
       ~STUDY.header_scheme
       ~STUDY.member_for_header
       ~STUDY.owns_header

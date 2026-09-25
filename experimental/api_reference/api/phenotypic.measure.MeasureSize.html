@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=8a079089"></script>
+    <script src="../../_static/documentation_options.js?v=ec2b1084"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -68,7 +68,7 @@
     <link rel="prev" title="phenotypic.measure.MeasureShape" href="phenotypic.measure.MeasureShape.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.19.0" />
+  <meta name="docsearch:version" content="0.20.0" />
   </head>
   
   
@@ -1293,38 +1293,55 @@
 <h1>phenotypic.measure.MeasureSize<a class="headerlink" href="#phenotypic-measure-measuresize" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="phenotypic.measure.MeasureSize">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.measure.</span></span><span class="sig-name descname"><span class="pre">MeasureSize</span></span><a class="reference internal" href="../../_modules/phenotypic/measure/_measure_size.html#MeasureSize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.measure.MeasureSize" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.measure.</span></span><span class="sig-name descname"><span class="pre">MeasureSize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">angular_bins</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><span class="pre">Annotated</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Ge</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">ge</span></span><span class="o"><span class="pre">=</span></span><span class="m"><span class="pre">8</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Le</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">le</span></span><span class="o"><span class="pre">=</span></span><span class="m"><span class="pre">3600</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">360</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trim_proportion</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><span class="pre">Annotated</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Ge</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">ge</span></span><span class="o"><span class="pre">=</span></span><span class="pre">0.0</span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Lt</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">lt</span></span><span class="o"><span class="pre">=</span></span><span class="pre">0.5</span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plateau_tolerance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><span class="pre">Annotated</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Gt</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">gt</span></span><span class="o"><span class="pre">=</span></span><span class="pre">0.0</span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Lt</span><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">lt</span></span><span class="o"><span class="pre">=</span></span><span class="pre">1.0</span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.01</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/measure/_measure_size.html#MeasureSize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.measure.MeasureSize" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.MeasureFeatures.html#phenotypic.abc_.MeasureFeatures" title="phenotypic.abc_._measure_features.MeasureFeatures"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureFeatures</span></code></a></p>
-<p>Measure colony area and integrated intensity as lightweight size proxies.</p>
+<p>Measure the key size magnitudes of each detected colony.</p>
 <blockquote>
-<div><p>Extract two fundamental size metrics per detected colony: pixel area
-(biomass extent) and integrated grayscale intensity (total brightness,
-a proxy for optical density). This is a convenience class for rapid
-size assessment without the overhead of full shape or intensity
-statistical analysis.</p>
-<dl>
-<dt>Returns:</dt><dd><p>pd.DataFrame: Object-level size measurements with columns:</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>Label: unique object identifier.</p></li>
-<li><p>Area: number of pixels occupied by the colony.</p></li>
-<li><p>IntegratedIntensity: sum of grayscale pixel values
-(proxy for biomass / optical density).</p></li>
-</ul>
-</div></blockquote>
+<div><p>The single source of colony size: area, integrated intensity, perimeter,
+convex-hull and bounding-box areas, best-fit-ellipse axis lengths, the
+Feret (caliper) diameters, the inscribed radius, and four radii (median,
+mean, robust mean and maximum) measured from one center, the centroid of
+the distance-transform peak.
+These are the starting measurements for growth and fitness comparisons;
+see the <a class="reference internal" href="phenotypic.schema.SIZE.html#phenotypic.schema.SIZE" title="phenotypic.schema.SIZE"><code class="xref py py-class docutils literal notranslate"><span class="pre">SIZE</span></code></a> table below for what each column
+means.</p>
+<p>The four radii come from the colony’s <em>radial signature</em>: the distance from
+the center to the boundary, sampled in <code class="docutils literal notranslate"><span class="pre">angular_bins</span></code> equal directions.
+Sampling by angle rather than along the boundary gives a runner or spur
+only its true angular width, so the trimmed <code class="docutils literal notranslate"><span class="pre">RobustMeanRadius</span></code> stays on
+the compact body while <code class="docutils literal notranslate"><span class="pre">MeanRadius</span></code> and <code class="docutils literal notranslate"><span class="pre">MaxRadius</span></code> show the reach.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>angular_bins: Number of equal angular directions sampled. A</dt><dd><p>protrusion narrower than one bin still fills a whole bin, so more
+bins weight a thin runner closer to its true angular width. The
+outline of a colony of radius R has only about 8R vertices, so on
+a small colony extra bins are left empty and interpolated.</p>
+</dd>
+<dt>trim_proportion: Fraction trimmed from each end of the radial</dt><dd><p>signature for <code class="docutils literal notranslate"><span class="pre">RobustMeanRadius</span></code>. It tolerates a runner or spur
+covering up to this fraction of all directions; 0 makes
+<code class="docutils literal notranslate"><span class="pre">RobustMeanRadius</span></code> equal <code class="docutils literal notranslate"><span class="pre">MeanRadius</span></code>.</p>
+</dd>
+<dt>plateau_tolerance: Relative tolerance defining the distance-transform</dt><dd><p>peak plateau whose centroid is the colony center. The default
+(1%) merges the exact ties that integer pixel geometry produces.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><p>pd.DataFrame: One row per colony with <code class="docutils literal notranslate"><span class="pre">Object_Label</span></code> and every
+<code class="docutils literal notranslate"><span class="pre">Size_*</span></code> column.</p>
 </dd>
 <dt>Best For:</dt><dd><ul class="simple">
-<li><p>Quick quality-control screening of colony size distributions.</p></li>
-<li><p>Time-course growth tracking via area at successive time points.</p></li>
-<li><p>Filtering colonies by minimum size to exclude debris or aborted
-growth before downstream measurement.</p></li>
+<li><p>Growth and fitness comparisons across strains and conditions
+(area and the radius family).</p></li>
+<li><p>Separating compact growth from runners or spreading
+(<code class="docutils literal notranslate"><span class="pre">MaxRadius</span></code> against <code class="docutils literal notranslate"><span class="pre">RobustMeanRadius</span></code>).</p></li>
+<li><p>Filtering debris or aborted growth by minimum size before
+downstream measurement.</p></li>
 </ul>
 </dd>
 <dt>Consider Also:</dt><dd><ul class="simple">
-<li><p><a class="reference internal" href="phenotypic.measure.MeasureShape.html#phenotypic.measure.MeasureShape" title="phenotypic.measure.MeasureShape"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureShape</span></code></a> for comprehensive morphological metrics
-(circularity, convex hull, Feret diameters).</p></li>
-<li><p><a class="reference internal" href="phenotypic.measure.MeasureIntensity.html#phenotypic.measure.MeasureIntensity" title="phenotypic.measure.MeasureIntensity"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureIntensity</span></code></a> for full intensity statistics
-(percentiles, variance, coefficient of variation).</p></li>
+<li><p><a class="reference internal" href="phenotypic.measure.MeasureShape.html#phenotypic.measure.MeasureShape" title="phenotypic.measure.MeasureShape"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureShape</span></code></a> for form descriptors (circularity, solidity,
+eccentricity, interior thickness).</p></li>
+<li><p><a class="reference internal" href="phenotypic.measure.MeasureIntensity.html#phenotypic.measure.MeasureIntensity" title="phenotypic.measure.MeasureIntensity"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureIntensity</span></code></a> for full intensity statistics.</p></li>
 <li><p><a class="reference internal" href="phenotypic.measure.MeasureGridSpread.html#phenotypic.measure.MeasureGridSpread" title="phenotypic.measure.MeasureGridSpread"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureGridSpread</span></code></a> for detecting multi-object wells in
 arrayed assays.</p></li>
 </ul>
@@ -1336,22 +1353,167 @@ interpreting size metrics in a biological context.</p>
 </dd>
 </dl>
 </div></blockquote>
+<div class="versionchanged">
+<p><span class="versionmodified changed">Changed in version 0.20.0: </span>Colony size magnitudes moved from <a class="reference internal" href="phenotypic.schema.SHAPE.html#phenotypic.schema.SHAPE" title="phenotypic.schema.SHAPE"><code class="xref py py-class docutils literal notranslate"><span class="pre">SHAPE</span></code></a> to
+<a class="reference internal" href="phenotypic.schema.SIZE.html#phenotypic.schema.SIZE" title="phenotypic.schema.SIZE"><code class="xref py py-class docutils literal notranslate"><span class="pre">SIZE</span></code></a>: <a class="reference internal" href="#phenotypic.measure.MeasureSize" title="phenotypic.measure.MeasureSize"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureSize</span></code></a>
+is now their only source, and <a class="reference internal" href="phenotypic.measure.MeasureShape.html#phenotypic.measure.MeasureShape" title="phenotypic.measure.MeasureShape"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeasureShape</span></code></a>
+emits form descriptors only. The radius columns were rebuilt so each name
+matches its value. Retired columns are not aliased, and stores written by
+earlier versions keep their old column names. A run started before 0.20.0
+must be re-run with <code class="docutils literal notranslate"><span class="pre">--overwrite</span></code>, not resumed. Resuming reuses the
+images it already finished, with their old column names.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Retired column</p></th>
+<th class="head"><p>Successor</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Shape_Area</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Size_Area</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Shape_Perimeter</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Size_Perimeter</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Shape_ConvexArea</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Size_ConvexArea</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Shape_BboxArea</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Size_BboxArea</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Shape_MajorAxisLength</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Size_MajorAxisLength</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Shape_MinorAxisLength</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Size_MinorAxisLength</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Shape_MinFeretDiameter</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Size_MinFeretDiameter</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Shape_MaxFeretDiameter</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Size_MaxFeretDiameter</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Shape_MaxRadius</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Size_InscribedRadius</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Shape_MeanRadius</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Shape_MeanBoundaryDist</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Shape_MedianRadius</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Shape_MedianBoundaryDist</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>New columns: <code class="docutils literal notranslate"><span class="pre">Size_MedianRadius</span></code>, <code class="docutils literal notranslate"><span class="pre">Size_MeanRadius</span></code>,
+<code class="docutils literal notranslate"><span class="pre">Size_RobustMeanRadius</span></code> and <code class="docutils literal notranslate"><span class="pre">Size_MaxRadius</span></code>, all measured from one
+center, the centroid of the distance-transform peak.</p>
+<p><strong>Same name, different value:</strong> <code class="docutils literal notranslate"><span class="pre">Size_MedianRadius</span></code>, <code class="docutils literal notranslate"><span class="pre">Size_MeanRadius</span></code>
+and <code class="docutils literal notranslate"><span class="pre">Size_MaxRadius</span></code> are <em>not</em> the retired <code class="docutils literal notranslate"><span class="pre">Shape_MedianRadius</span></code>,
+<code class="docutils literal notranslate"><span class="pre">Shape_MeanRadius</span></code> and <code class="docutils literal notranslate"><span class="pre">Shape_MaxRadius</span></code>. Compare old data against the
+successor in the table above (identical except for colonies touching
+another colony or the image border, which now measure to that edge),
+never against the same-named <code class="docutils literal notranslate"><span class="pre">Size_</span></code> column.
+Model outputs are named by the stripped label, so <code class="docutils literal notranslate"><span class="pre">&lt;Model&gt;_MaxRadius_*</span></code>,
+<code class="docutils literal notranslate"><span class="pre">&lt;Model&gt;_MeanRadius_*</span></code> and <code class="docutils literal notranslate"><span class="pre">&lt;Model&gt;_MedianRadius_*</span></code> fitted before and
+after 0.20.0 share a name but not a meaning.</p>
+</div>
 <div class="pst-scrollable-table-container"><table class="table" id="id1">
 <caption><span class="caption-text">Category: <strong>Size</strong></span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Name</p></th>
 <th class="head"><p>Description</p></th>
 <th class="head"><p>Type</p></th>
+<th class="head"><p>Biology</p></th>
+<th class="head"><p>Image</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Area</span></code></p></td>
-<td><p>Total number of pixels occupied by the microbial colony.Larger areas typically indicate more robust growth or longer incubation times.</p></td>
+<td><p>Total number of pixels occupied by the microbial colony. Represents colony biomass and growth extent on agar plates. Larger areas typically indicate more robust growth or longer incubation times.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td><p>Projected 2D footprint of the colony in pixels — a common proxy for colony size and overall growth in arrayed plate assays. With matched imaging and incubation, larger area generally reflects greater proliferation or spreading; it captures only the 2D footprint, not colony height or cell density.</p></td>
+<td><a class="reference internal image-reference" href="../../_images/area.png"><img alt="../../_images/area.png" src="../../_images/area.png" style="width: 110px;" />
+</a>
+</td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">IntegratedIntensity</span></code></p></td>
 <td><p>The sum of the object’s grayscale pixels. Calculated as <span class="math notranslate nohighlight">\(\sum{\text{pixel values}} \times \text{area}\)</span>.</p></td>
 <td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Perimeter</span></code></p></td>
+<td><p>Total length of the colony’s outer boundary in pixels. Measures colony edge complexity and surface irregularity. Smooth, circular colonies have shorter perimeters relative to their area compared to irregular or filamentous colonies.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ConvexArea</span></code></p></td>
+<td><p>Area of the smallest convex polygon that completely contains the colony, computed from the convex hull of its pixel centers. Represents the colony’s “filled-in” appearance if all indentations and holes were removed. Because the hull passes through pixel centers it is slightly smaller than the pixel count of a convex colony. Useful for detecting colony spreading patterns or invasive growth characteristics.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BboxArea</span></code></p></td>
+<td><p>Area of the smallest rectangle that completely contains the colony. Represents the total spatial shape of the colony including any empty space. In high-throughput assays, this helps assess colony positioning and potential interference with neighboring colonies.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MajorAxisLength</span></code></p></td>
+<td><p>Length of the longest axis of the ellipse that best fits the colony shape. Represents the maximum colony dimension. In arrayed microbial growth, this measurement helps identify colonies that have grown beyond their intended grid positions.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MinorAxisLength</span></code></p></td>
+<td><p>Length of the shortest axis of the ellipse that best fits the colony shape. Represents the minimum colony dimension. Together with major axis length, this helps characterize colony aspect ratio and growth anisotropy.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MinFeretDiameter</span></code></p></td>
+<td><p>Minimum caliper diameter - the shortest distance between two parallel tangent lines touching opposite sides of the colony. Represents the narrowest dimension of the colony regardless of orientation. Useful for detecting elongated or irregular colony morphologies and measuring colony width.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MaxFeretDiameter</span></code></p></td>
+<td><p>Maximum caliper diameter - the longest distance between two parallel tangent lines touching opposite sides of the colony. Represents the maximum dimension of the colony regardless of orientation. Often exceeds major axis length for irregular shapes and helps quantify maximum colony extent.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">InscribedRadius</span></code></p></td>
+<td><p>Radius of the largest circle that fits entirely inside the colony, equal to the maximum of the colony’s Euclidean distance transform: the distance from the colony’s deepest interior point to its nearest edge. For an ideal disk it equals the disk radius. It reflects the colony’s narrowest dimension, not its overall extent: an elongated colony reports half its width whatever its length (a 100 x 20 pixel colony reports 10), and a runner or spur leaves it unchanged. Use MaxRadius for overall extent. The image border counts as an edge.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MedianRadius</span></code></p></td>
+<td><p>Median distance from the colony center to its boundary over the radial signature: the boundary distance sampled in equal angular directions (360 by default), keeping the outermost boundary crossing in each. The outer outline of every piece of the colony is sampled and holes are ignored, so a colony made of several pieces (a runner joined only at a corner, or fragments merged into one colony) is measured whole, and MaxRadius reaches its farthest piece. The center is the centroid of the distance-transform peak plateau; it lies inside compact colonies, but for a ring-shaped colony it can fall in the central hole. For an ideal disk it equals the disk radius; for an ideal 100 x 20 pixel rectangle it is 14.1 pixels. This is not the value the retired Shape_MedianRadius carried (a median distance to the nearest edge, now Shape_MedianBoundaryDist).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MeanRadius</span></code></p></td>
+<td><p>Mean distance from the colony center to its boundary over the radial signature (see MedianRadius for the center and sampling). For an ideal disk it equals the disk radius; for an ideal 100 x 20 pixel rectangle it is 21.0 pixels. A runner or spur pulls it upward in proportion to its angular width; use RobustMeanRadius for the compact body. This is not the value the retired Shape_MeanRadius carried (a mean distance to the nearest edge, now Shape_MeanBoundaryDist).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RobustMeanRadius</span></code></p></td>
+<td><p>Symmetrically trimmed mean (20% from each end by default) of the radial signature (see MedianRadius). Because the signature is sampled by angle, a narrow runner contributes only its angular width and is trimmed away, so this estimates the typical radius of the colony’s compact body. The trim treats genuine elongation the same way: an ideal 100 x 20 pixel rectangle gives 16.2 pixels against a MeanRadius of 21.0 pixels. For an ideal disk it equals the disk radius.</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MaxRadius</span></code></p></td>
+<td><p>Largest distance from the colony center to its boundary over the radial signature (see MedianRadius): the colony’s furthest reach. For an ideal disk it equals the disk radius; for an ideal 100 x 20 pixel rectangle it is 50.9 pixels. A MaxRadius far above RobustMeanRadius indicates a protrusion, spur, or runner. This is not the value the retired Shape_MaxRadius carried (the inscribed radius, now Size_InscribedRadius).</p></td>
+<td><p><a class="sd-sphinx-override sd-badge sd-bg-success sd-bg-text-success reference internal" href="../../explanation/measurement_classification_system.html#measurement-tiers"><span class="std std-ref">Tier 1 · Direct phenotype</span></a></p></td>
+<td></td>
+<td></td>
 </tr>
 </tbody>
 </table>
@@ -1464,11 +1626,42 @@ interpreting size metrics in a biological context.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.measure.MeasureSize.model_fields_set" title="phenotypic.measure.MeasureSize.model_fields_set"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_fields_set</span></code></a></p></td>
 <td><p>Returns the set of fields that have been explicitly set on this model instance.</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.measure.MeasureSize.angular_bins" title="phenotypic.measure.MeasureSize.angular_bins"><code class="xref py py-obj docutils literal notranslate"><span class="pre">angular_bins</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.measure.MeasureSize.trim_proportion" title="phenotypic.measure.MeasureSize.trim_proportion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trim_proportion</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.measure.MeasureSize.plateau_tolerance" title="phenotypic.measure.MeasureSize.plateau_tolerance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plateau_tolerance</span></code></a></p></td>
+<td><p></p></td>
+</tr>
 </tbody>
 </table>
 </div>
 <dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>angular_bins</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><em>Annotated</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>Ge</em><em>(</em><em>ge=8</em><em>)</em><em>, </em><em>Le</em><em>(</em><em>le=3600</em><em>)</em><em>]</em>)</p></li>
+<li><p><strong>trim_proportion</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><em>Annotated</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>Ge</em><em>(</em><em>ge=0.0</em><em>)</em><em>, </em><em>Lt</em><em>(</em><em>lt=0.5</em><em>)</em><em>]</em>)</p></li>
+<li><p><strong>plateau_tolerance</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><em>Annotated</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>Gt</em><em>(</em><em>gt=0.0</em><em>)</em><em>, </em><em>Lt</em><em>(</em><em>lt=1.0</em><em>)</em><em>]</em>)</p></li>
+</ul>
+</dd>
 </dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureSize.angular_bins">
+<span class="sig-name descname"><span class="pre">angular_bins</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#phenotypic.measure.MeasureSize.angular_bins" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureSize.trim_proportion">
+<span class="sig-name descname"><span class="pre">trim_proportion</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#phenotypic.measure.MeasureSize.trim_proportion" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="phenotypic.measure.MeasureSize.plateau_tolerance">
+<span class="sig-name descname"><span class="pre">plateau_tolerance</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#phenotypic.measure.MeasureSize.plateau_tolerance" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.measure.MeasureSize.__copy__">
 <span class="sig-name descname"><span class="pre">__copy__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Self" title="(in Python v3.14)"><span class="pre">Self</span></a></span></span><a class="headerlink" href="#phenotypic.measure.MeasureSize.__copy__" title="Link to this definition">#</a></dt>
@@ -1900,7 +2093,7 @@ before OBJECT.LABEL (e.g., Filename, GridRow, GridCol).</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">df_with_meta</span> <span class="o">=</span> <span class="n">measurer</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">include_meta</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">df_with_meta</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
 <span class="go"># Output: [&#39;Filename&#39;, &#39;GridRow&#39;, &#39;GridCol&#39;, &#39;OBJECT.LABEL&#39;,</span>
-<span class="go">#          &#39;Area&#39;, &#39;IntegratedIntensity&#39;, ...]</span>
+<span class="go">#          &#39;Area&#39;, &#39;IntegratedIntensity&#39;, &#39;Perimeter&#39;, ..., &#39;MaxRadius&#39;]</span>
 </pre></div>
 </div>
 </div>
@@ -2075,7 +2268,7 @@ a [<cite>PydanticSerializationError</cite>][pydantic_core.PydanticSerializationE
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="phenotypic.measure.MeasureSize.model_fields">
-<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#phenotypic.measure.MeasureSize.model_fields" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">model_fields</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'angular_bins':</span> <span class="pre">FieldInfo(annotation=int,</span> <span class="pre">required=False,</span> <span class="pre">default=360,</span> <span class="pre">description='Number</span> <span class="pre">of</span> <span class="pre">equal</span> <span class="pre">angular</span> <span class="pre">directions</span> <span class="pre">sampled.</span> <span class="pre">A</span> <span class="pre">protrusion</span> <span class="pre">narrower</span> <span class="pre">than</span> <span class="pre">one</span> <span class="pre">bin</span> <span class="pre">still</span> <span class="pre">fills</span> <span class="pre">a</span> <span class="pre">whole</span> <span class="pre">bin,</span> <span class="pre">so</span> <span class="pre">more</span> <span class="pre">bins</span> <span class="pre">weight</span> <span class="pre">a</span> <span class="pre">thin</span> <span class="pre">runner</span> <span class="pre">closer</span> <span class="pre">to</span> <span class="pre">its</span> <span class="pre">true</span> <span class="pre">angular</span> <span class="pre">width.</span> <span class="pre">The</span> <span class="pre">outline</span> <span class="pre">of</span> <span class="pre">a</span> <span class="pre">colony</span> <span class="pre">of</span> <span class="pre">radius</span> <span class="pre">R</span> <span class="pre">has</span> <span class="pre">only</span> <span class="pre">about</span> <span class="pre">8R</span> <span class="pre">vertices,</span> <span class="pre">so</span> <span class="pre">on</span> <span class="pre">a</span> <span class="pre">small</span> <span class="pre">colony</span> <span class="pre">extra</span> <span class="pre">bins</span> <span class="pre">are</span> <span class="pre">left</span> <span class="pre">empty</span> <span class="pre">and</span> <span class="pre">interpolated.',</span> <span class="pre">metadata=[Ge(ge=8),</span> <span class="pre">Le(le=3600)]),</span> <span class="pre">'plateau_tolerance':</span> <span class="pre">FieldInfo(annotation=float,</span> <span class="pre">required=False,</span> <span class="pre">default=0.01,</span> <span class="pre">description='Relative</span> <span class="pre">tolerance</span> <span class="pre">defining</span> <span class="pre">the</span> <span class="pre">distance-transform</span> <span class="pre">peak</span> <span class="pre">plateau</span> <span class="pre">whose</span> <span class="pre">centroid</span> <span class="pre">is</span> <span class="pre">the</span> <span class="pre">colony</span> <span class="pre">center.</span> <span class="pre">The</span> <span class="pre">default</span> <span class="pre">(1%)</span> <span class="pre">merges</span> <span class="pre">the</span> <span class="pre">exact</span> <span class="pre">ties</span> <span class="pre">that</span> <span class="pre">integer</span> <span class="pre">pixel</span> <span class="pre">geometry</span> <span class="pre">produces.',</span> <span class="pre">metadata=[Gt(gt=0.0),</span> <span class="pre">Lt(lt=1.0)]),</span> <span class="pre">'trim_proportion':</span> <span class="pre">FieldInfo(annotation=float,</span> <span class="pre">required=False,</span> <span class="pre">default=0.2,</span> <span class="pre">description='Fraction</span> <span class="pre">trimmed</span> <span class="pre">from</span> <span class="pre">each</span> <span class="pre">end</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">radial</span> <span class="pre">signature</span> <span class="pre">for</span> <span class="pre">``RobustMeanRadius``.</span> <span class="pre">It</span> <span class="pre">tolerates</span> <span class="pre">a</span> <span class="pre">runner</span> <span class="pre">or</span> <span class="pre">spur</span> <span class="pre">covering</span> <span class="pre">up</span> <span class="pre">to</span> <span class="pre">this</span> <span class="pre">fraction</span> <span class="pre">of</span> <span class="pre">all</span> <span class="pre">directions;</span> <span class="pre">0</span> <span class="pre">makes</span> <span class="pre">``RobustMeanRadius``</span> <span class="pre">equal</span> <span class="pre">``MeanRadius``.',</span> <span class="pre">metadata=[Ge(ge=0.0),</span> <span class="pre">Lt(lt=0.5)])}</span></em><a class="headerlink" href="#phenotypic.measure.MeasureSize.model_fields" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
@@ -2459,6 +2652,9 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureSize"><code class="docutils literal notranslate"><span class="pre">MeasureSize</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureSize.angular_bins"><code class="docutils literal notranslate"><span class="pre">MeasureSize.angular_bins</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureSize.trim_proportion"><code class="docutils literal notranslate"><span class="pre">MeasureSize.trim_proportion</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureSize.plateau_tolerance"><code class="docutils literal notranslate"><span class="pre">MeasureSize.plateau_tolerance</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureSize.__copy__"><code class="docutils literal notranslate"><span class="pre">MeasureSize.__copy__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureSize.__deepcopy__"><code class="docutils literal notranslate"><span class="pre">MeasureSize.__deepcopy__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.measure.MeasureSize.__del__"><code class="docutils literal notranslate"><span class="pre">MeasureSize.__del__()</span></code></a></li>

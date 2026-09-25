@@ -20,6 +20,7 @@ phenotypic.schema.SYMMETRIC\_ZONES
       ~SYMMETRIC_ZONES.kind
       ~SYMMETRIC_ZONES.category
       ~SYMMETRIC_ZONES.rembi_module
+      ~SYMMETRIC_ZONES.change_note
       ~SYMMETRIC_ZONES.header_scheme
       ~SYMMETRIC_ZONES.member_for_header
       ~SYMMETRIC_ZONES.owns_header

@@ -20,6 +20,7 @@ phenotypic.schema.QUALITY\_OCCUPANCY
       ~QUALITY_OCCUPANCY.category
       ~QUALITY_OCCUPANCY.tier
       ~QUALITY_OCCUPANCY.rembi_module
+      ~QUALITY_OCCUPANCY.change_note
       ~QUALITY_OCCUPANCY.header_scheme
       ~QUALITY_OCCUPANCY.member_for_header
       ~QUALITY_OCCUPANCY.owns_header

@@ -20,6 +20,7 @@ phenotypic.schema.CURATION
       ~CURATION.category
       ~CURATION.tier
       ~CURATION.rembi_module
+      ~CURATION.change_note
       ~CURATION.header_scheme
       ~CURATION.member_for_header
       ~CURATION.owns_header

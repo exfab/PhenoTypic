@@ -21,6 +21,7 @@ phenotypic.schema.CONDITION
       ~CONDITION.kind
       ~CONDITION.tier
       ~CONDITION.rembi_module
+      ~CONDITION.change_note
       ~CONDITION.header_scheme
       ~CONDITION.member_for_header
       ~CONDITION.owns_header

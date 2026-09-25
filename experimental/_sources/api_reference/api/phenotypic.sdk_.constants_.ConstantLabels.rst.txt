@@ -20,6 +20,7 @@ phenotypic.sdk\_.constants\_.ConstantLabels
       ~ConstantLabels.kind
       ~ConstantLabels.tier
       ~ConstantLabels.rembi_module
+      ~ConstantLabels.change_note
       ~ConstantLabels.header_scheme
       ~ConstantLabels.member_for_header
       ~ConstantLabels.owns_header

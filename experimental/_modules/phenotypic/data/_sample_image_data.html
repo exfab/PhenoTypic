@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=8a079089"></script>
+    <script src="../../../_static/documentation_options.js?v=ec2b1084"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.19.0" />
+  <meta name="docsearch:version" content="0.20.0" />
   </head>
   
   
@@ -692,6 +692,11 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Loads sample measurements for 3 strains using each of the measurement modules</span>
 
+<span class="sd">    This example data predates 0.20.0: ``Size_ConvexArea`` and ``Shape_Solidity``</span>
+<span class="sd">    are blank because their values were computed with the retired hull-perimeter</span>
+<span class="sd">    bug, and the ``Shape_*BoundaryDist`` values used the whole-plate distance</span>
+<span class="sd">    transform rather than each colony&#39;s own.</span>
+
 <span class="sd">    Returns:</span>
 <span class="sd">        pd.DataFrame: A DataFrame containing the loaded measurement data.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -701,6 +706,11 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">load_area_meas</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Loads sample measurements for 3 strains using area measurements</span>
+
+<span class="sd">    This example data predates 0.20.0: ``Size_ConvexArea`` and ``Shape_Solidity``</span>
+<span class="sd">    are blank because their values were computed with the retired hull-perimeter</span>
+<span class="sd">    bug, and the ``Shape_*BoundaryDist`` values used the whole-plate distance</span>
+<span class="sd">    transform rather than each colony&#39;s own.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        pd.DataFrame: A DataFrame containing the sample area measurement data.</span>

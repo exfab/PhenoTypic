@@ -21,6 +21,7 @@ phenotypic.schema.GENETIC
       ~GENETIC.kind
       ~GENETIC.tier
       ~GENETIC.rembi_module
+      ~GENETIC.change_note
       ~GENETIC.header_scheme
       ~GENETIC.member_for_header
       ~GENETIC.owns_header

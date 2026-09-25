@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=8a079089"></script>
+    <script src="../../../_static/documentation_options.js?v=ec2b1084"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.19.0" />
+  <meta name="docsearch:version" content="0.20.0" />
   </head>
   
   
@@ -601,14 +601,13 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._grid_image</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridImage</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridObjectRefiner</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureSize</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">SIZE</span><span class="p">,</span> <span class="n">GRID</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRID</span><span class="p">,</span> <span class="n">OBJECT</span>
 
 
 <div class="viewcode-block" id="KeepSectionLargest">
@@ -616,11 +615,10 @@
 <span class="k">class</span><span class="w"> </span><span class="nc">KeepSectionLargest</span><span class="p">(</span><span class="n">GridObjectRefiner</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Retain only the largest object by area within each grid section.</span>
 
-<span class="sd">    Measures the pixel area of every detected object via :class:`MeasureSize`,</span>
-<span class="sd">    groups objects by grid cell, and discards all but the largest per cell.</span>
-<span class="sd">    Fragments, debris, and secondary detections within each grid position are</span>
-<span class="sd">    removed, yielding at most one colony label per well. Requires a</span>
-<span class="sd">    ``GridImage`` input so that grid section membership is known.</span>
+<span class="sd">    Counts each object&#39;s pixels, groups objects by grid cell, and discards all</span>
+<span class="sd">    but the largest per cell. Fragments, debris, and secondary detections within</span>
+<span class="sd">    each grid position are removed, yielding at most one colony label per well.</span>
+<span class="sd">    Requires a ``GridImage`` input so that grid section membership is known.</span>
 
 <span class="sd">    For an overview of grid refinement approaches, see</span>
 <span class="sd">    :doc:`/explanation/refinement_strategies`.</span>
@@ -653,15 +651,24 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">GridImage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridImage</span><span class="p">:</span>
-        <span class="n">size_table</span> <span class="o">=</span> <span class="n">MeasureSize</span><span class="p">()</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">include_meta</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">max_idx</span> <span class="o">=</span> <span class="n">size_table</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span>
-                <span class="n">by</span><span class="o">=</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">,</span>
-                <span class="n">observed</span><span class="o">=</span><span class="kc">True</span>
-        <span class="p">)[</span><span class="n">SIZE</span><span class="o">.</span><span class="n">AREA</span><span class="p">]</span><span class="o">.</span><span class="n">idxmax</span><span class="p">()</span>
-        <span class="n">max_size_labels</span> <span class="o">=</span> <span class="n">size_table</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">max_idx</span><span class="p">,</span> <span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="c1"># Pixel area per label straight from the objmap: the same numbers as</span>
+        <span class="c1"># Size_Area without running a measurer (and its radial signatures).</span>
+        <span class="n">objmap</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">labels2series</span><span class="p">()</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="n">pixel_area</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">objmap</span><span class="o">.</span><span class="n">ravel</span><span class="p">())[</span><span class="n">labels</span><span class="p">]</span>
+        <span class="c1"># Same merge order as MeasureFeatures.measure(include_meta=True), so</span>
+        <span class="c1"># idxmax breaks ties between equal areas exactly as before.</span>
+        <span class="n">table</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">include_metadata</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+                <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="nb">str</span><span class="p">(</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">):</span> <span class="n">labels</span><span class="p">,</span> <span class="s2">&quot;_pixel_area&quot;</span><span class="p">:</span> <span class="n">pixel_area</span><span class="p">}),</span>
+                <span class="n">on</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">max_idx</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="n">GRID</span><span class="o">.</span><span class="n">ROW_MAJOR_IDX</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span>
+            <span class="s2">&quot;_pixel_area&quot;</span>
+        <span class="p">]</span><span class="o">.</span><span class="n">idxmax</span><span class="p">()</span>
+        <span class="n">max_size_labels</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">max_idx</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">)]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
 
         <span class="c1"># Drop objects not the largest</span>
-        <span class="n">nonmax_mask</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:],</span> <span class="n">max_size_labels</span><span class="p">)</span>
+        <span class="n">nonmax_mask</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">objmap</span><span class="p">,</span> <span class="n">max_size_labels</span><span class="p">)</span>
         <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[</span><span class="n">nonmax_mask</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="k">return</span> <span class="n">image</span></div>
 

@@ -21,6 +21,7 @@ phenotypic.schema.EXPERIMENT
       ~EXPERIMENT.kind
       ~EXPERIMENT.tier
       ~EXPERIMENT.rembi_module
+      ~EXPERIMENT.change_note
       ~EXPERIMENT.header_scheme
       ~EXPERIMENT.member_for_header
       ~EXPERIMENT.owns_header

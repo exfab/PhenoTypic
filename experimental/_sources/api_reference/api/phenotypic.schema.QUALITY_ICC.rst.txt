@@ -20,6 +20,7 @@ phenotypic.schema.QUALITY\_ICC
       ~QUALITY_ICC.category
       ~QUALITY_ICC.tier
       ~QUALITY_ICC.rembi_module
+      ~QUALITY_ICC.change_note
       ~QUALITY_ICC.header_scheme
       ~QUALITY_ICC.member_for_header
       ~QUALITY_ICC.owns_header

@@ -21,6 +21,7 @@ phenotypic.schema.SAMPLE
       ~SAMPLE.kind
       ~SAMPLE.tier
       ~SAMPLE.rembi_module
+      ~SAMPLE.change_note
       ~SAMPLE.header_scheme
       ~SAMPLE.member_for_header
       ~SAMPLE.owns_header

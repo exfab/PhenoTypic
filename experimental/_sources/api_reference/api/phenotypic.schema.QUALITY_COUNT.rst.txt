@@ -20,6 +20,7 @@ phenotypic.schema.QUALITY\_COUNT
       ~QUALITY_COUNT.category
       ~QUALITY_COUNT.tier
       ~QUALITY_COUNT.rembi_module
+      ~QUALITY_COUNT.change_note
       ~QUALITY_COUNT.header_scheme
       ~QUALITY_COUNT.member_for_header
       ~QUALITY_COUNT.owns_header

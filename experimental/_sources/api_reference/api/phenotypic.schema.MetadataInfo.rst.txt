@@ -20,6 +20,7 @@ phenotypic.schema.MetadataInfo
       ~MetadataInfo.category
       ~MetadataInfo.tier
       ~MetadataInfo.rembi_module
+      ~MetadataInfo.change_note
       ~MetadataInfo.header_scheme
       ~MetadataInfo.member_for_header
       ~MetadataInfo.owns_header

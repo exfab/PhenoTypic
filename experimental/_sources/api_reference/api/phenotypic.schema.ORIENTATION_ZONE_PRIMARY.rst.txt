@@ -20,6 +20,7 @@ phenotypic.schema.ORIENTATION\_ZONE\_PRIMARY
       ~ORIENTATION_ZONE_PRIMARY.kind
       ~ORIENTATION_ZONE_PRIMARY.category
       ~ORIENTATION_ZONE_PRIMARY.rembi_module
+      ~ORIENTATION_ZONE_PRIMARY.change_note
       ~ORIENTATION_ZONE_PRIMARY.header_scheme
       ~ORIENTATION_ZONE_PRIMARY.member_for_header
       ~ORIENTATION_ZONE_PRIMARY.owns_header

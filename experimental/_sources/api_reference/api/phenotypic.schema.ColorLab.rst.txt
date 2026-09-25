@@ -20,6 +20,7 @@ phenotypic.schema.ColorLab
       ~ColorLab.kind
       ~ColorLab.category
       ~ColorLab.rembi_module
+      ~ColorLab.change_note
       ~ColorLab.header_scheme
       ~ColorLab.member_for_header
       ~ColorLab.owns_header

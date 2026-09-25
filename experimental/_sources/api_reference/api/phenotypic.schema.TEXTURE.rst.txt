@@ -20,6 +20,7 @@ phenotypic.schema.TEXTURE
       ~TEXTURE.kind
       ~TEXTURE.category
       ~TEXTURE.rembi_module
+      ~TEXTURE.change_note
       ~TEXTURE.header_scheme
       ~TEXTURE.member_for_header
       ~TEXTURE.owns_header

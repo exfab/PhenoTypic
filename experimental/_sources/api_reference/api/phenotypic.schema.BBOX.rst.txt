@@ -20,6 +20,7 @@ phenotypic.schema.BBOX
       ~BBOX.category
       ~BBOX.tier
       ~BBOX.rembi_module
+      ~BBOX.change_note
       ~BBOX.header_scheme
       ~BBOX.member_for_header
       ~BBOX.owns_header

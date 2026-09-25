@@ -20,6 +20,7 @@ phenotypic.schema.NEIGHBOR\_DIST
       ~NEIGHBOR_DIST.category
       ~NEIGHBOR_DIST.tier
       ~NEIGHBOR_DIST.rembi_module
+      ~NEIGHBOR_DIST.change_note
       ~NEIGHBOR_DIST.header_scheme
       ~NEIGHBOR_DIST.member_for_header
       ~NEIGHBOR_DIST.owns_header

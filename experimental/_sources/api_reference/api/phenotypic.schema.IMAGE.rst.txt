@@ -21,6 +21,7 @@ phenotypic.schema.IMAGE
       ~IMAGE.kind
       ~IMAGE.tier
       ~IMAGE.rembi_module
+      ~IMAGE.change_note
       ~IMAGE.header_scheme
       ~IMAGE.member_for_header
       ~IMAGE.owns_header

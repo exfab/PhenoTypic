@@ -20,6 +20,7 @@ phenotypic.schema.QUALITY\_SE
       ~QUALITY_SE.category
       ~QUALITY_SE.tier
       ~QUALITY_SE.rembi_module
+      ~QUALITY_SE.change_note
       ~QUALITY_SE.header_scheme
       ~QUALITY_SE.member_for_header
       ~QUALITY_SE.owns_header

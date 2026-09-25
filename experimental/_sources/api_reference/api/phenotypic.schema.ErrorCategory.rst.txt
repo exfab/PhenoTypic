@@ -20,6 +20,7 @@ phenotypic.schema.ErrorCategory
       ~ErrorCategory.category
       ~ErrorCategory.tier
       ~ErrorCategory.rembi_module
+      ~ErrorCategory.change_note
       ~ErrorCategory.header_scheme
       ~ErrorCategory.member_for_header
       ~ErrorCategory.owns_header

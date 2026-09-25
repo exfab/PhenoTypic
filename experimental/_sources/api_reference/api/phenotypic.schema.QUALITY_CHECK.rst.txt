@@ -20,6 +20,7 @@ phenotypic.schema.QUALITY\_CHECK
       ~QUALITY_CHECK.category
       ~QUALITY_CHECK.tier
       ~QUALITY_CHECK.rembi_module
+      ~QUALITY_CHECK.change_note
       ~QUALITY_CHECK.header_scheme
       ~QUALITY_CHECK.member_for_header
       ~QUALITY_CHECK.owns_header

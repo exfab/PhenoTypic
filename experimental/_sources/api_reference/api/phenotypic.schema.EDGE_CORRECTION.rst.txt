@@ -20,6 +20,7 @@ phenotypic.schema.EDGE\_CORRECTION
       ~EDGE_CORRECTION.category
       ~EDGE_CORRECTION.tier
       ~EDGE_CORRECTION.rembi_module
+      ~EDGE_CORRECTION.change_note
       ~EDGE_CORRECTION.header_scheme
       ~EDGE_CORRECTION.member_for_header
       ~EDGE_CORRECTION.owns_header

@@ -20,6 +20,7 @@ phenotypic.schema.MODEL\_METRICS
       ~MODEL_METRICS.category
       ~MODEL_METRICS.tier
       ~MODEL_METRICS.rembi_module
+      ~MODEL_METRICS.change_note
       ~MODEL_METRICS.header_scheme
       ~MODEL_METRICS.member_for_header
       ~MODEL_METRICS.owns_header

@@ -20,6 +20,7 @@ phenotypic.sdk\_.constants\_.PIPE\_STATUS
       ~PIPE_STATUS.kind
       ~PIPE_STATUS.tier
       ~PIPE_STATUS.rembi_module
+      ~PIPE_STATUS.change_note
       ~PIPE_STATUS.header_scheme
       ~PIPE_STATUS.member_for_header
       ~PIPE_STATUS.owns_header

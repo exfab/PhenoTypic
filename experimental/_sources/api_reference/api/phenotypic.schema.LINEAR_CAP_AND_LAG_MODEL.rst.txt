@@ -20,6 +20,7 @@ phenotypic.schema.LINEAR\_CAP\_AND\_LAG\_MODEL
       ~LINEAR_CAP_AND_LAG_MODEL.category
       ~LINEAR_CAP_AND_LAG_MODEL.tier
       ~LINEAR_CAP_AND_LAG_MODEL.rembi_module
+      ~LINEAR_CAP_AND_LAG_MODEL.change_note
       ~LINEAR_CAP_AND_LAG_MODEL.header_scheme
       ~LINEAR_CAP_AND_LAG_MODEL.member_for_header
       ~LINEAR_CAP_AND_LAG_MODEL.owns_header

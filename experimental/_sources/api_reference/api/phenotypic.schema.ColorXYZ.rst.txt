@@ -20,6 +20,7 @@ phenotypic.schema.ColorXYZ
       ~ColorXYZ.kind
       ~ColorXYZ.category
       ~ColorXYZ.rembi_module
+      ~ColorXYZ.change_note
       ~ColorXYZ.header_scheme
       ~ColorXYZ.member_for_header
       ~ColorXYZ.owns_header

@@ -20,6 +20,7 @@ phenotypic.schema.OBJECT
       ~OBJECT.category
       ~OBJECT.tier
       ~OBJECT.rembi_module
+      ~OBJECT.change_note
       ~OBJECT.header_scheme
       ~OBJECT.member_for_header
       ~OBJECT.owns_header

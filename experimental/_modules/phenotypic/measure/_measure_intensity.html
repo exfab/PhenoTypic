@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=8a079089"></script>
+    <script src="../../../_static/documentation_options.js?v=ec2b1084"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.19.0" />
+  <meta name="docsearch:version" content="0.20.0" />
   </head>
   
   
@@ -605,9 +605,11 @@
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureFeatures</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure._object_geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">convex_hull_area</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">INTENSITY</span>
 
 
@@ -643,8 +645,8 @@
 <span class="sd">        - Automated colony picking based on biomass thresholds.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`MeasureSize` for lightweight area and integrated</span>
-<span class="sd">          intensity without full statistics.</span>
+<span class="sd">        - :class:`MeasureSize` for colony area, perimeter and the radius</span>
+<span class="sd">          family.</span>
 <span class="sd">        - :class:`MeasureColor` for multi-channel color statistics when</span>
 <span class="sd">          pigmentation is relevant.</span>
 <span class="sd">        - :class:`MeasureTexture` for surface-roughness features that</span>
@@ -660,9 +662,6 @@
     <span class="n">_measurement_infoclass</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">type</span><span class="p">]</span> <span class="o">=</span> <span class="n">INTENSITY</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure._measure_shape</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureShape</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">SHAPE</span>
-
         <span class="n">intensity_matrix</span><span class="p">,</span> <span class="n">objmap</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">gray</span><span class="p">[:]</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="n">measurements</span> <span class="o">=</span> <span class="p">{</span>
             <span class="nb">str</span><span class="p">(</span><span class="n">INTENSITY</span><span class="o">.</span><span class="n">INTEGRATED_INTENSITY</span><span class="p">)</span>        <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_sum</span><span class="p">(</span>
@@ -704,16 +703,16 @@
         <span class="n">measurements</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span>
                 <span class="n">loc</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">labels2series</span><span class="p">()</span>
         <span class="p">)</span>
-        <span class="n">shape_measurements</span> <span class="o">=</span> <span class="n">MeasureShape</span><span class="p">()</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
-
-        <span class="n">measurements</span><span class="p">[</span><span class="n">INTENSITY</span><span class="o">.</span><span class="n">DENSITY</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="n">measurements</span><span class="p">[</span><span class="n">INTENSITY</span><span class="o">.</span><span class="n">INTEGRATED_INTENSITY</span><span class="p">]</span>
-                <span class="o">/</span> <span class="n">shape_measurements</span><span class="p">[</span><span class="n">SHAPE</span><span class="o">.</span><span class="n">AREA</span><span class="p">]</span>
+        <span class="n">props</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">props</span>
+        <span class="n">areas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">area</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">props</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">convex_areas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">convex_hull_area</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">coords</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">props</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span>
         <span class="p">)</span>
-
+        <span class="n">measurements</span><span class="p">[</span><span class="n">INTENSITY</span><span class="o">.</span><span class="n">DENSITY</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">measurements</span><span class="p">[</span><span class="n">INTENSITY</span><span class="o">.</span><span class="n">INTEGRATED_INTENSITY</span><span class="p">]</span> <span class="o">/</span> <span class="n">areas</span>
+        <span class="p">)</span>
         <span class="n">measurements</span><span class="p">[</span><span class="n">INTENSITY</span><span class="o">.</span><span class="n">CONVEX_DENSITY</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="n">measurements</span><span class="p">[</span><span class="n">INTENSITY</span><span class="o">.</span><span class="n">INTEGRATED_INTENSITY</span><span class="p">]</span>
-                <span class="o">/</span> <span class="n">shape_measurements</span><span class="p">[</span><span class="n">SHAPE</span><span class="o">.</span><span class="n">CONVEX_AREA</span><span class="p">]</span>
+                <span class="n">measurements</span><span class="p">[</span><span class="n">INTENSITY</span><span class="o">.</span><span class="n">INTEGRATED_INTENSITY</span><span class="p">]</span> <span class="o">/</span> <span class="n">convex_areas</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">measurements</span></div>
 

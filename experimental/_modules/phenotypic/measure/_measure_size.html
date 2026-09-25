@@ -40,7 +40,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../../_static/documentation_options.js?v=8a079089"></script>
+    <script src="../../../_static/documentation_options.js?v=ec2b1084"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -63,7 +63,7 @@
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.19.0" />
+  <meta name="docsearch:version" content="0.20.0" />
   </head>
   
   
@@ -598,50 +598,75 @@
   <h1>Source code for phenotypic.measure._measure_size</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">cast</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">OBJECT</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">binary_fill_holes</span><span class="p">,</span> <span class="n">label</span> <span class="k">as</span> <span class="n">ndi_label</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">trim_mean</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">skimage.measure</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_contours</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">MeasureFeatures</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.measure._object_geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">convex_hull_area</span><span class="p">,</span> <span class="n">object_edt</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">SIZE</span>
 
 
 <div class="viewcode-block" id="MeasureSize">
 <a class="viewcode-back" href="../../../api_reference/api/phenotypic.measure.MeasureSize.html#phenotypic.measure.MeasureSize">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">MeasureSize</span><span class="p">(</span><span class="n">MeasureFeatures</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure colony area and integrated intensity as lightweight size proxies.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure the key size magnitudes of each detected colony.</span>
 
-<span class="sd">    Extract two fundamental size metrics per detected colony: pixel area</span>
-<span class="sd">    (biomass extent) and integrated grayscale intensity (total brightness,</span>
-<span class="sd">    a proxy for optical density). This is a convenience class for rapid</span>
-<span class="sd">    size assessment without the overhead of full shape or intensity</span>
-<span class="sd">    statistical analysis.</span>
+<span class="sd">    The single source of colony size: area, integrated intensity, perimeter,</span>
+<span class="sd">    convex-hull and bounding-box areas, best-fit-ellipse axis lengths, the</span>
+<span class="sd">    Feret (caliper) diameters, the inscribed radius, and four radii (median,</span>
+<span class="sd">    mean, robust mean and maximum) measured from one center, the centroid of</span>
+<span class="sd">    the distance-transform peak.</span>
+<span class="sd">    These are the starting measurements for growth and fitness comparisons;</span>
+<span class="sd">    see the :class:`~phenotypic.schema.SIZE` table below for what each column</span>
+<span class="sd">    means.</span>
+
+<span class="sd">    The four radii come from the colony&#39;s *radial signature*: the distance from</span>
+<span class="sd">    the center to the boundary, sampled in ``angular_bins`` equal directions.</span>
+<span class="sd">    Sampling by angle rather than along the boundary gives a runner or spur</span>
+<span class="sd">    only its true angular width, so the trimmed ``RobustMeanRadius`` stays on</span>
+<span class="sd">    the compact body while ``MeanRadius`` and ``MaxRadius`` show the reach.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        angular_bins: Number of equal angular directions sampled. A</span>
+<span class="sd">            protrusion narrower than one bin still fills a whole bin, so more</span>
+<span class="sd">            bins weight a thin runner closer to its true angular width. The</span>
+<span class="sd">            outline of a colony of radius R has only about 8R vertices, so on</span>
+<span class="sd">            a small colony extra bins are left empty and interpolated.</span>
+<span class="sd">        trim_proportion: Fraction trimmed from each end of the radial</span>
+<span class="sd">            signature for ``RobustMeanRadius``. It tolerates a runner or spur</span>
+<span class="sd">            covering up to this fraction of all directions; 0 makes</span>
+<span class="sd">            ``RobustMeanRadius`` equal ``MeanRadius``.</span>
+<span class="sd">        plateau_tolerance: Relative tolerance defining the distance-transform</span>
+<span class="sd">            peak plateau whose centroid is the colony center. The default</span>
+<span class="sd">            (1%) merges the exact ties that integer pixel geometry produces.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        pd.DataFrame: Object-level size measurements with columns:</span>
-
-<span class="sd">            - Label: unique object identifier.</span>
-<span class="sd">            - Area: number of pixels occupied by the colony.</span>
-<span class="sd">            - IntegratedIntensity: sum of grayscale pixel values</span>
-<span class="sd">              (proxy for biomass / optical density).</span>
+<span class="sd">        pd.DataFrame: One row per colony with ``Object_Label`` and every</span>
+<span class="sd">        ``Size_*`` column.</span>
 
 <span class="sd">    Best For:</span>
-<span class="sd">        - Quick quality-control screening of colony size distributions.</span>
-<span class="sd">        - Time-course growth tracking via area at successive time points.</span>
-<span class="sd">        - Filtering colonies by minimum size to exclude debris or aborted</span>
-<span class="sd">          growth before downstream measurement.</span>
+<span class="sd">        - Growth and fitness comparisons across strains and conditions</span>
+<span class="sd">          (area and the radius family).</span>
+<span class="sd">        - Separating compact growth from runners or spreading</span>
+<span class="sd">          (``MaxRadius`` against ``RobustMeanRadius``).</span>
+<span class="sd">        - Filtering debris or aborted growth by minimum size before</span>
+<span class="sd">          downstream measurement.</span>
 
 <span class="sd">    Consider Also:</span>
-<span class="sd">        - :class:`MeasureShape` for comprehensive morphological metrics</span>
-<span class="sd">          (circularity, convex hull, Feret diameters).</span>
-<span class="sd">        - :class:`MeasureIntensity` for full intensity statistics</span>
-<span class="sd">          (percentiles, variance, coefficient of variation).</span>
+<span class="sd">        - :class:`MeasureShape` for form descriptors (circularity, solidity,</span>
+<span class="sd">          eccentricity, interior thickness).</span>
+<span class="sd">        - :class:`MeasureIntensity` for full intensity statistics.</span>
 <span class="sd">        - :class:`MeasureGridSpread` for detecting multi-object wells in</span>
 <span class="sd">          arrayed assays.</span>
 
@@ -654,30 +679,210 @@
 
     <span class="n">_measurement_infoclass</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">type</span><span class="p">]</span> <span class="o">=</span> <span class="n">SIZE</span>
 
+    <span class="n">angular_bins</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mi">360</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">le</span><span class="o">=</span><span class="mi">3600</span><span class="p">)</span>
+    <span class="n">trim_proportion</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">lt</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+    <span class="n">plateau_tolerance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">gt</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">lt</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_feret_diameters</span><span class="p">(</span><span class="n">hull_points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate minimum and maximum Feret diameters from convex hull points.</span>
+
+<span class="sd">        The Feret diameter is the distance between two parallel lines tangent to the object.</span>
+<span class="sd">        Maximum Feret diameter: longest distance between any two points on the convex hull.</span>
+<span class="sd">        Minimum Feret diameter: computed using rotating calipers algorithm to find the</span>
+<span class="sd">        minimum width of the object across all orientations.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            hull_points: Nx2 array of coordinates representing convex hull vertices</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple: (max_feret, min_feret) diameters</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">hull_points</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+
+        <span class="c1"># Maximum Feret: compute pairwise distances and find maximum</span>
+        <span class="c1"># This is the straightforward maximum distance between any two hull vertices</span>
+        <span class="n">distances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span>
+                <span class="p">((</span><span class="n">hull_points</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">-</span> <span class="n">hull_points</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">max_feret</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">distances</span><span class="p">)</span>
+
+        <span class="c1"># Minimum Feret: use rotating calipers algorithm</span>
+        <span class="c1"># For each edge of the convex hull, calculate perpendicular distance to all other points</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">hull_points</span><span class="p">)</span>
+        <span class="n">min_feret</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+            <span class="c1"># Define edge vector from point i to point i+1</span>
+            <span class="n">p1</span> <span class="o">=</span> <span class="n">hull_points</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">p2</span> <span class="o">=</span> <span class="n">hull_points</span><span class="p">[(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="n">n</span><span class="p">]</span>
+            <span class="n">edge</span> <span class="o">=</span> <span class="n">p2</span> <span class="o">-</span> <span class="n">p1</span>
+            <span class="n">edge_length</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">edge</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">edge_length</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># Normalized perpendicular direction to the edge</span>
+            <span class="n">edge_unit</span> <span class="o">=</span> <span class="n">edge</span> <span class="o">/</span> <span class="n">edge_length</span>
+            <span class="n">perpendicular</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="n">edge_unit</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">edge_unit</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+
+            <span class="c1"># Project all hull points onto the perpendicular direction</span>
+            <span class="n">projections</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">hull_points</span> <span class="o">-</span> <span class="n">p1</span><span class="p">,</span> <span class="n">perpendicular</span><span class="p">)</span>
+
+            <span class="c1"># The width in this direction is the range of projections</span>
+            <span class="n">width</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">projections</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">projections</span><span class="p">)</span>
+            <span class="n">min_feret</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">min_feret</span><span class="p">,</span> <span class="n">width</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="n">max_feret</span><span class="p">,</span> <span class="n">min_feret</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_trace_radial_signature</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">obj_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">edt</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Sample the colony boundary&#39;s distance from its center, uniformly by angle.</span>
+
+<span class="sd">        The center is the centroid of the distance-transform&#39;s near-maximal</span>
+<span class="sd">        plateau, not its argmax: the transform&#39;s values are square roots of</span>
+<span class="sd">        exact integers, so exact ties are common and an argmax would resolve</span>
+<span class="sd">        them by raster order. The plateau component holding the argmax is</span>
+<span class="sd">        taken 8-connected, as objects are labelled, so a diagonal run of tied</span>
+<span class="sd">        pixels is one plateau.</span>
+
+<span class="sd">        The boundary is every subpixel marching-squares contour of the</span>
+<span class="sd">        hole-filled label at the 0.5 iso-level, pooled: a label made of</span>
+<span class="sd">        several pieces (a runner joined only at a corner, or fragments merged</span>
+<span class="sd">        under one label) is sampled whole, so each bin keeps the outermost</span>
+<span class="sd">        crossing of any piece. Holes are filled first because a small outline</span>
+<span class="sd">        has fewer vertices than bins, and a hole&#39;s vertices would otherwise</span>
+<span class="sd">        fill bins that the outer outline left empty. The contours are traced</span>
+<span class="sd">        8-connected to match how objects are labelled; pooled, the result</span>
+<span class="sd">        does not depend on it, since connectivity only regroups the same</span>
+<span class="sd">        crossings into contours. Sampling is by angle rather than along the</span>
+<span class="sd">        contour so that a narrow protrusion contributes only its angular</span>
+<span class="sd">        width, which is what keeps the trimmed mean inside its breakdown point.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            obj_mask (np.ndarray): Boolean mask of a single object within its</span>
+<span class="sd">                bounding box (``regionprops.image``).</span>
+<span class="sd">            edt (np.ndarray): Euclidean distance transform of *obj_mask*,</span>
+<span class="sd">                computed with one pixel of background padding on every side.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            np.ndarray | None: Radii at ``self.angular_bins`` equally spaced</span>
+<span class="sd">            angles, or None when the object has no interior or no contour.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">peak</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">edt</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">peak</span> <span class="o">&lt;=</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">plateau</span> <span class="o">=</span> <span class="n">edt</span> <span class="o">&gt;=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">plateau_tolerance</span><span class="p">)</span> <span class="o">*</span> <span class="n">peak</span>
+        <span class="c1"># ndi_label returns int | tuple[ndarray, int]; with no output arg the</span>
+        <span class="c1"># runtime value is always the tuple, so narrow the stub&#39;s union.</span>
+        <span class="n">components</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
+                <span class="s2">&quot;tuple[np.ndarray, int]&quot;</span><span class="p">,</span>
+                <span class="n">ndi_label</span><span class="p">(</span><span class="n">plateau</span><span class="p">,</span> <span class="n">structure</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)),</span>
+        <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">dominant</span> <span class="o">=</span> <span class="n">components</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">unravel_index</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">edt</span><span class="p">),</span> <span class="n">edt</span><span class="o">.</span><span class="n">shape</span><span class="p">)]</span>
+        <span class="n">center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">components</span> <span class="o">==</span> <span class="n">dominant</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">contours</span> <span class="o">=</span> <span class="n">find_contours</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">binary_fill_holes</span><span class="p">(</span><span class="n">obj_mask</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">),</span>
+                <span class="mf">0.5</span><span class="p">,</span>
+                <span class="n">fully_connected</span><span class="o">=</span><span class="s2">&quot;high&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">contours</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">outline</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">contours</span><span class="p">)</span> <span class="o">-</span> <span class="mf">1.0</span>
+
+        <span class="n">offsets</span> <span class="o">=</span> <span class="n">outline</span> <span class="o">-</span> <span class="n">center</span>
+        <span class="n">radii</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hypot</span><span class="p">(</span><span class="n">offsets</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">offsets</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="n">angles</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">offsets</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">offsets</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])</span>
+
+        <span class="n">n_bins</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">angular_bins</span>
+        <span class="n">bins</span> <span class="o">=</span> <span class="p">((</span><span class="n">angles</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">*</span> <span class="n">n_bins</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span> <span class="o">%</span> <span class="n">n_bins</span>
+        <span class="n">signature</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_bins</span><span class="p">,</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="o">.</span><span class="n">at</span><span class="p">(</span><span class="n">signature</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">radii</span><span class="p">)</span>
+
+        <span class="n">empty</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">signature</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">empty</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">empty</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="c1"># Circular interpolation: bins with no contour vertex are not</span>
+            <span class="c1"># missing at random. They cluster where the contour is angularly</span>
+            <span class="c1"># sparse, so dropping them biases the mean upward.</span>
+            <span class="n">known</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="o">~</span><span class="n">empty</span><span class="p">)</span>
+            <span class="n">signature</span><span class="p">[</span><span class="n">empty</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">empty</span><span class="p">),</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">known</span> <span class="o">-</span> <span class="n">n_bins</span><span class="p">,</span> <span class="n">known</span><span class="p">,</span> <span class="n">known</span> <span class="o">+</span> <span class="n">n_bins</span><span class="p">]),</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">signature</span><span class="p">[</span><span class="n">known</span><span class="p">],</span> <span class="mi">3</span><span class="p">),</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">signature</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_measure_radial_profile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj_mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute the five radii for one cropped object.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            obj_mask (np.ndarray): Boolean mask of a single object within its</span>
+<span class="sd">                bounding box (``regionprops.image``), already isolated from</span>
+<span class="sd">                neighbouring labels.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            dict[str, float]: ``SIZE`` header to value for InscribedRadius,</span>
+<span class="sd">            MedianRadius, MeanRadius, RobustMeanRadius and MaxRadius. The</span>
+<span class="sd">            four signature radii are NaN when the object has no contour.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">edt</span> <span class="o">=</span> <span class="n">object_edt</span><span class="p">(</span><span class="n">obj_mask</span><span class="p">)</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">SIZE</span><span class="o">.</span><span class="n">INSCRIBED_RADIUS</span><span class="p">):</span> <span class="nb">float</span><span class="p">(</span><span class="n">edt</span><span class="o">.</span><span class="n">max</span><span class="p">()),</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">SIZE</span><span class="o">.</span><span class="n">MEDIAN_RADIUS</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">SIZE</span><span class="o">.</span><span class="n">MEAN_RADIUS</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">SIZE</span><span class="o">.</span><span class="n">ROBUST_MEAN_RADIUS</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">SIZE</span><span class="o">.</span><span class="n">MAX_RADIUS</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="n">signature</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trace_radial_signature</span><span class="p">(</span><span class="n">obj_mask</span><span class="p">,</span> <span class="n">edt</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">signature</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">values</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">SIZE</span><span class="o">.</span><span class="n">MEDIAN_RADIUS</span><span class="p">)]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">signature</span><span class="p">))</span>
+            <span class="n">values</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">SIZE</span><span class="o">.</span><span class="n">MEAN_RADIUS</span><span class="p">)]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">signature</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+            <span class="n">values</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">SIZE</span><span class="o">.</span><span class="n">ROBUST_MEAN_RADIUS</span><span class="p">)]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span>
+                    <span class="n">trim_mean</span><span class="p">(</span><span class="n">signature</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">trim_proportion</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">values</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">SIZE</span><span class="o">.</span><span class="n">MAX_RADIUS</span><span class="p">)]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">signature</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">values</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-        <span class="c1"># Create empty numpy arrays to store measurements</span>
+        <span class="n">n_objects</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">num_objects</span>
         <span class="n">measurements</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="nb">str</span><span class="p">(</span><span class="n">feature</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">num_objects</span><span class="p">)</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">feature</span><span class="p">):</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">n_objects</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">SIZE</span>
-            <span class="k">if</span> <span class="n">feature</span> <span class="o">!=</span> <span class="n">SIZE</span><span class="o">.</span><span class="n">CATEGORY</span>
         <span class="p">}</span>
 
-        <span class="c1"># Calculate integrated intensity using the sum calculation method from base class</span>
-        <span class="n">intensity_matrix</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">gray</span><span class="p">[:]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="n">objmap</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-
-        <span class="n">measurements</span><span class="p">[</span><span class="n">SIZE</span><span class="o">.</span><span class="n">AREA</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_sum</span><span class="p">(</span>
+        <span class="n">objmap</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">objmap</span><span class="p">[:]</span>
+        <span class="n">measurements</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">SIZE</span><span class="o">.</span><span class="n">AREA</span><span class="p">)]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_sum</span><span class="p">(</span>
                 <span class="n">array</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objmask</span><span class="p">[:],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">objmap</span>
         <span class="p">)</span>
-        <span class="n">measurements</span><span class="p">[</span><span class="n">SIZE</span><span class="o">.</span><span class="n">INTEGRATED_INTENSITY</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_sum</span><span class="p">(</span>
-                <span class="n">array</span><span class="o">=</span><span class="n">intensity_matrix</span><span class="p">,</span> <span class="n">objmap</span><span class="o">=</span><span class="n">objmap</span>
+        <span class="n">measurements</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">SIZE</span><span class="o">.</span><span class="n">INTEGRATED_INTENSITY</span><span class="p">)]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_sum</span><span class="p">(</span>
+                <span class="n">array</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">gray</span><span class="p">[:],</span> <span class="n">objmap</span><span class="o">=</span><span class="n">objmap</span>
         <span class="p">)</span>
 
-        <span class="n">measurements</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span>
-        <span class="n">measurements</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span>
-                <span class="n">loc</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">labels2series</span><span class="p">()</span>
-        <span class="p">)</span>
-        <span class="k">return</span> <span class="n">measurements</span></div>
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">props</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">props</span><span class="p">):</span>
+            <span class="n">measurements</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">SIZE</span><span class="o">.</span><span class="n">PERIMETER</span><span class="p">)][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">props</span><span class="o">.</span><span class="n">perimeter</span>
+            <span class="n">measurements</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">SIZE</span><span class="o">.</span><span class="n">BBOX_AREA</span><span class="p">)][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">props</span><span class="o">.</span><span class="n">area_bbox</span>
+            <span class="n">measurements</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">SIZE</span><span class="o">.</span><span class="n">MAJOR_AXIS_LENGTH</span><span class="p">)][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">props</span><span class="o">.</span><span class="n">axis_major_length</span>
+            <span class="n">measurements</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">SIZE</span><span class="o">.</span><span class="n">MINOR_AXIS_LENGTH</span><span class="p">)][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">props</span><span class="o">.</span><span class="n">axis_minor_length</span>
+            <span class="n">hull</span><span class="p">,</span> <span class="n">hull_area</span> <span class="o">=</span> <span class="n">convex_hull_area</span><span class="p">(</span><span class="n">props</span><span class="o">.</span><span class="n">coords</span><span class="p">)</span>
+            <span class="n">measurements</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">SIZE</span><span class="o">.</span><span class="n">CONVEX_AREA</span><span class="p">)][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">hull_area</span>
+            <span class="k">if</span> <span class="n">hull</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">max_feret</span><span class="p">,</span> <span class="n">min_feret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_feret_diameters</span><span class="p">(</span>
+                        <span class="n">props</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="n">hull</span><span class="o">.</span><span class="n">vertices</span><span class="p">]</span>
+                <span class="p">)</span>
+                <span class="n">measurements</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">SIZE</span><span class="o">.</span><span class="n">MAX_FERET_DIAMETER</span><span class="p">)][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">max_feret</span>
+                <span class="n">measurements</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">SIZE</span><span class="o">.</span><span class="n">MIN_FERET_DIAMETER</span><span class="p">)][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">min_feret</span>
+            <span class="k">for</span> <span class="n">header</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_measure_radial_profile</span><span class="p">(</span><span class="n">props</span><span class="o">.</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">measurements</span><span class="p">[</span><span class="n">header</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span>
+        <span class="n">frame</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="n">OBJECT</span><span class="o">.</span><span class="n">LABEL</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">image</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">labels2series</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">frame</span></div>
 
 
 

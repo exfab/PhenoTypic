@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=8a079089"></script>
+    <script src="../../_static/documentation_options.js?v=ec2b1084"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="phenotypic.schema.Entry" href="phenotypic.schema.Entry.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.19.0" />
+  <meta name="docsearch:version" content="0.20.0" />
   </head>
   
   
@@ -1596,28 +1596,31 @@ Provides instance-level access to the measurement category.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.MeasurementInfo.rembi_module" title="phenotypic.schema.MeasurementInfo.rembi_module"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rembi_module</span></code></a></p></td>
 <td><p>REMBI module for this enum, or None until a subclass declares it.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.MeasurementInfo.header_scheme" title="phenotypic.schema.MeasurementInfo.header_scheme"><code class="xref py py-obj docutils literal notranslate"><span class="pre">header_scheme</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.MeasurementInfo.change_note" title="phenotypic.schema.MeasurementInfo.change_note"><code class="xref py py-obj docutils literal notranslate"><span class="pre">change_note</span></code></a></p></td>
+<td><p>Return an RST change-note block rendered above this enum's table.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.MeasurementInfo.header_scheme" title="phenotypic.schema.MeasurementInfo.header_scheme"><code class="xref py py-obj docutils literal notranslate"><span class="pre">header_scheme</span></code></a></p></td>
 <td><p>Naming scheme for this enum's DataFrame output headers.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.MeasurementInfo.member_for_header" title="phenotypic.schema.MeasurementInfo.member_for_header"><code class="xref py py-obj docutils literal notranslate"><span class="pre">member_for_header</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.MeasurementInfo.member_for_header" title="phenotypic.schema.MeasurementInfo.member_for_header"><code class="xref py py-obj docutils literal notranslate"><span class="pre">member_for_header</span></code></a></p></td>
 <td><p>Return the member <em>column</em> is an output header for, or <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.MeasurementInfo.owns_header" title="phenotypic.schema.MeasurementInfo.owns_header"><code class="xref py py-obj docutils literal notranslate"><span class="pre">owns_header</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.MeasurementInfo.owns_header" title="phenotypic.schema.MeasurementInfo.owns_header"><code class="xref py py-obj docutils literal notranslate"><span class="pre">owns_header</span></code></a></p></td>
 <td><p>Whether <em>column</em> is one of this enum's output headers.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.MeasurementInfo.get_labels" title="phenotypic.schema.MeasurementInfo.get_labels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_labels</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.MeasurementInfo.get_labels" title="phenotypic.schema.MeasurementInfo.get_labels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_labels</span></code></a></p></td>
 <td><p>Get all measurement labels without category prefix.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.MeasurementInfo.get_headers" title="phenotypic.schema.MeasurementInfo.get_headers"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_headers</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.MeasurementInfo.get_headers" title="phenotypic.schema.MeasurementInfo.get_headers"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_headers</span></code></a></p></td>
 <td><p>Get all measurement headers with category prefix.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.MeasurementInfo.rst_table" title="phenotypic.schema.MeasurementInfo.rst_table"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rst_table</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.MeasurementInfo.rst_table" title="phenotypic.schema.MeasurementInfo.rst_table"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rst_table</span></code></a></p></td>
 <td><p>Render an RST list-table of this enum's members.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.schema.MeasurementInfo.append_rst_to_doc" title="phenotypic.schema.MeasurementInfo.append_rst_to_doc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">append_rst_to_doc</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.schema.MeasurementInfo.append_rst_to_doc" title="phenotypic.schema.MeasurementInfo.append_rst_to_doc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">append_rst_to_doc</span></code></a></p></td>
 <td><p>Append the measurement documentation table to a module or class docstring.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -1729,8 +1732,8 @@ the codebase.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p><dl class="simple">
-<dt>The category name (e.g., ‘Shape’, ‘Color’, ‘Texture’). This string is</dt><dd><p>prepended to each measurement label with an underscore separator to form
-the full header name (e.g., ‘Shape_Area’).</p>
+<dt>The category name (e.g., ‘Size’, ‘Color’, ‘Texture’). This string is</dt><dd><p>prepended to each measurement label with an underscore separator to form
+the full header name (e.g., ‘Size_Area’).</p>
 </dd>
 </dl>
 </p>
@@ -1773,6 +1776,24 @@ the full header name (e.g., ‘Shape_Area’).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="phenotypic.schema.REMBI_MODULE.html#phenotypic.schema.REMBI_MODULE" title="phenotypic.schema.REMBI_MODULE">REMBI_MODULE</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.schema.MeasurementInfo.change_note">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">change_note</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/schema/_measurement_info.html#MeasurementInfo.change_note"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.MeasurementInfo.change_note" title="Link to this definition">#</a></dt>
+<dd><p>Return an RST change-note block rendered above this enum’s table.</p>
+<p>Rendered by <a class="reference internal" href="#phenotypic.schema.MeasurementInfo.append_rst_to_doc" title="phenotypic.schema.MeasurementInfo.append_rst_to_doc"><code class="xref py py-meth docutils literal notranslate"><span class="pre">append_rst_to_doc()</span></code></a> (measurer class docs and the
+enum’s own docstring) and by the Measurements reference page. Empty
+by default; an enum overrides it when a release changes its public
+columns. Keep the text in <code class="docutils literal notranslate"><span class="pre">phenotypic.schema._change_notes</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>RST, typically a <code class="docutils literal notranslate"><span class="pre">..</span> <span class="pre">versionchanged::</span></code> directive, or <code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -1842,7 +1863,7 @@ which category it belongs to without explicitly referencing the class.</p>
 <span class="sig-name descname"><span class="pre">__str__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/schema/_measurement_info.html#MeasurementInfo.__str__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.schema.MeasurementInfo.__str__" title="Link to this definition">#</a></dt>
 <dd><p>Return the string representation of this measurement as the prefixed name.</p>
 <p>Returns the full enumeration value, which is the category-prefixed label
-(e.g., ‘Shape_Area’). This is used when the measurement is converted to a string
+(e.g., ‘Size_Area’). This is used when the measurement is converted to a string
 or used in string formatting.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -1929,7 +1950,7 @@ categorized name is needed.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p><dl class="simple">
-<dt>List of prefixed measurement names in enumeration order</dt><dd><p>(e.g., [‘Shape_Area’, ‘Shape_Perimeter’]). Each header includes the
+<dt>List of prefixed measurement names in enumeration order</dt><dd><p>(e.g., [‘Size_Area’, ‘Size_Perimeter’]). Each header includes the
 category prefix separated by an underscore.</p>
 </dd>
 </dl>
@@ -1952,7 +1973,7 @@ column when any sets <code class="docutils literal notranslate"><span class="pre
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Table caption; defaults to the category name.</p></li>
 <li><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>]</em>) – <code class="docutils literal notranslate"><span class="pre">(name_column_header,</span> <span class="pre">description_column_header)</span></code>.</p></li>
-<li><p><strong>use_headers</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Name cell shows the prefixed value (<code class="docutils literal notranslate"><span class="pre">Shape_Area</span></code>)
+<li><p><strong>use_headers</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Name cell shows the prefixed value (<code class="docutils literal notranslate"><span class="pre">Size_Area</span></code>)
 instead of the bare label (<code class="docutils literal notranslate"><span class="pre">Area</span></code>).</p></li>
 </ul>
 </dd>
@@ -1968,7 +1989,9 @@ instead of the bare label (<code class="docutils literal notranslate"><span clas
 <dd><p>Append the measurement documentation table to a module or class docstring.</p>
 <p>Generates the RST documentation table for this measurement enumeration and appends
 it to the provided module’s or class’s existing docstring. This is useful for
-automatically documenting which measurements a class produces or uses.</p>
+automatically documenting which measurements a class produces or uses.
+When the enum defines a <a class="reference internal" href="#phenotypic.schema.MeasurementInfo.change_note" title="phenotypic.schema.MeasurementInfo.change_note"><code class="xref py py-meth docutils literal notranslate"><span class="pre">change_note()</span></code></a>, it is placed between the
+docstring and the table.</p>
 <p>If the input is a string, it is treated as the docstring itself. If it is an object
 (class, function, module), its __doc__ attribute is used.</p>
 <dl class="field-list simple">
@@ -2420,7 +2443,7 @@ must be a string, whose characters will be mapped to None in the result.</p>
 <dt class="sig sig-object py" id="phenotypic.schema.MeasurementInfo.__new_member__">
 <span class="sig-name descname"><span class="pre">__new_member__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">entry</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="phenotypic.schema.Entry.html#phenotypic.schema.Entry" title="phenotypic.schema._measurement_info.Entry"><span class="pre">Entry</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#phenotypic.schema.MeasurementInfo.__new_member__" title="Link to this definition">#</a></dt>
 <dd><p>Create a member from an <a class="reference internal" href="phenotypic.schema.Entry.html#phenotypic.schema.Entry" title="phenotypic.schema.Entry"><code class="xref py py-class docutils literal notranslate"><span class="pre">Entry</span></code></a>.</p>
-<p>The enum value is the category-prefixed header (e.g. <code class="docutils literal notranslate"><span class="pre">Shape_Area</span></code>);
+<p>The enum value is the category-prefixed header (e.g. <code class="docutils literal notranslate"><span class="pre">Size_Area</span></code>);
 <code class="docutils literal notranslate"><span class="pre">label</span></code>/<code class="docutils literal notranslate"><span class="pre">desc</span></code>/<code class="docutils literal notranslate"><span class="pre">bio_desc</span></code>/<code class="docutils literal notranslate"><span class="pre">image</span></code> are stored as instance
 attributes. Anything other than an <code class="docutils literal notranslate"><span class="pre">Entry</span></code> raises <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> at
 class-creation time.</p>
@@ -2484,6 +2507,7 @@ class-creation time.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.MeasurementInfo.kind"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.kind()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.MeasurementInfo.tier"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.tier()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.MeasurementInfo.rembi_module"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.rembi_module()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.MeasurementInfo.change_note"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.change_note()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.MeasurementInfo.header_scheme"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.header_scheme()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.MeasurementInfo.member_for_header"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.member_for_header()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.schema.MeasurementInfo.owns_header"><code class="docutils literal notranslate"><span class="pre">MeasurementInfo.owns_header()</span></code></a></li>

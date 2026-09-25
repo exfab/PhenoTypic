@@ -20,6 +20,7 @@ phenotypic.schema.ColorHSV
       ~ColorHSV.kind
       ~ColorHSV.category
       ~ColorHSV.rembi_module
+      ~ColorHSV.change_note
       ~ColorHSV.header_scheme
       ~ColorHSV.member_for_header
       ~ColorHSV.owns_header

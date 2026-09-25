@@ -21,6 +21,7 @@ phenotypic.schema.PLATE
       ~PLATE.kind
       ~PLATE.tier
       ~PLATE.rembi_module
+      ~PLATE.change_note
       ~PLATE.header_scheme
       ~PLATE.member_for_header
       ~PLATE.owns_header

@@ -20,6 +20,7 @@ phenotypic.schema.SHAPE
       ~SHAPE.category
       ~SHAPE.tier
       ~SHAPE.rembi_module
+      ~SHAPE.change_note
       ~SHAPE.header_scheme
       ~SHAPE.member_for_header
       ~SHAPE.owns_header
@@ -90,23 +91,14 @@ phenotypic.schema.SHAPE
       ~SHAPE.resolved_rembi_module
       ~SHAPE.use_label
       ~SHAPE.use_badge
-      ~SHAPE.AREA
-      ~SHAPE.PERIMETER
       ~SHAPE.CIRCULARITY
-      ~SHAPE.CONVEX_AREA
-      ~SHAPE.MEDIAN_RADIUS
-      ~SHAPE.MEAN_RADIUS
-      ~SHAPE.MAX_RADIUS
-      ~SHAPE.MIN_FERET_DIAMETER
-      ~SHAPE.MAX_FERET_DIAMETER
       ~SHAPE.ECCENTRICITY
       ~SHAPE.SOLIDITY
       ~SHAPE.EXTENT
-      ~SHAPE.BBOX_AREA
-      ~SHAPE.MAJOR_AXIS_LENGTH
-      ~SHAPE.MINOR_AXIS_LENGTH
       ~SHAPE.COMPACTNESS
       ~SHAPE.ORIENTATION
+      ~SHAPE.MEAN_BOUNDARY_DIST
+      ~SHAPE.MEDIAN_BOUNDARY_DIST
       ~SHAPE.label
       ~SHAPE.desc
       ~SHAPE.bio_desc

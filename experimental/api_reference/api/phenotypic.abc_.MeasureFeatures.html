@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=8a079089"></script>
+    <script src="../../_static/documentation_options.js?v=ec2b1084"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -66,7 +66,7 @@
     <link rel="prev" title="phenotypic.abc_.register_detection_mode" href="phenotypic.abc_.register_detection_mode.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.19.0" />
+  <meta name="docsearch:version" content="0.20.0" />
   </head>
   
   
@@ -1469,10 +1469,10 @@ genetic and environmental association studies.</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">df</span> <span class="o">=</span> <span class="n">measurer</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
 <span class="go"># Output:</span>
-<span class="go">#   OBJECT.LABEL  Area  IntegratedIntensity</span>
-<span class="go"># 0             1  1024                 128512</span>
-<span class="go"># 1             2   956                 121232</span>
-<span class="go"># 2             3  1101                 134232</span>
+<span class="go">#   OBJECT.LABEL  Area  IntegratedIntensity  Perimeter  ...  MaxRadius</span>
+<span class="go"># 0             1  1024                 128512  ...</span>
+<span class="go"># 1             2   956                 121232  ...</span>
+<span class="go"># 2             3  1101                 134232  ...</span>
 </pre></div>
 </div>
 <p>Advanced: extract multiple measurement types with metadata:</p>
@@ -1784,7 +1784,7 @@ before OBJECT.LABEL (e.g., Filename, GridRow, GridCol).</p>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">df_with_meta</span> <span class="o">=</span> <span class="n">measurer</span><span class="o">.</span><span class="n">measure</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">include_meta</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">df_with_meta</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
 <span class="go"># Output: [&#39;Filename&#39;, &#39;GridRow&#39;, &#39;GridCol&#39;, &#39;OBJECT.LABEL&#39;,</span>
-<span class="go">#          &#39;Area&#39;, &#39;IntegratedIntensity&#39;, ...]</span>
+<span class="go">#          &#39;Area&#39;, &#39;IntegratedIntensity&#39;, &#39;Perimeter&#39;, ..., &#39;MaxRadius&#39;]</span>
 </pre></div>
 </div>
 </div>

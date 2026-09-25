@@ -41,7 +41,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
-    <script src="../../_static/documentation_options.js?v=8a079089"></script>
+    <script src="../../_static/documentation_options.js?v=ec2b1084"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script>let toggleHintShow = 'Click to show';</script>
@@ -68,7 +68,7 @@
     <link rel="prev" title="Image Quality: Noise, Contrast, and Structure" href="../image_quality_noise_contrast_structure.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.19.0" />
+  <meta name="docsearch:version" content="0.20.0" />
   </head>
   
   
@@ -729,7 +729,7 @@ recovered exactly as the pre-lag baseline.</p></li>
 </section>
 <section id="3.-LinearCapAndLagModel:-Per-Group-Mode-Dispatch">
 <h2>3. LinearCapAndLagModel: Per-Group Mode Dispatch<a class="headerlink" href="#3.-LinearCapAndLagModel:-Per-Group-Mode-Dispatch" title="Link to this heading">#</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">LinearLagModel</span></code> is single-mode by construction — it always fits the 4-parameter unclamped form. <code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel</span></code> is the saturating variant, and within it the fitter picks one of two variants per group, recorded in the metric-qualified <code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel_&lt;metric&gt;_mode</span></code> column of the results (e.g. <code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel_Area_mode</span></code> when fitting on <code class="docutils literal notranslate"><span class="pre">Shape_Area</span></code>).</p>
+<p><code class="docutils literal notranslate"><span class="pre">LinearLagModel</span></code> is single-mode by construction — it always fits the 4-parameter unclamped form. <code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel</span></code> is the saturating variant, and within it the fitter picks one of two variants per group, recorded in the metric-qualified <code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel_&lt;metric&gt;_mode</span></code> column of the results (e.g. <code class="docutils literal notranslate"><span class="pre">LinearCapAndLagModel_Area_mode</span></code> when fitting on <code class="docutils literal notranslate"><span class="pre">Size_Area</span></code>).</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <thead>
 <tr class="row-odd"><th class="head"><p>Mode</p></th>
@@ -906,7 +906,7 @@ standard weakly-informative-prior argument from <a class="reference external" hr
 <td><p>Data-ground on <code class="docutils literal notranslate"><span class="pre">self.on</span></code>. <span class="math notranslate nohighlight">\(\mu\)</span> is the median of the target column at the earliest observed timepoint within each effective group.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">str</span></code> (column name)</p></td>
-<td><p>Data-ground on the named column. <span class="math notranslate nohighlight">\(\mu\)</span> is the median of <code class="docutils literal notranslate"><span class="pre">data[s0_prior]</span></code> at the earliest observed timepoint within each effective group. Useful when the measurement column (e.g. <code class="docutils literal notranslate"><span class="pre">Shape_Area</span></code>) is not a faithful inoculum estimate, but another column (e.g. a calibrated <code class="docutils literal notranslate"><span class="pre">Inoculum_Size</span></code>
+<td><p>Data-ground on the named column. <span class="math notranslate nohighlight">\(\mu\)</span> is the median of <code class="docutils literal notranslate"><span class="pre">data[s0_prior]</span></code> at the earliest observed timepoint within each effective group. Useful when the measurement column (e.g. <code class="docutils literal notranslate"><span class="pre">Size_Area</span></code>) is not a faithful inoculum estimate, but another column (e.g. a calibrated <code class="docutils literal notranslate"><span class="pre">Inoculum_Size</span></code>
 observation from a separate imaging step) is.</p></td>
 </tr>
 <tr class="row-odd"><td><p>positive <code class="docutils literal notranslate"><span class="pre">int</span></code> / <code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>

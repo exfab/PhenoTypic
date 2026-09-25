@@ -21,6 +21,7 @@ phenotypic.schema.ACQUISITION
       ~ACQUISITION.kind
       ~ACQUISITION.tier
       ~ACQUISITION.rembi_module
+      ~ACQUISITION.change_note
       ~ACQUISITION.header_scheme
       ~ACQUISITION.member_for_header
       ~ACQUISITION.owns_header

@@ -20,6 +20,7 @@ phenotypic.schema.QUALITY\_MAD
       ~QUALITY_MAD.category
       ~QUALITY_MAD.tier
       ~QUALITY_MAD.rembi_module
+      ~QUALITY_MAD.change_note
       ~QUALITY_MAD.header_scheme
       ~QUALITY_MAD.member_for_header
       ~QUALITY_MAD.owns_header

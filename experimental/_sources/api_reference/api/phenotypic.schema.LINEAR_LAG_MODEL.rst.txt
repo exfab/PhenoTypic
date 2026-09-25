@@ -20,6 +20,7 @@ phenotypic.schema.LINEAR\_LAG\_MODEL
       ~LINEAR_LAG_MODEL.category
       ~LINEAR_LAG_MODEL.tier
       ~LINEAR_LAG_MODEL.rembi_module
+      ~LINEAR_LAG_MODEL.change_note
       ~LINEAR_LAG_MODEL.header_scheme
       ~LINEAR_LAG_MODEL.member_for_header
       ~LINEAR_LAG_MODEL.owns_header

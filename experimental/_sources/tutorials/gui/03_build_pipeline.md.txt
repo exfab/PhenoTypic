@@ -37,8 +37,9 @@ The walkthrough pipeline consists of:
 
 1. `BlurGauss` - smooths each plate before thresholding.
 2. `OtsuDetector` - produces the binary colony mask.
-3. `MeasureShape` and `MeasureSize` - extract per-colony shape and area
-   measurements.
+3. `MeasureShape` and `MeasureSize` - `MeasureSize` extracts per-colony size
+   magnitudes (area, perimeter, and the radius family); `MeasureShape`
+   extracts form descriptors (circularity, solidity, eccentricity).
 
 To build it:
 

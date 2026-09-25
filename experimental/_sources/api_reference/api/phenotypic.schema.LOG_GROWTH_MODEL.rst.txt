@@ -20,6 +20,7 @@ phenotypic.schema.LOG\_GROWTH\_MODEL
       ~LOG_GROWTH_MODEL.category
       ~LOG_GROWTH_MODEL.tier
       ~LOG_GROWTH_MODEL.rembi_module
+      ~LOG_GROWTH_MODEL.change_note
       ~LOG_GROWTH_MODEL.header_scheme
       ~LOG_GROWTH_MODEL.member_for_header
       ~LOG_GROWTH_MODEL.owns_header

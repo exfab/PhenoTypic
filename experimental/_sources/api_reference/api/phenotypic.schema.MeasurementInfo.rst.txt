@@ -67,6 +67,7 @@ phenotypic.schema.MeasurementInfo
       ~MeasurementInfo.kind
       ~MeasurementInfo.tier
       ~MeasurementInfo.rembi_module
+      ~MeasurementInfo.change_note
       ~MeasurementInfo.header_scheme
       ~MeasurementInfo.member_for_header
       ~MeasurementInfo.owns_header
