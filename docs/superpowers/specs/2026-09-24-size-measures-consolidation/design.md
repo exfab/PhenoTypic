@@ -261,9 +261,14 @@ never diverge.
 - **Version:** `src/phenotypic/__init__.py` `__version__ = "0.20.0"` (minor bump; pyproject
   reads it dynamically). Update the version pin in
   `tests/unit/sdk_/test_norm_migration.py::test_version_is_0_19_0` to 0.20.0 and rename the
-  test. Historical fixtures that record `"version": "0.19.0"` (e.g.
-  `tests/unit/measure/_golden/orientation_zones_pre_simplification.json`) are back-compat
-  locks and stay unchanged.
+  test. The golden `tests/unit/measure/_golden/orientation_zones_pre_simplification.json`
+  records `"version": "0.19.0"` inside its serialized default `center_detector`
+  pipelines. That is the running `__version__` stamped by `SerializablePipeline` at capture
+  time, not a back-compat lock, so it cannot stay a literal match: the test compares the
+  current serialization against it. The golden file stays unchanged. Its test drops each
+  pipeline's `version` stamp from both sides before comparing, then asserts separately that
+  the current stamp equals `phenotypic.__version__` (corrected after the phase-1 gate found
+  the test red at 0.20.0).
 - **Highlighted note, one source.** Add a classmethod hook to `MeasurementInfo`,
   `change_note() -> str`, which returns an RST block and defaults to `""`. `SIZE` and
   `SHAPE` override it to return a `.. versionchanged:: 0.20.0` directive: a highlighted
