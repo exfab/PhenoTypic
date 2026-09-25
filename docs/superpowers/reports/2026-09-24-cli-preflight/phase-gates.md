@@ -119,3 +119,11 @@ equals `81d19ec`) before attribution.
   from the D8 change (Polars accepts `b'"unterminated'`, which the removed pandas parse
   refused). The pandas parse was restored; the file then passes (21 passed with the
   metadata preflight tests).
+
+## Phase E review fixes (`ac0ba95`, E1-E13)
+
+- **Surface:** `tests/unit/cli`, `tests/integration/cli`, `tests/unit/sdk_`,
+  `tests/unit/gui/run_console`, `tests/integration/gui`, `tests/unit/ci`,
+  `tests/unit/test_docs_preflight_codes.py` (`-m "not slow" -n 4 -o addopts=`).
+  **6155 passed, 20 skipped, 21 xfailed, 3 errors** (10:36); the errors are the `qtbot`
+  baseline. Browser run-console tests: **20 passed**.
