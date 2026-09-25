@@ -173,3 +173,82 @@ def test_measure_failure_before_final_marker_leaves_new_table_unauthorized(
         image_stem="plate",
         work_id="measure-order-work",
     ), "marker was refreshed before all per-image publication work completed"
+
+
+def test_measure_on_slurm_republishes_under_the_live_generation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A SLURM re-measure of a finished run stamps the new generation.
+
+    The record carries the epoch of the run that first published it. A later
+    ``--mode measure`` on SLURM runs under a fresh lifecycle generation, and
+    ``publish_image_success`` refuses any epoch but the live fence's -- so the
+    republish must use the worker's generation, not the record's, or every
+    image fails with "stale SLURM lifecycle" after its table was replaced.
+    """
+    from phenotypic._cli._cli_completion import (
+        publish_image_success,
+        valid_image_success,
+    )
+    from phenotypic._cli._cli_process_single import (
+        process_single_image_core,
+        process_single_store_measure_core,
+    )
+    from phenotypic._cli._cli_slurm_lifecycle import initialize_slurm_lifecycle
+    from phenotypic._cli._cli_update_state import SLURM_GENERATION_ENV_VAR
+    from phenotypic.sdk_ import image_record_path
+    from phenotypic.sdk_._image_record import read_image_record
+
+    image_path, initial_pipeline, replacement_pipeline = (
+        _write_test_image_and_pipelines(tmp_path)
+    )
+    output = tmp_path / "out"
+    manager = OutputManager.from_config(output, ".tiff", save_overlays=False)
+    process_single_image_core(
+        initial_pipeline,
+        image_path,
+        output,
+        "ds",
+        "Image",
+        {},
+        manager,
+    )
+    store = zarr_store_path(output, "ds", "plate")
+    table = store / MEASUREMENT_TABLE_RELATIVE_PATH
+    publish_image_success(
+        output,
+        work_id="remeasure-work",
+        dataset="ds",
+        relative_image_path="ds/plate.tiff",
+        image_stem="plate",
+        mode="full",
+        attempt_id="forward",
+        lifecycle_epoch="original-run-generation",
+        artifacts={"measurements": table, "store": store},
+    )
+    assert image_record_path(output, "ds", "plate").is_file()
+
+    initialize_slurm_lifecycle(
+        output, generation="remeasure-generation", mode="ordinary"
+    )
+    monkeypatch.setenv("SLURM_JOB_ID", "12345")
+    monkeypatch.setenv(SLURM_GENERATION_ENV_VAR, "remeasure-generation")
+
+    process_single_store_measure_core(
+        replacement_pipeline,
+        store,
+        output,
+        "ds",
+        "Image",
+        manager,
+    )
+
+    record = read_image_record(output, "ds", "plate")
+    assert record is not None
+    assert record["lifecycle_epoch"] == "remeasure-generation"
+    assert valid_image_success(
+        output,
+        dataset="ds",
+        image_stem="plate",
+        work_id="remeasure-work",
+    )
