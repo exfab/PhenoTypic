@@ -10,10 +10,26 @@ and when to use it.
 
 ## Size Metrics (MeasureSize)
 
+```{versionchanged} 0.20.0
+Size magnitudes moved from `MeasureShape` to `MeasureSize`, and the radius
+columns were rebuilt. `Size_MedianRadius`, `Size_MeanRadius` and
+`Size_MaxRadius` are **not** the retired `Shape_*` columns of the same name;
+see the rename table on the {ref}`SIZE reference <measurement-info-size>`.
+```
+
 | Metric | Unit | Biological meaning |
 |--------|------|-------------------|
 | Area | pixels | Colony size; proxy for biomass or growth |
 | IntegratedIntensity | sum of pixel values | Total pigmentation; proxy for metabolic output |
+| Perimeter | pixels | Colony boundary length. Increases faster than area for irregular shapes. |
+| ConvexArea | pixels | Area of the colony's convex hull — its "filled-in" footprint if indentations were removed; a low Solidity (Area/ConvexArea) signals invasive or spreading growth. |
+| BboxArea | pixels | Area of the smallest bounding rectangle around the colony; a low Extent (Area/BboxArea) indicates a spread-out or irregular colony, or possible interference with a neighboring well. |
+| MajorAxisLength / MinorAxisLength | pixels | Fitted ellipse dimensions. The ratio indicates elongation. |
+| InscribedRadius | pixels | Radius of the largest circle that fits entirely inside the colony. Reflects the colony's narrowest dimension, not its overall extent — an elongated colony reports half its width regardless of length (a 100×20 px colony reports 10), and a runner or spur leaves it unchanged. |
+| MedianRadius | pixels | Median distance from the colony's center to its boundary, sampled uniformly by angle around every piece of the colony; for an ideal disk it equals the disk radius. |
+| MeanRadius | pixels | Mean distance from the colony's center to its boundary, sampled by angle; a runner or spur pulls it upward in proportion to its angular width (use RobustMeanRadius for the compact body). |
+| RobustMeanRadius | pixels | Trimmed mean (20% from each end by default) of the same angularly-sampled boundary distances, discounting a runner or spur to estimate the radius of the colony's compact body. |
+| MaxRadius | pixels | Largest angularly-sampled boundary distance from the colony's center — its farthest reach; a value far above RobustMeanRadius signals a protrusion, spur, or runner. |
 
 Area is the most commonly used growth metric. For calibrated images,
 convert pixels to physical units (mm²) using the known pixel pitch.
@@ -25,9 +41,9 @@ convert pixels to physical units (mm²) using the known pixel pitch.
 | Circularity | 0–1 | How round the colony is (1 = perfect circle). Irregular shapes suggest stress, mutation, or sectoring. |
 | Solidity | 0–1 | Ratio of area to convex hull area. Low solidity indicates lobed or branching morphology. |
 | Eccentricity | 0–1 | Elongation (0 = circular, ~1 = very elongated). Elevated in filamentous or swarming colonies. |
-| Perimeter | pixels | Colony boundary length. Increases faster than area for irregular shapes. |
-| MajorAxisLength / MinorAxisLength | pixels | Fitted ellipse dimensions. The ratio indicates elongation. |
 | Compactness | ≥1 | Perimeter² / (4π × Area). Equals 1 for a perfect circle; increases with irregularity. |
+| MeanBoundaryDist | pixels | Mean distance from each colony pixel to the nearest edge, computed on the object in isolation — a measure of interior thickness, not a radius. High values relative to InscribedRadius indicate a compact, convex colony; low values indicate a thin or filamentous one. |
+| MedianBoundaryDist | pixels | Median distance from each colony pixel to the nearest edge — the same interior-thickness measure as MeanBoundaryDist, but more robust to boundary raggedness. |
 
 Shape metrics are particularly useful for distinguishing wild-type from
 mutant morphology, or for detecting contamination.
