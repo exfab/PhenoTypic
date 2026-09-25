@@ -77,10 +77,11 @@ override + class `kind()` > class `kind()`/`tier()`. A primary member with no ti
 `tests/unit/schema/test_classification.py` + a coverage gate.
 
 Example straddler: `class SHAPE(PrimaryMeasure)` overrides `tier()` to return `2`
-(form descriptors default to Descriptive trait); its size-magnitude members carry
-`Entry(..., tier=1)` (e.g. `AREA`, `PERIMETER`, radii, Feret diameters) so they
-resolve to Direct phenotype while `CIRCULARITY`/`ECCENTRICITY` take the class
-default of 2.
+(form descriptors default to Descriptive trait); its Feret diameters carry
+`Entry(..., tier=1)` so they resolve to Direct phenotype while
+`CIRCULARITY`/`ECCENTRICITY`/the boundary distances take the class default of 2.
+Size magnitudes (area, perimeter, radii, axis lengths) are not here: they live in
+`SIZE(DirectPhenotype)`, which resolves every member to tier 1 without tags.
 
 ## Classification badges in the docs
 

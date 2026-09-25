@@ -7,36 +7,28 @@ from phenotypic.schema import OBJECT
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
-import warnings
-import pandas as pd
-from scipy.spatial import ConvexHull, QhullError
-from scipy.ndimage import distance_transform_edt
 import numpy as np
+import pandas as pd
 
 from phenotypic.abc_ import MeasureFeatures
+from phenotypic.measure._object_geometry import convex_hull_area, object_edt
 from phenotypic.schema import SHAPE
 
 
 class MeasureShape(MeasureFeatures):
-    r"""Measure comprehensive morphological characteristics of detected colonies.
+    r"""Measure the form of each detected colony.
 
-    Extract geometric metrics from each colony shape: area, perimeter,
-    circularity, convex hull properties, width-based measures, Feret
-    diameters, eccentricity, and best-fit ellipse parameters. The output
-    DataFrame provides a full morphological profile for phenotypic
-    classification and growth-pattern analysis.
+    Extract form descriptors from each colony: circularity and compactness
+    (boundary regularity), solidity and extent (how completely the colony
+    fills its convex hull and bounding box), eccentricity and orientation
+    (elongation and its direction), the Feret caliper diameters, and
+    interior thickness (mean and median distance to the nearest edge).
+    Colony size -- area, perimeter, radii, axis lengths -- is measured by
+    :class:`MeasureSize`; add both to a pipeline for a full profile.
 
     Returns:
-        pd.DataFrame: Object-level morphological measurements with
-        columns:
-
-            - Label, Area, Perimeter, Circularity, Compactness,
-              ConvexArea, Solidity, Extent, BboxArea.
-            - MeanRadius, MedianRadius, MaxRadius (distance-transform
-              based).
-            - MinFeretDiameter, MaxFeretDiameter (caliper diameters).
-            - MajorAxisLength, MinorAxisLength, Eccentricity,
-              Orientation.
+        pd.DataFrame: One row per colony with ``Object_Label`` and every
+        ``Shape_*`` column.
 
     Best For:
         - Distinguishing colony morphotypes (smooth circular wild-type
@@ -48,8 +40,8 @@ class MeasureShape(MeasureFeatures):
         - Morphological clustering for automated strain identification.
 
     Consider Also:
-        - :class:`MeasureSize` for a lightweight area-only measurement
-          when full morphology is not needed.
+        - :class:`MeasureSize` for colony area, perimeter, radii and axis
+          lengths.
         - :class:`MeasureTexture` for surface roughness and pattern
           features that complement shape metrics.
         - :class:`MeasureBounds` for bounding box and centroid data
@@ -118,45 +110,24 @@ class MeasureShape(MeasureFeatures):
         return (max_feret, min_feret)
 
     def _operate(self, image: Image) -> pd.DataFrame:
-        # Create empty numpy arrays to store measurements
+        n_objects = image.num_objects
         measurements = {
-            str(feature): np.zeros(shape=image.num_objects)
+            str(feature): np.full(shape=n_objects, fill_value=np.nan)
             for feature in SHAPE
-            if feature != SHAPE.CATEGORY
         }
 
-        # Calculate width-based measurements using distance transform
-        # Distance transform gives the distance from each object pixel to the nearest background pixel
-        dist_matrix = distance_transform_edt(image.objmap[:])
-        measurements[str(SHAPE.MEAN_RADIUS)] = self._calculate_mean(
-                array=dist_matrix, objmap=image.objmap[:]
-        )
-        measurements[str(SHAPE.MEDIAN_RADIUS)] = self._calculate_median(
-                array=dist_matrix, objmap=image.objmap[:]
-        )
-        measurements[str(SHAPE.MAX_RADIUS)] = self._calculate_maximum(
-                array=dist_matrix, objmap=image.objmap[:]
-        )
+        for idx, props in enumerate(image.objects.props):
+            edt = object_edt(props.image)
+            interior = edt[props.image]
+            measurements[str(SHAPE.MEAN_BOUNDARY_DIST)][idx] = float(interior.mean())
+            measurements[str(SHAPE.MEDIAN_BOUNDARY_DIST)][idx] = float(np.median(interior))
 
-        obj_props = image.objects.props
-        for idx, obj_image in enumerate(image.objects):
-            current_props = obj_props[idx]
-            measurements[str(SHAPE.AREA)][idx] = current_props.area
-            measurements[str(SHAPE.PERIMETER)][idx] = current_props.perimeter
-            measurements[str(SHAPE.ECCENTRICITY)][idx] = current_props.eccentricity
-            measurements[str(SHAPE.EXTENT)][idx] = current_props.extent
-            measurements[str(SHAPE.BBOX_AREA)][idx] = current_props.area_bbox
-            measurements[str(SHAPE.MAJOR_AXIS_LENGTH)][idx] = (
-                current_props.axis_major_length
-            )
-            measurements[str(SHAPE.MINOR_AXIS_LENGTH)][idx] = (
-                current_props.axis_minor_length
-            )
-            measurements[str(SHAPE.ORIENTATION)][idx] = current_props.orientation
+            measurements[str(SHAPE.ECCENTRICITY)][idx] = props.eccentricity
+            measurements[str(SHAPE.EXTENT)][idx] = props.extent
+            measurements[str(SHAPE.ORIENTATION)][idx] = props.orientation
 
-            numer = 4 * np.pi * current_props.area
-            denom = current_props.perimeter ** 2
-
+            numer = 4 * np.pi * props.area
+            denom = props.perimeter ** 2
             measurements[str(SHAPE.CIRCULARITY)][idx] = (
                 numer / denom if denom != 0 else np.nan
             )
@@ -164,40 +135,18 @@ class MeasureShape(MeasureFeatures):
                 denom / numer if numer != 0 else np.nan
             )
 
-            try:
-                with warnings.catch_warnings():
-                    warnings.filterwarnings("ignore", message="Qhull")
-                    convex_hull = ConvexHull(current_props.coords)
-
-            except QhullError:
-                convex_hull = None
-
-            measurements[str(SHAPE.CONVEX_AREA)][idx] = (
-                convex_hull.volume if convex_hull else np.nan
-            )
-            measurements[str(SHAPE.SOLIDITY)][idx] = (
-                (current_props.area / convex_hull.volume) if convex_hull else np.nan
-            )
-
-            # Calculate Feret diameters using convex hull vertices if available
-            # Feret diameter is the distance between two parallel tangent lines
-            if convex_hull is not None:
-                # Get convex hull vertices (actual coordinate points)
-                hull_points = current_props.coords[convex_hull.vertices]
-
-                # Maximum Feret: longest distance between any two points on the convex hull
-                max_feret, min_feret = self._calculate_feret_diameters(hull_points)
+            hull, hull_area = convex_hull_area(props.coords)
+            if hull is not None:
+                measurements[str(SHAPE.SOLIDITY)][idx] = props.area / hull_area
+                max_feret, min_feret = self._calculate_feret_diameters(
+                        props.coords[hull.vertices]
+                )
                 measurements[str(SHAPE.MAX_FERET_DIAMETER)][idx] = max_feret
                 measurements[str(SHAPE.MIN_FERET_DIAMETER)][idx] = min_feret
-            else:
-                measurements[str(SHAPE.MAX_FERET_DIAMETER)][idx] = np.nan
-                measurements[str(SHAPE.MIN_FERET_DIAMETER)][idx] = np.nan
 
-        measurements = pd.DataFrame(measurements)
-        measurements.insert(
-                loc=0, column=OBJECT.LABEL, value=image.objects.labels2series()
-        )
-        return measurements
+        frame = pd.DataFrame(measurements)
+        frame.insert(loc=0, column=OBJECT.LABEL, value=image.objects.labels2series())
+        return frame
 
 
 MeasureShape.__doc__ = SHAPE.append_rst_to_doc(MeasureShape)

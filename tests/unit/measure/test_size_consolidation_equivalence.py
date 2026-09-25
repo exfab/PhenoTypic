@@ -83,3 +83,28 @@ def test_measure_intensity_does_not_run_another_measurer(plate, monkeypatch):
     monkeypatch.setattr(MeasureShape, "_operate", _refuse)
     monkeypatch.setattr(MeasureSize, "_operate", _refuse)
     MeasureIntensity().measure(plate)
+
+
+@pytest.mark.parametrize(
+    ("shape_header", "old_header"),
+    [
+        ("Shape_Circularity", "Shape_Circularity"),
+        ("Shape_Compactness", "Shape_Compactness"),
+        ("Shape_Solidity", "Shape_Solidity"),
+        ("Shape_Extent", "Shape_Extent"),
+        ("Shape_Eccentricity", "Shape_Eccentricity"),
+        ("Shape_Orientation", "Shape_Orientation"),
+        ("Shape_MinFeretDiameter", "Shape_MinFeretDiameter"),
+        ("Shape_MaxFeretDiameter", "Shape_MaxFeretDiameter"),
+        ("Shape_MeanBoundaryDist", "Shape_MeanRadius"),
+        ("Shape_MedianBoundaryDist", "Shape_MedianRadius"),
+    ],
+)
+def test_retained_shape_columns_keep_mains_values(plate, baseline, shape_header, old_header):
+    from phenotypic.measure import MeasureShape
+
+    new = MeasureShape().measure(plate)
+    merged = new.merge(baseline, on=str(OBJECT.LABEL), suffixes=("", "_main"),
+                       validate="one_to_one")
+    right = f"{old_header}_main" if old_header in new.columns else old_header
+    np.testing.assert_allclose(merged[shape_header], merged[right], rtol=RTOL)
