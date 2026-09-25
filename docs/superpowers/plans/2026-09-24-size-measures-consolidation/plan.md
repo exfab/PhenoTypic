@@ -2051,11 +2051,11 @@ git commit -m "docs: document MeasureSize as the source of colony size; highligh
 ### Task 10: Migration goldens, whole-branch verification, logic-validation re-run
 
 **Files:**
-- Modify: `tests/migration/_goldens/measure.MeasureShape.parquet`, `tests/migration/_goldens/measure.MeasureSize.parquet`
+- Modify: `tests/migration/_goldens/measure.MeasureShape.parquet`, `tests/migration/_goldens/measure.MeasureSize.parquet`, `tests/migration/_goldens/measure.MeasureIntensity.parquet`, `tests/migration/_goldens/refine.KeepSectionLargest.parquet`
 
 - [ ] **Step 0 (A6): Differential proof first.** Run `diff_migration_scenarios.py` (from Task 4b) against a detached main worktree and the branch tip. It must pass before any golden is touched.
 
-- [ ] **Step 1: Recapture exactly FOUR goldens (A6, user decision).** Set `wanted` below to `{"measure.MeasureShape", "measure.MeasureSize", "measure.MeasureIntensity", "refine.KeepSectionLargest"}` and expect exactly those four files modified. The snippet shows the original two-golden form. The commit message must name each pre-existing drift from A6 separately from this change's column moves. Do **not** run `scripts/capture_migration_goldens.py`: it rewrites all 142 goldens and the frozen inputs.
+- [ ] **Step 1: Recapture exactly FOUR goldens (A6, user decision).** Set `wanted` below to `{"measure.MeasureShape", "measure.MeasureSize", "measure.MeasureIntensity", "refine.KeepSectionLargest"}` and expect exactly those four files modified. The commit message must name each pre-existing drift from A6 separately from this change's column moves. Do **not** run `scripts/capture_migration_goldens.py`: it rewrites all 142 goldens and the frozen inputs.
 
 ```bash
 uv run python - <<'EOF'
@@ -2064,7 +2064,12 @@ sys.path.insert(0, ".")
 from tests.migration._runner import golden_path, run_scenario
 from tests.migration._scenarios import build_scenarios
 
-wanted = {"measure.MeasureShape", "measure.MeasureSize"}
+wanted = {
+    "measure.MeasureShape",
+    "measure.MeasureSize",
+    "measure.MeasureIntensity",
+    "refine.KeepSectionLargest",
+}
 done = set()
 for scenario in build_scenarios():
     if scenario.scenario_id in wanted:
@@ -2076,7 +2081,7 @@ EOF
 git status --porcelain tests/migration/_goldens
 ```
 
-Expected: exactly the two parquet files are modified. **`measure.MeasureIntensity.parquet` must not appear**; if it does, stop, because the decoupling changed values. Goldens are compared on Linux only (`_GOLDEN_PLATFORM`), and this capture ran on the local platform. The commit message must say which platform it was, as the branch's `ae9c5ddef` did.
+Expected: exactly the four parquet files are modified. `measure.MeasureIntensity.parquet` and `refine.KeepSectionLargest.parquet` **do** change, because both goldens were already red on main (A6); there is no stop rule here. Step 0's differential is what proves that Intensity values and KeepSectionLargest selections are unchanged by this branch. Goldens are compared on Linux only (`_GOLDEN_PLATFORM`), and this capture ran on the local platform. The commit message must say which platform it was, as the branch's `ae9c5ddef` did.
 
 - [ ] **Step 2: Check the recaptured goldens' columns**
 
@@ -2109,11 +2114,24 @@ Expected: mypy reports no new errors compared with main, and ruff is clean.
 - [ ] **Step 6: Commit the goldens**
 
 ```bash
-git add tests/migration/_goldens/measure.MeasureShape.parquet tests/migration/_goldens/measure.MeasureSize.parquet
-git commit -m "test(migration): recapture MeasureShape/MeasureSize goldens for the size/shape split
+git add tests/migration/_goldens/measure.MeasureShape.parquet \
+        tests/migration/_goldens/measure.MeasureSize.parquet \
+        tests/migration/_goldens/measure.MeasureIntensity.parquet \
+        tests/migration/_goldens/refine.KeepSectionLargest.parquet
+git commit -m "test(migration): recapture the four size/shape-affected goldens
 
-Recaptured only these two; MeasureIntensity is unchanged (the decoupling
-preserves values). Captured on <platform>; goldens compare on Linux only."
+This change's column moves: MeasureShape loses the size magnitudes and the
+radii; MeasureSize gains them and the radius family.
+
+Pre-existing drift on main, recaptured here and not caused by this change (A6):
+- MeasureShape: ConvexArea/Solidity differ on 99/552 rows; the golden
+  predates the .volume fix d846ca4a.
+- MeasureIntensity: float32/float64 dtype drift plus ConvexDensity, same cause.
+- KeepSectionLargest: 94 labels against the golden's 96; the golden predates
+  the grid fix 74401bbd.
+
+The main-vs-tip differential (diff_migration_scenarios.py) passed before the
+recapture. Captured on <platform>; goldens compare on Linux only."
 ```
 
 - [ ] **Step 7: PR description.** It must contain the spec's §6 rename table **and** the same-name warning, so that downstream users see the hard break, and it ends with the attribution lines from the session instructions.

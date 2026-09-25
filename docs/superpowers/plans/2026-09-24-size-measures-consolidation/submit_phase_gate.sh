@@ -12,7 +12,9 @@
 # with run_suite's sibling collect_results.py (--baseline <other results dir>).
 set -euo pipefail
 
-REPO=/bigdata/exfab/anguy344/PhenoTypic/.claude/worktrees/size-measures-consolidation
+# Derive the checkout from this script's own location, so it works from any worktree or main.
+SCRIPT_DIR=$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)
+REPO=$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel)
 HARNESS=$REPO/docs/superpowers/plans/2026-09-03-cli-gui-state-tracking/run_suite.sbatch
 GATES=/bigdata/exfab/anguy344/gate-worktrees
 REF=${1:?SHA or ref}; LABEL=${2:?label}; SCOPE=${3:?test roots}; KIND=${4:-head}
@@ -48,7 +50,7 @@ echo "array $jid -> $RESULTS"
 deps=$jid
 if [[ ${DOCS:-0} == 1 ]]; then
     djid=$(sbatch --parsable "${PART[@]}" --export=ALL,WORKTREE="$TREE" \
-           "$REPO/docs/superpowers/plans/2026-09-24-size-measures-consolidation/build_docs_size_note.sbatch" 2>&1)
+           "$SCRIPT_DIR/build_docs_size_note.sbatch" 2>&1)
     [[ $djid =~ ^[0-9]+$ ]] || { echo "DOCS SUBMIT FAILED: $djid" >&2; exit 1; }
     echo "docs build $djid -> $TREE/docs/_build/size-note"
     deps="$jid:$djid"

@@ -1,6 +1,8 @@
 # Size measures consolidation: `MeasureSize` becomes the single source of colony size
 
-**Date:** 2026-09-24 · **Status:** design approved in brainstorming; awaiting spec review
+**Date:** 2026-09-24 · **Status:** implemented on `claude/size-measures-consolidation`
+(phases 1-2, their review fixes and the final-review fixes); plan Task 10 (goldens and
+end-of-implementation checks) in progress
 **Release:** minor bump, `0.19.0` → `0.20.0` (public measurement columns break)
 **Logic-validation script:**
 [`logic_validation_scripts/2026-09-24-size-measures-consolidation/radial_invariants.py`](../../logic_validation_scripts/2026-09-24-size-measures-consolidation/radial_invariants.py)
@@ -92,7 +94,8 @@ a straddler.
 
 ### 4.1 Definition
 
-All five radii are statistics of one set of centre-to-edge distances.
+The four signature radii (Median, Mean, RobustMean, Max) are statistics of one set of
+centre-to-boundary distances. InscribedRadius is the EDT maximum, not a statistic of that set.
 
 - **Centre.** The centroid of the object's EDT peak plateau (`edt >= (1 −
   plateau_tolerance) · max`, restricted to the 8-connected component containing the argmax,
@@ -125,8 +128,10 @@ All five radii are statistics of one set of centre-to-edge distances.
   4-connected contour, which dropped diagonally attached runners and, when a non-central
   fragment had the longest outline, measured the distance to that fragment instead (phase-1
   review HIGH-1).
-- **InscribedRadius** is the EDT maximum, which is the exact distance from the centre to
-  the nearest edge. It is the family's minimum **up to half a pixel**: the EDT measures to
+- **InscribedRadius** is the EDT maximum: the exact distance from the colony's deepest
+  interior pixel to its nearest edge. That pixel lies on the peak plateau but is not in
+  general the plateau centroid, so the centre above is where the four signature radii are
+  measured from, not InscribedRadius. It is the family's minimum **up to half a pixel**: the EDT measures to
   background pixel *centres*, the signature to the 0.5 iso-contour, which is half a pixel
   nearer. So on a disk of radius 40 MeanRadius (39.998) sits just below InscribedRadius
   (40.0125), and on a one-pixel speck InscribedRadius is 1.0 against a MaxRadius of 0.5.
@@ -175,7 +180,7 @@ on the rectangle it removes the long ends (16.2 against a mean of 21.0).
 Authors write `label` and `desc` only. New members get `bio_desc=""` and `image=None`.
 
 - **InscribedRadius:** the radius of the largest circle that fits entirely inside the
-  colony, i.e. the distance from the centre to the nearest edge. **Caveat (required):** it
+  colony, i.e. the distance from its deepest interior point to the nearest edge. **Caveat (required):** it
   reflects the colony's *narrowest* dimension, not its overall extent. An elongated colony
   reports half its width whatever its length (a 100×20 px colony → 10), and a runner or
   spur does not change it. Compare MaxRadius for overall extent.
@@ -240,6 +245,9 @@ never diverge.
 - Old OME-Zarr stores keep their `Shape_*` columns. `project_embedded_measurement_table`
   projects each store onto its own recorded columns, so a run mixing old and new stores
   carries both names, each NaN where the other exists. This is documented, not handled.
+  A run started before 0.20.0 and resumed after the upgrade is such a mixture, because the
+  continuation identity carries no measurement revision; the §7 note says it must be re-run
+  with `--overwrite`, not resumed (final review MEDIUM-1, user decision).
 - A saved recipe or pipeline with `on="Shape_Area"` or
   `RemoveByFeature(feature="MeasureShape", value="Area")` fails at run time.
 - **The same-name trap:** old `Shape_MedianRadius` (≈0.29R), `Shape_MeanRadius` (≈R/3) and
@@ -262,9 +270,9 @@ never diverge.
 ## 7. Versioning and highlighted change notes
 
 - **Version:** `src/phenotypic/__init__.py` `__version__ = "0.20.0"` (minor bump; pyproject
-  reads it dynamically). Update the version pin in
-  `tests/unit/sdk_/test_norm_migration.py::test_version_is_0_19_0` to 0.20.0 and rename the
-  test. The golden `tests/unit/measure/_golden/orientation_zones_pre_simplification.json`
+  reads it dynamically). The version pin moves: `tests/unit/sdk_/test_norm_migration.py::test_version_is_0_19_0`
+  is deleted, and `tests/unit/schema/test_change_note.py::test_version_is_0_20_0` pins
+  0.20.0 beside the change note it ships with. The golden `tests/unit/measure/_golden/orientation_zones_pre_simplification.json`
   records `"version": "0.19.0"` inside its serialized default `center_detector`
   pipelines. That is the running `__version__` stamped by `SerializablePipeline` at capture
   time, not a back-compat lock, so it cannot stay a literal match: the test compares the
@@ -342,7 +350,7 @@ these read the schema through `_measurement_infoclass`.
   - `KeepSectionLargest` selects the same labels as before on `load_synth_yeast_plate()`;
   - `change_note()` renders in `append_rst_to_doc` output and in the measurements-reference
     section;
-  - the version is `0.20.0`.
+  - the version is `0.20.0` (`test_change_note.py::test_version_is_0_20_0`).
 - **Mutation proofs**, per the test-integrity rule. Each guard must be shown to fail on its
   bug: swap `.volume` → `.area`; reintroduce the whole-objmap EDT; swap mean ↔ trimmed mean;
   change max-per-bin to mean-per-bin; drop `change_note()` from `_class_section`.

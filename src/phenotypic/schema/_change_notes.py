@@ -34,7 +34,9 @@ SIZE_SHAPE_SPLIT_NOTE = """\
    is now their only source, and :class:`~phenotypic.measure.MeasureShape`
    emits form descriptors only. The radius columns were rebuilt so each name
    matches its value. Retired columns are not aliased, and stores written by
-   earlier versions keep their old column names.
+   earlier versions keep their old column names. A run started before 0.20.0
+   must be re-run with ``--overwrite``, not resumed. Resuming reuses the
+   images it already finished, with their old column names.
 
    ==============================  ================================
    Retired column                  Successor
@@ -52,12 +54,14 @@ SIZE_SHAPE_SPLIT_NOTE = """\
 
    New columns: ``Size_MedianRadius``, ``Size_MeanRadius``,
    ``Size_RobustMeanRadius`` and ``Size_MaxRadius``, all measured from one
-   center inside the colony.
+   center, the centroid of the distance-transform peak.
 
    **Same name, different value:** ``Size_MedianRadius``, ``Size_MeanRadius``
    and ``Size_MaxRadius`` are *not* the retired ``Shape_MedianRadius``,
    ``Shape_MeanRadius`` and ``Shape_MaxRadius``. Compare old data against the
-   successor in the table above, never against the same-named ``Size_`` column.
+   successor in the table above (identical except for colonies touching
+   another colony or the image border, which now measure to that edge),
+   never against the same-named ``Size_`` column.
    Model outputs are named by the stripped label, so ``<Model>_MaxRadius_*``,
    ``<Model>_MeanRadius_*`` and ``<Model>_MedianRadius_*`` fitted before and
    after 0.20.0 share a name but not a meaning.

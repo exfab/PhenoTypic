@@ -9,8 +9,9 @@ class SIZE(DirectPhenotype):
     """Measure the key size magnitudes of each detected colony.
 
     Extract colony area, integrated intensity, perimeter, convex-hull and
-    bounding-box areas, best-fit-ellipse axis lengths, and a family of radii
-    measured from one center inside the colony. These are the starting
+    bounding-box areas, best-fit-ellipse axis lengths, the inscribed radius,
+    and four radii measured from one center, the centroid of the
+    distance-transform peak. These are the starting
     measurements for growth and fitness comparisons; form descriptors
     (circularity, solidity, eccentricity, Feret diameters) live in
     :class:`SHAPE`.

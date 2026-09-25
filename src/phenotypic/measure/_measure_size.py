@@ -23,23 +23,25 @@ class MeasureSize(MeasureFeatures):
     """Measure the key size magnitudes of each detected colony.
 
     The single source of colony size: area, integrated intensity, perimeter,
-    convex-hull and bounding-box areas, best-fit-ellipse axis lengths, and a
-    family of five radii that are all measured from one center inside the
-    colony (inscribed, median, mean, robust mean and maximum). These are the
-    starting measurements for growth and fitness comparisons; see the
-    :class:`~phenotypic.schema.SIZE` table below for what each column means.
+    convex-hull and bounding-box areas, best-fit-ellipse axis lengths, the
+    inscribed radius, and four radii (median, mean, robust mean and maximum)
+    measured from one center, the centroid of the distance-transform peak.
+    These are the starting measurements for growth and fitness comparisons;
+    see the :class:`~phenotypic.schema.SIZE` table below for what each column
+    means.
 
-    The radii come from the colony's *radial signature*: the distance from
+    The four radii come from the colony's *radial signature*: the distance from
     the center to the boundary, sampled in ``angular_bins`` equal directions.
     Sampling by angle rather than along the boundary gives a runner or spur
     only its true angular width, so the trimmed ``RobustMeanRadius`` stays on
     the compact body while ``MeanRadius`` and ``MaxRadius`` show the reach.
 
     Args:
-        angular_bins: Number of equal angular directions in which the radial
-            signature samples the boundary. More bins resolve narrower
-            protrusions; 360 (one per degree) resolves any runner wider than
-            about 1/57 of the colony radius.
+        angular_bins: Number of equal angular directions sampled. A
+            protrusion narrower than one bin still fills a whole bin, so more
+            bins weight a thin runner closer to its true angular width. The
+            outline of a colony of radius R has only about 8R vertices, so on
+            a small colony extra bins are left empty and interpolated.
         trim_proportion: Fraction trimmed from each end of the radial
             signature for ``RobustMeanRadius``. It tolerates a runner or spur
             covering up to this fraction of all directions; 0 makes

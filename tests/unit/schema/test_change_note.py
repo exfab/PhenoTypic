@@ -49,6 +49,16 @@ def test_note_extends_the_trap_to_model_outputs(info):
     assert "share a name but not a meaning" in note
 
 
+@pytest.mark.parametrize("info", [SIZE, SHAPE], ids=["SIZE", "SHAPE"])
+def test_note_warns_that_a_pre_0_20_run_must_not_be_resumed(info):
+    """Final review MEDIUM-1. Continuation identity carries no measurement
+    revision, so resuming a pre-0.20.0 run reuses its finished stores with the
+    retired names and the output mixes `Shape_Area` and `Size_Area` rows."""
+    note = " ".join(info.change_note().split())
+    assert "A run started before 0.20.0 must be re-run with ``--overwrite``, not resumed." in note
+    assert "Resuming reuses the images it already finished, with their old column names." in note
+
+
 def test_note_renders_above_the_table_in_measurer_docs():
     """Anchor on the table directive, not a column name: the note itself spells
     ``Size_Area``, so a header anchor would pass with the note below the table."""

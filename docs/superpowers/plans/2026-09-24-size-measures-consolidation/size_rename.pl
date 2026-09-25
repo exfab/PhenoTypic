@@ -5,6 +5,9 @@
 # Never run on: schema/_change_notes.py, _size.py, _shape.py, _measurement_info.py (toy doctest),
 # the equivalence/shape/change-note tests, test_measurement_join_migration_run.py (reads a real
 # run's old stores), any _golden* fixture, or docs/superpowers/** (plan amendment A7).
+# Blind spot: `_` is a word character, so a retired name followed by `_suffix` (Shape_Area_stderr)
+# is NOT rewritten. After a run, grep for `Shape_(Area|Perimeter|...|MedianRadius)_[A-Za-z0-9]`
+# and fix those by hand (phase-2 review HIGH-1).
 s/\bShape_Area\b/Size_Area/g;
 s/\bShape_Perimeter\b/Size_Perimeter/g;
 s/\bShape_ConvexArea\b/Size_ConvexArea/g;

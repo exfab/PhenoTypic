@@ -1,9 +1,13 @@
 # RESUME — size measures consolidation
 
 **Branch:** `claude/size-measures-consolidation` (cut from `main` at `81d19ec66`)
-**State (2026-09-24):** the spec and the implementation plan are written, committed and pushed.
-**No `src/` code has been changed yet.** The next step is to execute the plan, starting
-with Task 1.
+**State (2026-09-25):** plan Tasks 1-9 are implemented (phases 1 and 2), both phase
+reviews' fixes have landed, the simplify pass is done (`3b82bd70`), and the final
+whole-branch review's fixes (`reports/.../final-review.md` MEDIUM-1/2, LOW-1 to LOW-7) are
+applied on top of it. **Plan Task 10 is in progress:** the main-vs-tip differential, the
+four-golden recapture, the logic-validation re-run, mypy/ruff, the docs build and the full
+sharded regression. The final review's HIGH-1 is Task 10 itself. LOW-8 (history not
+bisect-clean) is handled in the PR description, not by rewriting history.
 
 ## Read these, in this order
 
@@ -18,9 +22,9 @@ with Task 1.
 ## What this change is, in one paragraph
 
 `MeasureSize` becomes the single emitter of colony size: Area, Perimeter, ConvexArea,
-BboxArea, Major/MinorAxisLength, and a radius family of InscribedRadius, MedianRadius,
-MeanRadius, RobustMeanRadius and MaxRadius, all measured from one centre inside the
-colony. `MeasureShape` keeps the form descriptors (Circularity, Compactness, Solidity,
+BboxArea, Major/MinorAxisLength, InscribedRadius (the EDT maximum), and four radii,
+MedianRadius, MeanRadius, RobustMeanRadius and MaxRadius, measured from one centre (the
+centroid of the distance-transform peak plateau). `MeasureShape` keeps the form descriptors (Circularity, Compactness, Solidity,
 Extent, Eccentricity, Orientation, Min/MaxFeretDiameter) plus `MeanBoundaryDist` and
 `MedianBoundaryDist` (the old, misnamed Mean/MedianRadius values). This is a hard break
 with no aliases, released as a minor bump to **0.20.0**, with a highlighted
@@ -72,9 +76,11 @@ The section below is kept for history; its questions are now answered.
   output as `tests/unit/measure/_golden/size_consolidation_baseline.parquet`. Every
   equivalence test in Tasks 3–5 compares against it.
 - **Never run `scripts/capture_migration_goldens.py`.** It rewrites all 142 goldens plus
-  the frozen inputs. Task 10 gives a snippet that recaptures exactly
-  `measure.MeasureShape` and `measure.MeasureSize`. `measure.MeasureIntensity.parquet`
-  must stay byte-unchanged.
+  the frozen inputs. Task 10 gives a snippet that recaptures exactly four goldens:
+  `measure.MeasureShape`, `measure.MeasureSize`, `measure.MeasureIntensity` and
+  `refine.KeepSectionLargest` (A6). Intensity and KeepSectionLargest were already red on
+  main, so they do change; the differential run first is what proves this branch changed
+  no Intensity value and no KeepSectionLargest selection.
 - **Same-name trap:** the new `Size_MedianRadius`, `Size_MeanRadius` and `Size_MaxRadius`
   do **not** hold the values of the retired `Shape_MedianRadius`, `Shape_MeanRadius` and
   `Shape_MaxRadius`. The successors are `Shape_MedianBoundaryDist`,
@@ -114,6 +120,31 @@ The section below is kept for history; its questions are now answered.
 
 ## Commits on this branch
 
-- `e906f4be7` docs(spec): size measures consolidation
-- `92b3c9da3` docs(plan): implementation plan (plus a spec border-edge note and script check 06)
-- this RESUME
+From `git log --oneline 81d19ec66..3b82bd70`, oldest first:
+
+- `e906f4be` docs(spec): size measures consolidation — MeasureSize as the single source of colony size
+- `92b3c9da` docs(plan): implementation plan for the size measures consolidation
+- `2f13b9ee` docs(plan): RESUME for the size measures consolidation hand-off
+- `2004cfac` test(measure): capture pre-consolidation Shape/Intensity baseline on the synth plate (Task 1)
+- `64e81791` docs(plan): apply the pre-dispatch plan review and the user's decisions
+- `4d51d6b7` feat(measure): shared convex-hull-area and per-object EDT helpers (Task 2)
+- `e3acb345` feat(measure): MeasureSize emits size magnitudes and a five-member radius family (Task 3)
+- `b6f14301` refactor: MeasureIntensity and KeepSectionLargest read regionprops instead of running measurers (Task 4)
+- `1decc582` refactor: point prefabs and GUI analysis defaults at MeasureSize before the Shape flip (Task 4b)
+- `34c87594` feat(measure)!: MeasureShape emits form descriptors only; size magnitudes live in MeasureSize (Task 5)
+- `99adf692` feat(schema): highlighted 0.20.0 change note for the size/shape split; bump to 0.20.0 (Task 6)
+- `3c91e880` docs(plan): Slurm phase-gate submitter and docs-build job for the size consolidation
+- `b9f9c261` fix(measure): the radial signature samples every outline of the label, 8-connected (phase-1 review HIGH-1)
+- `d4d6bcfa` fix: phase-1 review follow-ups (hole tests, enum docstring dedent, desc and test tidy)
+- `d34d8c01` test(measure): orientation-zone golden compares serialization without the running version stamp
+- `c5bd2894` docs(plan): submit_phase_gate.sh takes a PARTITION override
+- `01f76c4e` docs(plan): commit the size rename script (plan amendment A7)
+- `3b70d667` docs: document MeasureSize as the source of colony size; highlight the 0.20.0 rename (Task 9)
+- `4a531dcc` refactor: point bundled data, scripts and docstrings at the Size columns (Task 7)
+- `cb0a52ca` test: sweep retired Shape_* column names to their Size/Shape successors (Task 8)
+- `68e20230` test(analysis): sweep the suffixed Shape_Area_stderr/_std_pool fixture names (Task 8)
+- `c8caf935` fix: phase-2 review follow-ups (bundled hull columns, BoundaryDist wording, model-header trap)
+- `cd1fe146` docs(report): phase-2 code review of the consumer migration
+- `3b82bd70` refactor: simplify pass over the size consolidation (no behaviour change)
+
+After these: the final-review report and its fixes, then Task 10.

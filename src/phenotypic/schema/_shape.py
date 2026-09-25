@@ -47,7 +47,7 @@ class SHAPE(PrimaryMeasure):
     )
     SOLIDITY = Entry(
         "Solidity",
-        "Ratio of actual colony area to its convex hull area (Area/ConvexArea). Values near 1 indicate compact, solid colonies with minimal indentations. Lower values (< 0.9) may indicate invasive growth, colony spreading, or the presence of clearing zones around colonies.",
+        "Ratio of actual colony area to its convex hull area (Area/ConvexArea). Values near 1 indicate compact, solid colonies with minimal indentations. Lower values (< 0.9) may indicate invasive growth, colony spreading, or the presence of clearing zones around colonies. Can slightly exceed 1, because the hull passes through pixel centers.",
     )
     EXTENT = Entry(
         "Extent",
@@ -77,8 +77,8 @@ class SHAPE(PrimaryMeasure):
         "pixel, computed on the object in isolation. This is a measure of interior "
         "thickness, not a radius: for an ideal disk of radius R it equals "
         r":math:`R(1 - 1/\sqrt{2}) \approx 0.293R`. More robust to boundary "
-        "raggedness than MeanBoundaryDist. See Size_InscribedRadius and "
-        "Size_RobustMeanRadius for the colony's radial extent. The image border "
+        "raggedness than MeanBoundaryDist. See Size_RobustMeanRadius and "
+        "Size_MaxRadius for the colony's radial extent. The image border "
         "counts as an edge.",
     )
 
