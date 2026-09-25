@@ -3,10 +3,15 @@
 import pytest
 import pandas as pd
 import numpy as np
+from scipy.spatial import cKDTree
 
 from phenotypic import GridImage
 from phenotypic.grid import ManualGridFinder
 from phenotypic.measure import MeasureNeighborDist
+from phenotypic.measure._measure_neighbor_dist import (
+    _nearest_objects,
+    _nearest_relation,
+)
 from phenotypic.schema import OBJECT
 from phenotypic.schema import NEIGHBOR_DIST, GRID
 
@@ -516,3 +521,138 @@ class TestNearestSchema:
         desc = NEIGHBOR_DIST.NEAREST_RELATION.desc
         for code in ("0", "1", "2", "3"):
             assert code in desc
+
+
+def _brute_nearest(objmap: np.ndarray, eligible: np.ndarray):
+    """All-pairs nearest over FULL masks (no boundary shortcut, no pruning)."""
+    coords = {int(lab): np.argwhere(objmap == lab) for lab in eligible}
+    out_label, out_dist = [], []
+    for a in eligible:
+        best, best_lab = np.inf, np.nan
+        for b in sorted(int(x) for x in eligible if x != a):
+            d = float(cKDTree(coords[b]).query(coords[int(a)], k=1)[0].min())
+            if d < best:
+                best, best_lab = d, b
+        out_label.append(best_lab)
+        out_dist.append(best if np.isfinite(best) else np.nan)
+    return np.asarray(out_label, float), np.asarray(out_dist, float)
+
+
+class TestNearestObjectsHelper:
+    """Exact nearest-object search on raw label maps (no grid)."""
+
+    def test_two_discs_edge_to_edge(self):
+        objmap = np.zeros((60, 120), np.int32)
+        _circle(objmap, 1, 30, 30, 5)
+        _circle(objmap, 2, 30, 90, 5)
+        lab, dist = _nearest_objects(objmap, np.array([1, 2]))
+        assert lab.tolist() == [2.0, 1.0]
+        # centre gap 60 minus two radii; ±1 px rasterisation slack
+        assert np.all(np.abs(dist - 50.0) <= 1.0)
+
+    def test_fewer_than_two_eligible_is_nan(self):
+        objmap = np.zeros((20, 20), np.int32)
+        _circle(objmap, 4, 10, 10, 3)
+        lab, dist = _nearest_objects(objmap, np.array([4]))
+        assert np.isnan(lab).all() and np.isnan(dist).all()
+        lab0, dist0 = _nearest_objects(objmap, np.array([], dtype=np.int64))
+        assert lab0.shape == (0,) and dist0.shape == (0,)
+
+    def test_ineligible_label_is_never_returned(self):
+        # Label 2 is physically closest to 1 but not eligible (an off-grid
+        # object on a GridImage); 1 must fall through to 3.
+        objmap = np.zeros((40, 120), np.int32)
+        _circle(objmap, 1, 20, 20, 4)
+        _circle(objmap, 2, 20, 40, 4)
+        _circle(objmap, 3, 20, 100, 4)
+        lab, _ = _nearest_objects(objmap, np.array([1, 3]))
+        assert lab.tolist() == [3.0, 1.0]
+
+    def test_tie_resolves_to_smaller_label_even_when_visited_second(self):
+        # Target 5 is a single pixel at (20, 20).
+        # Label 2: one pixel at (20, 30): distance 10, bbox lower bound 10.
+        # Label 9: pixels (26, 28) and (12, 40): distance 10 via (6, 8), but
+        #          bbox rows 12..26 x cols 28..40 gives a lower bound of 8, so 9 is
+        #          visited FIRST. The strict `lb > best` stop must still visit 2,
+        #          and the tie-break must prefer it.
+        objmap = np.zeros((50, 50), np.int32)
+        objmap[20, 20] = 5
+        objmap[20, 30] = 2
+        objmap[26, 28] = 9
+        objmap[12, 40] = 9
+        lab, dist = _nearest_objects(objmap, np.array([5, 2, 9]))
+        assert lab[0] == 2.0
+        assert dist[0] == 10.0
+
+    def test_non_contiguous_labels(self):
+        objmap = np.zeros((40, 160), np.int32)
+        _circle(objmap, 1, 20, 20, 4)
+        _circle(objmap, 3, 20, 60, 4)
+        _circle(objmap, 7, 20, 140, 4)
+        lab, _ = _nearest_objects(objmap, np.array([1, 3, 7]))
+        assert lab.tolist() == [3.0, 1.0, 3.0]
+
+    def test_border_touching_objects(self):
+        objmap = np.zeros((30, 30), np.int32)
+        objmap[0:5, 0:5] = 1        # touches top-left corner of the array
+        objmap[25:30, 20:30] = 2    # touches bottom-right edges
+        lab, dist = _nearest_objects(objmap, np.array([1, 2]))
+        # closest pixels (4, 4) and (25, 20): offset (21, 16)
+        assert dist[0] == np.sqrt(21 ** 2 + 16 ** 2)
+        assert lab.tolist() == [2.0, 1.0]
+
+    def test_satellite_inside_ring_hole(self):
+        objmap = np.zeros((80, 80), np.int32)
+        rr, cc = np.ogrid[:80, :80]
+        r2 = (rr - 40) ** 2 + (cc - 40) ** 2
+        objmap[(r2 <= 30 ** 2) & (r2 > 15 ** 2)] = 1   # ring, hole radius 15
+        objmap[r2 <= 3 ** 2] = 2                        # satellite in the hole
+        lab, dist = _nearest_objects(objmap, np.array([1, 2]))
+        # gap across the hole is ~15 - 3; the outer rim would be ~27 away
+        assert lab.tolist() == [2.0, 1.0]
+        assert abs(dist[0] - 12.0) <= 1.0
+
+    def test_touching_objects_distance_one(self):
+        objmap = np.zeros((20, 20), np.int32)
+        objmap[5:10, 5:10] = 1
+        objmap[5:10, 10:15] = 2   # shares an edge with label 1
+        _, dist = _nearest_objects(objmap, np.array([1, 2]))
+        assert dist.tolist() == [1.0, 1.0]
+
+    def test_eligible_label_missing_from_objmap_raises(self):
+        objmap = np.zeros((10, 10), np.int32)
+        objmap[2, 2] = 1
+        with pytest.raises(ValueError, match="label 4"):
+            _nearest_objects(objmap, np.array([1, 4]))
+
+    @pytest.mark.parametrize("seed", range(20))
+    def test_matches_brute_force_on_random_blobs(self, seed):
+        rng = np.random.default_rng(seed)
+        objmap = np.zeros((64, 64), np.int32)
+        label = 1
+        for _ in range(40):
+            if label > 9:
+                break
+            r, c, rad = rng.integers(4, 60), rng.integers(4, 60), rng.integers(1, 5)
+            rr, cc = np.ogrid[:64, :64]
+            disc = (rr - r) ** 2 + (cc - c) ** 2 <= rad ** 2
+            if (objmap[disc] != 0).any():
+                continue
+            objmap[disc] = label
+            label += 1
+        eligible = np.unique(objmap[objmap > 0]).astype(np.int64)
+        got = _nearest_objects(objmap, eligible)
+        want = _brute_nearest(objmap, eligible)
+        np.testing.assert_array_equal(got[0], want[0])
+        np.testing.assert_array_equal(got[1], want[1])
+
+
+class TestNearestRelation:
+    def test_codes(self):
+        self_rc = np.array([[2, 2], [2, 2], [2, 2], [2, 2], [2, 2]], float)
+        near_rc = np.array([[2, 2], [2, 3], [1, 2], [3, 3], [2, 4]], float)
+        assert _nearest_relation(self_rc, near_rc).tolist() == [0, 1, 1, 2, 3]
+
+    def test_empty(self):
+        empty = np.empty((0, 2))
+        assert _nearest_relation(empty, empty).shape == (0,)

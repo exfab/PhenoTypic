@@ -10,10 +10,111 @@ if TYPE_CHECKING:
 import numpy as np
 import pandas as pd
 from scipy import ndimage as ndi
+from scipy.spatial import cKDTree
 
 from phenotypic.abc_ import GridMeasureFeatures
 from phenotypic.schema import OBJECT
 from phenotypic.schema import NEIGHBOR_DIST, GRID, BBOX
+
+
+def _boundary_coords(
+        objmap: np.ndarray, label: int, sl: tuple[slice, slice]
+) -> np.ndarray:
+    """Full-image (row, col) coordinates of ``label``'s 4-connected boundary.
+
+    A pixel is boundary when at least one 4-neighbour is outside the object;
+    hole edges count. The minimum distance between two disjoint masks is always
+    attained on these pixels (spec §3.6 C1). Pixels on the crop edge are
+    boundary because ``binary_erosion`` treats outside-the-crop as background,
+    which is correct for the tight ``find_objects`` slice.
+    """
+    mask = objmap[sl] == label
+    edge = mask & ~ndi.binary_erosion(mask)
+    coords = np.argwhere(edge)
+    coords[:, 0] += sl[0].start
+    coords[:, 1] += sl[1].start
+    return coords
+
+
+def _nearest_objects(
+        objmap: np.ndarray, eligible: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Exact nearest other object for every eligible label.
+
+    Branch and bound: candidates are visited in ascending (bounding-box lower
+    bound, label) order, and the search stops at the first candidate whose
+    lower bound strictly exceeds the best exact distance found. The box gap
+    never exceeds the mask distance (C2), so no nearer object is skipped, and
+    equal-distance candidates are still visited for the smaller-label
+    tie-break (C3).
+
+    Args:
+        objmap: 2-D integer label map.
+        eligible: 1-D labels to search among; only these are targets or
+            candidates.
+
+    Returns:
+        ``(nearest_label, nearest_distance)`` float arrays aligned to
+        ``eligible``; ``NaN`` where no other eligible object exists.
+
+    Raises:
+        ValueError: If an eligible label has no pixels in ``objmap``.
+    """
+    eligible = np.asarray(eligible, dtype=np.int64)
+    n = eligible.size
+    nearest_label = np.full(n, np.nan)
+    nearest_dist = np.full(n, np.nan)
+    if n < 2:
+        return nearest_label, nearest_dist
+
+    slices = ndi.find_objects(objmap)
+    boundaries: list[np.ndarray] = []
+    bboxes = np.empty((n, 4), dtype=np.int64)  # inclusive min_r, max_r, min_c, max_c
+    for i, label in enumerate(eligible):
+        sl = slices[label - 1] if 0 < label <= len(slices) else None
+        if sl is None:
+            raise ValueError(f"eligible label {label} has no pixels in objmap")
+        coords = _boundary_coords(objmap, int(label), sl)
+        boundaries.append(coords)
+        bboxes[i] = (coords[:, 0].min(), coords[:, 0].max(),
+                     coords[:, 1].min(), coords[:, 1].max())
+
+    trees: dict[int, cKDTree] = {}
+    for i in range(n):
+        gap_r = np.maximum(0, np.maximum(bboxes[:, 0] - bboxes[i, 1],
+                                         bboxes[i, 0] - bboxes[:, 1]))
+        gap_c = np.maximum(0, np.maximum(bboxes[:, 2] - bboxes[i, 3],
+                                         bboxes[i, 2] - bboxes[:, 3]))
+        # sqrt of an exact integer sum, the same rounding path cKDTree uses, so
+        # a lower bound equal to a true distance compares equal rather than
+        # 1 ulp high (np.hypot is not guaranteed correctly rounded on every libm),
+        # and tied candidates are never skipped.
+        lower = np.sqrt((gap_r * gap_r + gap_c * gap_c).astype(np.float64))
+        lower[i] = np.inf
+        best, best_j = np.inf, -1
+        for j in np.lexsort((eligible, lower)):
+            if j == i or lower[j] > best:
+                break
+            if j not in trees:
+                trees[j] = cKDTree(boundaries[j])
+            d = float(trees[j].query(boundaries[i], k=1)[0].min())
+            if d < best or (d == best and eligible[j] < eligible[best_j]):
+                best, best_j = d, int(j)
+        nearest_label[i] = eligible[best_j]
+        nearest_dist[i] = best
+    return nearest_label, nearest_dist
+
+
+def _nearest_relation(self_rc: np.ndarray, nearest_rc: np.ndarray) -> np.ndarray:
+    """Grid relation code per spec §3.4 from (row, col) cell positions."""
+    dr = np.abs(nearest_rc[:, 0] - self_rc[:, 0])
+    dc = np.abs(nearest_rc[:, 1] - self_rc[:, 1])
+    step = dr + dc
+    return np.select(
+            [step == 0, step == 1, (dr == 1) & (dc == 1)],
+            [0.0, 1.0, 2.0],
+            default=3.0,
+    )
 
 
 class MeasureNeighborDist(GridMeasureFeatures):
