@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import ClassVar, TYPE_CHECKING
+from typing import ClassVar, TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
+    from phenotypic import Image
     from phenotypic._core._grid_image import GridImage
 
 import numpy as np
@@ -12,7 +13,7 @@ import pandas as pd
 from scipy import ndimage as ndi
 from scipy.spatial import cKDTree
 
-from phenotypic.abc_ import GridMeasureFeatures
+from phenotypic.abc_ import MeasureFeatures
 from phenotypic.schema import OBJECT
 from phenotypic.schema import NEIGHBOR_DIST, GRID, BBOX
 
@@ -97,7 +98,7 @@ def _nearest_objects(
                 break
             if j not in trees:
                 trees[j] = cKDTree(boundaries[j])
-            d = float(trees[j].query(boundaries[i], k=1)[0].min())
+            d = float(np.min(trees[j].query(boundaries[i], k=1)[0]))
             if d < best or (d == best and eligible[j] < eligible[best_j]):
                 best, best_j = d, int(j)
         nearest_label[i] = eligible[best_j]
@@ -117,16 +118,18 @@ def _nearest_relation(self_rc: np.ndarray, nearest_rc: np.ndarray) -> np.ndarray
     )
 
 
-class MeasureNeighborDist(GridMeasureFeatures):
-    """Measure pixel-to-pixel distances to neighbors in adjacent grid cells.
+class MeasureNeighborDist(MeasureFeatures):
+    """Measure distances to grid neighbours and to the nearest object.
 
-    For each detected colony, identify the nearest object in the left,
-    right, above, and below grid cells and report the minimum Euclidean
-    distance between their pixel masks. Distances are computed via a
-    per-section distance transform over a local window covering the target
-    cell and its immediate neighbors, so round colonies are not
-    over-estimated by their bounding boxes. Edge and corner colonies report
-    ``NaN`` for directions beyond the plate boundary.
+    For each detected colony, report (a) the nearest object in the left,
+    right, above, and below grid cells with the minimum Euclidean distance
+    between their pixel masks, and (b) the single closest other object
+    anywhere on the plate, with its distance and its grid relation (same cell,
+    adjacent, diagonal, or further). Directional distances use a per-section
+    distance transform over a local window; the nearest-object search is an
+    exact branch and bound over mask boundaries. Works on a ``GridImage``
+    (objects without a grid cell are excluded from the nearest search) and on a
+    plain ``Image``, where only the nearest label and distance are populated.
 
     Returns:
         pd.DataFrame: Object-level neighbor measurements with columns:
@@ -136,15 +139,18 @@ class MeasureNeighborDist(GridMeasureFeatures):
             - RightNeighborObjLabel, RightDistance.
             - AboveNeighborObjLabel, AboveDistance.
             - UnderNeighborObjLabel, UnderDistance.
+            - NearestObjLabel, NearestDistance, NearestRelation.
             - ``NaN`` where no neighbor exists (out of plate, empty
-              neighbor cell, or the colony is shielded by another colony
-              in the same cell).
+              neighbor cell, shielded by a cellmate, no grid, or fewer than
+              two eligible objects).
 
     Best For:
         - Quantifying colony spacing and crowding to assess nutrient
           competition risk on arrayed plates, especially for round or
           irregular colony shapes where bounding-box geometry overstates
           proximity.
+        - Screening for satellite colonies, fragments, and contaminants:
+          a small ``NearestDistance`` with a same-cell ``NearestRelation``.
         - Flagging closely spaced colonies that may cross-contaminate.
         - Enabling neighbor-aware paired statistical comparisons for
           competition or cooperation studies.
@@ -176,10 +182,61 @@ class MeasureNeighborDist(GridMeasureFeatures):
          NEIGHBOR_DIST.UNDER_DISTANCE),
     )
 
-    def _operate(self, image: GridImage) -> pd.DataFrame:
-        grid_info = image.grid.info(include_metadata=False)
+    def _operate(self, image: Image) -> pd.DataFrame:
         # Densify once; subsequent windowing is pure numpy slicing on this view.
-        objmap_full = image.objmap[:]
+        objmap = image.objmap[:]
+        directional = [col for _, _, lab, dist in self._DIRECTIONS
+                       for col in (lab, dist)]
+        if hasattr(image, "grid"):
+            info = image.grid.info(include_metadata=False)
+            results = self._measure_grid_directions(
+                    cast("GridImage", image), info, objmap
+            )
+            grid_rc = info[[GRID.ROW_NUM, GRID.COL_NUM]].to_numpy(dtype=float)
+            eligible_rows = np.flatnonzero(~np.isnan(grid_rc).any(axis=1))
+        else:
+            info = image.objects.info(include_metadata=False)
+            results = {col: np.full(len(info), np.nan) for col in directional}
+            grid_rc = None
+            eligible_rows = np.arange(len(info))
+
+        labels = info[OBJECT.LABEL].to_numpy().astype(np.int64)
+        n_objs = labels.size
+        nearest_label = np.full(n_objs, np.nan)
+        nearest_dist = np.full(n_objs, np.nan)
+        relation = np.full(n_objs, np.nan)
+
+        e_label, e_dist = _nearest_objects(objmap, labels[eligible_rows])
+        nearest_label[eligible_rows] = e_label
+        nearest_dist[eligible_rows] = e_dist
+
+        if grid_rc is not None:
+            label_to_row = {int(lab): i for i, lab in enumerate(labels)}
+            found = ~np.isnan(e_label)
+            rows_self = eligible_rows[found]
+            rows_near = np.array(
+                    [label_to_row[int(lab)] for lab in e_label[found]],
+                    dtype=np.int64,
+            )
+            relation[rows_self] = _nearest_relation(
+                    grid_rc[rows_self], grid_rc[rows_near]
+            )
+
+        results[NEIGHBOR_DIST.NEAREST_OBJ_LABEL] = nearest_label
+        results[NEIGHBOR_DIST.NEAREST_DISTANCE] = nearest_dist
+        results[NEIGHBOR_DIST.NEAREST_RELATION] = relation
+
+        df = pd.DataFrame(results)
+        df.insert(0, OBJECT.LABEL, info[OBJECT.LABEL].to_numpy())
+        return df
+
+    def _measure_grid_directions(
+            self,
+            image: GridImage,
+            grid_info: pd.DataFrame,
+            objmap_full: np.ndarray,
+    ) -> dict:
+        """The eight directional columns, keyed in enum order."""
         nrows, ncols = image.grid.nrows, image.grid.ncols
         # Each public edge getter re-fits the grid, so fetch both once and
         # memoize every occupied cell's window up front.
@@ -275,9 +332,7 @@ class MeasureNeighborDist(GridMeasureFeatures):
                     results[label_col][row_idx] = int(cand_obj[argmin])
                     results[dist_col][row_idx] = float(cand_dt[argmin])
 
-        df = pd.DataFrame(results)
-        df.insert(0, OBJECT.LABEL, labels)
-        return df
+        return results
 
     @staticmethod
     def _section_bboxes(

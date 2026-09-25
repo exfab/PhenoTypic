@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from scipy.spatial import cKDTree
 
-from phenotypic import GridImage
+from phenotypic import GridImage, Image
 from phenotypic.grid import ManualGridFinder
 from phenotypic.measure import MeasureNeighborDist
 from phenotypic.measure._measure_neighbor_dist import (
@@ -656,3 +656,150 @@ class TestNearestRelation:
     def test_empty(self):
         empty = np.empty((0, 2))
         assert _nearest_relation(empty, empty).shape == (0,)
+
+
+@pytest.fixture(scope="module")
+def synth_neighbor_df(synth_plate):
+    """One MeasureNeighborDist run on the synth plate, shared by the
+    read-only assertions below (they only read the frame)."""
+    return MeasureNeighborDist().measure(synth_plate)
+
+
+def _row(df: pd.DataFrame, label: int) -> pd.Series:
+    return df[df[OBJECT.LABEL] == label].iloc[0]
+
+
+class TestNearestColumns:
+    """End-to-end nearest-object columns on synthetic plates."""
+
+    def test_same_cell_satellite(self):
+        image = _make_synthetic_grid_image(
+                height=100, width=100,
+                row_edges=np.array([0, 100]), col_edges=np.array([0, 50, 100]),
+                circles=[(1, 50, 25, 8), (2, 50, 40, 2), (3, 50, 75, 8)],
+        )
+        df = MeasureNeighborDist().measure(image)
+        colony, satellite, other = _row(df, 1), _row(df, 2), _row(df, 3)
+        assert colony[NEIGHBOR_DIST.NEAREST_OBJ_LABEL] == 2
+        assert colony[NEIGHBOR_DIST.NEAREST_RELATION] == 0
+        assert abs(colony[NEIGHBOR_DIST.NEAREST_DISTANCE] - (15 - 8 - 2)) <= 1.0
+        assert satellite[NEIGHBOR_DIST.NEAREST_OBJ_LABEL] == 1
+        assert other[NEIGHBOR_DIST.NEAREST_OBJ_LABEL] == 2
+        assert other[NEIGHBOR_DIST.NEAREST_RELATION] == 1
+
+    def test_diagonal_when_adjacent_cells_empty(self):
+        image = _make_synthetic_grid_image(
+                height=100, width=100,
+                row_edges=np.array([0, 50, 100]), col_edges=np.array([0, 50, 100]),
+                circles=[(1, 25, 25, 5), (2, 75, 75, 5)],
+        )
+        df = MeasureNeighborDist().measure(image)
+        a = _row(df, 1)
+        assert a[NEIGHBOR_DIST.NEAREST_OBJ_LABEL] == 2
+        assert a[NEIGHBOR_DIST.NEAREST_RELATION] == 2
+        assert abs(a[NEIGHBOR_DIST.NEAREST_DISTANCE]
+                   - (np.hypot(50, 50) - 10)) <= 1.5
+        # the directional columns can't see a diagonal neighbour
+        assert pd.isna(a[NEIGHBOR_DIST.RIGHT_DISTANCE])
+        assert pd.isna(a[NEIGHBOR_DIST.UNDER_DISTANCE])
+
+    def test_distant_when_middle_cell_empty(self):
+        image = _make_synthetic_grid_image(
+                height=100, width=180,
+                row_edges=np.array([0, 100]),
+                col_edges=np.array([0, 60, 120, 180]),
+                circles=[(1, 50, 30, 5), (2, 50, 150, 5)],
+        )
+        df = MeasureNeighborDist().measure(image)
+        for label, other in ((1, 2), (2, 1)):
+            r = _row(df, label)
+            assert r[NEIGHBOR_DIST.NEAREST_OBJ_LABEL] == other
+            assert r[NEIGHBOR_DIST.NEAREST_RELATION] == 3
+            assert abs(r[NEIGHBOR_DIST.NEAREST_DISTANCE] - 110.0) <= 1.0
+
+    def test_adjacent_nearest_equals_directional_distance(self):
+        image = _make_synthetic_grid_image(
+                height=100, width=100,
+                row_edges=np.array([0, 100]), col_edges=np.array([0, 50, 100]),
+                circles=[(1, 50, 25, 5), (2, 50, 75, 5)],
+        )
+        df = MeasureNeighborDist().measure(image)
+        a = _row(df, 1)
+        assert a[NEIGHBOR_DIST.NEAREST_RELATION] == 1
+        # same pixel-centre convention, same pair → bit-identical (spec C4)
+        assert a[NEIGHBOR_DIST.NEAREST_DISTANCE] == a[NEIGHBOR_DIST.RIGHT_DISTANCE]
+
+    def test_single_object_nearest_is_nan(self):
+        image = _make_synthetic_grid_image(
+                height=100, width=100,
+                row_edges=np.array([0, 100]), col_edges=np.array([0, 50, 100]),
+                circles=[(1, 50, 25, 5)],
+        )
+        df = MeasureNeighborDist().measure(image)
+        r = _row(df, 1)
+        for col in (NEIGHBOR_DIST.NEAREST_OBJ_LABEL,
+                    NEIGHBOR_DIST.NEAREST_DISTANCE,
+                    NEIGHBOR_DIST.NEAREST_RELATION):
+            assert pd.isna(r[col])
+
+    def test_plain_image_emits_all_columns(self):
+        image = Image(arr=np.zeros((100, 100, 3), dtype=np.uint8))
+        objmap = np.zeros((100, 100), dtype=np.uint16)
+        _circle(objmap, 1, 50, 25, 5)
+        _circle(objmap, 2, 50, 75, 5)
+        image.objmap[:] = objmap
+        assert not hasattr(image, "grid")
+
+        df = MeasureNeighborDist().measure(image)
+
+        assert [str(c) for c in df.columns] == (
+                [str(OBJECT.LABEL)] + NEIGHBOR_DIST.get_headers()
+        )
+        a = _row(df, 1)
+        assert a[NEIGHBOR_DIST.NEAREST_OBJ_LABEL] == 2
+        assert abs(a[NEIGHBOR_DIST.NEAREST_DISTANCE] - 40.0) <= 1.0
+        directional = NEIGHBOR_DIST.get_headers()[:8]
+        assert df[directional].isna().all().all()
+        assert df[str(NEIGHBOR_DIST.NEAREST_RELATION)].isna().all()
+
+    def test_grid_output_columns_match_schema_exactly(
+            self, synth_plate, synth_neighbor_df
+    ):
+        df = synth_neighbor_df
+        assert [str(c) for c in df.columns] == (
+                [str(OBJECT.LABEL)] + NEIGHBOR_DIST.get_headers()
+        )
+        assert len(df) == synth_plate.num_objects
+
+    def test_include_meta_merges_grid_info(self, synth_plate):
+        df = MeasureNeighborDist().measure(synth_plate, include_meta=True)
+        assert len(df) == synth_plate.num_objects
+        assert str(GRID.ROW_NUM) in [str(c) for c in df.columns]
+        assert [str(c) for c in df.columns].count(str(OBJECT.LABEL)) == 1
+
+
+class TestNearestProperty:
+    """Invariants on the real synthetic yeast plate."""
+
+    def test_nearest_never_exceeds_any_directional_distance(self, synth_neighbor_df):
+        df = synth_neighbor_df
+        nearest = df[NEIGHBOR_DIST.NEAREST_DISTANCE].to_numpy()
+        checked = 0
+        for col in (NEIGHBOR_DIST.LEFT_DISTANCE, NEIGHBOR_DIST.RIGHT_DISTANCE,
+                    NEIGHBOR_DIST.ABOVE_DISTANCE, NEIGHBOR_DIST.UNDER_DISTANCE):
+            d = df[col].to_numpy()
+            ok = ~np.isnan(d)
+            # exact: both are sqrt of the same integer squared distance (C4)
+            assert np.all(nearest[ok] <= d[ok])
+            checked += int(ok.sum())
+        assert checked > 0
+
+    def test_matches_brute_force_on_synth_plate(self, synth_plate, synth_neighbor_df):
+        df = synth_neighbor_df
+        objmap = synth_plate.objmap[:]
+        labels = df[OBJECT.LABEL].to_numpy().astype(np.int64)
+        want_label, want_dist = _brute_nearest(objmap, labels)
+        np.testing.assert_array_equal(
+                df[NEIGHBOR_DIST.NEAREST_OBJ_LABEL].to_numpy(), want_label)
+        np.testing.assert_array_equal(
+                df[NEIGHBOR_DIST.NEAREST_DISTANCE].to_numpy(), want_dist)
