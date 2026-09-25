@@ -350,9 +350,10 @@ class MeasureNeighborDist(MeasureFeatures):
         Built from public grid members only, once per measurement.
         """
         bboxes: dict[tuple[int, int], tuple[int, int, int, int]] = {}
-        for (g_row, g_col), sec in grid_info.groupby(
+        for key, sec in grid_info.groupby(
                 [GRID.ROW_NUM, GRID.COL_NUM], observed=True
         ):
+            g_row, g_col = cast("tuple[float, float]", key)
             if pd.isna(g_row) or pd.isna(g_col):
                 continue
             r, c = int(g_row), int(g_col)
