@@ -1,6 +1,6 @@
 """The labels and descriptions of the shape measurements."""
 
-from ._change_notes import SIZE_SHAPE_SPLIT_NOTE
+from ._change_notes import SIZE_SHAPE_SPLIT_NOTE, append_change_note
 from ._measurement_info import Entry
 from ._tiers import PrimaryMeasure
 
@@ -67,7 +67,8 @@ class SHAPE(PrimaryMeasure):
         "pixel, computed on the object in isolation. This is a measure of interior "
         "thickness, not a radius: for an ideal disk of radius R it equals "
         r":math:`R/3`. High values relative to Size_InscribedRadius indicate a "
-        "compact, convex colony; low values indicate a thin or filamentous one.",
+        "compact, convex colony; low values indicate a thin or filamentous one. "
+        "The image border counts as an edge.",
     )
     MEDIAN_BOUNDARY_DIST = Entry(
         "MedianBoundaryDist",
@@ -76,8 +77,9 @@ class SHAPE(PrimaryMeasure):
         "thickness, not a radius: for an ideal disk of radius R it equals "
         r":math:`R(1 - 1/\sqrt{2}) \approx 0.293R`. More robust to boundary "
         "raggedness than MeanBoundaryDist. See Size_InscribedRadius and "
-        "Size_RobustMeanRadius for the colony's radial extent.",
+        "Size_RobustMeanRadius for the colony's radial extent. The image border "
+        "counts as an edge.",
     )
 
 
-SHAPE.__doc__ = f"{SHAPE.__doc__}\n\n{SHAPE.change_note()}"
+SHAPE.__doc__ = append_change_note(SHAPE.__doc__, SHAPE.change_note())

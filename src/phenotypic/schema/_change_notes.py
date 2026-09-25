@@ -6,6 +6,26 @@ page. Never copy these into ``Entry.desc``: descs are published into every
 run's README, so a release note there would ship with every future run.
 """
 
+import inspect
+
+
+def append_change_note(doc: str | None, note: str) -> str:
+    """Append a change note to an enum's class docstring.
+
+    The docstring is dedented first. On Python < 3.13 a class docstring keeps
+    its source indentation, and a note appended at column 0 sets the common
+    margin to 0, so Sphinx would strip nothing and render the body as a
+    block quote.
+
+    Args:
+        doc: The class's ``__doc__``.
+        note: RST from the enum's ``change_note()``.
+
+    Returns:
+        str: The dedented docstring, a blank line, then *note*.
+    """
+    return f"{inspect.cleandoc(doc or '')}\n\n{note}"
+
 SIZE_SHAPE_SPLIT_NOTE = """\
 .. versionchanged:: 0.20.0
    Colony size magnitudes moved from :class:`~phenotypic.schema.SHAPE` to

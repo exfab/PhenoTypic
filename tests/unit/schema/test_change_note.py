@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import inspect
+
+import pytest
+
 import phenotypic
 from phenotypic.measure import MeasureShape, MeasureSize, MeasureTexture
 from phenotypic.schema import SHAPE, SIZE, TEXTURE, Entry, MeasurementInfo
@@ -46,6 +50,28 @@ def test_note_renders_above_the_table_in_measurer_docs():
 def test_note_renders_in_the_enum_docstrings():
     assert MARKER in SIZE.__doc__
     assert MARKER in SHAPE.__doc__
+
+
+@pytest.mark.parametrize("info", [SIZE, SHAPE], ids=["SIZE", "SHAPE"])
+def test_enum_docstring_dedents_to_one_margin(info):
+    """Review LOW-1. Appending the column-0 note to a docstring whose body keeps
+    its 4-space source indent sets the common margin to 0, so `cleandoc` and
+    Sphinx's `prepare_docstring` strip nothing and the API page renders the body
+    as a block quote. After dedenting, the summary, the body and the directive
+    all start at column 0, and the directive's content keeps its own indent.
+
+    Mutation: restore `f"{SIZE.__doc__}\\n\\n{SIZE.change_note()}"` -> fails.
+    """
+    sphinx_docstrings = pytest.importorskip("sphinx.util.docstrings")
+    for lines in (
+        inspect.cleandoc(info.__doc__).splitlines(),
+        sphinx_docstrings.prepare_docstring(info.__doc__),
+    ):
+        assert lines[1] == ""
+        body = lines[2]
+        assert body and body == body.lstrip(), body
+        directive = lines.index(MARKER)
+        assert lines[directive + 1].startswith("   ") and not lines[directive + 1].startswith("    ")
 
 
 def test_unrelated_classes_carry_no_note():

@@ -527,7 +527,7 @@ def _collect_feature_headers(
 
     Returns:
         Ordered mapping of ``_meas`` key → list of prefixed header strings
-        (e.g. ``"MeasureSize" → ["Size_Area", "Size_IntegratedIntensity"]``).
+        (e.g. ``"MeasureSize" → ["Size_Area", "Size_IntegratedIntensity", ...]``).
         Keys with no discoverable headers are omitted.
     """
     headers_by_key: Dict[str, List[str]] = {}

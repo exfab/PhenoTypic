@@ -45,8 +45,8 @@ class MeasureIntensity(MeasureFeatures):
         - Automated colony picking based on biomass thresholds.
 
     Consider Also:
-        - :class:`MeasureSize` for lightweight area and integrated
-          intensity without full statistics.
+        - :class:`MeasureSize` for colony area, perimeter and the radius
+          family.
         - :class:`MeasureColor` for multi-channel color statistics when
           pigmentation is relevant.
         - :class:`MeasureTexture` for surface-roughness features that

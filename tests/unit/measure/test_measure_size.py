@@ -78,6 +78,72 @@ def test_border_touching_colony_counts_the_border_as_an_edge():
     assert frame[str(SIZE.INSCRIBED_RADIUS)].iloc[0] == 5.0
 
 
+def test_a_hole_counts_as_background_for_the_inscribed_radius():
+    """A ring (outer radius 30, hole radius 12) touching nothing. MeasureSize reads
+    `props.image`, the unfilled mask, so the widest inscribed circle fits in the
+    ring's band: sqrt(85) = 9.2195, not the filled disk's ~30.
+
+    Oracle: main's whole-image EDT on the objmap, exact for an isolated object.
+
+    Mutation: `props.image` -> `props.image_filled` in MeasureSize -> 30.02, fails.
+    """
+    from scipy.ndimage import distance_transform_edt
+
+    y, x = np.mgrid[0:100, 0:100]
+    d2 = (y - 50) ** 2 + (x - 50) ** 2
+    objmap = ((d2 <= 30**2) & (d2 > 12**2)).astype(int)
+    oracle = float(distance_transform_edt(objmap).max())
+    frame = MeasureSize().measure(_image_with_objmap(objmap))
+    assert oracle == pytest.approx(np.sqrt(85), abs=1e-12)  # guard the oracle
+    assert frame[str(SIZE.INSCRIBED_RADIUS)].iloc[0] == pytest.approx(oracle, abs=1e-12)
+
+
+def test_rows_align_with_labels_that_are_non_contiguous_and_out_of_raster_order():
+    """Review LOW-5. MeasureSize and MeasureIntensity index per-object arrays by
+    position and rely on `np.unique(objmap)`, `regionprops` and
+    `labels2series()` all being in sorted label order. Labels 2, 9 and 300 are
+    placed in reverse raster order (300 at the top, 2 at the bottom), with
+    distinct areas, depths and gray levels, so any positional slip puts one
+    object's value on another's row.
+
+    Oracle per label: the pixel count, main's whole-image EDT maximum (exact:
+    the objects touch nothing), and the mean gray value over the label.
+
+    Mutation: iterate `sorted(image.objects.props, key=lambda p: p.bbox)`
+    (raster order) in either measurer -> the rows cross, and this fails.
+    """
+    from scipy.ndimage import distance_transform_edt
+
+    from phenotypic.measure import MeasureIntensity
+    from phenotypic.schema import INTENSITY
+
+    y, x = np.mgrid[0:120, 0:120]
+    objmap = np.zeros((120, 120), dtype=int)
+    objmap[10:20, 60:100] = 300
+    objmap[(y - 50) ** 2 + (x - 40) ** 2 <= 10**2] = 9
+    objmap[(y - 90) ** 2 + (x - 80) ** 2 <= 20**2] = 2
+    rgb = np.zeros((120, 120, 3), dtype=np.uint8)
+    for label, level in ((300, 60), (9, 140), (2, 230)):
+        rgb[objmap == label] = level
+    image = Image(rgb)
+    image.objmap[:] = objmap
+
+    size = MeasureSize().measure(image).set_index(str(OBJECT.LABEL))
+    intensity = MeasureIntensity().measure(image).set_index(str(OBJECT.LABEL))
+    depth = distance_transform_edt(objmap > 0)
+    gray = image.gray[:]
+    assert list(size.index) == [2, 9, 300]
+    for label in (2, 9, 300):
+        mask = objmap == label
+        assert size.loc[label, str(SIZE.AREA)] == mask.sum()
+        assert size.loc[label, str(SIZE.INSCRIBED_RADIUS)] == pytest.approx(
+            depth[mask].max(), abs=1e-12
+        )
+        assert intensity.loc[label, str(INTENSITY.DENSITY)] == pytest.approx(
+            gray[mask].sum() / mask.sum(), rel=1e-6
+        )
+
+
 def test_no_objects_raises_like_every_other_measurer():
     """Review Focus 1 / amendment A2: main's contract is kept, not changed.
     MeasureFeatures.measure re-raises without chaining, but names the original

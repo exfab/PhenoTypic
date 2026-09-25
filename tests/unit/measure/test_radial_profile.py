@@ -58,7 +58,7 @@ def test_signature_of_a_disk_is_its_radius():
 
     assert profile["Size_InscribedRadius"] == pytest.approx(40.0, abs=TOL)
     assert profile["Size_RobustMeanRadius"] == pytest.approx(40.0, abs=TOL)
-    # ReachRadius lands on the 0.5 iso-level, half a pixel outside the disk.
+    # MaxRadius lands on the 0.5 iso-level, half a pixel outside the disk.
     assert profile["Size_MaxRadius"] == pytest.approx(40.5, abs=TOL)
 
 
@@ -140,7 +140,7 @@ def test_reach_uses_the_outermost_crossing_per_bin_not_the_mean():
     (r=90.5) shares a ~22.5-degree bin with the disk edge (r=40). The outermost
     crossing keeps the tip; a mean-per-bin would average it down toward ~61.
 
-    If _trace_radial_signature is switched to mean-per-bin, ReachRadius here
+    If _trace_radial_signature is switched to mean-per-bin, MaxRadius here
     drops from ~90.5 to ~61 -- 29 px, far outside TOL -- and this fails.
     """
     op = MeasureSize(angular_bins=16)
@@ -215,7 +215,7 @@ def _disk_with_wide_runner() -> np.ndarray:
 
 
 def test_runner_pulls_the_mean_but_not_the_robust_mean():
-    """The analytic gap is 2.35 px, over twice 2 x TOL, so a swap of the two
+    """The analytic gap is 2.35 px, about twice 2 x TOL, so a swap of the two
     estimators cannot pass: each value may drift by at most TOL.
 
     Mutation: return trim_mean for MEAN_RADIUS and the plain mean for

@@ -79,12 +79,44 @@ def test_merged_edt_would_fail_this_test():
 
 def test_mean_boundary_dist_of_a_disk_is_one_third_of_its_radius():
     """Pins the rename: this column is interior thickness, not a radius. The analytic
-    value is R/3 = 13.33; rasterisation lifts it slightly, so 0.3 px (under 1/R of R
-    at R=40, the validation script's check 01 mechanism)."""
+    value is R/3 = 13.33. Rasterisation lifts it: the EDT measures to background
+    pixel centres, half a pixel beyond the continuous edge. Measured, 13.584, a lift
+    of 0.251 px. So abs=0.3 is deterministic with 0.049 px to spare, and it still
+    excludes the retired radius reading (40) and the median ratio (0.293R = 11.7)."""
     y, x = np.mgrid[-50:50, -50:50]
     objmap = (x**2 + y**2 <= 40**2).astype(int)
     frame = MeasureShape().measure(_image_with_objmap(objmap))
     assert frame[str(SHAPE.MEAN_BOUNDARY_DIST)].iloc[0] == pytest.approx(40 / 3, abs=0.3)
+
+
+def _ring_objmap() -> np.ndarray:
+    """A ring (outer radius 30, hole radius 12) touching neither the border nor
+    another label, as a colony with central lysis looks."""
+    y, x = np.mgrid[0:100, 0:100]
+    d2 = (y - 50) ** 2 + (x - 50) ** 2
+    return ((d2 <= 30**2) & (d2 > 12**2)).astype(int)
+
+
+def test_a_hole_counts_as_background_for_boundary_distances():
+    """The measurers read `props.image`, the unfilled mask, so the hole is an edge.
+
+    Oracle: main's whole-image EDT on the objmap. The ring touches nothing, so
+    that EDT and the per-object crop see the same background and agree pixel for
+    pixel; both are exact integer geometry, hence abs=1e-9.
+
+    Mutation: `object_edt(props.image)` -> `object_edt(props.image_filled)` in
+    MeasureShape measures the ring's pixels in the filled disk's transform
+    (mean 8.02 against 4.84) and fails.
+    """
+    from scipy.ndimage import distance_transform_edt
+
+    objmap = _ring_objmap()
+    oracle = distance_transform_edt(objmap)[objmap == 1]
+    frame = MeasureShape().measure(_image_with_objmap(objmap))
+    assert frame[str(SHAPE.MEAN_BOUNDARY_DIST)].iloc[0] == pytest.approx(oracle.mean(), abs=1e-9)
+    assert frame[str(SHAPE.MEDIAN_BOUNDARY_DIST)].iloc[0] == pytest.approx(
+        float(np.median(oracle)), abs=1e-9
+    )
 
 
 def test_no_objects_raises_like_every_other_measurer():

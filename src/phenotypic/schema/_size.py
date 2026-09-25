@@ -1,6 +1,6 @@
 """The labels and descriptions of the size measurements."""
 
-from ._change_notes import SIZE_SHAPE_SPLIT_NOTE
+from ._change_notes import SIZE_SHAPE_SPLIT_NOTE, append_change_note
 from ._measurement_info import Entry
 from ._tiers import DirectPhenotype
 
@@ -65,7 +65,7 @@ class SIZE(DirectPhenotype):
         "InscribedRadius",
         "Radius of the largest circle that fits entirely inside the colony, equal to "
         "the maximum of the colony's Euclidean distance transform: the distance from "
-        "the colony center (see MedianRadius) to its nearest edge. For an ideal disk "
+        "the colony's deepest interior point to its nearest edge. For an ideal disk "
         "it equals the disk radius. It reflects the colony's narrowest dimension, not "
         "its overall extent: an elongated colony reports half its width whatever its "
         "length (a 100 x 20 pixel colony reports 10), and a runner or spur leaves it "
@@ -119,4 +119,4 @@ class SIZE(DirectPhenotype):
     )
 
 
-SIZE.__doc__ = f"{SIZE.__doc__}\n\n{SIZE.change_note()}"
+SIZE.__doc__ = append_change_note(SIZE.__doc__, SIZE.change_note())

@@ -42,3 +42,17 @@ def test_does_not_run_a_measurer(detected, monkeypatch):
 
     monkeypatch.setattr(MeasureSize, "_operate", _refuse)
     KeepSectionLargest().apply(detected.copy())
+
+
+def test_an_empty_plate_fails_with_runtime_error(detected):
+    """Review LOW-7. With no objects, `labels2series()` raises `NoObjectsError`
+    (main raised `OperationFailedError` from `MeasureSize().measure`), and
+    `ImageOperation.apply` wraps either in `RuntimeError`. That outer type is
+    the contract; no consumer inspects the cause.
+
+    Mutation: return the image unchanged when there are no labels -> fails.
+    """
+    empty = detected.copy()
+    empty.objmap[:] = 0
+    with pytest.raises(RuntimeError, match="KeepSectionLargest failed"):
+        KeepSectionLargest().apply(empty)
