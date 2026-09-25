@@ -358,8 +358,8 @@ class TestWeighting:
         sigma_in = np.array([1e-4, 1e-3, 1e-2, 0.1, 1.0, 1.0, 1.0, 1.0])
         group = pd.DataFrame({
             "Size_Area": np.arange(len(sigma_in), dtype=float),
-            "Shape_Area_stderr": sigma_in,
-            "Shape_Area_std_pool": np.full(len(sigma_in), np.nan),
+            "Size_Area_stderr": sigma_in,
+            "Size_Area_std_pool": np.full(len(sigma_in), np.nan),
             "Metadata_Strain": ["A"] * len(sigma_in),
             "Metadata_Time": np.arange(len(sigma_in), dtype=float),
         })
@@ -392,8 +392,8 @@ class TestWeighting:
         sigma_in = np.array([1e-4, 1e-3, 1e-2, 0.1, 1.0, 1.0, 1.0, 1.0])
         group = pd.DataFrame({
             "Size_Area": np.arange(len(sigma_in), dtype=float),
-            "Shape_Area_stderr": sigma_in,
-            "Shape_Area_std_pool": np.full(len(sigma_in), np.nan),
+            "Size_Area_stderr": sigma_in,
+            "Size_Area_std_pool": np.full(len(sigma_in), np.nan),
             "Metadata_Strain": ["A"] * len(sigma_in),
             "Metadata_Time": np.arange(len(sigma_in), dtype=float),
         })
@@ -435,7 +435,7 @@ class TestWeighting:
         m.analyze(df)
 
         cached = m._latest_measurements
-        pool_col = "Shape_Area_std_pool"
+        pool_col = "Size_Area_std_pool"
         assert pool_col in cached.columns
 
         pool_a = cached.loc[cached["Metadata_Strain"] == "StrainA", pool_col]
