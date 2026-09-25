@@ -17,11 +17,14 @@ by 2.03 px -- which `test_boundary_pixel_sampling_would_break_down` proves.
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pytest
 from scipy.stats import trim_mean
 
 from phenotypic.measure import MeasureSize
+from phenotypic.measure._object_geometry import object_edt
 
 TOL = 0.6  # pixels; see module docstring
 
@@ -73,12 +76,7 @@ def test_angular_sampling_matches_the_analytic_mean_radius_of_an_ellipse():
     a, b = 70.0, 25.0
     y, x = np.mgrid[-200:200, -200:200]
     mask = _crop((x / a) ** 2 + (y / b) ** 2 <= 1)
-
-    edt = np.pad(mask, 1)
-    from scipy.ndimage import distance_transform_edt
-
-    edt = distance_transform_edt(edt)[1:-1, 1:-1]
-    signature = op._trace_radial_signature(mask, edt)
+    signature = op._trace_radial_signature(mask, object_edt(mask))
 
     theta = np.linspace(0, 2 * np.pi, 200_001)[:-1]
     analytic = (a * b / np.hypot(b * np.cos(theta), a * np.sin(theta))).mean()
@@ -112,10 +110,7 @@ def test_boundary_pixel_sampling_would_break_down():
 
     mask = _crop(_disk_with_runner())
     op = MeasureSize()
-    edt = np.pad(mask, 1)
-    from scipy.ndimage import distance_transform_edt
-
-    edt = distance_transform_edt(edt)[1:-1, 1:-1]
+    edt = object_edt(mask)
     center = np.argwhere(edt >= 0.99 * edt.max()).mean(axis=0)
 
     pixels = np.argwhere(find_boundaries(mask, mode="inner")).astype(float)
@@ -164,8 +159,6 @@ def test_reach_uses_the_outermost_crossing_per_bin_not_the_mean():
 )
 def test_degenerate_objects_do_not_raise(mask):
     """Specks survive detection. They must not crash or warn the measurer."""
-    import warnings
-
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         profile = MeasureSize()._measure_radial_profile(mask)
@@ -391,13 +384,11 @@ def test_a_hole_never_supplies_a_bin():
     Mutation: trace `obj_mask` instead of `binary_fill_holes(obj_mask)` -> the
     signatures differ and the minimum drops to the hole's radius.
     """
-    from scipy.ndimage import distance_transform_edt
-
     y, x = np.mgrid[-15:16, -15:16]
     disk = x**2 + y**2 <= 12**2
     ring = disk & (x**2 + y**2 > 4**2)
     disk, ring = _crop(disk), _crop(ring)
-    edt = distance_transform_edt(np.pad(disk, 1))[1:-1, 1:-1]
+    edt = object_edt(disk)
     op = MeasureSize()
 
     ring_signature = op._trace_radial_signature(ring, edt)

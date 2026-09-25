@@ -26,6 +26,7 @@ def append_change_note(doc: str | None, note: str) -> str:
     """
     return f"{inspect.cleandoc(doc or '')}\n\n{note}"
 
+
 SIZE_SHAPE_SPLIT_NOTE = """\
 .. versionchanged:: 0.20.0
    Colony size magnitudes moved from :class:`~phenotypic.schema.SHAPE` to

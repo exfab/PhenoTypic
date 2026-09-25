@@ -39,7 +39,9 @@ def plate():
 
 
 def _aligned(new: pd.DataFrame, baseline: pd.DataFrame) -> pd.DataFrame:
-    merged = new.merge(baseline, on=str(OBJECT.LABEL), validate="one_to_one")
+    """Join on label; a column both frames carry gets ``_main`` on main's side."""
+    merged = new.merge(baseline, on=str(OBJECT.LABEL), suffixes=("", "_main"),
+                       validate="one_to_one")
     assert len(merged) == len(baseline) == 96
     return merged
 
@@ -65,8 +67,7 @@ def test_measure_intensity_is_unchanged_from_main(plate, baseline):
     from phenotypic.measure import MeasureIntensity
 
     new = MeasureIntensity().measure(plate)
-    merged = new.merge(baseline, on=str(OBJECT.LABEL), suffixes=("", "_main"),
-                       validate="one_to_one")
+    merged = _aligned(new, baseline)
     for column in new.columns:
         if column == str(OBJECT.LABEL):
             continue
@@ -104,7 +105,6 @@ def test_retained_shape_columns_keep_mains_values(plate, baseline, shape_header,
     from phenotypic.measure import MeasureShape
 
     new = MeasureShape().measure(plate)
-    merged = new.merge(baseline, on=str(OBJECT.LABEL), suffixes=("", "_main"),
-                       validate="one_to_one")
+    merged = _aligned(new, baseline)
     right = f"{old_header}_main" if old_header in new.columns else old_header
     np.testing.assert_allclose(merged[shape_header], merged[right], rtol=RTOL)

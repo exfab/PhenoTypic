@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pytest
 
@@ -30,8 +32,6 @@ def test_convex_hull_area_is_the_hull_volume_not_its_perimeter():
     ids=["single-pixel", "collinear-line"],
 )
 def test_convex_hull_area_is_nan_when_qhull_cannot_build_a_hull(mask):
-    import warnings
-
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         hull, area = convex_hull_area(_pixel_coords(mask))

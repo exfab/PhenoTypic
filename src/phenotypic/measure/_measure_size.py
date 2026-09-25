@@ -150,17 +150,15 @@ class MeasureSize(MeasureFeatures):
         empty = np.isinf(signature)
         if empty.all():
             return None
-        signature[empty] = np.nan
         if empty.any():
             # Circular interpolation: bins with no contour vertex are not
             # missing at random. They cluster where the contour is angularly
             # sparse, so dropping them biases the mean upward.
-            index = np.arange(n_bins)
-            filled = ~empty
+            known = np.flatnonzero(~empty)
             signature[empty] = np.interp(
-                    index[empty],
-                    np.concatenate([index[filled] - n_bins, index[filled], index[filled] + n_bins]),
-                    np.tile(signature[filled], 3),
+                    np.flatnonzero(empty),
+                    np.concatenate([known - n_bins, known, known + n_bins]),
+                    np.tile(signature[known], 3),
             )
         return signature
 
@@ -202,12 +200,12 @@ class MeasureSize(MeasureFeatures):
             for feature in SIZE
         }
 
-        objmap = image.objmap[:].copy()
+        objmap = image.objmap[:]
         measurements[str(SIZE.AREA)] = self._calculate_sum(
                 array=image.objmask[:], objmap=objmap
         )
         measurements[str(SIZE.INTEGRATED_INTENSITY)] = self._calculate_sum(
-                array=image.gray[:].copy(), objmap=objmap
+                array=image.gray[:], objmap=objmap
         )
 
         for idx, props in enumerate(image.objects.props):

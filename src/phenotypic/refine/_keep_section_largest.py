@@ -68,6 +68,6 @@ class KeepSectionLargest(GridObjectRefiner):
         max_size_labels = table.loc[max_idx, str(OBJECT.LABEL)].to_numpy()
 
         # Drop objects not the largest
-        nonmax_mask = ~np.isin(image.objmap[:], max_size_labels)
+        nonmax_mask = ~np.isin(objmap, max_size_labels)
         image.objmap[nonmax_mask] = 0
         return image
