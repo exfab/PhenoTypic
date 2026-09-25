@@ -79,7 +79,7 @@ class MeasureTexture(MeasureFeatures):
 
     Consider Also:
         - :class:`MeasureShape` for geometric morphology metrics
-          (circularity, Feret diameters) that complement texture.
+          (circularity, solidity) that complement texture.
         - :class:`MeasureIntensity` for brightness statistics without
           spatial co-occurrence information.
         - :class:`MeasureColor` for pigmentation-based phenotyping.

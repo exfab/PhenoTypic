@@ -35,10 +35,11 @@ description, not by rewriting history: squash-merge.
 ## What this change is, in one paragraph
 
 `MeasureSize` becomes the single emitter of colony size: Area, Perimeter, ConvexArea,
-BboxArea, Major/MinorAxisLength, InscribedRadius (the EDT maximum), and four radii,
+BboxArea, Major/MinorAxisLength, Min/MaxFeretDiameter, InscribedRadius (the EDT maximum),
+and four radii,
 MedianRadius, MeanRadius, RobustMeanRadius and MaxRadius, measured from one centre (the
 centroid of the distance-transform peak plateau). `MeasureShape` keeps the form descriptors (Circularity, Compactness, Solidity,
-Extent, Eccentricity, Orientation, Min/MaxFeretDiameter) plus `MeanBoundaryDist` and
+Extent, Eccentricity, Orientation) plus `MeanBoundaryDist` and
 `MedianBoundaryDist` (the old, misnamed Mean/MedianRadius values). This is a hard break
 with no aliases, released as a minor bump to **0.20.0**, with a highlighted
 `.. versionchanged:: 0.20.0` note rendered from one `MeasurementInfo.change_note()` hook.
@@ -48,7 +49,7 @@ with no aliases, released as a minor bump to **0.20.0**, with a highlighted
 | Question | Decision |
 |---|---|
 | "One source" | The size columns are **removed** from Shape |
-| What moves | Radii, perimeter, hull and box areas, ellipse axes. **Feret stays in Shape** |
+| What moves | Radii, perimeter, hull and box areas, ellipse axes, **and the Feret diameters** (the user reversed "Feret stays in Shape" on 2026-09-25, commit `3171781b`) |
 | Unmerged branch `shape-radial-measures` | **Port** its radial-signature work into SIZE. It is a read-only source (`git show shape-radial-measures:<path>`); **never merge, rebase or cherry-pick it** (1,321 commits stale) |
 | Convex area | **`ConvexHull.volume`** wherever scipy supplies it. The branch's `regionprops.area_convex` swap is **not** ported |
 | Back-compat | **Hard break**, no alias machinery |

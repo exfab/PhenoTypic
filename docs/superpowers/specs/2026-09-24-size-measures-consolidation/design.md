@@ -12,7 +12,7 @@ this spec quotes about disks, rectangles, touching colonies and runners is re-de
 ## 1. Objective
 
 `MeasureShape` currently mixes **size magnitudes** (area, perimeter, radii, axis lengths,
-hull and box areas, all tagged `tier=1`) with **form descriptors** (circularity, solidity,
+hull and box areas, Feret diameters, all tagged `tier=1`) with **form descriptors** (circularity, solidity,
 eccentricity, …). `MeasureSize` emits only `Area` and `IntegratedIntensity`, so area is
 computed and published twice (`Shape_Area`, `Size_Area`).
 

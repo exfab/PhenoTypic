@@ -25,8 +25,8 @@ class MeasureSize(MeasureFeatures):
     The single source of colony size: area, integrated intensity, perimeter,
     convex-hull and bounding-box areas, best-fit-ellipse axis lengths, the
     Feret (caliper) diameters, the inscribed radius, and four radii (median,
-    mean, robust mean and maximum)
-    measured from one center, the centroid of the distance-transform peak.
+    mean, robust mean and maximum) measured from one center, the centroid of
+    the distance-transform peak.
     These are the starting measurements for growth and fitness comparisons;
     see the :class:`~phenotypic.schema.SIZE` table below for what each column
     means.

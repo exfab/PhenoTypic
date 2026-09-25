@@ -66,7 +66,8 @@ package):
 - `DirectPhenotype` / `DescriptiveTrait` / `DiscriminativeFeature` →
   `PrimaryMeasure` subclasses fixing `tier` 1 / 2 / 3.
 
-**Straddlers** (enums whose members span tiers, e.g. `SHAPE`) subclass the neutral
+**Straddlers** (enums whose members span tiers; no primary enum straddles since 0.20.0,
+when SHAPE's Feret diameters moved to SIZE) subclass the neutral
 `PrimaryMeasure`/`DerivedMeasure`, set a **class default tier** (via an overridden
 `tier()` classmethod), and tag the minority members with an `Entry(tier=...)`
 override. Resolution precedence in `_classify` (highest first): `derivation_type`
@@ -83,7 +84,8 @@ members override it with `Entry(..., tier=N)`. No primary enum straddles since
 size magnitudes — area, perimeter, radii, axis lengths and the Feret diameters,
 which were SHAPE's `tier=1` members before 0.20.0 — live in `SIZE(DirectPhenotype)`,
 which resolves every member to tier 1 without tags. Derived enums (the growth
-models) still tag every member with `Entry(tier=1, derivation_type=...)`.
+models) tag their parameterization members with `Entry(tier=1, derivation_type=...)`;
+their diagnostic members carry no tier.
 
 ## Classification badges in the docs
 
