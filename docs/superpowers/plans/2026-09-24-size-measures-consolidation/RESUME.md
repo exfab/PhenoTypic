@@ -4,10 +4,23 @@
 **State (2026-09-25):** plan Tasks 1-9 are implemented (phases 1 and 2), both phase
 reviews' fixes have landed, the simplify pass is done (`3b82bd70`), and the final
 whole-branch review's fixes (`reports/.../final-review.md` MEDIUM-1/2, LOW-1 to LOW-7) are
-applied on top of it. **Plan Task 10 is in progress:** the main-vs-tip differential, the
-four-golden recapture, the logic-validation re-run, mypy/ruff, the docs build and the full
-sharded regression. The final review's HIGH-1 is Task 10 itself. LOW-8 (history not
-bisect-clean) is handled in the PR description, not by rewriting history.
+applied on top of it. **Plan Task 10 is DONE (2026-09-25):**
+- **Differential, tip `ad890516` vs main:** PASS, 27 checks.
+- **Goldens:** four recaptured in `13821bba`; all four scenarios pass.
+- **radial_invariants.py:** 0 failures.
+- **Docs build (Slurm):** the note renders on all 5 surfaces, and the enum pages no longer
+  show the blockquote.
+- **mypy:** 429 errors at the tip vs 440 on main.
+- **Full sharded regression at `13821bba`, compared with main by name:**
+  - 13,989 tests, 0 regressions.
+  - 84 failures, all pre-existing: migration goldens for other operations, tune, and
+    FilFinder smoke.
+  - 3 newly passing.
+- **e2e:** scatter + analysis 10/11. The one setup error, a live-server start timeout,
+  passes 3 of 3 on rerun at both the tip and main.
+
+What remains is opening the PR. LOW-8 (history not bisect-clean) is handled in the PR
+description, not by rewriting history: squash-merge.
 
 ## Read these, in this order
 
