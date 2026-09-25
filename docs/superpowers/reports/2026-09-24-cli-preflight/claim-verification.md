@@ -208,3 +208,86 @@ warnings raised: []
 validate_pipeline: (True, None)
 ```
 `from_json` uses a plain `json.loads` (`_serializable_pipeline.py:279` at `81d19ec`; this report first said `:283`, which is the `_deserialize_pipeline_config` call below it, corrected per review R31) with no `object_pairs_hook`, so the last duplicate silently wins. Because a Python dict keeps a key's first insertion position, **TriangleDetector now runs before BlurGauss**, although it appears after it in the file. The CLI validator accepts the file.
+
+## Re-run at `26bf6e3` (plan Task 17)
+
+The probes that motivated a fix, and the spec review's reproductions R1 to R3, re-run
+against `26bf6e3` (the probe scripts unchanged, from a scratch directory; paths shortened).
+Where a defect was fixed by a preflight check rather than in the library, the CLI's
+`--dry-run` is shown instead of the library call, since that is where the fix lives.
+
+**§1 custom op resolution (p1, F13).** A registering module in `PHENOTYPIC_PRELOAD_MODULES`
+now resolves in a fresh process without an explicit preload call, because class resolution
+preloads; a non-registering module still does not, with a message naming the contract. Local
+parallel workers resolve it too (R2).
+
+```
+== p1: fresh process, no preload
+FAIL UnknownOperationClassError Class 'MyThreshDetector' not found in phenotypic namespace. A custom operation defined outside phenotypic must be registered: list a module in PHENOTYPIC_PRELOAD_MODULES whose import attaches the class to the phenotypic namespace (e.g. phenotypic.MyThreshDetector = cls).
+== p1: PRELOAD=my_custom_ops (non-registering)
+FAIL UnknownOperationClassError Class 'MyThreshDetector' not found in phenotypic namespace. A custom operation defined outside phenotypic must be registered: li
+== p1: PRELOAD=my_custom_ops_reg, no explicit preload call
+OK ops: {'det': 'my_custom_ops.MyThreshDetector'}
+== p1 via CLI: PRELOAD=my_custom_ops_reg, --dry-run
+✓ Pipeline loaded successfully
+✓ Preflight checks passed
+│   Pipeline         custom.json.pht-pipe   │
+  Pipeline config: custom.json.pht-pipe
+Pipeline Validation:
+exit=0
+== p1 via CLI: no preload, --dry-run
+✗ Pipeline loading failed:
+✗ Error [PF-CUSTOM-OP]: Failed to load pipeline: UnknownOperationClassError: 
+    → List a module in PHENOTYPIC_PRELOAD_MODULES whose import attaches the 
+output created: no
+== R2: PRELOAD=my_custom_ops_reg, --njobs 2 (loky workers)
+Completed: 2/2
+```
+
+**§4 grayscale with an RGB-requiring detect mode (p4, F7).** The library behavior probed by
+`probe4.py` is unchanged; the run preflight now refuses the run before any output exists:
+
+```
+== p4 via CLI: grayscale inputs, --detect-mode red, --dry-run
+✗ Error [PF-DETECT-MODE-GRAY]: --detect-mode red needs RGB, but these inputs are
+✗ Preflight found 1 error(s); nothing under --output was changed.
+output created: no
+```
+
+**§5 RAW routing (p5, F24).** Every RAW suffix now reaches `rawpy` first (the probe patches
+`rawpy.imread` to raise, so "reached" is the expected result); none falls through to
+`skimage.io.imread`. The last line is an artifact of the probe, whose patch is never
+restored:
+
+```
+== p5: RAW routing
+'.dng' in ACCEPTED: True | '.nef' in ACCEPTED: True
+handler module rawpy: <module 'rawpy' from '/home/user/PhenoTypic/.venv/lib/python3.11/site-packages/rawpy/__init__.py'>
+.dng: skimage calls=[] rawpy calls=1 -> RAISED RuntimeError: rawpy.imread reached
+.nef: skimage calls=[] rawpy calls=1 -> RAISED RuntimeError: rawpy.imread reached
+.NEF: skimage calls=[] rawpy calls=1 -> RAISED RuntimeError: rawpy.imread reached
+.cr2: skimage calls=[] rawpy calls=1 -> RAISED RuntimeError: rawpy.imread reached
+direct skimage.io.imread on TIFF-as-.dng: ndarray (16, 16, 3) uint8 equal: False
+Image.imread(TIFF-as-.dng) RAISED RuntimeError rawpy.imread reached
+```
+
+**§7 post-op failure swallowed in finalization (p7, F23).** Finalization still logs and
+discards on a raise (unchanged by design); the run preflight now reports it first:
+
+```
+== p7 via CLI: post op on an absent column, --dry-run
+✗ Error [PF-POST-COLUMN]: post:p (AppendString) reads Metadata_DoesNotExist, 
+✗ Preflight found 1 error(s); nothing under --output was changed.
+```
+
+**R1 (per-well plate maps).** `check_metadata_join` on the review's two shapes gives warnings
+only:
+
+```
+plate_map [('PF-META-DUP-KEYS', 'warning'), ('PF-META-UNVERIFIED', 'warning')]
+layout_only [('PF-META-NO-KEYS', 'warning'), ('PF-META-UNVERIFIED', 'warning')]
+```
+
+**R3 (RAW work ids on SLURM).** `tests/unit/cli/test_work_id_raw_revision.py`, which asserts
+that `_worker_work_identity` and `work_id_for_image` agree for `.nef` and `.tiff` inputs and
+that only the RAW digest changes: 4 passed.
