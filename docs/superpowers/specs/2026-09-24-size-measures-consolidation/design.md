@@ -96,7 +96,8 @@ All five radii are statistics of one set of centre-to-edge distances.
 
 - **Centre.** The centroid of the object's EDT peak plateau (`edt >= (1 −
   plateau_tolerance) · max`, restricted to the connected component containing the argmax).
-  It always lies inside the colony. A plateau centroid is used rather than the argmax
+  It lies inside compact colonies; for a ring-shaped colony (e.g. central lysis) the
+  plateau is an arc and its centroid can fall in the central hole. A plateau centroid is used rather than the argmax
   because EDT values are square roots of integers, so exact ties are common and an argmax
   would break them in raster order.
 - **Radial signature.** Take the subpixel marching-squares contour at the 0.5 iso-level of
@@ -104,7 +105,12 @@ All five radii are statistics of one set of centre-to-edge distances.
   bins, and keep the outermost distance per bin (max, not mean: the branch's
   mutation-pinned choice). Empty bins are filled by circular interpolation.
 - **InscribedRadius** is the EDT maximum, which is the exact distance from the centre to
-  the nearest edge. It is the family's minimum. It is taken from the EDT rather than from
+  the nearest edge. It is the family's minimum **up to half a pixel**: the EDT measures to
+  background pixel *centres*, the signature to the 0.5 iso-contour, which is half a pixel
+  nearer. So on a disk of radius 40 MeanRadius (39.998) sits just below InscribedRadius
+  (40.0125), and on a one-pixel speck InscribedRadius is 1.0 against a MaxRadius of 0.5.
+  Equivalence with the retired `Shape_MaxRadius` (§3.1) forbids "fixing" this by subtracting
+  0.5, so it is documented instead. It is taken from the EDT rather than from
   the signature's minimum, because the nearest bin centre sits up to half a bin off the
   perpendicular and overshoots by h/cos(π/K) − h (script check 04).
 - **The image border counts as an edge.** Each EDT runs on a one-pixel-padded crop, so a
@@ -311,9 +317,17 @@ these read the schema through `_measurement_infoclass`.
 - **Mutation proofs**, per the test-integrity rule. Each guard must be shown to fail on its
   bug: swap `.volume` → `.area`; reintroduce the whole-objmap EDT; swap mean ↔ trimmed mean;
   change max-per-bin to mean-per-bin; drop `change_note()` from `_class_section`.
-- **Goldens.** Recapture `tests/migration/_goldens/measure.{MeasureShape,MeasureSize}.parquet`.
-  `measure.MeasureIntensity.parquet` must stay **byte-unchanged**; that proves the
-  decoupling changed no values.
+- **Goldens.** All four relevant migration goldens were already red on main before this
+  change, for pre-existing reasons (measured 2026-09-24, plan-review H4): `MeasureShape`
+  predates the `.volume` fix (ConvexArea/Solidity differ on 99/552 rows); `MeasureIntensity`
+  has a float32/float64 dtype drift plus the same ConvexDensity cause; `KeepSectionLargest`
+  keeps 94 labels against the golden's 96 (the golden predates the grid fixes, `74401bbd`);
+  `MeasureSize` passes. So a golden cannot prove "no value changed". The proof is
+  **differential**: a committed script runs the four scenarios in a worktree at main and one
+  at the branch tip and compares them directly (Intensity dtype-exact at rtol 1e-10;
+  KeepSectionLargest array-equal; retained Shape and moved Size columns at rtol 1e-10). Only
+  after that passes are **all four** goldens recaptured (user decision, 2026-09-24), with a
+  commit message naming each pre-existing drift separately from this change's column moves.
 - **Producer-coupled tests to update:** `schema/test_classification.py:121-133`,
   `schema/test_schema_public_api.py`, `schema/test_dynamic_headers.py`,
   `util/test_measurement_outputs.py`, `gui/analysis/test_standalone_bundle.py`,
@@ -338,3 +352,13 @@ these read the schema through `_measurement_infoclass`.
 | Radius family | Inscribed / Median / Mean / RobustMean / Max; `InscribedRadius` name kept, with the elongation caveat |
 | Old edge-distance stats | Stay in Shape as Mean/MedianBoundaryDist |
 | Release | Minor bump to 0.20.0, with highlighted `versionchanged` notes on class and measurement docs |
+
+**Pre-dispatch plan review (2026-09-24)**, report
+`reports/2026-09-24-size-measures-consolidation/plan-review.md`:
+
+| Decision | Choice |
+|---|---|
+| Zero-object plate | Keep main's contract: `MeasureSize`/`MeasureShape` raise `OperationFailedError` (`NoObjectsError`), like every other measurer. Tests pin the raise |
+| Migration goldens | Differential main-vs-tip proof first, then recapture all four (Shape, Size, Intensity, KeepSectionLargest) |
+| §4.1 wording | InscribedRadius is the minimum only up to half a pixel; the centre can fall in the hole of a ring-shaped colony |
+| "Formerly reported as …" in descs | Dropped: §7 allows only the same-name clarification in `desc` |

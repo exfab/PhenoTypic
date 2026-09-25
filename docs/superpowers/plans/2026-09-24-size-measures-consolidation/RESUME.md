@@ -39,6 +39,21 @@ with no aliases, released as a minor bump to **0.20.0**, with a highlighted
 | Old Mean/Median "radius" (edge-distance stats) | Stay in **Shape**, renamed `MeanBoundaryDist` and `MedianBoundaryDist` |
 | Release | **Minor bump to 0.20.0**; highlighted note in the class docs **and** the measurement docs |
 
+## Update 2026-09-24 (second session): execution started
+
+- Execution method is **orchestrated clusters** (`execute-plan-orchestration`), and the user
+  accepted the border-edge change. The cluster table is in plan.md, under "Execution clusters".
+- Task 1 is done: `2004cfac` (baseline parquet, 96 x 30, captured from unmodified `src/`).
+- Port source `shape-radial-measures` is now on origin at `5cad1dfa5`. Fetch it and read it by SHA.
+- The pre-dispatch plan review is in
+  `docs/superpowers/reports/2026-09-24-size-measures-consolidation/plan-review.md`. Its
+  binding amendments A1-A10 are at the top of plan.md. The user's decisions are recorded in
+  spec §10: zero objects keep the raise; the differential proof comes first, then all four
+  goldens are recaptured; both §4.1 rewordings are accepted.
+- Pre-change migration-golden status on unmodified `src/` is recorded in plan amendment A6.
+
+The section below is kept for history; its questions are now answered.
+
 ## Still open, and needed before implementing
 
 - **Execution method** has not been chosen. The recommendation to the user was

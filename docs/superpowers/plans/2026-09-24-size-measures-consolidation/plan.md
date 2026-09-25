@@ -28,11 +28,91 @@
 - A check that cannot run must **fail**, not skip. Derive every numeric tolerance from a stated mechanism. Prove each new guard can fail, by the mutation listed in its step.
 - Test runs: per step, the step's own test; per task, the touched test files; per phase gate, the affected surface once; at the end, one full sharded regression via the `run-phenotypic-test` skill. GUI tests need `QT_QPA_PLATFORM=offscreen`.
 
+## Amendments from the pre-dispatch plan review (2026-09-24) — binding
+
+Source: `docs/superpowers/reports/2026-09-24-size-measures-consolidation/plan-review.md`
+(0 critical, 5 high, 8 medium, 9 low). Where a task below conflicts with this list, **this
+list wins**. Code blocks below have already been corrected inline where marked.
+
+- **A1 Port source by SHA.** Read the branch as `git show 5cad1dfa5:<path>`. Preflight:
+  `git cat-file -e 5cad1dfa5^{commit}` must succeed, or stop.
+- **A2 Zero objects (user decision).** Keep main's contract: `MeasureSize`/`MeasureShape`
+  raise `OperationFailedError` wrapping `NoObjectsError`. The tests pin the raise (corrected
+  inline in Tasks 3 and 5). No early return is added.
+- **A3 Spec wording (user decision).** InscribedRadius is the minimum only up to half a
+  pixel, and the centre can fall in the hole of a ring-shaped colony (spec §4.1). The
+  `MEDIAN_RADIUS` desc is corrected inline. Assert radius ordering only on the crescent,
+  never on a disk or a degenerate shape.
+- **A4 No "Formerly reported as …" in any `desc`** (spec §7). Removed inline from
+  `INSCRIBED_RADIUS` and both BoundaryDist Entries.
+- **A5 The consumer flip happens before the Shape flip.** Task 7 Steps 3-4 (prefabs gain
+  `MeasureSize()`, GUI analysis defaults become `str(SIZE.AREA)`), with their two new tests,
+  run as **Task 4b**, right after Task 4 and before Task 5. `Size_Area` exists from Task 3
+  on. Do not push between Task 5 and Task 8.
+- **A6 Differential proof, not golden proof (user decision).** Task 4b also creates
+  `docs/superpowers/plans/2026-09-24-size-measures-consolidation/diff_migration_scenarios.py`,
+  per plan-review H4 amendment 1. It drives shipped code, so it lives beside the plan, not
+  in `logic_validation_scripts/`. The orchestrator runs it after Task 4b and in Task 10.
+  Task 10 then recaptures **all four** goldens (`measure.MeasureShape`, `measure.MeasureSize`,
+  `measure.MeasureIntensity`, `refine.KeepSectionLargest`). The commit message names each
+  pre-existing drift (below) separately from this change's column moves. Pre-change status
+  on unmodified `src/`: Size PASS; Shape FAIL (ConvexArea/Solidity, 99/552 rows, golden
+  predates `.volume` fix `d846ca4a`); Intensity FAIL (float32 dtype plus ConvexDensity, same
+  cause); KeepSectionLargest FAIL (94 labels vs the golden's 96, golden predates grid fix
+  `74401bbd`). "Byte-unchanged" is dropped as a criterion.
+- **A7 Rename pipeline hygiene.** The rename script is committed as
+  `docs/superpowers/plans/2026-09-24-size-measures-consolidation/size_rename.pl`, never
+  `/tmp`. Target lists go to the session scratchpad. Every target grep is
+  `grep -rlIE --exclude-dir=__pycache__ …` (`-I` skips binaries). Additional exclusions:
+  `src/phenotypic/schema/_measurement_info.py` (its SHAPE is a local toy class in a
+  doctest) and `tests/unit/gui/results_viewer/test_measurement_join_migration_run.py` (it
+  reads a real run whose stores carry old names). The rule is: **never rename a column name
+  that a test reads from historical data on disk.** Fix `src/phenotypic/schema/CLAUDE.md:178`
+  by hand to `['Shape_Circularity', 'Shape_Compactness', ...]`.
+- **A8 HPCC rules.**
+  - No `git stash`. Compare against main in a detached worktree at `81d19ec66` under
+    `/bigdata/exfab/anguy344/gate-worktrees/`.
+  - The docs build is a Slurm job (Task 6 Step 10, corrected inline).
+  - Every multi-file pytest run takes `-o addopts= -m "not slow" -p no:randomly`, and phase
+    gates are Slurm jobs submitted by the orchestrator.
+- **A9 Wider test surfaces.**
+  - Task 3 also runs `tests/gui/builder tests/unit/gui/builder`, since MeasureSize gains its
+    first parameters.
+  - Task 7 Step 4 also checks the `gui-tutorial-capture` ledgers against the MeasureSize form
+    change.
+  - Task 10 runs the swept e2e files explicitly (`PLAYWRIGHT=1`): `tests/e2e/gui/test_scatter_tab.py`
+    and `tests/e2e/gui/test_analysis_app.py`.
+- **A10 Small corrections.**
+  - Task 5 Step 3: only the Feret diameters carry `tier=1`, and Circularity does not.
+  - Task 4: the `KeepSectionLargest` docstring line "Measures the pixel area … via
+    MeasureSize" becomes "counts each object's pixels".
+  - Port the branch's `test_merged_edt_would_fail_this_test` (branch
+    `tests/unit/measure/test_measure_shape.py:65-81`) into `test_measure_shape.py`, as a
+    standing control.
+  - Task 7 Step 1: the comment "`meas` returns a dict copy" becomes "`meas` is normalised to
+    a dict".
+  - Task 7 Step 6: the capture script binds `[str(SHAPE.SOLIDITY), str(SHAPE.CIRCULARITY)]`
+    unconditionally, keeping the "stay inside one measurer" invariant. Check `WORKFLOWS.md`.
+  - The PR notes that `RemoveByFeature(feature="MeasureSize")` now pays for EDTs and
+    signatures.
+
+## Execution clusters (orchestrator, 2026-09-24)
+
+| Cluster | Tasks | Shape | Model | Gate after |
+|---|---|---|---|---|
+| — | T1 baseline | done `2004cfac` | — | — |
+| C1 | T2 + T3 | Keystone | Opus | light |
+| C2 | T4 + T4b (A5, A6 script) | Seam | Opus | light + differential run |
+| C3 | T5 + T6 | Keystone | Opus | **phase 1 deep: implementation-test-reviewer over T2–T6** |
+| C4 | T7 (minus Steps 3-4) | Sweep, consistency-critical | Opus | light |
+| C5 ∥ C6 | T8 ∥ T9 (no shared files) | Sweep | Sonnet | **phase 2 deep: code review over T7–T9** |
+| — | T10 | orchestrator | — | simplify pass, then full sharded regression |
+
 ## Review Focus
 
 These inputs are implied by the spec but no other task exercises them. Each has a test in the owning task.
 
-1. **A plate with zero detected colonies.** `MeasureSize` and `MeasureShape` must return an empty frame carrying every schema column rather than raise (tests in Tasks 3 and 5).
+1. **A plate with zero detected colonies.** `MeasureSize` and `MeasureShape` raise `OperationFailedError` (wrapping `NoObjectsError`), like every other measurer (A2; tests in Tasks 3 and 5).
 2. **A degenerate colony: a single pixel or a 1-pixel-wide line.** Qhull fails, so ConvexArea, Solidity and Feret are NaN. The radii stay finite and no warning escapes (Tasks 3 and 5).
 3. **A colony cut off by the image border.** The padded crop counts the border as an edge: a 10-row full-width band on the top edge reports InscribedRadius 5, not the old 10 (Task 3).
 4. **A concave (crescent) colony.** The five radii keep their ordering, InscribedRadius ≤ MedianRadius ≤ MaxRadius and InscribedRadius ≤ RobustMeanRadius ≤ MaxRadius, and nothing raises (Task 3).
@@ -350,15 +430,16 @@ class SIZE(DirectPhenotype):
         "its overall extent: an elongated colony reports half its width whatever its "
         "length (a 100 x 20 pixel colony reports 10), and a runner or spur leaves it "
         "unchanged. Use MaxRadius for overall extent. The image border counts as an "
-        "edge. Formerly reported as Shape_MaxRadius.",
+        "edge.",
     )
     MEDIAN_RADIUS = Entry(
         "MedianRadius",
         "Median distance from the colony center to its boundary over the radial "
         "signature: the boundary distance sampled in equal angular directions "
         "(360 by default), keeping the outermost boundary crossing in each. The "
-        "center is the centroid of the distance-transform peak plateau, which "
-        "always lies inside the colony. For an ideal disk it equals the disk "
+        "center is the centroid of the distance-transform peak plateau; it lies "
+        "inside compact colonies, but for a ring-shaped colony it can fall in the "
+        "central hole. For an ideal disk it equals the disk "
         "radius; for an ideal 100 x 20 pixel rectangle it is 14.1 pixels. This is "
         "not the value the retired Shape_MedianRadius carried (a median distance to "
         "the nearest edge, now Shape_MedianBoundaryDist).",
@@ -477,11 +558,14 @@ def test_border_touching_colony_counts_the_border_as_an_edge():
     assert frame[str(SIZE.INSCRIBED_RADIUS)].iloc[0] == 5.0
 
 
-def test_no_objects_returns_an_empty_frame_with_every_column():
-    """Review Focus 1."""
-    frame = MeasureSize().measure(_image_with_objmap(np.zeros((20, 20), dtype=int)))
-    assert len(frame) == 0
-    assert list(frame.columns) == [str(OBJECT.LABEL), *SIZE.get_headers()]
+def test_no_objects_raises_like_every_other_measurer():
+    """Review Focus 1 / amendment A2: main's contract is kept, not changed.
+    MeasureFeatures.measure re-raises without chaining, but names the original
+    type in the message (abc_/_measure_features.py, the `except Exception` arm)."""
+    from phenotypic.sdk_.exceptions_ import OperationFailedError
+
+    with pytest.raises(OperationFailedError, match="NoObjectsError"):
+        MeasureSize().measure(_image_with_objmap(np.zeros((20, 20), dtype=int)))
 
 
 def test_degenerate_objects_measure_without_raising_or_warning():
@@ -547,8 +631,13 @@ def test_elongated_colony_matches_the_analytic_rectangle():
     """A 20-row x 100-column pixel block. Its 0.5-iso contour is exactly a 100 x 20
     rectangle about the EDT plateau centroid, so the analytic values from the
     logic-validation script (check 04) apply: 10.0 / 14.1 / 21.0 / 16.2 / 50.9.
-    Marching squares cuts each corner diagonally, which only lowers MaxRadius,
-    and by under 0.5 px; TOL covers it.
+    Two rasterisation effects move the measured values, both inside TOL:
+    marching squares cuts each corner diagonally, lowering MaxRadius by under
+    0.1 px; and max-per-bin takes the extreme vertex in each 1-degree bin, which
+    where r(theta) is steep (~4.5 px/degree near the corners) exceeds the
+    bin-centre value by up to half a bin x |r'|. Measured on main's code
+    (plan-review probe P3): 14.147 / 21.126 / 16.196 / 50.895, largest
+    deviation 0.126 px against TOL = 0.6.
     """
     profile = MeasureSize()._measure_radial_profile(np.ones((20, 100), dtype=bool))
     assert profile["Size_InscribedRadius"] == 10.0  # exact: integer EDT
@@ -1066,8 +1155,8 @@ Expected: all pass.
 
 - [ ] **Step 6: Run the directly-touched surface**
 
-Run: `uv run pytest tests/unit/refine tests/unit/measure -q -m "not slow"`
-Expected: no new failures compared with main. If something fails, run that test alone on main (`git stash`) before attributing it to this change.
+Run: `uv run pytest tests/unit/refine tests/unit/measure -o addopts= -q -m "not slow" -p no:randomly`
+Expected: no new failures compared with main. If something fails, run that test alone on main — in the orchestrator's detached worktree at `81d19ec66` (A8), **never `git stash`** — before attributing it to this change.
 
 - [ ] **Step 7: Lint, type-check, commit**
 
@@ -1163,10 +1252,12 @@ def test_mean_boundary_dist_of_a_disk_is_one_third_of_its_radius():
     assert frame[str(SHAPE.MEAN_BOUNDARY_DIST)].iloc[0] == pytest.approx(40 / 3, abs=0.3)
 
 
-def test_no_objects_returns_an_empty_frame_with_every_column():
-    frame = MeasureShape().measure(_image_with_objmap(np.zeros((20, 20), dtype=int)))
-    assert len(frame) == 0
-    assert list(frame.columns) == [str(OBJECT.LABEL), *SHAPE.get_headers()]
+def test_no_objects_raises_like_every_other_measurer():
+    """Amendment A2: main's contract is kept."""
+    from phenotypic.sdk_.exceptions_ import OperationFailedError
+
+    with pytest.raises(OperationFailedError, match="NoObjectsError"):
+        MeasureShape().measure(_image_with_objmap(np.zeros((20, 20), dtype=int)))
 
 
 def test_degenerate_objects_give_nan_hull_measures_without_warning():
@@ -1244,7 +1335,7 @@ Expected: FAIL with `AttributeError: MEAN_BOUNDARY_DIST`, among others.
 
 - [ ] **Step 3: Rewrite `SHAPE`.** In `src/phenotypic/schema/_shape.py`:
   - **Delete** the Entries `AREA`, `PERIMETER`, `CONVEX_AREA`, `MEDIAN_RADIUS`, `MEAN_RADIUS`, `MAX_RADIUS`, `BBOX_AREA`, `MAJOR_AXIS_LENGTH` and `MINOR_AXIS_LENGTH`.
-  - Keep `CIRCULARITY`, `MIN_FERET_DIAMETER` and `MAX_FERET_DIAMETER` (still `tier=1`), plus `ECCENTRICITY`, `SOLIDITY`, `EXTENT`, `COMPACTNESS` and `ORIENTATION`, all unchanged.
+  - Keep `MIN_FERET_DIAMETER` and `MAX_FERET_DIAMETER` (still `tier=1`), plus `CIRCULARITY`, `ECCENTRICITY`, `SOLIDITY`, `EXTENT`, `COMPACTNESS` and `ORIENTATION` (no tier tag), all unchanged.
   - Change the `tier()` comment to `# default for form descriptors; Feret diameters override via Entry(tier=1)`.
   - Replace the class docstring with:
 
@@ -1268,8 +1359,7 @@ Expected: FAIL with `AttributeError: MEAN_BOUNDARY_DIST`, among others.
         "pixel, computed on the object in isolation. This is a measure of interior "
         "thickness, not a radius: for an ideal disk of radius R it equals "
         r":math:`R/3`. High values relative to Size_InscribedRadius indicate a "
-        "compact, convex colony; low values indicate a thin or filamentous one. "
-        "Formerly reported as Shape_MeanRadius.",
+        "compact, convex colony; low values indicate a thin or filamentous one.",
     )
     MEDIAN_BOUNDARY_DIST = Entry(
         "MedianBoundaryDist",
@@ -1278,8 +1368,7 @@ Expected: FAIL with `AttributeError: MEAN_BOUNDARY_DIST`, among others.
         "thickness, not a radius: for an ideal disk of radius R it equals "
         r":math:`R(1 - 1/\sqrt{2}) \approx 0.293R`. More robust to boundary "
         "raggedness than MeanBoundaryDist. See Size_InscribedRadius and "
-        "Size_RobustMeanRadius for the colony's radial extent. Formerly reported as "
-        "Shape_MedianRadius.",
+        "Size_RobustMeanRadius for the colony's radial extent.",
     )
 ```
 
@@ -1683,14 +1772,15 @@ Expected: all pass.
 
 - [ ] **Step 9: Prove the guards can fail.** Remove the `*([note, ""] if note else []),` line and confirm `test_class_section_renders_the_change_note_above_the_table` FAILS. Change `append_rst_to_doc` to ignore `note` and confirm `test_note_renders_above_the_table_in_measurer_docs` FAILS. Revert both.
 
-- [ ] **Step 10: Confirm the note renders as a highlighted block.** Build only what is needed:
+- [ ] **Step 10: Confirm the note renders as a highlighted block.** The orchestrator submits this as a **Slurm job** (`slurm-job` skill; `short`, default account, `--cpus-per-task=8 --mem=32G --time=01:30:00`, log under the worktree). It is never a local build. Notebooks are not executed:
 
 ```bash
-PHENOTYPIC_DOCS_BUILD=1 uv run --group docs sphinx-build -b html -j auto docs/source /tmp/pht-docs-size 2>&1 | tail -5
-grep -c "versionchanged" /tmp/pht-docs-size/measurements_ref/measurements/index.html
+PHENOTYPIC_DOCS_BUILD=1 uv run --group docs sphinx-build -b html \
+  -j "$SLURM_CPUS_PER_TASK" -D nbsphinx_execute=never \
+  docs/source docs/_build/size-note
 ```
 
-Expected: a count ≥ 2 (the SIZE and SHAPE sections). Open the page and confirm that both sections show the "Changed in version 0.20.0" block, with the rename table rendered as a table. If the full build is too slow for the machine, say so in the task report rather than skipping it silently.
+Then read the generated HTML; an exit code of 0 is not evidence. Grep for "Changed in version 0.20.0" in `docs/_build/size-note/measurements_ref/measurements/index.html` **and** in the API pages `api_reference/api/phenotypic.measure.MeasureSize.html`, `…MeasureShape.html`, `…phenotypic.schema.SIZE.html` and `…SHAPE.html`: the three surfaces spec §7 promises. Confirm the rename table rendered as a `<table>`. The implementer does not wait for this job; the orchestrator runs it at the phase-1 gate.
 
 - [ ] **Step 11: Lint, type-check, commit**
 
@@ -1963,7 +2053,9 @@ git commit -m "docs: document MeasureSize as the source of colony size; highligh
 **Files:**
 - Modify: `tests/migration/_goldens/measure.MeasureShape.parquet`, `tests/migration/_goldens/measure.MeasureSize.parquet`
 
-- [ ] **Step 1: Recapture exactly two goldens.** Do **not** run `scripts/capture_migration_goldens.py`: it rewrites all 142 goldens and the frozen inputs.
+- [ ] **Step 0 (A6): Differential proof first.** Run `diff_migration_scenarios.py` (from Task 4b) against a detached main worktree and the branch tip. It must pass before any golden is touched.
+
+- [ ] **Step 1: Recapture exactly FOUR goldens (A6, user decision).** Set `wanted` below to `{"measure.MeasureShape", "measure.MeasureSize", "measure.MeasureIntensity", "refine.KeepSectionLargest"}` and expect exactly those four files modified. The snippet shows the original two-golden form. The commit message must name each pre-existing drift from A6 separately from this change's column moves. Do **not** run `scripts/capture_migration_goldens.py`: it rewrites all 142 goldens and the frozen inputs.
 
 ```bash
 uv run python - <<'EOF'
