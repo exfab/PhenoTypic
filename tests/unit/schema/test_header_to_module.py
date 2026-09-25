@@ -11,4 +11,4 @@ def test_metadata_headers_mapped():
 
 def test_measurement_headers_are_analyzed():
     idx = header_to_module()
-    assert idx["Shape_Area"] is REMBI_MODULE.ANALYZED_DATA
+    assert idx["Size_Area"] is REMBI_MODULE.ANALYZED_DATA

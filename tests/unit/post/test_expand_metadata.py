@@ -52,7 +52,7 @@ class TestExpandMetadataOperate:
         df = pd.DataFrame({
             "Metadata_ImageName": ["WT_30C_24h", "mut_37C_48h"],
             "Object_Label": [1, 2],
-            "Shape_Area": [100, 200],
+            "Size_Area": [100, 200],
         })
         result = em.apply(df)
 
@@ -83,7 +83,7 @@ class TestExpandMetadataOperate:
     def test_missing_column_raises(self):
         """Raises KeyError when the source column doesn't exist."""
         em = ExpandMetadata(column="NonExistent", labels=["A", "B"], delimiter="_")
-        df = pd.DataFrame({"Object_Label": [1], "Shape_Area": [100]})
+        df = pd.DataFrame({"Object_Label": [1], "Size_Area": [100]})
         with pytest.raises(KeyError):
             em.apply(df)
 
@@ -121,7 +121,7 @@ class TestExpandMetadataOperate:
         df = pd.DataFrame({
             "Metadata_ImageName": ["x_y"],
             "Object_Label": [1],
-            "Shape_Area": [100],
+            "Size_Area": [100],
         })
         result = em.apply(df)
         cols = list(result.columns)

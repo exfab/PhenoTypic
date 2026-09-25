@@ -61,7 +61,7 @@ def _seed_standalone_bundle(base: Path, *, pipeline_filename: str | None) -> Non
             "Metadata_Dataset": ["plate1", "plate1"],
             str(IMAGE.IMAGE_NAME): ["img001", "img001"],
             "Object_Label": [1, 2],
-            "Shape_Area": [12.0, 34.0],
+            "Size_Area": [12.0, 34.0],
         }
     )
     df.write_parquet(base / "master_measurements.parquet")
@@ -132,8 +132,8 @@ def test_measurement_schema_from_layout_standalone_resolves_columns(
 
     schema = MeasurementSchema.from_layout(layout)
 
-    assert "Shape_Area" in schema.columns_for("measurements")
-    assert "Shape_Area" in schema.columns_for("master_measurements")
+    assert "Size_Area" in schema.columns_for("measurements")
+    assert "Size_Area" in schema.columns_for("master_measurements")
 
 
 def test_create_app_standalone_bundle_loads_recipe_and_schema(
@@ -156,7 +156,7 @@ def test_create_app_standalone_bundle_loads_recipe_and_schema(
         "OtsuDetector"
     ]
     schema = app.server.config[CFG_MEASUREMENT_SCHEMA]
-    assert "Shape_Area" in schema.columns_for("measurements")
+    assert "Size_Area" in schema.columns_for("measurements")
 
 
 def test_analysis_layout_includes_pipeline_gate_ack_store(
@@ -195,7 +195,7 @@ def test_create_app_recipe_save_blocks_changed_processing_generation(
     recipe = app.server.config[CFG_RECIPE_STATE]
     original = recipe.path.read_bytes()
     replacement = pl.read_parquet(root.layout.master_parquet).with_columns(
-        (pl.col("Shape_Area") + 1).alias("Shape_Area")
+        (pl.col("Size_Area") + 1).alias("Size_Area")
     )
     replacement.write_parquet(root.layout.master_parquet)
     recipe.pipeline.name = "stale-edit"
@@ -221,7 +221,7 @@ def test_run_inline_blocks_external_recipe_replacement_with_preserved_mtime(
     recipe = app.server.config[CFG_RECIPE_STATE]
     recipe.pipeline.set_model(
         LogGrowthModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Dataset"],
             time_label="Object_Label",
             n_jobs=1,

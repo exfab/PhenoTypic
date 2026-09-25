@@ -58,7 +58,7 @@ class TestMergeMetadataOperate:
             "Metadata_Strain": ["WT", "mut"],
             "Metadata_Condition": ["30C", "37C"],
             "Object_Label": [1, 2],
-            "Shape_Area": [100, 200],
+            "Size_Area": [100, 200],
         })
         result = mm.apply(df)
         assert "Metadata_SampleID" in result.columns
@@ -113,7 +113,7 @@ class TestMergeMetadataOperate:
             "Metadata_A": ["x"],
             "Object_Label": [1],
             "Metadata_B": ["y"],
-            "Shape_Area": [100],
+            "Size_Area": [100],
         })
         result = mm.apply(df)
         cols = list(result.columns)

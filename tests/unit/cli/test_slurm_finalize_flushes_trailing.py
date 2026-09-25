@@ -46,7 +46,7 @@ def _write_per_image(output_dir: Path, stems: list[str]) -> None:
                 str(EXPERIMENT.DATASET): [DATASET],
                 str(IMAGE.IMAGE_NAME): [stem],
                 str(OBJECT.LABEL): [1],
-                "Shape_Area": [float(i + 1)],
+                "Size_Area": [float(i + 1)],
             }
         ).write_parquet(meas_dir / f"{stem}.parquet")
 

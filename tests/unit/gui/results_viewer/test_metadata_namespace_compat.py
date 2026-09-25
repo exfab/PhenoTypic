@@ -40,14 +40,14 @@ def test_mixed_pandas_frame_normalization_is_copy_only() -> None:
         {
             "MetadataImage_ImageName": ["a.png", "b.png"],
             "Object_Label": [1, 2],
-            "Shape_Area": [4.0, 9.0],
+            "Size_Area": [4.0, 9.0],
         }
     )
     original = source.copy(deep=True)
 
     result = normalize_viewer_frame(source)
 
-    assert list(result.columns) == [str(IMAGE.IMAGE_NAME), "Object_Label", "Shape_Area"]
+    assert list(result.columns) == [str(IMAGE.IMAGE_NAME), "Object_Label", "Size_Area"]
     assert result is not source
     pd.testing.assert_frame_equal(source, original)
 

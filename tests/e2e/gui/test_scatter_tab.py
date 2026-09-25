@@ -30,7 +30,7 @@ import polars as pl
 import pytest
 from playwright.sync_api import Page
 
-from phenotypic.schema import CULTURE, EXPERIMENT, IMAGE, SHAPE
+from phenotypic.schema import CULTURE, EXPERIMENT, IMAGE, SIZE
 from tests._output_layout import write_master, write_measurements_mirror
 from tests.e2e.gui.conftest import (
     _build_sandbox,
@@ -43,7 +43,7 @@ _OUTPUT_NAME = "CliOutputExample"
 _IMAGES = ("plate_001.tif", "plate_002.tif")
 _DATASET_COLUMN = str(EXPERIMENT.DATASET)
 _TIME_COLUMN = str(CULTURE.TIME)
-_AREA_COLUMN = str(SHAPE.AREA)
+_AREA_COLUMN = str(SIZE.AREA)
 _STRAIN_COLUMN = "Metadata_Strain"
 _TINY_PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII="

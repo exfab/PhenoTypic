@@ -165,7 +165,7 @@ def _poison() -> pl.DataFrame:
         {
             "Metadata_ImageName": ["GHOST.tif"],
             "Metadata_Well": ["G01"],
-            "Shape_Area": [0.0],
+            "Size_Area": [0.0],
             "Object_Label": [99],
         }
     )
@@ -749,9 +749,9 @@ def test_the_master_inherits_its_column_order_from_the_embedded_tables(
     ``order_measurement_columns``. Canonical order puts ``Metadata_Dataset``
     FIRST (``EXPERIMENT``-owned, front block), so no embedded table and
     therefore no master has ever been canonically ordered. Measured: the
-    master comes out ``[Metadata_Well, Shape_Area, Metadata_ImageName,
+    master comes out ``[Metadata_Well, Size_Area, Metadata_ImageName,
     Object_Label, Metadata_Dataset]`` where canonical is
-    ``[Metadata_Dataset, Metadata_Well, Shape_Area, Metadata_ImageName,
+    ``[Metadata_Dataset, Metadata_Well, Size_Area, Metadata_ImageName,
     Object_Label]``.
 
     The plan's own prose states the property it wanted -- *"it inherits its
@@ -821,7 +821,7 @@ def test_master_carries_user_metadata_reads_ownership_not_the_prefix(
         {
             "Metadata_Dataset": ["plate"],
             "Metadata_ImageName": ["a.tiff"],
-            "Shape_Area": [4.0],
+            "Size_Area": [4.0],
             "Object_Label": [1],
         }
     )
@@ -1836,7 +1836,7 @@ def test_a_finalization_that_excludes_every_store_publishes_nothing(
         _strip_measurement_descriptor(tmp_path, stem)
     master = master_measurements_parquet_path(tmp_path)
     master.parent.mkdir(parents=True, exist_ok=True)
-    pl.DataFrame({"Object_Label": [1, 2], "Shape_Area": [4.0, 4.0]}).write_parquet(
+    pl.DataFrame({"Object_Label": [1, 2], "Size_Area": [4.0, 4.0]}).write_parquet(
         master
     )
     planted = master.read_bytes()

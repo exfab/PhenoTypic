@@ -6,7 +6,7 @@ from phenotypic.util._measurement_outputs import metric_token
 
 
 def test_strips_known_category():
-    assert metric_token("Shape_Area") == "Area"
+    assert metric_token("Size_Area") == "Area"
     assert metric_token("Size_IntegratedIntensity") == "IntegratedIntensity"
 
 
@@ -37,4 +37,4 @@ def test_every_category_strips_to_the_remainder():
 
 
 def test_sanitizes_whitespace():
-    assert metric_token("  Shape_Area  ") == "Area"
+    assert metric_token("  Size_Area  ") == "Area"

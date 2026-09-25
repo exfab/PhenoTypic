@@ -12,8 +12,8 @@ class _Recipe:
 def test_resolve_preview_node_partitions_edge_and_filter():
     p = ImagePipeline()
     p.set_filters({
-        "t0": TukeyOutlierRemover(on="Shape_Area", groupby=["Metadata_Strain"]),
-        "e0": EdgeCorrector(on="Shape_Area", groupby=["Metadata_Strain"]),
+        "t0": TukeyOutlierRemover(on="Size_Area", groupby=["Metadata_Strain"]),
+        "e0": EdgeCorrector(on="Size_Area", groupby=["Metadata_Strain"]),
     })
     recipe = _Recipe(p)
     edge = _resolve_preview_node(recipe, "edge", 0)

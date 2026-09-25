@@ -28,7 +28,7 @@ def _bound_output(tmp_path: Path) -> OutputRoot:
         "Metadata_Dataset": ["dataset"],
         str(IMAGE.IMAGE_NAME): ["plate"],
         "Object_Label": [1],
-        "Shape_Area": [100.0],
+        "Size_Area": [100.0],
     })
     seed_output_dir(
         output,
@@ -55,7 +55,7 @@ def _rewrite_master(output_root: OutputRoot) -> None:
     replacement = master_path.with_name("master-replacement.parquet")
     (
         pl.read_parquet(master_path)
-        .with_columns((pl.col("Shape_Area") + 1.0).alias("Shape_Area"))
+        .with_columns((pl.col("Size_Area") + 1.0).alias("Size_Area"))
         .write_parquet(replacement)
     )
     replacement.replace(master_path)
@@ -101,7 +101,7 @@ def test_analysis_construction_tolerates_known_invalid_analyzer(
         "invalid_edge": {
             "class": "EdgeCorrector",
             "params": {
-                "on": "Shape_Area",
+                "on": "Size_Area",
                 "groupby": ["Metadata_Strain"],
                 "top_n": "not-an-int",
                 "future_nested": {"revision": 1},

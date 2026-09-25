@@ -53,7 +53,7 @@ def _write_pipeline_with_unknown_classes(output_dir: Path) -> Path:
         "filters": {
             "edge": {
                 "class": "EdgeCorrector",
-                "params": {"on": "Shape_Area", "groupby": ["Metadata_Strain"]},
+                "params": {"on": "Size_Area", "groupby": ["Metadata_Strain"]},
             },
             "stale_filter": {
                 # Doesn't exist in the live namespace -- should be skipped.
@@ -87,7 +87,7 @@ def _known_pipeline_with_extensions_payload() -> dict:
             "edge": {
                 "class": "EdgeCorrector",
                 "params": {
-                    "on": "Shape_Area",
+                    "on": "Size_Area",
                     "groupby": ["Metadata_Strain"],
                     "future_filter_param": {"revision": 3},
                 },
@@ -97,7 +97,7 @@ def _known_pipeline_with_extensions_payload() -> dict:
         "model": {
             "class": "LinearLagModel",
             "params": {
-                "on": "Shape_Area",
+                "on": "Size_Area",
                 "groupby": ["Metadata_Strain"],
             },
         },
@@ -128,7 +128,7 @@ def _pipeline_with_invalid_and_unknown_analyzers() -> dict:
         "invalid_edge": {
             "class": "EdgeCorrector",
             "params": {
-                "on": "Shape_Area",
+                "on": "Size_Area",
                 "groupby": ["Metadata_Strain"],
                 "top_n": "not-an-int",
                 "future_nested": {
@@ -141,7 +141,7 @@ def _pipeline_with_invalid_and_unknown_analyzers() -> dict:
         "valid_edge": {
             "class": "EdgeCorrector",
             "params": {
-                "on": "Shape_Area",
+                "on": "Size_Area",
                 "groupby": ["Metadata_Strain"],
                 "top_n": 2,
             },
@@ -157,7 +157,7 @@ def _pipeline_with_invalid_and_unknown_analyzers() -> dict:
     payload["model"] = {
         "class": "LinearLagModel",
         "params": {
-            "on": "Shape_Area",
+            "on": "Size_Area",
             "groupby": ["Metadata_Strain"],
             "time_label": ["invalid", "shape"],
         },
@@ -324,7 +324,7 @@ def test_known_filter_edit_keeps_opaque_sibling_exactly(
     state = RecipeState.load(tmp_path)
     state.pipeline.set_filters({
         "edge": EdgeCorrector(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Strain"],
             top_n=7,
         )
@@ -348,7 +348,7 @@ def test_explicit_live_model_replaces_opaque_model_node(tmp_path: Path) -> None:
     state = RecipeState.load(tmp_path)
     state.pipeline.set_model(
         LinearLagModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Strain"],
         )
     )
@@ -443,13 +443,13 @@ def test_explicit_known_replacement_drops_nested_extensions_after_load(
 
     state.pipeline.set_filters({
         "edge": TukeyOutlierRemover(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Strain"],
         )
     })
     state.pipeline.set_model(
         LogGrowthModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Strain"],
         )
     )
@@ -691,7 +691,7 @@ def test_recipe_state_load_no_warnings_when_all_classes_resolve(
         "filters": {
             "edge": {
                 "class": "EdgeCorrector",
-                "params": {"on": "Shape_Area", "groupby": ["Metadata_Strain"]},
+                "params": {"on": "Size_Area", "groupby": ["Metadata_Strain"]},
             }
         },
         "model": None,

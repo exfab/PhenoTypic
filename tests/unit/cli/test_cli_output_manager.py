@@ -347,8 +347,8 @@ class TestAggregateMeasurementsAutoResolve:
                 "ColNum": [0],
                 "Size_Area": [10.0],
                 "Size_IntegratedIntensity": [100.0],
-                "Shape_Area": [10.0],
-                "Shape_Perimeter": [12.0],
+                "Shape_Circularity": [0.9],
+                "Shape_Solidity": [0.95],
             }
         )
         row.write_parquet(ds_dir / "img1.parquet")
@@ -394,7 +394,7 @@ class TestAggregateMeasurementsAutoResolve:
         assert set(seed_df.columns) == set(master_df.columns)
         assert seed_df.columns.index(
             str(IMAGE.IMAGE_NAME)
-        ) > seed_df.columns.index("Shape_Area")
+        ) > seed_df.columns.index("Size_Area")
         # Parquet round-trip: full row-by-row equality with the master after
         # aligning to the master's column order (polars .equals() is
         # column-order sensitive).
@@ -409,7 +409,7 @@ class TestAggregateMeasurementsAutoResolve:
 
         size_df = pl.read_csv(size_csv)
         assert "Size_Area" in size_df.columns
-        assert "Shape_Area" not in size_df.columns
+        assert "Shape_Circularity" not in size_df.columns
         assert str(IMAGE.IMAGE_NAME) in size_df.columns
 
     def test_no_state_file_keeps_master_and_splits_known_columns(

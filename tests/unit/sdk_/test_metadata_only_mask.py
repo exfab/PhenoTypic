@@ -24,14 +24,14 @@ def test_flag_column_name_is_qc_metadata_only():
 
 
 def test_real_bool_column_is_honored():
-    df = pd.DataFrame({FLAG: [False, True, False], "Shape_Area": [1.0, None, 3.0]})
+    df = pd.DataFrame({FLAG: [False, True, False], "Size_Area": [1.0, None, 3.0]})
 
     assert metadata_only_mask(df).tolist() == [False, True, False]
 
 
 def test_absent_column_degrades_to_all_false():
     """A notebook frame from ``image.measure()`` carries no flag."""
-    df = pd.DataFrame({"Shape_Area": [1.0, 2.0]})
+    df = pd.DataFrame({"Size_Area": [1.0, 2.0]})
 
     mask = metadata_only_mask(df)
 
@@ -78,7 +78,7 @@ def test_nullable_boolean_nulls_are_false():
 @pytest.mark.parametrize("index", [[0, 1, 2], [7, 8, 9], ["a", "b", "c"]])
 def test_mask_is_index_aligned(index):
     """Consumers use the mask to slice the frame; it must share its index."""
-    df = pd.DataFrame({"Shape_Area": [1.0, 2.0, 3.0]}, index=index)
+    df = pd.DataFrame({"Size_Area": [1.0, 2.0, 3.0]}, index=index)
 
     assert metadata_only_mask(df).index.tolist() == index
     assert df[~metadata_only_mask(df)].equals(df)

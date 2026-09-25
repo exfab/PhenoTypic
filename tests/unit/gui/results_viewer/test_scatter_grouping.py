@@ -5,6 +5,7 @@ from __future__ import annotations
 from phenotypic._gui.results_viewer._scatter_tab._grouping import group_columns
 
 MEAS = {
+    "MeasureSize": {"class": "MeasureSize", "params": {}},
     "MeasureShape": {"class": "MeasureShape", "params": {}},
     "MeasureIntensity": {"class": "MeasureIntensity", "params": {}},
     "MeasureColor": {
@@ -21,12 +22,12 @@ def test_exact_headers_group_by_measurer() -> None:
 
     If the implementation calls ``get_measurement_infoclasses`` on the class
     rather than an instance it raises, every measurer is skipped, and every
-    column lands in Unattributed. Asserting only "Shape_Area is in
-    MeasureShape" would KeyError, but asserting membership without
+    column lands in Unattributed. Asserting only "Size_Area is in
+    MeasureSize" would KeyError, but asserting membership without
     asserting absence let three sibling tests pass against exactly that bug.
     """
-    groups = group_columns(["Shape_Area", "Intensity_MeanIntensity"], MEAS)
-    assert "Shape_Area" in groups["MeasureShape"]
+    groups = group_columns(["Size_Area", "Intensity_MeanIntensity"], MEAS)
+    assert "Size_Area" in groups["MeasureSize"]
     assert "Intensity_MeanIntensity" in groups["MeasureIntensity"]
     assert "Unattributed" not in groups, (
         "no column here is unclaimed; an Unattributed group means the "
@@ -88,11 +89,11 @@ def test_metadata_is_one_flat_group_and_curation_is_its_own() -> None:
 def test_unclaimed_columns_land_in_unattributed() -> None:
     """Mixes claimed and unclaimed, so "everything is unattributed" fails."""
     groups = group_columns(
-        ["Object_Label", "Bbox_CenterRR", "Grid_RowNum", "Shape_Area"], MEAS
+        ["Object_Label", "Bbox_CenterRR", "Grid_RowNum", "Size_Area"], MEAS
     )
     assert set(groups["Unattributed"]) == {
         "Object_Label",
         "Bbox_CenterRR",
         "Grid_RowNum",
     }
-    assert groups["MeasureShape"] == ["Shape_Area"]
+    assert groups["MeasureSize"] == ["Size_Area"]

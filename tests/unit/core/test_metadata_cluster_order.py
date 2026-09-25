@@ -10,7 +10,7 @@ def test_order_measurement_columns_full_contract():
     cols = [
         "Grid_RowNum",                 # info
         "Metadata_ImageName",          # framework image (trailing)
-        "Shape_Area",                  # measurement
+        "Size_Area",                  # measurement
         "Metadata_Strain",             # front metadata (Strain cluster)
         "Object_Label",                # info (leads info block by name, not position)
         "Metadata_SampleID",           # front metadata (Identity cluster, leads)
@@ -27,7 +27,7 @@ def test_order_measurement_columns_full_contract():
         "Metadata_Media",
         "Metadata_UnknownTag",
         # measurements
-        "Shape_Area",
+        "Size_Area",
         # framework image block
         "Metadata_ImageName",
         # per-object info block
@@ -44,7 +44,7 @@ def test_order_measurement_columns_multiple_uncategorized_sort_last_alpha():
         "Metadata_Zebra",           # uncategorized
         "Metadata_Strain",          # known front metadata
         "Metadata_Apple",           # uncategorized
-        "Shape_Area",               # measurement
+        "Size_Area",               # measurement
         "Object_Label",             # info
     ]
     ordered = order_measurement_columns(cols)
@@ -52,7 +52,7 @@ def test_order_measurement_columns_multiple_uncategorized_sort_last_alpha():
         "Metadata_Strain",          # known metadata leads the front block
         "Metadata_Apple",           # unknowns trail known, alpha-sorted
         "Metadata_Zebra",
-        "Shape_Area",
+        "Size_Area",
         "Object_Label",
     ]
 
@@ -63,14 +63,14 @@ def test_order_measurement_columns_accepts_exact_legacy_headers():
 
     columns = [
         "Metadata_ImageName",
-        "Shape_Area",
+        "Size_Area",
         "Metadata_Media",
         "Metadata_SampleID",
     ]
     assert order_measurement_columns(columns) == [
         "Metadata_SampleID",
         "Metadata_Media",
-        "Shape_Area",
+        "Size_Area",
         "Metadata_ImageName",
     ]
 
@@ -78,11 +78,11 @@ def test_order_measurement_columns_accepts_exact_legacy_headers():
 def test_order_measurement_columns_no_metadata():
     from phenotypic.sdk_ import order_measurement_columns
 
-    cols = ["Shape_Area", "Object_Label", "Bbox_MinRR", "Intensity_MeanIntensity"]
+    cols = ["Size_Area", "Object_Label", "Bbox_MinRR", "Intensity_MeanIntensity"]
     ordered = order_measurement_columns(cols)
     # Measurements keep relative order; info block trails.
     assert ordered == [
-        "Shape_Area",
+        "Size_Area",
         "Intensity_MeanIntensity",
         "Object_Label",
         "Bbox_MinRR",
@@ -142,7 +142,7 @@ def test_finalize_mirror_applies_cluster_order(tmp_path):
             "Metadata_ImageName": ["plateA"],
             "Object_Label": [1],
             "Grid_RowNum": [1],
-            "Shape_Area": [123.0],
+            "Size_Area": [123.0],
         }
     )
     # External metadata CSV with columns in NON-canonical order.
@@ -166,7 +166,7 @@ def test_finalize_mirror_applies_cluster_order(tmp_path):
         "Metadata_Media",
         # measurements (the metadata-join flag has no producer enum and rides
         # along here; every row matched, so it is all-False)
-        "Shape_Area",
+        "Size_Area",
         "QC_MetadataOnly",
         # framework image block
         "Metadata_ImageName",
@@ -183,7 +183,7 @@ def test_join_metadata_prefixes_bare_columns(tmp_path):
     import polars as pl
     from phenotypic._cli._cli_output_manager import join_metadata
 
-    df = pl.DataFrame({"Metadata_ImageName": ["a"], "Shape_Area": [1.0]})
+    df = pl.DataFrame({"Metadata_ImageName": ["a"], "Size_Area": [1.0]})
     csv = tmp_path / "m.csv"
     # Join key already prefixed; attribute columns are BARE (Strain known, Foo unknown).
     csv.write_text("Metadata_ImageName,Strain,Foo\na,BY4741,bar\n")
@@ -202,7 +202,7 @@ def test_join_metadata_leaves_schema_header_columns_unprefixed(tmp_path):
     import polars as pl
     from phenotypic._cli._cli_output_manager import join_metadata
 
-    df = pl.DataFrame({"Metadata_ImageName": ["a"], "Shape_Area": [1.0]})
+    df = pl.DataFrame({"Metadata_ImageName": ["a"], "Size_Area": [1.0]})
     csv = tmp_path / "m.csv"
     # Grid_RowNum is a real info-block header; Strain is a bare metadata label.
     csv.write_text("Metadata_ImageName,Grid_RowNum,Strain\na,3,BY4741\n")
@@ -221,7 +221,7 @@ def test_join_metadata_prefixed_then_ordered_lands_in_front(tmp_path):
     from phenotypic._cli._cli_output_manager import join_metadata
 
     df = pl.DataFrame(
-        {"Metadata_ImageName": ["a"], "Shape_Area": [1.0], "Object_Label": [1]}
+        {"Metadata_ImageName": ["a"], "Size_Area": [1.0], "Object_Label": [1]}
     )
     csv = tmp_path / "m.csv"
     csv.write_text("Metadata_ImageName,Strain\na,BY4741\n")
@@ -229,7 +229,7 @@ def test_join_metadata_prefixed_then_ordered_lands_in_front(tmp_path):
     joined = join_metadata(df, csv)
     ordered = order_measurement_columns(joined.columns)
 
-    assert ordered.index("Metadata_Strain") < ordered.index("Shape_Area")
+    assert ordered.index("Metadata_Strain") < ordered.index("Size_Area")
 
 
 def test_join_metadata_inner_emits_no_phantom_flag(tmp_path):
@@ -244,7 +244,7 @@ def test_join_metadata_inner_emits_no_phantom_flag(tmp_path):
     from phenotypic._cli._cli_output_manager import join_metadata
     from phenotypic.schema import METADATA_MATCH
 
-    df = pl.DataFrame({"plate": ["A"], "Shape_Area": [1.0]})
+    df = pl.DataFrame({"plate": ["A"], "Size_Area": [1.0]})
     csv = tmp_path / "m.csv"
     # Plate B is metadata-only: an inner join must drop it silently, as today.
     csv.write_text("plate,Strain\nA,BY4741\nB,BY4742\n")
@@ -263,7 +263,7 @@ def test_join_metadata_left_keeps_metadata_row_order(tmp_path):
     from phenotypic._cli._cli_output_manager import join_metadata
     from phenotypic.schema import METADATA_MATCH
 
-    df = pl.DataFrame({"plate": ["C", "A"], "Shape_Area": [3.0, 1.0]})
+    df = pl.DataFrame({"plate": ["C", "A"], "Size_Area": [3.0, 1.0]})
     csv = tmp_path / "m.csv"
     csv.write_text("plate,Strain\nA,s1\nB,s2\nC,s3\n")
 
@@ -287,7 +287,7 @@ def test_join_metadata_duplicate_keys_warn_is_height_independent(tmp_path, caplo
     import polars as pl
     from phenotypic._cli._cli_output_manager import join_metadata
 
-    df = pl.DataFrame({"plate": ["A", "B"], "Shape_Area": [1.0, 2.0]})
+    df = pl.DataFrame({"plate": ["A", "B"], "Size_Area": [1.0, 2.0]})
     csv = tmp_path / "m.csv"
     csv.write_text("plate,Strain\nA,s1\nA,s2\n")
 
@@ -305,7 +305,7 @@ def test_join_metadata_measurement_fanout_never_warns_duplicates(tmp_path, caplo
     import polars as pl
     from phenotypic._cli._cli_output_manager import join_metadata
 
-    df = pl.DataFrame({"plate": ["A", "A", "A"], "Shape_Area": [1.0, 2.0, 3.0]})
+    df = pl.DataFrame({"plate": ["A", "A", "A"], "Size_Area": [1.0, 2.0, 3.0]})
     csv = tmp_path / "m.csv"
     csv.write_text("plate,Strain\nA,s1\n")
 

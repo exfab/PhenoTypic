@@ -28,7 +28,7 @@ def _measurements_with_metadata() -> pd.DataFrame:
     return pd.DataFrame(
         {
             "Object_Label": [1, 2],
-            "Shape_Area": [4.0, 9.0],
+            "Size_Area": [4.0, 9.0],
             "Metadata_ImageFile": ["plate.tif", "plate.tif"],
             "Metadata_Dataset": ["plate", "plate"],
         }
@@ -264,7 +264,7 @@ def _store_measurements() -> pd.DataFrame:
     return pd.DataFrame(
         {
             "Object_Label": [1, 2],
-            "Shape_Area": [4.0, 4.0],
+            "Size_Area": [4.0, 4.0],
             "Metadata_ImageName": ["plate.tiff", "plate.tiff"],
         }
     )
@@ -523,7 +523,7 @@ def test_the_metadata_table_is_written_not_a_joined_one(
     assert measurements.shape[0] > 0, (
         "the store embedded no measured rows; the assertion below is vacuous"
     )
-    assert "Shape_Area" in measurements.columns
+    assert "Size_Area" in measurements.columns
 
     assert "Metadata_Strain" not in measurements.columns
     assert _metadata_payload(store).is_file()
