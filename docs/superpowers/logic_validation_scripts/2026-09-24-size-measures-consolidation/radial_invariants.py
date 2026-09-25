@@ -207,6 +207,143 @@ def check_06_wide_runner_separates_mean_from_robust_mean() -> None:
           f"{radii['median']:.4f}")
 
 
+def segment_signature(y0: float, x_lo: float, x_hi: float) -> np.ndarray:
+    """Distance from the origin to the horizontal segment {y = y0, x_lo <= x <= x_hi}
+    along each bin-centre ray, or 0 where the ray misses it."""
+    th = bin_centres()
+    s, c = np.sin(th), np.cos(th)
+    out = np.zeros_like(th)
+    ahead = s * y0 > 0
+    t = y0 / s[ahead]
+    x = t * c[ahead]
+    hit = (x >= x_lo) & (x <= x_hi)
+    out[np.flatnonzero(ahead)[hit]] = t[hit]
+    return out
+
+
+def check_07_fragmented_label_is_sampled_whole() -> None:
+    """Spec 4.1 (phase-1 review HIGH-1, option A): all contours of a label are sampled.
+
+    A disk of radius 15 at the centre plus a separate segment 100 below it, running
+    from x = -30 to x = 189.5 (the unit test's one-pixel line, whose 0.5-iso outline
+    ends half a pixel beyond its last pixel centre). Per ray, the outermost crossing
+    of the whole label is max(disk edge, segment). Claims checked:
+
+    * MaxRadius is the reach of the farthest piece: hypot(100, 189.5).
+    * MedianRadius stays on the central piece while the far piece spans under half of
+      all directions; RobustMeanRadius stays on it only while the span is under the
+      trim proportion. This segment spans about 22% of directions, which is past the
+      20% trim, so the robust mean is pulled off 15; a shorter one (x <= 60, about
+      13%) is not.
+    * The rejected rule (sample one outline only) measures the far piece instead when
+      its outline is the longer one: the median of the segment alone, over the
+      directions it spans, is far from 15.
+    """
+    disk = np.full(K, 15.0)
+    seg = segment_signature(100.0, -30.0, 189.5)
+    whole = np.maximum(disk, seg)
+    span = float((seg > 0).mean())
+    radii = five_radii(whole, inscribed=15.0)
+    # Bin centres miss the exact end point. r = 100/sin(theta) changes at
+    # |dr/dtheta| = r cot(theta) there, so the nearest centre, at most one bin away,
+    # lands at most r cot(theta) * 2pi/K short (7.1 px). The implementation keeps
+    # the extreme vertex per bin and so reaches the end exactly.
+    reach = float(np.hypot(100.0, 189.5))
+    slack = reach * (189.5 / 100.0) * 2.0 * np.pi / K
+    check("07 far piece sets MaxRadius", reach - slack <= radii["max"] <= reach,
+          f"{radii['max']:.3f} in [{reach - slack:.3f}, {reach:.3f}]")
+    check("07 far piece spans under half the directions", 0.20 < span < 0.5, f"{span:.4f}")
+    check("07 median stays on the central piece", radii["median"] == 15.0, f"{radii['median']}")
+    check("07 robust mean pulled once span exceeds the trim", radii["robust_mean"] > 15.0 + 1.0,
+          f"{radii['robust_mean']:.3f}")
+    short = np.maximum(disk, segment_signature(100.0, -30.0, 60.0))
+    short_span = float((short > 15.0).mean())
+    check("07 robust mean holds while span is under the trim",
+          short_span < TRIM and abs(stats.trim_mean(short, TRIM) - 15.0) < 1e-12,
+          f"span {short_span:.4f}, robust {stats.trim_mean(short, TRIM):.4f}")
+    seg_only = seg[seg > 0]
+    check("07 one-outline rule would measure the far piece", float(np.median(seg_only)) > 100.0,
+          f"median over the segment's directions {np.median(seg_only):.2f}")
+
+
+def check_08_hole_never_wins_a_bin() -> None:
+    """Spec 4.1, the continuous half: along any ray the hole's crossing is inner.
+
+    A ring (outer radius 30, hole radius 12, both centred at the origin), viewed from
+    centres inside the hole and inside the ring. Every ray from a point inside the
+    outer disk crosses the hole's circle (if at all) before it leaves the outer disk,
+    so max(outer, hole) per ray is the outer crossing. This holds per *ray*; check 09
+    shows why it does not hold per *bin* of a traced outline, which is why the
+    implementation fills holes before tracing.
+    """
+    th = bin_centres()
+    d = np.stack([np.cos(th), np.sin(th)], axis=1)
+
+    def exit_distance(p: np.ndarray, radius: float) -> np.ndarray:
+        """Far intersection of each ray from p with a circle of *radius* (NaN on a miss)."""
+        b = d @ p
+        disc = b * b - (p @ p - radius * radius)
+        return np.where(disc >= 0, -b + np.sqrt(np.clip(disc, 0, None)), np.nan)
+
+    worst = 0.0
+    for p in (np.array([0.0, 0.0]), np.array([5.0, -3.0]), np.array([20.0, 4.0])):
+        outer = exit_distance(p, 30.0)
+        hole = exit_distance(p, 12.0)
+        pooled = np.fmax(outer, hole)
+        worst = max(worst, float(np.max(np.abs(pooled - outer))))
+    check("08 a hole contour never wins a bin", worst == 0.0, f"max |pooled - outer| {worst}")
+
+
+def iso_half_vertices(mask: np.ndarray) -> np.ndarray:
+    """Vertices of the 0.5 iso-contour of a binary mask, as (row, col).
+
+    With values 0 and 1, marching squares interpolates each crossing to the
+    midpoint of an edge between 4-adjacent pixels that differ. So the vertex set
+    is exactly those midpoints, whatever the tracer's connectivity rule.
+    """
+    m = np.pad(mask, 1).astype(np.int8)
+    r, c = np.nonzero(m[:, 1:] != m[:, :-1])
+    horizontal = np.stack([r, c + 0.5], axis=1)
+    r, c = np.nonzero(m[1:, :] != m[:-1, :])
+    vertical = np.stack([r + 0.5, c], axis=1)
+    return np.concatenate([horizontal, vertical]) - 1.0
+
+
+def check_09_sparse_outline_lets_a_hole_fill_empty_bins() -> None:
+    """Spec 4.1: why holes are filled before tracing.
+
+    A digital disk of radius R has 4(2R + 1) = 8R + 4 outline vertices, fewer than
+    K = 360 bins for R <= 44, so the outer outline leaves bins empty. On a disk of
+    radius 12 with a centred hole of radius 4, seen from the exact centre, some bins
+    hold hole vertices and no outer vertex. Pooled without a fill, the hole's radius
+    (about 4.5) would win those bins, not interpolation from the outer neighbours.
+    """
+    for r in (12, 30, 44, 45):
+        yy, xx = np.mgrid[-r - 2:r + 3, -r - 2:r + 3]
+        n = len(iso_half_vertices(xx * xx + yy * yy <= r * r))
+        check(f"09 disk R={r} has 8R+4 outline vertices", n == 8 * r + 4, f"{n}")
+    check("09 R=44 leaves bins empty, R=45 need not", 8 * 44 + 4 < K <= 8 * 45 + 4,
+          f"{8 * 44 + 4} < {K} <= {8 * 45 + 4}")
+
+    yy, xx = np.mgrid[-14:15, -14:15]
+    disk = xx * xx + yy * yy <= 12 * 12
+    hole = xx * xx + yy * yy <= 4 * 4
+    centre = np.array([14.0, 14.0])
+
+    def bins_of(points: np.ndarray) -> set[int]:
+        o = points - centre
+        a = np.arctan2(o[:, 0], o[:, 1])
+        return set((((a + np.pi) / (2 * np.pi) * K).astype(int) % K).tolist())
+
+    outer_bins = bins_of(iso_half_vertices(disk))
+    hole_bins = bins_of(iso_half_vertices(hole))
+    won = hole_bins - outer_bins
+    check("09 outer outline leaves bins empty at R=12", len(outer_bins) < K,
+          f"{len(outer_bins)} of {K} filled")
+    check("09 an unfilled hole would supply some of them", len(won) > 0,
+          f"{len(won)} bins hold only hole vertices")
+
+
 def main_checks() -> int:
     check_01_edt_statistics_on_a_disk_are_not_radii()
     check_02_whole_objmap_edt_merges_touching_colonies()
@@ -214,6 +351,9 @@ def main_checks() -> int:
     check_04_elongated_colony_values()
     check_05_angular_sampling_keeps_runner_inside_breakdown()
     check_06_wide_runner_separates_mean_from_robust_mean()
+    check_07_fragmented_label_is_sampled_whole()
+    check_08_hole_never_wins_a_bin()
+    check_09_sparse_outline_lets_a_hole_fill_empty_bins()
     print(f"\n{len(FAILURES)} failure(s)" + (f": {FAILURES}" if FAILURES else ""))
     return 1 if FAILURES else 0
 

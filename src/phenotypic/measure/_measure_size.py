@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 import numpy as np
 import pandas as pd
 from pydantic import Field
-from scipy.ndimage import label as ndi_label
+from scipy.ndimage import binary_fill_holes, label as ndi_label
 from scipy.stats import trim_mean
 from skimage.measure import find_contours
 
@@ -88,9 +88,21 @@ class MeasureSize(MeasureFeatures):
         The center is the centroid of the distance-transform's near-maximal
         plateau, not its argmax: the transform's values are square roots of
         exact integers, so exact ties are common and an argmax would resolve
-        them by raster order. The boundary is the subpixel marching-squares
-        contour at the 0.5 iso-level. Sampling is by angle rather than along
-        the contour so that a narrow protrusion contributes only its angular
+        them by raster order. The plateau component holding the argmax is
+        taken 8-connected, as objects are labelled, so a diagonal run of tied
+        pixels is one plateau.
+
+        The boundary is every subpixel marching-squares contour of the
+        hole-filled label at the 0.5 iso-level, pooled: a label made of
+        several pieces (a runner joined only at a corner, or fragments merged
+        under one label) is sampled whole, so each bin keeps the outermost
+        crossing of any piece. Holes are filled first because a small outline
+        has fewer vertices than bins, and a hole's vertices would otherwise
+        fill bins that the outer outline left empty. The contours are traced
+        8-connected to match how objects are labelled; pooled, the result
+        does not depend on it, since connectivity only regroups the same
+        crossings into contours. Sampling is by angle rather than along the
+        contour so that a narrow protrusion contributes only its angular
         width, which is what keeps the trimmed mean inside its breakdown point.
 
         Args:
@@ -110,14 +122,21 @@ class MeasureSize(MeasureFeatures):
         plateau = edt >= (1.0 - self.plateau_tolerance) * peak
         # ndi_label returns int | tuple[ndarray, int]; with no output arg the
         # runtime value is always the tuple, so narrow the stub's union.
-        components = cast("tuple[np.ndarray, int]", ndi_label(plateau))[0]
+        components = cast(
+                "tuple[np.ndarray, int]",
+                ndi_label(plateau, structure=np.ones((3, 3), dtype=bool)),
+        )[0]
         dominant = components[np.unravel_index(np.argmax(edt), edt.shape)]
         center = np.argwhere(components == dominant).mean(axis=0)
 
-        contours = find_contours(np.pad(obj_mask, 1).astype(float), 0.5)
+        contours = find_contours(
+                np.pad(binary_fill_holes(obj_mask), 1).astype(float),
+                0.5,
+                fully_connected="high",
+        )
         if not contours:
             return None
-        outline = max(contours, key=len) - 1.0
+        outline = np.concatenate(contours) - 1.0
 
         offsets = outline - center
         radii = np.hypot(offsets[:, 0], offsets[:, 1])

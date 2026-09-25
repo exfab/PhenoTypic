@@ -95,15 +95,36 @@ a straddler.
 All five radii are statistics of one set of centre-to-edge distances.
 
 - **Centre.** The centroid of the object's EDT peak plateau (`edt >= (1 −
-  plateau_tolerance) · max`, restricted to the connected component containing the argmax).
+  plateau_tolerance) · max`, restricted to the 8-connected component containing the argmax,
+  matching the 8-connected object labelling: a diagonal run of tied pixels is one plateau).
   It lies inside compact colonies; for a ring-shaped colony (e.g. central lysis) the
   plateau is an arc and its centroid can fall in the central hole. A plateau centroid is used rather than the argmax
   because EDT values are square roots of integers, so exact ties are common and an argmax
   would break them in raster order.
-- **Radial signature.** Take the subpixel marching-squares contour at the 0.5 iso-level of
-  the padded crop. Bin its vertices by angle about the centre into `angular_bins` equal
-  bins, and keep the outermost distance per bin (max, not mean: the branch's
-  mutation-pinned choice). Empty bins are filled by circular interpolation.
+- **Radial signature.** Take **all** subpixel marching-squares contours at the 0.5
+  iso-level of the padded crop, traced 8-connected (`fully_connected="high"`, matching the
+  8-connected object labelling), and pool their vertices. Once pooled, the connectivity
+  setting cannot change the result: it only decides how a saddle cell's four edge
+  crossings pair into contours, never which crossings exist. Bin the vertices by angle about
+  the centre into `angular_bins` equal bins, and keep the outermost distance per bin (max,
+  not mean: the branch's mutation-pinned choice). Empty bins are filled by circular
+  interpolation. "Outermost crossing per bin" therefore holds over the whole label.
+  **Holes are filled before tracing** (`binary_fill_holes` on the contour input only; the
+  centre and InscribedRadius stay on the unfilled mask). Along any ray a hole's crossing
+  lies inside the outer one, but an outline of radius R has only about 8R vertices, so
+  below R ≈ 45 the outer outline leaves bins empty. A hole's vertices would then fill some
+  of them with the hole's smaller radius, where interpolation from the outer neighbours
+  belongs. Measured without the fill: 18 bins won on a ring of radius 12, 1 on radius 30, and
+  a change above 0.05 px in 87 of 552 Otsu colonies on the synthetic plate. For a **fragmented
+  label** (pieces joined only at a corner, or separate fragments a merging refiner put under
+  one label), every piece contributes: MaxRadius is the reach of the farthest piece, the
+  bins a far piece spans carry its distance, and bins between pieces are interpolated. So
+  MeanRadius rises with the far pieces' angular span, MedianRadius stays on the central
+  piece while the other pieces span under half of all directions, and RobustMeanRadius stays
+  on it while they span under `trim_proportion` of them. The branch traced only the longest
+  4-connected contour, which dropped diagonally attached runners and, when a non-central
+  fragment had the longest outline, measured the distance to that fragment instead (phase-1
+  review HIGH-1).
 - **InscribedRadius** is the EDT maximum, which is the exact distance from the centre to
   the nearest edge. It is the family's minimum **up to half a pixel**: the EDT measures to
   background pixel *centres*, the signature to the 0.5 iso-contour, which is half a pixel
@@ -362,3 +383,12 @@ these read the schema through `_measurement_infoclass`.
 | Migration goldens | Differential main-vs-tip proof first, then recapture all four (Shape, Size, Intensity, KeepSectionLargest) |
 | §4.1 wording | InscribedRadius is the minimum only up to half a pixel; the centre can fall in the hole of a ring-shaped colony |
 | "Formerly reported as …" in descs | Dropped: §7 allows only the same-name clarification in `desc` |
+
+**Phase-1 review (2026-09-24)**, report
+`reports/2026-09-24-size-measures-consolidation/phase1-impl-test-review.md`:
+
+| Decision | Choice |
+|---|---|
+| Which contours the radial signature samples (HIGH-1) | Option A (user decision): all contours of the label, traced 8-connected (`fully_connected="high"`), pooled with `np.concatenate`. A fragmented label is measured whole: MaxRadius is the farthest piece's reach. Not chosen: B, the longest 8-connected contour only, which still measures the wrong piece when a non-central fragment has the longest outline; C, the contour of the centre's piece, under which MaxRadius stops meaning reach; D, keep the longest 4-connected contour and document it |
+| Holes under option A | Filled before tracing, which realises A as it was presented ("a hole's contour can never win a bin; ring and disk unchanged"). Pooling alone let hole vertices fill bins that the outer outline left empty (found while implementing A; 96 of 552 synthetic-plate Otsu colonies have holes) |
+| Plateau connectivity | 8-connected (`structure=np.ones((3, 3))`), following the user's "treat diagonal contacts as connected". With 4-connectivity a diagonal line's centre was its end pixel |

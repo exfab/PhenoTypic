@@ -27,7 +27,12 @@ TOL = 0.6  # pixels; see module docstring
 
 
 def _crop(mask: np.ndarray) -> np.ndarray:
-    """Crop a mask to its bounding box, mimicking regionprops.image."""
+    """Crop a mask to its bounding box, mimicking regionprops.image.
+
+    Only for a mask with no all-background row or column inside its box:
+    `np.ix_` drops such rows, which would pull separate pieces together. The
+    multi-piece tests below go through `MeasureSize().measure` instead.
+    """
     return mask[np.ix_(mask.any(axis=1), mask.any(axis=0))]
 
 
@@ -232,3 +237,170 @@ def test_crescent_keeps_the_radius_ordering():
     assert p["Size_InscribedRadius"] <= p["Size_MedianRadius"] <= p["Size_MaxRadius"]
     assert p["Size_InscribedRadius"] <= p["Size_RobustMeanRadius"] <= p["Size_MaxRadius"]
     assert p["Size_InscribedRadius"] <= p["Size_MeanRadius"] <= p["Size_MaxRadius"]
+
+
+# ---------------------------------------------------------------------------
+# Labels that are not one 4-connected piece (phase-1 review HIGH-1, option A).
+#
+# The signature pools every contour of the label, so each bin keeps the
+# outermost crossing of any piece. These go through MeasureSize().measure so
+# that the crop is regionprops' own `props.image`.
+#
+# Mutation: restore `max(contours, key=len)` in _trace_radial_signature. With
+# the default 4-connected tracing, all three tests fail; with
+# fully_connected="high" kept, the two diagonal cases become one contour and
+# only the separate-line case fails. Dropping fully_connected="high" alone is
+# an equivalent mutant once contours are pooled: connectivity only decides how
+# a saddle cell's four edge crossings pair into contours, never which exist.
+# ---------------------------------------------------------------------------
+
+
+def _measure_one_label(mask: np.ndarray):
+    from phenotypic import Image
+
+    rgb = np.zeros((*mask.shape, 3), dtype=np.uint8)
+    rgb[mask] = 200
+    image = Image(rgb)
+    image.objmap[:] = mask.astype(int)
+    assert image.num_objects == 1
+    return MeasureSize().measure(image).iloc[0]
+
+
+def test_a_separate_piece_under_the_same_label_is_measured_with_the_body():
+    """Disk of radius 15 centred at (50, 50), plus a 1-px line on row 150 from
+    column 20 to 239, all one label, as a merging refiner leaves fragments.
+
+    Mechanism, from the disk centre (the plateau is the disk's, symmetric, so
+    the centre is exactly (50, 50)):
+
+    * MaxRadius: the farthest crossing is the line's end cap, the 0.5-iso
+      vertex half a pixel past its last pixel, at offset (100, 189.5). Exact.
+    * The line's crossings lie at angles 27.8 to 107.0 degrees, so they own
+      bins 207..286: 80 of 360, each at least 99.5 px (the near edge of the
+      line). The other 280 bins are the disk's, within TOL of 15.
+    * MedianRadius: 80 < 180, so the median is a disk bin.
+    * The trim drops 72 bins per end, so 8 line bins survive into
+      RobustMeanRadius and all 80 into MeanRadius; lower bounds follow.
+    * InscribedRadius is the disk's: nearest background at offset (15, 1).
+
+    The old longest-contour rule measured the line from the disk's centre
+    (MedianRadius 149.9, review HIGH-1 row 1).
+    """
+    y, x = np.mgrid[0:200, 0:260]
+    mask = (y - 50) ** 2 + (x - 50) ** 2 <= 15**2
+    mask[150, 20:240] = True
+    row = _measure_one_label(mask)
+
+    assert row["Size_InscribedRadius"] == pytest.approx(np.sqrt(226), abs=1e-12)
+    assert row["Size_MaxRadius"] == pytest.approx(np.hypot(100.0, 189.5), abs=1e-9)
+    assert row["Size_MedianRadius"] == pytest.approx(15.0, abs=TOL)
+    disk_floor = 15.0 - TOL
+    assert row["Size_RobustMeanRadius"] >= (208 * disk_floor + 8 * 99.5) / 216
+    assert row["Size_MeanRadius"] >= (280 * disk_floor + 80 * 99.5) / 360
+
+
+def test_a_runner_joined_only_at_a_corner_sets_the_max_radius():
+    """Disk of radius 20 centred at (40, 40), plus a 1-px diagonal runner of
+    pixels (54 + k, 54 + k), k = 0..39. Pixel (54, 54) is in the disk and
+    (55, 55) is not, so the runner touches the disk only at a corner: one
+    8-connected label, two 4-connected pieces.
+
+    Mechanism: the runner lies on the diagonal, so the label is symmetric under
+    transposition and the plateau centre stays at (40, 40). The runner's
+    crossings sit within 0.354 px of the diagonal and at least 20.8 px out, so
+    within 0.97 degrees of 45 degrees; 45 degrees is a bin edge, so they own
+    bins 224 and 225 and nothing else. Each keeps the tip vertex at offset
+    (53.5, 53) or (53, 53.5).
+
+    * MaxRadius = hypot(53.5, 53) exactly.
+    * MeanRadius rises by exactly those two bins over the plain disk:
+      2 * (reach - s) / 360, where s is the disk's value in each bin, within
+      TOL of 20. (Their neighbours hold disk vertices, so no interpolation ramp
+      forms.)
+    * MedianRadius and RobustMeanRadius stay on the disk.
+
+    The old rule traced 4-connected, left the runner out, and reported the
+    disk's 20.5 (review HIGH-1 row 3).
+    """
+    y, x = np.mgrid[0:120, 0:120]
+    disk = (y - 40) ** 2 + (x - 40) ** 2 <= 20**2
+    mask = disk.copy()
+    for k in range(40):
+        mask[54 + k, 54 + k] = True
+    row = _measure_one_label(mask)
+    plain = _measure_one_label(disk)
+    reach = np.hypot(53.5, 53.0)
+
+    assert row["Size_MaxRadius"] == pytest.approx(reach, abs=1e-9)
+    lift = row["Size_MeanRadius"] - plain["Size_MeanRadius"]
+    assert 2 * (reach - (20.0 + TOL)) / 360 <= lift <= 2 * (reach - (20.0 - TOL)) / 360
+    assert row["Size_MedianRadius"] == pytest.approx(20.0, abs=TOL)
+    assert row["Size_RobustMeanRadius"] == pytest.approx(20.0, abs=TOL)
+    assert row["Size_InscribedRadius"] == plain["Size_InscribedRadius"]
+
+
+def test_a_diagonal_line_is_one_object_for_the_signature():
+    """A 15-px line of pixels (5 + k, 5 + k): one 8-connected label whose
+    pixels share no edge, so 4-connected tracing sees 15 separate squares.
+
+    Mechanism: every pixel's distance-transform value is 1, so the whole line
+    is the plateau. Taken 8-connected, it is one component, and the centre is
+    its centroid, the middle pixel (7, 7) in the crop.
+
+    * MaxRadius: the end pixels' outer crossings, e.g. (14.5, 14), sit at
+      offset (7.5, 7) from the centre, so hypot(7.5, 7) exactly.
+    * MedianRadius: the middle pixel's own crossings, 0.5 px out on the
+      axes, fill the bins at 0, 90, 180 and 270 degrees (bin indices 180,
+      270, 0 and 90). Every other crossing, at offsets (j, j +- 0.5) and
+      (j +- 0.5, j), lies in the first or third quadrant. The other two
+      quadrants therefore lie between two 0.5-valued bins, and
+      interpolation holds their 182 bins (0, 90..180, 270..359) at exactly
+      0.5. Every other bin is larger, so the median is 0.5.
+
+    Mutations: the old rule traced 4-connected and kept one square, 0.5 for
+    every radius (review HIGH-1 row 4). A 4-connected plateau makes the first
+    pixel alone the plateau, puts the centre on the line's end, and gives
+    MaxRadius hypot(14.5, 14) = 20.16.
+    """
+    mask = np.zeros((30, 30), dtype=bool)
+    for k in range(15):
+        mask[5 + k, 5 + k] = True
+    row = _measure_one_label(mask)
+
+    assert row["Size_InscribedRadius"] == 1.0
+    assert row["Size_MaxRadius"] == pytest.approx(np.hypot(7.5, 7.0), abs=1e-9)
+    assert row["Size_MedianRadius"] == 0.5
+
+
+def test_a_hole_never_supplies_a_bin():
+    """A disk of radius 12 with a centred hole of radius 4, as a colony with
+    central lysis looks. The signature pools the outlines of the hole-filled
+    label, so the hole contributes nothing: from the same centre the ring's
+    signature is the disk's, bin for bin.
+
+    Why the fill is needed: an outline of radius R has about 8R vertices, so at
+    R = 12, 8R + 4 = 100 vertices spread over 360 bins. Without it, the hole's
+    vertices (about 4 px out) land in bins the outer outline left empty, and
+    those bins read the hole's radius where they should interpolate the outer
+    one (measured: 64 of 360 bins differ, minimum 3.64).
+
+    The centre is pinned by passing the disk's own distance transform, whose
+    plateau is symmetric about the disk centre. The contract takes `edt` as an
+    argument, which makes this possible.
+
+    Mutation: trace `obj_mask` instead of `binary_fill_holes(obj_mask)` -> the
+    signatures differ and the minimum drops to the hole's radius.
+    """
+    from scipy.ndimage import distance_transform_edt
+
+    y, x = np.mgrid[-15:16, -15:16]
+    disk = x**2 + y**2 <= 12**2
+    ring = disk & (x**2 + y**2 > 4**2)
+    disk, ring = _crop(disk), _crop(ring)
+    edt = distance_transform_edt(np.pad(disk, 1))[1:-1, 1:-1]
+    op = MeasureSize()
+
+    ring_signature = op._trace_radial_signature(ring, edt)
+    disk_signature = op._trace_radial_signature(disk, edt)
+    assert np.array_equal(ring_signature, disk_signature)
+    assert ring_signature.min() >= 12.0 - TOL
