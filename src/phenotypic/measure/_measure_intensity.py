@@ -7,9 +7,11 @@ from phenotypic.schema import OBJECT
 if TYPE_CHECKING:
     from phenotypic._core._image import Image
 
+import numpy as np
 import pandas as pd
 
 from phenotypic.abc_ import MeasureFeatures
+from phenotypic.measure._object_geometry import convex_hull_area
 from phenotypic.schema import INTENSITY
 
 
@@ -60,9 +62,6 @@ class MeasureIntensity(MeasureFeatures):
     _measurement_infoclass: ClassVar[type] = INTENSITY
 
     def _operate(self, image: Image) -> pd.DataFrame:
-        from phenotypic.measure._measure_shape import MeasureShape
-        from phenotypic.schema import SHAPE
-
         intensity_matrix, objmap = image.gray[:].copy(), image.objmap[:].copy()
         measurements = {
             str(INTENSITY.INTEGRATED_INTENSITY)        : self._calculate_sum(
@@ -104,16 +103,16 @@ class MeasureIntensity(MeasureFeatures):
         measurements.insert(
                 loc=0, column=OBJECT.LABEL, value=image.objects.labels2series()
         )
-        shape_measurements = MeasureShape().measure(image)
-
-        measurements[INTENSITY.DENSITY] = (
-                measurements[INTENSITY.INTEGRATED_INTENSITY]
-                / shape_measurements[SHAPE.AREA]
+        props = image.objects.props
+        areas = np.array([p.area for p in props], dtype=float)
+        convex_areas = np.array(
+                [convex_hull_area(p.coords)[1] for p in props], dtype=float
         )
-
+        measurements[INTENSITY.DENSITY] = (
+                measurements[INTENSITY.INTEGRATED_INTENSITY] / areas
+        )
         measurements[INTENSITY.CONVEX_DENSITY] = (
-                measurements[INTENSITY.INTEGRATED_INTENSITY]
-                / shape_measurements[SHAPE.CONVEX_AREA]
+                measurements[INTENSITY.INTEGRATED_INTENSITY] / convex_areas
         )
         return measurements
 

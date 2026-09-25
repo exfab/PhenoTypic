@@ -59,3 +59,27 @@ def _aligned(new: pd.DataFrame, baseline: pd.DataFrame) -> pd.DataFrame:
 def test_moved_size_columns_keep_mains_values(plate, baseline, size_header, old_header):
     merged = _aligned(MeasureSize().measure(plate), baseline)
     np.testing.assert_allclose(merged[size_header], merged[old_header], rtol=RTOL)
+
+
+def test_measure_intensity_is_unchanged_from_main(plate, baseline):
+    from phenotypic.measure import MeasureIntensity
+
+    new = MeasureIntensity().measure(plate)
+    merged = new.merge(baseline, on=str(OBJECT.LABEL), suffixes=("", "_main"),
+                       validate="one_to_one")
+    for column in new.columns:
+        if column == str(OBJECT.LABEL):
+            continue
+        np.testing.assert_allclose(merged[column], merged[f"{column}_main"], rtol=RTOL)
+
+
+def test_measure_intensity_does_not_run_another_measurer(plate, monkeypatch):
+    """Mutation: restore `MeasureShape().measure(image)` in MeasureIntensity -> fails."""
+    from phenotypic.measure import MeasureIntensity, MeasureShape
+
+    def _refuse(self, image):
+        raise AssertionError("MeasureIntensity must not run MeasureShape")
+
+    monkeypatch.setattr(MeasureShape, "_operate", _refuse)
+    monkeypatch.setattr(MeasureSize, "_operate", _refuse)
+    MeasureIntensity().measure(plate)
