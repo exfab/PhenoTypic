@@ -36,7 +36,10 @@ where=$(cd "$TREE" && uv run python -c "import phenotypic, pathlib; print(pathli
 [[ $where == "$TREE"/* ]] || { echo "PROVENANCE FAIL: phenotypic imports from $where, not $TREE" >&2; exit 3; }
 echo "tree $TREE @ $(git -C "$TREE" rev-parse --short HEAD); phenotypic from $where"
 
-jid=$(sbatch --parsable --array=0-$((SHARDS - 1))%${SHARDS} --job-name="size-gate-${LABEL}" \
+# PARTITION overrides the harness's `short`; use it when that pool is held by other work
+# (a pending job cannot be moved off `short` afterwards: its QOS is fixed at submit).
+PART=(); [[ -n ${PARTITION:-} ]] && PART=(--partition="$PARTITION")
+jid=$(sbatch --parsable "${PART[@]}" --array=0-$((SHARDS - 1))%${SHARDS} --job-name="size-gate-${LABEL}" \
       --export=ALL,WORKTREE="$TREE",SCOPE="$SCOPE",SHARDS=$SHARDS,RESULTS_DIR="$RESULTS" \
       "$HARNESS" 2>&1)
 [[ $jid =~ ^[0-9]+$ ]] || { echo "SUBMIT FAILED: $jid" >&2; exit 1; }
@@ -44,7 +47,7 @@ echo "array $jid -> $RESULTS"
 
 deps=$jid
 if [[ ${DOCS:-0} == 1 ]]; then
-    djid=$(sbatch --parsable --export=ALL,WORKTREE="$TREE" \
+    djid=$(sbatch --parsable "${PART[@]}" --export=ALL,WORKTREE="$TREE" \
            "$REPO/docs/superpowers/plans/2026-09-24-size-measures-consolidation/build_docs_size_note.sbatch" 2>&1)
     [[ $djid =~ ^[0-9]+$ ]] || { echo "DOCS SUBMIT FAILED: $djid" >&2; exit 1; }
     echo "docs build $djid -> $TREE/docs/_build/size-note"
