@@ -13,6 +13,7 @@ from phenotypic.refine import MaskFill, MaskOpening
 from phenotypic.measure import (
     MeasureIntensity,
     MeasureShape,
+    MeasureSize,
     MeasureTexture,
     MeasureColor,
 )
@@ -37,7 +38,7 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
         9. RemoveBorderObjects, SmallObjectRemover, MaskFill — final cleanup
         10. ReduceSectionsByLine — final grid refinement
 
-    Measurements: MeasureShape, MeasureColor, MeasureIntensity, MeasureTexture.
+    Measurements: MeasureSize, MeasureShape, MeasureColor, MeasureIntensity, MeasureTexture.
 
     Best For:
         - Round colonies on grid plates that need thorough refinement.
@@ -267,6 +268,7 @@ class HeavyRoundPeaksPipeline(PrefabPipeline):
         ]
 
         meas = [
+            MeasureSize(),
             MeasureShape(),
             MeasureColor(
                     include_XYZ=color_include_XYZ,

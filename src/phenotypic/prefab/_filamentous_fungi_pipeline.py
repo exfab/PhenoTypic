@@ -12,6 +12,7 @@ from phenotypic.measure import (
     MeasureNeighborDist,
     MeasureIntensity,
     MeasureShape,
+    MeasureSize,
     MeasureTexture,
 )
 from phenotypic.refine import KeepSectionLargest
@@ -33,6 +34,7 @@ class FilamentousFungiPipeline(PrefabPipeline):
            Dijkstra branch reconnection.
 
     Measurements:
+        - ``MeasureSize`` -- Per-colony size magnitudes (area, radii).
         - ``MeasureNeighborDist`` -- Grid-level spatial statistics.
         - ``MeasureShape`` -- Per-colony shape descriptors.
         - ``MeasureIntensity`` -- Per-colony intensity statistics.
@@ -176,6 +178,7 @@ class FilamentousFungiPipeline(PrefabPipeline):
         ]
 
         meas = [
+            MeasureSize(),
             MeasureNeighborDist(),
             MeasureShape(),
             MeasureIntensity(),

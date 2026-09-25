@@ -20,6 +20,7 @@ from phenotypic.refine import MaskFill, MaskOpening
 from phenotypic.measure import (
     MeasureIntensity,
     MeasureShape,
+    MeasureSize,
     MeasureTexture,
     MeasureColor,
 )
@@ -46,7 +47,7 @@ class HeavyOtsuPipeline(PrefabPipeline):
         11. ReduceSectionsByLine — keep one colony per well
         12. GridAligner — straighten the grid
 
-    Measurements: MeasureShape, MeasureColor, MeasureTexture, MeasureIntensity.
+    Measurements: MeasureSize, MeasureShape, MeasureColor, MeasureTexture, MeasureIntensity.
 
     Best For:
         - Standard 96-well or 384-well yeast plates with clean backgrounds.
@@ -136,6 +137,7 @@ class HeavyOtsuPipeline(PrefabPipeline):
         ]
 
         meas = [
+            MeasureSize(),
             MeasureShape(),
             MeasureColor(),
             MeasureTexture(scale=texture_scale, warn=texture_warn),

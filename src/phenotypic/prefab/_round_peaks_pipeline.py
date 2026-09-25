@@ -7,6 +7,7 @@ from phenotypic.enhance import BlurGauss
 from phenotypic.detect import RoundPeaksDetector
 from phenotypic.measure import (
     MeasureShape,
+    MeasureSize,
     MeasureIntensity,
     MeasureTexture,
     MeasureColor,
@@ -24,7 +25,7 @@ class RoundPeaksPipeline(PrefabPipeline):
         1. BlurGauss — smooth noise
         2. RoundPeaksDetector — grid-aware circular colony detection
 
-    Measurements: MeasureShape, MeasureIntensity, MeasureTexture, MeasureColor.
+    Measurements: MeasureSize, MeasureShape, MeasureIntensity, MeasureTexture, MeasureColor.
 
     Args:
         blur_sigma: Gaussian blur sigma. Typical range: 1--5. Default: 5.
@@ -135,6 +136,7 @@ class RoundPeaksPipeline(PrefabPipeline):
 
         ops = [gaussian, detector]
         meas = [
+            MeasureSize(),
             MeasureShape(),
             MeasureIntensity(),
             texture_meas,

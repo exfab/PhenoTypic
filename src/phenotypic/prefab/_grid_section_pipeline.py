@@ -17,6 +17,7 @@ from phenotypic.correction import GridAligner
 from phenotypic.measure import (
     MeasureColor,
     MeasureShape,
+    MeasureSize,
     MeasureIntensity,
     MeasureTexture,
 )
@@ -37,7 +38,7 @@ class GridSectionPipeline(PrefabPipeline):
         5. GridApply — apply per-section sub-pipeline
         6. ReduceSectionsByLine — final grid refinement
 
-    Measurements: MeasureShape, MeasureColor, MeasureIntensity, MeasureTexture.
+    Measurements: MeasureSize, MeasureShape, MeasureColor, MeasureIntensity, MeasureTexture.
 
     Best For:
         - Plates where colony properties vary significantly across wells.
@@ -194,6 +195,7 @@ class GridSectionPipeline(PrefabPipeline):
             "MeasureColor"    : MeasureColor(
                     include_XYZ=color_include_XYZ,
             ),
+            "MeasureSize"     : MeasureSize(),
             "MeasureShape"    : MeasureShape(),
             "MeasureIntensity": MeasureIntensity(),
             "MeasureTexture"  : MeasureTexture(

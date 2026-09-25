@@ -128,7 +128,7 @@ class PrefabPipeline(ImagePipeline):
         from phenotypic.enhance import BlurGauss, EnhanceLocalContrast
         from phenotypic.detect import CannyDetector  # Different detector
         from phenotypic.refine import SmallObjectRemover, MaskFill
-        from phenotypic.measure import MeasureShape, MeasureColor
+        from phenotypic.measure import MeasureShape, MeasureSize, MeasureColor
 
         # Custom pipeline for your specific use case
         custom = ImagePipeline()
@@ -137,6 +137,7 @@ class PrefabPipeline(ImagePipeline):
         custom.add(CannyDetector(sigma=1.5, low_threshold=0.1, high_threshold=0.4))
         custom.add(SmallObjectRemover(min_size=100))
         custom.add(MaskFill())
+        custom.add(MeasureSize())
         custom.add(MeasureShape())
         custom.add(MeasureColor())
 
@@ -193,7 +194,7 @@ class PrefabPipeline(ImagePipeline):
         from phenotypic.enhance import BlurGauss, EnhanceLocalContrast
         from phenotypic.detect import OtsuDetector
         from phenotypic.refine import SmallObjectRemover
-        from phenotypic.measure import MeasureShape
+        from phenotypic.measure import MeasureShape, MeasureSize
 
         class MyCustomPrefabPipeline(PrefabPipeline):
             '''Brief description of when to use this pipeline.'''
@@ -207,7 +208,7 @@ class PrefabPipeline(ImagePipeline):
                     OtsuDetector(),
                     SmallObjectRemover(min_size=param1),
                 ]
-                meas = [MeasureShape()]
+                meas = [MeasureSize(), MeasureShape()]
                 super().__init__(pipe_cfgs=pipe_cfgs, meas=meas, benchmark=benchmark,
                                verbose=verbose)
 
