@@ -1,5 +1,6 @@
 """The labels and descriptions of the size measurements."""
 
+from ._change_notes import SIZE_SHAPE_SPLIT_NOTE
 from ._measurement_info import Entry
 from ._tiers import DirectPhenotype
 
@@ -18,6 +19,10 @@ class SIZE(DirectPhenotype):
     @classmethod
     def category(cls):
         return "Size"
+
+    @classmethod
+    def change_note(cls) -> str:
+        return SIZE_SHAPE_SPLIT_NOTE
 
     AREA = Entry(
         "Area",
@@ -108,3 +113,6 @@ class SIZE(DirectPhenotype):
         "protrusion, spur, or runner. This is not the value the retired "
         "Shape_MaxRadius carried (the inscribed radius, now Size_InscribedRadius).",
     )
+
+
+SIZE.__doc__ = f"{SIZE.__doc__}\n\n{SIZE.change_note()}"

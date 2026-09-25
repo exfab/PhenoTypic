@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-import phenotypic
 from phenotypic import ImagePipeline
 from phenotypic.correction import BayesShrinkCorrector, ColorDenoise, VisuShrinkCorrector
 from phenotypic.enhance import (
@@ -84,10 +83,6 @@ def test_norm_field_carries_a_description(cls):
 
 def test_rescale_sigma_untouched():
     assert VisuShrinkEnhancer.model_fields["rescale_sigma"].annotation is bool
-
-
-def test_version_is_0_19_0():
-    assert phenotypic.__version__ == "0.19.0"
 
 
 #: The only two fixtures that ever serialized a ``clip`` param. Both were

@@ -373,6 +373,20 @@ class MeasurementInfo(str, Enum):
         return None
 
     @classmethod
+    def change_note(cls) -> str:
+        """Return an RST change-note block rendered above this enum's table.
+
+        Rendered by :meth:`append_rst_to_doc` (measurer class docs and the
+        enum's own docstring) and by the Measurements reference page. Empty
+        by default; an enum overrides it when a release changes its public
+        columns. Keep the text in ``phenotypic.schema._change_notes``.
+
+        Returns:
+            str: RST, typically a ``.. versionchanged::`` directive, or ``""``.
+        """
+        return ""
+
+    @classmethod
     def header_scheme(cls) -> str:
         """Naming scheme for this enum's DataFrame output headers.
 
@@ -576,6 +590,8 @@ class MeasurementInfo(str, Enum):
         Generates the RST documentation table for this measurement enumeration and appends
         it to the provided module's or class's existing docstring. This is useful for
         automatically documenting which measurements a class produces or uses.
+        When the enum defines a :meth:`change_note`, it is placed between the
+        docstring and the table.
 
         If the input is a string, it is treated as the docstring itself. If it is an object
         (class, function, module), its __doc__ attribute is used.
@@ -591,11 +607,10 @@ class MeasurementInfo(str, Enum):
                 separated by two blank lines. The returned string is ready to be assigned back
                 to the target's __doc__ attribute.
         """
-        if isinstance(module, str):
-            return module + "\n\n" + cls.rst_table()
-        else:
-            doc = module.__doc__ or ""
-            return doc + "\n\n" + cls.rst_table()
+        doc = module if isinstance(module, str) else (module.__doc__ or "")
+        note = cls.change_note()
+        parts = [doc, note, cls.rst_table()] if note else [doc, cls.rst_table()]
+        return "\n\n".join(parts)
 
 
 def qualified_header(member: "MeasurementInfo", token: str) -> str:

@@ -1,5 +1,6 @@
 """The labels and descriptions of the shape measurements."""
 
+from ._change_notes import SIZE_SHAPE_SPLIT_NOTE
 from ._measurement_info import Entry
 from ._tiers import PrimaryMeasure
 
@@ -17,6 +18,10 @@ class SHAPE(PrimaryMeasure):
     @classmethod
     def category(cls):
         return "Shape"
+
+    @classmethod
+    def change_note(cls) -> str:
+        return SIZE_SHAPE_SPLIT_NOTE
 
     @classmethod
     def tier(cls) -> int:
@@ -73,3 +78,6 @@ class SHAPE(PrimaryMeasure):
         "raggedness than MeanBoundaryDist. See Size_InscribedRadius and "
         "Size_RobustMeanRadius for the colony's radial extent.",
     )
+
+
+SHAPE.__doc__ = f"{SHAPE.__doc__}\n\n{SHAPE.change_note()}"

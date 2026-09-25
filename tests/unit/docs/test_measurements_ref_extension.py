@@ -266,3 +266,13 @@ def test_schema_is_included_in_api_reference_autosummary() -> None:
     api_index = _API_INDEX_PATH.read_text()
 
     assert "   phenotypic.schema\n" in api_index
+
+
+def test_class_section_renders_the_change_note_above_the_table(monkeypatch: MonkeyPatch):
+    """Mutation: drop the change_note() line from _class_section -> fails."""
+    extension = _load_extension(monkeypatch)
+    section = extension._class_section(schema.SIZE)
+    marker = ".. versionchanged:: 0.20.0"
+    assert marker in section
+    assert section.index(marker) < section.index(".. list-table::")
+    assert marker not in extension._class_section(schema.TEXTURE)
