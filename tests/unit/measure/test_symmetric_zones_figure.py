@@ -135,14 +135,9 @@ def test_inspect_recomputes_cache_after_measurement_parameter_change(
     original_compute = MeasureSymZones._compute_intermediates
     recomputed_labels: list[int | None] = []
 
-    def record_recompute(self, subject, object_label=None, prop=None):
-        recomputed_labels.append(object_label)
-        return original_compute(
-                self,
-                subject,
-                object_label=object_label,
-                prop=prop,
-        )
+    def record_recompute(self, subject, prop):
+        recomputed_labels.append(prop.label)
+        return original_compute(self, subject, prop)
 
     monkeypatch.setattr(
             MeasureSymZones,

@@ -10,6 +10,8 @@ from numpy.typing import NDArray
 from scipy.ndimage import label as connected_components
 from skimage.morphology import skeletonize
 
+from ._axial import axial_difference
+
 
 @dataclass(frozen=True)
 class LiteralSkeletonRingCrossing:
@@ -111,18 +113,6 @@ class LiteralCrossingRingProfile:
         if not supported.any():
             return float("nan")
         return float(np.max(np.abs(self.contiguous_change[supported])))
-
-
-def _axial_difference(outer: float, inner: float) -> float:
-    """Return a signed axial difference in ``[-pi/2, pi/2]``."""
-    difference = outer - inner
-    return float(
-        0.5
-        * np.arctan2(
-            np.sin(2.0 * difference),
-            np.cos(2.0 * difference),
-        )
-    )
 
 
 def _validated_field(
@@ -278,7 +268,9 @@ def _sample_literal_skeleton_ring_crossings(
                     anchor_row=int(rows[anchor_index]),
                     anchor_col=int(cols[anchor_index]),
                     fiber_axis=float(crossing_axis),
-                    radial_tilt=_axial_difference(crossing_axis, polar_angle),
+                    radial_tilt=float(
+                        axial_difference(crossing_axis, polar_angle)
+                    ),
                     coherence=float(np.mean(weights)),
                     resultant=resultant,
                     pixel_count=int(rows.size),
@@ -430,7 +422,9 @@ def literal_crossing_ring_profile(
             next_run_id += 1
             previous_ring = ring_index
             continue
-        step = _axial_difference(float(angle), float(consensus[previous_ring]))
+        step = float(
+            axial_difference(float(angle), float(consensus[previous_ring]))
+        )
         if np.isclose(
             abs(step),
             0.5 * np.pi,

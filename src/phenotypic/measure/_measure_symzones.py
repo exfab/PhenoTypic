@@ -9,7 +9,6 @@ remain angularly uniform?
 from __future__ import annotations
 
 import weakref
-from dataclasses import fields, replace
 from typing import Any, ClassVar, Literal, TYPE_CHECKING, TypeAlias
 
 if TYPE_CHECKING:
@@ -28,51 +27,28 @@ from skimage.measure import approximate_polygon, find_contours, regionprops
 from phenotypic.abc_.plotting import Control, PlotImage, figure
 from phenotypic.measure._canonical_zone_measure import CanonicalZoneMeasure
 from phenotypic.measure._zone_segmentation import (
+    _N_ANGULAR_SECTORS,
     ZoneSegmentation,
 )
 from phenotypic.schema import OBJECT
 from phenotypic.schema import SYMMETRIC_ZONES
-
-# Back-compat alias so the rest of this module (inspect/_operate/overlay
-# helpers) keeps referring to the relocated dataclass by its old name.
-_SymmetryIntermediates: TypeAlias = ZoneSegmentation
-
-
-def _own_intermediate_arrays(
-        intermediates: _SymmetryIntermediates,
-) -> _SymmetryIntermediates:
-    """Return compact intermediates whose arrays own their memory.
-
-    A cropped NumPy view can retain the complete plate-sized backing array.
-    Plot caches therefore copy every derived array before retaining the
-    per-object record. Scalar measurement results are unchanged.
-    """
-    owned = {
-        item.name: value.copy()
-        for item in fields(intermediates)
-        if isinstance((value := getattr(intermediates, item.name)), np.ndarray)
-    }
-    return replace(intermediates, **owned)
-
-
-_NEIGHBOR_KERNEL = np.array([[1, 1, 1], [1, 0, 1], [1, 1, 1]], dtype=np.int32)
-
-# Zone-segmentation constants (retained for the overlay helpers below).
-_N_ANGULAR_SECTORS = 360
+from phenotypic.sdk_._palette import (
+    OKABE_ITO_GREEN,
+    OKABE_ITO_NAVY,
+    OKABE_ITO_ORANGE,
+    OKABE_ITO_PURPLE,
+    OKABE_ITO_SKY,
+    OKABE_ITO_VERMILION,
+    hex_to_rgba,
+)
+from phenotypic.sdk_._radial_geometry import circle_xy
 
 # Diagnostic-overlay constants
 _ZONE_POLYGON_STRIDE = 5  # 360 / 5 = 72 vertices per zone polygon
 _OBJMAP_POLYGON_TOLERANCE = 0.5  # Douglas-Peucker pixel tolerance
 
-# Okabe-Ito palette constants for diagnostic plots
-_OI_NAVY = "#003660"
-_OI_ORANGE = "#E69F00"
-_OI_SKY = "#56B4E9"
-_OI_GREEN = "#009E73"
-_OI_BLUE = "#0072B2"
-_OI_PURPLE = "#CC79A7"
-_OI_VERMILION = "#D55E00"
-_OI_GREY = "#BBBBBB"
+# Fill opacity shared by the object and zone overlay polygons.
+_ZONE_FILL_ALPHA = 0.30
 
 # Which image array backs the plotly overlay; a select Control bound (by identity)
 # to the inspect() figure's ``base_layer`` kwarg for the interactive dashboard.
@@ -235,7 +211,7 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
     __cache_image_ref: "weakref.ReferenceType[Image] | None" = PrivateAttr(
             default=None
     )
-    __cache_intermediates: "dict[int, _SymmetryIntermediates]" = PrivateAttr(
+    __cache_intermediates: "dict[int, ZoneSegmentation]" = PrivateAttr(
             default_factory=dict)
     __cache_signature: str | None = PrivateAttr(default=None)
 
@@ -244,20 +220,16 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
     def _compute_intermediates(
             self,
             image: Image,
-            object_label: int | None = None,
-            prop=None,
+            prop,
     ) -> ZoneSegmentation:
-        """Run the shared symmetric-radius pipeline for a single object.
+        """Run the shared zone resolver for a single object.
 
-        Thin delegator to
-        :func:`phenotypic.measure._zone_segmentation.compute_zone_segmentation`.
-        Every caller in this module supplies ``prop`` explicitly; the shared
-        helper resolves the largest object by area when ``prop`` is *None*.
+        Thin delegator to ``CanonicalZoneMeasure._resolve_object_zones``. It is
+        the single per-object compute seam, which lets tests confirm that
+        ``inspect()`` reuses cached results instead of recomputing them.
 
         Args:
             image: Detected Image with objmap/objmask.
-            object_label: Retained for signature back-compat; unused because
-                callers always pass ``prop``.
             prop: Pre-computed RegionProperties object for the target object.
 
         Returns:
@@ -312,7 +284,7 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
                 continue
 
             try:
-                inter = self._compute_intermediates(image, prop.label, prop=prop)
+                inter = self._compute_intermediates(image, prop)
             except Exception:
                 import logging
 
@@ -321,7 +293,7 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
                 )
                 continue  # leave NaN
 
-            self.__cache_intermediates[prop.label] = _own_intermediate_arrays(inter)
+            self.__cache_intermediates[prop.label] = inter.with_owned_arrays()
 
             measurements[str(SYMMETRIC_ZONES.CORE_RADIUS)][idx] = inter.core_radius
             measurements[str(SYMMETRIC_ZONES.SYMMETRIC_RADIUS)][
@@ -364,22 +336,6 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
             if self.__cache_image_ref is not None
             else None
         )
-
-    def _get_local_obj_mask(self, label: int) -> np.ndarray:
-        """Local (bbox-cropped) boolean mask for the object with ``label``."""
-        inter = self.__cache_intermediates[label]
-        return inter.obj_mask
-
-    def _get_local_dist_map(self, label: int) -> np.ndarray:
-        """Local distance-from-centroid map for the object with ``label``."""
-        inter = self.__cache_intermediates[label]
-        return inter.dist_map
-
-    def _get_global_offset(self, label: int) -> tuple[int, int]:
-        """Top-left (row, col) offset from the local bbox to plate coordinates."""
-        inter = self.__cache_intermediates[label]
-        slc = inter.bbox_slice
-        return int(slc[0].start), int(slc[1].start)
 
     # ── overlay polygon helpers ──────────────────────────────────────
 
@@ -565,7 +521,7 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
                 image.objmap[:],
                 intensity_image=image.gray[:].astype(np.float64, copy=False),
         )
-        intermediates_cache: dict[int, _SymmetryIntermediates] = {}
+        intermediates_cache: dict[int, ZoneSegmentation] = {}
         cache_is_current = (
                 self.__cached_image() is image
                 and self.__cache_signature == self.model_dump_json()
@@ -578,8 +534,8 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
                 intermediates_cache[prop.label] = self.__cache_intermediates[prop.label]
                 continue
             try:
-                inter = self._compute_intermediates(image, prop.label, prop=prop)
-                intermediates_cache[prop.label] = _own_intermediate_arrays(inter)
+                inter = self._compute_intermediates(image, prop)
+                intermediates_cache[prop.label] = inter.with_owned_arrays()
             except Exception:
                 continue
 
@@ -593,7 +549,7 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
                     text="No objects found for symmetric-radius analysis.",
                     xref="paper", yref="paper", x=0.5, y=0.5,
                     showarrow=False,
-                    font=dict(color=_OI_NAVY),  # family from the phenotypic template
+                    font=dict(color=OKABE_ITO_NAVY),  # family from the phenotypic template
             )
             return fig
 
@@ -611,7 +567,7 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
                             f"(P{self.outer_zone_percentile:g}) -- "
                             f"{len(intermediates_cache)} objects"
                         ),
-                        font=dict(color=_OI_NAVY),
+                        font=dict(color=OKABE_ITO_NAVY),
                         # family from the phenotypic template
                 ),
                 height=overview_h,
@@ -623,10 +579,10 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
                     trace.visible = True
         return fig
 
-    @staticmethod
     def _build_plate_overview(
+            self,
             image: Image,
-            intermediates_cache: dict[int, _SymmetryIntermediates],
+            intermediates_cache: dict[int, ZoneSegmentation],
             base_layer: str = "gray",
     ):
         """Build a zoomable plotly plate overview with toggleable overlays.
@@ -659,16 +615,13 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
         )
         fig.update_coloraxes(showscale=False)
 
-        MeasureSymZones._add_overlay_traces(
-                fig, image, intermediates_cache,
-        )
+        self._add_overlay_traces(fig, intermediates_cache)
         return fig
 
-    @staticmethod
     def _add_overlay_traces(
+            self,
             fig,
-            image: Image,
-            intermediates_cache: dict[int, _SymmetryIntermediates],
+            intermediates_cache: dict[int, ZoneSegmentation],
     ) -> None:
         """Add toggleable trace layers to the plate overview.
 
@@ -694,26 +647,24 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
 
         Args:
             fig: Plotly figure to modify in-place.
-            image: Detected Image (used for objmap overlay).
             intermediates_cache: Per-object intermediates keyed by label.
         """
-        import plotly.graph_objects as go
-
-        _N_CIRCLE_PTS = 72
-        _theta = np.linspace(0, 2 * np.pi, _N_CIRCLE_PTS, endpoint=True)
-
-        def _circle_xy(cx: float, cy: float, r: float):
-            return cx + r * np.cos(_theta), cy + r * np.sin(_theta)
-
-        def _hex_to_rgba(hex_str: str, alpha: float) -> str:
-            h = hex_str.lstrip("#")
-            r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
-            return f"rgba({r}, {g}, {b}, {alpha:.3f})"
-
         # Make grouped legend entries toggle every trace in the group.
         fig.update_layout(legend=dict(groupclick="togglegroup"))
+        # Trace order is legend order; keep it stable.
+        self._add_objmap_traces(fig, intermediates_cache)
+        self._add_zone_traces(fig, intermediates_cache)
+        self._add_centroid_trace(fig, intermediates_cache)
+        self._add_radius_traces(fig, intermediates_cache)
+        self._add_envelope_trace(fig, intermediates_cache)
 
-        _FILL_ALPHA = 0.30
+    def _add_objmap_traces(
+            self,
+            fig,
+            intermediates_cache: dict[int, ZoneSegmentation],
+    ) -> None:
+        """Add label-keyed, filled object outlines (hidden by default)."""
+        import plotly.graph_objects as go
 
         # ── Objmap polygons (label-keyed palette, NaN-separated buckets) ──
         # Use the same overlay palette as skimage-based objmap overlays so
@@ -733,7 +684,7 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
                 intermediates_cache.values(), key=lambda x: x.label,
         )
         for inter in sorted_inters:
-            xs, ys = MeasureSymZones._object_polygon_xy(
+            xs, ys = self._object_polygon_xy(
                     inter.obj_mask, inter.bbox_slice, _OBJMAP_POLYGON_TOLERANCE,
             )
             if xs is None or ys is None:
@@ -750,7 +701,7 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
             if not bxs:
                 continue
             r, g, b = _palette_rgb[bi]
-            fillcolor = f"rgba({int(r)}, {int(g)}, {int(b)}, {_FILL_ALPHA:.3f})"
+            fillcolor = f"rgba({int(r)}, {int(g)}, {int(b)}, {_ZONE_FILL_ALPHA:.3f})"
             fig.add_trace(go.Scatter(
                     x=bxs, y=bys, mode="lines",
                     line=dict(width=0),
@@ -763,6 +714,14 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
                     hoverinfo="skip",
             ))
             first_objmap_drawn = True
+
+    def _add_zone_traces(
+            self,
+            fig,
+            intermediates_cache: dict[int, ZoneSegmentation],
+    ) -> None:
+        """Add the Sparse, Dense and Core zone fills as one legend group."""
+        import plotly.graph_objects as go
 
         # ── Zone polygons — nested annuli + core disk ───────────────
         # Core: solid disk 0..r_core. Dense: annulus r_core..r_dense_end.
@@ -796,7 +755,7 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
                     _N_ANGULAR_SECTORS, inter.sparse_end_radius, dtype=np.float64,
             )
 
-            sxs, sys = MeasureSymZones._polar_annulus_xy(
+            sxs, sys = self._polar_annulus_xy(
                     cxy, r_dense_arr, r_outer_arr, _ZONE_POLYGON_STRIDE,
             )
             sparse_xs.extend(sxs.tolist())
@@ -804,7 +763,7 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
             sparse_ys.extend(sys.tolist())
             sparse_ys.append(float("nan"))
 
-            dxs, dys = MeasureSymZones._polar_annulus_xy(
+            dxs, dys = self._polar_annulus_xy(
                     cxy, r_core_arr, r_dense_arr, _ZONE_POLYGON_STRIDE,
             )
             dense_xs.extend(dxs.tolist())
@@ -812,7 +771,7 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
             dense_ys.extend(dys.tolist())
             dense_ys.append(float("nan"))
 
-            cxs, cys = MeasureSymZones._polar_polygon_xy(
+            cxs, cys = self._polar_polygon_xy(
                     cxy, r_core_arr, _ZONE_POLYGON_STRIDE,
             )
             zcore_xs.extend(cxs.tolist())
@@ -824,9 +783,9 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
         # to "togglegroup" above so clicking any of them toggles all three at
         # once, while individual toggles are still available.
         zone_layers = [
-            (sparse_xs, sparse_ys, _OI_SKY, "Sparse zone"),
-            (dense_xs, dense_ys, _OI_NAVY, "Dense zone"),
-            (zcore_xs, zcore_ys, _OI_VERMILION, "Core zone"),
+            (sparse_xs, sparse_ys, OKABE_ITO_SKY, "Sparse zone"),
+            (dense_xs, dense_ys, OKABE_ITO_NAVY, "Dense zone"),
+            (zcore_xs, zcore_ys, OKABE_ITO_VERMILION, "Core zone"),
         ]
         for zxs, zys, zcolor, zname in zone_layers:
             if not zxs:
@@ -835,13 +794,21 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
                     x=zxs, y=zys, mode="lines",
                     line=dict(width=0),
                     fill="toself",
-                    fillcolor=_hex_to_rgba(zcolor, _FILL_ALPHA),
+                    fillcolor=hex_to_rgba(zcolor, _ZONE_FILL_ALPHA),
                     legendgroup="zones",
                     legendgrouptitle_text="Zones",
                     name=zname,
                     visible="legendonly",
                     hoverinfo="skip",
             ))
+
+    def _add_centroid_trace(
+            self,
+            fig,
+            intermediates_cache: dict[int, ZoneSegmentation],
+    ) -> None:
+        """Add one marker per object at its inoculum centre."""
+        import plotly.graph_objects as go
 
         # ── Centroids ───────────────────────────────────────────────
         cent_x, cent_y = [], []
@@ -854,12 +821,20 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
             fig.add_trace(go.Scatter(
                     x=cent_x, y=cent_y, mode="markers",
                     marker=dict(
-                            color=_OI_ORANGE, size=8, symbol="circle",
-                            line=dict(color=_OI_NAVY, width=1),
+                            color=OKABE_ITO_ORANGE, size=8, symbol="circle",
+                            line=dict(color=OKABE_ITO_NAVY, width=1),
                     ),
                     name="Centroids",
                     hoverinfo="skip",
             ))
+
+    def _add_radius_traces(
+            self,
+            fig,
+            intermediates_cache: dict[int, ZoneSegmentation],
+    ) -> None:
+        """Add dashed core-radius and symmetric-radius circles."""
+        import plotly.graph_objects as go
 
         # ── Core radius circles (all objects) ───────────────────────
         core_x: list[float] = []
@@ -871,7 +846,7 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
             r0, c0 = int(slc[0].start), int(slc[1].start)
             cx = inter.centroid_rc[1] + c0
             cy = inter.centroid_rc[0] + r0
-            xs, ys = _circle_xy(cx, cy, inter.core_radius)
+            xs, ys = circle_xy(cx, cy, inter.core_radius)
             core_x.extend(xs.tolist())
             core_y.extend(ys.tolist())
             core_x.append(float("nan"))
@@ -879,7 +854,7 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
         if core_x:
             fig.add_trace(go.Scattergl(
                     x=core_x, y=core_y, mode="lines",
-                    line=dict(color=_OI_VERMILION, width=1.5, dash="dash"),
+                    line=dict(color=OKABE_ITO_VERMILION, width=1.5, dash="dash"),
                     name="Core radius",
                     hoverinfo="skip",
             ))
@@ -895,7 +870,7 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
             r0, c0 = int(slc[0].start), int(slc[1].start)
             cx = inter.centroid_rc[1] + c0
             cy = inter.centroid_rc[0] + r0
-            xs, ys = _circle_xy(cx, cy, sr)
+            xs, ys = circle_xy(cx, cy, sr)
             sym_x.extend(xs.tolist())
             sym_y.extend(ys.tolist())
             sym_x.append(float("nan"))
@@ -903,10 +878,18 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
         if sym_x:
             fig.add_trace(go.Scattergl(
                     x=sym_x, y=sym_y, mode="lines",
-                    line=dict(color=_OI_PURPLE, width=2.5, dash="dash"),
+                    line=dict(color=OKABE_ITO_PURPLE, width=2.5, dash="dash"),
                     name="Symmetric radius",
                     hoverinfo="skip",
             ))
+
+    def _add_envelope_trace(
+            self,
+            fig,
+            intermediates_cache: dict[int, ZoneSegmentation],
+    ) -> None:
+        """Add the per-angle outer mask envelope of every object."""
+        import plotly.graph_objects as go
 
         # ── Outer envelope polygons (per-angle, uncapped mask reach) ──
         env_x: list[float] = []
@@ -918,7 +901,7 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
             slc = inter.bbox_slice
             r0, c0 = int(slc[0].start), int(slc[1].start)
             cxy = (inter.centroid_rc[1] + c0, inter.centroid_rc[0] + r0)
-            xs, ys = MeasureSymZones._polar_polygon_xy(
+            xs, ys = self._polar_polygon_xy(
                     cxy, r_env, _ZONE_POLYGON_STRIDE,
             )
             env_x.extend(xs.tolist())
@@ -928,7 +911,7 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
         if env_x:
             fig.add_trace(go.Scattergl(
                     x=env_x, y=env_y, mode="lines",
-                    line=dict(color=_OI_GREEN, width=1.25),
+                    line=dict(color=OKABE_ITO_GREEN, width=1.25),
                     name="Outer envelope",
                     hoverinfo="skip",
             ))

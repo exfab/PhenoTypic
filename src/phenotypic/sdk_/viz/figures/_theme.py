@@ -20,15 +20,18 @@ Design-token sources (single source of truth is ``DESIGN.md``):
   (gridlines ``#e8ecf2``, axes ``#dde3ed``, muted axis labels
   ``#8892a4``, navy title).
 
-This module imports only ``plotly`` and the stdlib. It is deliberately
-free of ``dash`` / project imports so the theme stays cheap to import
-from any layer (CLI, GUI, notebooks, tests).
+This module imports only ``plotly``, the stdlib, and the dependency-free
+``phenotypic.sdk_._palette``. It is deliberately free of ``dash`` and other
+project imports so the theme stays cheap to import from any layer (CLI, GUI,
+notebooks, tests).
 """
 
 from __future__ import annotations
 
 import plotly.graph_objects as go
 import plotly.io as pio
+
+from phenotypic.sdk_._palette import OKABE_ITO as _PALETTE_OKABE_ITO
 
 __all__ = [
     "PHENOTYPIC_TEMPLATE_NAME",
@@ -93,17 +96,10 @@ BODY: str = "#2e3a4e"
 # overflow series past the named seven fall back to a neutral ink rather
 # than wrapping to navy.
 
-#: Categorical color cycle for data series, in DESIGN.md's fixed order.
-OKABE_ITO: tuple[str, ...] = (
-    "#003660",  # navy      -- series 1, UI-harmonized
-    "#E69F00",  # orange    -- series 2
-    "#56B4E9",  # sky blue  -- series 3
-    "#009E73",  # green     -- series 4
-    "#0072B2",  # blue      -- series 5
-    "#CC79A7",  # purple    -- series 6
-    "#D55E00",  # vermilion -- error / alert series
-    "#000000",  # black     -- overflow / ink
-)
+#: Categorical color cycle for data series, in DESIGN.md's fixed order. It is
+#: defined in the plotly-free ``phenotypic.sdk_._palette`` so operation modules
+#: can import the named colours at module scope without loading plotly.
+OKABE_ITO: tuple[str, ...] = _PALETTE_OKABE_ITO
 
 #: Single-variable sequential colorscale (DESIGN.md "06 -- Heatmap Colorscale"
 #: and "12 -- Continuous Colorbar"): near-transparent navy -> sky -> full navy.
