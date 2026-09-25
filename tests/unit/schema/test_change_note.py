@@ -38,6 +38,17 @@ def test_size_and_shape_notes_carry_the_rename_table_and_the_trap():
         assert "Same name, different value" in note
 
 
+@pytest.mark.parametrize("info", [SIZE, SHAPE], ids=["SIZE", "SHAPE"])
+def test_note_extends_the_trap_to_model_outputs(info):
+    """Review MEDIUM-3. `metric_token` strips the category prefix, so a growth
+    model fit on retired `Shape_MaxRadius` and one fit on `Size_MaxRadius` emit
+    the same `<Model>_MaxRadius_*` header. The note must say so."""
+    note = info.change_note()
+    for label in ("MaxRadius", "MeanRadius", "MedianRadius"):
+        assert f"``<Model>_{label}_*``" in note, label
+    assert "share a name but not a meaning" in note
+
+
 def test_note_renders_above_the_table_in_measurer_docs():
     """Anchor on the table directive, not a column name: the note itself spells
     ``Size_Area``, so a header anchor would pass with the note below the table."""

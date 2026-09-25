@@ -51,4 +51,14 @@ The EDT exclusion uses 8-connectivity contact with another label, or any pixel o
 
 ## Results
 
-(filled in from the orchestrator's verbatim output)
+As recorded in the commit message of `1decc582`:
+
+- **D3**, main `81d19ec6` against this tip: PASS, 32 checks. KeepSectionLargest and
+  MeasureIntensity are identical (dtype checked), and every moved column matches on all
+  552 objects.
+- **D4**, the no-op guard, comparing two copies of one capture: FAIL on "byte-identical src
+  files", as designed.
+- Red on the pre-change code: 6 prefab cases and the GUI default test.
+- G4b: 8 passed.
+- Surfaces: `tests/unit/prefab` + `gui/analysis` 71 passed; the prefab/analysis importers
+  253 passed.

@@ -39,10 +39,10 @@ convert pixels to physical units (mm²) using the known pixel pitch.
 | Metric | Range | Biological meaning |
 |--------|-------|-------------------|
 | Circularity | 0–1 | How round the colony is (1 = perfect circle). Irregular shapes suggest stress, mutation, or sectoring. |
-| Solidity | 0–1 | Ratio of area to convex hull area. Low solidity indicates lobed or branching morphology. |
+| Solidity | ≈0–1 (can slightly exceed 1) | Ratio of area to convex hull area. Low solidity indicates lobed or branching morphology. |
 | Eccentricity | 0–1 | Elongation (0 = circular, ~1 = very elongated). Elevated in filamentous or swarming colonies. |
 | Compactness | ≥1 | Perimeter² / (4π × Area). Equals 1 for a perfect circle; increases with irregularity. |
-| MeanBoundaryDist | pixels | Mean distance from each colony pixel to the nearest edge, computed on the object in isolation — a measure of interior thickness, not a radius. High values relative to InscribedRadius indicate a compact, convex colony; low values indicate a thin or filamentous one. |
+| MeanBoundaryDist | pixels | Mean distance from each colony pixel to the nearest edge, computed on the object in isolation — a measure of interior thickness, not a radius. For an ideal disk it is 1/3 of InscribedRadius. Thin appendages on a compact body (runners, a hyphal fringe) pull the ratio below 1/3; a uniformly thin, elongated colony raises it toward 1/2. |
 | MedianBoundaryDist | pixels | Median distance from each colony pixel to the nearest edge — the same interior-thickness measure as MeanBoundaryDist, but more robust to boundary raggedness. |
 
 Shape metrics are particularly useful for distinguishing wild-type from

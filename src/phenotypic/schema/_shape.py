@@ -66,9 +66,10 @@ class SHAPE(PrimaryMeasure):
         "Mean Euclidean distance from each colony pixel to the nearest background "
         "pixel, computed on the object in isolation. This is a measure of interior "
         "thickness, not a radius: for an ideal disk of radius R it equals "
-        r":math:`R/3`. High values relative to Size_InscribedRadius indicate a "
-        "compact, convex colony; low values indicate a thin or filamentous one. "
-        "The image border counts as an edge.",
+        r":math:`R/3`, one third of Size_InscribedRadius. Thin appendages on a "
+        "compact body (runners, a hyphal fringe) pull that ratio below 1/3; a "
+        "uniformly thin, elongated colony raises it toward 1/2. The image border "
+        "counts as an edge.",
     )
     MEDIAN_BOUNDARY_DIST = Entry(
         "MedianBoundaryDist",

@@ -236,10 +236,10 @@ class MeasureFeatures(BaseOperation, ABC):
         >>> df = measurer.measure(image)
         >>> print(df)
         # Output:
-        #   OBJECT.LABEL  Area  IntegratedIntensity
-        # 0             1  1024                 128512
-        # 1             2   956                 121232
-        # 2             3  1101                 134232
+        #   OBJECT.LABEL  Area  IntegratedIntensity  Perimeter  ...  MaxRadius
+        # 0             1  1024                 128512  ...
+        # 1             2   956                 121232  ...
+        # 2             3  1101                 134232  ...
 
         Advanced: extract multiple measurement types with metadata:
 
@@ -444,7 +444,7 @@ class MeasureFeatures(BaseOperation, ABC):
             >>> df_with_meta = measurer.measure(image, include_meta=True)
             >>> print(df_with_meta.columns)
             # Output: ['Filename', 'GridRow', 'GridCol', 'OBJECT.LABEL',
-            #          'Area', 'IntegratedIntensity', ...]
+            #          'Area', 'IntegratedIntensity', 'Perimeter', ..., 'MaxRadius']
         """
 
         try:

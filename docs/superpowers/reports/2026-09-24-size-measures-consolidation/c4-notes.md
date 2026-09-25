@@ -69,10 +69,9 @@ No `Size_*` header existed before the rename, so it creates no duplicate columns
 
 ## Observations for the orchestrator / other clusters
 
-- **The shipped asset `_assets/measurements/shape/area.png` has "Shape_Area = 1430 px"
-  drawn into its pixels.** The script's title now says Size_Area, but the PNG changes
-  only if it is regenerated (`uv run python scripts/make_measurement_example_images.py`).
-  I did not run it; it writes into `src/_assets`.
+- **The shipped asset `_assets/measurements/shape/area.png` was regenerated in
+  `4a531dcc`** (`scripts/make_measurement_example_images.py`); its title now reads
+  "Size_Area = 1430 px". It still lives under `shape/`, which `SIZE.AREA` references.
 - **Tutorial screenshots (WORKFLOWS `scatter`, `_capture_scatter`, page
   `tutorials/gui/19_scatter.md`):** the scatter axes change from Perimeter × Area to
   Solidity × Circularity. When regenerated, `scatter/02_plot_settings.png` and the later
@@ -82,8 +81,8 @@ No `Size_*` header existed before the rename, so it creates no duplicate columns
 - Tests that read the renamed CSVs and spell retired names (for C5):
   `tests/unit/core/test_pipeline_analyze.py` (15 hits; outside the Step 8 surface),
   `tests/unit/analysis/test_log_growth_model.py` (30), `tests/unit/analysis/test_icc.py` (4).
-- `docs/source/how_to/notebooks/growth_curves.ipynb` (C6) already spells `Size_Area`
-  against `all_meas`, so it depends on this CSV rename landing.
+- `docs/source/how_to/notebooks/growth_curves.ipynb` (C6) measures with `MeasureSize()`
+  itself, so it does not depend on this CSV rename (corrected per the phase-2 review).
 - `schema/_measurement_info.py` generic examples (:353, :432, :460, :546, :567) still
   say `Shape_Area`, a header that no longer exists. They were left alone under the A7
   exclusion (the file's toy doctest). A hand edit of those five prose lines, not the

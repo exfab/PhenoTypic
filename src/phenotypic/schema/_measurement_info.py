@@ -348,9 +348,9 @@ class MeasurementInfo(str, Enum):
         the codebase.
 
         Returns:
-            str: The category name (e.g., 'Shape', 'Color', 'Texture'). This string is
+            str: The category name (e.g., 'Size', 'Color', 'Texture'). This string is
                 prepended to each measurement label with an underscore separator to form
-                the full header name (e.g., 'Shape_Area').
+                the full header name (e.g., 'Size_Area').
 
         Raises:
             NotImplementedError: If not implemented by a subclass.
@@ -429,7 +429,7 @@ class MeasurementInfo(str, Enum):
     def __new__(cls, entry: "Entry"):
         """Create a member from an :class:`Entry`.
 
-        The enum value is the category-prefixed header (e.g. ``Shape_Area``);
+        The enum value is the category-prefixed header (e.g. ``Size_Area``);
         ``label``/``desc``/``bio_desc``/``image`` are stored as instance
         attributes. Anything other than an ``Entry`` raises ``TypeError`` at
         class-creation time.
@@ -457,7 +457,7 @@ class MeasurementInfo(str, Enum):
         """Return the string representation of this measurement as the prefixed name.
 
         Returns the full enumeration value, which is the category-prefixed label
-        (e.g., 'Shape_Area'). This is used when the measurement is converted to a string
+        (e.g., 'Size_Area'). This is used when the measurement is converted to a string
         or used in string formatting.
 
         Returns:
@@ -543,7 +543,7 @@ class MeasurementInfo(str, Enum):
 
         Returns:
             list[str]: List of prefixed measurement names in enumeration order
-                (e.g., ['Shape_Area', 'Shape_Perimeter']). Each header includes the
+                (e.g., ['Size_Area', 'Size_Perimeter']). Each header includes the
                 category prefix separated by an underscore.
         """
         return [m.value for m in cls]
@@ -564,7 +564,7 @@ class MeasurementInfo(str, Enum):
         Args:
             title: Table caption; defaults to the category name.
             header: ``(name_column_header, description_column_header)``.
-            use_headers: Name cell shows the prefixed value (``Shape_Area``)
+            use_headers: Name cell shows the prefixed value (``Size_Area``)
                 instead of the bare label (``Area``).
         """
         title = title or cls.category()

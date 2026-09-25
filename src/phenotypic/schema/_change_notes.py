@@ -57,4 +57,7 @@ SIZE_SHAPE_SPLIT_NOTE = """\
    and ``Size_MaxRadius`` are *not* the retired ``Shape_MedianRadius``,
    ``Shape_MeanRadius`` and ``Shape_MaxRadius``. Compare old data against the
    successor in the table above, never against the same-named ``Size_`` column.
+   Model outputs are named by the stripped label, so ``<Model>_MaxRadius_*``,
+   ``<Model>_MeanRadius_*`` and ``<Model>_MedianRadius_*`` fitted before and
+   after 0.20.0 share a name but not a meaning.
 """

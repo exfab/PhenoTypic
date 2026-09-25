@@ -71,6 +71,42 @@ def check_01_edt_statistics_on_a_disk_are_not_radii() -> None:
               f"got {got:.4f}, want {want:.4f} +/- {tol}")
 
 
+def check_01b_boundary_dist_ratio_reads_thinness_both_ways() -> None:
+    """Shape_MeanBoundaryDist / Size_InscribedRadius: disk 1/3, strip 1/2.
+
+    Pins the desc's reading (phase-2 review MEDIUM-2). A strip of half-width w has
+    EDT w - |y|, so its mean is w/2 and its inscribed radius w: a uniformly thin,
+    elongated colony scores *above* a disk. The strip spans every column of the
+    array, and scipy's EDT does not treat the array edge as background, so it is
+    infinite along x. Pixel strip rows |y| <= w give EDT values 1..w+1, a ratio of
+    (w+1)/(2w+1); the tolerance 1/w matches check 01's. Only thin appendages on a
+    compact body pull the ratio below 1/3: the same rasterised disk with a
+    half-width-2 runner scores strictly lower than without it.
+    """
+    w = 100
+    strip = np.zeros((2 * w + 3, 50), dtype=bool)
+    strip[1:-1, :] = True
+    d = ndi.distance_transform_edt(strip)[strip]
+    tol = 1.0 / w
+    for label, got in [("mean", d.mean() / d.max()), ("median", float(np.median(d)) / d.max())]:
+        check(f"01b strip EDT {label}/inscribed", abs(got - 0.5) <= tol,
+              f"got {got:.4f}, want 0.5000 +/- {tol}")
+
+    r = 40
+    y, x = np.mgrid[-110:111, -110:111]
+    disk = x * x + y * y <= r * r
+    runner = disk | ((np.abs(y) <= 2) & (x >= 0) & (x <= 100))
+
+    def ratio(mask: np.ndarray) -> float:
+        e = ndi.distance_transform_edt(mask)[mask]
+        return float(e.mean() / e.max())
+
+    plain, with_runner = ratio(disk), ratio(runner)
+    check("01b thin appendage pulls the ratio below the disk's",
+          with_runner < plain - 0.005,
+          f"with runner {with_runner:.4f} vs disk {plain:.4f}")
+
+
 def check_02_whole_objmap_edt_merges_touching_colonies() -> None:
     """Two labels sharing a full edge: whole-map EDT 20/21, per-object EDT 10/11.
 
@@ -346,6 +382,7 @@ def check_09_sparse_outline_lets_a_hole_fill_empty_bins() -> None:
 
 def main_checks() -> int:
     check_01_edt_statistics_on_a_disk_are_not_radii()
+    check_01b_boundary_dist_ratio_reads_thinness_both_ways()
     check_02_whole_objmap_edt_merges_touching_colonies()
     check_03_disk_all_five_radii_equal_r()
     check_04_elongated_colony_values()

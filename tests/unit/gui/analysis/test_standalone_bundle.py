@@ -30,7 +30,7 @@ from phenotypic._gui.analysis._app import create_app
 from phenotypic._gui.analysis._callbacks import _run_inline
 from phenotypic._gui.analysis._recipe_state import RecipeState
 from phenotypic._gui.results_viewer._output_root import OutputRoot
-from phenotypic.measure import MeasureShape
+from phenotypic.measure import MeasureSize
 from phenotypic.sdk_ import PIPELINE_JSON, BundleLayout
 from phenotypic.sdk_._io_constants import _LEGACY_PIPELINE_JSON
 from phenotypic.schema import IMAGE
@@ -68,7 +68,7 @@ def _seed_standalone_bundle(base: Path, *, pipeline_filename: str | None) -> Non
     df.write_parquet(base / "measurements.parquet")
     if pipeline_filename is not None:
         pipe = ImagePipeline(
-            ops=[OtsuDetector()], meas=[MeasureShape()], name="seeded-analysis"
+            ops=[OtsuDetector()], meas=[MeasureSize()], name="seeded-analysis"
         )
         (base / pipeline_filename).write_text(pipe.to_json() or "", encoding="utf-8")
 

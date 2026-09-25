@@ -79,6 +79,11 @@ def load_meas() -> pd.DataFrame:
     """
     Loads sample measurements for 3 strains using each of the measurement modules
 
+    This example data predates 0.20.0: ``Size_ConvexArea`` and ``Shape_Solidity``
+    are blank because their values were computed with the retired hull-perimeter
+    bug, and the ``Shape_*BoundaryDist`` values used the whole-plate distance
+    transform rather than each colony's own.
+
     Returns:
         pd.DataFrame: A DataFrame containing the loaded measurement data.
     """
@@ -88,6 +93,11 @@ def load_meas() -> pd.DataFrame:
 def load_area_meas() -> pd.DataFrame:
     """
     Loads sample measurements for 3 strains using area measurements
+
+    This example data predates 0.20.0: ``Size_ConvexArea`` and ``Shape_Solidity``
+    are blank because their values were computed with the retired hull-perimeter
+    bug, and the ``Shape_*BoundaryDist`` values used the whole-plate distance
+    transform rather than each colony's own.
 
     Returns:
         pd.DataFrame: A DataFrame containing the sample area measurement data.

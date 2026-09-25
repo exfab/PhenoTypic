@@ -244,6 +244,9 @@ never diverge.
   `RemoveByFeature(feature="MeasureShape", value="Area")` fails at run time.
 - **The same-name trap:** old `Shape_MedianRadius` (≈0.29R), `Shape_MeanRadius` (≈R/3) and
   `Shape_MaxRadius` (inscribed radius) are **not** the new same-named `Size_*` columns.
+  The trap reaches model outputs too: `metric_token` strips the category prefix, so
+  `<Model>_MaxRadius_*`, `<Model>_MeanRadius_*` and `<Model>_MedianRadius_*` fitted before and
+  after 0.20.0 share a name but not a meaning (phase-2 review MEDIUM-3; stated in the §7 note).
 
 **Rename table.** It goes in the PR description and in the highlighted notes (§7):
 
