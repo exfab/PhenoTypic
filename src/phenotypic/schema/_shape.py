@@ -10,9 +10,9 @@ class SHAPE(PrimaryMeasure):
 
     Extract dimensionless and angular form descriptors -- circularity,
     compactness, solidity, extent, eccentricity, orientation -- plus the
-    Feret caliper diameters and the colony's interior thickness (distance
-    from its pixels to the nearest edge). Size magnitudes (area, perimeter,
-    radii, axis lengths) live in :class:`SIZE`.
+    colony's interior thickness (distance from its pixels to the nearest
+    edge). Size magnitudes (area, perimeter, radii, axis lengths, Feret
+    diameters) live in :class:`SIZE`.
     """
 
     @classmethod
@@ -25,21 +25,11 @@ class SHAPE(PrimaryMeasure):
 
     @classmethod
     def tier(cls) -> int:
-        return 2  # default for form descriptors; Feret diameters override via Entry(tier=1)
+        return 2  # every SHAPE member is a form descriptor (Descriptive trait)
 
     CIRCULARITY = Entry(
         "Circularity",
         r"Calculated as :math:`\frac{4\pi*\text{Area}}{\text{Perimeter}^2}`. Measures how closely a colony approximates a perfect circle (value = 1). Values < 1 indicate irregular colony morphology, which may result from genetic mutations, environmental stress, or mixed microbial populations on agar plates.",
-    )
-    MIN_FERET_DIAMETER = Entry(
-        "MinFeretDiameter",
-        "Minimum caliper diameter - the shortest distance between two parallel tangent lines touching opposite sides of the colony. Represents the narrowest dimension of the colony regardless of orientation. Useful for detecting elongated or irregular colony morphologies and measuring colony width.",
-        tier=1,
-    )
-    MAX_FERET_DIAMETER = Entry(
-        "MaxFeretDiameter",
-        "Maximum caliper diameter - the longest distance between two parallel tangent lines touching opposite sides of the colony. Represents the maximum dimension of the colony regardless of orientation. Often exceeds major axis length for irregular shapes and helps quantify maximum colony extent.",
-        tier=1,
     )
     ECCENTRICITY = Entry(
         "Eccentricity",

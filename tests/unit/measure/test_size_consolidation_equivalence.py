@@ -55,6 +55,8 @@ def _aligned(new: pd.DataFrame, baseline: pd.DataFrame) -> pd.DataFrame:
         (str(SIZE.BBOX_AREA), "Shape_BboxArea"),
         (str(SIZE.MAJOR_AXIS_LENGTH), "Shape_MajorAxisLength"),
         (str(SIZE.MINOR_AXIS_LENGTH), "Shape_MinorAxisLength"),
+        (str(SIZE.MIN_FERET_DIAMETER), "Shape_MinFeretDiameter"),
+        (str(SIZE.MAX_FERET_DIAMETER), "Shape_MaxFeretDiameter"),
         (str(SIZE.INSCRIBED_RADIUS), "Shape_MaxRadius"),
     ],
 )
@@ -95,8 +97,6 @@ def test_measure_intensity_does_not_run_another_measurer(plate, monkeypatch):
         ("Shape_Extent", "Shape_Extent"),
         ("Shape_Eccentricity", "Shape_Eccentricity"),
         ("Shape_Orientation", "Shape_Orientation"),
-        ("Shape_MinFeretDiameter", "Shape_MinFeretDiameter"),
-        ("Shape_MaxFeretDiameter", "Shape_MaxFeretDiameter"),
         ("Shape_MeanBoundaryDist", "Shape_MeanRadius"),
         ("Shape_MedianBoundaryDist", "Shape_MedianRadius"),
     ],

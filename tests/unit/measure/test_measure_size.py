@@ -58,6 +58,21 @@ def test_convex_area_is_the_scipy_hull_volume(split_rectangle_image):
     assert frame[str(SIZE.CONVEX_AREA)].iloc[0] == pytest.approx(760.0, abs=1e-9)
 
 
+def test_feret_diameters_are_the_calipers_of_the_pixel_centre_hull(split_rectangle_image):
+    """0.20.0 moved the Feret diameters from Shape to Size. Label 1's hull is the
+    40 x 19 rectangle through its pixel centres, so the calipers are exact: the
+    longest distance is the diagonal sqrt(40^2 + 19^2) and the narrowest width is
+    19. Qhull on integer coordinates is exact to a few ulp, so 1e-9 is ample.
+
+    Mutation: swap the (max, min) unpacking -> 19 vs 44.28, and this fails.
+    """
+    frame = MeasureSize().measure(split_rectangle_image)
+    assert frame[str(SIZE.MAX_FERET_DIAMETER)].iloc[0] == pytest.approx(
+        np.hypot(40.0, 19.0), abs=1e-9
+    )
+    assert frame[str(SIZE.MIN_FERET_DIAMETER)].iloc[0] == pytest.approx(19.0, abs=1e-9)
+
+
 def test_touching_labels_do_not_inflate_each_others_inscribed_radius(split_rectangle_image):
     """A whole-objmap EDT merges the pair and reports 20/21; per object it is 10/11.
     The EDT of an axis-aligned rectangle is exact integer arithmetic.
@@ -156,14 +171,16 @@ def test_no_objects_raises_like_every_other_measurer():
 
 def test_degenerate_objects_measure_without_raising_or_warning():
     """Review Focus 2. A single pixel and a 1-pixel-wide line: Qhull fails, so
-    ConvexArea is NaN; the radii come from the EDT and contour and stay finite."""
+    ConvexArea and the Feret diameters are NaN; the radii come from the EDT and
+    contour and stay finite."""
     objmap = np.zeros((20, 20), dtype=int)
     objmap[2, 2] = 1
     objmap[10, 3:12] = 2
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         frame = MeasureSize().measure(_image_with_objmap(objmap))
-    assert frame[str(SIZE.CONVEX_AREA)].isna().all()
+    for header in (SIZE.CONVEX_AREA, SIZE.MIN_FERET_DIAMETER, SIZE.MAX_FERET_DIAMETER):
+        assert frame[str(header)].isna().all(), header
     assert np.isfinite(frame[str(SIZE.INSCRIBED_RADIUS)]).all()
     assert np.isfinite(frame[str(SIZE.MAX_RADIUS)]).all()
 

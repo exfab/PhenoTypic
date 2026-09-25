@@ -76,12 +76,14 @@ override + class `kind()` > class `kind()`/`tier()`. A primary member with no ti
 (from any source) **raises** `ValueError` — every member must classify, enforced by
 `tests/unit/schema/test_classification.py` + a coverage gate.
 
-Example straddler: `class SHAPE(PrimaryMeasure)` overrides `tier()` to return `2`
-(form descriptors default to Descriptive trait); its Feret diameters carry
-`Entry(..., tier=1)` so they resolve to Direct phenotype while
-`CIRCULARITY`/`ECCENTRICITY`/the boundary distances take the class default of 2.
-Size magnitudes (area, perimeter, radii, axis lengths) are not here: they live in
-`SIZE(DirectPhenotype)`, which resolves every member to tier 1 without tags.
+A "straddler" is a primary enum whose class `tier()` sets the default while some
+members override it with `Entry(..., tier=N)`. No primary enum straddles since
+0.20.0: `SHAPE(PrimaryMeasure)` overrides `tier()` to return `2` and every member
+(circularity, eccentricity, the boundary distances, …) takes that default, while the
+size magnitudes — area, perimeter, radii, axis lengths and the Feret diameters,
+which were SHAPE's `tier=1` members before 0.20.0 — live in `SIZE(DirectPhenotype)`,
+which resolves every member to tier 1 without tags. Derived enums (the growth
+models) still tag every member with `Entry(tier=1, derivation_type=...)`.
 
 ## Classification badges in the docs
 
@@ -176,7 +178,7 @@ header strings.
 Downstream users import headers directly:
 
     from phenotypic.schema import SHAPE, MeasurementInfo
-    SHAPE.get_headers()  # ['Shape_Circularity', 'Shape_MinFeretDiameter', ...]
+    SHAPE.get_headers()  # ['Shape_Circularity', 'Shape_Eccentricity', ...]
 
 Conventions: one class per file (or per file under a grouping subpackage like
 `_experimental_tags/`); bodies are pure data and inherit their category; import **only**

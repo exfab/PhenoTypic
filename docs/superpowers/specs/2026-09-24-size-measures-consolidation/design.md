@@ -22,7 +22,8 @@ so their names match their values.
 
 ### Non-goals
 
-- The Feret diameters stay in Shape (user decision).
+- ~~The Feret diameters stay in Shape.~~ Reversed by the user on 2026-09-25: the Feret
+  diameters move to Size with the other magnitudes (§10).
 - There is no read-side alias for retired column names; this is a hard break (§6).
 - `Size_IntegratedIntensity` duplicates `Intensity_IntegratedIntensity`, and its desc formula
   ("sum × area") is wrong. That is a separate dedupe.
@@ -67,6 +68,8 @@ users should see one column break, not two.
 | `Size_BboxArea` | `props.area_bbox` | was `Shape_BboxArea` |
 | `Size_MajorAxisLength` | `props.axis_major_length` | was `Shape_MajorAxisLength` |
 | `Size_MinorAxisLength` | `props.axis_minor_length` | was `Shape_MinorAxisLength` |
+| `Size_MinFeretDiameter` | rotating calipers over the `ConvexHull(props.coords)` vertices, NaN on `QhullError` | was `Shape_MinFeretDiameter`, identical values |
+| `Size_MaxFeretDiameter` | largest pairwise distance between the same hull vertices | was `Shape_MaxFeretDiameter`, identical values |
 | `Size_InscribedRadius` | per-object EDT maximum | value of old `Shape_MaxRadius`, now per object (fix 2) |
 | `Size_MedianRadius` | median of the radial signature | **new meaning**, not old `Shape_MedianRadius` |
 | `Size_MeanRadius` | plain mean of the radial signature | **new meaning**, not old `Shape_MeanRadius` |
@@ -78,8 +81,7 @@ so resolved tiers are unchanged.
 
 ### 3.2 `SHAPE` (`PrimaryMeasure`, category `Shape`) keeps
 
-Circularity, Compactness, Solidity, Extent, Eccentricity, Orientation, MinFeretDiameter,
-MaxFeretDiameter, **plus**:
+Circularity, Compactness, Solidity, Extent, Eccentricity, Orientation, **plus**:
 
 | Column | Computation | Relation to old columns |
 |---|---|---|
@@ -87,8 +89,8 @@ MaxFeretDiameter, **plus**:
 | `Shape_MedianBoundaryDist` | median of the same | value of old `Shape_MedianRadius`, now per object |
 
 The boundary distances describe interior thickness, which is a form property. They drop
-`tier=1` and take SHAPE's default tier 2. The Feret diameters keep `tier=1`, so SHAPE stays
-a straddler.
+`tier=1` and take SHAPE's default tier 2. With the Feret diameters (formerly
+`tier=1`) moved to SIZE, every SHAPE member is tier 2 and SHAPE no longer straddles tiers.
 
 ## 4. The radius family
 
@@ -220,8 +222,9 @@ Two helpers, each the single home of a correctness rule that has been broken bef
   `_trace_radial_signature` and a radial-profile helper returning the five radius headers.
   No `TuneSpec` annotations: `measure/` is outside the tune annotation-coverage gate.
 - **`MeasureShape`** reads `props.area` and `props.perimeter` internally for Circularity and
-  Compactness, and `props.extent`. It uses `convex_hull_area` for Solidity and the hull
-  vertices for Feret, and `object_edt` for the boundary distances. It emits none of the §3.1
+  Compactness, and `props.extent`. It uses `convex_hull_area` for Solidity and
+  `object_edt` for the boundary distances. The Feret diameters, computed from the hull
+  vertices, moved to `MeasureSize` (user decision, 2026-09-25). It emits none of the §3.1
   columns.
 - **`MeasureIntensity`** today runs `MeasureShape().measure(image)` only to divide by
   `SHAPE.AREA` and `SHAPE.CONVEX_AREA`. It switches to `props.area` and `convex_hull_area`.
@@ -261,7 +264,7 @@ never diverge.
 | Retired | Successor |
 |---|---|
 | `Shape_Area` | `Size_Area` |
-| `Shape_Perimeter`, `Shape_ConvexArea`, `Shape_BboxArea`, `Shape_MajorAxisLength`, `Shape_MinorAxisLength` | `Size_` + same label |
+| `Shape_Perimeter`, `Shape_ConvexArea`, `Shape_BboxArea`, `Shape_MajorAxisLength`, `Shape_MinorAxisLength`, `Shape_MinFeretDiameter`, `Shape_MaxFeretDiameter` | `Size_` + same label |
 | `Shape_MaxRadius` | `Size_InscribedRadius` |
 | `Shape_MeanRadius` | `Shape_MeanBoundaryDist` |
 | `Shape_MedianRadius` | `Shape_MedianBoundaryDist` |
@@ -379,10 +382,15 @@ these read the schema through `_measurement_infoclass`.
 
 ## 10. Decisions log (brainstorming, 2026-09-24)
 
+**Post-PR follow-up (2026-09-25):** the user asked to move the Feret diameters to Size as
+well. `Size_MinFeretDiameter` / `Size_MaxFeretDiameter` replace the Shape columns with
+identical values (same hull, same rotating-calipers code, moved verbatim into
+`MeasureSize`); SHAPE loses its only `tier=1` members and stops straddling tiers.
+
 | Decision | Choice |
 |---|---|
 | What "one source" means | Size columns are removed from Shape |
-| Which groups move | Radii; perimeter plus hull and box areas; ellipse axes. Feret stays |
+| Which groups move | Radii; perimeter plus hull and box areas; ellipse axes. Feret stays (**reversed 2026-09-25, see the note above this table**) |
 | Unmerged radial branch | Port into SIZE; do not rebase |
 | Back-compat | Hard break, no alias |
 | Convex area | `ConvexHull.volume` wherever scipy supplies it |

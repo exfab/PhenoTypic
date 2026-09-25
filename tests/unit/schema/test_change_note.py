@@ -35,6 +35,8 @@ def test_size_and_shape_notes_carry_the_rename_table_and_the_trap():
         assert note.startswith(MARKER)
         assert "``Shape_MaxRadius``" in note and "``Size_InscribedRadius``" in note
         assert "``Shape_MeanRadius``" in note and "``Shape_MeanBoundaryDist``" in note
+        for label in ("MinFeretDiameter", "MaxFeretDiameter"):
+            assert f"``Shape_{label}``" in note and f"``Size_{label}``" in note, label
         assert "Same name, different value" in note
 
 

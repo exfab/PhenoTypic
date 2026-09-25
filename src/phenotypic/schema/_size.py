@@ -9,11 +9,11 @@ class SIZE(DirectPhenotype):
     """Measure the key size magnitudes of each detected colony.
 
     Extract colony area, integrated intensity, perimeter, convex-hull and
-    bounding-box areas, best-fit-ellipse axis lengths, the inscribed radius,
-    and four radii measured from one center, the centroid of the
-    distance-transform peak. These are the starting
+    bounding-box areas, best-fit-ellipse axis lengths, the Feret (caliper)
+    diameters, the inscribed radius, and four radii measured from one center,
+    the centroid of the distance-transform peak. These are the starting
     measurements for growth and fitness comparisons; form descriptors
-    (circularity, solidity, eccentricity, Feret diameters) live in
+    (circularity, solidity, eccentricity, interior thickness) live in
     :class:`SHAPE`.
     """
 
@@ -61,6 +61,14 @@ class SIZE(DirectPhenotype):
     MINOR_AXIS_LENGTH = Entry(
         "MinorAxisLength",
         "Length of the shortest axis of the ellipse that best fits the colony shape. Represents the minimum colony dimension. Together with major axis length, this helps characterize colony aspect ratio and growth anisotropy.",
+    )
+    MIN_FERET_DIAMETER = Entry(
+        "MinFeretDiameter",
+        "Minimum caliper diameter - the shortest distance between two parallel tangent lines touching opposite sides of the colony. Represents the narrowest dimension of the colony regardless of orientation. Useful for detecting elongated or irregular colony morphologies and measuring colony width.",
+    )
+    MAX_FERET_DIAMETER = Entry(
+        "MaxFeretDiameter",
+        "Maximum caliper diameter - the longest distance between two parallel tangent lines touching opposite sides of the colony. Represents the maximum dimension of the colony regardless of orientation. Often exceeds major axis length for irregular shapes and helps quantify maximum colony extent.",
     )
     INSCRIBED_RADIUS = Entry(
         "InscribedRadius",

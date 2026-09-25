@@ -42,7 +42,8 @@ def test_emits_exactly_the_shape_schema(split_rectangle_image):
 def test_size_magnitudes_and_misnamed_radii_are_gone():
     headers = set(SHAPE.get_headers())
     for retired in ("Area", "Perimeter", "ConvexArea", "BboxArea", "MajorAxisLength",
-                    "MinorAxisLength", "MeanRadius", "MedianRadius", "MaxRadius"):
+                    "MinorAxisLength", "MeanRadius", "MedianRadius", "MaxRadius",
+                    "MinFeretDiameter", "MaxFeretDiameter"):
         assert f"Shape_{retired}" not in headers
     assert {"Shape_MeanBoundaryDist", "Shape_MedianBoundaryDist"} <= headers
 
@@ -134,5 +135,4 @@ def test_degenerate_objects_give_nan_hull_measures_without_warning():
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         frame = MeasureShape().measure(_image_with_objmap(objmap))
-    for header in (SHAPE.SOLIDITY, SHAPE.MIN_FERET_DIAMETER, SHAPE.MAX_FERET_DIAMETER):
-        assert frame[str(header)].isna().all(), header
+    assert frame[str(SHAPE.SOLIDITY)].isna().all()

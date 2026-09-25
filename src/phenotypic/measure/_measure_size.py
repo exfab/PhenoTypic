@@ -24,7 +24,8 @@ class MeasureSize(MeasureFeatures):
 
     The single source of colony size: area, integrated intensity, perimeter,
     convex-hull and bounding-box areas, best-fit-ellipse axis lengths, the
-    inscribed radius, and four radii (median, mean, robust mean and maximum)
+    Feret (caliper) diameters, the inscribed radius, and four radii (median,
+    mean, robust mean and maximum)
     measured from one center, the centroid of the distance-transform peak.
     These are the starting measurements for growth and fitness comparisons;
     see the :class:`~phenotypic.schema.SIZE` table below for what each column
@@ -64,7 +65,7 @@ class MeasureSize(MeasureFeatures):
 
     Consider Also:
         - :class:`MeasureShape` for form descriptors (circularity, solidity,
-          eccentricity, Feret diameters, interior thickness).
+          eccentricity, interior thickness).
         - :class:`MeasureIntensity` for full intensity statistics.
         - :class:`MeasureGridSpread` for detecting multi-object wells in
           arrayed assays.
@@ -81,6 +82,59 @@ class MeasureSize(MeasureFeatures):
     angular_bins: int = Field(360, ge=8, le=3600)
     trim_proportion: float = Field(0.2, ge=0.0, lt=0.5)
     plateau_tolerance: float = Field(0.01, gt=0.0, lt=1.0)
+
+    @staticmethod
+    def _calculate_feret_diameters(hull_points: np.ndarray) -> tuple[float, float]:
+        """Calculate minimum and maximum Feret diameters from convex hull points.
+
+        The Feret diameter is the distance between two parallel lines tangent to the object.
+        Maximum Feret diameter: longest distance between any two points on the convex hull.
+        Minimum Feret diameter: computed using rotating calipers algorithm to find the
+        minimum width of the object across all orientations.
+
+        Args:
+            hull_points: Nx2 array of coordinates representing convex hull vertices
+
+        Returns:
+            tuple: (max_feret, min_feret) diameters
+        """
+        if len(hull_points) < 2:
+            return (np.nan, np.nan)
+
+        # Maximum Feret: compute pairwise distances and find maximum
+        # This is the straightforward maximum distance between any two hull vertices
+        distances = np.sqrt(
+                ((hull_points[:, None, :] - hull_points[None, :, :]) ** 2).sum(axis=2)
+        )
+        max_feret = np.max(distances)
+
+        # Minimum Feret: use rotating calipers algorithm
+        # For each edge of the convex hull, calculate perpendicular distance to all other points
+        n = len(hull_points)
+        min_feret = np.inf
+
+        for i in range(n):
+            # Define edge vector from point i to point i+1
+            p1 = hull_points[i]
+            p2 = hull_points[(i + 1) % n]
+            edge = p2 - p1
+            edge_length = np.linalg.norm(edge)
+
+            if edge_length == 0:
+                continue
+
+            # Normalized perpendicular direction to the edge
+            edge_unit = edge / edge_length
+            perpendicular = np.array([-edge_unit[1], edge_unit[0]])
+
+            # Project all hull points onto the perpendicular direction
+            projections = np.dot(hull_points - p1, perpendicular)
+
+            # The width in this direction is the range of projections
+            width = np.max(projections) - np.min(projections)
+            min_feret = min(min_feret, width)
+
+        return (max_feret, min_feret)
 
     def _trace_radial_signature(
             self, obj_mask: np.ndarray, edt: np.ndarray
@@ -215,7 +269,14 @@ class MeasureSize(MeasureFeatures):
             measurements[str(SIZE.BBOX_AREA)][idx] = props.area_bbox
             measurements[str(SIZE.MAJOR_AXIS_LENGTH)][idx] = props.axis_major_length
             measurements[str(SIZE.MINOR_AXIS_LENGTH)][idx] = props.axis_minor_length
-            measurements[str(SIZE.CONVEX_AREA)][idx] = convex_hull_area(props.coords)[1]
+            hull, hull_area = convex_hull_area(props.coords)
+            measurements[str(SIZE.CONVEX_AREA)][idx] = hull_area
+            if hull is not None:
+                max_feret, min_feret = self._calculate_feret_diameters(
+                        props.coords[hull.vertices]
+                )
+                measurements[str(SIZE.MAX_FERET_DIAMETER)][idx] = max_feret
+                measurements[str(SIZE.MIN_FERET_DIAMETER)][idx] = min_feret
             for header, value in self._measure_radial_profile(props.image).items():
                 measurements[header][idx] = value
 

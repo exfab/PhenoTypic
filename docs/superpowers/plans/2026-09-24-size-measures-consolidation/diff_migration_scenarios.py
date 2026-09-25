@@ -87,6 +87,8 @@ RENAMES = {
     "Shape_BboxArea": "Size_BboxArea",
     "Shape_MajorAxisLength": "Size_MajorAxisLength",
     "Shape_MinorAxisLength": "Size_MinorAxisLength",
+    "Shape_MinFeretDiameter": "Size_MinFeretDiameter",
+    "Shape_MaxFeretDiameter": "Size_MaxFeretDiameter",
     "Shape_MaxRadius": "Size_InscribedRadius",
     "Shape_MeanRadius": "Shape_MeanBoundaryDist",
     "Shape_MedianRadius": "Shape_MedianBoundaryDist",

@@ -14,6 +14,8 @@ s/\bShape_ConvexArea\b/Size_ConvexArea/g;
 s/\bShape_BboxArea\b/Size_BboxArea/g;
 s/\bShape_MajorAxisLength\b/Size_MajorAxisLength/g;
 s/\bShape_MinorAxisLength\b/Size_MinorAxisLength/g;
+s/\bShape_MinFeretDiameter\b/Size_MinFeretDiameter/g;
+s/\bShape_MaxFeretDiameter\b/Size_MaxFeretDiameter/g;
 s/\bShape_MaxRadius\b/Size_InscribedRadius/g;
 s/\bShape_MeanRadius\b/Shape_MeanBoundaryDist/g;
 s/\bShape_MedianRadius\b/Shape_MedianBoundaryDist/g;
