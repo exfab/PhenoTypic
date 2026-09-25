@@ -525,6 +525,12 @@ Executed on this run, 148 of 148 columns resolve:
 | Curation | 1 | `QC_MetadataOnly` — grouped explicitly, see below |
 | Unattributed | 15 | `Object_Label`, `Bbox_*` (10), `Grid_*` (4) |
 
+> **2026-09-24:** `MeasureNeighborDist` now emits 11 columns under the
+> renamed `NeighborDist_*` prefix (was `GridSpatial_*`). It adds
+> `NeighborDist_NearestObjLabel`, `_NearestDistance`, and `_NearestRelation`
+> (spec `2026-09-24-measure-neighbor-nearest`). The counts and prefix above
+> are the historical record of the run they were taken from.
+
 Totals are 149 against the mirror and 148 against a per-store table, which carries
 no `QC_MetadataOnly`.
 
