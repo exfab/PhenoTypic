@@ -81,8 +81,20 @@ def test_the_prediction_agrees_with_the_operation(op) -> None:
 
 
 def test_a_legacy_spelling_resolves_as_the_op_resolves_it() -> None:
-    """Review D6 (M31): an exact-name lookup would call this column missing."""
-    from phenotypic.post._utils import missing_metadata_columns
+    """Review D6 (M31): an exact-name lookup would call this column missing.
 
-    assert missing_metadata_columns(["Metadata_ImageName"], ["MetadataImage_ImageName"]) == ()
-    assert missing_metadata_columns(["Metadata_ImageName"], ["NoSuchColumn"]) == ("NoSuchColumn",)
+    The legacy spelling is taken from the compatibility map, not written out:
+    ``test_no_metadata_literals`` confines legacy names to compatibility code.
+    """
+    from phenotypic.post._utils import missing_metadata_columns
+    from phenotypic.schema import IMAGE
+    from phenotypic.sdk_._metadata_helpers import LEGACY_HEADER_TO_MEMBER
+
+    legacy = next(
+        name for name, member in LEGACY_HEADER_TO_MEMBER.items() if member is IMAGE.IMAGE_NAME
+    )
+    canonical = str(IMAGE.IMAGE_NAME)
+
+    assert legacy != canonical
+    assert missing_metadata_columns([canonical], [legacy]) == ()
+    assert missing_metadata_columns([canonical], ["NoSuchColumn"]) == ("NoSuchColumn",)
