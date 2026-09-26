@@ -247,11 +247,20 @@ deliverables/
      - a list-table *Column | Family | Type*: the Family cell is a `:ref:` to
        the existing `measurement-info-<slug>` anchor, and the Type cell is the
        member's existing tier badge (`use_badge`)
-   - The page is linked from the Measurements navbar dropdown
-     (`docs/source/_templates/navbar-nav.html`, a third entry after
-     Measurements and Metadata, with the same `_pn.startswith(...)` active-state
-     pattern) and from the explanation page's `measurement-categories` section.
-     It sits in the Measurements page's hidden toctree, as Metadata does now.
+   - **It is a subpage of the "Measurements" header tab**, a sibling of
+     Metadata:
+     - Navbar: a third `<li>` in the Measurements dropdown
+       (`docs/source/_templates/navbar-nav.html`), after Measurements and
+       Metadata, using the same markup and
+       `_pn.startswith('measurements_ref/categories/')` active state. The tab
+       itself highlights on this page with no change, since its test is
+       `_pn.startswith('measurements_ref/')`.
+     - Sidebar/toctree: `../categories/index` joins `../metadata/index` in the
+       Measurements page's hidden toctree (`_build_reference_page`), so the
+       page is a child of Measurements.
+     - It is also linked from the explanation page's `measurement-categories`
+       section. It is **not** added to the Explanation toctree, so it has one
+       parent.
    - It is generated under `measurements_ref/` rather than `explanation/`
      because the extension `rmtree`s and regenerates its own folder. Writing
      generated files into the hand-authored `explanation/` folder would put
