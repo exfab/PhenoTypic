@@ -103,33 +103,40 @@ _CATEGORIES_INTRO = (
     "value can be trusted (see :ref:`measurement-categories`). Every run that "
     "measures objects writes one spreadsheet per category that has at least "
     "one column in the run, under "
-    "``deliverables/measurements_by_category/``, holding the shared context "
+    "``deliverables/{split_dir}/``, holding the shared context "
     "columns (metadata, object label, grid) plus that category's columns."
 )
 
 
 def _category_section(category: Any) -> str:
     """Render one category: anchor, heading, verbatim desc, output file, column table."""
+    from phenotypic.sdk_ import DIR_MEASUREMENTS_BY_CATEGORY
+
     out = [
         f".. _{category.anchor}:",
         "",
         *_heading(category.display_name, "-"),
         category.desc,
         "",
-        f"Written to ``deliverables/measurements_by_category/{category.label}.csv`` "
+        f"Written to ``deliverables/{DIR_MEASUREMENTS_BY_CATEGORY}/{category.label}.csv`` "
         "(and ``.parquet``).",
         "",
-        ".. list-table::",
-        "   :header-rows: 1",
-        "",
-        "   * - Column",
-        "     - Metric family",
-        "     - Type",
     ]
     members = category.members()
     if not members:
         # A header-only list-table is a docutils ERROR; say so in prose instead.
-        return "\n".join([*out[:out.index(".. list-table::")], "No columns carry this category yet.", ""])
+        out.extend(["No columns carry this category yet.", ""])
+        return "\n".join(out)
+    out.extend(
+        [
+            ".. list-table::",
+            "   :header-rows: 1",
+            "",
+            "   * - Column",
+            "     - Metric family",
+            "     - Type",
+        ]
+    )
     for member in members:
         info_cls = type(member)
         out.extend(
@@ -146,8 +153,10 @@ def _category_section(category: Any) -> str:
 def _build_categories_page() -> str:
     """Build the generated Categories page, one section per CATEGORIES member."""
     from phenotypic.schema import CATEGORIES
+    from phenotypic.sdk_ import DIR_MEASUREMENTS_BY_CATEGORY
 
-    out = [*_heading("Categories", "="), _CATEGORIES_INTRO, ""]
+    intro = _CATEGORIES_INTRO.format(split_dir=DIR_MEASUREMENTS_BY_CATEGORY)
+    out = [*_heading("Categories", "="), intro, ""]
     out.extend(_category_section(category) for category in CATEGORIES)
     return "\n".join(out)
 

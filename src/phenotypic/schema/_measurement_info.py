@@ -192,8 +192,24 @@ def _rst_cell_text(text: str) -> str:
     return _RST_ROLE_RE.sub(_flatten, text).replace("|", r"\|")
 
 
+#: One list-table row; both ``_render_info_table`` callers must build it via ``_info_row``.
+_InfoRow = tuple[str, str, str, str | None, str, str]
+
+
+def _info_row(name_cell: str, member: "MeasurementInfo") -> _InfoRow:
+    """Build one :func:`_render_info_table` row for *member*, named *name_cell*."""
+    return (
+        name_cell,
+        member.desc,
+        member.bio_desc,
+        member.image,
+        member.use_badge,
+        member.category_badges,
+    )
+
+
 def _render_info_table(
-    rows: list[tuple[str, str, str, str | None, str, str]],
+    rows: list[_InfoRow],
     *,
     title: str,
     name_header: str = "Name",
@@ -677,17 +693,7 @@ class MeasurementInfo(str, Enum):
         """
         title = title or cls.metric_family()
         name_header, desc_header = header
-        rows = [
-            (
-                m.value if use_headers else m.label,
-                m.desc,
-                m.bio_desc,
-                m.image,
-                m.use_badge,
-                m.category_badges,
-            )
-            for m in cls
-        ]
+        rows = [_info_row(m.value if use_headers else m.label, m) for m in cls]
         return _render_info_table(
             rows, title=title, name_header=name_header, desc_header=desc_header
         )

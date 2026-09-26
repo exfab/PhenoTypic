@@ -1,6 +1,6 @@
 """Measurement info container for the generic QualityCheck output columns."""
 
-from ._measurement_info import Entry, _render_info_table
+from ._measurement_info import Entry, _info_row, _render_info_table
 from ._tiers import QualityInfo
 
 
@@ -56,17 +56,7 @@ class QUALITY_CHECK(QualityInfo):
             Docstring with an appended RST table of output columns.
         """
         slug = check_name if check_name is not None else "<name>"
-        rows = [
-            (
-                f"QC_{slug}_{m.label}",
-                m.desc,
-                m.bio_desc,
-                m.image,
-                m.use_badge,
-                m.category_badges,
-            )
-            for m in cls
-        ]
+        rows = [_info_row(f"QC_{slug}_{m.label}", m) for m in cls]
         table = _render_info_table(rows, title=f"QC_{slug}", name_header="Name")
         base = doc if isinstance(doc, str) else (doc.__doc__ or "")
         return base + "\n\n" + table

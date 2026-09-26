@@ -65,17 +65,12 @@ class CATEGORIES(str, Enum):
     label: str
     desc: str
 
-    @staticmethod
-    def _validate_entry(entry: object) -> CategoryEntry:
+    def __new__(cls, entry: CategoryEntry) -> CATEGORIES:
         if not isinstance(entry, CategoryEntry):
             raise TypeError(
                 "CATEGORIES members must be declared as CategoryEntry(...); "
                 f"got {entry!r}"
             )
-        return entry
-
-    def __new__(cls, entry: CategoryEntry) -> CATEGORIES:
-        entry = cls._validate_entry(entry)
         obj = str.__new__(cls, entry.label)
         obj._value_ = entry.label
         obj.label = entry.label
