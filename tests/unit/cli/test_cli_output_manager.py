@@ -28,6 +28,7 @@ from phenotypic import ImagePipeline
 from phenotypic.measure import MeasureColor, MeasureShape, MeasureSize
 from phenotypic.sdk_ import (
     master_measurements_parquet_path,
+    measurements_by_category_dir,
     measurements_by_feature_dir,
     measurements_csv_path,
     measurements_parquet_path,
@@ -43,6 +44,7 @@ from phenotypic._cli._cli_output_manager import (
     aggregate_measurements,
     finalize_post_master_outputs,
     join_metadata,
+    split_master_by_category,
     split_master_by_feature,
 )
 from phenotypic.schema import EXPERIMENT, IMAGE
@@ -304,6 +306,40 @@ class TestSplitMasterByFeature:
         assert not measurements_by_feature_dir(tmp_path).exists()
 
 
+class TestSplitMasterByCategory:
+    """``split_master_by_category`` writes one CSV + Parquet per category."""
+
+    @staticmethod
+    def _master() -> pl.DataFrame:
+        return pl.DataFrame(
+            {
+                "Metadata_Dataset": ["ds1"],
+                "Object_Label": [1],
+                "Size_Area": [10.0],
+                "Shape_Circularity": [0.9],
+            }
+        )
+
+    def test_writes_starting_metrics_csv_and_parquet(
+        self, tmp_path: Path
+    ) -> None:
+        written = split_master_by_category(self._master(), tmp_path)
+        split_dir = measurements_by_category_dir(tmp_path)
+        assert written == {"StartingMetrics": split_dir / "StartingMetrics.csv"}
+        csv_df = pl.read_csv(split_dir / "StartingMetrics.csv")
+        pq_df = pl.read_parquet(split_dir / "StartingMetrics.parquet")
+        assert csv_df.columns == ["Metadata_Dataset", "Object_Label", "Size_Area"]
+        assert pq_df.columns == csv_df.columns
+        assert pq_df["Size_Area"].to_list() == [10.0]
+
+    def test_no_categorized_columns_writes_nothing(
+        self, tmp_path: Path
+    ) -> None:
+        master = self._master().drop("Size_Area")
+        assert split_master_by_category(master, tmp_path) == {}
+        assert not measurements_by_category_dir(tmp_path).exists()
+
+
 class TestAggregateMeasurementsAutoResolve:
     """End-to-end: ``aggregate_measurements`` picks up the pipeline from
     ``output_dir`` when called without an explicit ``pipeline`` kwarg."""
@@ -449,6 +485,71 @@ class TestAggregateMeasurementsAutoResolve:
             "Object_Label",
             "Size_Area",
         ]
+
+    def test_aggregate_writes_category_split_beside_feature_split(
+        self, tmp_path: Path
+    ) -> None:
+        output_dir = tmp_path / "out"
+        output_dir.mkdir()
+        ds_dir = output_dir / "results" / "ds1" / "measurements"
+        ds_dir.mkdir(parents=True)
+        pl.DataFrame(
+            {
+                "Metadata_Dataset": ["ds1"],
+                str(IMAGE.IMAGE_NAME): ["img1"],
+                "Object_Label": [1],
+                "Size_Area": [10.0],
+                "Shape_Circularity": [0.9],
+            }
+        ).write_parquet(ds_dir / "img1.parquet")
+
+        aggregate_measurements(
+            output_dir=output_dir,
+            dataset_names=["ds1"],
+            include_dataset_column=True,
+        )
+
+        category_csv = (
+            measurements_by_category_dir(output_dir) / "StartingMetrics.csv"
+        )
+        assert category_csv.exists()
+        df = pl.read_csv(category_csv)
+        assert "Size_Area" in df.columns
+        assert "Shape_Circularity" not in df.columns
+        assert str(IMAGE.IMAGE_NAME) in df.columns
+
+    def test_failing_category_split_does_not_block_publication(
+        self, tmp_path: Path
+    ) -> None:
+        output_dir = tmp_path / "out"
+        output_dir.mkdir()
+        ds_dir = output_dir / "results" / "ds1" / "measurements"
+        ds_dir.mkdir(parents=True)
+        pl.DataFrame(
+            {
+                "Metadata_Dataset": ["ds1"],
+                str(IMAGE.IMAGE_NAME): ["img1"],
+                "Object_Label": [1],
+                "Size_Area": [10.0],
+            }
+        ).write_parquet(ds_dir / "img1.parquet")
+
+        with patch(
+            "phenotypic._cli._cli_output_manager.split_measurements_by_category",
+            side_effect=RuntimeError("boom"),
+        ):
+            master_path = aggregate_measurements(
+                output_dir=output_dir,
+                dataset_names=["ds1"],
+                include_dataset_column=True,
+            )
+
+        assert master_path is not None and master_path.exists()
+        assert measurements_csv_path(output_dir).exists()
+        assert (
+            measurements_by_feature_dir(output_dir) / "MeasureSize.csv"
+        ).exists()
+        assert not measurements_by_category_dir(output_dir).exists()
 
 
 class TestFinalizeReemitsErrorDeliverables:

@@ -12,7 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, List
 
-from phenotypic.sdk_ import readme_md_path
+from phenotypic.sdk_ import DIR_MEASUREMENTS_BY_CATEGORY, readme_md_path
 
 if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
@@ -20,10 +20,6 @@ if TYPE_CHECKING:
     from phenotypic.schema import MeasurementInfo
 
 logger = logging.getLogger(__name__)
-
-# Placeholder until Task 5 adds ``DIR_MEASUREMENTS_BY_CATEGORY`` to
-# ``phenotypic.sdk_``; replace this with that constant then.
-_BY_CATEGORY_DIRNAME = "measurements_by_category"
 
 
 class READMEGenerator:
@@ -240,7 +236,7 @@ No measurements configured in this pipeline."""
             listed = "\n".join(f"- `{column}`" for column in dict.fromkeys(columns))
             blocks.append(
                 f"### {category.display_name}\n\n{category.desc}\n\n"
-                f"Written to `deliverables/{_BY_CATEGORY_DIRNAME}/{category.label}.csv` "
+                f"Written to `deliverables/{DIR_MEASUREMENTS_BY_CATEGORY}/{category.label}.csv` "
                 f"(and `.parquet`), alongside every context column.\n\n{listed}"
             )
         if not blocks:

@@ -27,7 +27,7 @@ Module layout
       ``master_measurements_parquet_path``, ``manifest_json_path``,
       ``job_metadata_path``, ``pipeline_json_path``, ``task_status_path``,
       ``logs_dir``, ``slurm_scripts_dir``, ``processing_report_html_path``,
-      ``measurements_by_feature_dir``,
+      ``measurements_by_feature_dir``, ``measurements_by_category_dir``,
       etc.
     - **`progress_dir_: Path`** — the already-resolved progress dir
       (i.e. ``output_dir / "progress"``). Used for helpers that produce
@@ -785,6 +785,10 @@ DIR_MEASUREMENTS: Final[str] = "measurements"
 #: Per-feature spreadsheet split written by
 #: :func:`phenotypic._cli._cli_output_manager.split_master_by_feature`.
 DIR_MEASUREMENTS_BY_FEATURE: Final[str] = "measurements_by_feature"
+
+#: Per-category spreadsheet split written by
+#: :func:`phenotypic._cli._cli_output_manager.split_master_by_category`.
+DIR_MEASUREMENTS_BY_CATEGORY: Final[str] = "measurements_by_category"
 
 #: SLURM stdout/stderr subdirectory inside the hidden machine-state cache.
 DIR_LOGS: Final[str] = "logs"
@@ -2182,6 +2186,11 @@ def dataset_overlays_dir(output_dir: Path, dataset: str) -> Path:
 def measurements_by_feature_dir(output_dir: Path) -> Path:
     """Return ``<output>/deliverables/measurements_by_feature/``."""
     return deliverables_dir(output_dir) / DIR_MEASUREMENTS_BY_FEATURE
+
+
+def measurements_by_category_dir(output_dir: Path) -> Path:
+    """Return ``<output>/deliverables/measurements_by_category/``."""
+    return deliverables_dir(output_dir) / DIR_MEASUREMENTS_BY_CATEGORY
 
 
 def logs_dir(output_dir: Path) -> Path:
