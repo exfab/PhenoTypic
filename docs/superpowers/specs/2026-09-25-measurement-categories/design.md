@@ -103,7 +103,10 @@ class CATEGORIES(str, Enum):
 - `.members()` → a tuple of every public `MeasurementInfo` member carrying this
   category, in `phenotypic.schema.__all__` export order and then member order.
   It is built lazily by a function-local `import phenotypic.schema` (the module
-  itself stays stdlib-only) and cached.
+  itself stays stdlib-only) and is deliberately **not cached**. It walks ~40
+  classes, only docs and tests call it, and a cache would hide classes
+  registered later. (Amended 2026-09-25 after plan review M3; approved by the
+  user.)
 - `desc` is technical text; agents may author it. There is no `bio_desc`.
 - `CATEGORIES` and `CategoryEntry` are exported from `phenotypic.schema`.
 
@@ -227,8 +230,12 @@ deliverables/
   `measurements_by_category/`.
 - Per-family measurement tables gain a Categories column (display names), shown
   only when some member of that table has a category.
-- A new "Categories" section lists each category that has columns *present in
-  this run*, with its `desc` and those columns.
+- A new "Measurement Categories" section lists each category that has columns
+  the run's **configured** measurers declare, with its `desc` and those columns.
+  `READMEGenerator` sees the pipeline, not the measurement frame, so this matches
+  how the existing measurement tables are generated. A measurer that fails on
+  every image still gets an entry. (Amended 2026-09-25 from "present in this
+  run" after plan review M4; approved by the user.)
 
 ## 6. Docs
 
