@@ -5,9 +5,12 @@ conventions, descriptive metadata, and automatic documentation generation.
 """
 
 import re
+from collections.abc import Iterable
 from dataclasses import KW_ONLY, dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, cast
+
+from ._categories import CATEGORIES
 
 if TYPE_CHECKING:
     from ._rembi import REMBI_MODULE
@@ -60,6 +63,36 @@ _BADGE_SPECS: Final[dict[tuple[int | None, str], tuple[str, str, str]]] = {
 }
 
 
+def _normalize_categories(value: object) -> frozenset[CATEGORIES]:
+    """Coerce ``Entry(categories=...)`` to a frozenset of CATEGORIES members.
+
+    A bare member is checked **before** iteration: CATEGORIES is a ``str``
+    enum, so iterating a member would yield its characters. Membership is by
+    ``isinstance``, never equality, so a raw string equal to a member's value
+    (``"StartingMetrics"``) is rejected.
+
+    Reading is looser than writing: because of the ``str`` mixin,
+    ``"StartingMetrics" in entry.categories`` is ``True``. Only this write
+    path is type-exact.
+    """
+    if isinstance(value, CATEGORIES):
+        return frozenset({value})
+    if isinstance(value, str):
+        raise TypeError(
+            f"Entry.categories takes CATEGORIES members, not strings; got {value!r}. "
+            "Use CATEGORIES.<NAME>."
+        )
+    if not isinstance(value, Iterable):
+        raise TypeError(
+            f"Entry.categories must be a CATEGORIES member or an iterable of them; got {value!r}"
+        )
+    items = tuple(value)
+    bad = [item for item in items if not isinstance(item, CATEGORIES)]
+    if bad:
+        raise TypeError(f"Entry.categories accepts only CATEGORIES members; got {bad!r}")
+    return frozenset(items)
+
+
 @dataclass(frozen=True, slots=True)
 class Entry:
     """Declarative value for a :class:`MeasurementInfo` member.
@@ -74,6 +107,8 @@ class Entry:
         bio_desc: Biological relevance / use-case. Human-authored only.
         image: Path, relative to ``_assets/measurements/``, of an illustrative
             figure (e.g. ``"shape/area.png"``); ``None`` for no figure.
+        categories: Curated categories (CATEGORIES members) this measurement
+            belongs to. A bare member or an iterable; normalized to a frozenset.
     """
 
     label: str
@@ -85,6 +120,7 @@ class Entry:
     derivation_type: str | None = None
     derives_from: str | None = None
     rembi_module: "REMBI_MODULE | None" = None
+    categories: "CATEGORIES | Iterable[CATEGORIES]" = frozenset()
 
     def __post_init__(self) -> None:
         if not isinstance(self.label, str) or not self.label:
@@ -106,6 +142,7 @@ class Entry:
             from ._rembi import REMBI_MODULE
             if not isinstance(self.rembi_module, REMBI_MODULE):
                 raise TypeError("Entry.rembi_module must be a REMBI_MODULE or None")
+        object.__setattr__(self, "categories", _normalize_categories(self.categories))
 
 
 #: Source-root-absolute URL prefix for measurement asset images. Root-absolute so
@@ -367,6 +404,7 @@ class MeasurementInfo(str, Enum):
     derivation_type: str | None
     derives_from: str | None
     rembi_module_override: "REMBI_MODULE | None"
+    categories: frozenset[CATEGORIES]
 
     @classmethod
     def metric_family(cls) -> str:
@@ -485,6 +523,7 @@ class MeasurementInfo(str, Enum):
         obj.derivation_type = entry.derivation_type
         obj.derives_from = entry.derives_from
         obj.rembi_module_override = entry.rembi_module
+        obj.categories = cast("frozenset[CATEGORIES]", entry.categories)
         return obj
 
     def __str__(self) -> str:
