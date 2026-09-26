@@ -10,7 +10,9 @@ Give measurement columns a curated, repo-defined **category** axis — a
 many-to-many grouping such as *Starting Metrics* — and have every CLI run that
 finalizes measurements publish one spreadsheet per category under
 `deliverables/measurements_by_category/`, beside the existing
-`measurements_by_feature/`. Surface categories on the docs Measurements page.
+`measurements_by_feature/`. Give categories their own generated docs page
+(each category's `desc` output verbatim from the enum), and badge each
+categorized column on the Measurements page.
 
 To free the word, the existing per-enum header prefix, today called
 `category()`, is renamed **`metric_family()`**.
@@ -107,11 +109,27 @@ class CATEGORIES(str, Enum):
 
 ### 4.2 `Entry.categories`
 
-- A new keyword-only field `categories`, default empty. It accepts any iterable
-  and is normalized to a `frozenset` in `__post_init__` (via
-  `object.__setattr__`, since `Entry` is frozen).
-- `__post_init__` raises `TypeError` for any element that is not a `CATEGORIES`
-  member.
+- A new keyword-only field `categories`, default empty. Authors write the
+  member directly, never `.value`:
+
+  ```python
+  AREA = Entry("Area", "...", categories=CATEGORIES.STARTING_METRICS)
+  # several: categories=(CATEGORIES.STARTING_METRICS, CATEGORIES.OTHER)
+  ```
+
+- It accepts a **bare `CATEGORIES` member** or any iterable of members, and is
+  normalized to a `frozenset` in `__post_init__` (via `object.__setattr__`,
+  since `Entry` is frozen).
+- **The bare member is checked first.** `CATEGORIES` is a `str` enum, so a bare
+  member is itself an iterable string. Iterating it would yield its characters
+  (`{"S", "t", "a", …}`). `__post_init__` tests `isinstance(value, CATEGORIES)`
+  before any iteration, and a test pins that
+  `Entry(..., categories=CATEGORIES.STARTING_METRICS).categories ==
+  frozenset({CATEGORIES.STARTING_METRICS})`.
+- `__post_init__` raises `TypeError` for anything that is not a `CATEGORIES`
+  member, **including a raw string equal to a member's value**
+  (`"StartingMetrics"`). The check is by `isinstance`, never by equality, so
+  every category is spelled through `_categories.py`.
 - `MeasurementInfo.__new__` stores it on the member as `.categories`.
 - **Metadata owners may not carry categories.** A `MetadataInfo` member with a
   non-empty `categories` is refused by a schema test. Metadata columns already
@@ -214,11 +232,32 @@ deliverables/
 
 ## 6. Docs
 
-1. **Measurements page** (`docs/source/_extensions/measurements_ref.py`): a
-   "Categories" section **at the top**, before the first family. For each
-   category, an anchor `measurement-category-<label.lower()>`, a heading
-   (`display_name`), its `desc`, and a list-table *Column | Family*, where each
-   Family cell is a `:ref:` to the existing `measurement-info-<slug>` anchor.
+1. **A generated Categories page** (`docs/source/_extensions/measurements_ref.py`
+   writes `measurements_ref/categories/index.rst` on every build, beside the
+   Measurements and Metadata pages). Nothing on it is hand-maintained: adding a
+   `CATEGORIES` member or tagging an `Entry` changes the page on the next build.
+   - A fixed intro, written in the extension: categories are curated,
+     many-to-many groupings with no trust claim, plus a link to
+     `measurement-categories` on the explanation page.
+   - For each `CATEGORIES` member, in enum order:
+     - an anchor `measurement-category-<label.lower()>` and a heading
+       (`display_name`)
+     - its **`desc`, output verbatim** from the enum
+     - the file it produces: `deliverables/measurements_by_category/<label>.{csv,parquet}`
+     - a list-table *Column | Family | Type*: the Family cell is a `:ref:` to
+       the existing `measurement-info-<slug>` anchor, and the Type cell is the
+       member's existing tier badge (`use_badge`)
+   - The page is linked from the Measurements navbar dropdown
+     (`docs/source/_templates/navbar-nav.html`, a third entry after
+     Measurements and Metadata, with the same `_pn.startswith(...)` active-state
+     pattern) and from the explanation page's `measurement-categories` section.
+     It sits in the Measurements page's hidden toctree, as Metadata does now.
+   - It is generated under `measurements_ref/` rather than `explanation/`
+     because the extension `rmtree`s and regenerates its own folder. Writing
+     generated files into the hand-authored `explanation/` folder would put
+     them under that cleanup rule or leave them stale.
+   - The Measurements page itself gets no category roll-up; its family tables
+     carry the badges (item 2).
 2. **Family tables** (`MeasurementInfo.rst_table()`): a "Categories" column with
    one badge per category, `:bdg-ref-<color>-line:` (the outline variant, so it
    reads as distinct from the solid Type pills), linking to the category anchor.
@@ -229,9 +268,11 @@ deliverables/
    are global, so the links resolve from those pages too. The badge color and
    anchor pattern are constants next to `_BADGE_SPECS`.
 3. **Explanation page** (`docs/source/explanation/measurement_classification_system.md`):
-   a new `(measurement-categories)=` section. Categories are curated,
-   many-to-many groupings; unlike kind/tier they make **no trust claim**. It
-   also defines *metric family* in one sentence as the column prefix.
+   a new `(measurement-categories)=` section, a short hand-written paragraph.
+   Categories are curated, many-to-many groupings; unlike kind/tier they make
+   **no trust claim**. It links to the generated Categories page for the list,
+   so no category name or `desc` is repeated by hand. It also defines *metric
+   family* in one sentence as the column prefix.
    `schema/CLAUDE.md` is updated alongside, since it must stay consistent with
    this page.
 4. **CLI docs** (`docs/source/tutorials/pages/cli_modes.md`): the output tree
@@ -247,10 +288,10 @@ Focused tests per phase; the full sharded regression runs once, at the end.
 | Area | Guards |
 |---|---|
 | Rename | No `def category(` / `.category()` / `.CATEGORY` left in `src/`. A subclass defining `category` raises `TypeError` at class creation. The README renders a non-empty table for every discovered measurer (the swallowed-exception guard). |
-| Schema | `Entry(categories=...)` rejects a non-`CATEGORIES` element and normalizes a list to a `frozenset`. `CATEGORIES` rejects a non-`CategoryEntry` value. No `MetadataInfo` member carries categories. Every category has ≥1 member. `STARTING_METRICS.members()` is pinned to its exact 18 headers. `display_name` is readable for every label. The startup import guards (`tests/unit/ci/test_startup_imports.py`, `test_deferred_imports.py`) pass. |
+| Schema | `Entry(categories=CATEGORIES.X)` (bare member) yields `frozenset({CATEGORIES.X})`, not its characters. A tuple of members normalizes to a `frozenset`. A raw string equal to a member's value is rejected, as is any non-member. `CATEGORIES` rejects a non-`CategoryEntry` value. No `MetadataInfo` member carries categories. Every category has ≥1 member. `STARTING_METRICS.members()` is pinned to its exact 18 headers. `display_name` is readable for every label. The startup import guards (`tests/unit/ci/test_startup_imports.py`, `test_deferred_imports.py`) pass. |
 | Split | Pandas and polars in, same type out. Context columns are identical to the feature split's. A column in two categories appears in both. A category with no present columns has no key. `split_measurements` output is unchanged by the refactor. A dynamic-header member resolves through `member_for_header()`. |
 | CLI | `finalize_post_master_outputs` writes `measurements_by_category/StartingMetrics.{csv,parquet}` with equal contents. A raising category split still leaves the master and mirror published. `--mode recompile` of an existing finalized tree writes the folder. `split_master_by_category` has exactly one call site (`finalize_post_master_outputs`). The `sdk_` path helper resolves under `deliverables/`. |
-| Docs | The generated Measurements page contains the Categories section before the first family section, with anchors. Every category anchor that `rst_table()` emits exists on the generated page (this closes the dead-link gap `schema/CLAUDE.md` warns about, since badge refs use `reftype="any"` and only warn). The category badge color is in sphinx-design's `SEMANTIC_COLORS`. |
+| Docs | The generated Categories page has one section per `CATEGORIES` member, with its anchor, and its body contains that member's `desc` verbatim. Adding a test-local category changes the generated page (it is generated, not hand-written). The navbar has a Categories entry. Every category anchor that `rst_table()` emits exists on the generated Categories page (this closes the dead-link gap `schema/CLAUDE.md` warns about, since badge refs use `reftype="any"` and only warn). The category badge color is in sphinx-design's `SEMANTIC_COLORS`. |
 
 The docs build runs as a Slurm job (`sphinx-build -j "$SLURM_CPUS_PER_TASK"
 -D nbsphinx_execute=never`), followed by reading the generated Measurements HTML.
