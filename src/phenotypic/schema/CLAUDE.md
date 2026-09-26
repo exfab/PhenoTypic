@@ -4,7 +4,8 @@ Public, blessed API for PhenoTypic's measurement naming conventions.
 
 - `MeasurementInfo` (`_measurement_info.py`) — `str, Enum` base. Subclasses
   declare members as `Entry(label, desc, *, bio_desc="", image=None, tier=None,
-  derivation_type=None, derives_from=None)` plus a `metric_family()` classmethod; the
+  derivation_type=None, derives_from=None, categories=frozenset())` plus a
+  `metric_family()` classmethod; the
   enum value is the family-prefixed header (e.g. `Size_Area`). `Entry` (a
   frozen dataclass, also in `_measurement_info.py` and exported from the package)
   is the **only** legal member value — raw tuples raise `TypeError` at import.
@@ -14,8 +15,10 @@ Public, blessed API for PhenoTypic's measurement naming conventions.
   Sphinx docs; `tier`/`derivation_type`/`derives_from` drive the classification
   system (below). Per-member attrs: `.label`, `.desc`, `.bio_desc`, `.image`,
   `.pair`, `.METRIC_FAMILY`, plus classification: `.resolved_kind`, `.resolved_tier`,
-  `.use_label`, `.use_badge`. Helpers: `get_labels()`, `get_headers()`,
-  `rst_table()` (conditional Type/Biology/Image columns, suppressed when empty),
+  `.use_label`, `.use_badge`, and categories: `.categories`, `.category_badges`
+  (see "Measurement categories" below). Helpers: `get_labels()`, `get_headers()`,
+  `rst_table()` (conditional Type/Categories/Biology/Image columns, suppressed
+  when empty),
   `append_rst_to_doc()`. `metric_family()`/`.METRIC_FAMILY` were hard-renamed
   from the `category()` classmethod and `CATEGORY` property with no alias; a subclass that still defines
   either legacy name raises `TypeError` at class creation.
@@ -118,6 +121,50 @@ encode the same `(tier, kind)` taxonomy). Badge cells are inserted into the
 list-table **unescaped** (they bypass `_rst_cell_text`) so the role renders — the
 badge text must stay free of literal `|`. When adding a new tier/kind, update
 `_tiers.py`, both badge maps, and the explanation page together.
+
+## Measurement categories
+
+A **category** is a curated, many-to-many grouping of columns that cuts across
+metric families (`Size_Area` is in the **Size** family and in the *Starting
+Metrics* category). Unlike kind/tier it makes **no trust claim**. Users read about
+it in the `measurement-categories` section of
+`docs/source/explanation/measurement_classification_system.md`. Keep that section
+and this one consistent.
+
+- `CATEGORIES` (`_categories.py`) is a closed, repo-defined `str` enum of
+  `CategoryEntry(label, desc)`, and value == label. Members expose `.label`,
+  `.desc`, `.display_name` (the label split on CamelCase), `.anchor`
+  (`measurement-category-<label.lower()>`) and `.members()` (every public schema
+  member carrying it, in `__all__` then member order). It deliberately does
+  **not** subclass `MeasurementInfo`, because at least six discovery sites use
+  `issubclass(x, MeasurementInfo)` and would pick it up as a measurement family.
+  `_categories.py` imports only stdlib at module level; `.members()` imports the
+  schema package lazily.
+- Tag a member with `Entry(..., categories=CATEGORIES.X)`. It takes a bare member
+  or an iterable of members. A raw string is refused, even one equal to a
+  member's value. Metadata owners (`MetadataInfo`) may not be categorized, which
+  `test_no_metadata_member_carries_a_category` enforces.
+- **`member.categories` is an unordered `frozenset`.** `CATEGORIES` members hash
+  as their `str` value, and `str` hashing is randomized per process, so
+  iterating the set directly gives a different order in each process once a
+  column has two or more categories. Always order through
+  `CATEGORIES.in_order(...)`, and iterate `CATEGORIES` itself for declaration
+  order.
+- To add a category, add a `CategoryEntry` member with a CamelCase label and a
+  technical `desc`. Agents may write the `desc`, unlike an `Entry`'s `bio_desc`.
+  Then tag the members and update the pin test in
+  `tests/unit/schema/test_categories.py`. Three things follow automatically:
+  the generated Categories docs page (`measurements_ref/categories/index.rst`,
+  written by `docs/source/_extensions/measurements_ref.py`), the README
+  section, and `deliverables/measurements_by_category/<label>.{csv,parquet}`.
+- Badges: `member.category_badges` renders one
+  `:bdg-ref-{_CATEGORY_BADGE_COLOR}-line:` outline pill per category, in
+  `in_order` order, and each links to `CATEGORIES.X.anchor` on the Categories
+  page. `rst_table()` gives them a "Categories" column after "Type", shown only
+  when some member of the enum is categorized. `_CATEGORY_BADGE_COLOR = "info"`
+  (the outline variant, so it reads as distinct from the solid Derived `info`
+  Type pill). `dark` was rejected because pydata renders it `#222832` in both
+  themes, which is invisible in dark mode.
 
 ## Dynamic output headers (recognition schemes)
 

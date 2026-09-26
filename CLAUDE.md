@@ -562,7 +562,11 @@ enforces this for ruff, but the rule binds regardless of the tool.
   `measurements.{csv,parquet}` carries the metadata join, appends
   metadata-only phantoms once, and is the post-applied mirror the GUI
   reads/curates — feed analysis and dashboards from the **mirror**, not the
-  master. Always resolve paths via the
+  master. `measurements_by_feature/` (one file per measurer) and
+  `measurements_by_category/` (one file per `CATEGORIES` member) are both
+  written from that mirror's post-applied frame by
+  `finalize_post_master_outputs`, the finalization path shared by full,
+  measure, recompile and `--mode migrate`. Always resolve paths via the
   `phenotypic.sdk_` helpers (never hand-join names), and route any FINAL master
   write through `finalize_post_master_outputs`. Full file inventory,
   master-vs-mirror rules, and the finalize/chunk-writer carve-out are in

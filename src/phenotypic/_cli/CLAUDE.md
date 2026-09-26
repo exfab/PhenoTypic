@@ -863,6 +863,9 @@ member (`sdk_/_schema_shape.py:192`).
 User-facing run outputs live under `<output>/deliverables/` (hard cutover):
 `master_measurements.parquet` (**parquet only** since D8), `measurements.{csv,parquet}`,
 `measurements_by_feature/<feature>.{csv,parquet}`,
+`measurements_by_category/<label>.{csv,parquet}` (one per `CATEGORIES` member
+with a present column; written beside the feature split by
+`finalize_post_master_outputs`),
 `<AnalysisClass>.{csv,parquet}`, `analysis_manifest.json`,
 `plots/<plot-id>/...`,
 `dashboard.html`, `processing_report.html`, `README.md`,
