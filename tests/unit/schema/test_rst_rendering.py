@@ -83,3 +83,46 @@ def test_custom_description_header_is_honored():
     table = _DescOnly.rst_table(header=("Col", "Meaning"))
     assert "- Col" in table
     assert "- Meaning" in table
+
+
+def test_categorized_table_has_a_categories_badge_column() -> None:
+    from phenotypic.schema import SIZE
+
+    table = SIZE.rst_table()
+    assert "     - Categories" in table
+    assert (
+        ":bdg-ref-dark-line:`Starting Metrics <measurement-category-startingmetrics>`"
+        in table
+    )
+
+
+def test_uncategorized_table_has_no_categories_column() -> None:
+    from phenotypic.schema import SHAPE
+
+    assert "Categories" not in SHAPE.rst_table()
+
+
+def test_category_badges_is_empty_for_an_uncategorized_member() -> None:
+    from phenotypic.schema import SHAPE, SIZE
+
+    assert next(iter(SHAPE)).category_badges == ""
+    assert SIZE.AREA.category_badges.count(":bdg-ref-") == 1
+
+
+def test_quality_check_docs_render_with_category_column() -> None:
+    # _render_info_table's second caller (schema/_quality_check.py) runs at
+    # import time for every QualityCheck subclass; a row-shape mismatch there
+    # makes phenotypic.analysis unimportable.
+    from phenotypic.schema import QUALITY_CHECK
+
+    doc = QUALITY_CHECK.append_rst_to_doc("Doc.", check_name="Count")
+    assert doc.startswith("Doc.")
+    assert ".. list-table:: Metric family: **QC_Count**" in doc
+
+
+def test_analysis_package_imports() -> None:
+    import importlib
+
+    import phenotypic.analysis
+
+    importlib.reload(phenotypic.analysis)

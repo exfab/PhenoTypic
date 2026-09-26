@@ -62,6 +62,12 @@ _BADGE_SPECS: Final[dict[tuple[int | None, str], tuple[str, str, str]]] = {
     (None, "derived"): ("Derived", "info", _ANCHOR_PAGE),
 }
 
+#: Category badges render as *outline* pills (``:bdg-ref-{color}-line:``) so
+#: they read as a separate axis from the solid Type pills. A sphinx-design
+#: semantic color (asserted in test_classification). Each links to the
+#: category's section on the generated Categories page.
+_CATEGORY_BADGE_COLOR: Final = "dark"
+
 
 def _normalize_categories(value: object) -> frozenset[CATEGORIES]:
     """Coerce ``Entry(categories=...)`` to a frozenset of CATEGORIES members.
@@ -176,18 +182,19 @@ def _rst_cell_text(text: str) -> str:
 
 
 def _render_info_table(
-    rows: list[tuple[str, str, str, str | None, str]],
+    rows: list[tuple[str, str, str, str | None, str, str]],
     *,
     title: str,
     name_header: str = "Name",
     desc_header: str = "Description",
 ) -> str:
-    """Render a list-table; Type/Biology/Image columns appear only when populated.
+    """Render a list-table; Type/Categories/Biology/Image columns appear only when populated.
 
     Args:
-        rows: ``(name_cell, desc, bio_desc, image_relpath_or_None, type_badge)``
-            per member. ``type_badge`` is raw RST (a sphinx-design ``:bdg-ref:``
-            role) inserted unescaped, so the pill renders as a link.
+        rows: ``(name_cell, desc, bio_desc, image_relpath_or_None, type_badge,
+            category_badges)`` per member. Both badge cells are raw RST
+            (sphinx-design ``:bdg-ref:`` roles) inserted unescaped, so the
+            pills render as links.
         title: Bold table caption (rendered ``Metric family: **{title}**``).
         name_header: Header for the first (name) column.
         desc_header: Header for the description column.
@@ -195,6 +202,7 @@ def _render_info_table(
     has_bio = any(row[2] for row in rows)
     has_img = any(row[3] for row in rows)
     has_use = any(row[4] for row in rows)
+    has_cat = any(row[5] for row in rows)
 
     lines = [
         f".. list-table:: Metric family: **{title}**",
@@ -205,16 +213,20 @@ def _render_info_table(
     ]
     if has_use:
         lines.append("     - Type")
+    if has_cat:
+        lines.append("     - Categories")
     if has_bio:
         lines.append("     - Biology")
     if has_img:
         lines.append("     - Image")
 
-    for name, desc, bio, img, use in rows:
+    for name, desc, bio, img, use, cats in rows:
         lines.append(f"   * - ``{name}``")
         lines.append(f"     - {_rst_cell_text(desc)}")
         if has_use:
             lines.append(f"     - {use}")
+        if has_cat:
+            lines.append(f"     - {cats}")
         if has_bio:
             lines.append(f"     - {_rst_cell_text(bio)}")
         if has_img:
@@ -589,6 +601,17 @@ class MeasurementInfo(str, Enum):
         text, color, anchor = spec
         return f":bdg-ref-{color}:`{text} <{anchor}>`"
 
+    @property
+    def category_badges(self) -> str:
+        """RST outline badges, one per category, linking to the Categories page.
+
+        Empty when the member has no category.
+        """
+        return " ".join(
+            f":bdg-ref-{_CATEGORY_BADGE_COLOR}-line:`{c.display_name} <{c.anchor}>`"
+            for c in CATEGORIES.in_order(self.categories)
+        )
+
     @classmethod
     def get_labels(cls) -> list[str]:
         """Get all measurement labels without metric family prefix.
@@ -631,8 +654,9 @@ class MeasurementInfo(str, Enum):
     ) -> str:
         """Render an RST list-table of this enum's members.
 
-        Adds a Biology column when any member sets ``bio_desc`` and an Image
-        column when any sets ``image`` (each suppressed otherwise).
+        Adds a Categories column when any member carries a category, a
+        Biology column when any sets ``bio_desc`` and an Image column when
+        any sets ``image`` (each suppressed otherwise).
 
         Args:
             title: Table caption; defaults to the metric family name.
@@ -649,6 +673,7 @@ class MeasurementInfo(str, Enum):
                 m.bio_desc,
                 m.image,
                 m.use_badge,
+                m.category_badges,
             )
             for m in cls
         ]
