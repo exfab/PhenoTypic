@@ -5,7 +5,7 @@ Public, blessed API for PhenoTypic's measurement naming conventions.
 - `MeasurementInfo` (`_measurement_info.py`) — `str, Enum` base. Subclasses
   declare members as `Entry(label, desc, *, bio_desc="", image=None, tier=None,
   derivation_type=None, derives_from=None)` plus a `category()` classmethod; the
-  enum value is the category-prefixed header (e.g. `Shape_Area`). `Entry` (a
+  enum value is the category-prefixed header (e.g. `Size_Area`). `Entry` (a
   frozen dataclass, also in `_measurement_info.py` and exported from the package)
   is the **only** legal member value — raw tuples raise `TypeError` at import.
   `desc` is the technical/algorithm description; **`bio_desc` is human-authored
@@ -66,7 +66,8 @@ package):
 - `DirectPhenotype` / `DescriptiveTrait` / `DiscriminativeFeature` →
   `PrimaryMeasure` subclasses fixing `tier` 1 / 2 / 3.
 
-**Straddlers** (enums whose members span tiers, e.g. `SHAPE`) subclass the neutral
+**Straddlers** (enums whose members span tiers; no primary enum straddles since 0.20.0,
+when SHAPE's Feret diameters moved to SIZE) subclass the neutral
 `PrimaryMeasure`/`DerivedMeasure`, set a **class default tier** (via an overridden
 `tier()` classmethod), and tag the minority members with an `Entry(tier=...)`
 override. Resolution precedence in `_classify` (highest first): `derivation_type`
@@ -76,11 +77,15 @@ override + class `kind()` > class `kind()`/`tier()`. A primary member with no ti
 (from any source) **raises** `ValueError` — every member must classify, enforced by
 `tests/unit/schema/test_classification.py` + a coverage gate.
 
-Example straddler: `class SHAPE(PrimaryMeasure)` overrides `tier()` to return `2`
-(form descriptors default to Descriptive trait); its size-magnitude members carry
-`Entry(..., tier=1)` (e.g. `AREA`, `PERIMETER`, radii, Feret diameters) so they
-resolve to Direct phenotype while `CIRCULARITY`/`ECCENTRICITY` take the class
-default of 2.
+A "straddler" is a primary enum whose class `tier()` sets the default while some
+members override it with `Entry(..., tier=N)`. No primary enum straddles since
+0.20.0: `SHAPE(PrimaryMeasure)` overrides `tier()` to return `2` and every member
+(circularity, eccentricity, the boundary distances, …) takes that default, while the
+size magnitudes — area, perimeter, radii, axis lengths and the Feret diameters,
+which were SHAPE's `tier=1` members before 0.20.0 — live in `SIZE(DirectPhenotype)`,
+which resolves every member to tier 1 without tags. Derived enums (the growth
+models) tag their parameterization members with `Entry(tier=1, derivation_type=...)`;
+their diagnostic members carry no tier.
 
 ## Classification badges in the docs
 
@@ -127,7 +132,7 @@ base:
 
 Emission (write side) lives with the enum or as shared functions in `_measurement_info.py`:
 
-- **static** — the header *is* `member.value` (`Shape_Area`); base default, no override.
+- **static** — the header *is* `member.value` (`Size_Area`); base default, no override.
 - **metric_qualified** — `{cat}_{metric}_{label}` (e.g. `LinearLagModel_Area_v`):
   `qualified_header(member, token)` / `parse_qualified_header(info_cls, column)`; the enum
   sets `header_scheme() -> "metric_qualified"` (the 3 growth models + `MODEL_METRICS`).
@@ -175,7 +180,7 @@ header strings.
 Downstream users import headers directly:
 
     from phenotypic.schema import SHAPE, MeasurementInfo
-    SHAPE.get_headers()  # ['Shape_Area', 'Shape_Perimeter', ...]
+    SHAPE.get_headers()  # ['Shape_Circularity', 'Shape_Eccentricity', ...]
 
 Conventions: one class per file (or per file under a grouping subpackage like
 `_experimental_tags/`); bodies are pure data and inherit their category; import **only**

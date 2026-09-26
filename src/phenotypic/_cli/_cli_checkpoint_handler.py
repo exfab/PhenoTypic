@@ -19,7 +19,7 @@ import click
 
 from ._cli_file_locking import FileLockTimeout, file_lock
 from ._cli_preload import preload_custom_operation_modules
-from ._cli_utils import load_job_metadata
+from ._cli_utils import load_job_metadata, logged_step
 from phenotypic.sdk_ import (
     PROCESSING_EVENTS_LOG,
     DashboardManifestKey,
@@ -239,13 +239,16 @@ def _run_finalize(
 
     # Wait for all images to complete (or fail)
     if epoch is None:
-        _wait_for_completion(
-            progress_dir,
-            inventory=dataset_inventory,
-            total_expected=total_expected,
-            generation=job_metadata.get(JobMetadataKey.PROCESSING_GENERATION),
-            timeout=600,
-        )
+        with logged_step(logger, "finalize: wait for image completion"):
+            _wait_for_completion(
+                progress_dir,
+                inventory=dataset_inventory,
+                total_expected=total_expected,
+                generation=job_metadata.get(
+                    JobMetadataKey.PROCESSING_GENERATION
+                ),
+                timeout=600,
+            )
 
     # Final aggregation
     from ._cli_output_manager import aggregate_measurements
@@ -257,26 +260,27 @@ def _run_finalize(
             quarantine_unchanged_restart_parquets,
         )
 
-        quarantine_unchanged_restart_parquets(output_dir, epoch)
-        orchestration = load_orchestration_state(output_dir) or {}
-        if bool(orchestration.get("stage3_markers_required", False)):
-            from ._cli_stage2_token import staged_detector_slot
-            from ._cli_staged_resume import reconcile_stage3_publications
+        with logged_step(logger, "finalize: reconcile staged publications"):
+            quarantine_unchanged_restart_parquets(output_dir, epoch)
+            orchestration = load_orchestration_state(output_dir) or {}
+            if bool(orchestration.get("stage3_markers_required", False)):
+                from ._cli_stage2_token import staged_detector_slot
+                from ._cli_staged_resume import reconcile_stage3_publications
 
-            # `stage3_markers_required` is set only by the staged GPU
-            # orchestration, so the recorded pipeline has a GpuDetector.
-            reconcile_stage3_publications(
-                output_dir,
-                {
-                    name: list(info.get("images", []))
-                    for name, info in datasets_raw.items()
-                    if isinstance(info, dict)
-                },
-                staged_detector_slot(
-                    Path(job_metadata[JobMetadataKey.PIPELINE_PATH])
-                ),
-                namespace=epoch,
-            )
+                # `stage3_markers_required` is set only by the staged GPU
+                # orchestration, so the recorded pipeline has a GpuDetector.
+                reconcile_stage3_publications(
+                    output_dir,
+                    {
+                        name: list(info.get("images", []))
+                        for name, info in datasets_raw.items()
+                        if isinstance(info, dict)
+                    },
+                    staged_detector_slot(
+                        Path(job_metadata[JobMetadataKey.PIPELINE_PATH])
+                    ),
+                    namespace=epoch,
+                )
         _check_epoch()
 
     metadata_csv_str = job_metadata.get(JobMetadataKey.METADATA_CSV)
@@ -291,20 +295,24 @@ def _run_finalize(
     # ordinary local path and not an error.
     from ._cli_finalize_fanout import resolve_finalizer_shard_inputs
 
-    fanout_inputs = resolve_finalizer_shard_inputs(output_dir, slurm_generation)
+    with logged_step(logger, "finalize: wait for aggregation shards"):
+        fanout_inputs = resolve_finalizer_shard_inputs(
+            output_dir, slurm_generation
+        )
     shard_paths, planned_work_ids = fanout_inputs or (None, None)
 
-    aggregate_path = aggregate_measurements(
-        output_dir=output_dir,
-        dataset_names=list(datasets_totals.keys()),
-        include_dataset_column=job_metadata.get(
-            JobMetadataKey.INCLUDE_DATASET_COLUMN, True
-        ),
-        metadata_csv=metadata_csv,
-        no_qc=bool(job_metadata.get(JobMetadataKey.NO_QC, False)),
-        shard_paths=shard_paths,
-        planned_work_ids=planned_work_ids,
-    )
+    with logged_step(logger, "finalize: aggregate measurements"):
+        aggregate_path = aggregate_measurements(
+            output_dir=output_dir,
+            dataset_names=list(datasets_totals.keys()),
+            include_dataset_column=job_metadata.get(
+                JobMetadataKey.INCLUDE_DATASET_COLUMN, True
+            ),
+            metadata_csv=metadata_csv,
+            no_qc=bool(job_metadata.get(JobMetadataKey.NO_QC, False)),
+            shard_paths=shard_paths,
+            planned_work_ids=planned_work_ids,
+        )
     if aggregate_path is None:
         message = "No current-epoch measurements were available to aggregate"
         if epoch is not None:
@@ -330,30 +338,32 @@ def _run_finalize(
         dataset_inventory_from_metadata,
     )
 
-    build_manifest(
-        output_dir=output_dir,
-        progress_dir=progress_dir,
-        datasets=datasets_totals,
-        execution_mode=resolve_execution_mode(job_metadata),
-        start_time=job_metadata.get(JobMetadataKey.START_TIME, ""),
-        slurm_job_ids=job_metadata.get(JobMetadataKey.CHUNK_JOB_IDS),
-        chunk_scripts=job_metadata.get(JobMetadataKey.CHUNK_SCRIPTS),
-        input_path=job_metadata.get(JobMetadataKey.INPUT_PATH),
-        dataset_inventory=dataset_inventory,
-        processing_generation=job_metadata.get(
-            JobMetadataKey.PROCESSING_GENERATION
-        ),
-    )
+    with logged_step(logger, "finalize: build manifest"):
+        build_manifest(
+            output_dir=output_dir,
+            progress_dir=progress_dir,
+            datasets=datasets_totals,
+            execution_mode=resolve_execution_mode(job_metadata),
+            start_time=job_metadata.get(JobMetadataKey.START_TIME, ""),
+            slurm_job_ids=job_metadata.get(JobMetadataKey.CHUNK_JOB_IDS),
+            chunk_scripts=job_metadata.get(JobMetadataKey.CHUNK_SCRIPTS),
+            input_path=job_metadata.get(JobMetadataKey.INPUT_PATH),
+            dataset_inventory=dataset_inventory,
+            processing_generation=job_metadata.get(
+                JobMetadataKey.PROCESSING_GENERATION
+            ),
+        )
     _check_epoch()
 
     # Regenerate dashboard
     try:
         from ._dashboard._generator import generate_dashboard
 
-        generate_dashboard(
-            output_dir,
-            execution_mode=resolve_execution_mode(job_metadata),
-        )
+        with logged_step(logger, "finalize: generate dashboard"):
+            generate_dashboard(
+                output_dir,
+                execution_mode=resolve_execution_mode(job_metadata),
+            )
         _check_epoch()
     except Exception:
         if epoch is not None or slurm_generation is not None:
@@ -361,7 +371,8 @@ def _run_finalize(
         logger.warning("Dashboard generation failed", exc_info=True)
 
     if epoch is not None:
-        _publish_staged_report_and_readme(output_dir, job_metadata, epoch)
+        with logged_step(logger, "finalize: publish report and README"):
+            _publish_staged_report_and_readme(output_dir, job_metadata, epoch)
         from ._cli_completion import (
             _all_accepted_images_succeeded,
             publish_run_completion_evidence,
@@ -389,7 +400,8 @@ def _run_finalize(
         if marker_completion is True:
             publish_run_completion_evidence(output_dir, execution_epoch=epoch)
     elif slurm_generation is not None:
-        _publish_run_completion_marker(output_dir, slurm_generation)
+        with logged_step(logger, "finalize: publish run completion marker"):
+            _publish_run_completion_marker(output_dir, slurm_generation)
 
     logger.info("Finalization complete")
 

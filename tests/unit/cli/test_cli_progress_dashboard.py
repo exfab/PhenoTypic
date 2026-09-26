@@ -445,6 +445,44 @@ class TestManifestBuilder:
         manifest = json.loads((progress_dir / "manifest.json").read_text())
         assert manifest["gui_record_generation"] == generation
 
+    def test_manifest_logs_each_phase_with_elapsed_time(self, tmp_dir, caplog):
+        """A walltime-killed finalizer's log must name the phase it died in."""
+        event_log = tmp_dir / "processing_events.log"
+        progress_dir = tmp_dir / "progress"
+        progress_dir.mkdir()
+        append_event(event_log, "plate1", "img001.tif", "started")
+        append_event(event_log, "plate1", "img001.tif", "completed")
+
+        with caplog.at_level(
+            "INFO", logger="phenotypic._cli._dashboard._manifest_builder"
+        ):
+            build_manifest(
+                output_dir=tmp_dir,
+                progress_dir=progress_dir,
+                datasets={"plate1": 1},
+                execution_mode="local",
+                start_time=datetime.now().isoformat(timespec="milliseconds"),
+            )
+
+        phases = [
+            record.getMessage()
+            for record in caplog.records
+            if record.getMessage().startswith("build_manifest: ")
+        ]
+        expected_order = [
+            "event log aggregated, plate1: 1 completed / 0 failed / "
+            "0 in progress",
+            "work ids and terminal-failure journal loaded",
+            "per-image tally done: 1 successful, 0 terminal-failed",
+            "aggregate proof checked",
+            "accepted-image success checked",
+            "manifest written",
+        ]
+        assert [p.split(" (")[0] for p in phases] == [
+            "build_manifest: " + phase for phase in expected_order
+        ]
+        assert all(p.endswith("s elapsed)") for p in phases)
+
     def test_manifest_is_complete(self, tmp_dir):
         event_log = tmp_dir / "processing_events.log"
         progress_dir = tmp_dir / "progress"

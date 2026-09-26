@@ -72,7 +72,7 @@ def _write_per_image(
                 f"3f2b7c1a-0000-4000-8000-{i:012d}"
             ] * colonies
         columns[str(OBJECT.LABEL)] = list(range(1, colonies + 1))
-        columns["Shape_Area"] = [float(i + 1)] * colonies
+        columns["Size_Area"] = [float(i + 1)] * colonies
         pl.DataFrame(columns).write_parquet(meas_dir / f"{stem}.parquet")
 
 
@@ -176,7 +176,7 @@ def test_dedup_is_skipped_when_the_colony_key_is_incomplete(
         {
             str(EXPERIMENT.DATASET): [DATASET, DATASET, DATASET],
             str(IMAGE.IMAGE_NAME): ["img_001", "img_001", "img_001"],
-            "Shape_Area": [1.0, 2.0, 3.0],
+            "Size_Area": [1.0, 2.0, 3.0],
         }
     )
 
@@ -416,7 +416,7 @@ def test_reappend_keeps_the_newer_measurement(tmp_path: Path) -> None:
     first = pl.read_parquet(meas)
     _update_dataset_parquet(tmp_path, DATASET, first)
 
-    second = first.with_columns(pl.lit(99.0).alias("Shape_Area"))
+    second = first.with_columns(pl.lit(99.0).alias("Size_Area"))
     _update_dataset_parquet(tmp_path, DATASET, second)
 
     agg = pl.read_parquet(
@@ -424,6 +424,6 @@ def test_reappend_keeps_the_newer_measurement(tmp_path: Path) -> None:
         / DATASET_AGGREGATED_PARQUET
     )
     assert agg.height == 1, f"expected one row, got {agg.height}"
-    assert agg["Shape_Area"].to_list() == [99.0], (
+    assert agg["Size_Area"].to_list() == [99.0], (
         "the older measurement won; the later one should"
     )

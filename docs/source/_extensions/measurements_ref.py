@@ -53,14 +53,16 @@ def _section_label(info_cls: type[Any]) -> str:
 
 
 def _class_section(info_cls: type[Any]) -> str:
-    """Render one linked class heading followed by its measurement table."""
+    """Render one linked class heading, its change note if any, and its table."""
     class_name = info_cls.__name__
     api_doc = f"/api_reference/api/phenotypic.schema.{class_name}"
     linked_heading = f":doc:`{class_name} <{api_doc}>`"
+    note = info_cls.change_note()
     out = [
         f".. _{_section_label(info_cls)}:",
         "",
         *_heading(linked_heading, "-"),
+        *([note, ""] if note else []),
         info_cls.rst_table(
             header=("Column label", "Description"), use_headers=True
         ),

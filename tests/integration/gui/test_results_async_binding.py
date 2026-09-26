@@ -39,7 +39,7 @@ def _seed_output(parent: Path, name: str = "output") -> Path:
             "Metadata_Dataset": ["dataset"],
             str(IMAGE.IMAGE_NAME): ["plate"],
             "Object_Label": [1],
-            "Shape_Area": [100.0],
+            "Size_Area": [100.0],
         }
     )
     seed_output_dir(

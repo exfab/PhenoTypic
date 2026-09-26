@@ -30,7 +30,7 @@ from phenotypic.sdk_ import pipeline_json_path
 def _edge(*, top_n: int = 1) -> EdgeCorrector:
     """Build one deterministic edge corrector."""
     return EdgeCorrector(
-        on="Shape_Area",
+        on="Size_Area",
         groupby=["Metadata_Strain"],
         top_n=top_n,
     )
@@ -43,12 +43,12 @@ def _seed_recipe(output_dir: Path) -> RecipeState:
         filters={
             "edge": _edge(),
             "tukey": TukeyOutlierRemover(
-                on="Shape_Area",
+                on="Size_Area",
                 groupby=["Metadata_Strain"],
             ),
         },
         model=LinearLagModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Strain"],
         ),
         plots=[
@@ -83,7 +83,7 @@ def _reorder_filters(pipeline: ImagePipeline) -> None:
 def _replace_model(pipeline: ImagePipeline) -> None:
     pipeline.set_model(
         LogGrowthModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Strain"],
             time_label="Metadata_Time",
             n_jobs=1,

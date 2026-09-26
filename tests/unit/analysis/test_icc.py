@@ -300,7 +300,7 @@ class TestRealDataAllMeas:
     """ICC against the packaged ``all_meas.csv`` (real plate measurements).
 
     The CSV carries ``Metadata_Time`` (5 timepoints), ``Metadata_Replicate``,
-    and ``Metadata_Strain`` with ``Shape_Area`` measurements. Its per-strain
+    and ``Metadata_Strain`` with ``Size_Area`` measurements. Its per-strain
     Time x Replicate grids are **sparse** (missing cells, no usable complete
     grid), so the default-axis check correctly NaNs them — the incomplete
     guard, not a silent green pass. Restricting to a complete sub-grid of the
@@ -312,7 +312,7 @@ class TestRealDataAllMeas:
 
         df = load_meas()
         chk = ICC(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Strain"],
             subject_label="Metadata_Time",
             rater_label="Metadata_Replicate",
@@ -334,7 +334,7 @@ class TestRealDataAllMeas:
         pivot = sub.pivot_table(
             index="Metadata_Time",
             columns="Metadata_Replicate",
-            values="Shape_Area",
+            values="Size_Area",
             aggfunc="first",
         )
         complete_reps = pivot.columns[~pivot.isna().any(axis=0)]
@@ -342,7 +342,7 @@ class TestRealDataAllMeas:
         well_populated = sub[sub["Metadata_Replicate"].isin(complete_reps)]
 
         chk = ICC(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Strain"],
             subject_label="Metadata_Time",
             rater_label="Metadata_Replicate",

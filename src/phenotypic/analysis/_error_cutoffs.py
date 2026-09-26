@@ -37,7 +37,8 @@ MEASUREMENT_PREFIXES: tuple[str, ...] = (
     "Intensity_",
     "Texture",
     "SymZones_",
-    "GridSpatial_",
+    "NeighborDist_",
+    "GridSpatial_",  # pre-2026-09-24 name of NeighborDist_; keeps older tables analysable
     "RadialExpansion_",
 )
 

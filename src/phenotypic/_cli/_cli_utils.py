@@ -26,8 +26,20 @@ import os
 import shutil
 import subprocess
 import tarfile
+import time
+from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Set, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+)
 
 import click
 
@@ -41,6 +53,34 @@ logger = logging.getLogger(__name__)
 
 # Allowed image file extensions for PhenoTypic processing
 ALLOWED_EXTENSIONS: Set[str] = {".png", ".tif", ".tiff", ".jpg", ".jpeg"}
+
+
+@contextmanager
+def logged_step(step_logger: logging.Logger, step: str) -> Iterator[None]:
+    """Log when a step starts, and how long it took when it ends or raises.
+
+    The start line is the point: a job killed at its walltime by SIGTERM never
+    reaches a "done" line, so the last "started" line in its log names the step
+    it was in. The 2026-09-24 ucr_029 finalizer ran 24 minutes past its last log
+    line before its TIMEOUT, and nothing said which step it was in.
+
+    Args:
+        step_logger: Logger of the module that owns the step.
+        step: Human-readable step name, e.g. ``"finalize: build manifest"``.
+
+    Yields:
+        None.
+    """
+    step_logger.info("%s: started", step)
+    started = time.monotonic()
+    try:
+        yield
+    except BaseException:
+        step_logger.warning(
+            "%s: failed after %.1fs", step, time.monotonic() - started
+        )
+        raise
+    step_logger.info("%s: done in %.1fs", step, time.monotonic() - started)
 
 
 def resolve_local_worker_count(n_jobs: int, work_items: int) -> int:

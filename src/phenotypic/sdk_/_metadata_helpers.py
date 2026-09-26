@@ -780,7 +780,7 @@ def metadata_only_mask(df: "pd.DataFrame") -> "pd.Series":
         >>> import pandas as pd
         >>> from phenotypic.sdk_ import metadata_only_mask
         >>> # A frame from a notebook ``image.measure()`` carries no flag.
-        >>> metadata_only_mask(pd.DataFrame({"Shape_Area": [10.0, 12.0]})).tolist()
+        >>> metadata_only_mask(pd.DataFrame({"Size_Area": [10.0, 12.0]})).tolist()
         [False, False]
         >>> # A CLI mirror does: the undetected strain is flagged.
         >>> mirror = pd.DataFrame({"QC_MetadataOnly": [False, True]})

@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from phenotypic.util._nematic_bend import fiber_bend_field
+from phenotypic.sdk_.orientation_fields import fiber_bend_field
 
 
 def _polar_grid(

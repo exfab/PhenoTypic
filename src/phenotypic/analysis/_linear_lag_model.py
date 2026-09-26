@@ -75,7 +75,7 @@ class LinearLagModel(_LinearSoftplusBase):
 
     Output column naming:
         ``analyze`` emits metric-qualified columns
-        ``LinearLagModel_<metric>_<parameter>`` (e.g. fitting ``on="Shape_Area"``
+        ``LinearLagModel_<metric>_<parameter>`` (e.g. fitting ``on="Size_Area"``
         yields ``LinearLagModel_Area_v``), plus qualified fit-quality columns
         ``ModelMetrics_<metric>_<label>``. The ``<metric>`` segment is
         ``self.on`` with a recognized measurement-category prefix stripped.

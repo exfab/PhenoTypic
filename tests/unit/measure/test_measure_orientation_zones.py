@@ -21,19 +21,24 @@ from phenotypic.schema import (
     ORIENTATION_ZONES,
 )
 from phenotypic.measure import MeasureOrientationZones
-from phenotypic.measure._measure_orientation_zones import (
-    aggregate_long_range_rotation,
-    aggregate_orientation,
-    aggregate_paired_zone_rotation,
-    aggregate_radial_relative,
+from phenotypic.sdk_.orientation_fields import (
     cumulative_ring_rotation_profile,
     long_range_ring_rotation_profile,
-    radial_ring_sector_field,
-    radial_relative_field,
     radial_ring_orientation_profile,
+    radial_ring_sector_field,
     signed_radial_relative_field,
-    zone_selector,
 )
+
+# Operation-private numeric helpers, exercised directly by these unit tests.
+aggregate_long_range_rotation = (
+    MeasureOrientationZones._aggregate_long_range_rotation
+)
+aggregate_orientation = MeasureOrientationZones._aggregate_orientation
+aggregate_paired_zone_rotation = (
+    MeasureOrientationZones._aggregate_paired_zone_rotation
+)
+aggregate_radial_relative = MeasureOrientationZones._aggregate_radial_relative
+zone_selector = MeasureOrientationZones._zone_selector
 
 
 def _mock_object_analysis(
@@ -293,7 +298,7 @@ def test_public_zone_angles_are_converted_from_radians_to_degrees():
         gradient,
         dense_selector,
     )[1]
-    absolute_tilt, outward_turning, measured_polar = radial_relative_field(
+    absolute_tilt, outward_turning, measured_polar = _absolute_radial_relative_field(
         phi,
         centre,
         distance,
@@ -447,6 +452,14 @@ def test_r3c4_real_crop_preserves_literal_crossing_regression() -> None:
     ] == pytest.approx(0.461538, abs=1e-6)
 
 
+def _absolute_radial_relative_field(phi, centre, distance):
+    """Return ``(|tilt|, outward_turning, polar_angle)`` as ``_fill_metrics`` does."""
+    signed_tilt, _signed_turning, outward_turning, polar_angle = (
+        signed_radial_relative_field(phi, centre, distance)
+    )
+    return np.abs(signed_tilt), outward_turning, polar_angle
+
+
 def _radial_test_field(size: int = 121):
     """Return polar geometry and a perfect radial fiber field."""
     centre = ((size - 1) / 2.0, (size - 1) / 2.0)
@@ -464,7 +477,7 @@ def _radial_test_field(size: int = 121):
 
 def test_radial_relative_straight_branches_ignore_axis_and_branch_count():
     centre, distance, polar, phi, coherence, annulus = _radial_test_field()
-    tilt, outward, measured_polar = radial_relative_field(
+    tilt, outward, measured_polar = _absolute_radial_relative_field(
         phi, centre, distance
     )
     angular_tolerance = np.deg2rad(4.0)
@@ -506,7 +519,7 @@ def test_radial_relative_constant_oblique_tilt_is_density_invariant():
     centre, distance, polar, _phi, coherence, annulus = _radial_test_field()
     expected_tilt = np.deg2rad(20.0)
     phi = polar + expected_tilt - np.pi / 2.0
-    tilt, outward, measured_polar = radial_relative_field(
+    tilt, outward, measured_polar = _absolute_radial_relative_field(
         phi, centre, distance
     )
     sparse = annulus & (
@@ -573,7 +586,7 @@ def test_radial_relative_outward_bend_recovers_radial_rate():
     centre, distance, polar, _phi, coherence, annulus = _radial_test_field()
     expected_rate = 0.004
     phi = polar + expected_rate * distance - np.pi / 2.0
-    tilt, outward, measured_polar = radial_relative_field(
+    tilt, outward, measured_polar = _absolute_radial_relative_field(
         phi, centre, distance
     )
 
@@ -926,17 +939,12 @@ def test_literal_aggregate_parameters_are_validated(
 
 def test_rotation_invariance_of_R_magnitude_and_turning():
     # A single synthetic tile rotated 90 deg: R magnitude and turning invariant.
-    from phenotypic.measure._measure_orientation_zones import (
-        aggregate_orientation,
-        zone_selector,
-    )
-
     n = 61
     c = n // 2
     yy, xx = np.mgrid[0:n, 0:n]
     dist = np.hypot(yy - c, xx - c)
     base = np.sin(2 * np.pi * xx / 7.0)
-    from phenotypic.util._orientation_field import orientation_field
+    from phenotypic.sdk_.orientation_fields import orientation_field
 
     obj = np.ones((n, n), dtype=bool)
 
@@ -1288,7 +1296,7 @@ def test_matched_cumulative_overlay_tracks_nearby_sectors_and_uses_full_range(
 def test_matched_cumulative_overlay_draws_gap_as_dashed_bridge(monkeypatch):
     import plotly.graph_objects as go
 
-    import phenotypic.measure._measure_orientation_zones as orientation_module
+    import phenotypic.measure._orientation_zones._figures as orientation_module
 
     size = 81
     centre = (40.0, 40.0)
@@ -1642,7 +1650,7 @@ def test_report_builds_composed_figure():
 
 def test_orientation_plot_uses_plot_image_without_legacy_report_aliases():
     from phenotypic.abc_.plotting import PlotImage
-    from phenotypic.measure._measure_orientation_zones import (
+    from phenotypic.measure._orientation_zones._report import (
         _OrientationZonesReport,
     )
 

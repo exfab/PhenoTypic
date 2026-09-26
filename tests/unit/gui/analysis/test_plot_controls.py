@@ -28,12 +28,12 @@ from phenotypic.abc_.plotting import PlotOutput, PlotPage  # noqa: E402
 
 
 def _edge() -> EdgeCorrector:
-    return EdgeCorrector(on="Shape_Area", groupby=["Metadata_Strain"])
+    return EdgeCorrector(on="Size_Area", groupby=["Metadata_Strain"])
 
 
 def _model() -> LogGrowthModel:
     return LogGrowthModel(
-        on="Shape_Area",
+        on="Size_Area",
         groupby=["Metadata_Strain"],
         time_label="Metadata_Time",
     )

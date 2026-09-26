@@ -12,7 +12,7 @@ def test_plottable_drops_phantom_rows() -> None:
         {
             "Object_Label": [1, 2, None, None],
             "QC_MetadataOnly": [False, False, True, True],
-            "Shape_Area": [10.0, 20.0, None, None],
+            "Size_Area": [10.0, 20.0, None, None],
         }
     )
     out = plottable(df)
@@ -22,7 +22,7 @@ def test_plottable_drops_phantom_rows() -> None:
 
 def test_plottable_is_a_no_op_without_the_curation_column() -> None:
     """A per-store table carries no QC_MetadataOnly; it must not crash."""
-    df = pl.DataFrame({"Object_Label": [1, 2], "Shape_Area": [10.0, 20.0]})
+    df = pl.DataFrame({"Object_Label": [1, 2], "Size_Area": [10.0, 20.0]})
     assert plottable(df).height == 2
 
 
@@ -84,7 +84,7 @@ def test_an_unreadable_flag_plots_every_row_rather_than_raising() -> None:
 
 
 def test_figure_spec_is_frozen() -> None:
-    spec = FigureSpec(x_col="Metadata_FrameIndex", y_col="Shape_Area")
+    spec = FigureSpec(x_col="Metadata_FrameIndex", y_col="Size_Area")
     assert spec.share_axes is True
     assert spec.hue_col is None
     try:

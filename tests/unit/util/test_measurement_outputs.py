@@ -29,8 +29,8 @@ def _base_measurements() -> pd.DataFrame:
             "Custom_Note": ["a", "b"],
             str(SIZE.AREA): [10.0, 20.0],
             str(SIZE.INTEGRATED_INTENSITY): [100.0, 200.0],
-            str(SHAPE.AREA): [11.0, 21.0],
-            str(SHAPE.PERIMETER): [12.0, 22.0],
+            str(SHAPE.CIRCULARITY): [0.9, 0.8],
+            str(SHAPE.SOLIDITY): [0.95, 0.85],
         }
     )
 
@@ -63,8 +63,8 @@ def test_split_measurements_groups_pandas_columns_without_pipeline() -> None:
         "Metadata_Dataset",
         str(OBJECT.LABEL),
         "Custom_Note",
-        str(SHAPE.AREA),
-        str(SHAPE.PERIMETER),
+        str(SHAPE.CIRCULARITY),
+        str(SHAPE.SOLIDITY),
     ]
 
 

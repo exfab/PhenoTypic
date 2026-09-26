@@ -555,8 +555,23 @@ def process_single_store_measure_core(
     if isinstance(artifacts, dict) and artifacts:
         from ._cli_recompile_tables import _republish_table_marker
 
+        # Stamp THIS worker's SLURM generation, not the record's. The record
+        # carries the epoch of the run that first published it, and
+        # `publish_image_success` refuses any epoch other than the live
+        # fence's -- so re-measuring a finished SLURM run failed every image
+        # with "stale SLURM lifecycle" after its table was already replaced.
+        # Mirrors the recompile worker's `lifecycle_epoch=slurm_generation`.
+        # Locally there is no fence, and the record's epoch is kept.
+        slurm_generation = (
+            os.environ.get(SLURM_GENERATION_ENV_VAR)
+            if os.environ.get(EnvVar.SLURM_JOB_ID)
+            else None
+        )
         _republish_table_marker(
-            output_dir, record_path, commit_guard=commit_guard
+            output_dir,
+            record_path,
+            commit_guard=commit_guard,
+            lifecycle_epoch=slurm_generation or None,
         )
 
     return True

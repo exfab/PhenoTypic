@@ -25,7 +25,7 @@ BlurGauss → EnhanceLocalContrast → MedianFilter → FocusEdgeSobel → OtsuD
 MaskOpening → RemoveBorderObjects → SmallObjectRemover → MaskFill →
 GridOversizedObjectRemover → ReduceSectionsByLine → GridAligner
 
-**Measurements:** MeasureShape, MeasureColor, MeasureTexture,
+**Measurements:** MeasureSize, MeasureShape, MeasureColor, MeasureTexture,
 MeasureIntensity
 
 **When to choose:** This is the default starting point. Try it first;

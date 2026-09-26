@@ -298,7 +298,7 @@ class TestColumnWidgets:
     """Coverage for the column-aware dropdowns + two-button mode toggle."""
 
     def _columns(self, _src):
-        return ["Metadata_Strain", "Metadata_Time", "Shape_Area"]
+        return ["Metadata_Strain", "Metadata_Time", "Size_Area"]
 
     def _scalar_spec(self, with_alt=False):
         from phenotypic._gui._operation_registry import ColumnRefSpec
@@ -316,16 +316,16 @@ class TestColumnWidgets:
         p = _StubParamInfo("on", ColumnRef, column_ref=self._scalar_spec())
         w = _widget_for_param(
             p,
-            current_value="Shape_Area",
+            current_value="Size_Area",
             form_id_prefix="t",
             columns_provider=self._columns,
         )
         # dbc.Select sets `value=`; check via vars().
-        assert w.value == "Shape_Area"
+        assert w.value == "Size_Area"
         assert {o["value"] for o in w.options} == {
             "Metadata_Strain",
             "Metadata_Time",
-            "Shape_Area",
+            "Size_Area",
         }
 
     def test_multi_dropdown_renders_for_columnreflist(self):
@@ -368,7 +368,7 @@ class TestColumnWidgets:
         )
         w = _widget_for_param(
             p,
-            current_value="Shape_Area",
+            current_value="Size_Area",
             form_id_prefix="t",
             columns_provider=self._columns,
         )
@@ -437,7 +437,7 @@ class TestParseColumnValue:
             str,
             column_ref=ColumnRefSpec("measurements", False, False),
         )
-        assert parse_widget_value("Shape_Area", p) == "Shape_Area"
+        assert parse_widget_value("Size_Area", p) == "Size_Area"
         assert parse_widget_value("", p) is None
         assert parse_widget_value(None, p) is None
 
@@ -460,7 +460,7 @@ class TestParseColumnValue:
             str,
             column_ref=ColumnRefSpec("measurements", False, True),
         )
-        assert parse_widget_value(("column", "Shape_Area"), p) == "Shape_Area"
+        assert parse_widget_value(("column", "Size_Area"), p) == "Size_Area"
 
     def test_mode_none_returns_none(self):
         from phenotypic._gui._operation_registry import ColumnRefSpec
@@ -470,7 +470,7 @@ class TestParseColumnValue:
             str,
             column_ref=ColumnRefSpec("measurements", False, True),
         )
-        assert parse_widget_value(("none", "Shape_Area"), p) is None
+        assert parse_widget_value(("none", "Size_Area"), p) is None
 
 
 class TestColumnsProviderPlumbing:
@@ -483,12 +483,12 @@ class TestColumnsProviderPlumbing:
 
         def provider(source: str) -> list[str]:
             captured.append(source)
-            return ["Shape_Area", "Metadata_Strain", "Metadata_Time"]
+            return ["Size_Area", "Metadata_Strain", "Metadata_Time"]
 
         param_form(
             info,
             current_values={
-                "on": "Shape_Area",
+                "on": "Size_Area",
                 "groupby": ["Metadata_Strain"],
                 "time_label": "Metadata_Time",
             },

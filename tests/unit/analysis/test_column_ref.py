@@ -60,14 +60,14 @@ class TestColumnRefRuntimeEquivalence:
     def test_columnref_value_is_a_str(self):
         from phenotypic.analysis import EdgeCorrector
 
-        ec = EdgeCorrector(on="Shape_Area", groupby=["Metadata_Strain"])
+        ec = EdgeCorrector(on="Size_Area", groupby=["Metadata_Strain"])
         assert isinstance(ec.on, str)
-        assert ec.on == "Shape_Area"
+        assert ec.on == "Size_Area"
 
     def test_columnreflist_value_is_a_list(self):
         from phenotypic.analysis import EdgeCorrector
 
-        ec = EdgeCorrector(on="Shape_Area", groupby=["Metadata_Strain"])
+        ec = EdgeCorrector(on="Size_Area", groupby=["Metadata_Strain"])
         assert isinstance(ec.groupby, list)
         assert ec.groupby == [str(GENETIC.STRAIN)]
 

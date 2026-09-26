@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from phenotypic.util._matched_ring_rotation import (
+from phenotypic.sdk_.orientation_fields import (
     matched_ring_cumulative_rotation_profile,
     matched_tracks_to_ring_sector_values,
 )

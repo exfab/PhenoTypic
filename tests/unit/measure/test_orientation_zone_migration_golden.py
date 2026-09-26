@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+import phenotypic
 from phenotypic import Image
 from phenotypic.abc_ import BaseOperation
 from phenotypic.detect import HysteresisDetector
@@ -224,6 +225,33 @@ def _current_snapshot() -> dict[str, Any]:
     }
 
 
+def _without_pipeline_version_stamps(payload: Any) -> tuple[Any, list[str]]:
+    """Drop the ``version`` stamp from every serialized pipeline in *payload*.
+
+    ``SerializablePipeline`` stamps the running ``phenotypic.__version__`` into
+    each pipeline's config, so a literal comparison against the golden breaks on
+    every release bump without any behaviour changing. The stamp is compared
+    separately, against the running version, by the caller.
+
+    Returns:
+        A copy of *payload* without the stamps, and the stamps removed, in
+        traversal order.
+    """
+    stamps: list[str] = []
+
+    def strip(node: Any) -> Any:
+        if isinstance(node, list):
+            return [strip(item) for item in node]
+        if not isinstance(node, dict):
+            return node
+        stripped = {key: strip(value) for key, value in node.items()}
+        if stripped.get("__type__") == "pipeline" and "version" in stripped["config"]:
+            stamps.append(stripped["config"].pop("version"))
+        return stripped
+
+    return strip(payload), stamps
+
+
 def _assert_frame_matches(
     actual: dict[str, Any], expected: dict[str, Any]
 ) -> None:
@@ -261,7 +289,15 @@ def test_orientation_zone_pre_simplification_golden() -> None:
     actual = _current_snapshot()
 
     assert actual["format_version"] == expected["format_version"]
-    assert actual["serialization"] == expected["serialization"]
+    actual_serialization, actual_stamps = _without_pipeline_version_stamps(
+        actual["serialization"]
+    )
+    expected_serialization, expected_stamps = _without_pipeline_version_stamps(
+        expected["serialization"]
+    )
+    assert actual_serialization == expected_serialization
+    assert len(actual_stamps) == len(expected_stamps) > 0
+    assert set(actual_stamps) == {phenotypic.__version__}
     assert actual["cases"].keys() == expected["cases"].keys()
     for name, expected_case in expected["cases"].items():
         actual_case = actual["cases"][name]

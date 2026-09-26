@@ -260,7 +260,7 @@ def metric_token(on: str) -> str:
     """Derive the ``<metric>`` header segment from a fitter's ``on`` column.
 
     Strips the longest known schema **category** prefix if present
-    (``Shape_Area`` → ``Area``), else returns the value verbatim
+    (``Size_Area`` → ``Area``), else returns the value verbatim
     (``x`` → ``x``); then removes whitespace.
     """
     value = str(on).strip()

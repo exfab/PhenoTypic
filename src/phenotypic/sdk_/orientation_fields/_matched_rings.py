@@ -4,14 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-
-def _axial_difference(outer: np.ndarray, inner: float) -> np.ndarray:
-    """Return seam-safe signed axial differences in ``[-pi/2, pi/2]``."""
-    difference = outer - inner
-    return 0.5 * np.arctan2(
-        np.sin(2.0 * difference),
-        np.cos(2.0 * difference),
-    )
+from ._axial import axial_difference
 
 
 def _wrapped_angular_difference(outer: np.ndarray, inner: float) -> np.ndarray:
@@ -177,7 +170,7 @@ def matched_ring_cumulative_rotation_profile(
 
                     current_alpha = sector_angles[current_sector]
                     radial_relative = float(
-                        _axial_difference(
+                        axial_difference(
                             np.asarray([previous_orientation]),
                             current_alpha,
                         )[0]
@@ -201,7 +194,7 @@ def matched_ring_cumulative_rotation_profile(
                         candidate_alpha,
                         predicted_alpha,
                     )
-                    orientation_change = _axial_difference(
+                    orientation_change = axial_difference(
                         orientation[candidate_ring, candidate_sectors],
                         previous_orientation,
                     )

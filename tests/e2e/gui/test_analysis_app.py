@@ -76,7 +76,7 @@ def _seed_analysis_output(sandbox: Path) -> Path:
                     "Metadata_Strain": strain,
                     "Metadata_Time": float(t),
                     "Object_Label": rep,
-                    "Shape_Area": float(n + (rep - 1) * 5),
+                    "Size_Area": float(n + (rep - 1) * 5),
                 })
     df = pl.DataFrame(rows)
     write_master(cli_out, df)

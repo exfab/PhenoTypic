@@ -3,24 +3,22 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
+import pandas as pd
 
 if TYPE_CHECKING:
     from phenotypic._core._grid_image import GridImage
 
 from phenotypic.abc_ import GridObjectRefiner
-from phenotypic.measure import MeasureSize
-from phenotypic.schema import SIZE, GRID
-from phenotypic.schema import OBJECT
+from phenotypic.schema import GRID, OBJECT
 
 
 class KeepSectionLargest(GridObjectRefiner):
     """Retain only the largest object by area within each grid section.
 
-    Measures the pixel area of every detected object via :class:`MeasureSize`,
-    groups objects by grid cell, and discards all but the largest per cell.
-    Fragments, debris, and secondary detections within each grid position are
-    removed, yielding at most one colony label per well. Requires a
-    ``GridImage`` input so that grid section membership is known.
+    Counts each object's pixels, groups objects by grid cell, and discards all
+    but the largest per cell. Fragments, debris, and secondary detections within
+    each grid position are removed, yielding at most one colony label per well.
+    Requires a ``GridImage`` input so that grid section membership is known.
 
     For an overview of grid refinement approaches, see
     :doc:`/explanation/refinement_strategies`.
@@ -53,14 +51,23 @@ class KeepSectionLargest(GridObjectRefiner):
     """
 
     def _operate(self, image: GridImage) -> GridImage:
-        size_table = MeasureSize().measure(image, include_meta=True)
-        max_idx = size_table.groupby(
-                by=GRID.ROW_MAJOR_IDX,
-                observed=True
-        )[SIZE.AREA].idxmax()
-        max_size_labels = size_table.loc[max_idx, OBJECT.LABEL].to_numpy()
+        # Pixel area per label straight from the objmap: the same numbers as
+        # Size_Area without running a measurer (and its radial signatures).
+        objmap = image.objmap[:]
+        labels = image.objects.labels2series().to_numpy()
+        pixel_area = np.bincount(objmap.ravel())[labels]
+        # Same merge order as MeasureFeatures.measure(include_meta=True), so
+        # idxmax breaks ties between equal areas exactly as before.
+        table = image.grid.info(include_metadata=True).merge(
+                pd.DataFrame({str(OBJECT.LABEL): labels, "_pixel_area": pixel_area}),
+                on=str(OBJECT.LABEL),
+        )
+        max_idx = table.groupby(by=GRID.ROW_MAJOR_IDX, observed=True)[
+            "_pixel_area"
+        ].idxmax()
+        max_size_labels = table.loc[max_idx, str(OBJECT.LABEL)].to_numpy()
 
         # Drop objects not the largest
-        nonmax_mask = ~np.isin(image.objmap[:], max_size_labels)
+        nonmax_mask = ~np.isin(objmap, max_size_labels)
         image.objmap[nonmax_mask] = 0
         return image

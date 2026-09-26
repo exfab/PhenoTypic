@@ -497,13 +497,16 @@ def finalize_run(
         finalize_post_master_outputs,
     )
 
+    from ._cli_utils import logged_step
+
     output_dir = Path(output_dir)
-    master_df, authorized, aggregated_sources = build_master_frame(
-        output_dir,
-        dataset_names,
-        include_dataset_column=include_dataset_column,
-        shard_paths=shard_paths,
-    )
+    with logged_step(logger, "finalize_run: build master frame"):
+        master_df, authorized, aggregated_sources = build_master_frame(
+            output_dir,
+            dataset_names,
+            include_dataset_column=include_dataset_column,
+            shard_paths=shard_paths,
+        )
     if master_df is None:
         logger.warning("No valid measurements found for aggregation")
         return None
@@ -521,12 +524,13 @@ def finalize_run(
     # D8 the CSV held that role and the Parquet was best-effort ("CSV was
     # saved"); leaving the roles as they were would let a run report success
     # having written no master at all.
-    master_saved = _guarded_terminal_best_effort(
-        commit_guard,
-        write_master_parquet,
-        warning="Failed to save master Parquet",
-        default=False,
-    )
+    with logged_step(logger, "finalize_run: write master parquet"):
+        master_saved = _guarded_terminal_best_effort(
+            commit_guard,
+            write_master_parquet,
+            warning="Failed to save master Parquet",
+            default=False,
+        )
     if not master_saved:
         return None
 
@@ -542,15 +546,18 @@ def finalize_run(
         if pipeline is not None
         else _load_pipeline_from_output_dir(output_dir)
     )
-    finalize_post_master_outputs(
-        output_dir,
-        master_df,
-        resolved_pipeline,
-        metadata_csv=metadata_csv,
-        no_qc=no_qc,
-        study_config=study_config,
-        commit_guard=commit_guard,
-    )
+    with logged_step(
+        logger, "finalize_run: post-master outputs (mirror, splits, plots, QC)"
+    ):
+        finalize_post_master_outputs(
+            output_dir,
+            master_df,
+            resolved_pipeline,
+            metadata_csv=metadata_csv,
+            no_qc=no_qc,
+            study_config=study_config,
+            commit_guard=commit_guard,
+        )
 
     if authorized:
         from ._cli_completion import publish_aggregate_snapshot
@@ -566,15 +573,19 @@ def finalize_run(
             if planned_work_ids is not None
             else _work_ids_for_sources(output_dir, aggregated_sources)
         )
-        publish_aggregate_snapshot(
-            output_dir,
-            source_work_ids=source_work_ids,
-            commit_guard=commit_guard,
-        )
+        with logged_step(logger, "finalize_run: publish aggregate proof"):
+            publish_aggregate_snapshot(
+                output_dir,
+                source_work_ids=source_work_ids,
+                commit_guard=commit_guard,
+            )
         # AFTER the proof, so "invalidate on success" is literal. Publication
         # can still raise here -- a tree with no current state, an artifact
         # that moved -- and invalidating first would destroy the previous
         # finalization's intermediates on behalf of one that did not complete.
-        _invalidate_finalization_intermediates(output_dir, dataset_names)
+        with logged_step(
+            logger, "finalize_run: invalidate finalization intermediates"
+        ):
+            _invalidate_finalization_intermediates(output_dir, dataset_names)
 
     return master_path

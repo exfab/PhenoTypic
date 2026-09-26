@@ -78,18 +78,18 @@ def test_append_coalesces_equal_metadata_aliases_without_mutating_source() -> No
         {
             LEGACY_STRAIN: ["WT", "mut"],
             str(GENETIC.STRAIN): ["WT", "mut"],
-            "Shape_Area": [1.0, 2.0],
+            "Size_Area": [1.0, 2.0],
         }
     )
 
     result = AppendString(column="Strain", value="-edited").apply(source)
 
-    assert result.columns.tolist() == [str(GENETIC.STRAIN), "Shape_Area"]
+    assert result.columns.tolist() == [str(GENETIC.STRAIN), "Size_Area"]
     assert result[str(GENETIC.STRAIN)].tolist() == ["WT-edited", "mut-edited"]
     assert source.columns.tolist() == [
         LEGACY_STRAIN,
         str(GENETIC.STRAIN),
-        "Shape_Area",
+        "Size_Area",
     ]
 
 
@@ -97,12 +97,12 @@ def test_append_coalesces_equal_metadata_aliases_without_mutating_source() -> No
     ("columns", "expected_columns"),
     [
         (
-            [LEGACY_STRAIN, "Shape_Area", str(GENETIC.STRAIN), "Object_Label"],
-            ["Shape_Area", str(GENETIC.STRAIN), "Object_Label"],
+            [LEGACY_STRAIN, "Size_Area", str(GENETIC.STRAIN), "Object_Label"],
+            ["Size_Area", str(GENETIC.STRAIN), "Object_Label"],
         ),
         (
-            [str(GENETIC.STRAIN), "Shape_Area", LEGACY_STRAIN, "Object_Label"],
-            [str(GENETIC.STRAIN), "Shape_Area", "Object_Label"],
+            [str(GENETIC.STRAIN), "Size_Area", LEGACY_STRAIN, "Object_Label"],
+            [str(GENETIC.STRAIN), "Size_Area", "Object_Label"],
         ),
     ],
 )
@@ -113,7 +113,7 @@ def test_alias_coalescing_keeps_canonical_position_and_nonmetadata_order(
     values = {
         LEGACY_STRAIN: ["WT"],
         str(GENETIC.STRAIN): ["WT"],
-        "Shape_Area": [1.0],
+        "Size_Area": [1.0],
         "Object_Label": [1],
     }
     source = pd.DataFrame({column: values[column] for column in columns})

@@ -663,16 +663,16 @@ def test_read_metadata_csv_table_normalizes_legacy_headers_without_mutating_file
     legacy = "MetadataGenetic_Strain"
     csv_path = _write_csv(
         tmp_path / "legacy.csv",
-        f"{legacy},Shape_Area,CustomTag\nBY4741,12.5,control\n",
+        f"{legacy},Size_Area,CustomTag\nBY4741,12.5,control\n",
     )
 
     columns, rows = read_metadata_csv_table(csv_path)
 
-    assert columns == [str(GENETIC.STRAIN), "Shape_Area", "Metadata_CustomTag"]
+    assert columns == [str(GENETIC.STRAIN), "Size_Area", "Metadata_CustomTag"]
     assert rows == [
         {
             str(GENETIC.STRAIN): "BY4741",
-            "Shape_Area": "12.5",
+            "Size_Area": "12.5",
             "Metadata_CustomTag": "control",
         }
     ]
@@ -709,7 +709,7 @@ def test_measurement_frame_normalization_preserves_feature_columns() -> None:
     source = pd.DataFrame(
         {
             "MetadataGenetic_Strain": ["BY4741"],
-            "Shape_Area": [12.5],
+            "Size_Area": [12.5],
             "Object_Label": [1],
             "batch_id": ["batch-a"],
             "ExternalMeasure_BatchKey": ["external-a"],
@@ -721,7 +721,7 @@ def test_measurement_frame_normalization_preserves_feature_columns() -> None:
 
     assert list(normalized.columns) == [
         str(GENETIC.STRAIN),
-        "Shape_Area",
+        "Size_Area",
         "Object_Label",
         "Metadata_batch_id",
         "ExternalMeasure_BatchKey",
@@ -729,7 +729,7 @@ def test_measurement_frame_normalization_preserves_feature_columns() -> None:
     ]
     assert list(source.columns) == [
         "MetadataGenetic_Strain",
-        "Shape_Area",
+        "Size_Area",
         "Object_Label",
         "batch_id",
         "ExternalMeasure_BatchKey",

@@ -38,9 +38,9 @@ def test_metric_qualified_scheme_recognition():
 
 def test_static_scheme_is_default():
     assert SHAPE.header_scheme() == "static"
-    assert SHAPE.owns_header("Shape_Area")
-    assert SHAPE.member_for_header("Shape_Area") is SHAPE.AREA
-    assert not SHAPE.owns_header("Shape_Area_extra")
+    assert SHAPE.owns_header("Shape_Circularity")
+    assert SHAPE.member_for_header("Shape_Circularity") is SHAPE.CIRCULARITY
+    assert not SHAPE.owns_header("Shape_Circularity_extra")
 
 
 def test_texture_scheme_recognition():

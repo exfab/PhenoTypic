@@ -83,7 +83,7 @@ class LinearCapAndLagModel(_LinearSoftplusBase):
     Output column naming:
         ``analyze`` emits metric-qualified columns
         ``LinearCapAndLagModel_<metric>_<parameter>`` (e.g. fitting
-        ``on="Shape_Area"`` yields ``LinearCapAndLagModel_Area_v``), plus
+        ``on="Size_Area"`` yields ``LinearCapAndLagModel_Area_v``), plus
         qualified fit-quality columns ``ModelMetrics_<metric>_<label>``. The
         ``<metric>`` segment is ``self.on`` with a recognized
         measurement-category prefix stripped.

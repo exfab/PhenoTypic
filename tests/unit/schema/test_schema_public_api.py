@@ -9,9 +9,9 @@ def test_enums_and_base_importable_from_schema():
     from phenotypic.schema import MeasurementInfo, SHAPE
 
     assert issubclass(SHAPE, MeasurementInfo)
-    assert SHAPE.AREA.value == "Shape_Area"
-    assert "Shape_Area" in SHAPE.get_headers()
-    assert "Area" in SHAPE.get_labels()
+    assert SHAPE.CIRCULARITY.value == "Shape_Circularity"
+    assert "Shape_Circularity" in SHAPE.get_headers()
+    assert "Circularity" in SHAPE.get_labels()
 
 
 def test_schema_exposed_on_top_level_package():

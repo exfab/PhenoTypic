@@ -47,7 +47,7 @@ def output_root(tmp_path: Path) -> OutputRoot:
             "Metadata_Strain": ["WT", "KO", "WT", "KO"],
             "Metadata_Time": [0, 1, 2, 3],
             "Object_Label": [1, 1, 1, 1],
-            "Shape_Area": [100.0, 200.0, 150.0, 250.0],
+            "Size_Area": [100.0, 200.0, 150.0, 250.0],
             "Intensity_MeanIntensity": [10.0, 20.0, 15.0, 25.0],
         }
     )
@@ -71,7 +71,7 @@ def output_root_with_filter(tmp_path: Path) -> OutputRoot:
             "Metadata_Strain": ["WT", "KO", "WT", "KO"],
             "Metadata_Time": [0, 1, 2, 3],
             "Object_Label": [1, 1, 1, 1],
-            "Shape_Area": [100.0, 200.0, 150.0, 250.0],
+            "Size_Area": [100.0, 200.0, 150.0, 250.0],
         }
     )
     write_master(tmp_path, df)
@@ -81,13 +81,13 @@ def output_root_with_filter(tmp_path: Path) -> OutputRoot:
     pipeline = ImagePipeline(name="t")
     pipeline.set_filters({
         "tukey": TukeyOutlierRemover(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Strain"],
         )
     })
     pipeline.set_model(
         LogGrowthModel(
-            on="Shape_Area",
+            on="Size_Area",
             groupby=["Metadata_Strain"],
             time_label="Metadata_Time",
         )
@@ -107,7 +107,7 @@ class TestSchemaWiredIntoApp:
         schema = app.server.config.get(CFG_MEASUREMENT_SCHEMA)
         assert schema is not None
         cols = schema.columns_for("measurements")
-        assert "Shape_Area" in cols
+        assert "Size_Area" in cols
         assert "Metadata_Strain" in cols
 
 
@@ -118,7 +118,7 @@ class TestColumnDropdownsRender:
         app = create_app(output_root=output_root_with_filter)
         # Find the TukeyOutlierRemover's `on` widget and verify it's a dbc.Select
         # (dropdown) populated from measurements.parquet — not a text input.
-        cols = {"Metadata_Strain", "Metadata_Time", "Shape_Area"}
+        cols = {"Metadata_Strain", "Metadata_Time", "Size_Area"}
         seen_on_dropdown = False
         for component in _walk(app.layout):
             cid = getattr(component, "id", None)
@@ -133,7 +133,7 @@ class TestColumnDropdownsRender:
                 assert cols.issubset(option_values), (
                     f"dropdown options {option_values} missing schema columns"
                 )
-                assert component.value == "Shape_Area"
+                assert component.value == "Size_Area"
                 seen_on_dropdown = True
                 break
         assert seen_on_dropdown, "TukeyOutlierRemover.on did not render as a dropdown"

@@ -10,6 +10,7 @@ from phenotypic.measure import (
     MeasureColor,
     MeasureIntensity,
     MeasureShape,
+    MeasureSize,
     MeasureTexture,
 )
 from phenotypic.refine import (
@@ -41,7 +42,7 @@ class HeavyWatershedPipeline(PrefabPipeline):
         9. GridAligner — straighten the grid
         10. MaskFill — fill interior holes
 
-    Measurements: MeasureShape, MeasureColor, MeasureTexture, MeasureIntensity.
+    Measurements: MeasureSize, MeasureShape, MeasureColor, MeasureTexture, MeasureIntensity.
 
     Best For:
         - Dense plates where colonies touch or overlap.
@@ -146,6 +147,7 @@ class HeavyWatershedPipeline(PrefabPipeline):
         ]
 
         meas = [
+            MeasureSize(),
             MeasureShape(),
             MeasureIntensity(),
             MeasureTexture(scale=texture_scale, warn=texture_warn),

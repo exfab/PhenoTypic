@@ -71,7 +71,7 @@ def _seed_output(
             "Metadata_Dataset": ["dataset"],
             str(IMAGE.IMAGE_NAME): ["plate"],
             "Object_Label": [1],
-            "Shape_Area": [100.0],
+            "Size_Area": [100.0],
         }
     )
     seed_output_dir(
@@ -162,7 +162,7 @@ def _rewrite_mirror(output_root: OutputRoot, increment: float = 1.0) -> None:
     replacement = mirror.with_name("measurements-replacement.parquet")
     (
         pl.read_parquet(mirror)
-        .with_columns((pl.col("Shape_Area") + increment).alias("Shape_Area"))
+        .with_columns((pl.col("Size_Area") + increment).alias("Size_Area"))
         .write_parquet(replacement)
     )
     replacement.replace(mirror)
@@ -608,8 +608,8 @@ def test_final_publish_gap_change_returns_stale_and_rolls_back(
     # asserted here -- that `_build_then_change` really did move the mirror
     # under the still-bound old root -- is read straight off disk instead.
     assert pl.read_parquet(old_root.layout.mirror_parquet)[
-        "Shape_Area"
-    ].sum() != old_root.master_df["Shape_Area"].sum()
+        "Size_Area"
+    ].sum() != old_root.master_df["Size_Area"].sum()
 
 
 def test_newer_bind_supersedes_slow_older_bind(

@@ -23,14 +23,14 @@ def _toy_df() -> pd.DataFrame:
                 {
                     "Metadata_Strain": strain,
                     "Metadata_Time": float(t),
-                    "Shape_Area": 1.0 + 2.0 * t,
+                    "Size_Area": 1.0 + 2.0 * t,
                 }
             )
     return pd.DataFrame(rows)
 
 
 def test_analyze_returns_metric_qualified_columns():
-    model = LinearLagModel(on="Shape_Area", groupby=["Metadata_Strain"])
+    model = LinearLagModel(on="Size_Area", groupby=["Metadata_Strain"])
     res = model.analyze(_toy_df())
     assert qualified_header(LINEAR_LAG_MODEL.v, "Area") in res.columns
     assert qualified_header(MODEL_METRICS.RMSE, "Area") in res.columns
@@ -38,20 +38,20 @@ def test_analyze_returns_metric_qualified_columns():
 
 
 def test_results_returns_the_qualified_frame():
-    model = LinearLagModel(on="Shape_Area", groupby=["Metadata_Strain"])
+    model = LinearLagModel(on="Size_Area", groupby=["Metadata_Strain"])
     model.analyze(_toy_df())
     assert qualified_header(LINEAR_LAG_MODEL.s0, "Area") in model.results().columns
 
 
 def test_show_works_after_qualified_analyze():
-    model = LinearLagModel(on="Shape_Area", groupby=["Metadata_Strain"])
+    model = LinearLagModel(on="Size_Area", groupby=["Metadata_Strain"])
     model.analyze(_toy_df())
     fig, ax = model.show()
     assert ax is not None
 
 
 def test_model_fitter_is_plot_analysis_with_keyword_only_inspect():
-    model = LinearLagModel(on="Shape_Area", groupby=["Metadata_Strain"])
+    model = LinearLagModel(on="Size_Area", groupby=["Metadata_Strain"])
 
     assert isinstance(model, PlotAnalysis)
     assert "dash" not in ModelFitter.__dict__
@@ -64,7 +64,7 @@ def test_model_fitter_is_plot_analysis_with_keyword_only_inspect():
 
 
 def test_inspect_and_report_delegate_to_one_plotly_builder():
-    model = LinearLagModel(on="Shape_Area", groupby=["Metadata_Strain"])
+    model = LinearLagModel(on="Size_Area", groupby=["Metadata_Strain"])
     sentinel = object()
 
     with patch.object(
@@ -87,7 +87,7 @@ def test_inspect_and_report_delegate_to_one_plotly_builder():
 
 
 def test_inspect_and_report_reuse_analyzed_state_without_refitting():
-    model = LinearLagModel(on="Shape_Area", groupby=["Metadata_Strain"])
+    model = LinearLagModel(on="Size_Area", groupby=["Metadata_Strain"])
     expected = model.analyze(_toy_df()).copy(deep=True)
 
     with patch.object(
