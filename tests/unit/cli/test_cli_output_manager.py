@@ -509,14 +509,22 @@ class TestAggregateMeasurementsAutoResolve:
             include_dataset_column=True,
         )
 
+        feature_dir = measurements_by_feature_dir(output_dir)
+        assert (feature_dir / "MeasureSize.csv").exists()
+        assert (feature_dir / "MeasureShape.csv").exists()
         category_csv = (
             measurements_by_category_dir(output_dir) / "StartingMetrics.csv"
         )
         assert category_csv.exists()
         df = pl.read_csv(category_csv)
-        assert "Size_Area" in df.columns
-        assert "Shape_Circularity" not in df.columns
-        assert str(IMAGE.IMAGE_NAME) in df.columns
+        # The finalize frame puts IMAGE metadata after the measurements; the
+        # split must still lead with context, exactly as the feature split does.
+        assert df.columns == [
+            str(EXPERIMENT.DATASET),
+            str(IMAGE.IMAGE_NAME),
+            "Object_Label",
+            "Size_Area",
+        ]
 
     def test_failing_category_split_does_not_block_publication(
         self, tmp_path: Path

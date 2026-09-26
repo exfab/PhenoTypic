@@ -223,13 +223,23 @@ No measurements configured in this pipeline."""
             if isinstance(measurer, MeasureFeatures)
             for info in self._get_measurement_infoclasses(measurer)
         ]
+        # One malformed info must cost only its own columns, not the README,
+        # mirroring the per-info guard in _generate_measurement_table.
+        tagged: list[tuple[str, frozenset[CATEGORIES]]] = []
+        for info in infos:
+            try:
+                tagged.extend(
+                    [
+                        (str(member), frozenset(getattr(member, "categories", ())))
+                        for member in info
+                    ]
+                )
+            except Exception as e:
+                logger.warning(f"Could not read categories for {info}: {e}")
         blocks: list[str] = []
         for category in CATEGORIES:
             columns = [
-                str(member)
-                for info in infos
-                for member in info
-                if category in member.categories
+                column for column, categories in tagged if category in categories
             ]
             if not columns:
                 continue

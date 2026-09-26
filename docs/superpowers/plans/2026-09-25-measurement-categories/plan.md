@@ -65,9 +65,11 @@ out as tests. Each has a pinning test in the task named.
 1. **Bare member passed to `categories=`.** `CATEGORIES` is a `str` enum, so naive iteration of
    `CATEGORIES.STARTING_METRICS` yields its characters. Expected: exactly one category.
    Pinned in Task 2 (`test_bare_member_is_one_category_not_its_characters`).
-2. **A categorized column that no measurer owns.** That column would be both a context column
-   and a group column, and the split would select it twice (polars raises on duplicate names).
-   Expected: every categorized header is producer-owned. Pinned in Task 4
+2. **A categorized column that no measurer owns.** Category groups are drawn only from the
+   complement of the context set, so a duplicate selection is impossible by construction. The
+   real failure is **silent**: an unowned column stays context in every file and never appears
+   as a member of its category. (Corrected after phase2-review L-2; the original "polars raises"
+   rationale was wrong.) Expected: every categorized header is producer-owned. Pinned in Task 4
    (`test_every_categorized_header_is_owned_by_a_producer`).
 3. **A run with none of a category's columns** (e.g. only `MeasureShape`). Expected: no
    `StartingMetrics.csv` and no empty `measurements_by_category/` directory. Pinned in Task 5

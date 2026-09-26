@@ -9,7 +9,7 @@ import pandas as pd
 import polars as pl
 import pytest
 
-from phenotypic.schema import CATEGORIES, Entry, MeasurementInfo
+from phenotypic.schema import CATEGORIES, IMAGE, Entry, MeasurementInfo
 from phenotypic.util import split_measurements, split_measurements_by_category
 from phenotypic.util import _measurement_outputs as mo
 
@@ -57,12 +57,31 @@ def test_both_integrated_intensities_appear_once_each() -> None:
 
 
 def test_context_matches_the_feature_split() -> None:
-    df = pd.DataFrame(_frame())
-    feature_ctx = list(split_measurements(df)["MeasureShape"].columns)[: len(_CONTEXT)]
-    category_ctx = list(split_measurements_by_category(df)["StartingMetrics"].columns)[
-        : len(_CONTEXT)
-    ]
-    assert feature_ctx == category_ctx == _CONTEXT
+    # The real finalize frame puts IMAGE metadata after the measurements, so
+    # build it measurements-first and check both splits hoist the same context.
+    trailing_context = ["Metadata_Dataset", str(IMAGE.IMAGE_NAME), "Object_Label"]
+    df = pd.DataFrame(
+        {
+            "Size_Area": [10.0],
+            "Shape_Circularity": [0.9],
+            "Metadata_Dataset": ["ds1"],
+            str(IMAGE.IMAGE_NAME): ["img1"],
+            "Object_Label": [1],
+        }
+    )
+    feature = list(split_measurements(df)["MeasureShape"].columns)
+    category = list(split_measurements_by_category(df)["StartingMetrics"].columns)
+    assert feature == [*trailing_context, "Shape_Circularity"]
+    assert category == [*trailing_context, "Size_Area"]
+
+
+def test_member_lookup_agrees_with_every_category_member() -> None:
+    # The split resolves a header to the first public class claiming it; that
+    # must be the very member the category lists, or its tags are read from
+    # the wrong class.
+    for category in CATEGORIES:
+        for member in category.members():
+            assert mo._member_for_column(member.value) is member, (category, member)
 
 
 def test_category_with_no_present_columns_has_no_key() -> None:

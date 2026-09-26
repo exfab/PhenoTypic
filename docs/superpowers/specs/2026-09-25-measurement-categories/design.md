@@ -322,7 +322,13 @@ No logic-validation script: nothing here rests on a numeric invariant.
 - **Stale split files.** Neither split clears its folder, so a recompile that
   drops every column of a category leaves the old file behind. This is inherited
   from `measurements_by_feature/`; fixing it for both is a behaviour change to
-  the existing split.
+  the existing split. A failed Parquet write likewise keeps the new CSV beside
+  an older Parquet (phase2-review L-8).
+- **Recompiled/migrated runs keep their old README.** `--mode recompile` and
+  `--mode migrate` gain `measurements_by_category/`, but neither regenerates
+  `README.md`, which comes only from the forward main flow and the staged
+  finalizer. An upgraded tree therefore has the folder, but no README tree line
+  or Categories section for it. This predates the change (phase2-review L-1).
 - **Integrated-intensity descriptions disagree.** `SIZE.INTEGRATED_INTENSITY`'s
   `desc` says "sum × area"; `INTENSITY.INTEGRATED_INTENSITY`'s says "sum". Both
   measurers compute the sum. Correct the `SIZE` desc separately.
