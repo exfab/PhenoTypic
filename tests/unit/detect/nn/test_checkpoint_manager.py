@@ -209,3 +209,53 @@ class TestRequireLicenseAcceptance:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestMicroSamModelsFolder:
+    """micro-sam keeps each model as ``<cache>/models/<registry key>`` (review C1)."""
+
+    def _models(self, tmp_path, monkeypatch, *names):
+        monkeypatch.setenv("MICROSAM_CACHEDIR", str(tmp_path))
+        models = tmp_path / "models"
+        models.mkdir()
+        for name in names:
+            (models / name).write_bytes(b"weights")
+        return models
+
+    def test_cache_dir_is_the_models_folder(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("MICROSAM_CACHEDIR", str(tmp_path))
+        assert MicroSamCheckpointManager.cache_dir() == tmp_path / "models"
+
+    def test_an_empty_variable_counts_as_unset(self, monkeypatch):
+        monkeypatch.setenv("MICROSAM_CACHEDIR", "")
+        assert MicroSamCheckpointManager.cache_dir().parent.name == "micro_sam"
+
+    def test_the_preflight_sees_a_cached_model(self, tmp_path, monkeypatch):
+        from phenotypic.detect.nn import MicroSamDetector
+
+        self._models(tmp_path, monkeypatch, "vit_b_lm", "vit_b_lm_decoder")
+
+        (weight,) = MicroSamDetector(model_type="vit_b_lm").preflight_requirements().weights
+        assert weight.is_cached() is True
+
+    def test_a_prefix_is_not_a_cached_model(self, tmp_path, monkeypatch):
+        from phenotypic.detect.nn import MicroSamDetector
+
+        self._models(tmp_path, monkeypatch, "vit_b_lm")
+
+        (weight,) = MicroSamDetector(model_type="vit_b").preflight_requirements().weights
+        assert weight.is_cached() is False
+
+    def test_list_and_clear_match_exact_names(self, tmp_path, monkeypatch):
+        models = self._models(
+            tmp_path, monkeypatch, "vit_b", "vit_b_lm", "vit_b_lm_decoder", "vit_b_em_organelles"
+        )
+
+        listed = {entry["model_type"] for entry in MicroSamCheckpointManager.list_cached()}
+        deleted = MicroSamCheckpointManager.clear("vit_b")
+
+        assert listed == {"vit_b", "vit_b_lm", "vit_b_em_organelles"}
+        assert deleted == [str(models / "vit_b")]
+        assert sorted(p.name for p in models.iterdir()) == [
+            "vit_b_em_organelles", "vit_b_lm", "vit_b_lm_decoder"
+        ]

@@ -28,6 +28,7 @@ from phenotypic.sdk_ import (
     terminal_failures_jsonl_path,
 )
 from phenotypic.sdk_._digests import canonical_digest
+from phenotypic.sdk_.constants_ import IO
 from phenotypic.sdk_.typing_ import FailureSource
 
 if TYPE_CHECKING:
@@ -207,6 +208,16 @@ def file_sha256(path: Path) -> str:
 #:         ``tiff`` continuations -- deliberate; invalidating too much is safe.
 PROCESS_LAYER_SEMANTICS_REVISION = 3
 
+#: What decoding a camera-RAW input means. Revision 1 is implicit: before spec
+#: 2026-09-24-cli-preflight §10.1, RAW suffixes were routed to skimage/Pillow,
+#: which returned an 8-bit embedded preview. Revision 2 decodes the sensor data
+#: through rawpy. Folded into the work id of RAW inputs ONLY, inside
+#: :func:`compute_work_id` -- the one function both work-id producers call
+#: (``work_id_for_image`` and the SLURM worker's ``_worker_work_identity``),
+#: so they cannot disagree (review R3). Every other input's work id is
+#: byte-identical to before, so non-RAW continuations are untouched.
+RAW_DECODE_REVISION = 2
+
 
 def processing_configuration_digest_from_values(
     *,
@@ -299,18 +310,28 @@ def compute_work_id(
     processing_config_digest: str,
     mode: str,
 ) -> str:
-    """Return the stable identity of one exact per-image computation."""
-    return canonical_digest(
-        {
-            "schema_version": WORK_ID_SCHEMA_VERSION,
-            "dataset": dataset,
-            "relative_image_path": Path(relative_image_path).as_posix(),
-            "input_sha256": input_sha256,
-            "pipeline_fingerprint": pipeline_fingerprint,
-            "processing_configuration_digest": processing_config_digest,
-            "mode": mode,
-        }
-    )
+    """Return the stable identity of one exact per-image computation.
+
+    A camera-RAW input (by the suffix of ``relative_image_path``) also carries
+    :data:`RAW_DECODE_REVISION`, so a run resumed across the RAW decoding fix
+    re-derives those images instead of reusing outputs decoded the old way.
+    """
+    payload: dict[str, Any] = {
+        "schema_version": WORK_ID_SCHEMA_VERSION,
+        "dataset": dataset,
+        "relative_image_path": Path(relative_image_path).as_posix(),
+        "input_sha256": input_sha256,
+        "pipeline_fingerprint": pipeline_fingerprint,
+        "processing_configuration_digest": processing_config_digest,
+        "mode": mode,
+    }
+    if Path(relative_image_path).suffix.lower() in _RAW_SUFFIXES:
+        payload["raw_decode_revision"] = RAW_DECODE_REVISION
+    return canonical_digest(payload)
+
+
+#: Lower-cased camera-RAW suffixes, from the one list the reader uses.
+_RAW_SUFFIXES = frozenset(suffix.lower() for suffix in IO.RAW_FILE_EXTENSIONS)
 
 
 def _normalized_input_relative_path(

@@ -8,7 +8,7 @@ and detect_mat in a single pass.
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any, overload
+from typing import ClassVar, TYPE_CHECKING, Any, overload
 
 import numpy as np
 from pydantic import PrivateAttr, field_validator
@@ -76,6 +76,10 @@ class ColorCorrector(ImageCorrector):
         :doc:`/explanation/color_spaces_for_phenotyping` for a discussion of
         root-polynomial color correction in phenotyping.
     """
+
+    #: Reads RGB on every call and fails on a grayscale image (run preflight, spec §3).
+    #: Reads image.rgb[:].
+    _requires_rgb_input: ClassVar[bool] = True
 
     profile: ColorCheckerProfile
     output_illuminant: str = "D65"

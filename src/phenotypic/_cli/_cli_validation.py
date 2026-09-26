@@ -20,9 +20,9 @@ from ._cli_types import ExecutionConfig
 
 logger = logging.getLogger(__name__)
 
-#: Plot-backend warnings already logged by this process. ``--dry-run``
-#: validates the same pipeline twice (the main path, then ``full_validation``),
-#: and the announcement is meant to appear once.
+#: Plot-backend warnings already logged by this process. A process may validate
+#: the same pipeline more than once, and the announcement is meant to appear
+#: once.
 _ANNOUNCED_PLOT_WARNINGS: set[str] = set()
 
 
@@ -32,25 +32,68 @@ def validate_pipeline(
 ) -> Tuple[bool, Optional[str]]:
     """
     Validate that pipeline JSON can be loaded successfully.
-    
+
+    A thin wrapper over :func:`read_pipeline_file` and
+    :func:`check_loaded_pipeline`, kept for callers that only need a verdict.
+    The CLI itself calls ``load_pipeline_for_validation``
+    (``_cli_preflight.py``), which keeps the loaded pipeline for the run
+    preflight instead of discarding it.
+
     Args:
         pipeline_path: Path to pipeline JSON file
         skip_validation: If True, skip validation (for advanced users)
-        
+
     Returns:
         Tuple of (is_valid, error_message)
         If valid, error_message is None
     """
     if skip_validation:
         return True, None
-    
+
+    pipeline, error, _ = read_pipeline_file(pipeline_path)
+    if pipeline is None:
+        return False, error
+    error = check_loaded_pipeline(pipeline)
+    return error is None, error
+
+
+def read_pipeline_file(
+    pipeline_path: Path,
+) -> Tuple[Optional[ImagePipeline], Optional[str], Optional[BaseException]]:
+    """Load a pipeline file, turning every load failure into a message.
+
+    Args:
+        pipeline_path: Path to pipeline JSON file.
+
+    Returns:
+        ``(pipeline, None, None)`` on success, else ``(None, message, error)``
+        with the wording ``validate_pipeline`` has always reported and the
+        exception, so a caller can classify it.
+    """
     try:
-        # Try to load pipeline
-        pipeline = ImagePipeline.from_json(pipeline_path)
-        
+        return ImagePipeline.from_json(pipeline_path), None, None
+    except FileNotFoundError as e:
+        return None, f"Pipeline file not found: {pipeline_path}", e
+    except json.JSONDecodeError as e:
+        return None, f"Invalid JSON in pipeline file: {e}", e
+    except Exception as e:
+        return None, f"Failed to load pipeline: {type(e).__name__}: {e}", e
+
+
+def check_loaded_pipeline(pipeline: ImagePipeline) -> Optional[str]:
+    """The validation that needs only a loaded pipeline.
+
+    Args:
+        pipeline: A pipeline :func:`read_pipeline_file` returned.
+
+    Returns:
+        ``None`` when it passes, else the message ``validate_pipeline`` has
+        always reported.
+    """
+    try:
         # Check that pipeline has operations or measurements
         if not pipeline._ops and not pipeline._meas:
-            return False, "Pipeline has no operations or measurements"
+            return "Pipeline has no operations or measurements"
 
         # Backends are checked here rather than per figure during the run: on
         # SLURM this is the submitting process, so a pipeline that will not
@@ -67,20 +110,14 @@ def validate_pipeline(
         try:
             warning_lines = preflight_plot_backends(pipeline)
         except PlotBackendUnavailable as e:
-            return False, f"Plot backend unavailable: {e}"
+            return f"Plot backend unavailable: {e}"
         for line in warning_lines:
             if line not in _ANNOUNCED_PLOT_WARNINGS:
                 _ANNOUNCED_PLOT_WARNINGS.add(line)
                 logger.warning(line)
-
-        return True, None
-        
-    except FileNotFoundError:
-        return False, f"Pipeline file not found: {pipeline_path}"
-    except json.JSONDecodeError as e:
-        return False, f"Invalid JSON in pipeline file: {e}"
+        return None
     except Exception as e:
-        return False, f"Failed to load pipeline: {type(e).__name__}: {e}"
+        return f"Failed to load pipeline: {type(e).__name__}: {e}"
 
 
 def validate_execution_config(
@@ -127,38 +164,6 @@ def validate_execution_config(
             pass
     
     return True, None
-
-
-def full_validation(
-    config: ExecutionConfig,
-) -> Tuple[bool, list[str]]:
-    """
-    Validate execution configuration and pipeline loading.
-
-    Args:
-        config: Execution configuration.
-
-    Returns:
-        Tuple of (is_valid, list_of_errors).
-        If valid, list_of_errors is empty.
-    """
-    errors = []
-
-    # Validate config
-    config_valid, config_error = validate_execution_config(config)
-    if not config_valid:
-        errors.append(config_error)
-        return False, errors
-
-    # Validate pipeline can be loaded
-    pipeline_valid, pipeline_error = validate_pipeline(
-        config.pipeline_json,
-        config.skip_validation
-    )
-    if not pipeline_valid:
-        errors.append(pipeline_error)
-
-    return len(errors) == 0, errors
 
 
 class UnstageableGpuDetectorError(ValueError):

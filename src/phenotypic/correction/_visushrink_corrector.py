@@ -128,6 +128,10 @@ class VisuShrinkCorrector(NormalizedOutputMixin, _GATSupportMixin, ImageCorrecto
         background on noise models and denoising strategy selection.
     """
 
+    #: Gray-tolerant: denoises RGB only when present (`if not image.rgb.isempty()`).
+    #: Declared explicitly for the run preflight's RGB ratchet (spec §3).
+    _requires_rgb_input: ClassVar[bool] = False
+
     _GAT_NOISE_PARAMS: ClassVar[dict[str, float]] = {"sigma": 1.0}
     _GAT_DEFER_VALUES: ClassVar[dict[str, Any]] = {
         "norm"         : None,

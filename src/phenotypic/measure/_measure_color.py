@@ -88,6 +88,10 @@ class MeasureColor(MeasureFeatures):
         True
     """
 
+    #: Reads RGB on every call and fails on a grayscale image (run preflight, spec §3).
+    #: The Lab/HSV block reads image.color unconditionally.
+    _requires_rgb_input: ClassVar[bool] = True
+
     _measurement_infoclasses: ClassVar[list[type]] = [
         ColorXYZ, Colorxy, ColorLab, ColorHSV]
 

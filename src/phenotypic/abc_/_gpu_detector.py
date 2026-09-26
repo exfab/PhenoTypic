@@ -174,6 +174,22 @@ class GpuDetector(ObjectDetector, ABC):
     # never tuned (TuneSpec(tunable=False) satisfies the annotation-coverage gate).
     connectivity: Annotated[int, TuneSpec(tunable=False)] = 2
 
+    def preflight_requirements(self):
+        """Add the RGB requirement when ``input_layer`` is ``"rgb"``.
+
+        Every GPU detector reads ``getattr(image, self.input_layer)``, so the
+        requirement follows the field, not the class: ``MicroSamDetector``
+        defaults to ``"gray"`` but a user may set ``"rgb"``. Subclasses extend
+        this through ``super()`` with their packages and weights. See
+        ``BaseOperation.preflight_requirements``.
+        """
+        import dataclasses
+
+        requirements = super().preflight_requirements()
+        if self.input_layer == "rgb":
+            requirements = dataclasses.replace(requirements, rgb_input=True)
+        return requirements
+
     @abstractmethod
     def _ensure_model_loaded(self) -> None:
         """Build/load the GPU model on first use (idempotent)."""

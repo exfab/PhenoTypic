@@ -52,6 +52,24 @@ class SetDetectMode(ImageOperation):
 
     mode: DetectMode = "gray"
 
+    def preflight_requirements(self):
+        """Add the RGB requirement when ``mode`` derives from colour channels.
+
+        ``image.set_detect_mode`` raises on a grayscale image for every mode
+        whose ``requires_rgb`` is true. See
+        ``BaseOperation.preflight_requirements``.
+        """
+        import dataclasses
+
+        from phenotypic._core._image_parts.detection_modes import (
+            get_detection_mode,
+        )
+
+        requirements = super().preflight_requirements()
+        if get_detection_mode(self.mode).requires_rgb:
+            requirements = dataclasses.replace(requirements, rgb_input=True)
+        return requirements
+
     def _operate(self, image: Image) -> Image:
         image.set_detect_mode(self.mode)
         return image

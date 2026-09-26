@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, Literal
+from typing import ClassVar, TYPE_CHECKING, Annotated, Literal
 
 import numpy as np
 from pydantic import field_validator
@@ -104,6 +104,10 @@ class DenoiseBlockMatch(ImageCorrector):
         :doc:`/explanation/image_quality_noise_contrast_structure` for
         background on Poisson-Gaussian noise models and denoiser selection.
     """
+
+    #: Gray-tolerant: operates on detect_mat; the ratchet matched a docstring
+    #: mention of skimage.color. Declared explicitly for the run preflight (spec §3).
+    _requires_rgb_input: ClassVar[bool] = False
 
     block_size: Annotated[int, TuneSpec(categories=(4, 8, 16))] = 8
     stage_arg: Literal["all_stages", "hard_thresholding"] = "all_stages"

@@ -165,7 +165,13 @@ if args and args[0] == "__run":
     )
     raise SystemExit(returncode)
 
-if command == "sbatch":
+if command == "sbatch" and "--test-only" in args:
+    # The CLI run preflight validates each profile with ``sbatch
+    # --test-only`` (script on stdin). Real sbatch answers on stderr and
+    # registers nothing, so neither does the fake.
+    sys.stdin.read()
+    print("sbatch: Job 0 to start at now using 1 processors on nodes fake", file=sys.stderr)
+elif command == "sbatch":
     comment = ""
     if "--comment" in args:
         comment = args[args.index("--comment") + 1]
@@ -242,6 +248,16 @@ elif command == "scancel":
         )
         save(state)
         fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+elif command == "sinfo":
+    # Partition GRES for the preflight's GPU-partition check.
+    print("gpu:1")
+elif command == "scontrol" and args[:2] == ["show", "partition"]:
+    name = args[2] if len(args) > 2 else "fake"
+    print(f"PartitionName={{name}}")
+    print("   AllowGroups=ALL Default=YES")
+    print("   MaxTime=UNLIMITED MinNodes=0")
+elif command == "scontrol" and args[:2] == ["show", "config"]:
+    print("EnforcePartLimits       = NO")
 elif command == "scontrol":
     if not args or args[0] != "update":
         raise SystemExit(2)
@@ -275,7 +291,7 @@ def _write_fake_slurm_bin(root: Path, state_path: Path) -> Path:
     bin_dir = root / "fake-slurm-bin"
     bin_dir.mkdir()
     script = _FAKE_SLURM.format(interpreter=sys.executable)
-    for command in ("sbatch", "squeue", "sacct", "scancel", "scontrol"):
+    for command in ("sbatch", "squeue", "sacct", "scancel", "scontrol", "sinfo"):
         executable = bin_dir / command
         executable.write_text(script, encoding="utf-8")
         executable.chmod(0o755)
@@ -471,7 +487,9 @@ def test_ordinary_slurm_submit_and_cancel_is_generation_fenced(
     )
     input_dir = sandbox / "ordinary-input"
     input_dir.mkdir()
-    (input_dir / "plate.tiff").write_bytes(b"not-read-by-submitter")
+    # A real image: the CLI run preflight reads every input's header before
+    # submitting, and a submit whose only input is unreadable is refused.
+    PILImage.new("RGB", (32, 32), (120, 80, 40)).save(input_dir / "plate.tiff")
     output_dir = sandbox / "results" / "FakeSlurmOrdinary"
     output_dir.mkdir()
 

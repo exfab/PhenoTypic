@@ -41,8 +41,10 @@ respects the same hidden-files / external-symlinks toggles as the sidebar.
 ## Validate before running
 
 `Validate (dry-run)` spawns `python -m phenotypic --mode full <args> --dry-run`. The
-CLI parses the pipeline JSON, lists the images it would process, then
-exits without writing any output. The log tail shows the dry-run output.
+CLI parses the pipeline JSON, lists the images it would process, runs the
+{ref}`run preflight <Run Preflight Checks>`, then
+exits without writing any output. Preflight errors and warnings appear in the
+log tail with their codes and remedies. The log tail shows the dry-run output.
 Use this whenever you're not sure the form values match what the CLI
 expects — the dry-run takes seconds, a bad real run can waste minutes.
 

@@ -1,22 +1,15 @@
-"""Preload custom operation modules before pipeline deserialization."""
+"""Preload custom operation modules before pipeline deserialization.
+
+The implementation lives in :mod:`phenotypic.sdk_._preload`, because class
+resolution in ``_core`` calls it and ``_core`` may not import ``_cli``. This
+module keeps the name every CLI caller and test already imports.
+"""
 
 from __future__ import annotations
 
-import importlib
-import os
+from phenotypic.sdk_._preload import (
+    PRELOAD_MODULES_ENV as _PRELOAD_MODULES_ENV,
+    preload_custom_operation_modules,
+)
 
-_PRELOAD_MODULES_ENV = "PHENOTYPIC_PRELOAD_MODULES"
-
-
-def preload_custom_operation_modules() -> None:
-    """Import custom operation modules named by the preload environment.
-
-    Empty comma-separated entries and surrounding whitespace are ignored.
-    Import failures intentionally propagate so a remote process reports the
-    missing registration module instead of a later, less specific pipeline
-    deserialization error.
-    """
-    for value in os.environ.get(_PRELOAD_MODULES_ENV, "").split(","):
-        module_name = value.strip()
-        if module_name:
-            importlib.import_module(module_name)
+__all__ = ["preload_custom_operation_modules", "_PRELOAD_MODULES_ENV"]

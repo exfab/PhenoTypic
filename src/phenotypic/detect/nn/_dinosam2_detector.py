@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Annotated, Any, List
 
 from pydantic import Field, PrivateAttr
 
-from phenotypic.abc_ import GpuDetector
+from phenotypic.abc_ import GpuDetector, OperationRequirements
 from phenotypic.detect.nn._helper._checkpoint_manager import Device, Sam2ModelSize
 from phenotypic.sdk_.typing_ import (
     DinoSize,
@@ -360,6 +360,34 @@ class DinoSam2Detector(GpuDetector):
 
         return hf_dino_id(self.dino_version, self.dino_size)
 
+    def preflight_requirements(self) -> OperationRequirements:
+        """Packages and weights this detector loads (run preflight, spec §3/§5).
+
+        DINOv3 weights are gated; the SAM2 generator needs its own
+        checkpoint. See ``BaseOperation.preflight_requirements``.
+
+        Returns:
+            The detector's packages, extra and weights, added to the
+            inherited input-layer requirement.
+        """
+        import dataclasses
+
+        from phenotypic.detect.nn._helper import _checkpoint_manager as ckpt
+
+        requirements = super().preflight_requirements()
+        modules = ("transformers", "torch")
+        if int(self.dino_version) == 3:
+            modules += ("huggingface_hub",)
+        return dataclasses.replace(
+            requirements,
+            modules=modules + ("sam2",),
+            extra="foundation",
+            weights=(
+                ckpt.dino_weight_requirement(self.dino_version, self.dino_size),
+                ckpt.sam2_weight_requirement(self.sam2_model_size),
+            ),
+        )
+
     def _ensure_model_loaded(self) -> None:
         """Build the SAM2 AMG + DINO backbone on first use (idempotent).
 
@@ -389,7 +417,11 @@ class DinoSam2Detector(GpuDetector):
 
         # DINOv3 is gated — accept + pre-stage the snapshot before the load.
         if self.dino_version == 3:
-            Dinov3CheckpointManager(size=self.dino_size).download()
+            # Never prompt inside a pipeline: a batch worker has no terminal,
+            # so input() would raise EOFError or hang (spec §10.3, F10).
+            Dinov3CheckpointManager(size=self.dino_size).download(
+                interactive=False
+            )
 
         self._device = resolve_device(self.device)
         self._generator = build_sam2_generator(

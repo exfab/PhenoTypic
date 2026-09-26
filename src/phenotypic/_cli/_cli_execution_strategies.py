@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import subprocess
 import time
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
@@ -907,42 +906,33 @@ class AutonomousSLURMStrategy(ExecutionStrategy):
         if not measure_only and pipeline_requires_gpu(
             self.config.pipeline_json
         ):
-            slurm_args = dict(self.config.slurm_args)
+            from phenotypic.sdk_.slurm import (
+                effective_sbatch_option,
+                with_default_gpu_request,
+            )
 
-            if "slurm_gpus_per_node" not in slurm_args:
-                slurm_args["slurm_gpus_per_node"] = 1
+            if "slurm_gpus_per_node" not in self.config.slurm_args:
                 console.print(
                     "[yellow]Pipeline contains GPU operations — "
                     "auto-requesting --gpus-per-node=1[/yellow]"
                 )
+            slurm_args = with_default_gpu_request(self.config.slurm_args)
 
-            partition = slurm_args.get("slurm_partition")
+            # The partition sbatch will use, in either spelling (review E3).
+            partition = effective_sbatch_option(slurm_args, "partition")
             if partition:
-                try:
-                    result = subprocess.run(
-                        [
-                            "sinfo",
-                            "-p",
-                            partition,
-                            "--Format=gres",
-                            "--noheader",
-                        ],
-                        capture_output=True,
-                        text=True,
-                        timeout=10,
+                # The shared check refuses only when sinfo positively lists
+                # the partition's GRES and none is a GPU; an unknown partition,
+                # a hidden one, or an absent or failing sinfo proceeds, and
+                # sbatch reports the real fault (spec F18, review E5/E6).
+                from phenotypic.sdk_.slurm._config import partition_gres_error
+
+                gres_error = partition_gres_error(partition)
+                if gres_error is not None:
+                    raise RuntimeError(
+                        f"Pipeline contains GPU operations but {gres_error}. "
+                        "Use --slurm slurm_partition=<gpu-partition>."
                     )
-                    gres_info = result.stdout.strip()
-                    if "gpu" not in gres_info.lower():
-                        raise RuntimeError(
-                            f"Pipeline contains GPU operations but partition "
-                            f"'{partition}' has no GPUs (sinfo gres: "
-                            f"{gres_info!r}). Use "
-                            f"--slurm slurm_partition=<gpu-partition>."
-                        )
-                except FileNotFoundError:
-                    pass  # sinfo not available (not on a SLURM login node)
-                except subprocess.TimeoutExpired:
-                    pass  # sinfo hung, proceed anyway
 
             self.config.slurm_args = slurm_args
 

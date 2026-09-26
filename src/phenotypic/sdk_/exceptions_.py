@@ -193,8 +193,9 @@ class EmptyImageError(AttributeError):
 class UnsupportedFileTypeError(ValueError):
     """Exception raised when trying to read an unsupported file type."""
 
-    def __init__(self, suffix):
-        super().__init__(f"Image.imread() does not support file type: {suffix}")
+    def __init__(self, suffix, reason: str | None = None):
+        message = f"Image.imread() does not support file type: {suffix}"
+        super().__init__(f"{message} ({reason})" if reason else message)
 
 
 # Component exceptions

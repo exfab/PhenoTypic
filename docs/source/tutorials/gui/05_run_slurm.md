@@ -40,7 +40,10 @@ Submitting requires `sbatch` on `PATH` and a real SLURM cluster — neither
 exists on the workstation that captured these screenshots. To verify your
 form values translate to the right CLI invocation, click
 `Validate (dry-run)`: the dry-run validates the selected paths and prints the
-argv the hub would pass to `phenotypic`. Once you're satisfied, click `Run`.
+argv the hub would pass to `phenotypic`. In SLURM mode Validate passes the same
+`--slurm`, `--gpu-slurm`, and `--gpu-shards` options Run would, so the
+{ref}`run preflight <Run Preflight Checks>` tests
+that exact profile with `sbatch --test-only`. Nothing is submitted. Once you're satisfied, click `Run`.
 ```
 
 ## What SLURM submission writes

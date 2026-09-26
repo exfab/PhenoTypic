@@ -1913,3 +1913,123 @@ def test_form_state_omits_ambient_metadata_until_explicit_include(
 
     assert omitted["metadata_csv"] is None
     assert included["metadata_csv"] == str(csv_path.resolve())
+
+
+# ---------------------------------------------------------------------------
+# Validate checks the SLURM profile Run submits (spec 2026-09-24-cli-preflight §11)
+# ---------------------------------------------------------------------------
+
+
+def _cluster_tokens(argv: list[str]) -> list[tuple[str, str]]:
+    flags = {"--slurm", "--gpu-slurm", "--gpu-shards"}
+    return [(token, argv[i + 1]) for i, token in enumerate(argv) if token in flags]
+
+
+def test_slurm_validate_forwards_the_run_cluster_options(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Validate dry-runs the same --slurm/--gpu-slurm/--gpu-shards as Run."""
+    from phenotypic._gui.run_console._slurm import _build_subprocess_argv
+
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+    runner = LocalRunner()
+    app = create_app(sandbox, registry=registry, runner=runner)
+    pipeline = tmp_path / "pipeline.json"
+    images = tmp_path / "images"
+    output = tmp_path / "output"
+    pipeline.write_text('{"operations": []}', encoding="utf-8")
+    images.mkdir()
+    output.mkdir()
+    values: list[Any] = ["" for _ in range(20)]
+    values[:5] = [str(pipeline), str(images), str(output), "slurm", []]
+    values[5:11] = [None] * 6
+    values[11:17] = ["gpu-short", "01:00:00", "8G", 2, None, None]
+    values[17] = "partition=gpu\ngres=gpu:a100:1"
+    values[18] = 2
+    values[19] = None
+    controls = _guard_action_controls(sandbox, tuple(values))
+    started: list[list[str]] = []
+
+    def record_start(run_id, argv, **kwargs):
+        started.append(list(argv))
+        raise OSError("stop after recording argv")
+
+    monkeypatch.setattr(runner, "start", record_start)
+    callback = _callback_by_name(app, "click_action")
+
+    callback(1, 0, *controls, 0)
+
+    (argv,) = started
+    run_state = _state_from_action_controls(controls, sandbox=sandbox)
+    run_argv = _build_subprocess_argv(run_state)
+    assert "--dry-run" in argv and "--dry-run" not in run_argv
+    assert _cluster_tokens(argv) == _cluster_tokens(run_argv)
+    assert ("--slurm", "partition=gpu-short") in _cluster_tokens(argv)
+    assert ("--gpu-shards", "2") in _cluster_tokens(argv)
+
+
+def test_local_validate_carries_no_cluster_options(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+    runner = LocalRunner()
+    app = create_app(sandbox, registry=registry, runner=runner)
+    pipeline = tmp_path / "pipeline.json"
+    images = tmp_path / "images"
+    output = tmp_path / "output"
+    pipeline.write_text('{"operations": []}', encoding="utf-8")
+    images.mkdir()
+    output.mkdir()
+    values: list[Any] = [None] * 20
+    values[:5] = [str(pipeline), str(images), str(output), "local", []]
+    values[11] = "ignored-partition"
+    values[18] = 1
+    controls = _guard_action_controls(sandbox, tuple(values))
+    started: list[list[str]] = []
+
+    def record_start(run_id, argv, **kwargs):
+        started.append(list(argv))
+        raise OSError("stop after recording argv")
+
+    monkeypatch.setattr(runner, "start", record_start)
+
+    _callback_by_name(app, "click_action")(1, 0, *controls, 0)
+
+    (argv,) = started
+    assert "--dry-run" in argv
+    assert _cluster_tokens(argv) == []
+
+
+def test_slurm_validate_with_an_empty_slurm_form_is_refused_like_run(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Review E12 asked for this refusal; it already holds, from the form-state
+    validation (``_state.py``), before any argv is built. Pinned here so
+    Validate can never dry-run a local run for an empty SLURM form."""
+    sandbox = SandboxRoot.from_path(tmp_path)
+    registry = RunRegistry()
+    runner = LocalRunner()
+    app = create_app(sandbox, registry=registry, runner=runner)
+    pipeline = tmp_path / "pipeline.json"
+    images = tmp_path / "images"
+    output = tmp_path / "output"
+    pipeline.write_text('{"operations": []}', encoding="utf-8")
+    images.mkdir()
+    output.mkdir()
+    values: list[Any] = [None] * 20
+    values[:5] = [str(pipeline), str(images), str(output), "slurm", []]
+    values[18] = 1
+    controls = _guard_action_controls(sandbox, tuple(values))
+    started: list[list[str]] = []
+    monkeypatch.setattr(runner, "start", lambda run_id, argv, **kwargs: started.append(argv))
+
+    response = _callback_by_name(app, "click_action")(1, 0, *controls, 0)
+
+    assert started == []
+    assert "SLURM mode requires a nonempty CPU SLURM profile" in response[1]
+    assert registry.list() == []
