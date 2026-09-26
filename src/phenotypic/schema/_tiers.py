@@ -29,12 +29,12 @@ class MetadataInfo(IdentityInfo):
     """Identity information owned by a concrete metadata vocabulary.
 
     Every concrete owner emits the shared ``Metadata_<Label>`` namespace. Class
-    identity, rather than a category-string prefix, is the stable signal that an
+    identity, rather than a metric-family string prefix, is the stable signal that an
     enum owns metadata.
     """
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         """Return the shared physical namespace for metadata columns."""
         return "Metadata"
 

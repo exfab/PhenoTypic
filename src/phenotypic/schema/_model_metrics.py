@@ -14,7 +14,7 @@ class MODEL_METRICS(QualityInfo):
     """
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "ModelMetrics"
 
     @classmethod

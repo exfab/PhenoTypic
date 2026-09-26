@@ -15,7 +15,7 @@ class QUALITY_SE(QualityInfo):
     """
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "QC_SE"
 
     VALUE = Entry("Value", "Raw SE = stddev / sqrt(n) across replicates.")

@@ -12,7 +12,7 @@ def _make(cls, **entries):
     from enum import EnumMeta
 
     ns = EnumMeta.__prepare__("T", (cls,))
-    ns["category"] = classmethod(lambda c: "T")
+    ns["metric_family"] = classmethod(lambda c: "T")
     for name, kw in entries.items():
         ns[name] = Entry(name, "d", **kw)
     return EnumMeta("T", (cls,), ns)

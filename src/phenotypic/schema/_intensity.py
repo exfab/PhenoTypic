@@ -15,7 +15,7 @@ class INTENSITY(DirectPhenotype):
     """
 
     @classmethod
-    def category(cls):
+    def metric_family(cls):
         return "Intensity"
 
     INTEGRATED_INTENSITY = Entry("IntegratedIntensity", "The sum of the object's pixels")

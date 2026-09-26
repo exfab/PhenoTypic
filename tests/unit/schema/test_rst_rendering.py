@@ -5,7 +5,7 @@ from phenotypic.schema import Entry, MeasurementInfo
 
 class _DescOnly(MeasurementInfo):
     @classmethod
-    def category(cls):
+    def metric_family(cls):
         return "DescOnly"
 
     A = Entry("A", "alpha")
@@ -14,7 +14,7 @@ class _DescOnly(MeasurementInfo):
 
 class _WithBio(MeasurementInfo):
     @classmethod
-    def category(cls):
+    def metric_family(cls):
         return "WithBio"
 
     A = Entry("A", "alpha", bio_desc="grows")
@@ -23,7 +23,7 @@ class _WithBio(MeasurementInfo):
 
 class _WithImage(MeasurementInfo):
     @classmethod
-    def category(cls):
+    def metric_family(cls):
         return "WithImage"
 
     A = Entry("A", "alpha", image="shape/area.png")
@@ -31,7 +31,7 @@ class _WithImage(MeasurementInfo):
 
 class _WithRoles(MeasurementInfo):
     @classmethod
-    def category(cls):
+    def metric_family(cls):
         return "WithRoles"
 
     M = Entry("M", r"Ratio :math:`\frac{a}{b}` of two things.")

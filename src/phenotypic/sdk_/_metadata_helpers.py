@@ -354,7 +354,7 @@ def metadata_category_for_label(label: str) -> str | None:
         stacklevel=2,
     )
     owner = metadata_owner_for_label(label)
-    return owner.category() if owner is not None else None
+    return owner.metric_family() if owner is not None else None
 
 
 def _pandas_values_are_strings(series: "pd.Series") -> bool:

@@ -15,7 +15,7 @@ class GRID_LINREG_STATS(QualityInfo):
     """
 
     @classmethod
-    def category(cls):
+    def metric_family(cls):
         return "GridLinReg"
 
     ROW_LINREG_M = Entry(

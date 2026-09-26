@@ -20,7 +20,7 @@ def _column_enums():
 def test_metadata_enums_declare_a_real_module():
     bad = []
     for enum in _column_enums():
-        if not enum.category().startswith("Metadata"):
+        if not enum.metric_family().startswith("Metadata"):
             continue
         for m in enum:
             mod = m.resolved_rembi_module

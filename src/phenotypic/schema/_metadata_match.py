@@ -15,7 +15,7 @@ class METADATA_MATCH(QualityInfo):
     """
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "QC"
 
     METADATA_ONLY = Entry(

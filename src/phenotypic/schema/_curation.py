@@ -15,10 +15,11 @@ class CURATION(QualityInfo):
     """
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "Curation"
 
-    # Member name avoids ``CATEGORY`` (a reserved ``MeasurementInfo`` property);
+    # Member name avoids ``METRIC_FAMILY`` (a reserved ``MeasurementInfo``
+    # property) and the legacy ``CATEGORY`` name (refused at class creation);
     # the label stays "Category" so the column is ``Curation_Category``.
     ERROR_CATEGORY = Entry(
         "Category",

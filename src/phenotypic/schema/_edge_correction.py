@@ -8,11 +8,11 @@ class EDGE_CORRECTION(DerivedMeasure):
     """Measurement info container for edge correction analysis results.
 
     Provides metadata for measurement values produced by the EdgeCorrector,
-    organizing corrected colony measurements under the "EdgeCorrection" category.
+    organizing corrected colony measurements under the "EdgeCorrection" metric family.
     """
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "EdgeCorrection"
 
     CORRECTED_CAP = Entry("Cap", "The carrying capacity for the target measurement",

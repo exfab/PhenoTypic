@@ -7,10 +7,10 @@ from ._tiers import QualityInfo
 class QUALITY_CHECK(QualityInfo):
     """Generic QC output columns emitted by every QualityCheck subclass.
 
-    The category convention used elsewhere in the codebase would produce
+    The metric-family convention used elsewhere in the codebase would produce
     column names ``QC_Flag``, ``QC_Metric``, ``QC_Status`` — but the
     actual emitted columns include each subclass's ``name`` between the
-    category and the label (``QC_Count_Flag``, ``QC_SE_Flag``). This
+    metric family and the label (``QC_Count_Flag``, ``QC_SE_Flag``). This
     enum overrides :meth:`append_rst_to_doc` to substitute the subclass's
     ``name`` into the RST column header, so each concrete subclass's
     docstring documents its real emitted columns.
@@ -29,7 +29,7 @@ class QUALITY_CHECK(QualityInfo):
     STATUS = Entry("Status", "Categorical: pass | warn | fail.")
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "QC"
 
     @classmethod

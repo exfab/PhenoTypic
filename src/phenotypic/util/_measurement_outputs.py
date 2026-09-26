@@ -241,15 +241,15 @@ def _iter_public_info_classes() -> Iterator[type[MeasurementInfo]]:
 
 
 @lru_cache(maxsize=1)
-def _known_categories() -> tuple[str, ...]:
-    """All public schema categories, sorted longest-first for prefix matching."""
-    cats: set[str] = set()
+def _known_families() -> tuple[str, ...]:
+    """All public schema metric families, sorted longest-first for prefix matching."""
+    families: set[str] = set()
     for obj in _iter_public_info_classes():
         try:
-            cats.add(obj.category())
+            families.add(obj.metric_family())
         except NotImplementedError:  # member-less classification bases
             continue
-    return tuple(sorted(cats, key=len, reverse=True))
+    return tuple(sorted(families, key=len, reverse=True))
 
 
 def _sanitize_token(token: str) -> str:
@@ -259,14 +259,14 @@ def _sanitize_token(token: str) -> str:
 def metric_token(on: str) -> str:
     """Derive the ``<metric>`` header segment from a fitter's ``on`` column.
 
-    Strips the longest known schema **category** prefix if present
+    Strips the longest known schema **metric family** prefix if present
     (``Size_Area`` → ``Area``), else returns the value verbatim
     (``x`` → ``x``); then removes whitespace.
     """
     value = str(on).strip()
-    for category in _known_categories():
-        if value.startswith(category + "_"):
-            return _sanitize_token(value[len(category) + 1:])
+    for family in _known_families():
+        if value.startswith(family + "_"):
+            return _sanitize_token(value[len(family) + 1:])
     return _sanitize_token(value)
 
 

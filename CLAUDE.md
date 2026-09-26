@@ -510,7 +510,7 @@ enforces this for ruff, but the rule binds regardless of the tool.
 - **Operations are keyword-only constructed:** `OtsuDetector(ignore_zeros=True)`, not
   `OtsuDetector(True)` — pydantic models take no positional args. Unknown kwargs and
   invalid values raise `pydantic.ValidationError`.
-- **Measurement columns are category-prefixed:** `Size_Area`, `Shape_Circularity`,
+- **Measurement columns are family-prefixed:** `Size_Area`, `Shape_Circularity`,
   `Intensity_MeanIntensity`, etc. The header enums are the **public**
   `phenotypic.schema` package (`from phenotypic.schema import SHAPE, SIZE, ...`);
   the old `phenotypic.sdk_.measurement_info` path was removed.

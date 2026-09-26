@@ -22,14 +22,14 @@ from ._tiers import QualityInfo
 class ErrorCategory(QualityInfo):
     """Closed taxonomy of detection-error categories for object triage.
 
-    The enum *value* is the category-prefixed header (``ErrorCategory_<label>``)
+    The enum *value* is the family-prefixed header (``ErrorCategory_<label>``)
     per the ``MeasurementInfo`` convention, but callers persist and compare on
     the bare :attr:`~MeasurementInfo.label` (e.g. ``"debris"``). Use
     :meth:`from_label` to resolve a stored token back to a member.
     """
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "ErrorCategory"
 
     @classmethod

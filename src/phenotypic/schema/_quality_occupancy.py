@@ -16,7 +16,7 @@ class QUALITY_OCCUPANCY(QualityInfo):
     """
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "QC_Occupancy"
 
     FILLED = Entry(

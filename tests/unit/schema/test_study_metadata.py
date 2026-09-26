@@ -11,7 +11,7 @@ def test_study_members_present():
 
 def test_study_module_and_namespace():
     assert STUDY.TITLE.resolved_rembi_module is REMBI_MODULE.STUDY
-    assert STUDY.category() == "Metadata"
+    assert STUDY.metric_family() == "Metadata"
     assert STUDY.TITLE.value == "Metadata_Title"
 
 

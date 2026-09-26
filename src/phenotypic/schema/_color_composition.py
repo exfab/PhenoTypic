@@ -14,7 +14,7 @@ class ColorComposition(DiscriminativeFeature):
     """
 
     @classmethod
-    def category(cls):
+    def metric_family(cls):
         return "ColorComposition"
 
     # Define the 11 color categories with descriptions

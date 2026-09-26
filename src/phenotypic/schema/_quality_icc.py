@@ -17,7 +17,7 @@ class QUALITY_ICC(QualityInfo):
     """
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "QC_ICC"
 
     NUM_SUBJECTS = Entry("NumSubjects", "Distinct subjects (e.g. timepoints) in the two-way model.")

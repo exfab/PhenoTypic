@@ -19,7 +19,7 @@ class PrependString(PostMeasurement):
     beginning. Useful for adding prefixes like identifiers or labels.
 
     Args:
-        column: Name of the metadata column to modify. The schema category
+        column: Name of the metadata column to modify. The schema metric-family
             prefix is added automatically if missing (e.g. ``SampleID`` ->
             ``Metadata_SampleID``; unknown labels get a generic
             ``Metadata_`` prefix).
@@ -64,7 +64,7 @@ class PrependString(PostMeasurement):
     @field_validator("column")
     @classmethod
     def _prefix_column(cls, column: str) -> str:
-        """Apply the schema category prefix (generic ``Metadata_`` fallback) to a non-empty column name."""
+        """Apply the schema metric-family prefix (generic ``Metadata_`` fallback) to a non-empty column name."""
         return ensure_metadata_prefix(column) if column else ""
 
     def _operate(self, df: pd.DataFrame) -> pd.DataFrame:

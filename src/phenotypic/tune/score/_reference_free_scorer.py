@@ -319,7 +319,7 @@ class ReferenceFreeScorer(Scorer):
             image: The processed image — the contrast term reads its
                 ``gray``/``objmask`` accessors; the other terms read the frame.
             measurements: The candidate pipeline's measurement frame, carrying
-                the category-prefixed ``Shape_*``/``Size_*`` columns.
+                the family-prefixed ``Shape_*``/``Size_*`` columns.
 
         Returns:
             A mapping of proxy term → natural goodness in ``[0, 1]`` (higher =

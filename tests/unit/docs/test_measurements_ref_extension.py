@@ -134,7 +134,7 @@ def test_every_canonical_public_class_appears_once_on_the_correct_page(
     combined = measurements_page + metadata_page
 
     public_classes = _canonical_public_classes()
-    assert combined.count(".. list-table:: Category:") == len(public_classes)
+    assert combined.count(".. list-table:: Metric family:") == len(public_classes)
     for info_cls in public_classes:
         heading = _class_heading(info_cls.__name__)
         expected_page = (
@@ -189,7 +189,7 @@ def test_future_classes_are_discovered_and_partitioned_automatically(
 ) -> None:
     class FUTURE_MEASUREMENT(MeasurementInfo):
         @classmethod
-        def category(cls) -> str:
+        def metric_family(cls) -> str:
             return "FutureMeasurement"
 
         VALUE = Entry("Value", "A future measurement value.")

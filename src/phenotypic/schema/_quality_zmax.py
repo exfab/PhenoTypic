@@ -16,7 +16,7 @@ class QUALITY_ZMAX(QualityInfo):
     """
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "QC_ZMax"
 
     MEDIAN = Entry("Median", "Group median of the measurement.")

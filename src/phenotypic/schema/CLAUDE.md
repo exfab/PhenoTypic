@@ -4,8 +4,8 @@ Public, blessed API for PhenoTypic's measurement naming conventions.
 
 - `MeasurementInfo` (`_measurement_info.py`) — `str, Enum` base. Subclasses
   declare members as `Entry(label, desc, *, bio_desc="", image=None, tier=None,
-  derivation_type=None, derives_from=None)` plus a `category()` classmethod; the
-  enum value is the category-prefixed header (e.g. `Size_Area`). `Entry` (a
+  derivation_type=None, derives_from=None)` plus a `metric_family()` classmethod; the
+  enum value is the family-prefixed header (e.g. `Size_Area`). `Entry` (a
   frozen dataclass, also in `_measurement_info.py` and exported from the package)
   is the **only** legal member value — raw tuples raise `TypeError` at import.
   `desc` is the technical/algorithm description; **`bio_desc` is human-authored
@@ -13,10 +13,12 @@ Public, blessed API for PhenoTypic's measurement naming conventions.
   guardrail); `image` is a path under `_assets/measurements/` rendered into the
   Sphinx docs; `tier`/`derivation_type`/`derives_from` drive the classification
   system (below). Per-member attrs: `.label`, `.desc`, `.bio_desc`, `.image`,
-  `.pair`, `.CATEGORY`, plus classification: `.resolved_kind`, `.resolved_tier`,
+  `.pair`, `.METRIC_FAMILY`, plus classification: `.resolved_kind`, `.resolved_tier`,
   `.use_label`, `.use_badge`. Helpers: `get_labels()`, `get_headers()`,
   `rst_table()` (conditional Type/Biology/Image columns, suppressed when empty),
-  `append_rst_to_doc()`.
+  `append_rst_to_doc()`. `metric_family()`/`.METRIC_FAMILY` were hard-renamed
+  from `category()`/`.CATEGORY` with no alias; a subclass that still defines
+  either legacy name raises `TypeError` at class creation.
 - 32 measurement-column enum modules (`_shape.py`, `_size.py`,
   `_color_lab.py`, …) — one `MeasurementInfo` subclass each, re-exported from
   `__init__.py`.
@@ -27,8 +29,8 @@ Public, blessed API for PhenoTypic's measurement naming conventions.
 - `_experimental_tags/` — eight `MetadataInfo` subclasses (`GENETIC`, `SAMPLE`,
   `PLATE`, `CONDITION`, `CULTURE`, `ACQUISITION`, `EXPERIMENT`, and `STUDY`),
   one per file and re-exported from `__init__.py`. Every owner has
-  `category() == "Metadata"`, so `SAMPLE.BIO_REPLICATE` renders as
-  `Metadata_BioReplicate`. The owner class, not a category prefix, carries the
+  `metric_family() == "Metadata"`, so `SAMPLE.BIO_REPLICATE` renders as
+  `Metadata_BioReplicate`. The owner class, not a metric-family prefix, carries the
   semantic type. Use `phenotypic.sdk_.metadata_owner_for_header` or
   `metadata_member_for_header` for routing, membership, and set checks. A
   **recommended vocabulary, not a validator**: it standardizes `--metadata` CSV
@@ -133,16 +135,16 @@ base:
 Emission (write side) lives with the enum or as shared functions in `_measurement_info.py`:
 
 - **static** — the header *is* `member.value` (`Size_Area`); base default, no override.
-- **metric_qualified** — `{cat}_{metric}_{label}` (e.g. `LinearLagModel_Area_v`):
+- **metric_qualified** — `{family}_{metric}_{label}` (e.g. `LinearLagModel_Area_v`):
   `qualified_header(member, token)` / `parse_qualified_header(info_cls, column)`; the enum
   sets `header_scheme() -> "metric_qualified"` (the 3 growth models + `MODEL_METRICS`).
   The token comes from `metric_token(on)` in `util/_measurement_outputs.py`
-  (strips the longest known category prefix from `self.on`).
-- **texture** — `{cat}_{label}-deg###-scale##` / `-avg-scale##`:
+  (strips the longest known metric-family prefix from `self.on`).
+- **texture** — `{family}_{label}-deg###-scale##` / `-avg-scale##`:
   `TEXTURE.get_headers(scale, matrix_name)` plus a `member_for_header` regex override.
 
 **Invariant:** the format must be invertible — `parse(emit(member, token)) == (token,
-member)`. `metric_qualified` anchors on the category prefix + the known member-label
+member)`. `metric_qualified` anchors on the metric-family prefix + the known member-label
 suffix, so a guardrail in `tests/unit/schema/test_dynamic_headers.py` asserts no label is
 a `_`-suffix of another. Emission (in the producer) and recognition (on the enum) live in
 two files that must agree; the round-trip test keeps them honest. Docs/`rst_table` render
@@ -153,7 +155,7 @@ the **base** labels; only run-specific surfaces (the CLI README) fill in the rea
 1. Pick an invertible format — the member label must be recoverable without the token.
 2. Add an emission helper — co-locate on the enum (like `get_headers`) or a shared func;
    reuse `qualified_header`/`parse_qualified_header` if the shape is the
-   `{cat}_{token}_{label}` infix (then you only set `header_scheme()`, no parser).
+   `{family}_{token}_{label}` infix (then you only set `header_scheme()`, no parser).
 3. Override `member_for_header` on the enum (and set `header_scheme()`). `owns_header`
    is inherited.
 4. In the producer, name columns via the helper and declare
@@ -183,7 +185,7 @@ Downstream users import headers directly:
     SHAPE.get_headers()  # ['Shape_Circularity', 'Shape_Eccentricity', ...]
 
 Conventions: one class per file (or per file under a grouping subpackage like
-`_experimental_tags/`); bodies are pure data and inherit their category; import **only**
+`_experimental_tags/`); bodies are pure data and inherit their metric family; import **only**
 stdlib and the sibling base (no other `phenotypic` imports) to keep the package
 import-light and preserve the package load-order trick in
 `phenotypic/__init__.py` (`abc_` imports the stdlib-only base from here before

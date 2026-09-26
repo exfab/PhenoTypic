@@ -14,7 +14,7 @@ class ColorLab(DescriptiveTrait):
     """
 
     @classmethod
-    def category(cls):
+    def metric_family(cls):
         return "ColorLab"
 
     # -- ΔE76 geometric-median center (continuous, 0.5 breakdown) --

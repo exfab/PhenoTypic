@@ -214,18 +214,18 @@ No measurements configured in this pipeline."""
     def _generate_measurement_table(self, info_cls) -> str:
         """Generate markdown table for a MeasurementInfo class."""
         try:
-            category = info_cls.category()
+            family = info_cls.metric_family()
             members = list(info_cls)
 
             if not members:
                 return ""
 
-            table = f"\n### {category}\n\n"
+            table = f"\n### {family}\n\n"
             table += "| Column | Description |\n"
             table += "|--------|-------------|\n"
 
             for member in members:
-                # Use the full header name (category_label)
+                # Use the full header name (family_label)
                 col_name = str(member)
                 desc = member.desc if hasattr(member, "desc") else ""
                 # Escape pipe characters in descriptions

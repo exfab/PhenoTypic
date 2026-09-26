@@ -49,7 +49,7 @@ class ModelFitter(SetAnalyzer, PlotAnalysis, ABC):
 
     Fit-quality metrics (MAE, MSE, RMSE, R²) and optimizer diagnostics
     (loss, status, sample count) are emitted under the shared
-    :class:`MODEL_METRICS` category so that every ``ModelFitter`` subclass
+    :class:`MODEL_METRICS` metric family so that every ``ModelFitter`` subclass
     produces a consistent set of diagnostic columns.
 
     Attributes:
