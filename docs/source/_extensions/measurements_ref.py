@@ -1,10 +1,12 @@
-"""Generate the two-page Measurements reference from the public schema.
+"""Generate the Measurements reference pages from the public schema.
 
 At ``config-inited`` time, before Sphinx discovers source files, this extension
 discovers every public
-``phenotypic.schema.MeasurementInfo`` class and writes two deterministic pages:
-Measurements and Metadata. Each canonical class contributes one linked section
-heading and its measurement table. It also copies packaged measurement images
+``phenotypic.schema.MeasurementInfo`` class and writes three deterministic pages:
+Measurements, Metadata, and Categories (a subpage of Measurements, listing each
+``CATEGORIES`` member's ``desc`` and columns). Each canonical class contributes
+one linked section heading and its measurement table. It also copies packaged
+measurement images
 into the docs static tree so ``/_static/measurements/...`` references resolve.
 
 The pages are regenerated on every build, so new public schema classes surface
@@ -81,22 +83,67 @@ def _build_reference_page(
     title: str,
     info_classes: tuple[type[Any], ...],
     *,
-    metadata_child: bool = False,
+    child_pages: tuple[str, ...] = (),
 ) -> str:
     """Build one table-only reference page."""
     out = _heading(title, "=")
-    if metadata_child:
-        out.extend(
-            [
-                ".. toctree::",
-                "   :hidden:",
-                "",
-                "   ../metadata/index",
-                "",
-            ]
-        )
+    if child_pages:
+        out.extend([".. toctree::", "   :hidden:", ""])
+        out.extend(f"   ../{child}/index" for child in child_pages)
+        out.append("")
     for info_cls in info_classes:
         out.append(_class_section(info_cls))
+    return "\n".join(out)
+
+
+_CATEGORIES_INTRO = (
+    "Categories are curated groupings of measurement columns drawn from "
+    "several metric families; one column can belong to several categories. "
+    "Unlike the Type badge, a category makes no claim about how far a single "
+    "value can be trusted (see :ref:`measurement-categories`). Every run that "
+    "measures objects writes one spreadsheet per category under "
+    "``deliverables/measurements_by_category/``, holding the shared context "
+    "columns (metadata, object label, grid) plus that category's columns."
+)
+
+
+def _category_section(category: Any) -> str:
+    """Render one category: anchor, heading, verbatim desc, output file, column table."""
+    out = [
+        f".. _{category.anchor}:",
+        "",
+        *_heading(category.display_name, "-"),
+        category.desc,
+        "",
+        f"Written to ``deliverables/measurements_by_category/{category.label}.csv`` "
+        "(and ``.parquet``).",
+        "",
+        ".. list-table::",
+        "   :header-rows: 1",
+        "",
+        "   * - Column",
+        "     - Metric family",
+        "     - Type",
+    ]
+    for member in category.members():
+        info_cls = type(member)
+        out.extend(
+            [
+                f"   * - ``{member.value}``",
+                f"     - :ref:`{info_cls.metric_family()} <{_section_label(info_cls)}>`",
+                f"     - {member.use_badge}",
+            ]
+        )
+    out.append("")
+    return "\n".join(out)
+
+
+def _build_categories_page() -> str:
+    """Build the generated Categories page, one section per CATEGORIES member."""
+    from phenotypic.schema import CATEGORIES
+
+    out = [*_heading("Categories", "="), _CATEGORIES_INTRO, ""]
+    out.extend(_category_section(category) for category in CATEGORIES)
     return "\n".join(out)
 
 
@@ -135,13 +182,16 @@ def _build_pages(srcdir: str) -> None:
     _write(
         output_dir / "measurements" / "index.rst",
         _build_reference_page(
-            "Measurements", measurement_infos, metadata_child=True
+            "Measurements",
+            measurement_infos,
+            child_pages=("metadata", "categories"),
         ),
     )
     _write(
         output_dir / "metadata" / "index.rst",
         _build_reference_page("Metadata", metadata_infos),
     )
+    _write(output_dir / "categories" / "index.rst", _build_categories_page())
 
 
 def _generate(app, _config):
@@ -153,7 +203,7 @@ def _generate(app, _config):
 def setup(app):
     app.connect("config-inited", _generate)
     return {
-        "version": "0.4",
+        "version": "0.5",
         "parallel_read_safe": True,
         "parallel_write_safe": True,
     }

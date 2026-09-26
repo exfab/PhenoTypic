@@ -64,7 +64,7 @@ def _class_heading(class_name: str) -> str:
     )
 
 
-def test_build_pages_creates_exactly_two_reference_pages(
+def test_build_pages_creates_exactly_three_reference_pages(
     tmp_path: Path,
     monkeypatch: MonkeyPatch,
 ) -> None:
@@ -74,7 +74,11 @@ def test_build_pages_creates_exactly_two_reference_pages(
         path.relative_to(docs_root).as_posix()
         for path in docs_root.rglob("*.rst")
     )
-    assert pages == ["measurements/index.rst", "metadata/index.rst"]
+    assert pages == [
+        "categories/index.rst",
+        "measurements/index.rst",
+        "metadata/index.rst",
+    ]
 
 
 def test_memberless_public_bases_are_not_discovered(
@@ -110,18 +114,22 @@ def test_setup_generates_pages_before_sphinx_source_discovery(
     docs_root = tmp_path / "measurements_ref"
     assert (docs_root / "measurements" / "index.rst").is_file()
     assert (docs_root / "metadata" / "index.rst").is_file()
+    assert (docs_root / "categories" / "index.rst").is_file()
 
 
-def test_measurements_page_has_metadata_as_its_only_toctree_child(
+def test_measurements_page_has_metadata_and_categories_as_toctree_children(
     tmp_path: Path,
     monkeypatch: MonkeyPatch,
 ) -> None:
     docs_root = _build_reference_tree(tmp_path, monkeypatch)
     measurements_page = (docs_root / "measurements" / "index.rst").read_text()
-    metadata_page = (docs_root / "metadata" / "index.rst").read_text()
 
-    assert ".. toctree::\n   :hidden:\n\n   ../metadata/index" in measurements_page
-    assert ".. toctree::" not in metadata_page
+    assert (
+        ".. toctree::\n   :hidden:\n\n   ../metadata/index\n   ../categories/index"
+        in measurements_page
+    )
+    for child in ("metadata", "categories"):
+        assert ".. toctree::" not in (docs_root / child / "index.rst").read_text()
 
 
 def test_every_canonical_public_class_appears_once_on_the_correct_page(
@@ -276,3 +284,97 @@ def test_class_section_renders_the_change_note_above_the_table(monkeypatch: Monk
     assert marker in section
     assert section.index(marker) < section.index(".. list-table::")
     assert marker not in extension._class_section(schema.TEXTURE)
+
+
+def _category_sections(page: str) -> dict[str, str]:
+    """Split the Categories page into one text block per category anchor."""
+    from phenotypic.schema import CATEGORIES
+
+    starts = sorted((page.index(f".. _{c.anchor}:"), c.anchor) for c in CATEGORIES)
+    ends = [start for start, _anchor in starts[1:]] + [len(page)]
+    return {
+        anchor: page[start:end]
+        for (start, anchor), end in zip(starts, ends, strict=True)
+    }
+
+
+def test_categories_page_has_one_section_per_category_with_verbatim_desc(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    from phenotypic.schema import CATEGORIES
+
+    page = (_build_reference_tree(tmp_path, monkeypatch) / "categories" / "index.rst").read_text()
+    for category in CATEGORIES:
+        assert page.count(f".. _{category.anchor}:") == 1
+        assert category.display_name in page
+        assert category.desc in page
+        assert f"measurements_by_category/{category.label}.csv" in page
+    assert "``Size_Area``" in page
+    assert ":ref:`Size <measurement-info-size>`" in page
+    assert ":ref:`measurement-categories`" in page
+
+
+def test_categories_page_lists_every_member_once_with_its_type_badge(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    from phenotypic.schema import CATEGORIES
+
+    page = (_build_reference_tree(tmp_path, monkeypatch) / "categories" / "index.rst").read_text()
+    sections = _category_sections(page)
+    for category in CATEGORIES:
+        section = sections[category.anchor]
+        members = category.members()
+        assert members, f"{category.label} has no members"
+        assert section.count("   * - ``") == len(members)
+        for member in members:
+            row = f"   * - ``{member.value}``\n"
+            assert section.count(row) == 1
+            row_block = section[section.index(row) :].split("   * - ", 2)[1]
+            assert member.use_badge in row_block
+
+
+def test_categories_page_is_generated_from_member_tags(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    from phenotypic.schema import CATEGORIES
+
+    class FUTURE_TAGGED(MeasurementInfo):
+        @classmethod
+        def metric_family(cls) -> str:
+            return "FutureTagged"
+
+        VALUE = Entry("Value", "A value.", categories=CATEGORIES.STARTING_METRICS)
+
+    monkeypatch.setattr(schema, "FUTURE_TAGGED", FUTURE_TAGGED, raising=False)
+    monkeypatch.setattr(schema, "__all__", [*schema.__all__, "FUTURE_TAGGED"])
+    page = (_build_reference_tree(tmp_path, monkeypatch) / "categories" / "index.rst").read_text()
+    assert "``FutureTagged_Value``" in page
+
+
+def test_every_badge_anchor_resolves_on_the_categories_page(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    import re
+
+    page = (_build_reference_tree(tmp_path, monkeypatch) / "categories" / "index.rst").read_text()
+    anchors = {
+        match
+        for info_cls in _canonical_public_classes()
+        for match in re.findall(r"<(measurement-category-[a-z0-9]+)>", info_cls.rst_table())
+    }
+    assert anchors, "no category badge rendered anywhere"
+    for anchor in anchors:
+        assert f".. _{anchor}:" in page
+
+
+def test_navbar_lists_categories_under_measurements() -> None:
+    navbar = (_REPO_ROOT / "docs" / "source" / "_templates" / "navbar-nav.html").read_text()
+    assert "pathto('measurements_ref/categories/index')" in navbar
+    assert "_pn.startswith('measurements_ref/categories/')" in navbar
+    assert navbar.index("measurements_ref/metadata/index") < navbar.index(
+        "measurements_ref/categories/index"
+    )
