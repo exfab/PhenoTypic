@@ -15,8 +15,13 @@ split. The CLI writes the category split beside the feature split inside
 `finalize_post_master_outputs`, the single finalization path shared by `full`/`measure`/`recompile`.
 The Sphinx `measurements_ref` extension generates a Categories subpage under the Measurements tab.
 
-**Tech Stack:** Python 3.12, `enum`/`dataclasses`, pandas + polars, Sphinx + sphinx-design
-(`:bdg-ref-<color>-line:`), pytest, `uv`.
+**Tech Stack:** Python 3.11 and 3.12 (CI runs both; `requires-python = ">=3.11, <3.13"`),
+`enum`/`dataclasses`, pandas + polars, Sphinx + sphinx-design (`:bdg-ref-<color>-line:`), pytest,
+`uv`.
+
+**Plan review:** `docs/superpowers/reviews/2026-09-25-measurement-categories/plan-review.md`
+(pre-dispatch gate). Its C1, H1–H3 and M1–M7 are folded into this plan; LOW items are folded in
+where they change a step.
 
 **Spec:** `docs/superpowers/specs/2026-09-25-measurement-categories/design.md`. Read it before any
 task: this plan argues from it.
@@ -37,6 +42,17 @@ task: this plan argues from it.
 - Test cadence: focused tests per task, affected surface per phase, the full sharded suite
   **once** at the end (Task 10). Never `-n auto`; never `-x` on a quoted run.
 - `sphinx-build` runs only as a Slurm job (`build_docs_categories.sbatch` in this folder).
+- **Shell commands never spell the literal path segment `docs/source`.** This session's
+  worktree guard refuses them. Use the glob `docs/sour*/…` in commands (as below); `Files:`
+  lists and prose keep the real path.
+- **Every reviewer writes its report to a file** under
+  `docs/superpowers/reviews/2026-09-25-measurement-categories/`, one file per reviewer named for
+  what it reviewed (`plan-review.md`, `phase0-review.md`, …). It replies with only the path and a
+  severity count, because a long review sent as a message is trimmed in transit. This folder
+  replaces `docs/superpowers/reports/` for this change, per the user's instruction.
+- **Clusters run serially in this one worktree** (A → B → C → D → E). Every phase gate runs
+  against a worktree **detached at that phase's last commit SHA**, so a gate never measures a
+  union of two in-flight trees.
 - Commit messages end with the two attribution lines:
   `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` and
   `Claude-Session: https://claude.ai/code/session_01D1sMyGvSvvLnJSAM5skaEa`.
@@ -59,9 +75,16 @@ out as tests. Each has a pinning test in the task named.
 4. **Both integrated-intensity columns present** (`MeasureSize` + `MeasureIntensity`).
    Expected: both columns, once each, in master order. Pinned in Task 4
    (`test_both_integrated_intensities_appear_once_each`).
-5. **Recompiling a run finalized before this feature.** Expected: the recompile finalizer
-   creates `measurements_by_category/StartingMetrics.{csv,parquet}`. Pinned in Task 5
-   (extension of `test_finalizer_writes_master_outputs_and_rebuilds_dashboard`).
+5. **Recompiling a run.** Expected: the recompile finalizer creates
+   `measurements_by_category/StartingMetrics.{csv,parquet}`. Pinned in Task 5 (extension of
+   `test_finalizer_writes_master_outputs_and_rebuilds_dashboard`). That test starts from
+   recompile shards, not from a previously finalized `deliverables/`. The path is identical
+   (`finalize_run`), so the only gap is in the wording.
+
+A sixth, found by the plan review (C1): **a second caller of `_render_info_table`**
+(`schema/_quality_check.py`) runs when `phenotypic.analysis` is imported. A row-shape change
+that misses it makes the whole analysis package unimportable, and both CSV splits then fail with
+only a warning. Pinned in Task 7 (`test_quality_check_docs_render_with_category_column`).
 
 ## Dependency graph
 
@@ -71,7 +94,10 @@ T1 (rename) ─► T2 (CATEGORIES + Entry) ─► T3 (tag 18) ─► T4 (util sp
 all ─► T10 (full regression)
 ```
 
-T4→T6 and T7→T9 are independent chains after T3 and can run in parallel.
+T4→T6 and T7→T9 share no files, but they are **run serially** (see Global Constraints and the
+Execution section). T7 edits `_measurement_info.py`, the base of every schema, and its blast
+radius reaches `analysis`, `util` and `_cli` (plan review C1/H2). A parallel T7 would contaminate
+the Phase 2 gate.
 
 ---
 
@@ -86,8 +112,9 @@ T4→T6 and T7→T9 are independent chains after T3 and can run in parallel.
 - Modify: `src/phenotypic/schema/_measurement_info.py` (guard, docstrings, table caption)
 - Modify: `src/phenotypic/measure/_measure_symzones.py:253-257` (remove dead filter)
 - Modify (wording): `CLAUDE.md:513`, `src/phenotypic/schema/CLAUDE.md`,
-  `.claude/skills/adding-an-operation/SKILL.md:37`,
+  `.claude/skills/adding-an-operation/SKILL.md:37,76`,
   `docs/source/explanation/metadata_namespace.md:21`, and the docstrings listed in Step 7
+- Modify: `tests/unit/docs/test_measurements_ref_extension.py:137` (caption count, see Step 5)
 - Create: `tests/unit/schema/test_metric_family.py`
 - Create: `tests/unit/cli/test_readme_measurement_tables.py`
 
@@ -274,6 +301,11 @@ In `_render_info_table`, change `f".. list-table:: Category: **{title}**",` to
 `title: Bold table caption (rendered ``Category: **{title}**``).` to
 `title: Bold table caption (rendered ``Metric family: **{title}**``).`
 
+An existing docs test counts the old caption. In
+`tests/unit/docs/test_measurements_ref_extension.py:137`, change
+`combined.count(".. list-table:: Category:")` to `combined.count(".. list-table:: Metric family:")`.
+A grep for `Category: ` across `tests/` finds no other hit (plan review H1).
+
 - [ ] **Step 6: Remove the dead symzones filter**
 
 `src/phenotypic/measure/_measure_symzones.py`: the comprehension filter
@@ -318,16 +350,30 @@ where it names the `MeasurementInfo` header prefix. These are the hits on `a8b6e
   `_scatter_tab/_grouping.py:36`: docstrings that say ``category()`` (Step 3's perl already
   fixed the calls; fix the prose).
 - `src/phenotypic/schema/CLAUDE.md:7,8,30,31,140,145` and
-  `.claude/skills/adding-an-operation/SKILL.md:37`
+  `.claude/skills/adding-an-operation/SKILL.md:37` (prose) **and `:76`**. `:76` is a code
+  example that defines `def category(cls) -> str:`. Change it to `def metric_family(cls) -> str:`,
+  or the skill teaches a class the new guard refuses (plan review M1).
 - `docs/source/explanation/metadata_namespace.md:21`: `` `category()` `` → `` `metric_family()` ``
+- Also missed by the first sweep (plan review M5): `post/_append_string.py:22`,
+  `post/_prepend_string.py:22`, `post/_expand_metadata.py:26` ("The schema category …"), and
+  `sdk_/_rembi_manifest.py:37` (`` `<Category>_` prefix`` → `` `<Family>_` prefix``).
+- `src/phenotypic/schema/_curation.py:21`: its comment calls `CATEGORY` "a reserved
+  `MeasurementInfo` property". After the rename, the reserved name is `METRIC_FAMILY`. Update the
+  comment; don't rename the member it explains.
+
+Before editing, re-run
+`git grep -nE 'schema category|category prefix|category-prefixed|<Category>_' -- src CLAUDE.md .claude/skills`
+and treat its output as the authoritative worklist. The line numbers above are from `a8b6e17c`.
 
 **Leave alone:** GUI "category name" hits in `_operation_registry.py`, `_triage_callbacks.py`,
-`_curation_labels.py` and `builder/_layout.py` (error/curation/operation categories), all test
-docstrings, and anything under `docs/superpowers/` (historical).
+`_curation_labels.py` and `builder/_layout.py` (error, curation and operation categories), and
+anything under `docs/superpowers/` (historical). Don't hand-edit test docstrings. The Step 3 perl
+*does* rewrite ``TEXTURE.category()`` in `tests/unit/gui/results_viewer/test_measurement_prefixes.py:9`,
+and that is correct.
 
 - [ ] **Step 8: Run the focused tests**
 
-Run: `uv run pytest tests/unit/schema tests/unit/cli/test_readme_measurement_tables.py tests/unit/cli/test_readme_model_section.py tests/unit/util/test_metric_token.py tests/unit/docs/test_measurements_ref_extension.py tests/unit/sdk_/test_metadata_helpers.py tests/unit/gui/results_viewer/test_measurement_prefixes.py tests/unit/measure/test_measure_grid_spatial.py tests/unit/core/test_metadata_cluster_order.py -q -p no:cacheprovider`
+Run: `uv run pytest tests/unit/schema tests/unit/cli/test_readme_measurement_tables.py tests/unit/cli/test_readme_model_section.py tests/unit/util/test_metric_token.py tests/unit/docs/test_measurements_ref_extension.py tests/unit/sdk_/test_metadata_helpers.py tests/unit/sdk_/test_quality_check_info.py tests/unit/sdk_/test_quality_count_info.py tests/unit/sdk_/test_quality_se_info.py tests/unit/gui/results_viewer/test_measurement_prefixes.py tests/unit/gui/results_viewer/test_scatter_grouping.py tests/unit/measure/test_measure_grid_spatial.py tests/unit/core/test_metadata_cluster_order.py -q -p no:cacheprovider`
 Expected: all PASS.
 
 Then the symzones measurer, since Step 6 touched it:
@@ -336,9 +382,16 @@ Expected: PASS (unchanged column set).
 
 - [ ] **Step 9: Lint the changed files and commit**
 
+Lint in two passes (plan review M6). Autofix only the files hand-written in this task, including
+the two **untracked** new tests, which `git diff` would miss. Check, but don't autofix, the ~60
+perl-touched files, so pre-existing lint doesn't turn into churn. Only fix what the rename itself
+introduced there (e.g. an E501 from `metric_family` being longer than `category`).
+
 ```bash
-uv run ruff check --fix $(git diff --name-only -- '*.py')
-git add -A src tests CLAUDE.md .claude/skills/adding-an-operation/SKILL.md docs/source/explanation/metadata_namespace.md
+uv run ruff check --fix src/phenotypic/schema/_measurement_info.py src/phenotypic/measure/_measure_symzones.py src/phenotypic/util/_measurement_outputs.py tests/unit/schema/test_metric_family.py tests/unit/cli/test_readme_measurement_tables.py
+uv run ruff check $(git diff --name-only -- '*.py')
+git add -u src tests CLAUDE.md .claude/skills/adding-an-operation/SKILL.md docs/sour*/explanation/metadata_namespace.md
+git add tests/unit/schema/test_metric_family.py tests/unit/cli/test_readme_measurement_tables.py
 git commit -m "refactor(schema)!: rename MeasurementInfo.category() to metric_family()
 
 BREAKING: category()/.CATEGORY are removed with no alias. A subclass that
@@ -351,10 +404,16 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01D1sMyGvSvvLnJSAM5skaEa"
 ```
 
-**Phase 0 gate:** run the affected surface once. That is every test file importing
-`phenotypic.schema`, `phenotypic.util`, or `_cli_readme_generator`, derived mechanically:
-`git grep -lE 'phenotypic\.schema|phenotypic\.util|_cli_readme_generator' -- tests | grep '\.py$'`.
-Run it as a Slurm job (see the `run-phenotypic-test` skill); quote the pass/fail counts.
+**Phase 0 gate:** run the affected surface once, derived mechanically from the **importers of
+every module the Task 1 commit touched**, not from package names (plan review M2). Take the
+dotted module path of each `src/` file in `git diff --name-only <base>..HEAD -- src`
+(`src/phenotypic/a/_b.py` → `phenotypic.a._b`, and its parent package `phenotypic.a`). Then
+collect every test file under `tests/` whose text contains any of them, plus the test files the
+commit itself touched. This picks up the GUI (`_scatter_tab/_grouping`, `colony_view/_grid`),
+`sdk_` (`_metadata_helpers`, `constants_`) and `measure` (`_measure_symzones`) consumers. Run
+it as a Slurm job in a worktree **detached at the Task 1 commit SHA** (see the
+`run-phenotypic-test` skill). Report failing test **names**, and run each failure alone before
+attributing it.
 
 ---
 
@@ -647,8 +706,9 @@ class CATEGORIES(str, Enum):
         """Every public schema member carrying this category.
 
         Ordered by ``phenotypic.schema.__all__`` export order, then member
-        order; compatibility aliases are deduplicated to their class. Not
-        cached, so schema classes registered later are seen.
+        order; compatibility aliases are deduplicated to their class.
+        Deliberately **not** cached: it walks ~40 classes and is called only
+        by docs and tests, and caching would hide classes registered later.
         """
         import phenotypic.schema as schema
         from ._measurement_info import MeasurementInfo
@@ -691,6 +751,10 @@ def _normalize_categories(value: object) -> frozenset[CATEGORIES]:
     enum, so iterating a member would yield its characters. Membership is by
     ``isinstance``, never equality, so a raw string equal to a member's value
     (``"StartingMetrics"``) is rejected.
+
+    Reading is looser than writing: because of the ``str`` mixin,
+    ``"StartingMetrics" in entry.categories`` is ``True``. Only this write
+    path is type-exact.
     """
     if isinstance(value, CATEGORIES):
         return frozenset({value})
@@ -717,8 +781,19 @@ def _normalize_categories(value: object) -> frozenset[CATEGORIES]:
 4. At the end of `Entry.__post_init__`, add
    `object.__setattr__(self, "categories", _normalize_categories(self.categories))`.
 5. In `MeasurementInfo.__new__`, after `obj.rembi_module_override = entry.rembi_module`, add
-   `obj.categories = entry.categories`. Add `categories: frozenset[CATEGORIES]` next to
-   `rembi_module_override: "REMBI_MODULE | None"` in the class-level annotations.
+   `obj.categories = cast("frozenset[CATEGORIES]", entry.categories)`. Add
+   `categories: frozenset[CATEGORIES]` next to `rembi_module_override: "REMBI_MODULE | None"` in
+   the class-level annotations, and `cast` to the `typing` import. **Why the cast (plan review
+   M7):** the `Entry` field is annotated with the wide *input* type
+   `CATEGORIES | Iterable[CATEGORIES]`, so authors can write `categories=CATEGORIES.X` and mypy
+   accepts it. After `__post_init__` the value is always a `frozenset`, but mypy can't see that.
+   The cast records it at the one place the narrow type is consumed, instead of making every
+   schema module fight the checker.
+
+**Deliberate deviation from spec §4.1 (plan review M3):** the spec says `.members()` is
+"built lazily … and cached". The plan does **not** cache it (see its docstring).
+`test_members_finds_tagged_public_members` depends on that. This is surfaced to the user as a
+spec amendment rather than silently diverging.
 
 - [ ] **Step 5: Export from `phenotypic.schema`**
 
@@ -1085,6 +1160,10 @@ def _describe_column(column: str) -> str | None:
 
 Update `__all__` to `["generate_output_key", "split_measurements", "split_measurements_by_category"]`.
 
+Update `_columns()`'s `TypeError` text (lines ~92-95), which names only
+`split_measurements()` and `generate_output_key()`, to also name
+`split_measurements_by_category()`.
+
 - [ ] **Step 4: Export from `phenotypic.util`**
 
 `src/phenotypic/util/__init__.py`: change line 6 to
@@ -1279,11 +1358,15 @@ def _calls_by_enclosing_function(name: str) -> list[str]:
             if not isinstance(func, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
             for node in ast.walk(func):
-                if (
-                    isinstance(node, ast.Call)
-                    and isinstance(node.func, ast.Name)
-                    and node.func.id == name
-                ):
+                if not isinstance(node, ast.Call):
+                    continue
+                target = node.func
+                called = (
+                    target.id if isinstance(target, ast.Name)
+                    else target.attr if isinstance(target, ast.Attribute)
+                    else None
+                )
+                if called == name:
                     found.append(f"{path.name}:{func.name}")
     return found
 
@@ -1332,8 +1415,9 @@ In `_cli_output_manager.py`, add `measurements_by_category_dir` to the `phenotyp
 block (~line 58), and change line 47 to
 `from phenotypic.util import split_measurements, split_measurements_by_category`. It must stay a
 module-level name: the failure-isolation test patches
-`phenotypic._cli._cli_output_manager.split_measurements_by_category`. Add `Mapping` to the
-`from typing import (...)` block at line 19 if it isn't already there. Replace `split_master_by_feature` (1348-1414) with:
+`phenotypic._cli._cli_output_manager.split_measurements_by_category`. Import `Mapping` from
+`collections.abc`, next to the existing `Sequence` import at line 18 (ruff UP035 prefers it over
+`typing`). Replace `split_master_by_feature` (1348-1414) with:
 
 ```python
 def _write_split(
@@ -1435,8 +1519,6 @@ def split_master_by_category(
     return _write_split(measurements_by_category_dir(output_dir), split_frames)
 ```
 
-Add `Mapping` to the module's `typing` import if it isn't there.
-
 - [ ] **Step 5: Call it in `finalize_post_master_outputs`**
 
 Directly after the existing `split_master_by_feature` `_guarded_terminal_best_effort(...)` block
@@ -1487,6 +1569,11 @@ Claude-Session: https://claude.ai/code/session_01D1sMyGvSvvLnJSAM5skaEa"
 - Consumes: `CATEGORIES`, `member.categories`, `metric_family()`.
 - Produces: `READMEGenerator._generate_categories_section() -> str` (`""` when no configured
   measurer emits a categorized column).
+- **Configured, not present (plan review M4).** Spec §5.5 says the section lists columns
+  "*present in this run*". `READMEGenerator` never sees the measurement frame
+  (`_cli_readme_generator.py:41-68`), so, like the existing measurement tables, it documents the
+  columns the **configured** measurers declare. A measurer that fails on every image still gets
+  an entry. This is surfaced to the user as a spec amendment ("present" → "configured").
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1618,6 +1705,7 @@ Add, after `_generate_measurements_section`:
         """
         from phenotypic.abc_ import MeasureFeatures
         from phenotypic.schema import CATEGORIES
+        from phenotypic.sdk_ import DIR_MEASUREMENTS_BY_CATEGORY
 
         infos = [
             info
@@ -1638,7 +1726,7 @@ Add, after `_generate_measurements_section`:
             listed = "\n".join(f"- `{column}`" for column in dict.fromkeys(columns))
             blocks.append(
                 f"### {category.display_name}\n\n{category.desc}\n\n"
-                f"Written to `deliverables/measurements_by_category/{category.label}.csv` "
+                f"Written to `deliverables/{DIR_MEASUREMENTS_BY_CATEGORY}/{category.label}.csv` "
                 f"(and `.parquet`), alongside every context column.\n\n{listed}"
             )
         if not blocks:
@@ -1679,6 +1767,10 @@ the pass/fail counts.
 **Files:**
 - Modify: `src/phenotypic/schema/_measurement_info.py` (`_CATEGORY_BADGE_COLOR`,
   `category_badges` property, `_render_info_table`, `rst_table`)
+- Modify: `src/phenotypic/schema/_quality_check.py:58-62`. This is the **second caller** of
+  `_render_info_table` (plan review C1). It builds 5-tuples and runs at import time via
+  `QualityCheck.__init_subclass__` (`analysis/abc_/_quality_check.py:493-511`). If it is missed,
+  `import phenotypic.analysis` raises `IndexError`, and both CSV splits fail with only a warning.
 - Modify: `tests/unit/schema/test_rst_rendering.py` (append)
 - Modify: `tests/unit/schema/test_classification.py` (extend color test)
 
@@ -1715,6 +1807,25 @@ def test_category_badges_is_empty_for_an_uncategorized_member() -> None:
 
     assert next(iter(SHAPE)).category_badges == ""
     assert SIZE.AREA.category_badges.count(":bdg-ref-") == 1
+
+
+def test_quality_check_docs_render_with_category_column() -> None:
+    # _render_info_table's second caller (schema/_quality_check.py) runs at
+    # import time for every QualityCheck subclass; a row-shape mismatch there
+    # makes phenotypic.analysis unimportable.
+    from phenotypic.schema import QUALITY_CHECK
+
+    doc = QUALITY_CHECK.append_rst_to_doc("Doc.", check_name="Count")
+    assert doc.startswith("Doc.")
+    assert ".. list-table:: Metric family: **QC_Count**" in doc
+
+
+def test_analysis_package_imports() -> None:
+    import importlib
+
+    import phenotypic.analysis
+
+    importlib.reload(phenotypic.analysis)
 ```
 
 In `tests/unit/schema/test_classification.py`, extend
@@ -1766,10 +1877,31 @@ Biology/Image columns appear only when populated."
 
 `rst_table`: append `m.category_badges,` as the sixth tuple element.
 
+`src/phenotypic/schema/_quality_check.py:58-62`: make its rows 6-tuples the same way:
+
+```python
+        rows = [
+            (
+                f"QC_{slug}_{m.label}",
+                m.desc,
+                m.bio_desc,
+                m.image,
+                m.use_badge,
+                m.category_badges,
+            )
+            for m in cls
+        ]
+```
+
+Then `grep -rn "_render_info_table" src/` must list exactly the definition and these two
+callers. If a third appears, it gets the same change.
+
 - [ ] **Step 4: Run to verify they pass**
 
-Run: `uv run pytest tests/unit/schema -q -p no:cacheprovider`
-Expected: PASS. The color test runs only where sphinx-design is installed. Run it once
+Run: `uv run pytest tests/unit/schema tests/unit/sdk_/test_quality_check_info.py tests/unit/sdk_/test_quality_count_info.py tests/unit/sdk_/test_quality_se_info.py tests/unit/util tests/unit/analysis -q -p no:cacheprovider`
+Expected: PASS. `tests/unit/util` and `tests/unit/analysis` are included because the C1 failure
+mode surfaces there (producer discovery imports `phenotypic.analysis`), not in
+`tests/unit/schema`. The color test runs only where sphinx-design is installed. Run it once
 explicitly with the docs group:
 `uv run --group docs pytest tests/unit/schema/test_classification.py -q -p no:cacheprovider -k semantic`
 Expected: PASS (not skipped).
@@ -1777,8 +1909,8 @@ Expected: PASS (not skipped).
 - [ ] **Step 5: Lint and commit**
 
 ```bash
-uv run ruff check --fix src/phenotypic/schema/_measurement_info.py tests/unit/schema/test_rst_rendering.py tests/unit/schema/test_classification.py
-git add src/phenotypic/schema/_measurement_info.py tests/unit/schema/test_rst_rendering.py tests/unit/schema/test_classification.py
+uv run ruff check --fix src/phenotypic/schema/_measurement_info.py src/phenotypic/schema/_quality_check.py tests/unit/schema/test_rst_rendering.py tests/unit/schema/test_classification.py
+git add src/phenotypic/schema/_measurement_info.py src/phenotypic/schema/_quality_check.py tests/unit/schema/test_rst_rendering.py tests/unit/schema/test_classification.py
 git commit -m "feat(schema): outline category badges in measurement tables
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
@@ -1992,8 +2124,8 @@ Expected: PASS.
 - [ ] **Step 6: Lint and commit**
 
 ```bash
-uv run ruff check --fix docs/source/_extensions/measurements_ref.py tests/unit/docs/test_measurements_ref_extension.py
-git add docs/source/_extensions/measurements_ref.py docs/source/_templates/navbar-nav.html tests/unit/docs/test_measurements_ref_extension.py
+uv run ruff check --fix docs/sour*/_extensions/measurements_ref.py tests/unit/docs/test_measurements_ref_extension.py
+git add docs/sour*/_extensions/measurements_ref.py docs/sour*/_templates/navbar-nav.html tests/unit/docs/test_measurements_ref_extension.py
 git commit -m "docs: generated Categories subpage under the Measurements tab
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
@@ -2007,6 +2139,8 @@ Claude-Session: https://claude.ai/code/session_01D1sMyGvSvvLnJSAM5skaEa"
 - Modify: `docs/source/tutorials/pages/cli_modes.md:85` (output tree)
 - Modify: `src/phenotypic/schema/CLAUDE.md` (Categories section)
 - Modify: `CLAUDE.md` (Gotchas `deliverables/` bullet)
+- Modify: `src/phenotypic/_cli/CLAUDE.md:865` ("Output layout & deliverables" inventory: it owns
+  the full file list, per plan review M5)
 - Use: `docs/superpowers/plans/2026-09-25-measurement-categories/build_docs_categories.sbatch`
 
 **Interfaces:**
@@ -2063,6 +2197,11 @@ Root `CLAUDE.md`, Gotchas **Output layout** bullet: after the sentence that intr
 `measurements_by_category/` (one file per `CATEGORIES` member) are both written from that mirror
 by `finalize_post_master_outputs`, the finalization path shared by full, measure and recompile."
 
+`src/phenotypic/_cli/CLAUDE.md` ("Output layout & deliverables", ~line 865): after
+`` `measurements_by_feature/<feature>.{csv,parquet}`, `` add
+`` `measurements_by_category/<label>.{csv,parquet}` (one per `CATEGORIES` member with a present
+column; written beside the feature split by `finalize_post_master_outputs`), ``.
+
 - [ ] **Step 4: Build the docs as a Slurm job**
 
 ```bash
@@ -2095,12 +2234,19 @@ the `desc` sentence and 18 rows are there.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add docs/source/explanation/measurement_classification_system.md docs/source/tutorials/pages/cli_modes.md src/phenotypic/schema/CLAUDE.md CLAUDE.md
+git add docs/sour*/explanation/measurement_classification_system.md docs/sour*/tutorials/pages/cli_modes.md src/phenotypic/schema/CLAUDE.md src/phenotypic/_cli/CLAUDE.md CLAUDE.md
 git commit -m "docs: explain measurement categories; document measurements_by_category/
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01D1sMyGvSvvLnJSAM5skaEa"
 ```
+
+**Phase 3 gate (plan review H2):** Task 7 edits `_measurement_info.py`, the base of every
+schema, and C1 shows that edit's blast radius reaches `analysis`, `util` and `_cli`. After
+Task 9, run the affected surface once as a Slurm job, in a worktree **detached at the Task 9
+commit SHA**. Derive it the way the Phase 0 gate is derived: the importers of every `src/` module
+touched in Tasks 7–9, plus `tests/unit/schema`, `tests/unit/sdk_`, `tests/unit/util`,
+`tests/unit/cli`, `tests/unit/analysis` and `tests/unit/docs`. Report failing test **names**.
 
 ---
 
@@ -2116,3 +2262,58 @@ Claude-Session: https://claude.ai/code/session_01D1sMyGvSvvLnJSAM5skaEa"
   counts measured, not remembered.
 - [ ] **Step 3:** `uv run mypy src/phenotypic/schema src/phenotypic/util src/phenotypic/_cli/_cli_output_manager.py src/phenotypic/_cli/_cli_readme_generator.py`
   and report new errors relative to `main`.
+
+---
+
+## Execution (orchestration)
+
+Derived from the per-task `Files`/`Interfaces` blocks using the `execute-plan-orchestration`
+procedure, after the plan-review gate.
+
+### Dependency DAG (→ = must finish before)
+
+```
+T1 → T2 → T3 → T4 → T5
+T2 → T6            (README reads CATEGORIES / member.categories)
+T2 → T7            (T7 edits _measurement_info.py, same file as T2)
+T3 + T7 → T8 → T9
+T1..T9 → T10
+```
+
+Shared files: `_measurement_info.py` (T1, T2, T7); `test_measurements_ref_extension.py` (T1, T8);
+`_cli_readme_generator.py` (T1, T6); `util/_measurement_outputs.py` (T1, T4).
+
+### Shapes and clusters
+
+| Cluster | Tasks | Shape | Model (effort) | Why this grouping |
+|---|---|---|---|---|
+| **A** | T1 | Sweep + one Seam (the guard) | frontier / Opus (medium) | ~60-file rename; consistency-critical (a missed rename silently drops README tables), so it's not on the mid tier |
+| **B** | T2 + T3 + T7 | Keystone + Leaf + Keystone | frontier / Opus (high) | All three edit `_measurement_info.py` or the schema enums; T7 carries the C1 fix |
+| **C** | T4 + T6 | Keystone + Leaf | frontier / Opus (high) | The util split plus the README's use of categories; disjoint from D's files |
+| **D** | T5 | **Seam** | frontier / Opus (high) | Wiring into `finalize_post_master_outputs`, shared by full, measure and recompile; isolated for a focused gate |
+| **E** | T8 + T9 | Keystone + Leaf | frontier / Opus (high) | The generated docs page plus prose and guides, and the Slurm docs build |
+| n/a | T10 | Gate | orchestrator | Full sharded regression at the final SHA |
+
+**Order:** A → B → C → D → E, serially, in this worktree. E shares no files with C or D, but it
+is serialized deliberately (Global Constraints; plan review H2).
+
+### Gates
+
+- **Pre-dispatch:** `plan-reviewer` (Opus) → `reviews/…/plan-review.md`. Done; findings folded in.
+- **Per cluster (light):** the orchestrator reads the diff, runs the cluster's focused tests and
+  ruff, and commits with explicit paths. If a genuine design question comes up, stop and ask
+  the user before the next cluster.
+- **Per phase (deep):**
+  - Phase 0 (after A): `implementation-test-reviewer` (Opus) → `reviews/…/phase0-review.md`, plus
+    the Phase 0 affected-surface Slurm run at the A SHA.
+  - Phase 1 (after B): `implementation-test-reviewer` (Opus) → `reviews/…/phase1-review.md`.
+  - Phase 2 (after C + D): `implementation-test-reviewer` (Opus) → `reviews/…/phase2-review.md`,
+    plus the Phase 2 affected-surface Slurm run at the D SHA.
+  - Phase 3 (after E): code review (Opus) → `reviews/…/phase3-review.md`, the Slurm docs build
+    with its HTML read, plus the Phase 3 affected-surface Slurm run at the E SHA.
+- **End:** one `code-simplifier` pass (Opus, quality only) → apply → re-run the affected tests →
+  T10's full sharded suite at a detached worktree on the final SHA.
+
+Every subagent brief carries the `orchestrate-subagent` command round trip (no side-effecting
+commands; the orchestrator runs them and returns output verbatim). Every reviewer writes to
+`docs/superpowers/reviews/2026-09-25-measurement-categories/`.
