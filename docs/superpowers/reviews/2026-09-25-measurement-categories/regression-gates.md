@@ -29,3 +29,12 @@ this is still one tree.
 failed in shard 16 with `Failed: local exit observer did not terminalize the run`. It **passed when
 run alone** in the same gate worktree at `2539b06d` (1 passed, 12.6 s). It is a wall-clock observer
 test, and Phase 0 did not touch the run console. Classified as a load flake, not a regression.
+
+# Phase 2 regression gate — `55cf7965` vs base `a8b6e17c`
+
+**Result: no regressions.** Array 29104945 (24 × 8 CPU on `short`), worktree
+`/bigdata/exfab/anguy344/gate-worktrees/mcat-p2-55cf7965` (detached, own venv, provenance OK).
+`collect_results.py --baseline`: 13,920 tests · 0 failed · 0 errors · 72 skipped;
+REGRESSIONS (0), pre-existing (0). Shard 23 ran on `r42` (37:45) and completed normally; no re-run
+was needed. The Phase 0 load flake (`test_immediate_local_exit_terminalizes_allocated_generation`)
+did not recur.
