@@ -17,8 +17,13 @@ from phenotypic.sdk_ import readme_md_path
 if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
     from phenotypic._cli._cli_types import ExecutionConfig, Dataset
+    from phenotypic.schema import MeasurementInfo
 
 logger = logging.getLogger(__name__)
+
+# Placeholder until Task 5 adds ``DIR_MEASUREMENTS_BY_CATEGORY`` to
+# ``phenotypic.sdk_``; replace this with that constant then.
+_BY_CATEGORY_DIRNAME = "measurements_by_category"
 
 
 class READMEGenerator:
@@ -55,6 +60,7 @@ class READMEGenerator:
             self._generate_output_structure(datasets),
             self._generate_layers_section(),
             self._generate_measurements_section(),
+            self._generate_categories_section(),
             self._generate_model_section(),
             self._generate_footer(),
         ]
@@ -99,6 +105,8 @@ output_folder/
 |   +-- master_measurements.parquet   # Clean archive: every measured object, un-joined (Parquet only)
 |   +-- measurements.csv              # Metadata-joined mirror used by the GUI results viewer (refreshed on every run)
 |   +-- measurements.parquet          # Parquet companion of measurements.csv
+|   +-- measurements_by_feature/      # One CSV + Parquet per measurer: shared context columns + that measurer's columns
+|   +-- measurements_by_category/     # One CSV + Parquet per measurement category (see Measurement Categories)
 |   +-- pipeline.json.pht-pipe        # Reproducibility spec (operations + filters + model); seeded from --pipeline at start
 |   +-- <AnalysisClass>.csv           # Class-named model-fit output
 |   +-- <AnalysisClass>.parquet       # Parquet companion
@@ -203,7 +211,43 @@ No measurements configured in this pipeline."""
 
         return "\n".join(sections)
 
-    def _get_measurement_infoclasses(self, measurer) -> list[type]:
+    def _generate_categories_section(self) -> str:
+        """Document each category the configured measurers emit columns for.
+
+        Only columns this pipeline's measurers can produce are listed, so a
+        category whose members all come from an unconfigured measurer is
+        omitted. Returns ``""`` when no category applies.
+        """
+        from phenotypic.abc_ import MeasureFeatures
+        from phenotypic.schema import CATEGORIES
+
+        infos = [
+            info
+            for measurer in (self.pipeline._meas or {}).values()
+            if isinstance(measurer, MeasureFeatures)
+            for info in self._get_measurement_infoclasses(measurer)
+        ]
+        blocks: list[str] = []
+        for category in CATEGORIES:
+            columns = [
+                str(member)
+                for info in infos
+                for member in info
+                if category in member.categories
+            ]
+            if not columns:
+                continue
+            listed = "\n".join(f"- `{column}`" for column in dict.fromkeys(columns))
+            blocks.append(
+                f"### {category.display_name}\n\n{category.desc}\n\n"
+                f"Written to `deliverables/{_BY_CATEGORY_DIRNAME}/{category.label}.csv` "
+                f"(and `.parquet`), alongside every context column.\n\n{listed}"
+            )
+        if not blocks:
+            return ""
+        return "## Measurement Categories\n\n" + "\n\n".join(blocks)
+
+    def _get_measurement_infoclasses(self, measurer) -> list[type[MeasurementInfo]]:
         """Extract MeasurementInfo classes associated with a MeasureFeatures instance.
 
         Uses the operation-level schema contract so built-in and custom
@@ -212,7 +256,13 @@ No measurements configured in this pipeline."""
         return list(measurer.get_measurement_infoclasses())
 
     def _generate_measurement_table(self, info_cls) -> str:
-        """Generate markdown table for a MeasurementInfo class."""
+        """Generate markdown table for a MeasurementInfo class.
+
+        A Categories column is added only when some member of *info_cls*
+        carries a category.
+        """
+        from phenotypic.schema import CATEGORIES
+
         try:
             family = info_cls.metric_family()
             members = list(info_cls)
@@ -220,9 +270,14 @@ No measurements configured in this pipeline."""
             if not members:
                 return ""
 
+            has_categories = any(member.categories for member in members)
             table = f"\n### {family}\n\n"
-            table += "| Column | Description |\n"
-            table += "|--------|-------------|\n"
+            if has_categories:
+                table += "| Column | Description | Categories |\n"
+                table += "|--------|-------------|------------|\n"
+            else:
+                table += "| Column | Description |\n"
+                table += "|--------|-------------|\n"
 
             for member in members:
                 # Use the full header name (family_label)
@@ -233,7 +288,14 @@ No measurements configured in this pipeline."""
                 # Truncate very long descriptions
                 if len(desc) > 200:
                     desc = desc[:197] + "..."
-                table += f"| `{col_name}` | {desc} |\n"
+                row = f"| `{col_name}` | {desc} |"
+                if has_categories:
+                    names = ", ".join(
+                        category.display_name
+                        for category in CATEGORIES.in_order(member.categories)
+                    )
+                    row += f" {names} |"
+                table += row + "\n"
 
             return table
         except Exception as e:
