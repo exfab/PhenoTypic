@@ -1777,7 +1777,7 @@ the pass/fail counts.
 **Interfaces:**
 - Consumes: `CATEGORIES.display_name`, `.anchor`, `.in_order` (Task 2).
 - Produces: `member.category_badges -> str` (space-joined
-  `:bdg-ref-dark-line:`<display_name> <anchor>`` roles; `""` when uncategorized). `rst_table()`
+  `:bdg-ref-info-line:`<display_name> <anchor>`` roles; `""` when uncategorized). `rst_table()`
   gains a `Categories` column after `Type`, only when some member has a category.
 
 - [ ] **Step 1: Write the failing tests**
@@ -1791,7 +1791,7 @@ def test_categorized_table_has_a_categories_badge_column() -> None:
     table = SIZE.rst_table()
     assert "     - Categories" in table
     assert (
-        ":bdg-ref-dark-line:`Starting Metrics <measurement-category-startingmetrics>`"
+        ":bdg-ref-info-line:`Starting Metrics <measurement-category-startingmetrics>`"
         in table
     )
 
@@ -1847,7 +1847,7 @@ After `_BADGE_SPECS`:
 #: they read as a separate axis from the solid Type pills. A sphinx-design
 #: semantic color (asserted in test_classification). Each links to the
 #: category's section on the generated Categories page.
-_CATEGORY_BADGE_COLOR: Final = "dark"
+_CATEGORY_BADGE_COLOR: Final = "info"  # not "dark": invisible in pydata dark mode (phase1-review M-2)
 ```
 
 On `MeasurementInfo`, after `use_badge`:

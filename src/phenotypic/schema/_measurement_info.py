@@ -5,7 +5,7 @@ conventions, descriptive metadata, and automatic documentation generation.
 """
 
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import KW_ONLY, dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Final, cast
@@ -65,8 +65,12 @@ _BADGE_SPECS: Final[dict[tuple[int | None, str], tuple[str, str, str]]] = {
 #: Category badges render as *outline* pills (``:bdg-ref-{color}-line:``) so
 #: they read as a separate axis from the solid Type pills. A sphinx-design
 #: semantic color (asserted in test_classification). Each links to the
-#: category's section on the generated Categories page.
-_CATEGORY_BADGE_COLOR: Final = "dark"
+#: category's section on the generated Categories page. Not ``dark``:
+#: pydata-sphinx-theme maps it to one fixed near-black with no dark-mode
+#: variant, so an outline ``dark`` pill vanishes on the dark theme. ``info``
+#: is mode-aware, and the outline style keeps it distinct from the solid
+#: Derived pill that shares the colour.
+_CATEGORY_BADGE_COLOR: Final = "info"
 
 
 def _normalize_categories(value: object) -> frozenset[CATEGORIES]:
@@ -87,6 +91,12 @@ def _normalize_categories(value: object) -> frozenset[CATEGORIES]:
         raise TypeError(
             f"Entry.categories takes CATEGORIES members, not strings; got {value!r}. "
             "Use CATEGORIES.<NAME>."
+        )
+    # A mapping iterates as its keys, which would silently drop the values the
+    # author evidently meant to attach; there is nowhere to store them.
+    if isinstance(value, Mapping):
+        raise TypeError(
+            f"Entry.categories takes CATEGORIES members, not a mapping; got {value!r}"
         )
     if not isinstance(value, Iterable):
         raise TypeError(
@@ -114,7 +124,8 @@ class Entry:
         image: Path, relative to ``_assets/measurements/``, of an illustrative
             figure (e.g. ``"shape/area.png"``); ``None`` for no figure.
         categories: Curated categories (CATEGORIES members) this measurement
-            belongs to. A bare member or an iterable; normalized to a frozenset.
+            belongs to. A bare member or an iterable of members (a mapping is
+            refused); normalized to a frozenset.
     """
 
     label: str

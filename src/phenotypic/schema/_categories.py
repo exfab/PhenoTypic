@@ -47,7 +47,7 @@ class CategoryEntry:
     desc: str
 
     def __post_init__(self) -> None:
-        if not isinstance(self.label, str) or not _LABEL_RE.match(self.label):
+        if not isinstance(self.label, str) or not _LABEL_RE.fullmatch(self.label):
             raise ValueError(
                 f"CategoryEntry.label must be a CamelCase token, got {self.label!r}"
             )

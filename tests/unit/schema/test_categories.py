@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterator
+from enum import Enum
 from pathlib import Path
 
 import pytest
@@ -15,6 +17,7 @@ from phenotypic.schema import (
     MeasurementInfo,
     MetadataInfo,
 )
+from phenotypic.schema._categories import _CAMEL_BOUNDARY_RE
 
 _CATEGORIES_MODULE = (
     Path(__file__).resolve().parents[3] / "src" / "phenotypic" / "schema" / "_categories.py"
@@ -37,11 +40,18 @@ def test_display_name_splits_camel_case() -> None:
     assert CATEGORIES.STARTING_METRICS.display_name == "Starting Metrics"
 
 
-@pytest.mark.parametrize("category", list(CATEGORIES), ids=lambda c: c.name)
-def test_every_display_name_is_readable(category: CATEGORIES) -> None:
-    words = category.display_name.split(" ")
-    assert "".join(words) == category.label
-    assert all(word[:1].isupper() or word[:1].isdigit() for word in words)
+# Digit-bearing labels ("Size2D", "Tier1Traits") are deliberately not pinned:
+# how a digit run should split is undecided, and no current label has one.
+@pytest.mark.parametrize(
+    ("label", "display_name"),
+    [
+        ("StartingMetrics", "Starting Metrics"),
+        ("CIELabColor", "CIE Lab Color"),
+        ("QCFlags", "QC Flags"),
+    ],
+)
+def test_camel_boundary_split_is_pinned(label: str, display_name: str) -> None:
+    assert _CAMEL_BOUNDARY_RE.sub(" ", label) == display_name
 
 
 def test_anchor_is_stable() -> None:
@@ -49,13 +59,16 @@ def test_anchor_is_stable() -> None:
 
 
 def test_members_must_be_category_entries() -> None:
-    # __new__ delegates to _validate_entry; an Enum with members cannot be
-    # subclassed, so the validator is exercised directly.
+    # An Enum with members cannot be subclassed, but the class's own __new__
+    # (the one that builds members) stays reachable as _new_member_.
     with pytest.raises(TypeError, match="CategoryEntry"):
-        CATEGORIES._validate_entry("not-an-entry")
+        CATEGORIES._new_member_(CATEGORIES, "not-an-entry")
 
 
-@pytest.mark.parametrize("label", ["startingMetrics", "Starting Metrics", "", "Starting_Metrics"])
+@pytest.mark.parametrize(
+    "label",
+    ["startingMetrics", "Starting Metrics", "", "Starting_Metrics", "StartingMetrics\n"],
+)
 def test_category_entry_rejects_non_camel_case_labels(label: str) -> None:
     with pytest.raises(ValueError, match="CamelCase"):
         CategoryEntry(label, "desc")
@@ -96,6 +109,11 @@ def test_non_iterable_is_rejected() -> None:
         Entry("Value", "A value.", categories=3)  # type: ignore[arg-type]
 
 
+def test_mapping_is_rejected_rather_than_reduced_to_its_keys() -> None:
+    with pytest.raises(TypeError, match="mapping"):
+        Entry("Value", "A value.", categories={CATEGORIES.STARTING_METRICS: "why"})
+
+
 def test_member_exposes_its_categories() -> None:
     class TAGGED(MeasurementInfo):
         @classmethod
@@ -118,12 +136,23 @@ def test_members_finds_tagged_public_members(monkeypatch: pytest.MonkeyPatch) ->
         VALUE = Entry("Value", "A value.", categories=CATEGORIES.STARTING_METRICS)
 
     monkeypatch.setattr(schema, "FUTURE_TAGGED", FUTURE_TAGGED, raising=False)
-    monkeypatch.setattr(schema, "__all__", [*schema.__all__, "FUTURE_TAGGED"])
-    assert FUTURE_TAGGED.VALUE in CATEGORIES.STARTING_METRICS.members()
+    # Listed twice, as a compatibility alias would be: members() must
+    # deduplicate by class rather than walk the same enum again.
+    monkeypatch.setattr(
+        schema, "__all__", [*schema.__all__, "FUTURE_TAGGED", "FUTURE_TAGGED"]
+    )
+    assert CATEGORIES.STARTING_METRICS.members().count(FUTURE_TAGGED.VALUE) == 1
 
 
 def test_in_order_follows_declaration_order() -> None:
-    assert CATEGORIES.in_order({CATEGORIES.STARTING_METRICS}) == (CATEGORIES.STARTING_METRICS,)
+    # CATEGORIES has one member, which cannot tell a sort from no sort, so the
+    # classmethod's function is bound to a local two-member enum instead.
+    class _Local(str, Enum):
+        A = "A"
+        B = "B"
+
+    in_order = CATEGORIES.in_order.__func__  # type: ignore[attr-defined]
+    assert in_order(_Local, [_Local.B, _Local.A]) == (_Local.A, _Local.B)
 
 
 def test_no_metadata_member_carries_a_category() -> None:
@@ -134,13 +163,60 @@ def test_no_metadata_member_carries_a_category() -> None:
             assert tagged == [], f"{name} metadata members may not be categorized: {tagged}"
 
 
-def test_categories_module_imports_only_stdlib_at_module_level() -> None:
-    tree = ast.parse(_CATEGORIES_MODULE.read_text(encoding="utf-8"))
-    for node in tree.body:
+def _is_type_checking_guard(test: ast.expr) -> bool:
+    return (isinstance(test, ast.Name) and test.id == "TYPE_CHECKING") or (
+        isinstance(test, ast.Attribute) and test.attr == "TYPE_CHECKING"
+    )
+
+
+def _import_time_imports(tree: ast.Module) -> Iterator[ast.Import | ast.ImportFrom]:
+    """Every import that executes when the module is imported.
+
+    Walks the whole module (``try``/``if`` blocks and class bodies included)
+    but skips function bodies, which run only when called, and the body of an
+    ``if TYPE_CHECKING:`` block, which never runs.
+    """
+    stack: list[ast.AST] = list(tree.body)
+    while stack:
+        node = stack.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+            continue
+        if isinstance(node, ast.If) and _is_type_checking_guard(node.test):
+            stack.extend(node.orelse)
+            continue
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            yield node
+        stack.extend(ast.iter_child_nodes(node))
+
+
+def _non_stdlib_imports(source: str) -> list[str]:
+    bad = []
+    for node in _import_time_imports(ast.parse(source)):
         if isinstance(node, ast.Import):
-            assert {alias.name for alias in node.names} <= _STDLIB_ONLY
-        elif isinstance(node, ast.ImportFrom):
-            assert node.level == 0 and node.module in _STDLIB_ONLY, ast.dump(node)
+            bad.extend(alias.name for alias in node.names if alias.name not in _STDLIB_ONLY)
+        elif node.level != 0 or node.module not in _STDLIB_ONLY:
+            bad.append(ast.dump(node))
+    return bad
+
+
+def test_categories_module_imports_only_stdlib_at_module_level() -> None:
+    source = _CATEGORIES_MODULE.read_text(encoding="utf-8")
+    assert _non_stdlib_imports(source) == []
+
+
+@pytest.mark.parametrize(
+    ("source", "flagged"),
+    [
+        ("try:\n    import numpy\nexcept ImportError:\n    pass\n", True),
+        ("import re\nif re:\n    from . import _sibling\n", True),
+        ("class A:\n    import numpy\n", True),
+        ("from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    import numpy\n", False),
+        ("def f():\n    import numpy\n", False),
+        ("class A:\n    def f(self):\n        import numpy\n", False),
+    ],
+)
+def test_stdlib_guard_sees_nested_imports(source: str, flagged: bool) -> None:
+    assert bool(_non_stdlib_imports(source)) is flagged
 
 
 _STARTING_METRICS_HEADERS = {
@@ -169,6 +245,14 @@ def test_starting_metrics_membership_is_pinned() -> None:
     members = CATEGORIES.STARTING_METRICS.members()
     assert {m.value for m in members} == _STARTING_METRICS_HEADERS
     assert len(members) == 18
+    # schema.__all__ order, then member order; Task 8's Categories page
+    # renders in this order.
+    assert [m.value for m in members][:4] == [
+        "ColorLab_L*Medoid",
+        "ColorLab_a*Medoid",
+        "ColorLab_b*Medoid",
+        "Intensity_IntegratedIntensity",
+    ]
 
 
 def test_every_category_has_a_member() -> None:
