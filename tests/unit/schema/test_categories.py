@@ -141,3 +141,36 @@ def test_categories_module_imports_only_stdlib_at_module_level() -> None:
             assert {alias.name for alias in node.names} <= _STDLIB_ONLY
         elif isinstance(node, ast.ImportFrom):
             assert node.level == 0 and node.module in _STDLIB_ONLY, ast.dump(node)
+
+
+_STARTING_METRICS_HEADERS = {
+    "Size_Area",
+    "Size_IntegratedIntensity",
+    "Size_Perimeter",
+    "Size_ConvexArea",
+    "Size_BboxArea",
+    "Size_MajorAxisLength",
+    "Size_MinorAxisLength",
+    "Size_MinFeretDiameter",
+    "Size_MaxFeretDiameter",
+    "Size_InscribedRadius",
+    "Size_MedianRadius",
+    "Size_MeanRadius",
+    "Size_RobustMeanRadius",
+    "Size_MaxRadius",
+    "ColorLab_L*Medoid",
+    "ColorLab_a*Medoid",
+    "ColorLab_b*Medoid",
+    "Intensity_IntegratedIntensity",
+}
+
+
+def test_starting_metrics_membership_is_pinned() -> None:
+    members = CATEGORIES.STARTING_METRICS.members()
+    assert {m.value for m in members} == _STARTING_METRICS_HEADERS
+    assert len(members) == 18
+
+
+def test_every_category_has_a_member() -> None:
+    for category in CATEGORIES:
+        assert category.members(), f"{category.name} has no members"
