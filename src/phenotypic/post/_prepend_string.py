@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import pandas as pd
-from typing import ClassVar
-
 from pydantic import field_validator
 
 from phenotypic.abc_._post_measurement import PostMeasurement
@@ -68,16 +66,6 @@ class PrependString(PostMeasurement):
     def _prefix_column(cls, column: str) -> str:
         """Apply the schema category prefix (generic ``Metadata_`` fallback) to a non-empty column name."""
         return ensure_metadata_prefix(column) if column else ""
-
-
-    #: Reads a metadata column by contract (run preflight, spec §8).
-    _preflight_reads_metadata_only: ClassVar[bool] = True
-
-    def preflight_columns(self, available):
-        """Needs ``column``; adds nothing. See ``PostMeasurement.preflight_columns``."""
-        from phenotypic.post._utils import missing_metadata_columns
-
-        return missing_metadata_columns(available, [self.column]), ()
 
     def _operate(self, df: pd.DataFrame) -> pd.DataFrame:
         """Prepend the string value to each cell in the target column.

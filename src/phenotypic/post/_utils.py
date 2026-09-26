@@ -22,7 +22,6 @@ __all__ = [
     "affix_preserving_na",
     "ensure_metadata_prefix",
     "resolve_metadata_column",
-    "missing_metadata_columns",
 ]
 
 
@@ -63,36 +62,6 @@ def resolve_metadata_column(columns: Iterable[object], requested: str) -> str:
                 return column
 
     raise KeyError(request)
-
-
-def missing_metadata_columns(
-    available: Iterable[object], requested: Iterable[str]
-) -> tuple[str, ...]:
-    """Requested metadata columns that would not resolve against *available*.
-
-    Runs the exact lookup the post ops run -- :func:`coalesce_metadata_aliases`
-    then :func:`resolve_metadata_column` -- on an empty frame with those
-    columns, so the run preflight and the op cannot disagree about what
-    "present" means.
-
-    Args:
-        available: Column names the frame will carry.
-        requested: The op's requested names, as its fields hold them.
-
-    Returns:
-        The requested names that would raise ``KeyError`` at run time.
-    """
-    requested = [str(name) for name in requested if name]
-    frame = coalesce_metadata_aliases(
-        pd.DataFrame(columns=[str(column) for column in available]), requested
-    )
-    missing = []
-    for name in requested:
-        try:
-            resolve_metadata_column(frame.columns, name)
-        except KeyError:
-            missing.append(name)
-    return tuple(missing)
 
 
 def coalesce_metadata_aliases(

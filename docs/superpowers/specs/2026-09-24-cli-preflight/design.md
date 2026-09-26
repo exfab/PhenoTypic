@@ -342,7 +342,9 @@ raising ABCs: `FilamentousFungiDetector`, `TwoKFilamentousDetector`, `ManualGrid
 `GridAligner`, `GridApply`, `GridOversizedObjectRemover`, `KeepSectionLargest`,
 `MergeWithinSection`, `ReduceSectionsByLine`, `RemoveGridOutliers`, `MeasureGridSpread`,
 `MeasureGridLinRegStats`, `MeasureNeighborDist`, `AutoGridFinder`, `CenteredAutoGridFinder`,
-and `ManualGridFinder`.
+and `ManualGridFinder`. (Since `86be6906` on `main`, `MeasureNeighborDist` accepts a plain
+`Image` and is no longer a grid measurer; the derived requirement followed it with no change
+here.)
 
 Declaring requirements on the operation instead of in a checker-side table follows the
 distinction `_CHILD_CONTRACT` draws in `_cli_validation.py`. That table restates a
@@ -590,6 +592,17 @@ startup already does: `_prepare_incremental_startup` computes `work_id_for_image
 input, which hashes each file in full (`_cli_failure_tracker.py:347-373`).
 
 ### §8 Post-measurement column checks
+
+> **Removed after implementation (2026-09-26, user decision).** `PF-POST-COLUMN` was
+> taken out before merge. It predicted the columns the final table would carry from each
+> measurer's declared headers, the intrinsic metadata, and the `--metadata` CSV, and that
+> prediction is brittle against changes to measurement outputs: moving the Feret
+> diameters from `MeasureShape` to `MeasureSize` on `main` changed the column set it
+> depended on, and every such change needs this check to keep up. The check, its
+> finding code, `PostMeasurement.preflight_columns` with its overrides, and
+> `post._utils.missing_metadata_columns` are deleted. F23 is therefore not closed: a post
+> operation naming an absent column is still logged at finalization and discards the
+> post output, as before this change. The text below is kept as the design record.
 
 `PostMeasurement` gains `required_columns(self) -> tuple[str, ...]`, default `()`. It is
 implemented by `AppendString`, `PrependString`, `ExpandMetadata` and `MergeMetadata` (their

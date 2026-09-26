@@ -122,7 +122,6 @@ a position the staged GPU engine cannot run), the refusal of a `--restart` or
 | `PF-META-UNMATCHED` | Some images have no metadata row | warning | Add rows, or match `ImageName` to the file names |
 | `PF-META-ORPHANS` | Some metadata rows match no image | warning | Expected for wells that grew nothing |
 | `PF-META-UNVERIFIED` | The CSV joins on columns only measurements carry | warning | None needed; the join is checked at finalization |
-| `PF-POST-COLUMN` | A post-measurement operation needs a column that will not, or may not, exist | error when certain, else warning | Correct the column name, or add the column |
 | `PF-OUTPUT-UNWRITABLE` | `--output` (or its nearest existing parent) is not writable | error | Choose another `--output`, or fix permissions |
 | `PF-OUTPUT-SPACE` | A `full` run's output disk has less free space than the inputs' size (a heuristic) | warning | Free space, or choose another `--output` |
 | `PF-NODE-LOCAL` | On a SLURM run, a path workers read or write is on node-local storage | warning | Move it to shared storage |

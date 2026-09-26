@@ -31,7 +31,6 @@ GRID_CLASSES = (
     ("phenotypic.refine", "RemoveGridOutliers"),
     ("phenotypic.measure", "MeasureGridSpread"),
     ("phenotypic.measure", "MeasureGridLinRegStats"),
-    ("phenotypic.measure", "MeasureNeighborDist"),
     ("phenotypic.grid", "AutoGridFinder"),
     ("phenotypic.grid", "CenteredAutoGridFinder"),
     ("phenotypic.grid", "ManualGridFinder"),

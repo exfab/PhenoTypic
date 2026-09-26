@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
-from typing import ClassVar
 
 import pandas as pd
 
@@ -63,33 +61,6 @@ class PostMeasurement(BaseOperation, ABC):
             The transformed DataFrame.
         """
         ...
-
-    #: The columns this op reads are metadata by contract (not arbitrary
-    #: measurement headers), so the run preflight may treat a missing one as
-    #: certain whenever it knows every metadata column the run will carry.
-    _preflight_reads_metadata_only: ClassVar[bool] = False
-
-    def preflight_columns(
-        self, available: Sequence[str]
-    ) -> tuple[tuple[str, ...], tuple[str, ...]]:
-        """Which columns this op would miss, and which it adds, given *available*.
-
-        Read by the CLI's run preflight (spec ``2026-09-24-cli-preflight`` §8),
-        which walks the post chain in order before any image runs. At run time
-        a post op that raises inside finalization is swallowed and discards
-        every post op's output (F23), so the preflight asks each op, with the
-        op's OWN column-resolution rules, whether its inputs will exist.
-
-        The default declares nothing: a custom op is unknown, not missing.
-
-        Args:
-            available: Column names the frame will carry when this op runs.
-
-        Returns:
-            ``(missing, produced)``: requested columns that would not resolve,
-            and columns the op adds for later ops.
-        """
-        return (), ()
 
     def apply(self, df: pd.DataFrame) -> pd.DataFrame:
         """Apply the post-measurement transform.

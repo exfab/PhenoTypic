@@ -74,7 +74,6 @@ FindingCode = Literal[
     "PF-META-UNMATCHED",
     "PF-META-ORPHANS",
     "PF-META-UNVERIFIED",
-    "PF-POST-COLUMN",
     "PF-OUTPUT-UNWRITABLE",
     "PF-OUTPUT-SPACE",
     "PF-NODE-LOCAL",
@@ -177,11 +176,6 @@ HINTS: dict[str, str] = {
         "These columns can only be matched against measurements, so the "
         "preflight cannot check them; the production join uses any of them "
         "that the measurements emit."
-    ),
-    "PF-POST-COLUMN": (
-        "Correct the column name in the post operation, or add the column "
-        "(e.g. through --metadata). At finalization a failing post operation "
-        "is logged and ALL post-operation output is discarded."
     ),
     "PF-SBATCH-REJECTED": (
         "Fix the --slurm/--gpu-slurm option sbatch names above (a partition, "
@@ -1184,7 +1178,7 @@ def check_metadata_join(context: PreflightContext) -> list[PreflightFinding]:
     findings are warnings. They are warnings too when the run's metadata set
     is not known (``_metadata_set_is_complete``): inputs that restore
     PhenoTypic metadata, or a custom operation, can carry the very columns the
-    CSV is keyed on (review D2; the same rule §8 applies to post columns).
+    CSV is keyed on (review D2).
 
     A qualified CSV column counts as a possible measurement key only when it
     is a known schema header (``Grid_RowNum``), which is when the production
@@ -1262,69 +1256,8 @@ def check_metadata_join(context: PreflightContext) -> list[PreflightFinding]:
     return findings
 
 
-def intrinsic_metadata_headers(image_type: str) -> tuple[str, ...]:
-    """The metadata columns ``measure()`` inserts for a freshly read image.
-
-    Read back from ``insert_metadata`` on one tiny in-memory image of the run's
-    class, carrying the file suffix ``Image.imread`` records, rather than from
-    a hand-kept list that could drift from it. A test pins it against a real
-    ``imread`` + ``apply_and_measure``.
-
-    Args:
-        image_type: ``"Image"`` or ``"GridImage"``.
-
-    Returns:
-        The inserted metadata headers.
-    """
-    import numpy as np
-    import pandas as pd
-
-    from phenotypic import GridImage, Image
-    from phenotypic.schema import IMAGE
-
-    image_cls = GridImage if image_type == "GridImage" else Image
-    image = image_cls(np.zeros((8, 8), dtype=np.uint8), name="preflight")
-    image.metadata[IMAGE.SUFFIX] = ".tiff"
-    frame = image.metadata.insert_metadata(pd.DataFrame())
-    return tuple(str(column) for column in frame.columns)
-
-
-def _measurement_headers(context: PreflightContext) -> set[str]:
-    """Headers the in-scope measurers declare; incomplete by design (spec §8)."""
-    from phenotypic.abc_ import MeasureFeatures
-
-    headers: set[str] = set()
-    for _, operation in operations_in_scope(context):
-        if not isinstance(operation, MeasureFeatures):
-            continue
-        for info in operation.get_measurement_infoclasses():
-            try:
-                headers.update(str(h) for h in info.get_headers())
-            except TypeError:
-                continue  # e.g. TEXTURE.get_headers needs a scale argument
-    return headers
-
-
-def _metadata_csv_headers(context: PreflightContext) -> set[str]:
-    """``--metadata`` headers as the production join normalizes them."""
-    metadata_csv = context.config.metadata_csv
-    if context.mode != "full" or metadata_csv is None:
-        return set()
-    from ._metadata_join import prepare_metadata_join_keys, read_metadata_csv
-    from ._metadata_preflight import source_join_key_frame
-
-    images = [(d.name, Path(p)) for d in context.datasets for p in d.images]
-    try:
-        prepared = prepare_metadata_join_keys(
-            source_join_key_frame(images), read_metadata_csv(metadata_csv)
-        )
-    except Exception:  # noqa: BLE001 -- check_metadata_join reports it
-        return set()
-    return {str(column) for column in prepared.metadata.columns}
-
-
 def _metadata_set_is_complete(context: PreflightContext) -> bool:
-    """Whether every metadata column the run can carry is known (spec §8, R6).
+    """Whether every metadata column the run can carry is known (spec §9, R6).
 
     Not when an in-scope operation is a class from outside ``phenotypic`` (it
     may set ``image.metadata``), and not when an input restores PhenoTypic
@@ -1341,50 +1274,6 @@ def _custom_operation_in_scope(context: PreflightContext) -> bool:
         not type(operation).__module__.startswith("phenotypic.")
         for _, operation in operations_in_scope(context)
     )
-
-
-def check_post_columns(context: PreflightContext) -> list[PreflightFinding]:
-    """``PF-POST-COLUMN``: a post op naming a column the master will not carry.
-
-    Spec §8, F23 (review R6). Post runs once, at finalization, on the joined
-    master, and a raise there is logged at WARNING and discards the output of
-    EVERY post op. The chain is walked in order, each op asked through its own
-    ``preflight_columns`` (its own resolution rules) and credited with the
-    columns it adds. A metadata-reading op's miss is an error only when the
-    metadata set is provably complete; any other miss is a warning.
-    """
-    if "post" not in MODE_SLOTS[context.mode]:
-        return []
-    post_ops = list(context.pipeline.get_post().items())
-    if not post_ops:
-        return []
-    from phenotypic.schema import EXPERIMENT
-
-    known = set(intrinsic_metadata_headers(str(context.config.image_type)))
-    known |= _measurement_headers(context)
-    known |= _metadata_csv_headers(context)
-    if context.config.include_dataset_column:
-        known.add(str(EXPERIMENT.DATASET))
-    complete = _metadata_set_is_complete(context)
-
-    findings: list[PreflightFinding] = []
-    for key, operation in post_ops:
-        missing, produced = operation.preflight_columns(sorted(known))
-        if missing:
-            certain = complete and operation._preflight_reads_metadata_only
-            findings.append(
-                PreflightFinding(
-                    code="PF-POST-COLUMN",
-                    severity="error" if certain else "warning",
-                    message=(
-                        f"post:{key} ({type(operation).__name__}) reads "
-                        f"{', '.join(missing)}, which the measurement table "
-                        + ("will not carry" if certain else "may not carry")
-                    ),
-                )
-            )
-        known.update(produced)
-    return findings
 
 
 #: Filesystem types that live on one node. Shared types (gpfs, lustre, nfs,
@@ -1555,7 +1444,6 @@ CHECKS: tuple[Check, ...] = (
     check_rgb_ops_on_gray,
     check_bit_depth,
     check_metadata_join,
-    check_post_columns,
     check_output_writable,
     check_output_space,
     check_node_local_paths,

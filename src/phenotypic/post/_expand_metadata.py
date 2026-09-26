@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import ClassVar, List, cast
+from typing import List, cast
 
 import pandas as pd
 from pydantic import field_validator
@@ -151,16 +151,6 @@ class ExpandMetadata(PostMeasurement):
         return pd.DataFrame(
             parts.tolist(), columns=self.labels, index=present.index
         ).reindex(source.index)
-
-
-    #: Reads a metadata column by contract (run preflight, spec §8).
-    _preflight_reads_metadata_only: ClassVar[bool] = True
-
-    def preflight_columns(self, available):
-        """Needs ``column``; adds ``labels``. See ``PostMeasurement.preflight_columns``."""
-        from phenotypic.post._utils import missing_metadata_columns
-
-        return missing_metadata_columns(available, [self.column]), tuple(self.labels)
 
     def _operate(self, df: pd.DataFrame) -> pd.DataFrame:
         """Split the metadata column and insert new columns.
