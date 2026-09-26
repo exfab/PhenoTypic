@@ -539,6 +539,8 @@ enforces this for ruff, but the rule binds regardless of the tool.
   unset — biological-relevance claims must be written and verified by a human
   domain author, not generated. Agents may scaffold the `Entry(...)` and populate
   `label`/`desc`, but must leave `bio_desc=""`/`image=None` for human authoring.
+  Tagging a member with `categories=CATEGORIES.X` is also agent-authorable (a
+  curated grouping, not a biological claim); see `src/phenotypic/schema/CLAUDE.md`.
 - **Analysis classes use `.analyze()`:** `EdgeCorrector.analyze(df)`,
   `LogGrowthModel.analyze(df)` — not `.fit()` or `.correct()`.
 - **`num_objects` is on `Image`**, not on the `objmap` accessor: use
@@ -566,7 +568,7 @@ enforces this for ruff, but the rule binds regardless of the tool.
   `measurements_by_category/` (one file per `CATEGORIES` member) are both
   written from that mirror's post-applied frame by
   `finalize_post_master_outputs`, the finalization path shared by full,
-  measure, recompile and `--mode migrate`. Always resolve paths via the
+  measure, recompile and a full-run `--mode migrate`. Always resolve paths via the
   `phenotypic.sdk_` helpers (never hand-join names), and route any FINAL master
   write through `finalize_post_master_outputs`. Full file inventory,
   master-vs-mirror rules, and the finalize/chunk-writer carve-out are in

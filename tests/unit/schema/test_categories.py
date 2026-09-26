@@ -258,3 +258,13 @@ def test_starting_metrics_membership_is_pinned() -> None:
 def test_every_category_has_a_member() -> None:
     for category in CATEGORIES:
         assert category.members(), f"{category.name} has no members"
+
+
+@pytest.mark.parametrize("category", list(CATEGORIES), ids=lambda c: c.name)
+def test_category_desc_is_safe_to_emit_verbatim_as_rst(category: CATEGORIES) -> None:
+    # The generated Categories page writes each desc into RST unescaped (spec:
+    # "verbatim"). A word-initial *, `, | or _ would start inline markup and
+    # warn or mis-render while the docs build still exits 0.
+    import re
+
+    assert not re.search(r"(?:^|\s)[*`|_]", category.desc), category.desc

@@ -1303,7 +1303,7 @@ def finalize_post_master_outputs(
 
     # Same frame, same guard: one spreadsheet per measurement category
     # (deliverables/measurements_by_category/). This is the only call site, so
-    # full, measure, recompile and --mode migrate all publish it (spec §5.3).
+    # full, measure, recompile and a full-run --mode migrate all publish it (spec §5.3).
     _guarded_terminal_best_effort(
         commit_guard,
         lambda: split_master_by_category(post_df, output_dir),
@@ -1406,7 +1406,7 @@ def split_master_by_category(
     :func:`phenotypic.util.split_measurements_by_category`: the feature
     split's context columns plus that category's present columns. Called only
     from :func:`finalize_post_master_outputs`, the finalization path shared by
-    ``full``, ``measure``, ``recompile`` and ``--mode migrate``.
+    ``full``, ``measure``, ``recompile`` and a full-run ``--mode migrate``.
 
     Args:
         master_df: The post-applied, metadata-joined measurements frame.

@@ -101,7 +101,8 @@ _CATEGORIES_INTRO = (
     "several metric families; one column can belong to several categories. "
     "Unlike the Type badge, a category makes no claim about how far a single "
     "value can be trusted (see :ref:`measurement-categories`). Every run that "
-    "measures objects writes one spreadsheet per category under "
+    "measures objects writes one spreadsheet per category that has at least "
+    "one column in the run, under "
     "``deliverables/measurements_by_category/``, holding the shared context "
     "columns (metadata, object label, grid) plus that category's columns."
 )
@@ -125,7 +126,11 @@ def _category_section(category: Any) -> str:
         "     - Metric family",
         "     - Type",
     ]
-    for member in category.members():
+    members = category.members()
+    if not members:
+        # A header-only list-table is a docutils ERROR; say so in prose instead.
+        return "\n".join([*out[:out.index(".. list-table::")], "No columns carry this category yet.", ""])
+    for member in members:
         info_cls = type(member)
         out.extend(
             [

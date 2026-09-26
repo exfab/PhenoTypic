@@ -4,7 +4,7 @@ Public, blessed API for PhenoTypic's measurement naming conventions.
 
 - `MeasurementInfo` (`_measurement_info.py`) — `str, Enum` base. Subclasses
   declare members as `Entry(label, desc, *, bio_desc="", image=None, tier=None,
-  derivation_type=None, derives_from=None, categories=frozenset())` plus a
+  derivation_type=None, derives_from=None, rembi_module=None, categories=frozenset())` plus a
   `metric_family()` classmethod; the
   enum value is the family-prefixed header (e.g. `Size_Area`). `Entry` (a
   frozen dataclass, also in `_measurement_info.py` and exported from the package)

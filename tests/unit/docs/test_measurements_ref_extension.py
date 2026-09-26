@@ -378,3 +378,26 @@ def test_navbar_lists_categories_under_measurements() -> None:
     assert navbar.index("measurements_ref/metadata/index") < navbar.index(
         "measurements_ref/categories/index"
     )
+
+
+def test_category_without_members_renders_a_sentence_not_an_empty_table(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    # A header-only list-table is a docutils ERROR that drops the section's
+    # table while the build still exits 0; an empty category must not emit one.
+    extension = _load_extension(monkeypatch)
+
+    class _EmptyCategory:
+        anchor = "measurement-category-empty"
+        display_name = "Empty"
+        desc = "A category nothing is tagged with yet."
+        label = "Empty"
+
+        def members(self) -> tuple[()]:
+            return ()
+
+    section = extension._category_section(_EmptyCategory())
+    assert ".. _measurement-category-empty:" in section
+    assert "A category nothing is tagged with yet." in section
+    assert "No columns carry this category yet." in section
+    assert ".. list-table::" not in section
