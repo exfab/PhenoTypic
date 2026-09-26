@@ -256,8 +256,10 @@ deliverables/
      because the extension `rmtree`s and regenerates its own folder. Writing
      generated files into the hand-authored `explanation/` folder would put
      them under that cleanup rule or leave them stale.
-   - The Measurements page itself gets no category roll-up; its family tables
-     carry the badges (item 2).
+   - The Measurements page itself gets no per-category column list (a table
+     gathering one category's columns from across families); that lives only on
+     the Categories page. The Measurements page's family tables carry the
+     category badges instead (item 2).
 2. **Family tables** (`MeasurementInfo.rst_table()`): a "Categories" column with
    one badge per category, `:bdg-ref-<color>-line:` (the outline variant, so it
    reads as distinct from the solid Type pills), linking to the category anchor.
