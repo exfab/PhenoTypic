@@ -17,7 +17,7 @@ Public, blessed API for PhenoTypic's measurement naming conventions.
   `.use_label`, `.use_badge`. Helpers: `get_labels()`, `get_headers()`,
   `rst_table()` (conditional Type/Biology/Image columns, suppressed when empty),
   `append_rst_to_doc()`. `metric_family()`/`.METRIC_FAMILY` were hard-renamed
-  from `category()`/`.CATEGORY` with no alias; a subclass that still defines
+  from the `category()` classmethod and `CATEGORY` property with no alias; a subclass that still defines
   either legacy name raises `TypeError` at class creation.
 - 32 measurement-column enum modules (`_shape.py`, `_size.py`,
   `_color_lab.py`, …) — one `MeasurementInfo` subclass each, re-exported from

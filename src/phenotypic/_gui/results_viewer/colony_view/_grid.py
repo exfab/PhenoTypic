@@ -90,7 +90,7 @@ from phenotypic._gui.results_viewer._metadata import (
 #: *is* — where it sits, which sample it came from, how it was curated — not
 #: what was measured about it, so they are the carve-out from the derivation
 #: below rather than entries in it.
-_AXIS_ELIGIBLE_CATEGORIES: frozenset[str] = frozenset(
+_AXIS_ELIGIBLE_FAMILIES: frozenset[str] = frozenset(
     {"Metadata", "Grid", "Object", "Curation", "Status"}
 )
 
@@ -101,7 +101,7 @@ def _derive_measurement_prefixes() -> tuple[str, ...]:
     Walks every leaf of the :class:`~phenotypic.schema.MeasurementInfo`
     hierarchy — the member-carrying enums, skipping the member-less tier
     bases they hang off — and keeps each leaf's metric family except the
-    grouping families in :data:`_AXIS_ELIGIBLE_CATEGORIES`.
+    grouping families in :data:`_AXIS_ELIGIBLE_FAMILIES`.
 
     Derived rather than hand-maintained because the literal this replaced
     was wrong in both directions: it listed ``TextureGray_``, which no
@@ -129,7 +129,7 @@ def _derive_measurement_prefixes() -> tuple[str, ...]:
         except NotImplementedError:
             continue
     return tuple(
-        sorted(f"{name}_" for name in families - _AXIS_ELIGIBLE_CATEGORIES)
+        sorted(f"{name}_" for name in families - _AXIS_ELIGIBLE_FAMILIES)
     )
 
 
@@ -251,7 +251,7 @@ def selectable_axis_columns(
       (or ``>= 2`` when ``max_cardinality`` is ``None``);
     - name does not start with one of :data:`_MEASUREMENT_PREFIXES` — every
       ``MeasurementInfo`` metric family except the grouping families named in
-      :data:`_AXIS_ELIGIBLE_CATEGORIES`;
+      :data:`_AXIS_ELIGIBLE_FAMILIES`;
     - name is not ``Object_Label`` (per-object identifier — too high
       cardinality and not a meaningful axis).
 

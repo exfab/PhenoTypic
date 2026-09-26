@@ -237,15 +237,27 @@ _LEGACY_FAMILY_NAMES: Final = ("category", "CATEGORY")
 
 
 def _refuse_legacy_category(cls: type) -> None:
-    """Refuse a subclass still overriding the removed ``category`` API."""
+    """Refuse a subclass still overriding the removed ``category`` API.
+
+    Any attribute with a legacy name is refused, not only methods: a member
+    named ``CATEGORY`` would shadow the old property, so it is reserved too.
+    """
     for klass in cls.__mro__:
         for name in _LEGACY_FAMILY_NAMES:
-            if name in vars(klass):
-                raise TypeError(
-                    f"{cls.__name__} defines {name!r}, which was removed: "
+            if name not in vars(klass):
+                continue
+            value = vars(klass)[name]
+            if isinstance(value, (classmethod, staticmethod, property)) or callable(value):
+                advice = (
                     "the category() classmethod is now metric_family() and "
                     "the CATEGORY property is now METRIC_FAMILY. Rename the override."
                 )
+            else:
+                advice = (
+                    f"{name!r} is a reserved name since the category() -> "
+                    "metric_family() rename. Rename the member."
+                )
+            raise TypeError(f"{klass.__name__} defines {name!r}, which was removed: {advice}")
 
 
 class MeasurementInfo(str, Enum):

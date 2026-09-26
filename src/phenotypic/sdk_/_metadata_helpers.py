@@ -341,7 +341,7 @@ def external_metadata_preserved_columns(
 
 
 def metadata_category_for_label(label: str) -> str | None:
-    """Return the shared category for a known label, or ``None``.
+    """Return the shared metric family for a known label, or ``None``.
 
     Deprecated:
         Use :func:`metadata_owner_for_label` or
