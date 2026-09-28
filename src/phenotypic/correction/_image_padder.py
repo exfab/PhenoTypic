@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, Any, Literal, Tuple
+from typing import ClassVar, TYPE_CHECKING, Annotated, Any, Literal, Tuple
 
 from pydantic import ValidationInfo, field_validator
 
@@ -95,6 +95,10 @@ class PadImage(ImageCorrector):
         :doc:`/how_to/notebooks/correct_grid_rotation` for combining
         padding with rotation correction.
     """
+
+    #: Gray-tolerant: pads RGB only when present (`if not image.rgb.isempty()`).
+    #: Declared explicitly for the run preflight (spec §3); the ratchet's heuristic does not flag it.
+    _requires_rgb_input: ClassVar[bool] = False
 
     # Per-edge pixel pad offsets — image-specific geometry, not a quality knob.
     left: Annotated[int | None, TuneSpec(tunable=False)] = None

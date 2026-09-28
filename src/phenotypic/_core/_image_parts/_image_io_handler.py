@@ -726,15 +726,26 @@ class ImageIOHandler(ImageColorSpace):
 
         # Convert to a Path object
         filepath: Path = Path(filepath)
-        rawpy_params = rawpy_params or {}
+        # A copy: the branch below pops its options out of this dict, and a
+        # caller's dict must come back unchanged.
+        rawpy_params = dict(rawpy_params or {})
 
         suffix = filepath.suffix.lower()
-        if suffix in IO.ACCEPTED_FILE_EXTENSIONS:  # normal images
-            arr = ski.io.imread(fname=filepath)
-
-        elif (
-            suffix in IO.RAW_FILE_EXTENSIONS and rawpy is not None
-        ):  # raw sensor data handling
+        # RAW is tested FIRST. IO.ACCEPTED_FILE_EXTENSIONS includes the RAW
+        # suffixes (it is also the scanner's "is this an input" list), so when
+        # the general branch came first this one was unreachable and camera
+        # RAW went to skimage/Pillow, which returned an 8-bit embedded preview
+        # or failed (spec 2026-09-24-cli-preflight F24, §10.1).
+        if suffix in IO.RAW_FILE_EXTENSIONS:  # raw sensor data handling
+            if rawpy is None:
+                raise UnsupportedFileTypeError(
+                    filepath.suffix,
+                    reason=(
+                        "decoding camera RAW needs the optional package "
+                        "'rawpy', which is not installed; it is unavailable "
+                        "on Windows"
+                    ),
+                )
             use_auto_wb = rawpy_params.pop("use_auto_wb", False)
             use_camera_wb = rawpy_params.pop("use_camera_wb", False)
 
@@ -771,6 +782,9 @@ class ImageIOHandler(ImageColorSpace):
                     output_color=rawpy.ColorSpace.sRGB,
                     **rawpy_params,
                 )
+
+        elif suffix in IO.ACCEPTED_FILE_EXTENSIONS:  # normal images
+            arr = ski.io.imread(fname=filepath)
 
         else:
             raise UnsupportedFileTypeError(filepath.suffix)

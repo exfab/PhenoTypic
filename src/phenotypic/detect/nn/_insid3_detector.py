@@ -50,7 +50,7 @@ from typing import TYPE_CHECKING, Annotated, Any, List, Optional
 
 from pydantic import PrivateAttr, field_validator
 
-from phenotypic.abc_ import GpuDetector
+from phenotypic.abc_ import GpuDetector, OperationRequirements
 from phenotypic.detect.nn._helper._checkpoint_manager import Device
 from phenotypic.sdk_.typing_ import (
     DinoSize,
@@ -320,6 +320,31 @@ class Insid3Detector(GpuDetector):
     # ------------------------------------------------------------------
     # Lazy load + in-context prototype caching
     # ------------------------------------------------------------------
+
+    def preflight_requirements(self) -> OperationRequirements:
+        """Packages and weights this detector loads (run preflight, spec §3/§5).
+
+        DINOv3 (the default) is gated. See
+        ``BaseOperation.preflight_requirements``.
+
+        Returns:
+            The detector's packages, extra and weights, added to the
+            inherited input-layer requirement.
+        """
+        import dataclasses
+
+        from phenotypic.detect.nn._helper import _checkpoint_manager as ckpt
+
+        requirements = super().preflight_requirements()
+        modules = ("transformers", "torch")
+        if int(self.dino_version) == 3:
+            modules += ("huggingface_hub",)
+        return dataclasses.replace(
+            requirements,
+            modules=modules,
+            extra="foundation",
+            weights=(ckpt.dino_weight_requirement(self.dino_version, self.dino_size),),
+        )
 
     def _ensure_model_loaded(self) -> None:
         """Load the frozen DINO backbone and cache the in-context prototype.

@@ -32,7 +32,7 @@ from __future__ import annotations
 import logging
 import warnings
 import weakref
-from typing import TYPE_CHECKING, Annotated, Any, Literal, Sequence, overload
+from typing import ClassVar, TYPE_CHECKING, Annotated, Any, Literal, Sequence, overload
 
 import numpy as np
 from pydantic import Field, PrivateAttr, field_validator, model_validator
@@ -167,6 +167,10 @@ class CalibrateColorRpcc(ImageCorrector, PlotImage):
             (under any policy).  ``apply()`` re-raises every failure as
             ``RuntimeError`` with the ``ValueError`` as its root cause.
     """
+
+    #: Reads RGB on every call and fails on a grayscale image (run preflight, spec §3).
+    #: Reads image.rgb within every checker ROI.
+    _requires_rgb_input: ClassVar[bool] = True
 
     rois: list[CheckerRoi] = Field(min_length=1)
     checker_type: str = "ColorChecker24 - After November 2014"

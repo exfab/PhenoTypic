@@ -52,6 +52,44 @@ details that are load-bearing rather than incidental:
   bump also invalidates `--layer gray` continuations; invalidating too much is
   safe, so that is a cost, not a bug.
 
+## The run preflight, and the read-only/mutating split
+
+Spec `docs/superpowers/specs/2026-09-24-cli-preflight/design.md`.
+
+**`phenotypic_cli` has a read-only half and a mutating half, in that order.**
+The read-only half parses and validates options, scans the inputs, runs the
+refusals that cannot be skipped (the GPU placement refusal, the refusal of a
+`--restart`/`--overwrite` that would delete the run's own inputs, the
+`--metadata`, `--bit-depth` and `--gpu-slurm` parses), loads the pipeline,
+runs the **run preflight**, and ends at the `--dry-run` exit. Only then does
+the mutating half run: the `--restart` clear, the `--overwrite` rmtree,
+`mint_run_identity`, and everything after. **A new step that writes, deletes
+or submits goes below the `--dry-run` exit**, or `--dry-run` (and the GUI's
+Validate) stops being a promise that nothing under `--output` changed. Pinned
+by `tests/unit/cli/test_cli_preflight_ordering.py`.
+
+**The run preflight** (`_cli_preflight.py`) is a tuple of checks, `CHECKS`,
+each `(PreflightContext) -> list[PreflightFinding]`. A check reads; it never
+writes, never decodes a pixel, and never imports `torch` or `micro_sam` in the
+submitting process. Severity follows reach: an error when every image is
+affected, a warning listing the subset otherwise. A check that raises becomes a
+`PF-CHECK-CRASHED` warning and never blocks a run. `--skip-validation` skips
+the whole validation block (execution-config validation, the pipeline load
+check, and the run preflight) and none of the refusals listed above. Every `FindingCode` needs a `HINTS` entry
+and a row in the table in `docs/source/tutorials/pages/cli_batch_processing.md`;
+`tests/unit/test_docs_preflight_codes.py` fails on drift.
+
+**Mode scoping.** A requirement check iterates `operations_in_scope(context)`,
+never the whole operation tree: `MODE_SLOTS` says which root slots each mode
+executes (`full`: all; `process`: `ops`; `measure`: `meas`, `post`, `filters`,
+`model`), and a pipeline nested in `ops` contributes only its own `ops`.
+Walking everything would refuse a `process` run over a measurer it never runs.
+
+**Operations declare their own requirements** through
+`BaseOperation.preflight_requirements()` (`abc_/_requirements.py`), not
+through a checker-side table, so a new operation cannot fall out of date with
+the checks.
+
 ## Staged GPU engine
 
 When a CLI pipeline contains a `GpuDetector`, the **CLI** (not `ImagePipeline`)
@@ -195,8 +233,10 @@ provenance (`measure/CLAUDE.md`).
   `ExecutionConfig` is built, `phenotypic_cli` calls
   `uses_staged_gpu_strategy(config)` and converts `UnstageableGpuDetectorError`
   into `click.UsageError`; any *other* exception is ignored there so a corrupt
-  pipeline still reaches the existing "Pipeline loading failed" line. The
-  preflight sits above the manifest load, `--overwrite` clearing,
+  pipeline still reaches the existing "Pipeline loading failed" line. This
+  **GPU placement refusal** (it was once called "the preflight"; that name now
+  belongs to the run preflight below) sits above the manifest load,
+  `--overwrite` clearing,
   `mint_run_identity`, the `--dry-run` exit and `create_execution_strategy`.
   Both placements matter: below the clearing, a refused pipeline pointed at an
   existing run directory **deleted that run's results** before refusing, and
@@ -824,14 +864,18 @@ member (`sdk_/_schema_shape.py:192`).
 
 ## Environment variables (important for future work)
 
-- `PHENOTYPIC_PRELOAD_MODULES` — comma list of modules staged SLURM **workers and
-  the finalizer** import before `ImagePipeline.from_json`
-  (`_cli_preload.py:preload_custom_operation_modules`). Fresh remote processes
-  can't see op classes defined outside the `phenotypic` namespace; list a
-  self-registering module here so a pipeline with **custom operations**
-  deserializes on compute nodes and during final publication. `sbatch
-  --export=ALL` propagates it. (Tests use
-  `tests/_fakes/register_fake_gpu.py`.)
+- `PHENOTYPIC_PRELOAD_MODULES` — comma list of self-registering modules that
+  **every process that deserializes a pipeline** imports:
+  `SerializablePipeline._find_class_in_phenotypic` calls
+  `preload_custom_operation_modules_once` (`sdk_/_preload.py`) before its first
+  lookup, hit or miss, and again on a miss. That reaches the main CLI, staged
+  and ordinary SLURM workers, local loky workers (fresh processes that never run
+  `main`) and the finalizer by construction, rather than by a list of call
+  sites. The main CLI also imports them at startup, so a broken name is one
+  error line naming the variable. `sbatch --export=ALL` propagates it. Spec
+  `2026-09-24-cli-preflight` §10.2. (Tests use
+  `tests/_fakes/register_fake_gpu.py` and
+  `tests/_fakes/register_custom_threshold_detector.py`.)
 - `PHENOTYPIC_SLURM_PYTHONPATH` — internal submission snapshot of the caller's
   `PYTHONPATH`. Generated batch scripts restore it before invoking Python. This
   keeps custom-operation modules and the reviewed source checkout importable on

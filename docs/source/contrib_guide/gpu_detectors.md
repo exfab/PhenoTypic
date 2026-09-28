@@ -429,6 +429,44 @@ Use the shared CPU fake rather than writing another one:
 - `PHENOTYPIC_ACCEPT_MODEL_LICENSE` plus `require_license_acceptance`
   (`detect/nn/_checkpoint_manager.py`) gate downloads of licence-restricted
   checkpoints.
-- `PHENOTYPIC_PRELOAD_MODULES` lets a fresh SLURM worker import a
-  self-registering module before `from_json`, so a detector defined outside the
-  `phenotypic` namespace can be deserialised.
+- `PHENOTYPIC_PRELOAD_MODULES` names self-registering modules: modules whose
+  import attaches the class to the `phenotypic` namespace
+  (`phenotypic.MyDetector = MyDetector`). A module that only defines the class
+  is not enough, because pipeline JSON records bare class names. Class
+  resolution imports the listed modules in every process that deserializes a
+  pipeline (the CLI, SLURM workers, local parallel workers, the finalizer), so a
+  detector defined outside the `phenotypic` namespace deserializes everywhere.
+- A runtime path must never prompt: pass `interactive=False` to
+  `require_license_acceptance` and to any download helper that can prompt.
+
+## Declaring what your detector needs
+
+The CLI's run preflight reads `preflight_requirements()` from every operation
+the run will execute, so a missing package, gated license, or uncached weight
+is reported before any image is processed. For a fixed requirement, set the
+class variables `_requires_modules` (import names, checked with `find_spec` and
+never imported) and `_requires_extra` (the `pyproject` extra that provides
+them). When a requirement depends on a field, override the method, call
+`super()`, and extend the result with `dataclasses.replace`:
+
+```python
+import dataclasses
+
+from phenotypic.abc_ import OperationRequirements, WeightRequirement
+
+
+def preflight_requirements(self) -> OperationRequirements:
+    requirements = super().preflight_requirements()
+    return dataclasses.replace(
+        requirements,
+        modules=("my_model_pkg", "torch"),
+        extra="torch",
+        weights=(WeightRequirement(model="my-model:base", license_key=None,
+                                   is_cached=lambda: my_cache_probe()),),
+    )
+```
+
+`is_cached` must answer from the file system alone: no `torch` import and no
+network access, because the preflight runs on the submitting node. Return
+`None` when the answer cannot be known. `GpuDetector`'s own override adds the
+RGB requirement for `input_layer="rgb"`; keep it by calling `super()`.

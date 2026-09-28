@@ -5,7 +5,7 @@ import json
 import importlib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Union, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Union, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from phenotypic._core._image_pipeline import ImagePipeline
@@ -276,7 +276,7 @@ class SerializablePipeline(NapariPipelineViewer):
 
             # Parse JSON
             try:
-                config = json.loads(json_data)
+                config = _loads_rejecting_duplicate_keys(json_data)
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid JSON data: {e}")
 
@@ -541,10 +541,7 @@ class SerializablePipeline(NapariPipelineViewer):
 
             op_class = SerializablePipeline._find_class_in_phenotypic(class_name)
             if op_class is None:
-                raise AttributeError(
-                        f"Class '{class_name}' not found in phenotypic namespace. "
-                        f"Make sure it's properly imported in phenotypic.__init__.py"
-                )
+                raise UnknownOperationClassError(class_name)
 
             params = SerializablePipeline._deserialize_value(
                 op_data.get("params", {}) or {}
@@ -633,12 +630,39 @@ class SerializablePipeline(NapariPipelineViewer):
         requested class. It checks the main phenotypic module as well as common
         submodules like detect, measure, enhance, refine, etc.
 
+        The modules ``PHENOTYPIC_PRELOAD_MODULES`` names are imported before
+        the first lookup in a process, hit or miss
+        (:func:`~phenotypic.sdk_._preload.preload_custom_operation_modules_once`),
+        and again on a miss, which also waits for another thread's in-flight
+        import of the same module. Resolution is the one step every process
+        that deserializes a pipeline passes through -- the CLI, a SLURM
+        worker, a joblib/loky worker that never ran the CLI's ``main`` -- so
+        honoring the variable here reaches all of them by construction (spec
+        ``2026-09-24-cli-preflight`` §10.2, reviews R2 and C4). A caller that
+        must not import custom code uses :meth:`_search_phenotypic_namespace`.
+
         Args:
             class_name: Name of the class to find.
 
         Returns:
             The class object if found, None otherwise.
         """
+        from phenotypic.sdk_._preload import (
+            preload_custom_operation_modules,
+            preload_custom_operation_modules_once,
+            preload_module_names,
+        )
+
+        preload_custom_operation_modules_once()
+        found = SerializablePipeline._search_phenotypic_namespace(class_name)
+        if found is not None or not preload_module_names():
+            return found
+        preload_custom_operation_modules()
+        return SerializablePipeline._search_phenotypic_namespace(class_name)
+
+    @staticmethod
+    def _search_phenotypic_namespace(class_name: str):
+        """One pass of :meth:`_find_class_in_phenotypic`'s lookup, no preload."""
         import phenotypic
 
         if class_name in _LEGACY_CLASS_ALIASES:
@@ -894,3 +918,78 @@ class SerializablePipeline(NapariPipelineViewer):
                 )
             entries.append(parsed)
         return entries
+
+
+class _KeyTrackingObject(dict):
+    """A parsed JSON object that remembers which of its keys were repeated."""
+
+    duplicates: list[str]
+
+
+def _track_duplicate_keys(pairs: list[tuple[str, Any]]) -> _KeyTrackingObject:
+    obj = _KeyTrackingObject()
+    obj.duplicates = []
+    for key, value in pairs:
+        if key in obj:
+            obj.duplicates.append(key)
+        obj[key] = value
+    return obj
+
+
+def _loads_rejecting_duplicate_keys(text: str | bytes) -> Any:
+    """``json.loads`` that refuses a repeated key anywhere in the document.
+
+    Plain ``json.loads`` keeps the last duplicate silently, and because a dict
+    keeps a key's *first* insertion position, the surviving operation also
+    runs in the wrong place: ``det, blur, det`` executes the second ``det``
+    before ``blur`` (spec ``2026-09-24-cli-preflight`` F14). A pipeline that
+    never ran as written is refused rather than reinterpreted.
+
+    Args:
+        text: The JSON document.
+
+    Returns:
+        The parsed document, as plain ``dict``/``list`` values.
+
+    Raises:
+        ValueError: A key is repeated; the message names each repeat's path.
+        json.JSONDecodeError: The text is not valid JSON.
+    """
+    tracked = json.loads(text, object_pairs_hook=_track_duplicate_keys)
+    repeats: list[str] = []
+
+    def visit(node: Any, path: str) -> None:
+        if isinstance(node, _KeyTrackingObject):
+            repeats.extend(f"{path}.{key}" if path else key for key in node.duplicates)
+            for key, value in node.items():
+                visit(value, f"{path}.{key}" if path else key)
+        elif isinstance(node, list):
+            for index, value in enumerate(node):
+                visit(value, f"{path}[{index}]")
+
+    visit(tracked, "")
+    if repeats:
+        raise ValueError(
+            "Pipeline JSON repeats a key, so one entry would silently replace "
+            f"another and change the execution order: {', '.join(repeats)}. "
+            "Remove or rename the duplicate."
+        )
+    return json.loads(text)
+
+
+class UnknownOperationClassError(AttributeError):
+    """A pipeline names an operation class that no loaded module provides.
+
+    An ``AttributeError`` for compatibility with callers that caught the plain
+    one this replaced.
+    """
+
+    def __init__(self, class_name: str) -> None:
+        self.class_name = class_name
+        super().__init__(
+            f"Class '{class_name}' not found in phenotypic namespace. A custom "
+            "operation defined outside phenotypic must be registered: list a "
+            "module in PHENOTYPIC_PRELOAD_MODULES whose import attaches the "
+            f"class to the phenotypic namespace (e.g. phenotypic.{class_name} "
+            "= cls)."
+        )

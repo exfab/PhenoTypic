@@ -50,6 +50,20 @@ class InputLayerMixin(BaseModel):
             fields["input_layer"] = fields.pop("input_layer")
             cls.model_rebuild(force=True)
 
+    def preflight_requirements(self):
+        """Add the RGB requirement when ``input_layer`` is ``"rgb"``.
+
+        Cooperates with the operation's own requirements through ``super()``;
+        this mixin always precedes the operation base in the MRO. See
+        ``BaseOperation.preflight_requirements``.
+        """
+        import dataclasses
+
+        requirements = super().preflight_requirements()  # type: ignore[misc]
+        if self.input_layer == "rgb":
+            requirements = dataclasses.replace(requirements, rgb_input=True)
+        return requirements
+
     def _read_input_layer(self, image: "Image") -> np.ndarray:
         """Return the source array for this operation.
 

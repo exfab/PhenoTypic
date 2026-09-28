@@ -61,6 +61,10 @@ class MeasureColorComposition(MeasureFeatures):
         interpreting color metrics biologically.
     """
 
+    #: Reads RGB on every call and fails on a grayscale image (run preflight, spec §3).
+    #: Reads image.color.hsv.foreground().
+    _requires_rgb_input: ClassVar[bool] = True
+
     _measurement_infoclass: ClassVar[type] = ColorComposition
 
     # Standardized color name mapping (index -> name)
