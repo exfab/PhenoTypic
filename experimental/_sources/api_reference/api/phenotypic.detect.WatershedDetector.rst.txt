@@ -38,6 +38,7 @@ phenotypic.detect.WatershedDetector
       ~WatershedDetector.parse_file
       ~WatershedDetector.parse_obj
       ~WatershedDetector.parse_raw
+      ~WatershedDetector.preflight_requirements
       ~WatershedDetector.schema
       ~WatershedDetector.schema_json
       ~WatershedDetector.to_json

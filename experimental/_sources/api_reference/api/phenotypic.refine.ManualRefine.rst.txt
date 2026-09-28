@@ -39,6 +39,7 @@ phenotypic.refine.ManualRefine
       ~ManualRefine.parse_file
       ~ManualRefine.parse_obj
       ~ManualRefine.parse_raw
+      ~ManualRefine.preflight_requirements
       ~ManualRefine.schema
       ~ManualRefine.schema_json
       ~ManualRefine.to_json

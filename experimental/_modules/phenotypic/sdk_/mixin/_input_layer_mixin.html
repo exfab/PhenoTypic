@@ -656,6 +656,23 @@
             <span class="bp">cls</span><span class="o">.</span><span class="n">model_rebuild</span><span class="p">(</span><span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
 
+<div class="viewcode-block" id="InputLayerMixin.preflight_requirements">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.sdk_.InputLayerMixin.html#phenotypic.sdk_.InputLayerMixin.preflight_requirements">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">preflight_requirements</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add the RGB requirement when ``input_layer`` is ``&quot;rgb&quot;``.</span>
+
+<span class="sd">        Cooperates with the operation&#39;s own requirements through ``super()``;</span>
+<span class="sd">        this mixin always precedes the operation base in the MRO. See</span>
+<span class="sd">        ``BaseOperation.preflight_requirements``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">dataclasses</span>
+
+        <span class="n">requirements</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">preflight_requirements</span><span class="p">()</span>  <span class="c1"># type: ignore[misc]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_layer</span> <span class="o">==</span> <span class="s2">&quot;rgb&quot;</span><span class="p">:</span>
+            <span class="n">requirements</span> <span class="o">=</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">requirements</span><span class="p">,</span> <span class="n">rgb_input</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">requirements</span></div>
+
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_read_input_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="s2">&quot;Image&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the source array for this operation.</span>
 

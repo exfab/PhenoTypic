@@ -772,6 +772,63 @@
 
 
 
+<div class="viewcode-block" id="with_default_gpu_request">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.sdk_.slurm.with_default_gpu_request.html#phenotypic.sdk_.slurm.with_default_gpu_request">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">with_default_gpu_request</span><span class="p">(</span><span class="n">slurm_args</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;*slurm_args* as a non-staged SLURM run submits them for a GPU pipeline.</span>
+
+<span class="sd">    ``AutonomousSLURMStrategy`` adds ``slurm_gpus_per_node=1`` unless the</span>
+<span class="sd">    profile already names it. The run preflight tests the same profile, so the</span>
+<span class="sd">    two share this definition (Phase E review E2).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        slurm_args: The ``--slurm`` profile.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A new dict carrying the GPU request.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">requested</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">slurm_args</span><span class="p">)</span>
+    <span class="n">requested</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;slurm_gpus_per_node&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">requested</span></div>
+
+
+
+<div class="viewcode-block" id="effective_sbatch_option">
+<a class="viewcode-back" href="../../../../api_reference/api/phenotypic.sdk_.slurm.effective_sbatch_option.html#phenotypic.sdk_.slurm.effective_sbatch_option">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">effective_sbatch_option</span><span class="p">(</span><span class="n">slurm_args</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">option</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The value ``sbatch`` will use for ``--&lt;option&gt;`` from *slurm_args*.</span>
+
+<span class="sd">    Read back from :func:`format_sbatch_directives`, the one formatter, so</span>
+<span class="sd">    every spelling it accepts counts (``partition`` and ``slurm_partition``</span>
+<span class="sd">    both render ``--partition``), and the LAST directive wins, as ``sbatch``</span>
+<span class="sd">    applies ``#SBATCH`` lines in order. A check that reads one dict key</span>
+<span class="sd">    instead misses the GUI&#39;s ``partition=`` spelling, and with both</span>
+<span class="sd">    spellings present asks about the partition the job will not run in</span>
+<span class="sd">    (spec 2026-09-24-cli-preflight, Phase E review E3).</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        slurm_args: The profile, as ``--slurm``/``--gpu-slurm`` parse it.</span>
+<span class="sd">        option: The long option name without dashes, e.g. ``&quot;partition&quot;``.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The value of the last ``--&lt;option&gt;=`` directive, or ``None``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+    <span class="n">prefix</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;#SBATCH --</span><span class="si">{</span><span class="n">option</span><span class="si">}</span><span class="s2">=&quot;</span>
+    <span class="n">rendered</span> <span class="o">=</span> <span class="n">format_sbatch_directives</span><span class="p">(</span>
+        <span class="n">job_name</span><span class="o">=</span><span class="s2">&quot;phenotypic&quot;</span><span class="p">,</span>
+        <span class="n">slurm_args</span><span class="o">=</span><span class="n">slurm_args</span><span class="p">,</span>
+        <span class="n">output_log</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/dev/null&quot;</span><span class="p">),</span>
+        <span class="n">error_log</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;/dev/null&quot;</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">line</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">prefix</span><span class="p">):]</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">rendered</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span> <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">prefix</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="k">return</span> <span class="n">values</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">values</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+
+
 <div class="viewcode-block" id="parse_job_id">
 <a class="viewcode-back" href="../../../../api_reference/api/phenotypic.sdk_.slurm.parse_job_id.html#phenotypic.sdk_.slurm.parse_job_id">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">parse_job_id</span><span class="p">(</span><span class="n">sbatch_stdout</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>

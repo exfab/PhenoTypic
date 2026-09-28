@@ -38,6 +38,7 @@ phenotypic.detect.TwoKFilamentousDetector
       ~TwoKFilamentousDetector.parse_file
       ~TwoKFilamentousDetector.parse_obj
       ~TwoKFilamentousDetector.parse_raw
+      ~TwoKFilamentousDetector.preflight_requirements
       ~TwoKFilamentousDetector.schema
       ~TwoKFilamentousDetector.schema_json
       ~TwoKFilamentousDetector.to_json

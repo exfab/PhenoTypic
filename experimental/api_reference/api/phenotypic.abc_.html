@@ -609,6 +609,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PrefabPipeline.html">phenotypic.abc_.PrefabPipeline</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html">phenotypic.abc_.FootprintMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PostMeasurement.html">phenotypic.abc_.PostMeasurement</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html">phenotypic.abc_.OperationRequirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.WeightRequirement.html">phenotypic.abc_.WeightRequirement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.DetectionMode.html">phenotypic.abc_.DetectionMode</a></li>
 </ul>
 </details></li>
@@ -976,6 +978,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_machine_state.html">phenotypic.sdk_.migrate_legacy_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_qc.html">phenotypic.sdk_.migrate_legacy_qc</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.clear_machine_state.html">phenotypic.sdk_.clear_machine_state</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.machine_state_restart_targets.html">phenotypic.sdk_.machine_state_restart_targets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.preserved_on_restart_names.html">phenotypic.sdk_.preserved_on_restart_names</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.param_importance_path.html">phenotypic.sdk_.param_importance_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.pareto_best_pipeline_path.html">phenotypic.sdk_.pareto_best_pipeline_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.pareto_dir.html">phenotypic.sdk_.pareto_dir</a></li>
@@ -1122,6 +1126,7 @@
 </details></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.sdk_.slurm.html">phenotypic.sdk_.slurm</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.calculate_optimal_array_chunks.html">phenotypic.sdk_.slurm.calculate_optimal_array_chunks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.effective_sbatch_option.html">phenotypic.sdk_.slurm.effective_sbatch_option</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.estimate_concurrent_capacity.html">phenotypic.sdk_.slurm.estimate_concurrent_capacity</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.format_sbatch_directives.html">phenotypic.sdk_.slurm.format_sbatch_directives</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.generate_dispatcher_chain.html">phenotypic.sdk_.slurm.generate_dispatcher_chain</a></li>
@@ -1135,6 +1140,7 @@
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.submit_drip_feed_start.html">phenotypic.sdk_.slurm.submit_drip_feed_start</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.submit_script.html">phenotypic.sdk_.slurm.submit_script</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.validate_array_chunk.html">phenotypic.sdk_.slurm.validate_array_chunk</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.with_default_gpu_request.html">phenotypic.sdk_.slurm.with_default_gpu_request</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.write_slurm_array_script.html">phenotypic.sdk_.slurm.write_slurm_array_script</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.SlurmArrayScriptSpec.html">phenotypic.sdk_.slurm.SlurmArrayScriptSpec</a></li>
 </ul>
@@ -1380,6 +1386,12 @@ tailored to agar plate imaging, building on <cite>MeasurementInfo</cite>, <cite>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="phenotypic.abc_.PostMeasurement.html#phenotypic.abc_.PostMeasurement" title="phenotypic.abc_.PostMeasurement"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PostMeasurement</span></code></a></p></td>
 <td><p>Transform a measurement DataFrame after feature extraction.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><code class="xref py py-obj docutils literal notranslate"><span class="pre">OperationRequirements</span></code></a></p></td>
+<td><p>Everything an operation needs from the run that executes it.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.abc_.WeightRequirement.html#phenotypic.abc_.WeightRequirement" title="phenotypic.abc_.WeightRequirement"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WeightRequirement</span></code></a></p></td>
+<td><p>Model weights an operation loads at run time.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.abc_.DetectionMode.html#phenotypic.abc_.DetectionMode" title="phenotypic.abc_.DetectionMode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DetectionMode</span></code></a></p></td>
 <td><p>Base class for detection matrix source modes.</p></td>
@@ -2202,6 +2214,27 @@ logged.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -3248,6 +3281,27 @@ logged.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_base_operation.html#BaseOperation.preflight_requirements"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/abc_/_base_operation.html#BaseOperation.to_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Serialize this operation to JSON.</p>
 <p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
@@ -4143,6 +4197,27 @@ logged.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -5137,6 +5212,27 @@ logged.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span></dt>
 <dd><p>Serialize this operation to JSON.</p>
 <p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
@@ -6069,6 +6165,27 @@ logged.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -7080,6 +7197,17 @@ logged.</p>
 <dd class="field-even"><p>None</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/abc_/_gpu_detector.html#GpuDetector.preflight_requirements"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Add the RGB requirement when <code class="docutils literal notranslate"><span class="pre">input_layer</span></code> is <code class="docutils literal notranslate"><span class="pre">&quot;rgb&quot;</span></code>.</p>
+<p>Every GPU detector reads <code class="docutils literal notranslate"><span class="pre">getattr(image,</span> <span class="pre">self.input_layer)</span></code>, so the
+requirement follows the field, not the class: <code class="docutils literal notranslate"><span class="pre">MicroSamDetector</span></code>
+defaults to <code class="docutils literal notranslate"><span class="pre">&quot;gray&quot;</span></code> but a user may set <code class="docutils literal notranslate"><span class="pre">&quot;rgb&quot;</span></code>. Subclasses extend
+this through <code class="docutils literal notranslate"><span class="pre">super()</span></code> with their packages and weights. See
+<code class="docutils literal notranslate"><span class="pre">BaseOperation.preflight_requirements</span></code>.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -8234,6 +8362,27 @@ logged.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -9409,6 +9558,27 @@ logged.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span></dt>
 <dd><p>Serialize this operation to JSON.</p>
 <p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
@@ -10540,6 +10710,27 @@ logged.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span></dt>
 <dd><p>Serialize this operation to JSON.</p>
 <p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
@@ -11581,6 +11772,27 @@ logged.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -12735,6 +12947,27 @@ logged.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span></dt>
 <dd><p>Serialize this operation to JSON.</p>
 <p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
@@ -13794,6 +14027,27 @@ logged.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -14938,6 +15192,27 @@ logged.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span></dt>
 <dd><p>Serialize this operation to JSON.</p>
 <p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
@@ -15858,6 +16133,27 @@ logged.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -17052,6 +17348,27 @@ logged.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -18301,6 +18618,27 @@ logged.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -19567,6 +19905,27 @@ logged.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -21411,6 +21770,27 @@ logged.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span></dt>
 <dd><p>Serialize this operation to JSON.</p>
 <p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
@@ -22597,6 +22977,27 @@ logged.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -24048,6 +24449,27 @@ logged.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span></dt>
 <dd><p>Serialize this operation to JSON.</p>
 <p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
@@ -24151,6 +24573,108 @@ visualization controls will be added to the widget.</p></li>
 </dd>
 </dl>
 </dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">OperationRequirements</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid_image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rgb_input</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modules</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="phenotypic.abc_.WeightRequirement.html#phenotypic.abc_.WeightRequirement" title="phenotypic.abc_._requirements.WeightRequirement"><span class="pre">WeightRequirement</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">()</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/abc_/_requirements.html#OperationRequirements"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Everything an operation needs from the run that executes it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>grid_image</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
+<li><p><strong>rgb_input</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
+<li><p><strong>modules</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>...</em><em>]</em>)</p></li>
+<li><p><strong>extra</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>weights</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference internal" href="phenotypic.abc_.WeightRequirement.html#phenotypic.abc_.WeightRequirement" title="phenotypic.abc_._requirements.WeightRequirement"><em>WeightRequirement</em></a><em>, </em><em>...</em><em>]</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">grid_image</span></span></dt>
+<dd><p>The operation raises <code class="docutils literal notranslate"><span class="pre">GridImageInputError</span></code> on a plain
+<code class="docutils literal notranslate"><span class="pre">Image</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">rgb_input</span></span></dt>
+<dd><p>The operation reads RGB pixels and fails on a grayscale
+image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">modules</span></span></dt>
+<dd><p>Importable module names the operation imports lazily; checked
+with <code class="docutils literal notranslate"><span class="pre">importlib.util.find_spec</span></code>, never imported.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>, …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">extra</span></span></dt>
+<dd><p>The <code class="docutils literal notranslate"><span class="pre">pyproject</span></code> extra that provides <code class="docutils literal notranslate"><span class="pre">modules</span></code>, named in the
+remedy; <code class="docutils literal notranslate"><span class="pre">None</span></code> when no extra does (e.g. a conda-only package).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">weights</span></span></dt>
+<dd><p>Model weights the operation loads.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference internal" href="phenotypic.abc_.WeightRequirement.html#phenotypic.abc_.WeightRequirement" title="phenotypic.abc_._requirements.WeightRequirement">phenotypic.abc_._requirements.WeightRequirement</a>, …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">extra</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">grid_image</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">modules</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">()</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">rgb_input</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">weights</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="phenotypic.abc_.WeightRequirement.html#phenotypic.abc_.WeightRequirement" title="phenotypic.abc_._requirements.WeightRequirement"><span class="pre">WeightRequirement</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">()</span></em></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -24983,6 +25507,27 @@ logged.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -26508,6 +27053,27 @@ logged.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">set_filters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><span class="pre">SetAnalyzer</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">SetAnalyzer</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span></dt>
 <dd><p>Set the analysis filter chain.</p>
 <dl class="field-list simple">
@@ -27627,6 +28193,27 @@ logged.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -28797,6 +29384,27 @@ logged.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span></dt>
 <dd><p>Serialize this operation to JSON.</p>
 <p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
@@ -28900,6 +29508,74 @@ visualization controls will be added to the widget.</p></li>
 </dd>
 </dl>
 </dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.abc_.</span></span><span class="sig-name descname"><span class="pre">WeightRequirement</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">license_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_cached</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/abc_/_requirements.html#WeightRequirement"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Model weights an operation loads at run time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+<li><p><strong>license_key</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>is_cached</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><em>Callable</em></a><em>[</em><em>[</em><em>]</em><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em> | </em><em>None</em><em>]</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">model</span></span></dt>
+<dd><p>A readable identifier, e.g. <code class="docutils literal notranslate"><span class="pre">&quot;sam2:tiny&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;dinov3:base&quot;</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">license_key</span></span></dt>
+<dd><p>The <code class="docutils literal notranslate"><span class="pre">PHENOTYPIC_ACCEPT_MODEL_LICENSE</span></code> token that must be
+accepted before the weights may be downloaded or used, or <code class="docutils literal notranslate"><span class="pre">None</span></code>
+when the weights are not gated.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">is_cached</span></span></dt>
+<dd><p>Reports whether the weights are already on local disk,
+without importing <code class="docutils literal notranslate"><span class="pre">torch</span></code> and without network access. Returns
+<code class="docutils literal notranslate"><span class="pre">None</span></code> when that cannot be told.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Callable[[], <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)">bool</a> | None]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">is_cached</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">license_key</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em></dt>
+<dd></dd></dl>
 
 </dd></dl>
 

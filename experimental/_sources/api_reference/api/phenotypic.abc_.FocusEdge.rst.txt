@@ -38,6 +38,7 @@ phenotypic.abc\_.FocusEdge
       ~FocusEdge.parse_file
       ~FocusEdge.parse_obj
       ~FocusEdge.parse_raw
+      ~FocusEdge.preflight_requirements
       ~FocusEdge.schema
       ~FocusEdge.schema_json
       ~FocusEdge.to_json

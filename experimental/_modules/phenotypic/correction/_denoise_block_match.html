@@ -601,7 +601,7 @@
   <h1>Source code for phenotypic.correction._denoise_block_match</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Literal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Literal</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span>
@@ -707,6 +707,10 @@
 <span class="sd">        :doc:`/explanation/image_quality_noise_contrast_structure` for</span>
 <span class="sd">        background on Poisson-Gaussian noise models and denoiser selection.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1">#: Gray-tolerant: operates on detect_mat; the ratchet matched a docstring</span>
+    <span class="c1">#: mention of skimage.color. Declared explicitly for the run preflight (spec §3).</span>
+    <span class="n">_requires_rgb_input</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
 
     <span class="n">block_size</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">categories</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">))]</span> <span class="o">=</span> <span class="mi">8</span>
     <span class="n">stage_arg</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;all_stages&quot;</span><span class="p">,</span> <span class="s2">&quot;hard_thresholding&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;all_stages&quot;</span>

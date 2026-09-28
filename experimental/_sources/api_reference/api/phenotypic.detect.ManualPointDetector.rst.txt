@@ -39,6 +39,7 @@ phenotypic.detect.ManualPointDetector
       ~ManualPointDetector.parse_file
       ~ManualPointDetector.parse_obj
       ~ManualPointDetector.parse_raw
+      ~ManualPointDetector.preflight_requirements
       ~ManualPointDetector.schema
       ~ManualPointDetector.schema_json
       ~ManualPointDetector.to_json

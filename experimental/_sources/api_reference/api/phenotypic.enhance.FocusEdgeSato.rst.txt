@@ -38,6 +38,7 @@ phenotypic.enhance.FocusEdgeSato
       ~FocusEdgeSato.parse_file
       ~FocusEdgeSato.parse_obj
       ~FocusEdgeSato.parse_raw
+      ~FocusEdgeSato.preflight_requirements
       ~FocusEdgeSato.schema
       ~FocusEdgeSato.schema_json
       ~FocusEdgeSato.to_json

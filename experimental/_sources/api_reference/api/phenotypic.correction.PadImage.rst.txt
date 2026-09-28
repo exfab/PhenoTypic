@@ -38,6 +38,7 @@ phenotypic.correction.PadImage
       ~PadImage.parse_file
       ~PadImage.parse_obj
       ~PadImage.parse_raw
+      ~PadImage.preflight_requirements
       ~PadImage.schema
       ~PadImage.schema_json
       ~PadImage.to_json

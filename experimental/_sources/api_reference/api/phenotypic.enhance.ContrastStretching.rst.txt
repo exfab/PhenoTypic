@@ -38,6 +38,7 @@ phenotypic.enhance.ContrastStretching
       ~ContrastStretching.parse_file
       ~ContrastStretching.parse_obj
       ~ContrastStretching.parse_raw
+      ~ContrastStretching.preflight_requirements
       ~ContrastStretching.schema
       ~ContrastStretching.schema_json
       ~ContrastStretching.to_json

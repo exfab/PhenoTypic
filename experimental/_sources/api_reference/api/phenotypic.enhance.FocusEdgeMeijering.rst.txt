@@ -38,6 +38,7 @@ phenotypic.enhance.FocusEdgeMeijering
       ~FocusEdgeMeijering.parse_file
       ~FocusEdgeMeijering.parse_obj
       ~FocusEdgeMeijering.parse_raw
+      ~FocusEdgeMeijering.preflight_requirements
       ~FocusEdgeMeijering.schema
       ~FocusEdgeMeijering.schema_json
       ~FocusEdgeMeijering.to_json

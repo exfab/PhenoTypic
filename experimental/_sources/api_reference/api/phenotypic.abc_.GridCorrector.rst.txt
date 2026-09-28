@@ -38,6 +38,7 @@ phenotypic.abc\_.GridCorrector
       ~GridCorrector.parse_file
       ~GridCorrector.parse_obj
       ~GridCorrector.parse_raw
+      ~GridCorrector.preflight_requirements
       ~GridCorrector.schema
       ~GridCorrector.schema_json
       ~GridCorrector.to_json

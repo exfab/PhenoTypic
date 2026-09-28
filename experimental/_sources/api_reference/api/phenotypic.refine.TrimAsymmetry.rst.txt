@@ -38,6 +38,7 @@ phenotypic.refine.TrimAsymmetry
       ~TrimAsymmetry.parse_file
       ~TrimAsymmetry.parse_obj
       ~TrimAsymmetry.parse_raw
+      ~TrimAsymmetry.preflight_requirements
       ~TrimAsymmetry.schema
       ~TrimAsymmetry.schema_json
       ~TrimAsymmetry.to_json

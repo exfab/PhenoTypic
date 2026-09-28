@@ -38,6 +38,7 @@ phenotypic.detect.CompositeDetector
       ~CompositeDetector.parse_file
       ~CompositeDetector.parse_obj
       ~CompositeDetector.parse_raw
+      ~CompositeDetector.preflight_requirements
       ~CompositeDetector.schema
       ~CompositeDetector.schema_json
       ~CompositeDetector.to_json

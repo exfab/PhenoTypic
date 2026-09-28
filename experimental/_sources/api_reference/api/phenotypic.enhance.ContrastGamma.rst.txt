@@ -38,6 +38,7 @@ phenotypic.enhance.ContrastGamma
       ~ContrastGamma.parse_file
       ~ContrastGamma.parse_obj
       ~ContrastGamma.parse_raw
+      ~ContrastGamma.preflight_requirements
       ~ContrastGamma.schema
       ~ContrastGamma.schema_json
       ~ContrastGamma.to_json

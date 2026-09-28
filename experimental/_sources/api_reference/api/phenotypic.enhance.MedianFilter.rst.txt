@@ -38,6 +38,7 @@ phenotypic.enhance.MedianFilter
       ~MedianFilter.parse_file
       ~MedianFilter.parse_obj
       ~MedianFilter.parse_raw
+      ~MedianFilter.preflight_requirements
       ~MedianFilter.schema
       ~MedianFilter.schema_json
       ~MedianFilter.to_json

@@ -37,6 +37,7 @@ phenotypic.abc\_.BaseOperation
       ~BaseOperation.parse_file
       ~BaseOperation.parse_obj
       ~BaseOperation.parse_raw
+      ~BaseOperation.preflight_requirements
       ~BaseOperation.schema
       ~BaseOperation.schema_json
       ~BaseOperation.to_json

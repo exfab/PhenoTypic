@@ -609,6 +609,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PrefabPipeline.html">phenotypic.abc_.PrefabPipeline</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html">phenotypic.abc_.FootprintMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PostMeasurement.html">phenotypic.abc_.PostMeasurement</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html">phenotypic.abc_.OperationRequirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.WeightRequirement.html">phenotypic.abc_.WeightRequirement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.DetectionMode.html">phenotypic.abc_.DetectionMode</a></li>
 </ul>
 </details></li>
@@ -976,6 +978,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_machine_state.html">phenotypic.sdk_.migrate_legacy_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_qc.html">phenotypic.sdk_.migrate_legacy_qc</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.clear_machine_state.html">phenotypic.sdk_.clear_machine_state</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.machine_state_restart_targets.html">phenotypic.sdk_.machine_state_restart_targets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.preserved_on_restart_names.html">phenotypic.sdk_.preserved_on_restart_names</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.param_importance_path.html">phenotypic.sdk_.param_importance_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.pareto_best_pipeline_path.html">phenotypic.sdk_.pareto_best_pipeline_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.pareto_dir.html">phenotypic.sdk_.pareto_dir</a></li>
@@ -1122,6 +1126,7 @@
 </details></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.sdk_.slurm.html">phenotypic.sdk_.slurm</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.calculate_optimal_array_chunks.html">phenotypic.sdk_.slurm.calculate_optimal_array_chunks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.effective_sbatch_option.html">phenotypic.sdk_.slurm.effective_sbatch_option</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.estimate_concurrent_capacity.html">phenotypic.sdk_.slurm.estimate_concurrent_capacity</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.format_sbatch_directives.html">phenotypic.sdk_.slurm.format_sbatch_directives</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.generate_dispatcher_chain.html">phenotypic.sdk_.slurm.generate_dispatcher_chain</a></li>
@@ -1135,6 +1140,7 @@
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.submit_drip_feed_start.html">phenotypic.sdk_.slurm.submit_drip_feed_start</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.submit_script.html">phenotypic.sdk_.slurm.submit_script</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.validate_array_chunk.html">phenotypic.sdk_.slurm.validate_array_chunk</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.with_default_gpu_request.html">phenotypic.sdk_.slurm.with_default_gpu_request</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.write_slurm_array_script.html">phenotypic.sdk_.slurm.write_slurm_array_script</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.SlurmArrayScriptSpec.html">phenotypic.sdk_.slurm.SlurmArrayScriptSpec</a></li>
 </ul>
@@ -1443,22 +1449,25 @@ the CLI make informed GPU resource-allocation decisions.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GpuDetector.parse_raw" title="phenotypic.abc_.GpuDetector.parse_raw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_raw</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GpuDetector.schema" title="phenotypic.abc_.GpuDetector.schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GpuDetector.preflight_requirements" title="phenotypic.abc_.GpuDetector.preflight_requirements"><code class="xref py py-obj docutils literal notranslate"><span class="pre">preflight_requirements</span></code></a></p></td>
+<td><p>Add the RGB requirement when <code class="docutils literal notranslate"><span class="pre">input_layer</span></code> is <code class="docutils literal notranslate"><span class="pre">&quot;rgb&quot;</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GpuDetector.schema" title="phenotypic.abc_.GpuDetector.schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GpuDetector.schema_json" title="phenotypic.abc_.GpuDetector.schema_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema_json</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GpuDetector.schema_json" title="phenotypic.abc_.GpuDetector.schema_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema_json</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GpuDetector.to_json" title="phenotypic.abc_.GpuDetector.to_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_json</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GpuDetector.to_json" title="phenotypic.abc_.GpuDetector.to_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_json</span></code></a></p></td>
 <td><p>Serialize this operation to JSON.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GpuDetector.update_forward_refs" title="phenotypic.abc_.GpuDetector.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GpuDetector.update_forward_refs" title="phenotypic.abc_.GpuDetector.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GpuDetector.validate" title="phenotypic.abc_.GpuDetector.validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GpuDetector.validate" title="phenotypic.abc_.GpuDetector.validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.abc_.GpuDetector.widget" title="phenotypic.abc_.GpuDetector.widget"><code class="xref py py-obj docutils literal notranslate"><span class="pre">widget</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.abc_.GpuDetector.widget" title="phenotypic.abc_.GpuDetector.widget"><code class="xref py py-obj docutils literal notranslate"><span class="pre">widget</span></code></a></p></td>
 <td><p>Return (and optionally display) the root widget.</p></td>
 </tr>
 </tbody>
@@ -1553,6 +1562,17 @@ the CLI make informed GPU resource-allocation decisions.</p>
 <dt class="sig sig-object py" id="phenotypic.abc_.GpuDetector.connectivity">
 <span class="sig-name descname"><span class="pre">connectivity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="phenotypic.tune.TuneSpec.html#phenotypic.tune.TuneSpec" title="phenotypic.tune.TuneSpec"><span class="pre">TuneSpec</span></a><span class="p"><span class="pre">(</span></span><span class="n"><span class="pre">tunable</span></span><span class="o"><span class="pre">=</span></span><span class="k"><span class="pre">False</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#phenotypic.abc_.GpuDetector.connectivity" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.abc_.GpuDetector.preflight_requirements">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/abc_/_gpu_detector.html#GpuDetector.preflight_requirements"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#phenotypic.abc_.GpuDetector.preflight_requirements" title="Link to this definition">#</a></dt>
+<dd><p>Add the RGB requirement when <code class="docutils literal notranslate"><span class="pre">input_layer</span></code> is <code class="docutils literal notranslate"><span class="pre">&quot;rgb&quot;</span></code>.</p>
+<p>Every GPU detector reads <code class="docutils literal notranslate"><span class="pre">getattr(image,</span> <span class="pre">self.input_layer)</span></code>, so the
+requirement follows the field, not the class: <code class="docutils literal notranslate"><span class="pre">MicroSamDetector</span></code>
+defaults to <code class="docutils literal notranslate"><span class="pre">&quot;gray&quot;</span></code> but a user may set <code class="docutils literal notranslate"><span class="pre">&quot;rgb&quot;</span></code>. Subclasses extend
+this through <code class="docutils literal notranslate"><span class="pre">super()</span></code> with their packages and weights. See
+<code class="docutils literal notranslate"><span class="pre">BaseOperation.preflight_requirements</span></code>.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.abc_.GpuDetector.__copy__">
@@ -2479,6 +2499,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GpuDetector.drop_frame_background"><code class="docutils literal notranslate"><span class="pre">GpuDetector.drop_frame_background</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GpuDetector.split_disconnected_labels"><code class="docutils literal notranslate"><span class="pre">GpuDetector.split_disconnected_labels</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GpuDetector.connectivity"><code class="docutils literal notranslate"><span class="pre">GpuDetector.connectivity</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GpuDetector.preflight_requirements"><code class="docutils literal notranslate"><span class="pre">GpuDetector.preflight_requirements()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GpuDetector.__copy__"><code class="docutils literal notranslate"><span class="pre">GpuDetector.__copy__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GpuDetector.__deepcopy__"><code class="docutils literal notranslate"><span class="pre">GpuDetector.__deepcopy__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.abc_.GpuDetector.__del__"><code class="docutils literal notranslate"><span class="pre">GpuDetector.__del__()</span></code></a></li>

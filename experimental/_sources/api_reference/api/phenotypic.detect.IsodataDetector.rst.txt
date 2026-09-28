@@ -38,6 +38,7 @@ phenotypic.detect.IsodataDetector
       ~IsodataDetector.parse_file
       ~IsodataDetector.parse_obj
       ~IsodataDetector.parse_raw
+      ~IsodataDetector.preflight_requirements
       ~IsodataDetector.schema
       ~IsodataDetector.schema_json
       ~IsodataDetector.to_json

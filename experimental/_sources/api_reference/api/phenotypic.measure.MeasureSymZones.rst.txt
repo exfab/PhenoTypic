@@ -42,6 +42,7 @@ phenotypic.measure.MeasureSymZones
       ~MeasureSymZones.parse_file
       ~MeasureSymZones.parse_obj
       ~MeasureSymZones.parse_raw
+      ~MeasureSymZones.preflight_requirements
       ~MeasureSymZones.report
       ~MeasureSymZones.schema
       ~MeasureSymZones.schema_json

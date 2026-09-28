@@ -38,6 +38,7 @@ phenotypic.refine.GridOversizedObjectRemover
       ~GridOversizedObjectRemover.parse_file
       ~GridOversizedObjectRemover.parse_obj
       ~GridOversizedObjectRemover.parse_raw
+      ~GridOversizedObjectRemover.preflight_requirements
       ~GridOversizedObjectRemover.schema
       ~GridOversizedObjectRemover.schema_json
       ~GridOversizedObjectRemover.to_json

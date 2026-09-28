@@ -38,6 +38,7 @@ phenotypic.refine.SeparateObjects
       ~SeparateObjects.parse_file
       ~SeparateObjects.parse_obj
       ~SeparateObjects.parse_raw
+      ~SeparateObjects.preflight_requirements
       ~SeparateObjects.schema
       ~SeparateObjects.schema_json
       ~SeparateObjects.to_json

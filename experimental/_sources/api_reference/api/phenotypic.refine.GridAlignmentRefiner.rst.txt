@@ -38,6 +38,7 @@ phenotypic.refine.GridAlignmentRefiner
       ~GridAlignmentRefiner.parse_file
       ~GridAlignmentRefiner.parse_obj
       ~GridAlignmentRefiner.parse_raw
+      ~GridAlignmentRefiner.preflight_requirements
       ~GridAlignmentRefiner.schema
       ~GridAlignmentRefiner.schema_json
       ~GridAlignmentRefiner.to_json

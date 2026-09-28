@@ -51,6 +51,7 @@ phenotypic.prefab.RoundPeaksPipeline
       ~RoundPeaksPipeline.parse_file
       ~RoundPeaksPipeline.parse_obj
       ~RoundPeaksPipeline.parse_raw
+      ~RoundPeaksPipeline.preflight_requirements
       ~RoundPeaksPipeline.schema
       ~RoundPeaksPipeline.schema_json
       ~RoundPeaksPipeline.set_filters

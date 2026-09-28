@@ -38,6 +38,7 @@ phenotypic.enhance.ContrastSigmoid
       ~ContrastSigmoid.parse_file
       ~ContrastSigmoid.parse_obj
       ~ContrastSigmoid.parse_raw
+      ~ContrastSigmoid.preflight_requirements
       ~ContrastSigmoid.schema
       ~ContrastSigmoid.schema_json
       ~ContrastSigmoid.to_json

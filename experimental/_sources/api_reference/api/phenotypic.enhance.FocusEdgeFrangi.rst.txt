@@ -38,6 +38,7 @@ phenotypic.enhance.FocusEdgeFrangi
       ~FocusEdgeFrangi.parse_file
       ~FocusEdgeFrangi.parse_obj
       ~FocusEdgeFrangi.parse_raw
+      ~FocusEdgeFrangi.preflight_requirements
       ~FocusEdgeFrangi.schema
       ~FocusEdgeFrangi.schema_json
       ~FocusEdgeFrangi.to_json

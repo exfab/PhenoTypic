@@ -38,6 +38,7 @@ phenotypic.abc\_.GridObjectRefiner
       ~GridObjectRefiner.parse_file
       ~GridObjectRefiner.parse_obj
       ~GridObjectRefiner.parse_raw
+      ~GridObjectRefiner.preflight_requirements
       ~GridObjectRefiner.schema
       ~GridObjectRefiner.schema_json
       ~GridObjectRefiner.to_json

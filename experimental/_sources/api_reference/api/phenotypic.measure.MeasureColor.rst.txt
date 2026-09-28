@@ -39,6 +39,7 @@ phenotypic.measure.MeasureColor
       ~MeasureColor.parse_file
       ~MeasureColor.parse_obj
       ~MeasureColor.parse_raw
+      ~MeasureColor.preflight_requirements
       ~MeasureColor.schema
       ~MeasureColor.schema_json
       ~MeasureColor.to_json

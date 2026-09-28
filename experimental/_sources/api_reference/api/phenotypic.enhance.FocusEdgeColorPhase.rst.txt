@@ -38,6 +38,7 @@ phenotypic.enhance.FocusEdgeColorPhase
       ~FocusEdgeColorPhase.parse_file
       ~FocusEdgeColorPhase.parse_obj
       ~FocusEdgeColorPhase.parse_raw
+      ~FocusEdgeColorPhase.preflight_requirements
       ~FocusEdgeColorPhase.schema
       ~FocusEdgeColorPhase.schema_json
       ~FocusEdgeColorPhase.to_json

@@ -601,7 +601,7 @@
   <h1>Source code for phenotypic.correction._image_padder</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Tuple</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ValidationInfo</span><span class="p">,</span> <span class="n">field_validator</span>
 
@@ -698,6 +698,10 @@
 <span class="sd">        :doc:`/how_to/notebooks/correct_grid_rotation` for combining</span>
 <span class="sd">        padding with rotation correction.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1">#: Gray-tolerant: pads RGB only when present (`if not image.rgb.isempty()`).</span>
+    <span class="c1">#: Declared explicitly for the run preflight (spec §3); the ratchet&#39;s heuristic does not flag it.</span>
+    <span class="n">_requires_rgb_input</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
 
     <span class="c1"># Per-edge pixel pad offsets — image-specific geometry, not a quality knob.</span>
     <span class="n">left</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span>

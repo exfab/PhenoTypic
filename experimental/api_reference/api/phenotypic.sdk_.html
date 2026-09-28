@@ -609,6 +609,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PrefabPipeline.html">phenotypic.abc_.PrefabPipeline</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html">phenotypic.abc_.FootprintMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PostMeasurement.html">phenotypic.abc_.PostMeasurement</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html">phenotypic.abc_.OperationRequirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.WeightRequirement.html">phenotypic.abc_.WeightRequirement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.DetectionMode.html">phenotypic.abc_.DetectionMode</a></li>
 </ul>
 </details></li>
@@ -976,6 +978,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_machine_state.html">phenotypic.sdk_.migrate_legacy_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_qc.html">phenotypic.sdk_.migrate_legacy_qc</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.clear_machine_state.html">phenotypic.sdk_.clear_machine_state</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.machine_state_restart_targets.html">phenotypic.sdk_.machine_state_restart_targets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.preserved_on_restart_names.html">phenotypic.sdk_.preserved_on_restart_names</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.param_importance_path.html">phenotypic.sdk_.param_importance_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.pareto_best_pipeline_path.html">phenotypic.sdk_.pareto_best_pipeline_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.pareto_dir.html">phenotypic.sdk_.pareto_dir</a></li>
@@ -1122,6 +1126,7 @@
 </details></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.sdk_.slurm.html">phenotypic.sdk_.slurm</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.calculate_optimal_array_chunks.html">phenotypic.sdk_.slurm.calculate_optimal_array_chunks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.effective_sbatch_option.html">phenotypic.sdk_.slurm.effective_sbatch_option</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.estimate_concurrent_capacity.html">phenotypic.sdk_.slurm.estimate_concurrent_capacity</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.format_sbatch_directives.html">phenotypic.sdk_.slurm.format_sbatch_directives</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.generate_dispatcher_chain.html">phenotypic.sdk_.slurm.generate_dispatcher_chain</a></li>
@@ -1135,6 +1140,7 @@
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.submit_drip_feed_start.html">phenotypic.sdk_.slurm.submit_drip_feed_start</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.submit_script.html">phenotypic.sdk_.slurm.submit_script</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.validate_array_chunk.html">phenotypic.sdk_.slurm.validate_array_chunk</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.with_default_gpu_request.html">phenotypic.sdk_.slurm.with_default_gpu_request</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.write_slurm_array_script.html">phenotypic.sdk_.slurm.write_slurm_array_script</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.SlurmArrayScriptSpec.html">phenotypic.sdk_.slurm.SlurmArrayScriptSpec</a></li>
 </ul>
@@ -1664,6 +1670,12 @@ artifact filenames, directory names, JSON contract keys, and path helpers
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.clear_machine_state.html#phenotypic.sdk_.clear_machine_state" title="phenotypic.sdk_.clear_machine_state"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear_machine_state</span></code></a></p></td>
 <td><p>Remove <strong>all</strong> of a run's machine-state for a clean <code class="docutils literal notranslate"><span class="pre">--restart</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.machine_state_restart_targets.html#phenotypic.sdk_.machine_state_restart_targets" title="phenotypic.sdk_.machine_state_restart_targets"><code class="xref py py-obj docutils literal notranslate"><span class="pre">machine_state_restart_targets</span></code></a></p></td>
+<td><p>Every existing path <a class="reference internal" href="phenotypic.sdk_.clear_machine_state.html#phenotypic.sdk_.clear_machine_state" title="phenotypic.sdk_.clear_machine_state"><code class="xref py py-func docutils literal notranslate"><span class="pre">clear_machine_state()</span></code></a> would remove, in order.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="phenotypic.sdk_.preserved_on_restart_names.html#phenotypic.sdk_.preserved_on_restart_names" title="phenotypic.sdk_.preserved_on_restart_names"><code class="xref py py-obj docutils literal notranslate"><span class="pre">preserved_on_restart_names</span></code></a></p></td>
+<td><p>Names under <code class="docutils literal notranslate"><span class="pre">.phenotypic/</span></code> that <code class="docutils literal notranslate"><span class="pre">--restart</span></code> keeps.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="phenotypic.sdk_.param_importance_path.html#phenotypic.sdk_.param_importance_path" title="phenotypic.sdk_.param_importance_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">param_importance_path</span></code></a></p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/deliverables/param_importance.json</span></code> (the report).</p></td>
@@ -3832,6 +3844,15 @@ This is useful if you want to do some validation that requires the entire model 
 <dd class="field-even"><p>None</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/sdk_/mixin/_input_layer_mixin.html#InputLayerMixin.preflight_requirements"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Add the RGB requirement when <code class="docutils literal notranslate"><span class="pre">input_layer</span></code> is <code class="docutils literal notranslate"><span class="pre">&quot;rgb&quot;</span></code>.</p>
+<p>Cooperates with the operation’s own requirements through <code class="docutils literal notranslate"><span class="pre">super()</span></code>;
+this mixin always precedes the operation base in the MRO. See
+<code class="docutils literal notranslate"><span class="pre">BaseOperation.preflight_requirements</span></code>.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -7071,6 +7092,28 @@ own error: <code class="docutils literal notranslate"><span class="pre">_load_fr
 
 <dl class="py function">
 <dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">machine_state_restart_targets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#machine_state_restart_targets"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Every existing path <a class="reference internal" href="phenotypic.sdk_.clear_machine_state.html#phenotypic.sdk_.clear_machine_state" title="phenotypic.sdk_.clear_machine_state"><code class="xref py py-func docutils literal notranslate"><span class="pre">clear_machine_state()</span></code></a> would remove, in order.</p>
+<p>The single producer of “what does <code class="docutils literal notranslate"><span class="pre">--restart</span></code> delete”. Read by
+<a class="reference internal" href="phenotypic.sdk_.clear_machine_state.html#phenotypic.sdk_.clear_machine_state" title="phenotypic.sdk_.clear_machine_state"><code class="xref py py-func docutils literal notranslate"><span class="pre">clear_machine_state()</span></code></a> itself, by the <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> preview, and by
+the CLI’s refusal of a <code class="docutils literal notranslate"><span class="pre">--pipeline</span></code>/<code class="docutils literal notranslate"><span class="pre">--metadata</span></code>/<code class="docutils literal notranslate"><span class="pre">--image-manifest</span></code>
+that a restart would delete before the run reads it. Performs no write.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>Path</em></a>) – The run’s output directory.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>each non-preserved child of <code class="docutils literal notranslate"><span class="pre">.phenotypic/</span></code>, then
+any pre-migration root-level machine-state.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Existing paths only</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">manifest_json_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#manifest_json_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Return <code class="docutils literal notranslate"><span class="pre">&lt;output&gt;/.phenotypic/progress/manifest.json</span></code>.</p>
 <dl class="field-list simple">
@@ -7942,6 +7985,22 @@ generic bundle API’s complete historical target inventory.</p></li>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="phenotypic.sdk_.MetadataMigrationReport.html#phenotypic.sdk_.MetadataMigrationReport" title="phenotypic.sdk_._metadata_migration.MetadataMigrationReport"><em>MetadataMigrationReport</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">phenotypic.sdk_.</span></span><span class="sig-name descname"><span class="pre">preserved_on_restart_names</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#frozenset" title="(in Python v3.14)"><span class="pre">frozenset</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/phenotypic/sdk_/_io_constants.html#preserved_on_restart_names"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Names under <code class="docutils literal notranslate"><span class="pre">.phenotypic/</span></code> that <code class="docutils literal notranslate"><span class="pre">--restart</span></code> keeps.</p>
+<p>A read-only view of the private <code class="xref py py-data docutils literal notranslate"><span class="pre">_PRESERVED_ON_RESTART</span></code>, for the
+CLI’s dry-run preview and its run-input refusal.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The preserved entry names.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#frozenset" title="(in Python v3.14)">frozenset</a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
 </dd>
 </dl>
 </dd></dl>

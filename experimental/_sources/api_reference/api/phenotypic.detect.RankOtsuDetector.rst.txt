@@ -38,6 +38,7 @@ phenotypic.detect.RankOtsuDetector
       ~RankOtsuDetector.parse_file
       ~RankOtsuDetector.parse_obj
       ~RankOtsuDetector.parse_raw
+      ~RankOtsuDetector.preflight_requirements
       ~RankOtsuDetector.schema
       ~RankOtsuDetector.schema_json
       ~RankOtsuDetector.to_json

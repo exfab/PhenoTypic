@@ -38,6 +38,7 @@ phenotypic.detect.OtsuDetector
       ~OtsuDetector.parse_file
       ~OtsuDetector.parse_obj
       ~OtsuDetector.parse_raw
+      ~OtsuDetector.preflight_requirements
       ~OtsuDetector.schema
       ~OtsuDetector.schema_json
       ~OtsuDetector.to_json

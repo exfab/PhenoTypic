@@ -38,6 +38,7 @@ phenotypic.enhance.FocusEdgeMonogenicPhase
       ~FocusEdgeMonogenicPhase.parse_file
       ~FocusEdgeMonogenicPhase.parse_obj
       ~FocusEdgeMonogenicPhase.parse_raw
+      ~FocusEdgeMonogenicPhase.preflight_requirements
       ~FocusEdgeMonogenicPhase.schema
       ~FocusEdgeMonogenicPhase.schema_json
       ~FocusEdgeMonogenicPhase.to_json

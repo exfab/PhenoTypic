@@ -38,6 +38,7 @@ phenotypic.abc\_.ImageCorrector
       ~ImageCorrector.parse_file
       ~ImageCorrector.parse_obj
       ~ImageCorrector.parse_raw
+      ~ImageCorrector.preflight_requirements
       ~ImageCorrector.schema
       ~ImageCorrector.schema_json
       ~ImageCorrector.to_json

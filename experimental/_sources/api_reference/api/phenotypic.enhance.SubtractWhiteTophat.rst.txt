@@ -38,6 +38,7 @@ phenotypic.enhance.SubtractWhiteTophat
       ~SubtractWhiteTophat.parse_file
       ~SubtractWhiteTophat.parse_obj
       ~SubtractWhiteTophat.parse_raw
+      ~SubtractWhiteTophat.preflight_requirements
       ~SubtractWhiteTophat.schema
       ~SubtractWhiteTophat.schema_json
       ~SubtractWhiteTophat.to_json

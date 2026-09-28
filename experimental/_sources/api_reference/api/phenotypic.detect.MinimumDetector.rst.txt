@@ -38,6 +38,7 @@ phenotypic.detect.MinimumDetector
       ~MinimumDetector.parse_file
       ~MinimumDetector.parse_obj
       ~MinimumDetector.parse_raw
+      ~MinimumDetector.preflight_requirements
       ~MinimumDetector.schema
       ~MinimumDetector.schema_json
       ~MinimumDetector.to_json

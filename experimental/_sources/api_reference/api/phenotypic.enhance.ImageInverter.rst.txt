@@ -38,6 +38,7 @@ phenotypic.enhance.ImageInverter
       ~ImageInverter.parse_file
       ~ImageInverter.parse_obj
       ~ImageInverter.parse_raw
+      ~ImageInverter.preflight_requirements
       ~ImageInverter.schema
       ~ImageInverter.schema_json
       ~ImageInverter.to_json

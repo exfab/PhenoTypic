@@ -801,6 +801,10 @@
 <span class="sd">        walkthrough of measuring and exporting colony data.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
+    <span class="c1">#: Gray-tolerant: the only RGB read is in a figure helper, gated by</span>
+    <span class="c1">#: base_layer=&quot;rgb&quot;; measurement never reads RGB. Declared for the run preflight (spec §3).</span>
+    <span class="n">_requires_rgb_input</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+
     <span class="n">_measurement_infoclass</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">type</span><span class="p">]</span> <span class="o">=</span> <span class="n">SYMMETRIC_ZONES</span>
 
     <span class="n">intensity_source</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="s2">&quot;detect_mat&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;gray&quot;</span>

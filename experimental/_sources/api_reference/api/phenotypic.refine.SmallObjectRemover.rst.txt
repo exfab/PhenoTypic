@@ -38,6 +38,7 @@ phenotypic.refine.SmallObjectRemover
       ~SmallObjectRemover.parse_file
       ~SmallObjectRemover.parse_obj
       ~SmallObjectRemover.parse_raw
+      ~SmallObjectRemover.preflight_requirements
       ~SmallObjectRemover.schema
       ~SmallObjectRemover.schema_json
       ~SmallObjectRemover.to_json

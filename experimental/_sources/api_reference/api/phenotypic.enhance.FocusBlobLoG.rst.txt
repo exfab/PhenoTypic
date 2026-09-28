@@ -38,6 +38,7 @@ phenotypic.enhance.FocusBlobLoG
       ~FocusBlobLoG.parse_file
       ~FocusBlobLoG.parse_obj
       ~FocusBlobLoG.parse_raw
+      ~FocusBlobLoG.preflight_requirements
       ~FocusBlobLoG.schema
       ~FocusBlobLoG.schema_json
       ~FocusBlobLoG.to_json

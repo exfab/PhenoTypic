@@ -38,6 +38,7 @@ phenotypic.refine.KeepNearestCenter
       ~KeepNearestCenter.parse_file
       ~KeepNearestCenter.parse_obj
       ~KeepNearestCenter.parse_raw
+      ~KeepNearestCenter.preflight_requirements
       ~KeepNearestCenter.schema
       ~KeepNearestCenter.schema_json
       ~KeepNearestCenter.to_json

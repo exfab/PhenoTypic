@@ -38,6 +38,7 @@ phenotypic.detect.CannyDetector
       ~CannyDetector.parse_file
       ~CannyDetector.parse_obj
       ~CannyDetector.parse_raw
+      ~CannyDetector.preflight_requirements
       ~CannyDetector.schema
       ~CannyDetector.schema_json
       ~CannyDetector.to_json

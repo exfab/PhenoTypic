@@ -38,6 +38,7 @@ phenotypic.refine.RemoveByFeature
       ~RemoveByFeature.parse_file
       ~RemoveByFeature.parse_obj
       ~RemoveByFeature.parse_raw
+      ~RemoveByFeature.preflight_requirements
       ~RemoveByFeature.schema
       ~RemoveByFeature.schema_json
       ~RemoveByFeature.to_json

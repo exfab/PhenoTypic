@@ -38,6 +38,7 @@ phenotypic.enhance.FlattenIllumination
       ~FlattenIllumination.parse_file
       ~FlattenIllumination.parse_obj
       ~FlattenIllumination.parse_raw
+      ~FlattenIllumination.preflight_requirements
       ~FlattenIllumination.schema
       ~FlattenIllumination.schema_json
       ~FlattenIllumination.to_json

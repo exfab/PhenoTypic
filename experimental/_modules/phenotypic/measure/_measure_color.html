@@ -688,6 +688,10 @@
 <span class="sd">        True</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
+    <span class="c1">#: Reads RGB on every call and fails on a grayscale image (run preflight, spec §3).</span>
+    <span class="c1">#: The Lab/HSV block reads image.color unconditionally.</span>
+    <span class="n">_requires_rgb_input</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
     <span class="n">_measurement_infoclasses</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">type</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[</span>
         <span class="n">ColorXYZ</span><span class="p">,</span> <span class="n">Colorxy</span><span class="p">,</span> <span class="n">ColorLab</span><span class="p">,</span> <span class="n">ColorHSV</span><span class="p">]</span>
 

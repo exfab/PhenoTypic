@@ -38,6 +38,7 @@ phenotypic.abc\_.GridOperation
       ~GridOperation.parse_file
       ~GridOperation.parse_obj
       ~GridOperation.parse_raw
+      ~GridOperation.preflight_requirements
       ~GridOperation.schema
       ~GridOperation.schema_json
       ~GridOperation.to_json

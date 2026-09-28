@@ -609,6 +609,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PrefabPipeline.html">phenotypic.abc_.PrefabPipeline</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html">phenotypic.abc_.FootprintMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PostMeasurement.html">phenotypic.abc_.PostMeasurement</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html">phenotypic.abc_.OperationRequirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.WeightRequirement.html">phenotypic.abc_.WeightRequirement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.DetectionMode.html">phenotypic.abc_.DetectionMode</a></li>
 </ul>
 </details></li>
@@ -976,6 +978,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_machine_state.html">phenotypic.sdk_.migrate_legacy_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_qc.html">phenotypic.sdk_.migrate_legacy_qc</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.clear_machine_state.html">phenotypic.sdk_.clear_machine_state</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.machine_state_restart_targets.html">phenotypic.sdk_.machine_state_restart_targets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.preserved_on_restart_names.html">phenotypic.sdk_.preserved_on_restart_names</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.param_importance_path.html">phenotypic.sdk_.param_importance_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.pareto_best_pipeline_path.html">phenotypic.sdk_.pareto_best_pipeline_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.pareto_dir.html">phenotypic.sdk_.pareto_dir</a></li>
@@ -1122,6 +1126,7 @@
 </details></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.sdk_.slurm.html">phenotypic.sdk_.slurm</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.calculate_optimal_array_chunks.html">phenotypic.sdk_.slurm.calculate_optimal_array_chunks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.effective_sbatch_option.html">phenotypic.sdk_.slurm.effective_sbatch_option</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.estimate_concurrent_capacity.html">phenotypic.sdk_.slurm.estimate_concurrent_capacity</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.format_sbatch_directives.html">phenotypic.sdk_.slurm.format_sbatch_directives</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.generate_dispatcher_chain.html">phenotypic.sdk_.slurm.generate_dispatcher_chain</a></li>
@@ -1135,6 +1140,7 @@
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.submit_drip_feed_start.html">phenotypic.sdk_.slurm.submit_drip_feed_start</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.submit_script.html">phenotypic.sdk_.slurm.submit_script</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.validate_array_chunk.html">phenotypic.sdk_.slurm.validate_array_chunk</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.with_default_gpu_request.html">phenotypic.sdk_.slurm.with_default_gpu_request</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.write_slurm_array_script.html">phenotypic.sdk_.slurm.write_slurm_array_script</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.SlurmArrayScriptSpec.html">phenotypic.sdk_.slurm.SlurmArrayScriptSpec</a></li>
 </ul>
@@ -1442,43 +1448,46 @@ comparison of prefab pipelines.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.parse_raw" title="phenotypic.prefab.HeavyRoundPeaksPipeline.parse_raw"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_raw</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.schema" title="phenotypic.prefab.HeavyRoundPeaksPipeline.schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.preflight_requirements" title="phenotypic.prefab.HeavyRoundPeaksPipeline.preflight_requirements"><code class="xref py py-obj docutils literal notranslate"><span class="pre">preflight_requirements</span></code></a></p></td>
+<td><p>What this operation needs from the run that executes it.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.schema" title="phenotypic.prefab.HeavyRoundPeaksPipeline.schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.schema_json" title="phenotypic.prefab.HeavyRoundPeaksPipeline.schema_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema_json</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.schema_json" title="phenotypic.prefab.HeavyRoundPeaksPipeline.schema_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema_json</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.set_filters" title="phenotypic.prefab.HeavyRoundPeaksPipeline.set_filters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_filters</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.set_filters" title="phenotypic.prefab.HeavyRoundPeaksPipeline.set_filters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_filters</span></code></a></p></td>
 <td><p>Set the analysis filter chain.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.set_meas" title="phenotypic.prefab.HeavyRoundPeaksPipeline.set_meas"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_meas</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.set_meas" title="phenotypic.prefab.HeavyRoundPeaksPipeline.set_meas"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_meas</span></code></a></p></td>
 <td><p>Sets the measurements to be used for further computation.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.set_model" title="phenotypic.prefab.HeavyRoundPeaksPipeline.set_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_model</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.set_model" title="phenotypic.prefab.HeavyRoundPeaksPipeline.set_model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_model</span></code></a></p></td>
 <td><p>Set the analysis endpoint model.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.set_ops" title="phenotypic.prefab.HeavyRoundPeaksPipeline.set_ops"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_ops</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.set_ops" title="phenotypic.prefab.HeavyRoundPeaksPipeline.set_ops"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_ops</span></code></a></p></td>
 <td><p>Sets the operations to be performed.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.set_plots" title="phenotypic.prefab.HeavyRoundPeaksPipeline.set_plots"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_plots</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.set_plots" title="phenotypic.prefab.HeavyRoundPeaksPipeline.set_plots"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_plots</span></code></a></p></td>
 <td><p>Set and normalize configured plot bindings.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.set_post" title="phenotypic.prefab.HeavyRoundPeaksPipeline.set_post"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_post</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.set_post" title="phenotypic.prefab.HeavyRoundPeaksPipeline.set_post"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_post</span></code></a></p></td>
 <td><p>Set the post-measurement transforms.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.set_qc" title="phenotypic.prefab.HeavyRoundPeaksPipeline.set_qc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_qc</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.set_qc" title="phenotypic.prefab.HeavyRoundPeaksPipeline.set_qc"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_qc</span></code></a></p></td>
 <td><p>Set the QC config entry list.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.to_json" title="phenotypic.prefab.HeavyRoundPeaksPipeline.to_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_json</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.to_json" title="phenotypic.prefab.HeavyRoundPeaksPipeline.to_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_json</span></code></a></p></td>
 <td><p>Serialize the pipeline configuration to JSON format.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.update_forward_refs" title="phenotypic.prefab.HeavyRoundPeaksPipeline.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.update_forward_refs" title="phenotypic.prefab.HeavyRoundPeaksPipeline.update_forward_refs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_forward_refs</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.validate" title="phenotypic.prefab.HeavyRoundPeaksPipeline.validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.validate" title="phenotypic.prefab.HeavyRoundPeaksPipeline.validate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.widget" title="phenotypic.prefab.HeavyRoundPeaksPipeline.widget"><code class="xref py py-obj docutils literal notranslate"><span class="pre">widget</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.widget" title="phenotypic.prefab.HeavyRoundPeaksPipeline.widget"><code class="xref py py-obj docutils literal notranslate"><span class="pre">widget</span></code></a></p></td>
 <td><p>Return (and optionally display) the root widget.</p></td>
 </tr>
 </tbody>
@@ -3063,6 +3072,27 @@ See the [<cite>extra</cite> configuration value][pydantic.ConfigDict.extra] for 
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="phenotypic.prefab.HeavyRoundPeaksPipeline.preflight_requirements">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span><a class="headerlink" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.preflight_requirements" title="Link to this definition">#</a></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="phenotypic.prefab.HeavyRoundPeaksPipeline.schema">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">by_alias</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ref_template</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'#/$defs/{model}'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.schema" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
@@ -3500,6 +3530,7 @@ visualization controls will be added to the widget.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.parse_file"><code class="docutils literal notranslate"><span class="pre">HeavyRoundPeaksPipeline.parse_file()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.parse_obj"><code class="docutils literal notranslate"><span class="pre">HeavyRoundPeaksPipeline.parse_obj()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.parse_raw"><code class="docutils literal notranslate"><span class="pre">HeavyRoundPeaksPipeline.parse_raw()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.preflight_requirements"><code class="docutils literal notranslate"><span class="pre">HeavyRoundPeaksPipeline.preflight_requirements()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.schema"><code class="docutils literal notranslate"><span class="pre">HeavyRoundPeaksPipeline.schema()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.schema_json"><code class="docutils literal notranslate"><span class="pre">HeavyRoundPeaksPipeline.schema_json()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#phenotypic.prefab.HeavyRoundPeaksPipeline.set_filters"><code class="docutils literal notranslate"><span class="pre">HeavyRoundPeaksPipeline.set_filters()</span></code></a></li>

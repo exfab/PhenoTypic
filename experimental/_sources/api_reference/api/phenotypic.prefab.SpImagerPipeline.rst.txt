@@ -51,6 +51,7 @@ phenotypic.prefab.SpImagerPipeline
       ~SpImagerPipeline.parse_file
       ~SpImagerPipeline.parse_obj
       ~SpImagerPipeline.parse_raw
+      ~SpImagerPipeline.preflight_requirements
       ~SpImagerPipeline.schema
       ~SpImagerPipeline.schema_json
       ~SpImagerPipeline.set_filters

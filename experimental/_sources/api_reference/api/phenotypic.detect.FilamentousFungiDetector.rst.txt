@@ -38,6 +38,7 @@ phenotypic.detect.FilamentousFungiDetector
       ~FilamentousFungiDetector.parse_file
       ~FilamentousFungiDetector.parse_obj
       ~FilamentousFungiDetector.parse_raw
+      ~FilamentousFungiDetector.preflight_requirements
       ~FilamentousFungiDetector.schema
       ~FilamentousFungiDetector.schema_json
       ~FilamentousFungiDetector.to_json

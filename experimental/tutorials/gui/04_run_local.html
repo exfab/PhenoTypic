@@ -687,8 +687,10 @@ respects the same hidden-files / external-symlinks toggles as the sidebar.</p>
 <section id="validate-before-running">
 <h2>Validate before running<a class="headerlink" href="#validate-before-running" title="Link to this heading">#</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">Validate</span> <span class="pre">(dry-run)</span></code> spawns <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">phenotypic</span> <span class="pre">--mode</span> <span class="pre">full</span> <span class="pre">&lt;args&gt;</span> <span class="pre">--dry-run</span></code>. The
-CLI parses the pipeline JSON, lists the images it would process, then
-exits without writing any output. The log tail shows the dry-run output.
+CLI parses the pipeline JSON, lists the images it would process, runs the
+<a class="reference internal" href="../pages/cli_batch_processing.html#run-preflight-checks"><span class="std std-ref">run preflight</span></a>, then
+exits without writing any output. Preflight errors and warnings appear in the
+log tail with their codes and remedies. The log tail shows the dry-run output.
 Use this whenever you’re not sure the form values match what the CLI
 expects — the dry-run takes seconds, a bad real run can waste minutes.</p>
 <p>Validate and Run share one action path. The server durably records the run ID

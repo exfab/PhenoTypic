@@ -38,6 +38,7 @@ phenotypic.enhance.SubtractGaussian
       ~SubtractGaussian.parse_file
       ~SubtractGaussian.parse_obj
       ~SubtractGaussian.parse_raw
+      ~SubtractGaussian.preflight_requirements
       ~SubtractGaussian.schema
       ~SubtractGaussian.schema_json
       ~SubtractGaussian.to_json

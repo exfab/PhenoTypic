@@ -38,6 +38,7 @@ phenotypic.refine.MergeFragmentChains
       ~MergeFragmentChains.parse_file
       ~MergeFragmentChains.parse_obj
       ~MergeFragmentChains.parse_raw
+      ~MergeFragmentChains.preflight_requirements
       ~MergeFragmentChains.schema
       ~MergeFragmentChains.schema_json
       ~MergeFragmentChains.to_json

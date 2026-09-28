@@ -652,6 +652,27 @@
 
     <span class="n">mode</span><span class="p">:</span> <span class="n">DetectMode</span> <span class="o">=</span> <span class="s2">&quot;gray&quot;</span>
 
+<div class="viewcode-block" id="SetDetectMode.preflight_requirements">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.enhance.SetDetectMode.html#phenotypic.enhance.SetDetectMode.preflight_requirements">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">preflight_requirements</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add the RGB requirement when ``mode`` derives from colour channels.</span>
+
+<span class="sd">        ``image.set_detect_mode`` raises on a grayscale image for every mode</span>
+<span class="sd">        whose ``requires_rgb`` is true. See</span>
+<span class="sd">        ``BaseOperation.preflight_requirements``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">dataclasses</span>
+
+        <span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic._core._image_parts.detection_modes</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+            <span class="n">get_detection_mode</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">requirements</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">preflight_requirements</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">get_detection_mode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="p">)</span><span class="o">.</span><span class="n">requires_rgb</span><span class="p">:</span>
+            <span class="n">requirements</span> <span class="o">=</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">requirements</span><span class="p">,</span> <span class="n">rgb_input</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">requirements</span></div>
+
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_operate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">:</span> <span class="n">Image</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Image</span><span class="p">:</span>
         <span class="n">image</span><span class="o">.</span><span class="n">set_detect_mode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">image</span></div>

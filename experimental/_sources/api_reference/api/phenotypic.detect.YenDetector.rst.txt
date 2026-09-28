@@ -38,6 +38,7 @@ phenotypic.detect.YenDetector
       ~YenDetector.parse_file
       ~YenDetector.parse_obj
       ~YenDetector.parse_raw
+      ~YenDetector.preflight_requirements
       ~YenDetector.schema
       ~YenDetector.schema_json
       ~YenDetector.to_json

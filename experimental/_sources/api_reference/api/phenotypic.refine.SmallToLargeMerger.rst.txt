@@ -38,6 +38,7 @@ phenotypic.refine.SmallToLargeMerger
       ~SmallToLargeMerger.parse_file
       ~SmallToLargeMerger.parse_obj
       ~SmallToLargeMerger.parse_raw
+      ~SmallToLargeMerger.preflight_requirements
       ~SmallToLargeMerger.schema
       ~SmallToLargeMerger.schema_json
       ~SmallToLargeMerger.to_json

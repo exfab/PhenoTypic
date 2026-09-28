@@ -67,8 +67,10 @@ python -m phenotypic --mode full \
 ```
 
 Before committing to a long run, preview the plan. `--dry-run` resolves the
-datasets, validates the pipeline, and prints the estimated output size without
-processing anything:
+datasets, validates the pipeline, runs the
+{ref}`run preflight <Run Preflight Checks>`, and prints the
+estimated output size without processing anything or writing under
+`--output`:
 
 ```bash
 python -m phenotypic --pipeline pipe.json --input ./plates --output ./out \
@@ -175,7 +177,9 @@ to `LiDetector` in the pipeline you pass will not re-segment anything.
 ## `recompile` — rebuild the deliverables
 
 `recompile` takes neither `--input` nor `--pipeline`; both are reloaded from the
-output root. It re-aggregates marker-authorized embedded tables into
+output root. A recorded pipeline file with a duplicated JSON key no longer
+loads, here as in every mode; remove the duplicate from
+`deliverables/pipeline.json.pht-pipe`. It re-aggregates marker-authorized embedded tables into
 `master_measurements.parquet`, regenerates any missing overlay PNGs from their stores,
 rebuilds the progress manifest, and regenerates the progress dashboard.
 

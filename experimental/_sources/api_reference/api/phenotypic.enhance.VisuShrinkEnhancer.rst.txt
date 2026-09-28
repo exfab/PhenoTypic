@@ -38,6 +38,7 @@ phenotypic.enhance.VisuShrinkEnhancer
       ~VisuShrinkEnhancer.parse_file
       ~VisuShrinkEnhancer.parse_obj
       ~VisuShrinkEnhancer.parse_raw
+      ~VisuShrinkEnhancer.preflight_requirements
       ~VisuShrinkEnhancer.schema
       ~VisuShrinkEnhancer.schema_json
       ~VisuShrinkEnhancer.to_json

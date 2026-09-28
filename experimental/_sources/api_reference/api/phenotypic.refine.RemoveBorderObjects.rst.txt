@@ -38,6 +38,7 @@ phenotypic.refine.RemoveBorderObjects
       ~RemoveBorderObjects.parse_file
       ~RemoveBorderObjects.parse_obj
       ~RemoveBorderObjects.parse_raw
+      ~RemoveBorderObjects.preflight_requirements
       ~RemoveBorderObjects.schema
       ~RemoveBorderObjects.schema_json
       ~RemoveBorderObjects.to_json

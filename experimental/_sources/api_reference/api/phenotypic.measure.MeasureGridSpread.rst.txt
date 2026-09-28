@@ -39,6 +39,7 @@ phenotypic.measure.MeasureGridSpread
       ~MeasureGridSpread.parse_file
       ~MeasureGridSpread.parse_obj
       ~MeasureGridSpread.parse_raw
+      ~MeasureGridSpread.preflight_requirements
       ~MeasureGridSpread.schema
       ~MeasureGridSpread.schema_json
       ~MeasureGridSpread.to_json

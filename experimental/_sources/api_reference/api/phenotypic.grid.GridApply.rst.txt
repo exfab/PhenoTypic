@@ -38,6 +38,7 @@ phenotypic.grid.GridApply
       ~GridApply.parse_file
       ~GridApply.parse_obj
       ~GridApply.parse_raw
+      ~GridApply.preflight_requirements
       ~GridApply.schema
       ~GridApply.schema_json
       ~GridApply.to_json

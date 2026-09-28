@@ -38,6 +38,7 @@ phenotypic.correction.GridAligner
       ~GridAligner.parse_file
       ~GridAligner.parse_obj
       ~GridAligner.parse_raw
+      ~GridAligner.preflight_requirements
       ~GridAligner.schema
       ~GridAligner.schema_json
       ~GridAligner.to_json

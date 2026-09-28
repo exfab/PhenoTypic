@@ -138,6 +138,8 @@
       migrate_legacy_machine_state
       migrate_legacy_qc
       clear_machine_state
+      machine_state_restart_targets
+      preserved_on_restart_names
       param_importance_path
       pareto_best_pipeline_path
       pareto_dir

@@ -39,6 +39,7 @@ phenotypic.detect.ManualGridPointDetector
       ~ManualGridPointDetector.parse_file
       ~ManualGridPointDetector.parse_obj
       ~ManualGridPointDetector.parse_raw
+      ~ManualGridPointDetector.preflight_requirements
       ~ManualGridPointDetector.schema
       ~ManualGridPointDetector.schema_json
       ~ManualGridPointDetector.to_json

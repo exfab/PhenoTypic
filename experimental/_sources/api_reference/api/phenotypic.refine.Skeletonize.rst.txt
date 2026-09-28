@@ -38,6 +38,7 @@ phenotypic.refine.Skeletonize
       ~Skeletonize.parse_file
       ~Skeletonize.parse_obj
       ~Skeletonize.parse_raw
+      ~Skeletonize.preflight_requirements
       ~Skeletonize.schema
       ~Skeletonize.schema_json
       ~Skeletonize.to_json

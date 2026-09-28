@@ -38,6 +38,7 @@ phenotypic.correction.DenoiseBlockMatch
       ~DenoiseBlockMatch.parse_file
       ~DenoiseBlockMatch.parse_obj
       ~DenoiseBlockMatch.parse_raw
+      ~DenoiseBlockMatch.preflight_requirements
       ~DenoiseBlockMatch.schema
       ~DenoiseBlockMatch.schema_json
       ~DenoiseBlockMatch.to_json

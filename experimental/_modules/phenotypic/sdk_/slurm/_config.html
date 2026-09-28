@@ -612,7 +612,7 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">lru_cache</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
 
 
 <div class="viewcode-block" id="get_slurm_array_limit">
@@ -897,6 +897,58 @@
 
     <span class="k">return</span> <span class="kc">True</span></div>
 
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">partition_gres_error</span><span class="p">(</span>
+    <span class="n">partition</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">run</span><span class="p">:</span> <span class="s2">&quot;Callable[..., subprocess.CompletedProcess[str]] | None&quot;</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Why *partition* cannot serve a GPU request, or ``None`` if it can or if unknown.</span>
+
+<span class="sd">    The one GRES check, shared by ``AutonomousSLURMStrategy`` and the run</span>
+<span class="sd">    preflight (spec 2026-09-24-cli-preflight §6, F18). It answers only when</span>
+<span class="sd">    ``sinfo`` positively lists the partition&#39;s GRES and none is a GPU; every</span>
+<span class="sd">    other outcome is &quot;cannot tell&quot; and returns ``None``, because this result</span>
+<span class="sd">    refuses a run (Phase E review E5, E6):</span>
+
+<span class="sd">    - ``sinfo`` exits 0 with empty output for an unknown partition (it filters</span>
+<span class="sd">      locally and has no error path for a name that matches nothing), and</span>
+<span class="sd">      also when a site hides node data (``PrivateData=nodes``). ``sbatch</span>
+<span class="sd">      --test-only`` reports an unknown partition precisely.</span>
+<span class="sd">    - A nonzero exit is a controller or client fault, not a GRES fact.</span>
+<span class="sd">    - ``--Format=gres`` truncates to 20 characters, which can cut a later</span>
+<span class="sd">      ``gpu`` entry off (``shard:a100:64(S:0-1),gpu:...``); ``-o %G`` does</span>
+<span class="sd">      not truncate. A GPU is a GRES entry NAMED ``gpu``, not the substring.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        partition: The partition the job will run in.</span>
+<span class="sd">        run: Runs ``(command, timeout=...)`` and returns a completed process;</span>
+<span class="sd">            defaults to ``subprocess.run`` capturing text output.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A message naming the problem, or ``None``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+    <span class="n">runner</span> <span class="o">=</span> <span class="n">run</span> <span class="ow">or</span> <span class="p">(</span>
+        <span class="k">lambda</span> <span class="n">command</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+            <span class="n">command</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">runner</span><span class="p">([</span><span class="s2">&quot;sinfo&quot;</span><span class="p">,</span> <span class="s2">&quot;-p&quot;</span><span class="p">,</span> <span class="n">partition</span><span class="p">,</span> <span class="s2">&quot;-h&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%G</span><span class="s2">&quot;</span><span class="p">],</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">TimeoutExpired</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="p">[</span><span class="n">row</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">stdout</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span> <span class="k">if</span> <span class="n">row</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span>
+    <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">rows</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">gpu_entry</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;(?:^|,)\s*gpu(?::|\(|,|$)&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="n">gpu_entry</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">row</span><span class="p">)</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;partition </span><span class="si">{</span><span class="n">partition</span><span class="si">!r}</span><span class="s2"> has no GPUs (sinfo GRES: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span><span class="si">!r}</span><span class="s2">); &quot;</span>
+            <span class="s2">&quot;use a GPU partition for the GPU stage&quot;</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="kc">None</span>
 </pre></div>
 
                 </article>

@@ -39,6 +39,7 @@ phenotypic.abc\_.GridMeasureFeatures
       ~GridMeasureFeatures.parse_file
       ~GridMeasureFeatures.parse_obj
       ~GridMeasureFeatures.parse_raw
+      ~GridMeasureFeatures.preflight_requirements
       ~GridMeasureFeatures.schema
       ~GridMeasureFeatures.schema_json
       ~GridMeasureFeatures.to_json

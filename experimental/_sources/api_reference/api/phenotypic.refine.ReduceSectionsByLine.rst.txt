@@ -38,6 +38,7 @@ phenotypic.refine.ReduceSectionsByLine
       ~ReduceSectionsByLine.parse_file
       ~ReduceSectionsByLine.parse_obj
       ~ReduceSectionsByLine.parse_raw
+      ~ReduceSectionsByLine.preflight_requirements
       ~ReduceSectionsByLine.schema
       ~ReduceSectionsByLine.schema_json
       ~ReduceSectionsByLine.to_json

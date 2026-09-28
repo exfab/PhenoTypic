@@ -38,6 +38,7 @@ phenotypic.refine.MaskWhiteTophat
       ~MaskWhiteTophat.parse_file
       ~MaskWhiteTophat.parse_obj
       ~MaskWhiteTophat.parse_raw
+      ~MaskWhiteTophat.preflight_requirements
       ~MaskWhiteTophat.schema
       ~MaskWhiteTophat.schema_json
       ~MaskWhiteTophat.to_json

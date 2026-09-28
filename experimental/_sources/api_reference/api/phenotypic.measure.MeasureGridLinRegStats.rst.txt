@@ -39,6 +39,7 @@ phenotypic.measure.MeasureGridLinRegStats
       ~MeasureGridLinRegStats.parse_file
       ~MeasureGridLinRegStats.parse_obj
       ~MeasureGridLinRegStats.parse_raw
+      ~MeasureGridLinRegStats.preflight_requirements
       ~MeasureGridLinRegStats.schema
       ~MeasureGridLinRegStats.schema_json
       ~MeasureGridLinRegStats.to_json

@@ -715,7 +715,10 @@ Submitting requires <code class="docutils literal notranslate"><span class="pre"
 exists on the workstation that captured these screenshots. To verify your
 form values translate to the right CLI invocation, click
 <code class="docutils literal notranslate"><span class="pre">Validate</span> <span class="pre">(dry-run)</span></code>: the dry-run validates the selected paths and prints the
-argv the hub would pass to <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code>. Once you’re satisfied, click <code class="docutils literal notranslate"><span class="pre">Run</span></code>.</p>
+argv the hub would pass to <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code>. In SLURM mode Validate passes the same
+<code class="docutils literal notranslate"><span class="pre">--slurm</span></code>, <code class="docutils literal notranslate"><span class="pre">--gpu-slurm</span></code>, and <code class="docutils literal notranslate"><span class="pre">--gpu-shards</span></code> options Run would, so the
+<a class="reference internal" href="../pages/cli_batch_processing.html#run-preflight-checks"><span class="std std-ref">run preflight</span></a> tests
+that exact profile with <code class="docutils literal notranslate"><span class="pre">sbatch</span> <span class="pre">--test-only</span></code>. Nothing is submitted. Once you’re satisfied, click <code class="docutils literal notranslate"><span class="pre">Run</span></code>.</p>
 </div>
 </section>
 <section id="what-slurm-submission-writes">

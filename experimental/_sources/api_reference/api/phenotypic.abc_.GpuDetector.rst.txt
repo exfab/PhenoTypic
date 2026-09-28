@@ -38,6 +38,7 @@ phenotypic.abc\_.GpuDetector
       ~GpuDetector.parse_file
       ~GpuDetector.parse_obj
       ~GpuDetector.parse_raw
+      ~GpuDetector.preflight_requirements
       ~GpuDetector.schema
       ~GpuDetector.schema_json
       ~GpuDetector.to_json

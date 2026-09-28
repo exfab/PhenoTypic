@@ -1053,10 +1053,46 @@ fixture.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">PHENOTYPIC_ACCEPT_MODEL_LICENSE</span></code> plus <code class="docutils literal notranslate"><span class="pre">require_license_acceptance</span></code>
 (<code class="docutils literal notranslate"><span class="pre">detect/nn/_checkpoint_manager.py</span></code>) gate downloads of licence-restricted
 checkpoints.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">PHENOTYPIC_PRELOAD_MODULES</span></code> lets a fresh SLURM worker import a
-self-registering module before <code class="docutils literal notranslate"><span class="pre">from_json</span></code>, so a detector defined outside the
-<code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> namespace can be deserialised.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PHENOTYPIC_PRELOAD_MODULES</span></code> names self-registering modules: modules whose
+import attaches the class to the <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> namespace
+(<code class="docutils literal notranslate"><span class="pre">phenotypic.MyDetector</span> <span class="pre">=</span> <span class="pre">MyDetector</span></code>). A module that only defines the class
+is not enough, because pipeline JSON records bare class names. Class
+resolution imports the listed modules in every process that deserializes a
+pipeline (the CLI, SLURM workers, local parallel workers, the finalizer), so a
+detector defined outside the <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> namespace deserializes everywhere.</p></li>
+<li><p>A runtime path must never prompt: pass <code class="docutils literal notranslate"><span class="pre">interactive=False</span></code> to
+<code class="docutils literal notranslate"><span class="pre">require_license_acceptance</span></code> and to any download helper that can prompt.</p></li>
 </ul>
+</section>
+<section id="declaring-what-your-detector-needs">
+<h2>Declaring what your detector needs<a class="headerlink" href="#declaring-what-your-detector-needs" title="Link to this heading">#</a></h2>
+<p>The CLI’s run preflight reads <code class="docutils literal notranslate"><span class="pre">preflight_requirements()</span></code> from every operation
+the run will execute, so a missing package, gated license, or uncached weight
+is reported before any image is processed. For a fixed requirement, set the
+class variables <code class="docutils literal notranslate"><span class="pre">_requires_modules</span></code> (import names, checked with <code class="docutils literal notranslate"><span class="pre">find_spec</span></code> and
+never imported) and <code class="docutils literal notranslate"><span class="pre">_requires_extra</span></code> (the <code class="docutils literal notranslate"><span class="pre">pyproject</span></code> extra that provides
+them). When a requirement depends on a field, override the method, call
+<code class="docutils literal notranslate"><span class="pre">super()</span></code>, and extend the result with <code class="docutils literal notranslate"><span class="pre">dataclasses.replace</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">dataclasses</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">phenotypic.abc_</span><span class="w"> </span><span class="kn">import</span> <span class="n">OperationRequirements</span><span class="p">,</span> <span class="n">WeightRequirement</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">preflight_requirements</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OperationRequirements</span><span class="p">:</span>
+    <span class="n">requirements</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">preflight_requirements</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+        <span class="n">requirements</span><span class="p">,</span>
+        <span class="n">modules</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;my_model_pkg&quot;</span><span class="p">,</span> <span class="s2">&quot;torch&quot;</span><span class="p">),</span>
+        <span class="n">extra</span><span class="o">=</span><span class="s2">&quot;torch&quot;</span><span class="p">,</span>
+        <span class="n">weights</span><span class="o">=</span><span class="p">(</span><span class="n">WeightRequirement</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;my-model:base&quot;</span><span class="p">,</span> <span class="n">license_key</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                                   <span class="n">is_cached</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">my_cache_probe</span><span class="p">()),),</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">is_cached</span></code> must answer from the file system alone: no <code class="docutils literal notranslate"><span class="pre">torch</span></code> import and no
+network access, because the preflight runs on the submitting node. Return
+<code class="docutils literal notranslate"><span class="pre">None</span></code> when the answer cannot be known. <code class="docutils literal notranslate"><span class="pre">GpuDetector</span></code>’s own override adds the
+RGB requirement for <code class="docutils literal notranslate"><span class="pre">input_layer=&quot;rgb&quot;</span></code>; keep it by calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>.</p>
 </section>
 </section>
 
@@ -1100,6 +1136,7 @@ self-registering module before <code class="docutils literal notranslate"><span 
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#testing-your-detector">Testing your detector</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#gated-weights-and-custom-namespaces">Gated weights and custom namespaces</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#declaring-what-your-detector-needs">Declaring what your detector needs</a></li>
 </ul>
   </nav></div>
 

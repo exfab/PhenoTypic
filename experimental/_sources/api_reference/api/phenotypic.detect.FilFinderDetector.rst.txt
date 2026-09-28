@@ -38,6 +38,7 @@ phenotypic.detect.FilFinderDetector
       ~FilFinderDetector.parse_file
       ~FilFinderDetector.parse_obj
       ~FilFinderDetector.parse_raw
+      ~FilFinderDetector.preflight_requirements
       ~FilFinderDetector.schema
       ~FilFinderDetector.schema_json
       ~FilFinderDetector.to_json

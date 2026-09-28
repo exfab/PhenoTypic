@@ -38,6 +38,7 @@ phenotypic.detect.TriangleDetector
       ~TriangleDetector.parse_file
       ~TriangleDetector.parse_obj
       ~TriangleDetector.parse_raw
+      ~TriangleDetector.preflight_requirements
       ~TriangleDetector.schema
       ~TriangleDetector.schema_json
       ~TriangleDetector.to_json

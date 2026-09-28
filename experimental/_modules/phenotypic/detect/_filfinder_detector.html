@@ -607,7 +607,9 @@
     <span class="n">Annotated</span><span class="p">,</span>
     <span class="n">Any</span><span class="p">,</span>
     <span class="n">Callable</span><span class="p">,</span>
+    <span class="n">ClassVar</span><span class="p">,</span>
     <span class="n">Generic</span><span class="p">,</span>
+    <span class="n">Optional</span><span class="p">,</span>
     <span class="n">overload</span><span class="p">,</span>
     <span class="n">cast</span><span class="p">,</span>
     <span class="n">TypeVar</span><span class="p">,</span>
@@ -831,6 +833,12 @@
 <span class="sd">        Koch, E. W., and Rosolowsky, E. W. (2015), &quot;Filament identification</span>
 <span class="sd">        through mathematical morphology,&quot; MNRAS, 452(4), 3435-3450.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1">#: FilFinder and astropy are imported only for a nonempty application</span>
+    <span class="c1">#: (``_load_filfinder_runtime``); the run preflight checks they are</span>
+    <span class="c1">#: installed before the run (spec 2026-09-24-cli-preflight §3).</span>
+    <span class="n">_requires_modules</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;fil_finder&quot;</span><span class="p">,</span> <span class="s2">&quot;astropy&quot;</span><span class="p">)</span>
+    <span class="n">_requires_extra</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="s2">&quot;topology&quot;</span>
 
     <span class="n">threshold</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span>
         <span class="nb">float</span><span class="p">,</span>

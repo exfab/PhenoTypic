@@ -39,6 +39,7 @@ phenotypic.measure.MeasureNeighborDist
       ~MeasureNeighborDist.parse_file
       ~MeasureNeighborDist.parse_obj
       ~MeasureNeighborDist.parse_raw
+      ~MeasureNeighborDist.preflight_requirements
       ~MeasureNeighborDist.schema
       ~MeasureNeighborDist.schema_json
       ~MeasureNeighborDist.to_json

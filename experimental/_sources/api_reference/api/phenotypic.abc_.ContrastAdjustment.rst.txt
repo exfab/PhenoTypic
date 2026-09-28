@@ -38,6 +38,7 @@ phenotypic.abc\_.ContrastAdjustment
       ~ContrastAdjustment.parse_file
       ~ContrastAdjustment.parse_obj
       ~ContrastAdjustment.parse_raw
+      ~ContrastAdjustment.preflight_requirements
       ~ContrastAdjustment.schema
       ~ContrastAdjustment.schema_json
       ~ContrastAdjustment.to_json

@@ -38,6 +38,7 @@ phenotypic.refine.ExtractColonyCore
       ~ExtractColonyCore.parse_file
       ~ExtractColonyCore.parse_obj
       ~ExtractColonyCore.parse_raw
+      ~ExtractColonyCore.preflight_requirements
       ~ExtractColonyCore.schema
       ~ExtractColonyCore.schema_json
       ~ExtractColonyCore.to_json

@@ -38,6 +38,7 @@ phenotypic.enhance.SetDetectMode
       ~SetDetectMode.parse_file
       ~SetDetectMode.parse_obj
       ~SetDetectMode.parse_raw
+      ~SetDetectMode.preflight_requirements
       ~SetDetectMode.schema
       ~SetDetectMode.schema_json
       ~SetDetectMode.to_json

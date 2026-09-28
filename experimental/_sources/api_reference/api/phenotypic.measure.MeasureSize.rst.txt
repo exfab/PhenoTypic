@@ -39,6 +39,7 @@ phenotypic.measure.MeasureSize
       ~MeasureSize.parse_file
       ~MeasureSize.parse_obj
       ~MeasureSize.parse_raw
+      ~MeasureSize.preflight_requirements
       ~MeasureSize.schema
       ~MeasureSize.schema_json
       ~MeasureSize.to_json

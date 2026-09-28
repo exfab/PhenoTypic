@@ -38,6 +38,7 @@ phenotypic.refine.Thinning
       ~Thinning.parse_file
       ~Thinning.parse_obj
       ~Thinning.parse_raw
+      ~Thinning.preflight_requirements
       ~Thinning.schema
       ~Thinning.schema_json
       ~Thinning.to_json

@@ -36,6 +36,7 @@ phenotypic.sdk\_.InputLayerMixin
       ~InputLayerMixin.parse_file
       ~InputLayerMixin.parse_obj
       ~InputLayerMixin.parse_raw
+      ~InputLayerMixin.preflight_requirements
       ~InputLayerMixin.schema
       ~InputLayerMixin.schema_json
       ~InputLayerMixin.update_forward_refs

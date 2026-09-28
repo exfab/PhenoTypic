@@ -45,6 +45,7 @@ phenotypic.measure.MeasureOrientationZones
       ~MeasureOrientationZones.parse_file
       ~MeasureOrientationZones.parse_obj
       ~MeasureOrientationZones.parse_raw
+      ~MeasureOrientationZones.preflight_requirements
       ~MeasureOrientationZones.report
       ~MeasureOrientationZones.schema
       ~MeasureOrientationZones.schema_json

@@ -38,6 +38,7 @@ phenotypic.detect.MadHysteresisDetector
       ~MadHysteresisDetector.parse_file
       ~MadHysteresisDetector.parse_obj
       ~MadHysteresisDetector.parse_raw
+      ~MadHysteresisDetector.preflight_requirements
       ~MadHysteresisDetector.schema
       ~MadHysteresisDetector.schema_json
       ~MadHysteresisDetector.to_json

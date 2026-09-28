@@ -609,6 +609,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PrefabPipeline.html">phenotypic.abc_.PrefabPipeline</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html">phenotypic.abc_.FootprintMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PostMeasurement.html">phenotypic.abc_.PostMeasurement</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html">phenotypic.abc_.OperationRequirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.WeightRequirement.html">phenotypic.abc_.WeightRequirement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.DetectionMode.html">phenotypic.abc_.DetectionMode</a></li>
 </ul>
 </details></li>
@@ -976,6 +978,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_machine_state.html">phenotypic.sdk_.migrate_legacy_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_qc.html">phenotypic.sdk_.migrate_legacy_qc</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.clear_machine_state.html">phenotypic.sdk_.clear_machine_state</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.machine_state_restart_targets.html">phenotypic.sdk_.machine_state_restart_targets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.preserved_on_restart_names.html">phenotypic.sdk_.preserved_on_restart_names</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.param_importance_path.html">phenotypic.sdk_.param_importance_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.pareto_best_pipeline_path.html">phenotypic.sdk_.pareto_best_pipeline_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.pareto_dir.html">phenotypic.sdk_.pareto_dir</a></li>
@@ -1122,6 +1126,7 @@
 </details></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.sdk_.slurm.html">phenotypic.sdk_.slurm</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.calculate_optimal_array_chunks.html">phenotypic.sdk_.slurm.calculate_optimal_array_chunks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.effective_sbatch_option.html">phenotypic.sdk_.slurm.effective_sbatch_option</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.estimate_concurrent_capacity.html">phenotypic.sdk_.slurm.estimate_concurrent_capacity</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.format_sbatch_directives.html">phenotypic.sdk_.slurm.format_sbatch_directives</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.generate_dispatcher_chain.html">phenotypic.sdk_.slurm.generate_dispatcher_chain</a></li>
@@ -1135,6 +1140,7 @@
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.submit_drip_feed_start.html">phenotypic.sdk_.slurm.submit_drip_feed_start</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.submit_script.html">phenotypic.sdk_.slurm.submit_script</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.validate_array_chunk.html">phenotypic.sdk_.slurm.validate_array_chunk</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.with_default_gpu_request.html">phenotypic.sdk_.slurm.with_default_gpu_request</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.write_slurm_array_script.html">phenotypic.sdk_.slurm.write_slurm_array_script</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.SlurmArrayScriptSpec.html">phenotypic.sdk_.slurm.SlurmArrayScriptSpec</a></li>
 </ul>
@@ -2305,6 +2311,27 @@ memory-tracking setup.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">report</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_progress</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="reference internal" href="../../_modules/phenotypic/grid/_auto_grid_finder.html#AutoGridFinder.report"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Notebook Plotly diagnostic report for grid fitting.</p>
 <p>Profiles the grid-fitting pipeline and returns a single composed
@@ -3361,6 +3388,27 @@ logged.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span></dt>
 <dd><p>Serialize this operation to JSON.</p>
 <p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
@@ -3505,7 +3553,7 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 
 <dl class="py class">
 <dt class="sig sig-object py">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.grid.</span></span><span class="sig-name descname"><span class="pre">GridApply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">*,</span> <span class="pre">image_op:</span> <span class="pre">~typing.Annotated[~typing.Any,</span> <span class="pre">~pydantic.functional_validators.BeforeValidator(func=~phenotypic.sdk_.typing_._deserialize_operation_value,</span> <span class="pre">json_schema_input_type=PydanticUndefined),</span> <span class="pre">~pydantic.functional_validators.AfterValidator(func=&lt;phenotypic.sdk_.typing_._RequireValue</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7fc82e9ecd30&gt;),</span> <span class="pre">~pydantic.functional_serializers.PlainSerializer(func=~phenotypic.sdk_.typing_._serialize_operation_value,</span> <span class="pre">return_type=PydanticUndefined,</span> <span class="pre">when_used=always),</span> <span class="pre">_OperationFieldMarker()],</span> <span class="pre">reset_enh_matrix:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/grid/_grid_apply.html#GridApply"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.grid.</span></span><span class="sig-name descname"><span class="pre">GridApply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">*,</span> <span class="pre">image_op:</span> <span class="pre">~typing.Annotated[~typing.Any,</span> <span class="pre">~pydantic.functional_validators.BeforeValidator(func=~phenotypic.sdk_.typing_._deserialize_operation_value,</span> <span class="pre">json_schema_input_type=PydanticUndefined),</span> <span class="pre">~pydantic.functional_validators.AfterValidator(func=&lt;phenotypic.sdk_.typing_._RequireValue</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7f6eb27e9f90&gt;),</span> <span class="pre">~pydantic.functional_serializers.PlainSerializer(func=~phenotypic.sdk_.typing_._serialize_operation_value,</span> <span class="pre">return_type=PydanticUndefined,</span> <span class="pre">when_used=always),</span> <span class="pre">_OperationFieldMarker()],</span> <span class="pre">reset_enh_matrix:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/grid/_grid_apply.html#GridApply"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Bases: <a class="reference internal" href="phenotypic.abc_.GridCorrector.html#phenotypic.abc_.GridCorrector" title="phenotypic.abc_._grid_corrector.GridCorrector"><code class="xref py py-class docutils literal notranslate"><span class="pre">GridCorrector</span></code></a></p>
 <p>Apply a PhenoTypic operation to each grid section of a plate image.</p>
 <p><code class="docutils literal notranslate"><span class="pre">GridApply</span></code> slices a <code class="xref py py-class docutils literal notranslate"><span class="pre">GridImage</span></code> into its individual grid
@@ -3516,7 +3564,7 @@ per-well detection or enhancement sub-pipeline.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>image_op</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><em>Annotated</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>, </em><em>BeforeValidator</em><em>(</em><em>func=~phenotypic.sdk_.typing_._deserialize_operation_value</em><em>, </em><em>json_schema_input_type=PydanticUndefined</em><em>)</em><em>, </em><em>AfterValidator</em><em>(</em><em>func=&lt;phenotypic.sdk_.typing_._RequireValue object at 0x7fc82e9ecd30&gt;</em><em>)</em><em>, </em><em>PlainSerializer</em><em>(</em><em>func=~phenotypic.sdk_.typing_._serialize_operation_value</em><em>, </em><em>return_type=PydanticUndefined</em><em>, </em><em>when_used=always</em><em>)</em><em>, </em><em>_OperationFieldMarker</em><em>(</em><em>)</em><em>]</em>) – The operation (or nested <code class="xref py py-class docutils literal notranslate"><span class="pre">ImagePipeline</span></code>)
+<li><p><strong>image_op</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><em>Annotated</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>, </em><em>BeforeValidator</em><em>(</em><em>func=~phenotypic.sdk_.typing_._deserialize_operation_value</em><em>, </em><em>json_schema_input_type=PydanticUndefined</em><em>)</em><em>, </em><em>AfterValidator</em><em>(</em><em>func=&lt;phenotypic.sdk_.typing_._RequireValue object at 0x7f6eb27e9f90&gt;</em><em>)</em><em>, </em><em>PlainSerializer</em><em>(</em><em>func=~phenotypic.sdk_.typing_._serialize_operation_value</em><em>, </em><em>return_type=PydanticUndefined</em><em>, </em><em>when_used=always</em><em>)</em><em>, </em><em>_OperationFieldMarker</em><em>(</em><em>)</em><em>]</em>) – The operation (or nested <code class="xref py py-class docutils literal notranslate"><span class="pre">ImagePipeline</span></code>)
 applied to every grid section. Serialized as a class-tagged
 payload so the concrete operation type round-trips through
 JSON.</p></li>
@@ -4312,6 +4360,27 @@ logged.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -5350,6 +5419,27 @@ logged.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
 </dd>
 </dl>
 </dd></dl>

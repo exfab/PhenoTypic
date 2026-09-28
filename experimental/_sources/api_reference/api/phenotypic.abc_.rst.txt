@@ -55,6 +55,8 @@
       PrefabPipeline
       FootprintMixin
       PostMeasurement
+      OperationRequirements
+      WeightRequirement
       DetectionMode
    
    

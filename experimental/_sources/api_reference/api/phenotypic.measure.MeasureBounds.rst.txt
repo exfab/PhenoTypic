@@ -39,6 +39,7 @@ phenotypic.measure.MeasureBounds
       ~MeasureBounds.parse_file
       ~MeasureBounds.parse_obj
       ~MeasureBounds.parse_raw
+      ~MeasureBounds.preflight_requirements
       ~MeasureBounds.schema
       ~MeasureBounds.schema_json
       ~MeasureBounds.to_json

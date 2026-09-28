@@ -38,6 +38,7 @@ phenotypic.enhance.GrayOpening
       ~GrayOpening.parse_file
       ~GrayOpening.parse_obj
       ~GrayOpening.parse_raw
+      ~GrayOpening.preflight_requirements
       ~GrayOpening.schema
       ~GrayOpening.schema_json
       ~GrayOpening.to_json

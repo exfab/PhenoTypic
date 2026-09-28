@@ -38,6 +38,7 @@ phenotypic.detect.LiDetector
       ~LiDetector.parse_file
       ~LiDetector.parse_obj
       ~LiDetector.parse_raw
+      ~LiDetector.preflight_requirements
       ~LiDetector.schema
       ~LiDetector.schema_json
       ~LiDetector.to_json

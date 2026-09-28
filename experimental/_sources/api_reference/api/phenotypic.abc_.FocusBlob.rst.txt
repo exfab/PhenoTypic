@@ -38,6 +38,7 @@ phenotypic.abc\_.FocusBlob
       ~FocusBlob.parse_file
       ~FocusBlob.parse_obj
       ~FocusBlob.parse_raw
+      ~FocusBlob.preflight_requirements
       ~FocusBlob.schema
       ~FocusBlob.schema_json
       ~FocusBlob.to_json

@@ -38,6 +38,7 @@ phenotypic.detect.MeanDetector
       ~MeanDetector.parse_file
       ~MeanDetector.parse_obj
       ~MeanDetector.parse_raw
+      ~MeanDetector.preflight_requirements
       ~MeanDetector.schema
       ~MeanDetector.schema_json
       ~MeanDetector.to_json

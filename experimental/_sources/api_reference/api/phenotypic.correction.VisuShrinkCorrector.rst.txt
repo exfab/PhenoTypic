@@ -38,6 +38,7 @@ phenotypic.correction.VisuShrinkCorrector
       ~VisuShrinkCorrector.parse_file
       ~VisuShrinkCorrector.parse_obj
       ~VisuShrinkCorrector.parse_raw
+      ~VisuShrinkCorrector.preflight_requirements
       ~VisuShrinkCorrector.schema
       ~VisuShrinkCorrector.schema_json
       ~VisuShrinkCorrector.to_json

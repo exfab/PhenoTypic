@@ -38,6 +38,7 @@ phenotypic.enhance.ContrastLog
       ~ContrastLog.parse_file
       ~ContrastLog.parse_obj
       ~ContrastLog.parse_raw
+      ~ContrastLog.preflight_requirements
       ~ContrastLog.schema
       ~ContrastLog.schema_json
       ~ContrastLog.to_json

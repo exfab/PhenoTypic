@@ -38,6 +38,7 @@ phenotypic.abc\_.MorphologicalFiltering
       ~MorphologicalFiltering.parse_file
       ~MorphologicalFiltering.parse_obj
       ~MorphologicalFiltering.parse_raw
+      ~MorphologicalFiltering.preflight_requirements
       ~MorphologicalFiltering.schema
       ~MorphologicalFiltering.schema_json
       ~MorphologicalFiltering.to_json

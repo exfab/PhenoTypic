@@ -38,6 +38,7 @@ phenotypic.enhance.CompositeEnhance
       ~CompositeEnhance.parse_file
       ~CompositeEnhance.parse_obj
       ~CompositeEnhance.parse_raw
+      ~CompositeEnhance.preflight_requirements
       ~CompositeEnhance.schema
       ~CompositeEnhance.schema_json
       ~CompositeEnhance.to_json

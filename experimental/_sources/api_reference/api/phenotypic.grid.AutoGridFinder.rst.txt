@@ -41,6 +41,7 @@ phenotypic.grid.AutoGridFinder
       ~AutoGridFinder.parse_file
       ~AutoGridFinder.parse_obj
       ~AutoGridFinder.parse_raw
+      ~AutoGridFinder.preflight_requirements
       ~AutoGridFinder.report
       ~AutoGridFinder.schema
       ~AutoGridFinder.schema_json

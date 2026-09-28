@@ -38,6 +38,7 @@ phenotypic.enhance.StructureSmoothing
       ~StructureSmoothing.parse_file
       ~StructureSmoothing.parse_obj
       ~StructureSmoothing.parse_raw
+      ~StructureSmoothing.preflight_requirements
       ~StructureSmoothing.schema
       ~StructureSmoothing.schema_json
       ~StructureSmoothing.to_json

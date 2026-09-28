@@ -747,8 +747,10 @@ writes every deliverable. It is the default, so <code class="docutils literal no
 </pre></div>
 </div>
 <p>Before committing to a long run, preview the plan. <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> resolves the
-datasets, validates the pipeline, and prints the estimated output size without
-processing anything:</p>
+datasets, validates the pipeline, runs the
+<a class="reference internal" href="cli_batch_processing.html#run-preflight-checks"><span class="std std-ref">run preflight</span></a>, and prints the
+estimated output size without processing anything or writing under
+<code class="docutils literal notranslate"><span class="pre">--output</span></code>:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--pipeline<span class="w"> </span>pipe.json<span class="w"> </span>--input<span class="w"> </span>./plates<span class="w"> </span>--output<span class="w"> </span>./out<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--image-type<span class="w"> </span>Image<span class="w"> </span>--dry-run
 </pre></div>
@@ -842,7 +844,9 @@ to <code class="docutils literal notranslate"><span class="pre">LiDetector</span
 <section id="recompile-rebuild-the-deliverables">
 <h2><code class="docutils literal notranslate"><span class="pre">recompile</span></code> — rebuild the deliverables<a class="headerlink" href="#recompile-rebuild-the-deliverables" title="Link to this heading">#</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">recompile</span></code> takes neither <code class="docutils literal notranslate"><span class="pre">--input</span></code> nor <code class="docutils literal notranslate"><span class="pre">--pipeline</span></code>; both are reloaded from the
-output root. It re-aggregates marker-authorized embedded tables into
+output root. A recorded pipeline file with a duplicated JSON key no longer
+loads, here as in every mode; remove the duplicate from
+<code class="docutils literal notranslate"><span class="pre">deliverables/pipeline.json.pht-pipe</span></code>. It re-aggregates marker-authorized embedded tables into
 <code class="docutils literal notranslate"><span class="pre">master_measurements.parquet</span></code>, regenerates any missing overlay PNGs from their stores,
 rebuilds the progress manifest, and regenerates the progress dashboard.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w"> </span>--mode<span class="w"> </span>recompile<span class="w"> </span>--output<span class="w"> </span>./out

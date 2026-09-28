@@ -38,6 +38,7 @@ phenotypic.enhance.SubtractRollingBall
       ~SubtractRollingBall.parse_file
       ~SubtractRollingBall.parse_obj
       ~SubtractRollingBall.parse_raw
+      ~SubtractRollingBall.preflight_requirements
       ~SubtractRollingBall.schema
       ~SubtractRollingBall.schema_json
       ~SubtractRollingBall.to_json

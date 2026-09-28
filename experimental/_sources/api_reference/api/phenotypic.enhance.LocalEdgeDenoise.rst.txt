@@ -38,6 +38,7 @@ phenotypic.enhance.LocalEdgeDenoise
       ~LocalEdgeDenoise.parse_file
       ~LocalEdgeDenoise.parse_obj
       ~LocalEdgeDenoise.parse_raw
+      ~LocalEdgeDenoise.preflight_requirements
       ~LocalEdgeDenoise.schema
       ~LocalEdgeDenoise.schema_json
       ~LocalEdgeDenoise.to_json

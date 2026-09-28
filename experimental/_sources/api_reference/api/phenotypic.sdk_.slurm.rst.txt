@@ -17,6 +17,7 @@ phenotypic.sdk\_.slurm
       :nosignatures:
    
       calculate_optimal_array_chunks
+      effective_sbatch_option
       estimate_concurrent_capacity
       format_sbatch_directives
       generate_dispatcher_chain
@@ -30,6 +31,7 @@ phenotypic.sdk\_.slurm
       submit_drip_feed_start
       submit_script
       validate_array_chunk
+      with_default_gpu_request
       write_slurm_array_script
    
    

@@ -38,6 +38,7 @@ phenotypic.enhance.SharpenEdgeGauss
       ~SharpenEdgeGauss.parse_file
       ~SharpenEdgeGauss.parse_obj
       ~SharpenEdgeGauss.parse_raw
+      ~SharpenEdgeGauss.preflight_requirements
       ~SharpenEdgeGauss.schema
       ~SharpenEdgeGauss.schema_json
       ~SharpenEdgeGauss.to_json

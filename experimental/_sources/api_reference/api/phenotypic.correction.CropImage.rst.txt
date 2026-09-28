@@ -38,6 +38,7 @@ phenotypic.correction.CropImage
       ~CropImage.parse_file
       ~CropImage.parse_obj
       ~CropImage.parse_raw
+      ~CropImage.preflight_requirements
       ~CropImage.schema
       ~CropImage.schema_json
       ~CropImage.to_json

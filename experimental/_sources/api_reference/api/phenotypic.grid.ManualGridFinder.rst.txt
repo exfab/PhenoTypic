@@ -41,6 +41,7 @@ phenotypic.grid.ManualGridFinder
       ~ManualGridFinder.parse_file
       ~ManualGridFinder.parse_obj
       ~ManualGridFinder.parse_raw
+      ~ManualGridFinder.preflight_requirements
       ~ManualGridFinder.schema
       ~ManualGridFinder.schema_json
       ~ManualGridFinder.to_json

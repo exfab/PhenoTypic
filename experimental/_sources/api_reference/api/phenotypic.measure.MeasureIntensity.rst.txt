@@ -39,6 +39,7 @@ phenotypic.measure.MeasureIntensity
       ~MeasureIntensity.parse_file
       ~MeasureIntensity.parse_obj
       ~MeasureIntensity.parse_raw
+      ~MeasureIntensity.preflight_requirements
       ~MeasureIntensity.schema
       ~MeasureIntensity.schema_json
       ~MeasureIntensity.to_json

@@ -38,6 +38,7 @@ phenotypic.refine.RefineBySineFit
       ~RefineBySineFit.parse_file
       ~RefineBySineFit.parse_obj
       ~RefineBySineFit.parse_raw
+      ~RefineBySineFit.preflight_requirements
       ~RefineBySineFit.schema
       ~RefineBySineFit.schema_json
       ~RefineBySineFit.to_json

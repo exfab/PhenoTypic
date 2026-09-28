@@ -38,6 +38,7 @@ phenotypic.enhance.EnhanceLocalContrast
       ~EnhanceLocalContrast.parse_file
       ~EnhanceLocalContrast.parse_obj
       ~EnhanceLocalContrast.parse_raw
+      ~EnhanceLocalContrast.preflight_requirements
       ~EnhanceLocalContrast.schema
       ~EnhanceLocalContrast.schema_json
       ~EnhanceLocalContrast.to_json

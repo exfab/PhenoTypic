@@ -38,6 +38,7 @@ phenotypic.abc\_.ImageDenoiser
       ~ImageDenoiser.parse_file
       ~ImageDenoiser.parse_obj
       ~ImageDenoiser.parse_raw
+      ~ImageDenoiser.preflight_requirements
       ~ImageDenoiser.schema
       ~ImageDenoiser.schema_json
       ~ImageDenoiser.to_json

@@ -38,6 +38,7 @@ phenotypic.refine.NearestNeighborMerger
       ~NearestNeighborMerger.parse_file
       ~NearestNeighborMerger.parse_obj
       ~NearestNeighborMerger.parse_raw
+      ~NearestNeighborMerger.preflight_requirements
       ~NearestNeighborMerger.schema
       ~NearestNeighborMerger.schema_json
       ~NearestNeighborMerger.to_json

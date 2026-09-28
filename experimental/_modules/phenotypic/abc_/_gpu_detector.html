@@ -777,6 +777,25 @@
     <span class="c1"># never tuned (TuneSpec(tunable=False) satisfies the annotation-coverage gate).</span>
     <span class="n">connectivity</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">tunable</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">2</span>
 
+<div class="viewcode-block" id="GpuDetector.preflight_requirements">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.abc_.GpuDetector.html#phenotypic.abc_.GpuDetector.preflight_requirements">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">preflight_requirements</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add the RGB requirement when ``input_layer`` is ``&quot;rgb&quot;``.</span>
+
+<span class="sd">        Every GPU detector reads ``getattr(image, self.input_layer)``, so the</span>
+<span class="sd">        requirement follows the field, not the class: ``MicroSamDetector``</span>
+<span class="sd">        defaults to ``&quot;gray&quot;`` but a user may set ``&quot;rgb&quot;``. Subclasses extend</span>
+<span class="sd">        this through ``super()`` with their packages and weights. See</span>
+<span class="sd">        ``BaseOperation.preflight_requirements``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">dataclasses</span>
+
+        <span class="n">requirements</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">preflight_requirements</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_layer</span> <span class="o">==</span> <span class="s2">&quot;rgb&quot;</span><span class="p">:</span>
+            <span class="n">requirements</span> <span class="o">=</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">requirements</span><span class="p">,</span> <span class="n">rgb_input</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">requirements</span></div>
+
+
     <span class="nd">@abstractmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_ensure_model_loaded</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Build/load the GPU model on first use (idempotent).&quot;&quot;&quot;</span>

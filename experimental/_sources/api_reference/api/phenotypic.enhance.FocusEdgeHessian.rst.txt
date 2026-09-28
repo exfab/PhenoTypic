@@ -38,6 +38,7 @@ phenotypic.enhance.FocusEdgeHessian
       ~FocusEdgeHessian.parse_file
       ~FocusEdgeHessian.parse_obj
       ~FocusEdgeHessian.parse_raw
+      ~FocusEdgeHessian.preflight_requirements
       ~FocusEdgeHessian.schema
       ~FocusEdgeHessian.schema_json
       ~FocusEdgeHessian.to_json

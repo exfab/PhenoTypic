@@ -731,6 +731,10 @@
 <span class="sd">        background on noise models and denoising strategy selection.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
+    <span class="c1">#: Gray-tolerant: denoises RGB only when present (`if not image.rgb.isempty()`).</span>
+    <span class="c1">#: Declared explicitly for the run preflight&#39;s RGB ratchet (spec §3).</span>
+    <span class="n">_requires_rgb_input</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+
     <span class="n">_GAT_NOISE_PARAMS</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;sigma&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">}</span>
     <span class="n">_GAT_DEFER_VALUES</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;norm&quot;</span>         <span class="p">:</span> <span class="kc">None</span><span class="p">,</span>

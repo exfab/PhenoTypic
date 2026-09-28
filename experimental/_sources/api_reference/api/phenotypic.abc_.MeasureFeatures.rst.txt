@@ -39,6 +39,7 @@ phenotypic.abc\_.MeasureFeatures
       ~MeasureFeatures.parse_file
       ~MeasureFeatures.parse_obj
       ~MeasureFeatures.parse_raw
+      ~MeasureFeatures.preflight_requirements
       ~MeasureFeatures.schema
       ~MeasureFeatures.schema_json
       ~MeasureFeatures.to_json

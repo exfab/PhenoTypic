@@ -38,6 +38,7 @@ phenotypic.correction.ColorDenoise
       ~ColorDenoise.parse_file
       ~ColorDenoise.parse_obj
       ~ColorDenoise.parse_raw
+      ~ColorDenoise.preflight_requirements
       ~ColorDenoise.schema
       ~ColorDenoise.schema_json
       ~ColorDenoise.to_json

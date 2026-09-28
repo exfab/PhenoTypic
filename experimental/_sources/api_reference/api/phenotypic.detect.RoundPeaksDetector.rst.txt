@@ -38,6 +38,7 @@ phenotypic.detect.RoundPeaksDetector
       ~RoundPeaksDetector.parse_file
       ~RoundPeaksDetector.parse_obj
       ~RoundPeaksDetector.parse_raw
+      ~RoundPeaksDetector.preflight_requirements
       ~RoundPeaksDetector.schema
       ~RoundPeaksDetector.schema_json
       ~RoundPeaksDetector.to_json

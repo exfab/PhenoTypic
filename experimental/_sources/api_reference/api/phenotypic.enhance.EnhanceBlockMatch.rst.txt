@@ -38,6 +38,7 @@ phenotypic.enhance.EnhanceBlockMatch
       ~EnhanceBlockMatch.parse_file
       ~EnhanceBlockMatch.parse_obj
       ~EnhanceBlockMatch.parse_raw
+      ~EnhanceBlockMatch.preflight_requirements
       ~EnhanceBlockMatch.schema
       ~EnhanceBlockMatch.schema_json
       ~EnhanceBlockMatch.to_json

@@ -38,6 +38,7 @@ phenotypic.abc\_.ImageOperation
       ~ImageOperation.parse_file
       ~ImageOperation.parse_obj
       ~ImageOperation.parse_raw
+      ~ImageOperation.preflight_requirements
       ~ImageOperation.schema
       ~ImageOperation.schema_json
       ~ImageOperation.to_json

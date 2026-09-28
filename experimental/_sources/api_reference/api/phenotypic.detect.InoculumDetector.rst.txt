@@ -38,6 +38,7 @@ phenotypic.detect.InoculumDetector
       ~InoculumDetector.parse_file
       ~InoculumDetector.parse_obj
       ~InoculumDetector.parse_raw
+      ~InoculumDetector.preflight_requirements
       ~InoculumDetector.schema
       ~InoculumDetector.schema_json
       ~InoculumDetector.to_json

@@ -38,6 +38,7 @@ phenotypic.abc\_.ObjectDetector
       ~ObjectDetector.parse_file
       ~ObjectDetector.parse_obj
       ~ObjectDetector.parse_raw
+      ~ObjectDetector.preflight_requirements
       ~ObjectDetector.schema
       ~ObjectDetector.schema_json
       ~ObjectDetector.to_json

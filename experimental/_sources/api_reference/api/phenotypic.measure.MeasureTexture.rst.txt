@@ -39,6 +39,7 @@ phenotypic.measure.MeasureTexture
       ~MeasureTexture.parse_file
       ~MeasureTexture.parse_obj
       ~MeasureTexture.parse_raw
+      ~MeasureTexture.preflight_requirements
       ~MeasureTexture.schema
       ~MeasureTexture.schema_json
       ~MeasureTexture.to_json

@@ -39,6 +39,7 @@ phenotypic.measure.MeasureShape
       ~MeasureShape.parse_file
       ~MeasureShape.parse_obj
       ~MeasureShape.parse_raw
+      ~MeasureShape.preflight_requirements
       ~MeasureShape.schema
       ~MeasureShape.schema_json
       ~MeasureShape.to_json

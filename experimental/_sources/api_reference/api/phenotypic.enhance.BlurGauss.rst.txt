@@ -38,6 +38,7 @@ phenotypic.enhance.BlurGauss
       ~BlurGauss.parse_file
       ~BlurGauss.parse_obj
       ~BlurGauss.parse_raw
+      ~BlurGauss.preflight_requirements
       ~BlurGauss.schema
       ~BlurGauss.schema_json
       ~BlurGauss.to_json

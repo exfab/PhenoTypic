@@ -38,6 +38,7 @@ phenotypic.abc\_.ObjectRefiner
       ~ObjectRefiner.parse_file
       ~ObjectRefiner.parse_obj
       ~ObjectRefiner.parse_raw
+      ~ObjectRefiner.preflight_requirements
       ~ObjectRefiner.schema
       ~ObjectRefiner.schema_json
       ~ObjectRefiner.to_json

@@ -42,6 +42,7 @@ phenotypic.correction.CalibrateColorRpcc
       ~CalibrateColorRpcc.parse_obj
       ~CalibrateColorRpcc.parse_raw
       ~CalibrateColorRpcc.patch_census
+      ~CalibrateColorRpcc.preflight_requirements
       ~CalibrateColorRpcc.report
       ~CalibrateColorRpcc.schema
       ~CalibrateColorRpcc.schema_json

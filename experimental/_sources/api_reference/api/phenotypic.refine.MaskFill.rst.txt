@@ -38,6 +38,7 @@ phenotypic.refine.MaskFill
       ~MaskFill.parse_file
       ~MaskFill.parse_obj
       ~MaskFill.parse_raw
+      ~MaskFill.preflight_requirements
       ~MaskFill.schema
       ~MaskFill.schema_json
       ~MaskFill.to_json

@@ -38,6 +38,7 @@ phenotypic.abc\_.BackgroundSubtraction
       ~BackgroundSubtraction.parse_file
       ~BackgroundSubtraction.parse_obj
       ~BackgroundSubtraction.parse_raw
+      ~BackgroundSubtraction.preflight_requirements
       ~BackgroundSubtraction.schema
       ~BackgroundSubtraction.schema_json
       ~BackgroundSubtraction.to_json

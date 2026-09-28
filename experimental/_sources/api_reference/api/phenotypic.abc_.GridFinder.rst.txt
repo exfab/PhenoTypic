@@ -41,6 +41,7 @@ phenotypic.abc\_.GridFinder
       ~GridFinder.parse_file
       ~GridFinder.parse_obj
       ~GridFinder.parse_raw
+      ~GridFinder.preflight_requirements
       ~GridFinder.schema
       ~GridFinder.schema_json
       ~GridFinder.to_json

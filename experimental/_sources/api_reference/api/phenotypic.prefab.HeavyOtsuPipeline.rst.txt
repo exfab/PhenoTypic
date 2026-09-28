@@ -51,6 +51,7 @@ phenotypic.prefab.HeavyOtsuPipeline
       ~HeavyOtsuPipeline.parse_file
       ~HeavyOtsuPipeline.parse_obj
       ~HeavyOtsuPipeline.parse_raw
+      ~HeavyOtsuPipeline.preflight_requirements
       ~HeavyOtsuPipeline.schema
       ~HeavyOtsuPipeline.schema_json
       ~HeavyOtsuPipeline.set_filters

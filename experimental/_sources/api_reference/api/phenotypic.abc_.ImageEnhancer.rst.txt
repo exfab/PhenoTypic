@@ -38,6 +38,7 @@ phenotypic.abc\_.ImageEnhancer
       ~ImageEnhancer.parse_file
       ~ImageEnhancer.parse_obj
       ~ImageEnhancer.parse_raw
+      ~ImageEnhancer.preflight_requirements
       ~ImageEnhancer.schema
       ~ImageEnhancer.schema_json
       ~ImageEnhancer.to_json

@@ -38,6 +38,7 @@ phenotypic.detect.SinePeakDetector
       ~SinePeakDetector.parse_file
       ~SinePeakDetector.parse_obj
       ~SinePeakDetector.parse_raw
+      ~SinePeakDetector.preflight_requirements
       ~SinePeakDetector.schema
       ~SinePeakDetector.schema_json
       ~SinePeakDetector.to_json

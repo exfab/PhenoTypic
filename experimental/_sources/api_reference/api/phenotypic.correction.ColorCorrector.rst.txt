@@ -38,6 +38,7 @@ phenotypic.correction.ColorCorrector
       ~ColorCorrector.parse_file
       ~ColorCorrector.parse_obj
       ~ColorCorrector.parse_raw
+      ~ColorCorrector.preflight_requirements
       ~ColorCorrector.report
       ~ColorCorrector.schema
       ~ColorCorrector.schema_json

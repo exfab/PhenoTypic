@@ -38,6 +38,7 @@ phenotypic.enhance.FocusEdgeSobel
       ~FocusEdgeSobel.parse_file
       ~FocusEdgeSobel.parse_obj
       ~FocusEdgeSobel.parse_raw
+      ~FocusEdgeSobel.preflight_requirements
       ~FocusEdgeSobel.schema
       ~FocusEdgeSobel.schema_json
       ~FocusEdgeSobel.to_json

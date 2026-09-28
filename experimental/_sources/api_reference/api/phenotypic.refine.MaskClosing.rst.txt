@@ -38,6 +38,7 @@ phenotypic.refine.MaskClosing
       ~MaskClosing.parse_file
       ~MaskClosing.parse_obj
       ~MaskClosing.parse_raw
+      ~MaskClosing.preflight_requirements
       ~MaskClosing.schema
       ~MaskClosing.schema_json
       ~MaskClosing.to_json

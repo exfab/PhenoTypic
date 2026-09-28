@@ -38,6 +38,7 @@ phenotypic.abc\_.Smoothing
       ~Smoothing.parse_file
       ~Smoothing.parse_obj
       ~Smoothing.parse_raw
+      ~Smoothing.preflight_requirements
       ~Smoothing.schema
       ~Smoothing.schema_json
       ~Smoothing.to_json

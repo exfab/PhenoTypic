@@ -38,6 +38,7 @@ phenotypic.enhance.RankMedianEnhancer
       ~RankMedianEnhancer.parse_file
       ~RankMedianEnhancer.parse_obj
       ~RankMedianEnhancer.parse_raw
+      ~RankMedianEnhancer.preflight_requirements
       ~RankMedianEnhancer.schema
       ~RankMedianEnhancer.schema_json
       ~RankMedianEnhancer.to_json

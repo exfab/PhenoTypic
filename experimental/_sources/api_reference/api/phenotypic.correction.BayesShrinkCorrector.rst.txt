@@ -38,6 +38,7 @@ phenotypic.correction.BayesShrinkCorrector
       ~BayesShrinkCorrector.parse_file
       ~BayesShrinkCorrector.parse_obj
       ~BayesShrinkCorrector.parse_raw
+      ~BayesShrinkCorrector.preflight_requirements
       ~BayesShrinkCorrector.schema
       ~BayesShrinkCorrector.schema_json
       ~BayesShrinkCorrector.to_json

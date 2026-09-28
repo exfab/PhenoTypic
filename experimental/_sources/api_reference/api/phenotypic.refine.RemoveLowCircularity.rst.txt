@@ -38,6 +38,7 @@ phenotypic.refine.RemoveLowCircularity
       ~RemoveLowCircularity.parse_file
       ~RemoveLowCircularity.parse_obj
       ~RemoveLowCircularity.parse_raw
+      ~RemoveLowCircularity.preflight_requirements
       ~RemoveLowCircularity.schema
       ~RemoveLowCircularity.schema_json
       ~RemoveLowCircularity.to_json

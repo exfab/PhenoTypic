@@ -38,6 +38,7 @@ phenotypic.refine.MaskGradient
       ~MaskGradient.parse_file
       ~MaskGradient.parse_obj
       ~MaskGradient.parse_raw
+      ~MaskGradient.preflight_requirements
       ~MaskGradient.schema
       ~MaskGradient.schema_json
       ~MaskGradient.to_json

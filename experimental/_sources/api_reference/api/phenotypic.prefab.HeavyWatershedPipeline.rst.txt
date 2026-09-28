@@ -51,6 +51,7 @@ phenotypic.prefab.HeavyWatershedPipeline
       ~HeavyWatershedPipeline.parse_file
       ~HeavyWatershedPipeline.parse_obj
       ~HeavyWatershedPipeline.parse_raw
+      ~HeavyWatershedPipeline.preflight_requirements
       ~HeavyWatershedPipeline.schema
       ~HeavyWatershedPipeline.schema_json
       ~HeavyWatershedPipeline.set_filters

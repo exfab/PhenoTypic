@@ -38,6 +38,7 @@ phenotypic.enhance.FocusEdgeTwoKPhase
       ~FocusEdgeTwoKPhase.parse_file
       ~FocusEdgeTwoKPhase.parse_obj
       ~FocusEdgeTwoKPhase.parse_raw
+      ~FocusEdgeTwoKPhase.preflight_requirements
       ~FocusEdgeTwoKPhase.schema
       ~FocusEdgeTwoKPhase.schema_json
       ~FocusEdgeTwoKPhase.to_json

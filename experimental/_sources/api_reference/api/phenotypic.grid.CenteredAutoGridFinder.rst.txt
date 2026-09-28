@@ -41,6 +41,7 @@ phenotypic.grid.CenteredAutoGridFinder
       ~CenteredAutoGridFinder.parse_file
       ~CenteredAutoGridFinder.parse_obj
       ~CenteredAutoGridFinder.parse_raw
+      ~CenteredAutoGridFinder.preflight_requirements
       ~CenteredAutoGridFinder.schema
       ~CenteredAutoGridFinder.schema_json
       ~CenteredAutoGridFinder.to_json

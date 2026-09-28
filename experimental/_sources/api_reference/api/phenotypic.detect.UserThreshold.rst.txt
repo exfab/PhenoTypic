@@ -38,6 +38,7 @@ phenotypic.detect.UserThreshold
       ~UserThreshold.parse_file
       ~UserThreshold.parse_obj
       ~UserThreshold.parse_raw
+      ~UserThreshold.preflight_requirements
       ~UserThreshold.schema
       ~UserThreshold.schema_json
       ~UserThreshold.to_json

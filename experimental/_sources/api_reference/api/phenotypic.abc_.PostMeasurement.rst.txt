@@ -38,6 +38,7 @@ phenotypic.abc\_.PostMeasurement
       ~PostMeasurement.parse_file
       ~PostMeasurement.parse_obj
       ~PostMeasurement.parse_raw
+      ~PostMeasurement.preflight_requirements
       ~PostMeasurement.schema
       ~PostMeasurement.schema_json
       ~PostMeasurement.to_json

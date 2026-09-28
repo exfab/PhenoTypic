@@ -611,6 +611,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PrefabPipeline.html">phenotypic.abc_.PrefabPipeline</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.FootprintMixin.html">phenotypic.abc_.FootprintMixin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.PostMeasurement.html">phenotypic.abc_.PostMeasurement</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html">phenotypic.abc_.OperationRequirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.WeightRequirement.html">phenotypic.abc_.WeightRequirement</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.abc_.DetectionMode.html">phenotypic.abc_.DetectionMode</a></li>
 </ul>
 </details></li>
@@ -978,6 +980,8 @@
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_machine_state.html">phenotypic.sdk_.migrate_legacy_machine_state</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.migrate_legacy_qc.html">phenotypic.sdk_.migrate_legacy_qc</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.clear_machine_state.html">phenotypic.sdk_.clear_machine_state</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.machine_state_restart_targets.html">phenotypic.sdk_.machine_state_restart_targets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.preserved_on_restart_names.html">phenotypic.sdk_.preserved_on_restart_names</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.param_importance_path.html">phenotypic.sdk_.param_importance_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.pareto_best_pipeline_path.html">phenotypic.sdk_.pareto_best_pipeline_path</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phenotypic.sdk_.pareto_dir.html">phenotypic.sdk_.pareto_dir</a></li>
@@ -1124,6 +1128,7 @@
 </details></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="phenotypic.sdk_.slurm.html">phenotypic.sdk_.slurm</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.calculate_optimal_array_chunks.html">phenotypic.sdk_.slurm.calculate_optimal_array_chunks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.effective_sbatch_option.html">phenotypic.sdk_.slurm.effective_sbatch_option</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.estimate_concurrent_capacity.html">phenotypic.sdk_.slurm.estimate_concurrent_capacity</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.format_sbatch_directives.html">phenotypic.sdk_.slurm.format_sbatch_directives</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.generate_dispatcher_chain.html">phenotypic.sdk_.slurm.generate_dispatcher_chain</a></li>
@@ -1137,6 +1142,7 @@
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.submit_drip_feed_start.html">phenotypic.sdk_.slurm.submit_drip_feed_start</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.submit_script.html">phenotypic.sdk_.slurm.submit_script</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.validate_array_chunk.html">phenotypic.sdk_.slurm.validate_array_chunk</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.with_default_gpu_request.html">phenotypic.sdk_.slurm.with_default_gpu_request</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.write_slurm_array_script.html">phenotypic.sdk_.slurm.write_slurm_array_script</a></li>
 <li class="toctree-l3"><a class="reference internal" href="phenotypic.sdk_.slurm.SlurmArrayScriptSpec.html">phenotypic.sdk_.slurm.SlurmArrayScriptSpec</a></li>
 </ul>
@@ -2319,6 +2325,27 @@ logged.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span></dt>
 <dd><p>Serialize this operation to JSON.</p>
 <p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
@@ -3437,6 +3464,27 @@ logged.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span></dt>
 <dd><p>Serialize this operation to JSON.</p>
 <p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
@@ -4444,6 +4492,27 @@ logged.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span></dt>
 <dd><p>Serialize this operation to JSON.</p>
 <p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
@@ -5390,6 +5459,27 @@ logged.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -6467,6 +6557,27 @@ logged.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -7552,6 +7663,27 @@ logged.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span></dt>
 <dd><p>Serialize this operation to JSON.</p>
 <p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
@@ -7636,7 +7768,7 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 
 <dl class="py class">
 <dt class="sig sig-object py">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.measure.</span></span><span class="sig-name descname"><span class="pre">MeasureOrientationZones</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center_detector:</span> <span class="pre">~typing.Annotated[~typing.Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_validators.BeforeValidator(func=~phenotypic.sdk_.typing_._deserialize_operation_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">json_schema_input_type=PydanticUndefined)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_validators.AfterValidator(func=&lt;phenotypic.sdk_.typing_._RequireValue</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7fc82e9ecd30&gt;)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_serializers.PlainSerializer(func=~phenotypic.sdk_.typing_._serialize_operation_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_type=PydanticUndefined</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">when_used=always)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_OperationFieldMarker()]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">legacy_mode:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outer_zone_percentile:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_d:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">1.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_i:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">4.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radial_ring_width:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">8.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_minimum_segment:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_min_crossings:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_min_resultant:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_min_ring_coherence:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_support_weight:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">4.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_outer_support_margin:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_maximum_gap:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_annuli:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pelt_penalty:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">5.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symmetry_threshold:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.6666666666666666</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_angular_bins:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">smoothing_window:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method:</span> <span class="pre">~typing.Literal['distance'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'intensity']</span> <span class="pre">=</span> <span class="pre">'distance'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extent_margin:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_samples_per_ring:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_core:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.9</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_dense:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_sparse:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intensity_source:</span> <span class="pre">~typing.Literal['gray'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'detect_mat']</span> <span class="pre">=</span> <span class="pre">'detect_mat'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">long_range_lag:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">16.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outward_peak_window_rings:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outward_min_run_rings:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_diagnostics:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quiver_block:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">12</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/measure/_orientation_zones/_operation.html#MeasureOrientationZones"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.measure.</span></span><span class="sig-name descname"><span class="pre">MeasureOrientationZones</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center_detector:</span> <span class="pre">~typing.Annotated[~typing.Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_validators.BeforeValidator(func=~phenotypic.sdk_.typing_._deserialize_operation_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">json_schema_input_type=PydanticUndefined)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_validators.AfterValidator(func=&lt;phenotypic.sdk_.typing_._RequireValue</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7f6eb27e9f90&gt;)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_serializers.PlainSerializer(func=~phenotypic.sdk_.typing_._serialize_operation_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_type=PydanticUndefined</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">when_used=always)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_OperationFieldMarker()]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">legacy_mode:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outer_zone_percentile:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_d:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">1.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_i:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">4.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radial_ring_width:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">8.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_minimum_segment:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_min_crossings:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_min_resultant:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_min_ring_coherence:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_support_weight:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">4.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_outer_support_margin:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_maximum_gap:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_annuli:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pelt_penalty:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">5.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symmetry_threshold:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.6666666666666666</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_angular_bins:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">smoothing_window:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method:</span> <span class="pre">~typing.Literal['distance'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'intensity']</span> <span class="pre">=</span> <span class="pre">'distance'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extent_margin:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_samples_per_ring:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_core:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.9</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_dense:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_sparse:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intensity_source:</span> <span class="pre">~typing.Literal['gray'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'detect_mat']</span> <span class="pre">=</span> <span class="pre">'detect_mat'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">long_range_lag:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">16.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outward_peak_window_rings:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outward_min_run_rings:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_diagnostics:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quiver_block:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">12</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/measure/_orientation_zones/_operation.html#MeasureOrientationZones"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">CanonicalZoneMeasure</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">_OrientationZonesFigures</span></code></p>
 <p>Measure absolute and radial-relative hyphal orientation by growth zone.</p>
 <p>Canonical mode computes one P2/P98-scaled structure-tensor field over the
@@ -7658,7 +7790,7 @@ legacy <a class="reference internal" href="phenotypic.schema.ORIENTATION_ZONE_DI
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>center_detector</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><em>Annotated</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>, </em><em>BeforeValidator</em><em>(</em><em>func=~phenotypic.sdk_.typing_._deserialize_operation_value</em><em>, </em><em>json_schema_input_type=PydanticUndefined</em><em>)</em><em>, </em><em>AfterValidator</em><em>(</em><em>func=&lt;phenotypic.sdk_.typing_._RequireValue object at 0x7fc82e9ecd30&gt;</em><em>)</em><em>, </em><em>PlainSerializer</em><em>(</em><em>func=~phenotypic.sdk_.typing_._serialize_operation_value</em><em>, </em><em>return_type=PydanticUndefined</em><em>, </em><em>when_used=always</em><em>)</em><em>, </em><em>_OperationFieldMarker</em><em>(</em><em>)</em><em>] </em><em>| </em><em>None</em>) – ObjectDetector or ImagePipeline that produces compact
+<li><p><strong>center_detector</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><em>Annotated</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>, </em><em>BeforeValidator</em><em>(</em><em>func=~phenotypic.sdk_.typing_._deserialize_operation_value</em><em>, </em><em>json_schema_input_type=PydanticUndefined</em><em>)</em><em>, </em><em>AfterValidator</em><em>(</em><em>func=&lt;phenotypic.sdk_.typing_._RequireValue object at 0x7f6eb27e9f90&gt;</em><em>)</em><em>, </em><em>PlainSerializer</em><em>(</em><em>func=~phenotypic.sdk_.typing_._serialize_operation_value</em><em>, </em><em>return_type=PydanticUndefined</em><em>, </em><em>when_used=always</em><em>)</em><em>, </em><em>_OperationFieldMarker</em><em>(</em><em>)</em><em>] </em><em>| </em><em>None</em>) – ObjectDetector or ImagePipeline that produces compact
 center regions. The default pipeline resets <code class="docutils literal notranslate"><span class="pre">detect_mat</span></code> to
 grayscale and applies <code class="docutils literal notranslate"><span class="pre">InoculumDetector(min_diameter=20,</span>
 <span class="pre">max_diameter=140,</span> <span class="pre">thresh_method=&quot;otsu&quot;)</span></code>. In canonical mode, each
@@ -8792,6 +8924,27 @@ logged.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -10102,6 +10255,27 @@ logged.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span></dt>
 <dd><p>Serialize this operation to JSON.</p>
 <p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
@@ -11302,6 +11476,27 @@ logged.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span></dt>
 <dd><p>Serialize this operation to JSON.</p>
 <p>Captures the operation as a <code class="docutils literal notranslate"><span class="pre">{&quot;class&quot;,</span> <span class="pre">&quot;params&quot;}</span></code> envelope: <code class="docutils literal notranslate"><span class="pre">params</span></code>
@@ -11401,7 +11596,7 @@ string is returned instead. Accepts a <code class="docutils literal notranslate"
 
 <dl class="py class">
 <dt class="sig sig-object py">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.measure.</span></span><span class="sig-name descname"><span class="pre">MeasureSymZones</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center_detector:</span> <span class="pre">~typing.Annotated[~typing.Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_validators.BeforeValidator(func=~phenotypic.sdk_.typing_._deserialize_operation_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">json_schema_input_type=PydanticUndefined)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_validators.AfterValidator(func=&lt;phenotypic.sdk_.typing_._RequireValue</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7fc82e9ecd30&gt;)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_serializers.PlainSerializer(func=~phenotypic.sdk_.typing_._serialize_operation_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_type=PydanticUndefined</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">when_used=always)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_OperationFieldMarker()]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">legacy_mode:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outer_zone_percentile:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_d:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">1.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_i:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">4.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radial_ring_width:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">8.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_minimum_segment:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_min_crossings:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_min_resultant:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_min_ring_coherence:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_support_weight:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">4.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_outer_support_margin:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_maximum_gap:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_annuli:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pelt_penalty:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">5.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symmetry_threshold:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.6666666666666666</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_angular_bins:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">smoothing_window:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method:</span> <span class="pre">~typing.Literal['distance'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'intensity']</span> <span class="pre">=</span> <span class="pre">'distance'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extent_margin:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_samples_per_ring:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_core:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.9</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_dense:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_sparse:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intensity_source:</span> <span class="pre">~typing.Literal['gray'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'detect_mat']</span> <span class="pre">=</span> <span class="pre">'gray'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/measure/_measure_symzones.html#MeasureSymZones"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">phenotypic.measure.</span></span><span class="sig-name descname"><span class="pre">MeasureSymZones</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center_detector:</span> <span class="pre">~typing.Annotated[~typing.Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_validators.BeforeValidator(func=~phenotypic.sdk_.typing_._deserialize_operation_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">json_schema_input_type=PydanticUndefined)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_validators.AfterValidator(func=&lt;phenotypic.sdk_.typing_._RequireValue</span> <span class="pre">object</span> <span class="pre">at</span> <span class="pre">0x7f6eb27e9f90&gt;)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~pydantic.functional_serializers.PlainSerializer(func=~phenotypic.sdk_.typing_._serialize_operation_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_type=PydanticUndefined</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">when_used=always)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_OperationFieldMarker()]</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">legacy_mode:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outer_zone_percentile:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">100.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_d:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">1.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_i:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">4.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radial_ring_width:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">8.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_minimum_segment:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_min_crossings:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_min_resultant:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_min_ring_coherence:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_support_weight:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">4.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_outer_support_margin:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_maximum_gap:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_annuli:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pelt_penalty:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">5.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symmetry_threshold:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.6666666666666666</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_angular_bins:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">smoothing_window:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method:</span> <span class="pre">~typing.Literal['distance'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'intensity']</span> <span class="pre">=</span> <span class="pre">'distance'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extent_margin:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_samples_per_ring:</span> <span class="pre">int</span> <span class="pre">=</span> <span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_core:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.9</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_dense:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_sparse:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intensity_source:</span> <span class="pre">~typing.Literal['gray'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">'detect_mat']</span> <span class="pre">=</span> <span class="pre">'gray'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/phenotypic/measure/_measure_symzones.html#MeasureSymZones"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">CanonicalZoneMeasure</span></code>, <a class="reference internal" href="../core/visualization_plotting.html#phenotypic.abc_.plotting.PlotImage" title="phenotypic.abc_.plotting._lifecycle.PlotImage"><code class="xref py py-class docutils literal notranslate"><span class="pre">PlotImage</span></code></a></p>
 <p>Measure colony radial expansion, symmetry, and canonical radial zones.</p>
 <blockquote>
@@ -11609,7 +11804,7 @@ walkthrough of measuring and exporting colony data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>center_detector</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><em>Annotated</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>, </em><em>BeforeValidator</em><em>(</em><em>func=~phenotypic.sdk_.typing_._deserialize_operation_value</em><em>, </em><em>json_schema_input_type=PydanticUndefined</em><em>)</em><em>, </em><em>AfterValidator</em><em>(</em><em>func=&lt;phenotypic.sdk_.typing_._RequireValue object at 0x7fc82e9ecd30&gt;</em><em>)</em><em>, </em><em>PlainSerializer</em><em>(</em><em>func=~phenotypic.sdk_.typing_._serialize_operation_value</em><em>, </em><em>return_type=PydanticUndefined</em><em>, </em><em>when_used=always</em><em>)</em><em>, </em><em>_OperationFieldMarker</em><em>(</em><em>)</em><em>] </em><em>| </em><em>None</em>)</p></li>
+<li><p><strong>center_detector</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Annotated" title="(in Python v3.14)"><em>Annotated</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a><em>, </em><em>BeforeValidator</em><em>(</em><em>func=~phenotypic.sdk_.typing_._deserialize_operation_value</em><em>, </em><em>json_schema_input_type=PydanticUndefined</em><em>)</em><em>, </em><em>AfterValidator</em><em>(</em><em>func=&lt;phenotypic.sdk_.typing_._RequireValue object at 0x7f6eb27e9f90&gt;</em><em>)</em><em>, </em><em>PlainSerializer</em><em>(</em><em>func=~phenotypic.sdk_.typing_._serialize_operation_value</em><em>, </em><em>return_type=PydanticUndefined</em><em>, </em><em>when_used=always</em><em>)</em><em>, </em><em>_OperationFieldMarker</em><em>(</em><em>)</em><em>] </em><em>| </em><em>None</em>)</p></li>
 <li><p><strong>legacy_mode</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>)</p></li>
 <li><p><strong>outer_zone_percentile</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
 <li><p><strong>sigma_d</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
@@ -12569,6 +12764,27 @@ logged.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -13909,6 +14125,27 @@ logged.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">preflight_requirements</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements"><span class="pre">OperationRequirements</span></a></span></span></dt>
+<dd><p>What this operation needs from the run that executes it.</p>
+<p>Read by the CLI’s run preflight, which refuses an incompatible run
+before any image is processed (spec
+<code class="docutils literal notranslate"><span class="pre">2026-09-24-cli-preflight</span></code> §3). <code class="docutils literal notranslate"><span class="pre">grid_image</span></code> is derived from the
+type: every operation that rejects a plain <code class="docutils literal notranslate"><span class="pre">Image</span></code> derives from
+<code class="docutils literal notranslate"><span class="pre">GridOperation</span></code> or <code class="docutils literal notranslate"><span class="pre">GridMeasureFeatures</span></code>. The rest come from the
+<code class="docutils literal notranslate"><span class="pre">_requires_*</span></code> class variables. Override, calling <code class="docutils literal notranslate"><span class="pre">super()</span></code>, when a
+requirement depends on a field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The operation’s requirements.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="phenotypic.abc_.OperationRequirements.html#phenotypic.abc_.OperationRequirements" title="phenotypic.abc_.OperationRequirements">OperationRequirements</a></p>
 </dd>
 </dl>
 </dd></dl>

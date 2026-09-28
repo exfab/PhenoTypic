@@ -38,6 +38,7 @@ phenotypic.enhance.BayesShrinkEnhancer
       ~BayesShrinkEnhancer.parse_file
       ~BayesShrinkEnhancer.parse_obj
       ~BayesShrinkEnhancer.parse_raw
+      ~BayesShrinkEnhancer.preflight_requirements
       ~BayesShrinkEnhancer.schema
       ~BayesShrinkEnhancer.schema_json
       ~BayesShrinkEnhancer.to_json

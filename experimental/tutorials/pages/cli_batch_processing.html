@@ -708,6 +708,230 @@ python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w
 <p><code class="docutils literal notranslate"><span class="pre">--sample</span></code> draws N images from <em>each</em> dataset (each first-level subdirectory of
 <code class="docutils literal notranslate"><span class="pre">--input</span></code>). Pass <code class="docutils literal notranslate"><span class="pre">--random-seed</span></code> to draw the same subset every time.</p>
 </section>
+<section id="run-preflight-checks">
+<h2>Run Preflight Checks<a class="headerlink" href="#run-preflight-checks" title="Link to this heading">#</a></h2>
+<p>Before any image is processed, and before anything under <code class="docutils literal notranslate"><span class="pre">--output</span></code> is created,
+cleared, or submitted, the CLI runs a <strong>run preflight</strong>: read-only checks of
+the pipeline, the environment, the cluster profile, the input files’ headers,
+the metadata CSV, and the output location. The preflight never decodes a
+pixel, so a single bad image cannot make it fail.</p>
+<p>Each problem is reported as a finding with a code, the affected paths, and a
+remedy:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>✗ Error [PF-GRID-IMAGE]: grid operation(s) meas:spread require a GridImage, but the run uses --image-type Image; each such image would fail with GridImageInputError
+    → Run with --image-type GridImage (and --nrows/--ncols for your plate layout), or remove the grid operations listed above.
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>An <strong>error</strong> refuses the run. The CLI exits with status 1 and says that
+nothing under <code class="docutils literal notranslate"><span class="pre">--output</span></code> was changed.</p></li>
+<li><p>A <strong>warning</strong> is printed and the run continues.</p></li>
+<li><p>A finding about input files is an error when it affects every input, and a
+warning listing the affected files when it affects only some of them: the
+other images can still be processed.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> runs the same preflight, so it is the way to check a
+configuration without starting a run. <code class="docutils literal notranslate"><span class="pre">--skip-validation</span></code> skips validation:
+the execution-configuration check, the pipeline load check, and the run
+preflight. It does not skip the checks that protect the output folder or that
+the run cannot proceed without: the GPU placement refusal (a GPU detector in
+a position the staged GPU engine cannot run), the refusal of a <code class="docutils literal notranslate"><span class="pre">--restart</span></code> or
+<code class="docutils literal notranslate"><span class="pre">--overwrite</span></code> that would delete the run’s own inputs, and the parsing of
+<code class="docutils literal notranslate"><span class="pre">--metadata</span></code>, <code class="docutils literal notranslate"><span class="pre">--bit-depth</span></code>, and <code class="docutils literal notranslate"><span class="pre">--gpu-slurm</span></code> values.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Code</p></th>
+<th class="head"><p>Reported when</p></th>
+<th class="head"><p>Severity</p></th>
+<th class="head"><p>Remedy</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PF-PIPELINE-LOAD</span></code></p></td>
+<td><p>The pipeline file cannot be read: invalid JSON, a duplicated key, or invalid parameters</p></td>
+<td><p>error</p></td>
+<td><p>Fix the pipeline file</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PF-CUSTOM-OP</span></code></p></td>
+<td><p>The pipeline names a class that is not in the <code class="docutils literal notranslate"><span class="pre">phenotypic</span></code> namespace</p></td>
+<td><p>error</p></td>
+<td><p>List a self-registering module in <code class="docutils literal notranslate"><span class="pre">PHENOTYPIC_PRELOAD_MODULES</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PF-GRID-IMAGE</span></code></p></td>
+<td><p>A grid operation or grid measurer runs on images read as plain <code class="docutils literal notranslate"><span class="pre">Image</span></code></p></td>
+<td><p>by reach</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--image-type</span> <span class="pre">GridImage</span></code>, or remove the grid operations</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PF-GRID-PRESET</span></code></p></td>
+<td><p>The pipeline’s <code class="docutils literal notranslate"><span class="pre">nrows</span></code> and <code class="docutils literal notranslate"><span class="pre">ncols</span></code> preset adds a grid finder, but images are read as plain <code class="docutils literal notranslate"><span class="pre">Image</span></code></p></td>
+<td><p>by reach</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--image-type</span> <span class="pre">GridImage</span></code>, or remove the preset</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PF-NO-DETECTOR</span></code></p></td>
+<td><p>A <code class="docutils literal notranslate"><span class="pre">full</span></code> run has no object detector in the pipeline’s operations</p></td>
+<td><p>error</p></td>
+<td><p>Add a detector, or use <code class="docutils literal notranslate"><span class="pre">--skip-validation</span></code> if a custom operation writes the object map</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PF-MISSING-MODULE</span></code></p></td>
+<td><p>An operation needs a package that is not installed</p></td>
+<td><p>error</p></td>
+<td><p>Install the extra the message names</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PF-LICENSE</span></code></p></td>
+<td><p>A detector needs gated weights whose license the run has not accepted</p></td>
+<td><p>error</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">PHENOTYPIC_ACCEPT_MODEL_LICENSE=&lt;name&gt;</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PF-WEIGHTS-UNCACHED</span></code></p></td>
+<td><p>A detector’s weights are not in the local cache</p></td>
+<td><p>warning</p></td>
+<td><p>Pre-download them on a node with network access</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PF-SBATCH-REJECTED</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sbatch</span> <span class="pre">--test-only</span></code> names a configuration fault in a profile the run submits: an invalid partition, account, QoS, GRES or option</p></td>
+<td><p>error</p></td>
+<td><p>Fix the option <code class="docutils literal notranslate"><span class="pre">sbatch</span></code> names</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PF-SBATCH-UNAVAILABLE</span></code></p></td>
+<td><p>A profile could not be confirmed: no <code class="docutils literal notranslate"><span class="pre">sbatch</span></code>, a timeout, a controller fault, or a failure a real submission may queue through (e.g. every node of the partition drained)</p></td>
+<td><p>warning</p></td>
+<td><p>Read <code class="docutils literal notranslate"><span class="pre">sbatch</span></code>’s message; a real submission still reports real failures</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PF-TIME-OVER-PARTITION</span></code></p></td>
+<td><p>The requested time exceeds the partition’s <code class="docutils literal notranslate"><span class="pre">MaxTime</span></code> (for a partition list, per the cluster’s <code class="docutils literal notranslate"><span class="pre">EnforcePartLimits</span></code>)</p></td>
+<td><p>warning</p></td>
+<td><p>Lower the time, or choose another partition</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PF-SLURM-LIMIT</span></code></p></td>
+<td><p>The staged GPU engine cannot fit the cluster’s <code class="docutils literal notranslate"><span class="pre">MaxSubmitJobs</span></code> or array limit</p></td>
+<td><p>error</p></td>
+<td><p>Reduce <code class="docutils literal notranslate"><span class="pre">--gpu-shards</span></code>, or ask for a higher limit</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PF-GPU-PARTITION</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sinfo</span></code> lists the GRES of the partition a GPU job runs in, and none is a GPU</p></td>
+<td><p>error</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--gpu-slurm</span> <span class="pre">slurm_partition=&lt;gpu-partition&gt;</span></code> (or <code class="docutils literal notranslate"><span class="pre">--slurm</span></code> for <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">process</span></code>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PF-HEADER-UNREADABLE</span></code></p></td>
+<td><p>An input file’s header cannot be read</p></td>
+<td><p>by reach</p></td>
+<td><p>Replace or remove the files listed</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PF-CHANNELS</span></code></p></td>
+<td><p>An input has 2, or 5 or more, channels, which <code class="docutils literal notranslate"><span class="pre">Image.imread</span></code> refuses</p></td>
+<td><p>by reach</p></td>
+<td><p>Convert the files to grayscale or RGB(A)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PF-DETECT-MODE-GRAY</span></code></p></td>
+<td><p>A color <code class="docutils literal notranslate"><span class="pre">--detect-mode</span></code> is set, but inputs are grayscale</p></td>
+<td><p>by reach</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--detect-mode</span> <span class="pre">gray</span></code>, or supply RGB images</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PF-RGB-OP-GRAY</span></code></p></td>
+<td><p>A color operation or measurer runs on grayscale inputs</p></td>
+<td><p>by reach</p></td>
+<td><p>Supply RGB images, or remove the color operations</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PF-BIT-DEPTH</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--bit-depth</span></code> contradicts the depth the files store (JPEG is exempt: it is always read as 8-bit)</p></td>
+<td><p>by reach</p></td>
+<td><p>Drop <code class="docutils literal notranslate"><span class="pre">--bit-depth</span></code>, or set it to the stored depth</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PF-RAW-NO-RAWPY</span></code></p></td>
+<td><p>RAW inputs, but <code class="docutils literal notranslate"><span class="pre">rawpy</span></code> is not installed (it is not installed on Windows)</p></td>
+<td><p>by reach</p></td>
+<td><p>Install <code class="docutils literal notranslate"><span class="pre">rawpy</span></code>, or convert the RAW files to TIFF</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PF-STEM-COLLISION</span></code></p></td>
+<td><p>Two inputs in one dataset share a name without extension (e.g. <code class="docutils literal notranslate"><span class="pre">a.png</span></code>, <code class="docutils literal notranslate"><span class="pre">a.tif</span></code>)</p></td>
+<td><p>error</p></td>
+<td><p>Rename or move one file of each pair</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PF-META-PARSE</span></code></p></td>
+<td><p>The <code class="docutils literal notranslate"><span class="pre">--metadata</span></code> CSV does not parse</p></td>
+<td><p>error</p></td>
+<td><p>Fix the CSV</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PF-META-ALIAS</span></code></p></td>
+<td><p>The CSV has a legacy and a current spelling of one column, with conflicting values</p></td>
+<td><p>error</p></td>
+<td><p>Keep one spelling</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PF-META-NO-KEYS</span></code></p></td>
+<td><p>The CSV shares no column that identifies an image</p></td>
+<td><p>error; warning when its keys may be measurement columns such as <code class="docutils literal notranslate"><span class="pre">Grid_RowNum</span></code>, or metadata the images carry themselves (PhenoTypic exports, custom operations)</p></td>
+<td><p>Add an <code class="docutils literal notranslate"><span class="pre">ImageName</span></code> column</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PF-META-DUP-KEYS</span></code></p></td>
+<td><p>A join key repeats in the CSV</p></td>
+<td><p>as <code class="docutils literal notranslate"><span class="pre">PF-META-NO-KEYS</span></code></p></td>
+<td><p>Make each key unique</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PF-META-UNMATCHED</span></code></p></td>
+<td><p>Some images have no metadata row</p></td>
+<td><p>warning</p></td>
+<td><p>Add rows, or match <code class="docutils literal notranslate"><span class="pre">ImageName</span></code> to the file names</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PF-META-ORPHANS</span></code></p></td>
+<td><p>Some metadata rows match no image</p></td>
+<td><p>warning</p></td>
+<td><p>Expected for wells that grew nothing</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PF-META-UNVERIFIED</span></code></p></td>
+<td><p>The CSV joins on columns only measurements carry</p></td>
+<td><p>warning</p></td>
+<td><p>None needed; the join is checked at finalization</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PF-OUTPUT-UNWRITABLE</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">--output</span></code> (or its nearest existing parent) is not writable</p></td>
+<td><p>error</p></td>
+<td><p>Choose another <code class="docutils literal notranslate"><span class="pre">--output</span></code>, or fix permissions</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PF-OUTPUT-SPACE</span></code></p></td>
+<td><p>A <code class="docutils literal notranslate"><span class="pre">full</span></code> run’s output disk has less free space than the inputs’ size (a heuristic)</p></td>
+<td><p>warning</p></td>
+<td><p>Free space, or choose another <code class="docutils literal notranslate"><span class="pre">--output</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PF-NODE-LOCAL</span></code></p></td>
+<td><p>On a SLURM run, a path workers read or write is on node-local storage</p></td>
+<td><p>warning</p></td>
+<td><p>Move it to shared storage</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PF-CHECK-CRASHED</span></code></p></td>
+<td><p>A check itself failed</p></td>
+<td><p>warning</p></td>
+<td><p>Report it; the run is not blocked</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>“By reach” means an error when every input is affected, and a warning listing
+the affected inputs otherwise.</p>
+<section id="changes-that-can-refuse-a-run-that-used-to-start">
+<h3>Changes that can refuse a run that used to start<a class="headerlink" href="#changes-that-can-refuse-a-run-that-used-to-start" title="Link to this heading">#</a></h3>
+<p>These came with the run preflight. Each refusal replaces a run that would have
+failed, or silently produced the wrong result, later:</p>
+<ul class="simple">
+<li><p><strong>SAM3 needs an explicit license acceptance.</strong> Set
+<code class="docutils literal notranslate"><span class="pre">PHENOTYPIC_ACCEPT_MODEL_LICENSE=sam3</span></code> (comma-separate several models, e.g.
+<code class="docutils literal notranslate"><span class="pre">sam3,dinov3</span></code>). No GPU detector prompts for a license during a run any more;
+an unaccepted license is reported as <code class="docutils literal notranslate"><span class="pre">PF-LICENSE</span></code> before the run starts.</p></li>
+<li><p><strong>Camera RAW files are decoded as sensor data through <code class="docutils literal notranslate"><span class="pre">rawpy</span></code>.</strong> Where
+<code class="docutils literal notranslate"><span class="pre">rawpy</span></code> is not installed, which includes Windows, RAW inputs are refused
+(<code class="docutils literal notranslate"><span class="pre">PF-RAW-NO-RAWPY</span></code>) instead of being read as the embedded preview image.
+Convert them to TIFF first on such a machine. A resumed run re-processes its
+RAW images, because they now decode to different pixels; other images are
+reused as before.</p></li>
+<li><p><strong>A pipeline file with a duplicated JSON key no longer loads</strong>, in every
+mode including <code class="docutils literal notranslate"><span class="pre">--mode</span> <span class="pre">recompile</span></code>, and in <code class="docutils literal notranslate"><span class="pre">ImagePipeline.from_json</span></code>. Such a
+file never ran as written: the last duplicate silently replaced the first and
+ran in the first one’s position. Remove the duplicate.</p></li>
+<li><p><strong>Custom operations</strong> defined outside PhenoTypic resolve in every process
+that loads the pipeline, including local parallel workers, once a module that
+registers them is listed in <code class="docutils literal notranslate"><span class="pre">PHENOTYPIC_PRELOAD_MODULES</span></code> (<code class="docutils literal notranslate"><span class="pre">PF-CUSTOM-OP</span></code>
+otherwise). A module name that cannot be imported stops the run at startup.</p></li>
+</ul>
+</section>
+</section>
 </section>
 
 
@@ -738,6 +962,10 @@ python<span class="w"> </span>-m<span class="w"> </span>phenotypic<span class="w
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#parallelism">Parallelism</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#continue-after-interruption">Continue After Interruption</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#testing">Testing</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#run-preflight-checks">Run Preflight Checks</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#changes-that-can-refuse-a-run-that-used-to-start">Changes that can refuse a run that used to start</a></li>
+</ul>
+</li>
 </ul>
   </nav></div>
 

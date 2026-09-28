@@ -38,6 +38,7 @@ phenotypic.enhance.SubtractOpening
       ~SubtractOpening.parse_file
       ~SubtractOpening.parse_obj
       ~SubtractOpening.parse_raw
+      ~SubtractOpening.preflight_requirements
       ~SubtractOpening.schema
       ~SubtractOpening.schema_json
       ~SubtractOpening.to_json

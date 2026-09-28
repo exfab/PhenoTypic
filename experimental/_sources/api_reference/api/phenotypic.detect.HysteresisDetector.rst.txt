@@ -38,6 +38,7 @@ phenotypic.detect.HysteresisDetector
       ~HysteresisDetector.parse_file
       ~HysteresisDetector.parse_obj
       ~HysteresisDetector.parse_raw
+      ~HysteresisDetector.preflight_requirements
       ~HysteresisDetector.schema
       ~HysteresisDetector.schema_json
       ~HysteresisDetector.to_json

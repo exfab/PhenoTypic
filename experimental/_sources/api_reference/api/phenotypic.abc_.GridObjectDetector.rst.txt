@@ -38,6 +38,7 @@ phenotypic.abc\_.GridObjectDetector
       ~GridObjectDetector.parse_file
       ~GridObjectDetector.parse_obj
       ~GridObjectDetector.parse_raw
+      ~GridObjectDetector.preflight_requirements
       ~GridObjectDetector.schema
       ~GridObjectDetector.schema_json
       ~GridObjectDetector.to_json

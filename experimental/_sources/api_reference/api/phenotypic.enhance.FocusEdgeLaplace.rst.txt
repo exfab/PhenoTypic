@@ -38,6 +38,7 @@ phenotypic.enhance.FocusEdgeLaplace
       ~FocusEdgeLaplace.parse_file
       ~FocusEdgeLaplace.parse_obj
       ~FocusEdgeLaplace.parse_raw
+      ~FocusEdgeLaplace.preflight_requirements
       ~FocusEdgeLaplace.schema
       ~FocusEdgeLaplace.schema_json
       ~FocusEdgeLaplace.to_json

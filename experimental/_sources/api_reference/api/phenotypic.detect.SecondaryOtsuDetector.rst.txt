@@ -38,6 +38,7 @@ phenotypic.detect.SecondaryOtsuDetector
       ~SecondaryOtsuDetector.parse_file
       ~SecondaryOtsuDetector.parse_obj
       ~SecondaryOtsuDetector.parse_raw
+      ~SecondaryOtsuDetector.preflight_requirements
       ~SecondaryOtsuDetector.schema
       ~SecondaryOtsuDetector.schema_json
       ~SecondaryOtsuDetector.to_json

@@ -38,6 +38,7 @@ phenotypic.enhance.NonLocalMeansDenoiser
       ~NonLocalMeansDenoiser.parse_file
       ~NonLocalMeansDenoiser.parse_obj
       ~NonLocalMeansDenoiser.parse_raw
+      ~NonLocalMeansDenoiser.preflight_requirements
       ~NonLocalMeansDenoiser.schema
       ~NonLocalMeansDenoiser.schema_json
       ~NonLocalMeansDenoiser.to_json

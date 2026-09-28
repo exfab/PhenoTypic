@@ -601,7 +601,7 @@
   <h1>Source code for phenotypic.correction._color_denoise</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClassVar</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Annotated</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">field_validator</span>
@@ -727,6 +727,10 @@
 <span class="sd">        :doc:`/explanation/image_quality_noise_contrast_structure` for</span>
 <span class="sd">        background on noise models and denoiser selection.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1">#: Reads RGB on every call and fails on a grayscale image (run preflight, spec §3).</span>
+    <span class="c1">#: Raises ValueError on an image without RGB.</span>
+    <span class="n">_requires_rgb_input</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
 
     <span class="n">sigma_psd</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.02</span>
     <span class="n">block_size</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TuneSpec</span><span class="p">(</span><span class="n">categories</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">))]</span> <span class="o">=</span> <span class="mi">8</span>

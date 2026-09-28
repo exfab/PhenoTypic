@@ -784,6 +784,12 @@ for gated foundation weights are documented in the
 <a class="reference internal" href="../../tutorials/getting_started.html#deep-learning-detectors"><span class="std std-ref">Deep Learning Detectors</span></a>
 tutorial section. The SLURM-specific staging is expanded under
 <a class="reference internal" href="#slurm-deployment"><span class="std std-ref">SLURM Deployment</span></a> below.</p>
+<p>The CLI’s run preflight checks the local cache without importing <code class="docutils literal notranslate"><span class="pre">torch</span></code> and
+warns (<code class="docutils literal notranslate"><span class="pre">PF-WEIGHTS-UNCACHED</span></code>) when a detector’s weights would have to be
+downloaded by a compute node; see
+<a class="reference internal" href="../../tutorials/pages/cli_batch_processing.html#run-preflight-checks"><span class="std std-ref">Run Preflight Checks</span></a>.
+No detector prompts for a license inside a pipeline: gated weights require
+<code class="docutils literal notranslate"><span class="pre">PHENOTYPIC_ACCEPT_MODEL_LICENSE</span></code>.</p>
 </section>
 <section id="using-sam2">
 <h2>Using Sam2<a class="headerlink" href="#using-sam2" title="Link to this heading">#</a></h2>
@@ -899,7 +905,11 @@ the predicted instance masks into a labelled <code class="docutils literal notra
 </div>
 <p>SAM3 weights are <strong>gated</strong> (SAM License). Accept the gate and authenticate
 once (see <a class="reference internal" href="../../tutorials/getting_started.html#deep-learning-detectors"><span class="std std-ref">Deep Learning Detectors</span></a>)
-before the first <code class="docutils literal notranslate"><span class="pre">apply()</span></code>.</p>
+before the first <code class="docutils literal notranslate"><span class="pre">apply()</span></code>, and accept the license for PhenoTypic with
+<code class="docutils literal notranslate"><span class="pre">PHENOTYPIC_ACCEPT_MODEL_LICENSE=sam3</span></code>. <code class="docutils literal notranslate"><span class="pre">Sam3</span></code> checks that variable before it
+loads any weights and raises rather than prompting, so a batch job never waits
+on a terminal; the CLI’s run preflight reports a missing acceptance as
+<code class="docutils literal notranslate"><span class="pre">PF-LICENSE</span></code> before the run starts.</p>
 <p><strong>Dense plates.</strong> SAM3 caps at 200 instances per forward. <code class="docutils literal notranslate"><span class="pre">facebook/sam3</span></code> is a
 gated repository whose processor config we cannot read (requests return 403),
 so the claim that it runs at 1008 px internally is carried as an

@@ -38,6 +38,7 @@ phenotypic.enhance.WhiteTophatEnhance
       ~WhiteTophatEnhance.parse_file
       ~WhiteTophatEnhance.parse_obj
       ~WhiteTophatEnhance.parse_raw
+      ~WhiteTophatEnhance.preflight_requirements
       ~WhiteTophatEnhance.schema
       ~WhiteTophatEnhance.schema_json
       ~WhiteTophatEnhance.to_json
