@@ -1,0 +1,38 @@
+phenotypic.sdk\_.PreparedImageTables
+====================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoclass:: PreparedImageTables
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~PreparedImageTables.__init__
+      ~PreparedImageTables.measurements_payload
+      ~PreparedImageTables.metadata_parquet_metadata
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~PreparedImageTables.measurements
+      ~PreparedImageTables.metadata
+      ~PreparedImageTables.measurement_columns
+      ~PreparedImageTables.join_status
+      ~PreparedImageTables.join_keys
+      ~PreparedImageTables.metadata_snapshot_sha256
+   
+   

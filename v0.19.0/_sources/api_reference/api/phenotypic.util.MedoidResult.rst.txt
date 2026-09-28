@@ -1,0 +1,36 @@
+phenotypic.util.MedoidResult
+============================
+
+.. currentmodule:: phenotypic.util
+
+.. autoclass:: MedoidResult
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~MedoidResult.__init__
+      ~MedoidResult.count
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MedoidResult.index
+      ~MedoidResult.lab
+      ~MedoidResult.rank
+      ~MedoidResult.total_delta_e
+      ~MedoidResult.widened
+   
+   

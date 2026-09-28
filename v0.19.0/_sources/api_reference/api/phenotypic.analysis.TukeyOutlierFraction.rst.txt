@@ -1,0 +1,82 @@
+phenotypic.analysis.TukeyOutlierFraction
+========================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autoclass:: TukeyOutlierFraction
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~TukeyOutlierFraction.__init__
+      ~TukeyOutlierFraction.analyze
+      ~TukeyOutlierFraction.construct
+      ~TukeyOutlierFraction.copy
+      ~TukeyOutlierFraction.dict
+      ~TukeyOutlierFraction.flag_col
+      ~TukeyOutlierFraction.flagged_keys
+      ~TukeyOutlierFraction.from_orm
+      ~TukeyOutlierFraction.group_members
+      ~TukeyOutlierFraction.json
+      ~TukeyOutlierFraction.metric_col
+      ~TukeyOutlierFraction.model_construct
+      ~TukeyOutlierFraction.model_copy
+      ~TukeyOutlierFraction.model_dump
+      ~TukeyOutlierFraction.model_dump_json
+      ~TukeyOutlierFraction.model_json_schema
+      ~TukeyOutlierFraction.model_parametrized_name
+      ~TukeyOutlierFraction.model_post_init
+      ~TukeyOutlierFraction.model_rebuild
+      ~TukeyOutlierFraction.model_validate
+      ~TukeyOutlierFraction.model_validate_json
+      ~TukeyOutlierFraction.model_validate_strings
+      ~TukeyOutlierFraction.parse_file
+      ~TukeyOutlierFraction.parse_obj
+      ~TukeyOutlierFraction.parse_raw
+      ~TukeyOutlierFraction.results
+      ~TukeyOutlierFraction.schema
+      ~TukeyOutlierFraction.schema_json
+      ~TukeyOutlierFraction.show
+      ~TukeyOutlierFraction.status_col
+      ~TukeyOutlierFraction.summary
+      ~TukeyOutlierFraction.table_spec
+      ~TukeyOutlierFraction.to_table
+      ~TukeyOutlierFraction.update_forward_refs
+      ~TukeyOutlierFraction.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TukeyOutlierFraction.member_key_cols
+      ~TukeyOutlierFraction.model_computed_fields
+      ~TukeyOutlierFraction.model_config
+      ~TukeyOutlierFraction.model_extra
+      ~TukeyOutlierFraction.model_fields
+      ~TukeyOutlierFraction.model_fields_set
+      ~TukeyOutlierFraction.name
+      ~TukeyOutlierFraction.supports_object_curation
+      ~TukeyOutlierFraction.warn_threshold
+      ~TukeyOutlierFraction.fail_threshold
+      ~TukeyOutlierFraction.time_label
+      ~TukeyOutlierFraction.k
+      ~TukeyOutlierFraction.min_replicates
+      ~TukeyOutlierFraction.unmatched_groups
+      ~TukeyOutlierFraction.on
+      ~TukeyOutlierFraction.groupby
+      ~TukeyOutlierFraction.agg_func
+      ~TukeyOutlierFraction.n_jobs
+   
+   

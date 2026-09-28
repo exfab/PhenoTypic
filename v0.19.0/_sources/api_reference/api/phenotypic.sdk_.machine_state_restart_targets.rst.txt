@@ -1,0 +1,6 @@
+phenotypic.sdk\_.machine\_state\_restart\_targets
+=================================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: machine_state_restart_targets

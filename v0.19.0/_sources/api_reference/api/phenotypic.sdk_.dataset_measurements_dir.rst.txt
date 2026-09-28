@@ -1,0 +1,6 @@
+phenotypic.sdk\_.dataset\_measurements\_dir
+===========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: dataset_measurements_dir

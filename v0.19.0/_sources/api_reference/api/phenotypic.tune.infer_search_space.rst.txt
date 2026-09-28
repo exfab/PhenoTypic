@@ -1,0 +1,6 @@
+phenotypic.tune.infer\_search\_space
+====================================
+
+.. currentmodule:: phenotypic.tune
+
+.. autofunction:: infer_search_space

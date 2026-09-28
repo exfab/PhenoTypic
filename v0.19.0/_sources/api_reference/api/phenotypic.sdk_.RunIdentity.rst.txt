@@ -1,0 +1,38 @@
+phenotypic.sdk\_.RunIdentity
+============================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoclass:: RunIdentity
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~RunIdentity.__init__
+      ~RunIdentity.digest
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~RunIdentity.processing_generation
+      ~RunIdentity.restart_epoch
+      ~RunIdentity.scheduler_epoch
+      ~RunIdentity.owner_generation
+      ~RunIdentity.inventory_digest
+      ~RunIdentity.scientific_config_digest
+      ~RunIdentity.finalization_input_digest
+   
+   

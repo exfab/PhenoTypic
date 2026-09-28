@@ -1,0 +1,66 @@
+phenotypic.tune.EvaluationResult
+================================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: EvaluationResult
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~EvaluationResult.__init__
+      ~EvaluationResult.construct
+      ~EvaluationResult.copy
+      ~EvaluationResult.dict
+      ~EvaluationResult.from_orm
+      ~EvaluationResult.json
+      ~EvaluationResult.model_construct
+      ~EvaluationResult.model_copy
+      ~EvaluationResult.model_dump
+      ~EvaluationResult.model_dump_json
+      ~EvaluationResult.model_json_schema
+      ~EvaluationResult.model_parametrized_name
+      ~EvaluationResult.model_post_init
+      ~EvaluationResult.model_rebuild
+      ~EvaluationResult.model_validate
+      ~EvaluationResult.model_validate_json
+      ~EvaluationResult.model_validate_strings
+      ~EvaluationResult.parse_file
+      ~EvaluationResult.parse_obj
+      ~EvaluationResult.parse_raw
+      ~EvaluationResult.schema
+      ~EvaluationResult.schema_json
+      ~EvaluationResult.update_forward_refs
+      ~EvaluationResult.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~EvaluationResult.model_computed_fields
+      ~EvaluationResult.model_config
+      ~EvaluationResult.model_extra
+      ~EvaluationResult.model_fields
+      ~EvaluationResult.model_fields_set
+      ~EvaluationResult.score
+      ~EvaluationResult.terms
+      ~EvaluationResult.n_images
+      ~EvaluationResult.objectives
+      ~EvaluationResult.failed
+      ~EvaluationResult.pruned
+      ~EvaluationResult.gap
+      ~EvaluationResult.suspicious
+   
+   

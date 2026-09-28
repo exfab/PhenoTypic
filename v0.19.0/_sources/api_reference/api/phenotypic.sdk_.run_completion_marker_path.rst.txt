@@ -1,0 +1,6 @@
+phenotypic.sdk\_.run\_completion\_marker\_path
+==============================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: run_completion_marker_path

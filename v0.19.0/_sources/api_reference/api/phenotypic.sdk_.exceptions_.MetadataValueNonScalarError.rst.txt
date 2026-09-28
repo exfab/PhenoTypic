@@ -1,0 +1,6 @@
+phenotypic.sdk\_.exceptions\_.MetadataValueNonScalarError
+=========================================================
+
+.. currentmodule:: phenotypic.sdk_.exceptions_
+
+.. autoexception:: MetadataValueNonScalarError

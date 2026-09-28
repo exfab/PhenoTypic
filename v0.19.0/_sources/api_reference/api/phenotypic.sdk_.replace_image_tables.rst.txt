@@ -1,0 +1,6 @@
+phenotypic.sdk\_.replace\_image\_tables
+=======================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: replace_image_tables

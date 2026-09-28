@@ -1,0 +1,68 @@
+phenotypic.tune.Trial
+=====================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: Trial
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~Trial.__init__
+      ~Trial.construct
+      ~Trial.copy
+      ~Trial.dict
+      ~Trial.from_orm
+      ~Trial.json
+      ~Trial.model_construct
+      ~Trial.model_copy
+      ~Trial.model_dump
+      ~Trial.model_dump_json
+      ~Trial.model_json_schema
+      ~Trial.model_parametrized_name
+      ~Trial.model_post_init
+      ~Trial.model_rebuild
+      ~Trial.model_validate
+      ~Trial.model_validate_json
+      ~Trial.model_validate_strings
+      ~Trial.parse_file
+      ~Trial.parse_obj
+      ~Trial.parse_raw
+      ~Trial.schema
+      ~Trial.schema_json
+      ~Trial.update_forward_refs
+      ~Trial.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Trial.model_computed_fields
+      ~Trial.model_config
+      ~Trial.model_extra
+      ~Trial.model_fields
+      ~Trial.model_fields_set
+      ~Trial.number
+      ~Trial.params
+      ~Trial.score
+      ~Trial.terms
+      ~Trial.n_images
+      ~Trial.objectives
+      ~Trial.failed
+      ~Trial.pruned
+      ~Trial.gap
+      ~Trial.suspicious
+   
+   

@@ -1,0 +1,6 @@
+phenotypic.sdk\_.migration\_lock\_path
+======================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: migration_lock_path

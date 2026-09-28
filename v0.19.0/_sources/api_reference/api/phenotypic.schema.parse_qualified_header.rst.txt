@@ -1,0 +1,6 @@
+phenotypic.schema.parse\_qualified\_header
+==========================================
+
+.. currentmodule:: phenotypic.schema
+
+.. autofunction:: parse_qualified_header

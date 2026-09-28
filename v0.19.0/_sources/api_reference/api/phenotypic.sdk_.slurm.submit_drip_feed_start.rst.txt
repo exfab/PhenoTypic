@@ -1,0 +1,6 @@
+phenotypic.sdk\_.slurm.submit\_drip\_feed\_start
+================================================
+
+.. currentmodule:: phenotypic.sdk_.slurm
+
+.. autofunction:: submit_drip_feed_start

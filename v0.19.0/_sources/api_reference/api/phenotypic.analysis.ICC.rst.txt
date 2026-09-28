@@ -1,0 +1,81 @@
+phenotypic.analysis.ICC
+=======================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autoclass:: ICC
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~ICC.__init__
+      ~ICC.analyze
+      ~ICC.construct
+      ~ICC.copy
+      ~ICC.dict
+      ~ICC.flag_col
+      ~ICC.flagged_keys
+      ~ICC.from_orm
+      ~ICC.group_members
+      ~ICC.json
+      ~ICC.metric_col
+      ~ICC.model_construct
+      ~ICC.model_copy
+      ~ICC.model_dump
+      ~ICC.model_dump_json
+      ~ICC.model_json_schema
+      ~ICC.model_parametrized_name
+      ~ICC.model_post_init
+      ~ICC.model_rebuild
+      ~ICC.model_validate
+      ~ICC.model_validate_json
+      ~ICC.model_validate_strings
+      ~ICC.parse_file
+      ~ICC.parse_obj
+      ~ICC.parse_raw
+      ~ICC.results
+      ~ICC.schema
+      ~ICC.schema_json
+      ~ICC.show
+      ~ICC.status_col
+      ~ICC.summary
+      ~ICC.table_spec
+      ~ICC.to_table
+      ~ICC.update_forward_refs
+      ~ICC.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ICC.member_key_cols
+      ~ICC.model_computed_fields
+      ~ICC.model_config
+      ~ICC.model_extra
+      ~ICC.model_fields
+      ~ICC.model_fields_set
+      ~ICC.name
+      ~ICC.supports_object_curation
+      ~ICC.warn_threshold
+      ~ICC.fail_threshold
+      ~ICC.subject_label
+      ~ICC.rater_label
+      ~ICC.unmatched_groups
+      ~ICC.on
+      ~ICC.groupby
+      ~ICC.agg_func
+      ~ICC.n_jobs
+   
+   

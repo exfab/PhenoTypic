@@ -1,0 +1,6 @@
+phenotypic.sdk\_.chunk\_parquet\_filename
+=========================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: chunk_parquet_filename

@@ -1,0 +1,6 @@
+phenotypic.grid.CenteredAutoGridFinderFallbackWarning
+=====================================================
+
+.. currentmodule:: phenotypic.grid
+
+.. autoexception:: CenteredAutoGridFinderFallbackWarning

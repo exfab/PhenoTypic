@@ -1,0 +1,6 @@
+phenotypic.analysis.render\_error\_analysis\_html
+=================================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autofunction:: render_error_analysis_html

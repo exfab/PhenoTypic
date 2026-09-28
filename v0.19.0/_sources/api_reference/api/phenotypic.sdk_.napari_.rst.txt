@@ -1,0 +1,42 @@
+phenotypic.sdk\_.napari\_
+=========================
+
+.. automodule:: phenotypic.sdk_.napari_
+   :no-index:
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+      :toctree:
+      :nosignatures:
+   
+      add_image_layer
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+      :toctree:
+      :template: class.rst
+      :nosignatures:
+   
+      LabelEditorWidget
+      PointPickerWidget
+   
+   
+
+   
+   
+   
+
+
+

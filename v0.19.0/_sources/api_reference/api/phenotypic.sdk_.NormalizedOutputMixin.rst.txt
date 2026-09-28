@@ -1,0 +1,59 @@
+phenotypic.sdk\_.NormalizedOutputMixin
+======================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoclass:: NormalizedOutputMixin
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~NormalizedOutputMixin.__init__
+      ~NormalizedOutputMixin.construct
+      ~NormalizedOutputMixin.copy
+      ~NormalizedOutputMixin.dict
+      ~NormalizedOutputMixin.from_orm
+      ~NormalizedOutputMixin.json
+      ~NormalizedOutputMixin.model_construct
+      ~NormalizedOutputMixin.model_copy
+      ~NormalizedOutputMixin.model_dump
+      ~NormalizedOutputMixin.model_dump_json
+      ~NormalizedOutputMixin.model_json_schema
+      ~NormalizedOutputMixin.model_parametrized_name
+      ~NormalizedOutputMixin.model_post_init
+      ~NormalizedOutputMixin.model_rebuild
+      ~NormalizedOutputMixin.model_validate
+      ~NormalizedOutputMixin.model_validate_json
+      ~NormalizedOutputMixin.model_validate_strings
+      ~NormalizedOutputMixin.parse_file
+      ~NormalizedOutputMixin.parse_obj
+      ~NormalizedOutputMixin.parse_raw
+      ~NormalizedOutputMixin.schema
+      ~NormalizedOutputMixin.schema_json
+      ~NormalizedOutputMixin.update_forward_refs
+      ~NormalizedOutputMixin.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~NormalizedOutputMixin.model_computed_fields
+      ~NormalizedOutputMixin.model_config
+      ~NormalizedOutputMixin.model_extra
+      ~NormalizedOutputMixin.model_fields
+      ~NormalizedOutputMixin.model_fields_set
+      ~NormalizedOutputMixin.norm
+   
+   

@@ -1,0 +1,6 @@
+phenotypic.util.robust\_color\_center
+=====================================
+
+.. currentmodule:: phenotypic.util
+
+.. autofunction:: robust_color_center

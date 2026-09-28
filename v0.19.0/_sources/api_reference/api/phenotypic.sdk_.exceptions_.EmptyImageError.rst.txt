@@ -1,0 +1,6 @@
+phenotypic.sdk\_.exceptions\_.EmptyImageError
+=============================================
+
+.. currentmodule:: phenotypic.sdk_.exceptions_
+
+.. autoexception:: EmptyImageError

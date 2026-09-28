@@ -1,0 +1,25 @@
+phenotypic.sdk\_.GridInferenceMixin
+===================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoclass:: GridInferenceMixin
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GridInferenceMixin.__init__
+   
+   
+
+   
+   
+   

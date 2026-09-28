@@ -1,0 +1,6 @@
+phenotypic.sdk\_.pareto\_dir
+============================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: pareto_dir

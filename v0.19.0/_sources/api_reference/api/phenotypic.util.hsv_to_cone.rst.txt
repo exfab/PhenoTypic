@@ -1,0 +1,6 @@
+phenotypic.util.hsv\_to\_cone
+=============================
+
+.. currentmodule:: phenotypic.util
+
+.. autofunction:: hsv_to_cone

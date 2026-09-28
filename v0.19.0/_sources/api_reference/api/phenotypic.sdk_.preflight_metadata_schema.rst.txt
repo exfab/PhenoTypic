@@ -1,0 +1,6 @@
+phenotypic.sdk\_.preflight\_metadata\_schema
+============================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: preflight_metadata_schema

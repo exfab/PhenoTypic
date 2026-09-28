@@ -1,0 +1,6 @@
+phenotypic.sdk\_.exceptions\_.ImmutableComponentError
+=====================================================
+
+.. currentmodule:: phenotypic.sdk_.exceptions_
+
+.. autoexception:: ImmutableComponentError

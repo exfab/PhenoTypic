@@ -1,0 +1,36 @@
+phenotypic.sdk\_.DashboardManifestSlurmInfoKey
+==============================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autoclass:: DashboardManifestSlurmInfoKey
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~DashboardManifestSlurmInfoKey.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~DashboardManifestSlurmInfoKey.ACTIVE_CHUNKS
+      ~DashboardManifestSlurmInfoKey.CHUNK_JOB_IDS
+      ~DashboardManifestSlurmInfoKey.CHUNK_SCRIPTS
+      ~DashboardManifestSlurmInfoKey.COMPLETED_CHUNKS
+      ~DashboardManifestSlurmInfoKey.PENDING_CHUNKS
+      ~DashboardManifestSlurmInfoKey.TOTAL_CHUNKS
+   
+   

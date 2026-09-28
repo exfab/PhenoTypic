@@ -1,0 +1,1236 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>phenotypic.sdk_.hdf_ &#8212; PhenoTypic</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=7d76a7d2" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../../_static/documentation_options.js?v=ec2b1084"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/phenotypic/sdk_/hdf_';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://exfab.github.io/PhenoTypic/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.19.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <link rel="canonical" href="https://exfab.github.io/PhenoTypic/v0.19.0/_modules/phenotypic/sdk_/hdf_.html" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.20.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+     
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/light_logo_exfab.svg" class="logo__image only-light" alt="PhenoTypic"/>
+    <img src="../../../_static/gradient_logo_exfab.svg" class="logo__image only-dark pst-js-only" alt="PhenoTypic"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-tutorials">
+        Tutorials
+      </button>
+      <ul id="pst-nav-tutorials" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/getting_started.html">
+            Getting Started
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/python_api.html">
+            Python API
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../tutorials/gui/index.html">
+            GUI
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-guides">
+        Guides
+      </button>
+      <ul id="pst-nav-guides" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../how_to/index.html">
+            How-To Guides
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../explanation/index.html">
+            Explanation
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../extending/index.html">
+            Extending PhenoTypic
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item nav-link" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-measurements">
+        Measurements
+      </button>
+      <ul id="pst-nav-measurements" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/measurements/index.html">
+            Measurements
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../measurements_ref/metadata/index.html">
+            Metadata
+          </a>
+        </li>
+      </ul>
+    </li>
+
+    
+    
+    
+      <li class="nav-item">
+        <a class="nav-link nav-internal" href="../../../api_reference/index.html">
+          API Reference
+        </a>
+      </li>
+    
+
+    
+    <li class="nav-item dropdown">
+      <button class="btn dropdown-toggle nav-item" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              aria-controls="pst-nav-more-links">More</button>
+      <ul id="pst-nav-more-links" class="dropdown-menu">
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../contrib_guide/index.html">
+            Developer Guide
+          </a>
+        </li>
+        <li>
+          <a class="nav-link dropdown-item nav-internal"
+             href="../../../downloads.html">
+            Downloads
+          </a>
+        </li>
+      </ul>
+    </li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/exfab/PhenoTypic" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../sdk_.html" class="nav-link">phenotypic.sdk_</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">phenotypic.sdk_.hdf_</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for phenotypic.sdk_.hdf_</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">posixpath</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Literal</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">h5py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">packaging.version</span><span class="w"> </span><span class="kn">import</span> <span class="n">Version</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">phenotypic</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="n">_SAFE_WRITER_LOCK_MARKERS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">&quot;file is already open for write/swmr write&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;file is already open&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;unable to lock file&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;resource temporarily unavailable&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;file locking disabled&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">_SWMR_WRITER_LOCK_MARKERS</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="o">*</span><span class="n">_SAFE_WRITER_LOCK_MARKERS</span><span class="p">,</span>
+    <span class="s2">&quot;ring type mismatch&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;pinned entry count&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_open_hdf_with_recovery</span><span class="p">(</span>
+    <span class="n">filepath</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">opener</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[],</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">],</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">context</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">lock_markers</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+    <span class="n">clear_status</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">clear_force</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">max_retries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="n">retry_delay</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Open an HDF5 file with lock-conflict recovery.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        filepath: Path to the HDF5 file being opened.</span>
+<span class="sd">        opener: Callable that opens and returns the file handle.</span>
+<span class="sd">        context: Human-readable context used in log/error messages.</span>
+<span class="sd">        lock_markers: Lowercase substrings that identify recoverable lock or</span>
+<span class="sd">            cache-conflict errors.</span>
+<span class="sd">        clear_status: Whether to run ``h5clear -s`` between attempts.</span>
+<span class="sd">        clear_force: Whether to run ``h5clear -f`` between attempts.</span>
+<span class="sd">        max_retries: Maximum open attempts.</span>
+<span class="sd">        retry_delay: Initial retry delay in seconds. Doubles after each retry.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The opened HDF5 file handle.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        RuntimeError: If a recoverable lock conflict persists through the final</span>
+<span class="sd">            attempt.</span>
+<span class="sd">        OSError: Non-lock open errors are re-raised immediately.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">filepath</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+    <span class="n">delay</span> <span class="o">=</span> <span class="n">retry_delay</span>
+    <span class="k">for</span> <span class="n">attempt</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_retries</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">opener</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">error_msg</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="n">is_lock_error</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span><span class="n">marker</span> <span class="ow">in</span> <span class="n">error_msg</span> <span class="k">for</span> <span class="n">marker</span> <span class="ow">in</span> <span class="n">lock_markers</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_lock_error</span><span class="p">:</span>
+                <span class="k">raise</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> access conflict (attempt </span><span class="si">%d</span><span class="s2">/</span><span class="si">%d</span><span class="s2">): </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">context</span><span class="p">,</span>
+                <span class="n">attempt</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="n">max_retries</span><span class="p">,</span>
+                <span class="n">exc</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">attempt</span> <span class="o">&gt;=</span> <span class="n">max_retries</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                    <span class="s2">&quot;Failed to open </span><span class="si">%s</span><span class="s2"> after </span><span class="si">%d</span><span class="s2"> attempts&quot;</span><span class="p">,</span>
+                    <span class="n">context</span><span class="p">,</span>
+                    <span class="n">max_retries</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">failure_reason</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="s2">&quot;may have cache conflicts&quot;</span>
+                    <span class="k">if</span> <span class="s2">&quot;SWMR&quot;</span> <span class="ow">in</span> <span class="n">context</span>
+                    <span class="k">else</span> <span class="s2">&quot;may be locked by another process&quot;</span>
+                <span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Failed to open </span><span class="si">{</span><span class="n">context</span><span class="si">}</span><span class="s2"> after </span><span class="si">{</span><span class="n">max_retries</span><span class="si">}</span><span class="s2"> attempts. &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;The file </span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">failure_reason</span><span class="si">}</span><span class="s2">. &quot;</span>
+                    <span class="s2">&quot;Try manually running: &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;h5clear -s </span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2"> &amp;&amp; h5clear -f </span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+
+            <span class="n">_clear_hdf_consistency_flags</span><span class="p">(</span>
+                <span class="n">filepath</span><span class="p">,</span> <span class="n">clear_status</span><span class="o">=</span><span class="n">clear_status</span><span class="p">,</span> <span class="n">clear_force</span><span class="o">=</span><span class="n">clear_force</span>
+            <span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Waiting </span><span class="si">%s</span><span class="s2"> seconds before retry...&quot;</span><span class="p">,</span> <span class="n">delay</span><span class="p">)</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">delay</span><span class="p">)</span>
+            <span class="n">delay</span> <span class="o">*=</span> <span class="mi">2</span>
+
+    <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unexpected error opening HDF5 file </span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_clear_hdf_consistency_flags</span><span class="p">(</span>
+    <span class="n">filepath</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">clear_status</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">clear_force</span><span class="p">:</span> <span class="nb">bool</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Best-effort ``h5clear`` recovery for an existing HDF5 file.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">filepath</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span>
+    <span class="n">flags</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">clear_status</span><span class="p">:</span>
+        <span class="n">flags</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;-s&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">clear_force</span><span class="p">:</span>
+        <span class="n">flags</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;-f&quot;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">flag</span> <span class="ow">in</span> <span class="n">flags</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;Attempting to clear HDF5 consistency flag </span><span class="si">%s</span><span class="s2"> for </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">flag</span><span class="p">,</span>
+                <span class="n">filepath</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+                <span class="p">[</span><span class="s2">&quot;h5clear&quot;</span><span class="p">,</span> <span class="n">flag</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">filepath</span><span class="p">)],</span>
+                <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">returncode</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">&quot;Successfully cleared HDF5 consistency flag </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">flag</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;h5clear </span><span class="si">%s</span><span class="s2"> failed: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">flag</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span>
+            <span class="n">subprocess</span><span class="o">.</span><span class="n">TimeoutExpired</span><span class="p">,</span>
+            <span class="n">subprocess</span><span class="o">.</span><span class="n">CalledProcessError</span><span class="p">,</span>
+            <span class="ne">FileNotFoundError</span><span class="p">,</span>
+        <span class="p">)</span> <span class="k">as</span> <span class="n">clear_error</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Could not run h5clear </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">flag</span><span class="p">,</span> <span class="n">clear_error</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="HDF">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">HDF</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Represents an interface to manage HDF5 files with support for single or set image modes,</span>
+<span class="sd">    and ensures safe and compatible file access with retry and error-handling mechanisms.</span>
+
+<span class="sd">    The class facilitates operations on HDF5 files commonly used for storing phenotypic</span>
+<span class="sd">    data in both single image and image set modes. This class includes utilities to</span>
+<span class="sd">    handle locking errors and ensure compatibility by initializing proper HDF5 modes</span>
+<span class="sd">    while providing safe access methods for writing.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        filepath (Path): Path to the HDF5 file on the filesystem.</span>
+<span class="sd">        name (str): Name associated with the HDF5 resource, often used as an identifier.</span>
+<span class="sd">        mode (Literal[&#39;single&#39;, &#39;set&#39;]): Specifies the mode for the HDF5 file, either</span>
+<span class="sd">            single image or image set.</span>
+<span class="sd">        root_posix (str): The root path for the HDF5 resource, determined by the mode.</span>
+<span class="sd">        home_posix (str): The specific root directory of the HDF5 resource in the file,</span>
+<span class="sd">            derived based on its mode.</span>
+<span class="sd">        set_data_posix (str, optional): The subgroup path for the data entity in image</span>
+<span class="sd">            set mode, if applicable.</span>
+<span class="sd">        SINGLE_IMAGE_ROOT_POSIX (str): Base path for single image mode.</span>
+<span class="sd">        IMAGE_SET_ROOT_POSIX (str): Base path for image set mode.</span>
+<span class="sd">        IMAGE_SET_DATA_POSIX (str): Subgroup marker for image set data.</span>
+<span class="sd">        EXT (set): Set of valid file extensions used to recognize HDF5 files.</span>
+<span class="sd">        IMAGE_MEASUREMENT_SUBGROUP_KEY (str): Key for accessing measurements in an</span>
+<span class="sd">            image&#39;s group.</span>
+<span class="sd">        IMAGE_STATUS_SUBGROUP_KEY (str): Key for accessing statuses in an image&#39;s group.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">Version</span><span class="p">(</span><span class="n">phenotypic</span><span class="o">.</span><span class="n">__version__</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">Version</span><span class="p">(</span><span class="s2">&quot;0.7.1&quot;</span><span class="p">):</span>
+        <span class="n">SINGLE_IMAGE_ROOT_POSIX</span> <span class="o">=</span> <span class="s2">&quot;/phenotypic/&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">SINGLE_IMAGE_ROOT_POSIX</span> <span class="o">=</span> <span class="s2">&quot;/phenotypic/images/&quot;</span>
+
+    <span class="n">IMAGE_SET_ROOT_POSIX</span> <span class="o">=</span> <span class="s2">&quot;/phenotypic/image_sets/&quot;</span>
+    <span class="n">IMAGE_SET_DATA_POSIX</span> <span class="o">=</span> <span class="s2">&quot;data&quot;</span>  <span class="c1"># The image and individual measurement group</span>
+
+    <span class="c1"># measurements and status are stored within in each image&#39;s group</span>
+    <span class="n">IMAGE_MEASUREMENT_SUBGROUP_KEY</span> <span class="o">=</span> <span class="s2">&quot;measurements&quot;</span>
+    <span class="n">IMAGE_STATUS_SUBGROUP_KEY</span> <span class="o">=</span> <span class="s2">&quot;status&quot;</span>
+
+    <span class="n">PROTECTED_METADATA_SUBGROUP_KEY</span> <span class="o">=</span> <span class="s2">&quot;protected_metadata&quot;</span>
+    <span class="n">PUBLIC_METADATA_SUBGROUP_KEY</span> <span class="o">=</span> <span class="s2">&quot;public_metadata&quot;</span>
+
+    <span class="n">EXT</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;.h5&quot;</span><span class="p">,</span> <span class="s2">&quot;.hdf5&quot;</span><span class="p">,</span> <span class="s2">&quot;.hdf&quot;</span><span class="p">,</span> <span class="s2">&quot;.he5&quot;</span><span class="p">}</span>
+
+<div class="viewcode-block" id="HDF.__init__">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;single&quot;</span><span class="p">,</span> <span class="s2">&quot;set&quot;</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes a class instance to manage HDF5 file structures for single or set image</span>
+<span class="sd">        data based on the given filepath, name of the resource, and operational mode.</span>
+
+<span class="sd">        Attributes:</span>
+<span class="sd">            filepath (Path): Path to the HDF5 file.</span>
+<span class="sd">            name (str): Identifier for the resource within the HDF5 file.</span>
+<span class="sd">            mode (Literal[&#39;single&#39;, &#39;set&#39;]): Operational mode determining the structure</span>
+<span class="sd">                and organization within the HDF5 file. Must be either &#39;single&#39; or &#39;set&#39;.</span>
+<span class="sd">            root_posix (str): Posix path representing the root directory within the</span>
+<span class="sd">                HDF5 file based on the mode.</span>
+<span class="sd">            home_posix (str): Posix path representing the home directory for the resource</span>
+<span class="sd">                within the HDF5 file based on the mode.</span>
+<span class="sd">            set_data_posix (Optional[str]): Posix path for the data subdirectory within</span>
+<span class="sd">                the resource home directory. Only initialized in &#39;set&#39; mode.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            filepath: Path to the target HDF5 file. Must have an HDF5-compatible extension,</span>
+<span class="sd">                or a ValueError is raised.</span>
+<span class="sd">            name: Name of the resource to be managed in the file. Used to construct the</span>
+<span class="sd">                home directory for the resource within the HDF5 file.</span>
+<span class="sd">            mode: Operational mode. Specifies whether the resource represents a &#39;single&#39;</span>
+<span class="sd">                or &#39;set&#39; image data. If the mode is invalid, a ValueError is raised.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the filepath does not have an HDF5-compatible extension.</span>
+<span class="sd">            ValueError: If the mode is neither &#39;single&#39; nor &#39;set&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filepath</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="o">.</span><span class="n">suffix</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">EXT</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;filepath is not an hdf5 file&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">libver</span><span class="o">=</span><span class="s2">&quot;latest&quot;</span><span class="p">):</span>
+                <span class="k">pass</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="n">mode</span>
+        <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;single&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">root_posix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">SINGLE_IMAGE_ROOT_POSIX</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">home_posix</span> <span class="o">=</span> <span class="n">posixpath</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">SINGLE_IMAGE_ROOT_POSIX</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;set&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">root_posix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">IMAGE_SET_ROOT_POSIX</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">home_posix</span> <span class="o">=</span> <span class="n">posixpath</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">IMAGE_SET_ROOT_POSIX</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_data_posix</span> <span class="o">=</span> <span class="n">posixpath</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">home_posix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">IMAGE_SET_DATA_POSIX</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid mode </span><span class="si">{</span><span class="n">mode</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HDF.safe_writer">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.safe_writer">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">safe_writer</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns a writer object that provides safe and controlled write access to an</span>
+<span class="sd">        HDF5 file at the specified filepath or creates it if it doesn&#39;t exist. Ensures that the file uses the &#39;latest&#39;</span>
+<span class="sd">        version of the HDF5 library for compatibility and performance.</span>
+
+<span class="sd">        Handles HDF5 file locking conflicts by attempting to clear consistency flags</span>
+<span class="sd">        and retrying file opening with exponential backoff.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            h5py.File: A file writer object with append mode and &#39;latest&#39; library</span>
+<span class="sd">            version enabled.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            OSError: If file cannot be opened after all retry attempts.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">_open_hdf_with_recovery</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span>
+            <span class="k">lambda</span><span class="p">:</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">libver</span><span class="o">=</span><span class="s2">&quot;latest&quot;</span><span class="p">),</span>
+            <span class="n">context</span><span class="o">=</span><span class="s2">&quot;HDF5 file&quot;</span><span class="p">,</span>
+            <span class="n">lock_markers</span><span class="o">=</span><span class="n">_SAFE_WRITER_LOCK_MARKERS</span><span class="p">,</span>
+            <span class="n">clear_status</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">clear_force</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HDF.swmr_writer">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.swmr_writer">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">swmr_writer</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns a writer object that provides safe SWMR-compatible write access to an</span>
+<span class="sd">        HDF5 file. Creates the file if it doesn&#39;t exist and enables SWMR mode properly.</span>
+
+<span class="sd">        This method ensures proper SWMR mode initialization by creating the file</span>
+<span class="sd">        with the correct settings from the start, avoiding cache conflicts that</span>
+<span class="sd">        occur when trying to enable SWMR mode after opening.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            h5py.File: A file writer object with SWMR mode enabled.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            OSError: If file cannot be opened after all retry attempts.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_open_swmr_writer</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">:</span>
+            <span class="n">file_handle</span> <span class="o">=</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="n">libver</span><span class="o">=</span><span class="s2">&quot;latest&quot;</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">file_handle</span><span class="o">.</span><span class="n">swmr_mode</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                    <span class="s2">&quot;SWMR mode enabled successfully for </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">filepath</span>
+                <span class="p">)</span>
+                <span class="k">return</span> <span class="n">file_handle</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">swmr_error</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Could not enable SWMR mode: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">swmr_error</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">file_handle</span>
+
+        <span class="k">return</span> <span class="n">_open_hdf_with_recovery</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span>
+            <span class="n">_open_swmr_writer</span><span class="p">,</span>
+            <span class="n">context</span><span class="o">=</span><span class="s2">&quot;HDF5 file in SWMR mode&quot;</span><span class="p">,</span>
+            <span class="n">lock_markers</span><span class="o">=</span><span class="n">_SWMR_WRITER_LOCK_MARKERS</span><span class="p">,</span>
+            <span class="n">clear_status</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">clear_force</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HDF.strict_writer">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.strict_writer">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">strict_writer</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Provides access to an HDF5 file in read/write mode using the `h5py` library. This</span>
+<span class="sd">        property is used to obtain an `h5py.File` object configured with the latest library version.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            If using SWMR mode, don&#39;t forget to enable SWMR mode:</span>
+
+<span class="sd">            &gt;&gt;&gt; hdf = HDF(filepath)  # doctest: +SKIP</span>
+<span class="sd">            &gt;&gt;&gt; with hdf.writer as writer:  # doctest: +SKIP</span>
+<span class="sd">            ...     writer.swmr_mode = True</span>
+<span class="sd">            ...     # rest of your code</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            h5py.File: An HDF5 file object opened in &#39;r+&#39; mode, enabling reading and writing.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            OSError: If the file cannot be opened or accessed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;r+&quot;</span><span class="p">,</span> <span class="n">libver</span><span class="o">=</span><span class="s2">&quot;latest&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HDF.swmr_reader">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.swmr_reader">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">swmr_reader</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">libver</span><span class="o">=</span><span class="s2">&quot;latest&quot;</span><span class="p">,</span> <span class="n">swmr</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HDF.reader">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.reader">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reader</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">libver</span><span class="o">=</span><span class="s2">&quot;latest&quot;</span><span class="p">,</span> <span class="n">swmr</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HDF.get_group">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.get_group">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_group</span><span class="p">(</span><span class="n">handle</span><span class="p">:</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">,</span> <span class="n">posix</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves or creates a group in an HDF5 file.</span>
+
+<span class="sd">        This method checks the validity of the provided HDF5 file handle and tries to</span>
+<span class="sd">        retrieve the specified group based on the given posix path. If the group does not</span>
+<span class="sd">        exist and the file is not opened in read-only mode, the group gets created. If the</span>
+<span class="sd">        file is in read-only mode and the group does not exist, an error is raised.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            handle (h5py.File): The HDF5 file handle to operate on.</span>
+<span class="sd">            posix (str): The posix path of the group to retrieve or create in the HDF5 file.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            h5py.Group: The corresponding h5py group within the HDF5 file.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the HDF5 file handle is invalid or no longer valid.</span>
+<span class="sd">            ValueError: If the file handle mode cannot be determined.</span>
+<span class="sd">            KeyError: If the specified group does not exist in read-only mode.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">posix</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">posix</span><span class="p">)</span>
+
+        <span class="c1"># Check if the handle is valid before accessing it</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Test if handle is still valid by checking if it&#39;s open</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">handle</span><span class="o">.</span><span class="n">id</span><span class="o">.</span><span class="n">valid</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;HDF5 file handle is no longer valid (file may have been closed)&quot;</span>
+                <span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid HDF5 file handle: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">posix</span> <span class="ow">in</span> <span class="n">handle</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">handle</span><span class="p">[</span><span class="n">posix</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Check if file is opened in read-only mode - with error handling</span>
+            <span class="c1"># Handle both File and Group objects (Groups have a .file attribute)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span>
+                    <span class="n">handle</span><span class="p">,</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span>
+                <span class="p">):</span>
+                    <span class="c1"># For Group objects, access the parent file</span>
+                    <span class="n">file_obj</span> <span class="o">=</span> <span class="n">handle</span><span class="o">.</span><span class="n">file</span>
+                    <span class="n">file_mode</span> <span class="o">=</span> <span class="n">file_obj</span><span class="o">.</span><span class="n">mode</span>
+                    <span class="n">swmr_mode</span> <span class="o">=</span> <span class="n">file_obj</span><span class="o">.</span><span class="n">swmr_mode</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># For File objects, access directly</span>
+                    <span class="n">file_mode</span> <span class="o">=</span> <span class="n">handle</span><span class="o">.</span><span class="n">mode</span>
+                    <span class="n">swmr_mode</span> <span class="o">=</span> <span class="n">handle</span><span class="o">.</span><span class="n">swmr_mode</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Cannot determine file mode - HDF5 handle may be invalid: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">file_mode</span> <span class="o">==</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Group &#39;</span><span class="si">{</span><span class="n">posix</span><span class="si">}</span><span class="s2">&#39; not found in HDF5 file opened in read-only mode&quot;</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="n">swmr_mode</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Group &#39;</span><span class="si">{</span><span class="n">posix</span><span class="si">}</span><span class="s2">&#39; not found in HDF5 file opened in SWMR mode&quot;</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># File has write permissions, safe to create group</span>
+                <span class="k">return</span> <span class="n">handle</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="n">posix</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HDF.get_home">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.get_home">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_home</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handle</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves a specific group from an HDF file corresponding to single image data.</span>
+
+<span class="sd">        This method is used to fetch a predefined group from an HDF container, where the group</span>
+<span class="sd">        is identified by a constant key related to single image data. The function provides</span>
+<span class="sd">        a static interface allowing invocation without requiring an instance of the class.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            handle: The HDF file handle from which the group should be retrieved.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The group corresponding to single image data, retrieved based on the defined</span>
+<span class="sd">            SINGLE_IMAGE_ROOT_POSIX.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            Appropriate exceptions may be raised by the underlying HDF.get_group() method,</span>
+<span class="sd">            based on the implementation and provided handle or key.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_group</span><span class="p">(</span><span class="n">handle</span><span class="o">=</span><span class="n">handle</span><span class="p">,</span> <span class="n">posix</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">home_posix</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HDF.get_root_group">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.get_root_group">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_root_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handle</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_group</span><span class="p">(</span><span class="n">handle</span><span class="o">=</span><span class="n">handle</span><span class="p">,</span> <span class="n">posix</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">root_posix</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HDF.get_data_group">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.get_data_group">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_data_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handle</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">!=</span> <span class="s2">&quot;set&quot;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
+                <span class="s2">&quot;This method is only available for image sets&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_group</span><span class="p">(</span><span class="n">handle</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_data_posix</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HDF.get_image_group">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.get_image_group">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_image_group</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handle</span><span class="p">,</span> <span class="n">image_name</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;single&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_home</span><span class="p">(</span><span class="n">handle</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;set&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_group</span><span class="p">(</span>
+                <span class="n">handle</span><span class="p">,</span> <span class="n">posixpath</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">set_data_posix</span><span class="p">,</span> <span class="n">image_name</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid mode </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HDF.get_image_measurement_subgroup">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.get_image_measurement_subgroup">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_image_measurement_subgroup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handle</span><span class="p">,</span> <span class="n">image_name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_group</span><span class="p">(</span>
+            <span class="n">handle</span><span class="p">,</span>
+            <span class="n">posixpath</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_data_posix</span><span class="p">,</span>
+                <span class="n">image_name</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">IMAGE_MEASUREMENT_SUBGROUP_KEY</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HDF.get_status_subgroup">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.get_status_subgroup">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_status_subgroup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handle</span><span class="p">,</span> <span class="n">image_name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_group</span><span class="p">(</span>
+            <span class="n">handle</span><span class="p">,</span>
+            <span class="n">posixpath</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_data_posix</span><span class="p">,</span> <span class="n">image_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">IMAGE_STATUS_SUBGROUP_KEY</span>
+            <span class="p">),</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HDF.get_protected_metadata_subgroup">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.get_protected_metadata_subgroup">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_protected_metadata_subgroup</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">handle</span><span class="p">:</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">,</span> <span class="n">image_name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_group</span><span class="p">(</span>
+            <span class="n">handle</span><span class="o">=</span><span class="n">handle</span><span class="p">,</span>
+            <span class="n">posix</span><span class="o">=</span><span class="n">posixpath</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_data_posix</span><span class="p">,</span>
+                <span class="n">image_name</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">PROTECTED_METADATA_SUBGROUP_KEY</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HDF.get_public_metadata_subgroup">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.get_public_metadata_subgroup">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_public_metadata_subgroup</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">handle</span><span class="p">:</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">,</span> <span class="n">image_name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_group</span><span class="p">(</span>
+            <span class="n">handle</span><span class="o">=</span><span class="n">handle</span><span class="p">,</span>
+            <span class="n">posix</span><span class="o">=</span><span class="n">posixpath</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">set_data_posix</span><span class="p">,</span>
+                <span class="n">image_name</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">PUBLIC_METADATA_SUBGROUP_KEY</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HDF.save_array2hdf5">
+<a class="viewcode-back" href="../../../api_reference/api/phenotypic.sdk_.HDF.html#phenotypic.sdk_.HDF.save_array2hdf5">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_array2hdf5</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">array</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Saves a given numpy array to an HDF5 group. If a dataset with the specified</span>
+<span class="sd">        name already exists in the group, it checks if the shapes match. If the</span>
+<span class="sd">        shapes match, it updates the existing dataset; otherwise, it removes the</span>
+<span class="sd">        existing dataset and creates a new one with the specified name. If a dataset</span>
+<span class="sd">        with the given name doesn&#39;t exist, it creates a new dataset.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            group: h5py.Group</span>
+<span class="sd">                The HDF5 group in which the dataset will be saved.</span>
+<span class="sd">            array: numpy.ndarray</span>
+<span class="sd">                The data array to be stored in the dataset.</span>
+<span class="sd">            name: str</span>
+<span class="sd">                The name of the dataset within the group.</span>
+<span class="sd">            **kwargs: dict</span>
+<span class="sd">                Additional keyword arguments to pass when creating a new dataset.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">group</span><span class="p">:</span>
+            <span class="n">dset</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">dset</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+                <span class="n">dset</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">array</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">del</span> <span class="n">group</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">array</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">array</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2025, ExFAB BioFoundry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,6 @@
+phenotypic.sdk\_.exceptions\_.InvalidMaskScalarValueError
+=========================================================
+
+.. currentmodule:: phenotypic.sdk_.exceptions_
+
+.. autoexception:: InvalidMaskScalarValueError

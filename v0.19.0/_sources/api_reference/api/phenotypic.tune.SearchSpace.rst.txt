@@ -1,0 +1,62 @@
+phenotypic.tune.SearchSpace
+===========================
+
+.. currentmodule:: phenotypic.tune
+
+.. autoclass:: SearchSpace
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~SearchSpace.__init__
+      ~SearchSpace.construct
+      ~SearchSpace.copy
+      ~SearchSpace.dict
+      ~SearchSpace.domain
+      ~SearchSpace.from_orm
+      ~SearchSpace.json
+      ~SearchSpace.keys
+      ~SearchSpace.model_construct
+      ~SearchSpace.model_copy
+      ~SearchSpace.model_dump
+      ~SearchSpace.model_dump_json
+      ~SearchSpace.model_json_schema
+      ~SearchSpace.model_parametrized_name
+      ~SearchSpace.model_post_init
+      ~SearchSpace.model_rebuild
+      ~SearchSpace.model_validate
+      ~SearchSpace.model_validate_json
+      ~SearchSpace.model_validate_strings
+      ~SearchSpace.parse_file
+      ~SearchSpace.parse_obj
+      ~SearchSpace.parse_raw
+      ~SearchSpace.schema
+      ~SearchSpace.schema_json
+      ~SearchSpace.targets
+      ~SearchSpace.update_forward_refs
+      ~SearchSpace.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SearchSpace.model_computed_fields
+      ~SearchSpace.model_config
+      ~SearchSpace.model_extra
+      ~SearchSpace.model_fields
+      ~SearchSpace.model_fields_set
+      ~SearchSpace.knobs
+   
+   

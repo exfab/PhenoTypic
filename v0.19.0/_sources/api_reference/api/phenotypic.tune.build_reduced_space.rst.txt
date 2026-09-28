@@ -1,0 +1,6 @@
+phenotypic.tune.build\_reduced\_space
+=====================================
+
+.. currentmodule:: phenotypic.tune
+
+.. autofunction:: build_reduced_space

@@ -1,0 +1,77 @@
+phenotypic.analysis.LogGrowthModel
+==================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autoclass:: LogGrowthModel
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~LogGrowthModel.__init__
+      ~LogGrowthModel.analyze
+      ~LogGrowthModel.construct
+      ~LogGrowthModel.copy
+      ~LogGrowthModel.dict
+      ~LogGrowthModel.figures
+      ~LogGrowthModel.from_orm
+      ~LogGrowthModel.inspect
+      ~LogGrowthModel.iter_figures
+      ~LogGrowthModel.json
+      ~LogGrowthModel.model_construct
+      ~LogGrowthModel.model_copy
+      ~LogGrowthModel.model_dump
+      ~LogGrowthModel.model_dump_json
+      ~LogGrowthModel.model_func
+      ~LogGrowthModel.model_json_schema
+      ~LogGrowthModel.model_parametrized_name
+      ~LogGrowthModel.model_post_init
+      ~LogGrowthModel.model_rebuild
+      ~LogGrowthModel.model_validate
+      ~LogGrowthModel.model_validate_json
+      ~LogGrowthModel.model_validate_strings
+      ~LogGrowthModel.parse_file
+      ~LogGrowthModel.parse_obj
+      ~LogGrowthModel.parse_raw
+      ~LogGrowthModel.report
+      ~LogGrowthModel.results
+      ~LogGrowthModel.schema
+      ~LogGrowthModel.schema_json
+      ~LogGrowthModel.show
+      ~LogGrowthModel.update_forward_refs
+      ~LogGrowthModel.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~LogGrowthModel.model_computed_fields
+      ~LogGrowthModel.model_config
+      ~LogGrowthModel.model_extra
+      ~LogGrowthModel.model_fields
+      ~LogGrowthModel.model_fields_set
+      ~LogGrowthModel.lam
+      ~LogGrowthModel.beta
+      ~LogGrowthModel.Kmax_label
+      ~LogGrowthModel.time_label
+      ~LogGrowthModel.loss
+      ~LogGrowthModel.f_scale
+      ~LogGrowthModel.verbose
+      ~LogGrowthModel.on
+      ~LogGrowthModel.groupby
+      ~LogGrowthModel.agg_func
+      ~LogGrowthModel.n_jobs
+   
+   

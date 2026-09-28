@@ -1,0 +1,33 @@
+phenotypic.abc\_.WeightRequirement
+==================================
+
+.. currentmodule:: phenotypic.abc_
+
+.. autoclass:: WeightRequirement
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~WeightRequirement.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~WeightRequirement.model
+      ~WeightRequirement.license_key
+      ~WeightRequirement.is_cached
+   
+   

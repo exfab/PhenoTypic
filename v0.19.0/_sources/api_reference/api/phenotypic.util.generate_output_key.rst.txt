@@ -1,0 +1,6 @@
+phenotypic.util.generate\_output\_key
+=====================================
+
+.. currentmodule:: phenotypic.util
+
+.. autofunction:: generate_output_key

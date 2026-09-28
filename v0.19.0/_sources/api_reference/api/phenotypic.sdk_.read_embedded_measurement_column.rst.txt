@@ -1,0 +1,6 @@
+phenotypic.sdk\_.read\_embedded\_measurement\_column
+====================================================
+
+.. currentmodule:: phenotypic.sdk_
+
+.. autofunction:: read_embedded_measurement_column

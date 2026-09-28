@@ -1,0 +1,85 @@
+phenotypic.analysis.GridOccupancy
+=================================
+
+.. currentmodule:: phenotypic.analysis
+
+.. autoclass:: GridOccupancy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+      :nosignatures:
+   
+      ~GridOccupancy.__init__
+      ~GridOccupancy.analyze
+      ~GridOccupancy.construct
+      ~GridOccupancy.copy
+      ~GridOccupancy.dict
+      ~GridOccupancy.figures
+      ~GridOccupancy.flag_col
+      ~GridOccupancy.flagged_keys
+      ~GridOccupancy.from_orm
+      ~GridOccupancy.group_members
+      ~GridOccupancy.inspect
+      ~GridOccupancy.iter_figures
+      ~GridOccupancy.json
+      ~GridOccupancy.metric_col
+      ~GridOccupancy.model_construct
+      ~GridOccupancy.model_copy
+      ~GridOccupancy.model_dump
+      ~GridOccupancy.model_dump_json
+      ~GridOccupancy.model_json_schema
+      ~GridOccupancy.model_parametrized_name
+      ~GridOccupancy.model_post_init
+      ~GridOccupancy.model_rebuild
+      ~GridOccupancy.model_validate
+      ~GridOccupancy.model_validate_json
+      ~GridOccupancy.model_validate_strings
+      ~GridOccupancy.parse_file
+      ~GridOccupancy.parse_obj
+      ~GridOccupancy.parse_raw
+      ~GridOccupancy.report
+      ~GridOccupancy.results
+      ~GridOccupancy.schema
+      ~GridOccupancy.schema_json
+      ~GridOccupancy.show
+      ~GridOccupancy.status_col
+      ~GridOccupancy.summary
+      ~GridOccupancy.table_spec
+      ~GridOccupancy.to_table
+      ~GridOccupancy.update_forward_refs
+      ~GridOccupancy.validate
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GridOccupancy.member_key_cols
+      ~GridOccupancy.model_computed_fields
+      ~GridOccupancy.model_config
+      ~GridOccupancy.model_extra
+      ~GridOccupancy.model_fields
+      ~GridOccupancy.model_fields_set
+      ~GridOccupancy.name
+      ~GridOccupancy.supports_object_curation
+      ~GridOccupancy.warn_threshold
+      ~GridOccupancy.fail_threshold
+      ~GridOccupancy.cell_label
+      ~GridOccupancy.on
+      ~GridOccupancy.agg_func
+      ~GridOccupancy.metadata
+      ~GridOccupancy.unmatched_groups
+      ~GridOccupancy.groupby
+      ~GridOccupancy.n_jobs
+   
+   
