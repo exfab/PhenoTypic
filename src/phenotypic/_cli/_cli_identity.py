@@ -236,21 +236,15 @@ def mint_run_identity(
         exists at mint time, and both are outside
         :meth:`RunIdentity.digest` by design.
 
-    **``--restart --dry-run`` still bumps, and still creates
-    ``.phenotypic/``** (gate finding F8). This is the only ``--dry-run``-
-    reachable writer the identity change adds, and it is left as-is on
-    purpose rather than made conditional:
-
-    * the cost is bounded -- the counter is monotonic, so a dry run costs one
-      generation value, never a wrong one;
-    * ``--restart`` has already run ``clear_machine_state`` by this point, so
-      a dry run under it has written to the tree regardless;
-    * making the bump conditional on ``dry_run`` would put a second rule on a
-      counter whose whole value is being unconditional. A fence with an
-      exception is a fence someone has to remember.
-
-    Worth knowing rather than worth fixing, but a ``--dry-run`` that writes
-    tracked state deserves to say so where the write happens.
+    **A ``--dry-run`` never reaches this function** (spec
+    ``2026-09-24-cli-preflight`` §1). ``phenotypic_cli`` exits a dry run
+    before its mutating half, which begins with ``clear_machine_state`` and
+    the ``--overwrite`` delete and continues here. An earlier version accepted
+    that ``--restart --dry-run`` bumped the epoch and created ``.phenotypic/``
+    ("gate finding F8"), on the grounds that the restart clear had already
+    written to the tree by this point. That premise no longer holds, so the
+    exception is retired rather than carried: the counter stays
+    unconditional, and a dry run simply never calls it.
 
     Raises:
         RuntimeError: If called twice for the same ``config`` object.

@@ -20,7 +20,9 @@ Wired effects (per ``GUI_SPEC_V1.md`` section 5):
       :class:`RunRecord`, sets the iframe ``src`` immediately (the
       submitter writes ``dashboard.html`` up-front).
     * Validate (dry-run) — runs the same Local path with ``--dry-run``;
-      log only.
+      log only. In SLURM mode it also carries Run's ``--slurm``,
+      ``--gpu-slurm`` and ``--gpu-shards`` options, so the CLI's run
+      preflight checks the profile Run would submit; nothing is submitted.
     * Cancel — :class:`LocalRunner.stop`; updates registry status.
     * Save preset — writes ``<root>/.phenotypic-gui/presets/<name>.json``.
     * Load preset — populates the form from a preset file.
@@ -277,6 +279,7 @@ from phenotypic._gui.run_console._slurm import (  # noqa: E402
     SlurmSubmitError,
     SlurmSubmitPending,
     SlurmSubmitResult,
+    _build_subprocess_argv,
     read_submitted_job_set,
     submit_slurm,
 )
@@ -312,6 +315,26 @@ def _local_argv_for(state: RunConsoleState) -> list[str]:
             required slot is missing.
     """
     return [sys.executable, "-m", "phenotypic", *state_to_argv_tail(state)]
+
+
+def _validate_argv_for(state: RunConsoleState) -> list[str]:
+    """Build the Validate (``--dry-run``) argv for ``state``.
+
+    A SLURM-mode Validate carries the same ``--slurm``, ``--gpu-slurm`` and
+    ``--gpu-shards`` options Run would submit, so the CLI's run preflight
+    checks the profile the run will use (``sbatch --test-only``, partition
+    limits, GPU partition). It reuses Run's own builder rather than restating
+    it. Local mode keeps the local argv.
+
+    Args:
+        state: Run-console state with ``dry_run`` already set.
+
+    Returns:
+        Full argv list starting with ``sys.executable``.
+    """
+    if state.mode == "slurm":
+        return _build_subprocess_argv(state)
+    return _local_argv_for(state)
 
 
 def _action_control_states() -> tuple[State, ...]:
@@ -1942,7 +1965,7 @@ def register_callbacks(
         if action == "validate":
             try:
                 state.dry_run = True
-                argv = _local_argv_for(state)
+                argv = _validate_argv_for(state)
                 record = registry.allocate(
                     mode="validate",
                     output_dir=output_dir,

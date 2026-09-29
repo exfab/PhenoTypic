@@ -229,7 +229,9 @@ def load_dino_backbone(
             Dinov3CheckpointManager,
         )
 
-        Dinov3CheckpointManager(size=dino_size).download()
+        # Never prompt inside a pipeline: a batch worker has no terminal, so
+        # input() would raise EOFError or hang (spec §10.3, F10).
+        Dinov3CheckpointManager(size=dino_size).download(interactive=False)
 
     dino_id = hf_dino_id(dino_version, dino_size)
     model = AutoModel.from_pretrained(dino_id).to(device)

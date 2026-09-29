@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 import polars as pl
 
@@ -127,6 +128,26 @@ def normalize_external_metadata_columns(
         external_metadata_preserved_columns(measurements.columns, metadata.columns)
     )
     return _normalize_selected_metadata_columns(metadata, preserve=preserve)
+
+
+def read_metadata_csv(path: "Path | str") -> pl.DataFrame:
+    """Read a metadata CSV the way every reader of one must.
+
+    ``infer_schema_length=None`` scans the whole file for dtype inference, not
+    just the first 100 rows. A mostly-numeric column with an alphanumeric
+    outlier past row 100 (a strain id, a plate label) otherwise infers Int64
+    and raises ``ComputeError`` at the outlier. Finalization always read this
+    way; workers, the GUI preflight and the CLI's startup parse did not, so the
+    same CSV failed in some readers and not others (spec 2026-09-24-cli-preflight
+    F22, §10.5). Every reader goes through here now.
+
+    Args:
+        path: The metadata CSV.
+
+    Returns:
+        The parsed frame, with no header normalization applied.
+    """
+    return pl.read_csv(path, infer_schema_length=None)
 
 
 def prepare_metadata_join_keys(

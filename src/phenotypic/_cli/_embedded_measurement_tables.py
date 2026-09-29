@@ -19,6 +19,7 @@ from ._metadata_join import (
     PreparedMetadataJoin,
     normalize_measurement_metadata_columns,
     prepare_metadata_join_keys,
+    read_metadata_csv,
 )
 
 logger = logging.getLogger(__name__)
@@ -82,7 +83,7 @@ def _normalize_table_inputs(
 
     metadata_csv = Path(metadata_csv)
     digest = hashlib.sha256(metadata_csv.read_bytes()).hexdigest()
-    metadata = pl.read_csv(metadata_csv)
+    metadata = read_metadata_csv(metadata_csv)
     prepared = prepare_metadata_join_keys(pl.from_pandas(baseline), metadata)
     common = prepared.analysis.columns
     if not common:

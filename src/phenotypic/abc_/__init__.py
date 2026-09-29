@@ -76,6 +76,7 @@ from ._grid_finder import GridFinder  # noqa: E402
 from ._base_operation import BaseOperation  # noqa: E402
 from ._grid_object_detector import GridObjectDetector  # noqa: E402
 from ._post_measurement import PostMeasurement  # noqa: E402
+from ._requirements import OperationRequirements, WeightRequirement  # noqa: E402
 
 __all__ = [
     "MeasureFeatures",
@@ -104,6 +105,8 @@ __all__ = [
     "PrefabPipeline",
     "FootprintMixin",
     "PostMeasurement",
+    "OperationRequirements",
+    "WeightRequirement",
     "DetectionMode",
     "register_detection_mode",
 ]

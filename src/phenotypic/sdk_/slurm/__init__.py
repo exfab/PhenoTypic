@@ -13,10 +13,12 @@ from ._config import (
 )
 from ._generation import generation_script_key
 from ._sbatch import (
+    effective_sbatch_option,
     format_sbatch_directives,
     parse_job_id,
     parse_slurm_time,
     submit_script,
+    with_default_gpu_request,
 )
 from ._dispatcher import (
     generate_dispatcher_chain,
@@ -35,6 +37,7 @@ __all__ = [
     "SLURM_PYTHONPATH_ENV_VAR",
     "SlurmArrayScriptSpec",
     "calculate_optimal_array_chunks",
+    "effective_sbatch_option",
     "estimate_concurrent_capacity",
     "format_sbatch_directives",
     "generate_dispatcher_chain",
@@ -48,5 +51,6 @@ __all__ = [
     "submit_drip_feed_start",
     "submit_script",
     "validate_array_chunk",
+    "with_default_gpu_request",
     "write_slurm_array_script",
 ]

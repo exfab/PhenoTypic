@@ -165,6 +165,57 @@ def format_sbatch_directives(
     return "\n".join(directives)
 
 
+def with_default_gpu_request(slurm_args: dict[str, Any]) -> dict[str, Any]:
+    """*slurm_args* as a non-staged SLURM run submits them for a GPU pipeline.
+
+    ``AutonomousSLURMStrategy`` adds ``slurm_gpus_per_node=1`` unless the
+    profile already names it. The run preflight tests the same profile, so the
+    two share this definition (Phase E review E2).
+
+    Args:
+        slurm_args: The ``--slurm`` profile.
+
+    Returns:
+        A new dict carrying the GPU request.
+    """
+    requested = dict(slurm_args)
+    requested.setdefault("slurm_gpus_per_node", 1)
+    return requested
+
+
+def effective_sbatch_option(slurm_args: dict[str, Any], option: str) -> str | None:
+    """The value ``sbatch`` will use for ``--<option>`` from *slurm_args*.
+
+    Read back from :func:`format_sbatch_directives`, the one formatter, so
+    every spelling it accepts counts (``partition`` and ``slurm_partition``
+    both render ``--partition``), and the LAST directive wins, as ``sbatch``
+    applies ``#SBATCH`` lines in order. A check that reads one dict key
+    instead misses the GUI's ``partition=`` spelling, and with both
+    spellings present asks about the partition the job will not run in
+    (spec 2026-09-24-cli-preflight, Phase E review E3).
+
+    Args:
+        slurm_args: The profile, as ``--slurm``/``--gpu-slurm`` parse it.
+        option: The long option name without dashes, e.g. ``"partition"``.
+
+    Returns:
+        The value of the last ``--<option>=`` directive, or ``None``.
+    """
+    from pathlib import Path
+
+    prefix = f"#SBATCH --{option}="
+    rendered = format_sbatch_directives(
+        job_name="phenotypic",
+        slurm_args=slurm_args,
+        output_log=Path("/dev/null"),
+        error_log=Path("/dev/null"),
+    )
+    values = [
+        line[len(prefix):] for line in rendered.splitlines() if line.startswith(prefix)
+    ]
+    return values[-1] if values else None
+
+
 def parse_job_id(sbatch_stdout: str) -> str:
     """Extract the SLURM job ID from sbatch output.
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated
+from typing import ClassVar, TYPE_CHECKING, Annotated
 
 import numpy as np
 from pydantic import field_validator
@@ -124,6 +124,10 @@ class ColorDenoise(NormalizedOutputMixin, ImageCorrector):
         :doc:`/explanation/image_quality_noise_contrast_structure` for
         background on noise models and denoiser selection.
     """
+
+    #: Reads RGB on every call and fails on a grayscale image (run preflight, spec §3).
+    #: Raises ValueError on an image without RGB.
+    _requires_rgb_input: ClassVar[bool] = True
 
     sigma_psd: Annotated[float, TuneSpec(0.01, 0.15, log=True)] = 0.02
     block_size: Annotated[int, TuneSpec(categories=(4, 8, 16))] = 8

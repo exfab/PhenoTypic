@@ -9,7 +9,9 @@ from typing import (
     Annotated,
     Any,
     Callable,
+    ClassVar,
     Generic,
+    Optional,
     overload,
     cast,
     TypeVar,
@@ -231,6 +233,12 @@ class FilFinderDetector(ObjectDetector):
         Koch, E. W., and Rosolowsky, E. W. (2015), "Filament identification
         through mathematical morphology," MNRAS, 452(4), 3435-3450.
     """
+
+    #: FilFinder and astropy are imported only for a nonempty application
+    #: (``_load_filfinder_runtime``); the run preflight checks they are
+    #: installed before the run (spec 2026-09-24-cli-preflight §3).
+    _requires_modules: ClassVar[tuple[str, ...]] = ("fil_finder", "astropy")
+    _requires_extra: ClassVar[Optional[str]] = "topology"
 
     threshold: Annotated[
         float,

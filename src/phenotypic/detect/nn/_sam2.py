@@ -7,7 +7,7 @@ from typing import Annotated
 
 from pydantic import Field, PrivateAttr
 
-from phenotypic.abc_ import GpuDetector
+from phenotypic.abc_ import GpuDetector, OperationRequirements
 from phenotypic.detect.nn._helper._checkpoint_manager import (
     Device,
     Sam2ModelSize,
@@ -308,6 +308,30 @@ class Sam2(GpuDetector):
 
     # Lazy SAM2 mask generator — PrivateAttr -> skipped by serialization.
     _generator: object = PrivateAttr(default=None)
+
+    def preflight_requirements(self) -> OperationRequirements:
+        """Packages and weights this detector loads (run preflight, spec §3/§5).
+
+        No weights when an explicit ``checkpoint`` file is given. See
+        ``BaseOperation.preflight_requirements``.
+
+        Returns:
+            The detector's packages, extra and weights, added to the
+            inherited input-layer requirement.
+        """
+        import dataclasses
+
+        from phenotypic.detect.nn._helper import _checkpoint_manager as ckpt
+
+        requirements = super().preflight_requirements()
+        weights = (
+            ()
+            if self.checkpoint is not None
+            else (ckpt.sam2_weight_requirement(self.model_size),)
+        )
+        return dataclasses.replace(
+            requirements, modules=("sam2", "torch"), extra="torch", weights=weights
+        )
 
     def _ensure_model_loaded(self) -> None:
         """Build the SAM2 mask generator on first use.

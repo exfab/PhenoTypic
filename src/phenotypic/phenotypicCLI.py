@@ -199,6 +199,8 @@ from phenotypic.sdk_ import (
     source_image_stem,
     store_stem,
     clear_machine_state,
+    machine_state_restart_targets,
+    preserved_on_restart_names,
     atomic_write_bytes,
     atomic_write_json,
     metadata_csv_deliverable_path,
@@ -258,7 +260,6 @@ if TYPE_CHECKING:
     from phenotypic._cli._cli_validation import (
         UnstageableGpuDetectorError,
         validate_execution_config,
-        validate_pipeline,
     )
     from phenotypic._core._image_parts.detection_modes import available_modes  # noqa: F401
     from phenotypic._core._image_pipeline import ImagePipeline
@@ -310,7 +311,6 @@ _CLI_RUNTIME_IMPORTS: dict[str, tuple[str, ...]] = {
     "phenotypic._cli._cli_validation": (
         "UnstageableGpuDetectorError",
         "validate_execution_config",
-        "validate_pipeline",
     ),
     "phenotypic._cli._cli_stage2_token": ("staged_detector_slot",),
 }
@@ -573,6 +573,126 @@ def _refuse_unmigrated_output(output_dir: Path, *, mode: str) -> None:
     refuse_unconverted_schema(output_dir, mode=mode)
 
 
+def _refuse_run_inputs_the_run_would_delete(
+    *,
+    output_dir: Path,
+    overwrite: bool,
+    restart: bool,
+    run_inputs: Sequence[tuple[str, Optional[Path]]],
+) -> None:
+    """Refuse a run whose own inputs ``--overwrite`` or ``--restart`` would delete.
+
+    ``--overwrite`` removes the whole output directory and ``--restart`` removes
+    the non-preserved machine state under ``.phenotypic/``, both before the
+    run has finished reading its inputs (the metadata snapshot, startup
+    preparation and every worker read them later). A run input stored in
+    either place would be deleted and then reported missing, or, for an
+    already-snapshotted manifest, silently lost (spec F3, F27). Called only in
+    the modes that reach those deletes (``full`` and ``process``), and outside
+    ``--skip-validation``: this protects the user's files, it does not advise.
+
+    **Both spellings of every path are compared** (phase-A review A1). The
+    *lexical* spelling (absolute, links not followed) is what a delete removes:
+    ``shutil.rmtree`` unlinks a symlink stored under ``--output`` without
+    following it, so the run then fails to read the link it named. The
+    *resolved* spelling catches an alias that reaches the output from outside
+    it. A path is refused when either spelling lies in either spelling of the
+    deleted location.
+
+    The restart targets come from :func:`machine_state_restart_targets`, the
+    same list ``clear_machine_state`` deletes, so the refusal and the delete
+    cannot disagree.
+
+    Args:
+        output_dir: The run's ``--output``.
+        overwrite: Whether ``--overwrite`` was given.
+        restart: Whether ``--restart`` was given.
+        run_inputs: ``(option, path)`` pairs; ``None`` paths are skipped.
+
+    Raises:
+        click.UsageError: A run input lies where the run would delete it.
+    """
+    if not (overwrite or restart):
+        return
+
+    def spellings(path: Path) -> set[Path]:
+        return {Path(os.path.abspath(path)), Path(path).resolve(strict=False)}
+
+    def inside(path: Path, roots: set[Path]) -> bool:
+        return any(
+            candidate == root or candidate.is_relative_to(root)
+            for candidate in spellings(path)
+            for root in roots
+        )
+
+    output_roots = spellings(Path(output_dir))
+    restart_targets = (
+        machine_state_restart_targets(Path(output_dir))
+        if restart and Path(output_dir).exists()
+        else []
+    )
+    for option, path in run_inputs:
+        if path is None:
+            continue
+        if overwrite and inside(Path(path), output_roots):
+            raise click.UsageError(
+                f"{option} {path} lies inside --output {output_dir}, which "
+                "--overwrite deletes before the run has finished reading it. "
+                "Move it outside the output directory, or choose a different "
+                "--output."
+            )
+        for target in restart_targets:
+            if inside(Path(path), spellings(target)):
+                kept = ", ".join(sorted(preserved_on_restart_names()))
+                raise click.UsageError(
+                    f"{option} {path} lies inside the machine state that "
+                    f"--restart clears ({target}). Only {kept} are kept. Move "
+                    "it outside .phenotypic/ before restarting."
+                )
+
+
+def _print_dry_run_mutation_preview(
+    output_dir: Path, *, restart: bool, will_overwrite: bool
+) -> None:
+    """State what the real run would delete, without deleting it.
+
+    A ``--dry-run`` exits before the mutating half of :func:`phenotypic_cli`,
+    so ``--restart`` and ``--overwrite`` become previews (spec §1, D5). The
+    restart list is :func:`machine_state_restart_targets`, the same list
+    ``clear_machine_state`` deletes.
+
+    Args:
+        output_dir: The run's ``--output``.
+        restart: Whether ``--restart`` was given.
+        will_overwrite: Whether ``--overwrite`` would delete existing content.
+    """
+    if will_overwrite:
+        entries = sorted(output_dir.iterdir())
+        click.echo(
+            f"Dry run: --overwrite would delete {len(entries)} entries under "
+            f"{output_dir}:"
+        )
+        for entry in entries[:10]:
+            click.echo(f"  - {entry.name}")
+        if len(entries) > 10:
+            click.echo(f"  ... and {len(entries) - 10} more")
+    if restart:
+        targets = (
+            machine_state_restart_targets(output_dir)
+            if output_dir.exists()
+            else []
+        )
+        kept = ", ".join(sorted(preserved_on_restart_names()))
+        click.echo(
+            f"Dry run: --restart would clear {len(targets)} machine-state "
+            f"entries under {output_dir} (kept: {kept}):"
+        )
+        for target in targets[:10]:
+            click.echo(f"  - {target.relative_to(output_dir)}")
+        if len(targets) > 10:
+            click.echo(f"  ... and {len(targets) - 10} more")
+
+
 def _snapshot_metadata_csv(
     output_dir: Path, source: Optional[Path]
 ) -> Optional[Path]:
@@ -596,6 +716,11 @@ def _snapshot_metadata_csv(
     from phenotypic.sdk_._file_locking import exclusive_path_lock
 
     payload = source.read_bytes()
+    # Kept although the startup parse already ran the shared reader: pandas
+    # refuses an unterminated quote that Polars reads as a header, and this
+    # parse is what keeps such bytes from replacing a valid snapshot (review
+    # D8 proposed removing it; test_invalid_metadata_never_replaces_existing_
+    # snapshot is the counterexample).
     pd.read_csv(io.BytesIO(payload))
     expected_digest = hashlib.sha256(payload).hexdigest()
     state_path = resolve_processing_state_path(output_dir)
@@ -1534,8 +1659,11 @@ def _print_process_only_dry_run_plan(
 )
 @click.option(
     "--bit-depth",
-    type=int,
+    type=click.Choice(["8", "16"]),
     default=None,
+    # Only 8 and 16 mean anything downstream (``_image_data_manager.py``);
+    # any other integer used to be accepted and fail per image (spec F15).
+    callback=lambda _ctx, _param, value: None if value is None else int(value),
     help="Bit depth of input images (8 or 16)",
 )
 @click.option(
@@ -1623,7 +1751,11 @@ def _print_process_only_dry_run_plan(
 @click.option(
     "--dry-run",
     is_flag=True,
-    help="Preview processing plan without executing",
+    help=(
+        "Validate and run the run preflight, preview the processing plan, "
+        "then exit without changing anything under --output or submitting "
+        "any job"
+    ),
 )
 @click.option(
     "--sample",
@@ -1683,7 +1815,12 @@ def _print_process_only_dry_run_plan(
 @click.option(
     "--skip-validation",
     is_flag=True,
-    help="Skip pipeline validation (for advanced users)",
+    help=(
+        "Skip validation: the execution-config check, the pipeline load check "
+        "and the run preflight. Refusals that protect --output (a GPU detector "
+        "the staged engine cannot run, a --restart/--overwrite that would "
+        "delete the run's inputs) still apply."
+    ),
 )
 @click.option(
     "--no-qc",
@@ -1803,6 +1940,22 @@ def phenotypic_cli(
     # error. Every mode pays the import, usage errors included -- deliberate,
     # because a run that reaches an image has already paid it (spec A/P13).
     load_runtime_dependencies()
+    # Custom operations register on import; doing it here, before any
+    # pipeline is read, makes a broken PHENOTYPIC_PRELOAD_MODULES entry fail
+    # at startup as one error line naming the variable. Class resolution
+    # also preloads, which is what reaches worker processes (spec §10.2).
+    from phenotypic.sdk_._preload import (
+        PRELOAD_MODULES_ENV,
+        preload_custom_operation_modules_once,
+    )
+
+    try:
+        preload_custom_operation_modules_once()
+    except ImportError as exc:
+        raise click.ClickException(
+            f"{PRELOAD_MODULES_ENV} lists a module that cannot be imported: "
+            f"{exc}. Fix the module name or unset the variable."
+        ) from exc
     _load_cli_runtime()
     try:
         _reject_unexpected_positional_args(ctx.args)
@@ -1996,6 +2149,33 @@ def phenotypic_cli(
                             err=True,
                         )
 
+        # --gpu-slurm is parsed and its time validated here as well, not first
+        # when the GPU script is rendered, after run state has been written
+        # (spec 2026-09-24-cli-preflight §6, F16). An option-type check: it
+        # runs even under --skip-validation.
+        gpu_slurm_args_dict: dict = {}
+        if gpu_slurm_args:
+            try:
+                gpu_slurm_args_dict = _parse_slurm_args(gpu_slurm_args)
+            except click.BadParameter as e:
+                click.echo(str(e), err=True)
+                sys.exit(1)
+            for time_key in ("time", "slurm_time"):
+                if time_key in gpu_slurm_args_dict:
+                    try:
+                        canonical_time = parse_slurm_time(
+                            gpu_slurm_args_dict[time_key]
+                        )
+                    except ValueError as exc:
+                        click.echo(
+                            f"Error: invalid --gpu-slurm '{time_key}' "
+                            f"{gpu_slurm_args_dict[time_key]!r}: {exc}",
+                            err=True,
+                        )
+                        sys.exit(1)
+                    if canonical_time is not None:
+                        gpu_slurm_args_dict[time_key] = canonical_time
+
         if restart and overwrite:
             raise click.UsageError(
                 "--restart and --overwrite are mutually exclusive"
@@ -2136,6 +2316,28 @@ def phenotypic_cli(
                 f"{_format_explicit_cli_usage_hint()}"
             )
 
+        # Every run input --overwrite or --restart would delete is refused
+        # here: above every mutation, below the more specific usage errors
+        # (--restart with --overwrite, --mode measure with --overwrite), only
+        # in the modes that reach those deletes, and regardless of
+        # --skip-validation (spec §1, F3/F27; phase-A review A2). Process mode
+        # ignores --metadata, so it is not a run input there (A6).
+        if cli_mode in ("full", "process"):
+            _refuse_run_inputs_the_run_would_delete(
+                output_dir=Path(output_dir),
+                overwrite=overwrite,
+                restart=restart,
+                run_inputs=(
+                    ("--input", input_path),
+                    ("--pipeline", pipeline_json),
+                    (
+                        "--metadata",
+                        metadata_csv if cli_mode == "full" else None,
+                    ),
+                    ("--image-manifest", image_manifest),
+                ),
+            )
+
         resume_state = None
 
         # Validate extension argument
@@ -2145,13 +2347,17 @@ def phenotypic_cli(
             click.echo(str(e), err=True)
             sys.exit(1)
 
-        # Validate metadata CSV early
-        if metadata_csv is not None:
-            import pandas as pd
+        # Validate metadata CSV early, outside --skip-validation, with the one
+        # reader every metadata consumer uses (full-file dtype inference).
+        # The old pandas parse accepted CSVs the Polars readers later failed
+        # on (spec §10.5, F22; review R22). Process mode ignores --metadata,
+        # so it does not parse a file it will never read (review D8).
+        if metadata_csv is not None and process_only_layer is None:
+            from phenotypic._cli._metadata_join import read_metadata_csv
 
             try:
-                meta_df = pd.read_csv(metadata_csv)
-                if len(meta_df) == 0:
+                meta_df = read_metadata_csv(metadata_csv)
+                if meta_df.height == 0:
                     click.echo(
                         f"Warning: metadata CSV '{metadata_csv}' has zero rows",
                         err=True,
@@ -2218,7 +2424,7 @@ def phenotypic_cli(
             process_format=resolved_process_format,
             gpu_workers_per_gpu=gpu_workers_per_gpu,
             gpu_shards=gpu_shards,
-            gpu_slurm_args=_parse_slurm_args(gpu_slurm_args),
+            gpu_slurm_args=gpu_slurm_args_dict,
         )
         # Refuse an unstageable GpuDetector HERE, before anything touches
         # --output: every later step (overwrite clearing, run identity,
@@ -2353,36 +2559,12 @@ def phenotypic_cli(
                         "--output directory to keep them."
                     )
 
-        # Handle restart mode - clear ALL previous machine-state so the
-        # orchestration re-runs cleanly (fresh state + event log + progress),
-        # while preserving any output artifacts (results/, deliverables/, qc/)
-        # that --restart intentionally keeps — unlike --overwrite, which wipes
-        # the whole dir. Clearing the event log here prevents the restart from
-        # appending to, and rebuilding its manifest/failure records from, the
-        # prior run's events.
-        if restart:
-            if output_dir.exists():
-                # The transient Stage-2 signal (retained raw .npy + consumable
-                # token) lives under .phenotypic/progress/, which
-                # clear_machine_state wipes -- so there is nothing extra to
-                # clear here. The old clear_stage2_sidecars() globbed
-                # results/*/objmap/*.npy and would now be a permanent no-op.
-                if clear_machine_state(output_dir):
-                    click.echo(
-                        f"✓ Cleared previous machine-state (.phenotypic/) from {output_dir}"
-                    )
-                else:
-                    click.echo(
-                        f"Note: No previous state found in {output_dir} (starting fresh)"
-                    )
-            else:
-                click.echo(
-                    f"Note: Output directory {output_dir} does not exist yet (starting fresh)"
-                )
-
         config.output_dir = output_dir
 
-        # Check existing contents only for a genuinely fresh run.
+        # Check existing contents only for a genuinely fresh run. Only the
+        # REFUSAL happens here, in the read-only half; the delete itself runs
+        # below the --dry-run exit, guarded by ``will_overwrite`` (spec §1).
+        will_overwrite = False
         if not config.resume and not restart and not measure_only:
             if output_dir.exists() and any(
                 not _is_ignorable_output_entry(
@@ -2391,12 +2573,7 @@ def phenotypic_cli(
                 for entry in output_dir.iterdir()
             ):
                 if overwrite:
-                    import shutil
-
-                    click.echo(
-                        f"Overwriting existing output directory: {output_dir}"
-                    )
-                    shutil.rmtree(output_dir)
+                    will_overwrite = True
                 else:
                     click.echo(
                         f"Error: Output directory already contains files: {output_dir}",
@@ -2408,40 +2585,6 @@ def phenotypic_cli(
                         err=True,
                     )
                     sys.exit(1)
-
-        # Mint ONCE per invocation, then thread the value (CAN-21).
-        # Every branch below READS `identity`; none mints. A second mint
-        # would give one run two generations and burn a restart epoch.
-        #
-        # BELOW the overwrite branch, and that placement is the fix for a
-        # bug this comment previously helped hide. The earlier version sat
-        # above it and reasoned at length about `clear_machine_state` --
-        # the destructive operation *above* the mint, which preserves the
-        # counter on purpose -- while `shutil.rmtree(output_dir)` seventeen
-        # lines *below* deleted the counter the mint had just read. The
-        # comment defended the neighbour it could see.
-        #
-        # The failure was silent because `--overwrite` and `--restart` are
-        # mutually exclusive, so the mint only READ and nothing raised:
-        # `state.config["restart_epoch"]` kept the pre-overwrite value while
-        # the counter file was gone. A live SLURM run then never reported
-        # `active` (the lifecycle record stamps 0, the identity says 1), and
-        # the next `--restart` bumped 0 -> 1 and re-minted the SAME
-        # generation the overwrite run had used -- so pre-restart workers
-        # passed the event-log fence, which is the failure D5 and §14 exist
-        # to prevent.
-        #
-        # Still dominates both resume sites: they are all below this point,
-        # and the overwrite branch above is guarded by `not config.resume
-        # and not restart and not measure_only`, so no path reaches a resume
-        # site without passing here first.
-        identity = mint_run_identity(config, restart=restart)
-        # One initial call for the whole run, every image and stage (figures
-        # spec §1a): the recorded one on a resume, else this one. Measure mode
-        # keeps no run state, so it always records its own.
-        config.run_initiation = _run_initiation(
-            None if measure_only else resume_state
-        )
 
         # Scan directory structure (or discover image stores in measure mode)
         if measure_only:
@@ -2511,21 +2654,59 @@ def phenotypic_cli(
                 sys.exit(1)
             console.print("[green]✓ Execution configuration validated")
 
-            # Step 2: Validate pipeline loading
+            # Step 2: Load the pipeline once, for validation and the run
+            # preflight alike (spec §2).
+            from phenotypic._cli._cli_preflight import (
+                PreflightContext,
+                PreflightReport,
+                load_pipeline_for_validation,
+                run_mode_of,
+                run_preflight,
+            )
+
             with console.status(
                 "[bold cyan]Loading pipeline config...", spinner="dots"
             ):
-                pipeline_valid, pipeline_error = validate_pipeline(
-                    config.pipeline_json, config.skip_validation
+                loaded_pipeline, load_finding = load_pipeline_for_validation(
+                    config.pipeline_json
                 )
 
-            if not pipeline_valid:
+            if loaded_pipeline is None:
                 console.print(
                     "[bold red]✗ Pipeline loading failed:", style="bold red"
                 )
-                console.print(f"  - {pipeline_error}", style="red")
+                assert load_finding is not None
+                # Rendered as a report so the code and its remedy print too
+                # (PF-CUSTOM-OP, PF-PIPELINE-LOAD), in the one report format.
+                for line in PreflightReport((load_finding,)).render_lines():
+                    console.print(line, highlight=False, markup=False)
                 sys.exit(1)
             console.print("[green]✓ Pipeline loaded successfully")
+
+            # Step 3: The run preflight -- read-only checks over the pipeline,
+            # environment, cluster, input headers, metadata and output
+            # location. Errors refuse the run; warnings are reported.
+            with console.status(
+                "[bold cyan]Running preflight checks...", spinner="dots"
+            ):
+                preflight_report = run_preflight(
+                    PreflightContext(
+                        config=config,
+                        pipeline=loaded_pipeline,
+                        datasets=tuple(datasets),
+                        mode=run_mode_of(config),
+                    )
+                )
+            for line in preflight_report.render_lines():
+                console.print(line, highlight=False, markup=False)
+            if preflight_report.errors:
+                console.print(
+                    f"[bold red]✗ Preflight found {len(preflight_report.errors)} "
+                    "error(s); nothing under --output was changed.",
+                    style="bold red",
+                )
+                sys.exit(1)
+            console.print("[green]✓ Preflight checks passed")
 
             console.print()  # Add blank line after validation
         else:
@@ -2543,13 +2724,89 @@ def phenotypic_cli(
             traceback.print_exc()
             sys.exit(1)
 
-        # Handle dry-run mode
+        # Handle dry-run mode. Everything above this line is read-only; every
+        # mutation of --output (restart clear, overwrite delete, identity
+        # mint, state and directory creation) sits below it (spec §1), so a
+        # dry run with --restart or --overwrite is a preview.
         if config.dry_run:
             if config.process_only_layer:
                 _print_process_only_dry_run_plan(config, datasets, output_dir)
             else:
                 execute_dry_run(config, datasets, output_dir)
+            _print_dry_run_mutation_preview(
+                output_dir, restart=restart, will_overwrite=will_overwrite
+            )
             sys.exit(0)
+
+        # ---- Mutating half: nothing above this line writes under --output.
+        #
+        # Handle restart mode - clear ALL previous machine-state so the
+        # orchestration re-runs cleanly (fresh state + event log + progress),
+        # while preserving any output artifacts (results/, deliverables/, qc/)
+        # that --restart intentionally keeps — unlike --overwrite, which wipes
+        # the whole dir. Clearing the event log here prevents the restart from
+        # appending to, and rebuilding its manifest/failure records from, the
+        # prior run's events.
+        if restart:
+            if output_dir.exists():
+                # The transient Stage-2 signal (retained raw .npy + consumable
+                # token) lives under .phenotypic/progress/, which
+                # clear_machine_state wipes -- so there is nothing extra to
+                # clear here. The old clear_stage2_sidecars() globbed
+                # results/*/objmap/*.npy and would now be a permanent no-op.
+                if clear_machine_state(output_dir):
+                    click.echo(
+                        f"✓ Cleared previous machine-state (.phenotypic/) from {output_dir}"
+                    )
+                else:
+                    click.echo(
+                        f"Note: No previous state found in {output_dir} (starting fresh)"
+                    )
+            else:
+                click.echo(
+                    f"Note: Output directory {output_dir} does not exist yet (starting fresh)"
+                )
+
+        if will_overwrite:
+            import shutil
+
+            click.echo(f"Overwriting existing output directory: {output_dir}")
+            shutil.rmtree(output_dir)
+
+        # Mint ONCE per invocation, then thread the value (CAN-21).
+        # Every branch below READS `identity`; none mints. A second mint
+        # would give one run two generations and burn a restart epoch.
+        #
+        # BELOW the overwrite branch, and that placement is the fix for a
+        # bug this comment previously helped hide. The earlier version sat
+        # above it and reasoned at length about `clear_machine_state` --
+        # the destructive operation *above* the mint, which preserves the
+        # counter on purpose -- while `shutil.rmtree(output_dir)` seventeen
+        # lines *below* deleted the counter the mint had just read. The
+        # comment defended the neighbour it could see.
+        #
+        # The failure was silent because `--overwrite` and `--restart` are
+        # mutually exclusive, so the mint only READ and nothing raised:
+        # `state.config["restart_epoch"]` kept the pre-overwrite value while
+        # the counter file was gone. A live SLURM run then never reported
+        # `active` (the lifecycle record stamps 0, the identity says 1), and
+        # the next `--restart` bumped 0 -> 1 and re-minted the SAME
+        # generation the overwrite run had used -- so pre-restart workers
+        # passed the event-log fence, which is the failure D5 and §14 exist
+        # to prevent.
+        #
+        # Still dominates both resume sites: they are all below this point,
+        # and the overwrite delete above runs only when `will_overwrite`,
+        # which is computed under `not config.resume and not restart and not
+        # measure_only`, so no path reaches a resume site without passing
+        # here first.
+        identity = mint_run_identity(config, restart=restart)
+        # One initial call for the whole run, every image and stage (figures
+        # spec §1a): the recorded one on a resume, else this one. Measure mode
+        # keeps no run state, so it always records its own.
+        config.run_initiation = _run_initiation(
+            None if measure_only else resume_state
+        )
 
         # Handle sample mode
         if config.sample is not None:
