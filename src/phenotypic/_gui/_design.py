@@ -38,7 +38,9 @@ __all__ = [
     # ---- Brand / UI palette (UI ONLY -- never charts) ----
     "COLOR_NAVY",
     "COLOR_BLUE",
+    "COLOR_BLUE_TEXT",
     "COLOR_GOLD",
+    "COLOR_GOLD_TEXT",
     "COLOR_WHITE",
     "COLOR_BG",
     "COLOR_SURFACE",
@@ -242,13 +244,18 @@ FONT_TOKENS_CSS = f"""\
 
 COLOR_NAVY: str = "#003660"
 COLOR_BLUE: str = "#1b75bc"
+#: Blue as text on its own 8% tint (active buttons, blue badges): the brand blue
+#: reaches 4.38:1 there, just under WCAG AA, so text takes this 4.5:1 variant.
+COLOR_BLUE_TEXT: str = "#1b73b9"
 COLOR_GOLD: str = "#febc11"
+#: Gold as text (on white, the canvas, or its own tint): 4.5:1 for WCAG AA.
+COLOR_GOLD_TEXT: str = "#926a00"
 COLOR_WHITE: str = "#ffffff"
 COLOR_BG: str = "#FBFEF8"  # near-white warm canvas (DESIGN.md "01 -- Color Palette")
 COLOR_SURFACE: str = "#ffffff"
 COLOR_BORDER: str = "#dde3ed"
 COLOR_RULE: str = "#e8ecf2"
-COLOR_MUTED: str = "#8892a4"
+COLOR_MUTED: str = "#6d7684"  # 4.5:1 on white and on the #FBFEF8 canvas (WCAG AA)
 COLOR_BODY: str = "#2e3a4e"
 COLOR_HEADING: str = COLOR_NAVY  # Same as navy; kept named for semantic call-sites.
 
@@ -361,11 +368,11 @@ COLOR_DANGER: str = OI_VERMILION
 # Darkened Okabe-Ito TEXT variants for WCAG AA (4.5:1) on white surfaces
 # (DESIGN.md "05 -- Badges"). NEVER use a raw OI_* hex as badge / alert / status
 # text on white; use these instead.
-OI_ORANGE_TEXT: str = "#9A6B00"
+OI_ORANGE_TEXT: str = "#966800"
 OI_SKY_TEXT: str = "#0B6E9E"
 OI_GREEN_TEXT: str = "#006B4F"
 OI_PURPLE_TEXT: str = "#8B3D6E"
-OI_VERMILION_TEXT: str = "#D55E00"  # vermilion meets AA as-is; alerts use #8A3C00
+OI_VERMILION_TEXT: str = "#b85100"  # AA on white and on the 8% vermilion badge tint; alerts use #8A3C00
 
 # ---------------------------------------------------------------------------
 # Visual tokens (non-palette)
@@ -513,7 +520,9 @@ DESIGN_TOKENS_CSS = f"""\
   /* ---- Brand / UI ---- */
   --color-navy:    {COLOR_NAVY};
   --color-blue:    {COLOR_BLUE};
+  --color-blue-text: {COLOR_BLUE_TEXT};
   --color-gold:    {COLOR_GOLD};
+  --color-gold-text: {COLOR_GOLD_TEXT};
   --color-white:   {COLOR_WHITE};
   --color-bg:      {COLOR_BG};
   --color-surface: {COLOR_SURFACE};
@@ -641,7 +650,7 @@ BOOTSTRAP_OVERRIDE_CSS = f"""\
   --bs-border-color:     var(--color-border);
 
   --bs-primary:   var(--color-navy);    --bs-primary-rgb:   0,54,96;
-  --bs-secondary: var(--color-muted);   --bs-secondary-rgb: 136,146,164;
+  --bs-secondary: var(--color-muted);   --bs-secondary-rgb: 109,118,132;
   --bs-success:   var(--oi-green);      --bs-success-rgb:   0,158,115;
   --bs-info:      var(--oi-sky);        --bs-info-rgb:      86,180,233;
   --bs-warning:   var(--oi-orange);     --bs-warning-rgb:   230,159,0;
@@ -669,13 +678,13 @@ BOOTSTRAP_OVERRIDE_CSS = f"""\
   --bs-btn-border-color: var(--color-border);
   --bs-btn-hover-bg: rgba(27,117,188,0.04); --bs-btn-hover-color: var(--color-blue);
   --bs-btn-hover-border-color: var(--color-blue);
-  --bs-btn-active-bg: rgba(27,117,188,0.08); --bs-btn-active-color: var(--color-blue);
+  --bs-btn-active-bg: rgba(27,117,188,0.08); --bs-btn-active-color: var(--color-blue-text);
 }}
 .btn-danger, .btn-outline-danger {{
-  --bs-btn-bg: transparent; --bs-btn-color: var(--oi-vermilion);
+  --bs-btn-bg: transparent; --bs-btn-color: var(--oi-vermilion-text);
   --bs-btn-border-color: var(--oi-vermilion);
-  --bs-btn-hover-bg: var(--oi-vermilion); --bs-btn-hover-color: #fff;
-  --bs-btn-hover-border-color: var(--oi-vermilion);
+  --bs-btn-hover-bg: var(--oi-vermilion-text); --bs-btn-hover-color: #fff;
+  --bs-btn-hover-border-color: var(--oi-vermilion-text);
 }}
 .btn-link {{ --bs-btn-color: var(--color-blue); --bs-btn-hover-color: var(--color-navy); text-decoration: none; }}
 .text-muted {{ color: var(--color-muted) !important; }}

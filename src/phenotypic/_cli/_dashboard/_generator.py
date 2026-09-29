@@ -176,11 +176,11 @@ def _build_css() -> str:
       --color-blue:    #1b75bc;
       --color-gold:    #febc11;
       --color-white:   #ffffff;
-      --color-bg:      #f5f7fa;
+      --color-bg:      #FBFEF8;
       --color-surface: #ffffff;
       --color-border:  #dde3ed;
       --color-rule:    #e8ecf2;
-      --color-muted:   #8892a4;
+      --color-muted:   #6d7684;
       --color-body:    #2e3a4e;
       --color-heading: #003660;
 
@@ -310,7 +310,7 @@ __PHENOTYPIC_TYPE_TOKENS__
     }
     .status-error {
       background: rgba(213,94,0,0.08);
-      color: #D55E00;
+      color: #b85100;
       border-color: rgba(213,94,0,0.20);
     }
     .pulse-dot {
@@ -512,7 +512,7 @@ __PHENOTYPIC_TYPE_TOKENS__
       font-size: var(--text-xs);
     }
     .dataset-stats .ds-completed { color: #006B4F; }
-    .dataset-stats .ds-failed    { color: #D55E00; }
+    .dataset-stats .ds-failed    { color: #b85100; }
     .dataset-stats .ds-running   { color: #0B6E9E; }
     .dataset-stats .ds-pending   { color: var(--color-muted); }
     .dataset-expand {
@@ -592,7 +592,7 @@ __PHENOTYPIC_TYPE_TOKENS__
       font-family: var(--font-mono);
       font-size: var(--text-xs);
       font-weight: 500;
-      color: #D55E00;
+      color: #b85100;
       text-align: right;
     }
     .chart-empty {
@@ -645,7 +645,7 @@ __PHENOTYPIC_TYPE_TOKENS__
     .failures-table .col-ts    { color: var(--color-muted); font-family: var(--font-mono); font-size: var(--text-xs); white-space: nowrap; }
     .failures-table .col-ds    { font-weight: 500; }
     .failures-table .col-img   { font-family: var(--font-mono); font-size: var(--text-xs); }
-    .failures-table .col-type  { font-family: var(--font-mono); font-size: var(--text-xs); color: #D55E00; }
+    .failures-table .col-type  { font-family: var(--font-mono); font-size: var(--text-xs); color: #b85100; }
     .failure-msg-toggle {
       cursor: pointer;
       color: var(--color-blue);
@@ -1238,7 +1238,7 @@ def _build_js(
       if (!hint) {{
         hint = document.createElement('div');
         hint.id = 'fetch-error-hint';
-        hint.style.cssText = 'padding:12px 16px;background:rgba(213,94,0,0.08);color:#D55E00;' +
+        hint.style.cssText = 'padding:12px 16px;background:rgba(213,94,0,0.08);color:#b85100;' +
           'border-radius:6px;margin-bottom:16px;font-size:var(--text-sm)';
         const container = document.getElementById('tab-progress') ||
           document.getElementById('progress-panel');

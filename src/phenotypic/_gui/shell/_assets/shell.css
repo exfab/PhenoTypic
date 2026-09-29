@@ -636,7 +636,7 @@
 
 .shell-badge-cfg {
   background: rgba(254, 188, 17, 0.10);
-  color: #a87a00;
+  color: var(--color-gold-text);
   border-color: rgba(254, 188, 17, 0.30);
 }
 
@@ -648,13 +648,13 @@
 
 .shell-badge-bundle {
   background: rgba(230, 159, 0, 0.10);
-  color: #9A6B00;
+  color: var(--oi-orange-text);
   border-color: rgba(230, 159, 0, 0.28);
 }
 
 .shell-badge-perm {
   background: rgba(213, 94, 0, 0.08);
-  color: #D55E00;
+  color: var(--oi-vermilion-text);
   border-color: rgba(213, 94, 0, 0.20);
 }
 

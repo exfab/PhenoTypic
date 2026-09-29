@@ -69,11 +69,11 @@ class HTMLReportGenerator:
             --color-blue: #1b75bc;
             --color-gold: #febc11;
             --color-white: #ffffff;
-            --color-bg: #f5f7fa;
+            --color-bg: #FBFEF8;
             --color-surface: #ffffff;
             --color-border: #dde3ed;
             --color-rule: #e8ecf2;
-            --color-muted: #8892a4;
+            --color-muted: #6d7684;
             --color-body: #2e3a4e;
             --color-heading: #003660;
 
@@ -211,8 +211,8 @@ __PHENOTYPIC_TYPE_TOKENS__
         }
 
         .success-text { color: #006B4F; font-weight: 600; }
-        .failure-text { color: #D55E00; font-weight: 600; }
-        .warning-text { color: #9A6B00; font-weight: 600; }
+        .failure-text { color: #b85100; font-weight: 600; }
+        .warning-text { color: #966800; font-weight: 600; }
 
         progress {
             width: 100%;

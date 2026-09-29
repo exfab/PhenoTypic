@@ -18,7 +18,7 @@ Design-token sources (single source of truth is ``DESIGN.md``):
 * Typography -- ``02 -- Typography`` (IBM Plex Sans body stack).
 * Chart styling -- ``06 -- Data Visualization / Chart Styling Rules``
   (gridlines ``#e8ecf2``, axes ``#dde3ed``, muted axis labels
-  ``#8892a4``, navy title).
+  ``#6d7684``, navy title).
 
 This module imports only ``plotly``, the stdlib, and the dependency-free
 ``phenotypic.sdk_._palette``. It is deliberately free of ``dash`` and other
@@ -81,7 +81,7 @@ GRID: str = "#e8ecf2"
 #: Axis lines (``--color-border``).
 AXIS: str = "#dde3ed"
 #: Secondary text -- axis labels, captions (``--color-muted``).
-MUTED: str = "#8892a4"
+MUTED: str = "#6d7684"
 #: Primary body text (``--color-body``).
 BODY: str = "#2e3a4e"
 
