@@ -32,7 +32,7 @@ def test_every_category_strips_to_the_remainder():
             and list(obj)
         ):
             continue
-        cat = obj.category()
+        cat = obj.metric_family()
         assert metric_token(f"{cat}_Foo") == "Foo", cat
 
 

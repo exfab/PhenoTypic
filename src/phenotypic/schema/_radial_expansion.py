@@ -14,7 +14,7 @@ class RADIAL_EXPANSION(DescriptiveTrait):
     """
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "RadialExpansion"
 
     ROBUST_MEAN_RADIUS = Entry(

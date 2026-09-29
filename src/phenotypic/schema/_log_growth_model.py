@@ -9,7 +9,7 @@ class LOG_GROWTH_MODEL(DerivedMeasure):
 
     Output columns are **metric-qualified**: each header is
     ``LogGrowthModel_<metric>_<parameter>``, where ``<metric>`` records the
-    measurement the model was fit on (``self.on`` with its category prefix
+    measurement the model was fit on (``self.on`` with its metric-family prefix
     stripped, e.g. ``Size_Area`` → ``Area``). For example, fitting on
     ``Size_Area`` emits ``LogGrowthModel_Area_r`` (intrinsic growth rate) and
     ``LogGrowthModel_Area_µmax`` (maximum specific growth rate). The labels
@@ -18,7 +18,7 @@ class LOG_GROWTH_MODEL(DerivedMeasure):
     """
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "LogGrowthModel"
 
     @classmethod

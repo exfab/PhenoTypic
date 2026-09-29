@@ -28,10 +28,10 @@ class TestMemberValues:
 
 class TestCategory:
     def test_classmethod_returns_qc_se(self) -> None:
-        assert QUALITY_SE.category() == "QC_SE"
+        assert QUALITY_SE.metric_family() == "QC_SE"
 
     def test_instance_property_returns_qc_se(self) -> None:
-        assert QUALITY_SE.VALUE.CATEGORY == "QC_SE"
+        assert QUALITY_SE.VALUE.METRIC_FAMILY == "QC_SE"
 
 
 class TestStringForm:

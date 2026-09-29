@@ -20,10 +20,10 @@ class TestQualityCountMembers:
 
 class TestQualityCountCategory:
     def test_category_classmethod(self) -> None:
-        assert QUALITY_COUNT.category() == "QC_Count"
+        assert QUALITY_COUNT.metric_family() == "QC_Count"
 
     def test_category_instance_property(self) -> None:
-        assert QUALITY_COUNT.DETECTED.CATEGORY == "QC_Count"
+        assert QUALITY_COUNT.DETECTED.METRIC_FAMILY == "QC_Count"
 
 
 class TestQualityCountStringForm:

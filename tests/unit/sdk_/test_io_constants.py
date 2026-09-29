@@ -56,6 +56,7 @@ from phenotypic.sdk_ import (
     manifest_json_path,
     matches_any_suffix,
     master_measurements_parquet_path,
+    measurements_by_category_dir,
     measurements_by_feature_dir,
     measurements_csv_path,
     measurements_parquet_path,
@@ -437,6 +438,11 @@ class TestPathHelpers:
             output / "deliverables" / "measurements_by_feature"
         )
 
+    def test_measurements_by_category_dir(self, output: Path) -> None:
+        assert measurements_by_category_dir(output) == (
+            output / "deliverables" / "measurements_by_category"
+        )
+
     def test_task_status_path(self, output: Path) -> None:
         assert task_status_path(output, 3) == (
             output / ".phenotypic" / "progress" / "recompile" / "status" / "task_3.json"
@@ -523,6 +529,7 @@ class TestDeliverablesLayout:
             "measurements_csv_path": measurements_csv_path,
             "measurements_parquet_path": measurements_parquet_path,
             "measurements_by_feature_dir": measurements_by_feature_dir,
+            "measurements_by_category_dir": measurements_by_category_dir,
             "dashboard_html_path": dashboard_html_path,
             "pipeline_json_path": pipeline_json_path,
             "readme_md_path": readme_md_path,

@@ -75,7 +75,7 @@ class GAMMA_ENCODINGS(ConstantLabels):
     """Constants for gamma encoding profiles used in color space conversions."""
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "GammaEncoding"
 
     SRGB = Entry("sRGB", "Standard sRGB gamma correction for display")
@@ -142,7 +142,7 @@ class PIPE_STATUS(MeasurementInfo):
     """Constants for image set status."""
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "Status"
 
     PROCESSED = Entry("Processed", "Whether the image has been processed successfully.")

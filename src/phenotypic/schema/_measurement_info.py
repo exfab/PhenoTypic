@@ -5,9 +5,12 @@ conventions, descriptive metadata, and automatic documentation generation.
 """
 
 import re
+from collections.abc import Iterable, Mapping
 from dataclasses import KW_ONLY, dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, cast
+
+from ._categories import CATEGORIES
 
 if TYPE_CHECKING:
     from ._rembi import REMBI_MODULE
@@ -59,6 +62,52 @@ _BADGE_SPECS: Final[dict[tuple[int | None, str], tuple[str, str, str]]] = {
     (None, "derived"): ("Derived", "info", _ANCHOR_PAGE),
 }
 
+#: Category badges render as *outline* pills (``:bdg-ref-{color}-line:``) so
+#: they read as a separate axis from the solid Type pills. A sphinx-design
+#: semantic color (asserted in test_classification). Each links to the
+#: category's section on the generated Categories page. Not ``dark``:
+#: pydata-sphinx-theme maps it to one fixed near-black with no dark-mode
+#: variant, so an outline ``dark`` pill vanishes on the dark theme. ``info``
+#: is mode-aware, and the outline style keeps it distinct from the solid
+#: Derived pill that shares the colour.
+_CATEGORY_BADGE_COLOR: Final = "info"
+
+
+def _normalize_categories(value: object) -> frozenset[CATEGORIES]:
+    """Coerce ``Entry(categories=...)`` to a frozenset of CATEGORIES members.
+
+    A bare member is checked **before** iteration: CATEGORIES is a ``str``
+    enum, so iterating a member would yield its characters. Membership is by
+    ``isinstance``, never equality, so a raw string equal to a member's value
+    (``"StartingMetrics"``) is rejected.
+
+    Reading is looser than writing: because of the ``str`` mixin,
+    ``"StartingMetrics" in entry.categories`` is ``True``. Only this write
+    path is type-exact.
+    """
+    if isinstance(value, CATEGORIES):
+        return frozenset({value})
+    if isinstance(value, str):
+        raise TypeError(
+            f"Entry.categories takes CATEGORIES members, not strings; got {value!r}. "
+            "Use CATEGORIES.<NAME>."
+        )
+    # A mapping iterates as its keys, which would silently drop the values the
+    # author evidently meant to attach; there is nowhere to store them.
+    if isinstance(value, Mapping):
+        raise TypeError(
+            f"Entry.categories takes CATEGORIES members, not a mapping; got {value!r}"
+        )
+    if not isinstance(value, Iterable):
+        raise TypeError(
+            f"Entry.categories must be a CATEGORIES member or an iterable of them; got {value!r}"
+        )
+    items = tuple(value)
+    bad = [item for item in items if not isinstance(item, CATEGORIES)]
+    if bad:
+        raise TypeError(f"Entry.categories accepts only CATEGORIES members; got {bad!r}")
+    return frozenset(items)
+
 
 @dataclass(frozen=True, slots=True)
 class Entry:
@@ -74,6 +123,9 @@ class Entry:
         bio_desc: Biological relevance / use-case. Human-authored only.
         image: Path, relative to ``_assets/measurements/``, of an illustrative
             figure (e.g. ``"shape/area.png"``); ``None`` for no figure.
+        categories: Curated categories (CATEGORIES members) this measurement
+            belongs to. A bare member or an iterable of members (a mapping is
+            refused); normalized to a frozenset.
     """
 
     label: str
@@ -85,6 +137,7 @@ class Entry:
     derivation_type: str | None = None
     derives_from: str | None = None
     rembi_module: "REMBI_MODULE | None" = None
+    categories: "CATEGORIES | Iterable[CATEGORIES]" = frozenset()
 
     def __post_init__(self) -> None:
         if not isinstance(self.label, str) or not self.label:
@@ -106,6 +159,7 @@ class Entry:
             from ._rembi import REMBI_MODULE
             if not isinstance(self.rembi_module, REMBI_MODULE):
                 raise TypeError("Entry.rembi_module must be a REMBI_MODULE or None")
+        object.__setattr__(self, "categories", _normalize_categories(self.categories))
 
 
 #: Source-root-absolute URL prefix for measurement asset images. Root-absolute so
@@ -138,29 +192,47 @@ def _rst_cell_text(text: str) -> str:
     return _RST_ROLE_RE.sub(_flatten, text).replace("|", r"\|")
 
 
+#: One list-table row; both ``_render_info_table`` callers must build it via ``_info_row``.
+_InfoRow = tuple[str, str, str, str | None, str, str]
+
+
+def _info_row(name_cell: str, member: "MeasurementInfo") -> _InfoRow:
+    """Build one :func:`_render_info_table` row for *member*, named *name_cell*."""
+    return (
+        name_cell,
+        member.desc,
+        member.bio_desc,
+        member.image,
+        member.use_badge,
+        member.category_badges,
+    )
+
+
 def _render_info_table(
-    rows: list[tuple[str, str, str, str | None, str]],
+    rows: list[_InfoRow],
     *,
     title: str,
     name_header: str = "Name",
     desc_header: str = "Description",
 ) -> str:
-    """Render a list-table; Type/Biology/Image columns appear only when populated.
+    """Render a list-table; Type/Categories/Biology/Image columns appear only when populated.
 
     Args:
-        rows: ``(name_cell, desc, bio_desc, image_relpath_or_None, type_badge)``
-            per member. ``type_badge`` is raw RST (a sphinx-design ``:bdg-ref:``
-            role) inserted unescaped, so the pill renders as a link.
-        title: Bold table caption (rendered ``Category: **{title}**``).
+        rows: ``(name_cell, desc, bio_desc, image_relpath_or_None, type_badge,
+            category_badges)`` per member. Both badge cells are raw RST
+            (sphinx-design ``:bdg-ref:`` roles) inserted unescaped, so the
+            pills render as links.
+        title: Bold table caption (rendered ``Metric family: **{title}**``).
         name_header: Header for the first (name) column.
         desc_header: Header for the description column.
     """
     has_bio = any(row[2] for row in rows)
     has_img = any(row[3] for row in rows)
     has_use = any(row[4] for row in rows)
+    has_cat = any(row[5] for row in rows)
 
     lines = [
-        f".. list-table:: Category: **{title}**",
+        f".. list-table:: Metric family: **{title}**",
         "   :header-rows: 1",
         "",
         f"   * - {name_header}",
@@ -168,16 +240,20 @@ def _render_info_table(
     ]
     if has_use:
         lines.append("     - Type")
+    if has_cat:
+        lines.append("     - Categories")
     if has_bio:
         lines.append("     - Biology")
     if has_img:
         lines.append("     - Image")
 
-    for name, desc, bio, img, use in rows:
+    for name, desc, bio, img, use, cats in rows:
         lines.append(f"   * - ``{name}``")
         lines.append(f"     - {_rst_cell_text(desc)}")
         if has_use:
             lines.append(f"     - {use}")
+        if has_cat:
+            lines.append(f"     - {cats}")
         if has_bio:
             lines.append(f"     - {_rst_cell_text(bio)}")
         if has_img:
@@ -232,6 +308,34 @@ def _classify(member: "MeasurementInfo") -> tuple[str, int | None]:
     return (kind, tier)
 
 
+#: Names removed by the ``category()`` → ``metric_family()`` hard rename.
+_LEGACY_FAMILY_NAMES: Final = ("category", "CATEGORY")
+
+
+def _refuse_legacy_category(cls: type) -> None:
+    """Refuse a subclass still overriding the removed ``category`` API.
+
+    Any attribute with a legacy name is refused, not only methods: a member
+    named ``CATEGORY`` would shadow the old property, so it is reserved too.
+    """
+    for klass in cls.__mro__:
+        for name in _LEGACY_FAMILY_NAMES:
+            if name not in vars(klass):
+                continue
+            value = vars(klass)[name]
+            if isinstance(value, (classmethod, staticmethod, property)) or callable(value):
+                advice = (
+                    "the category() classmethod is now metric_family() and "
+                    "the CATEGORY property is now METRIC_FAMILY. Rename the override."
+                )
+            else:
+                advice = (
+                    f"{name!r} is a reserved name since the category() -> "
+                    "metric_family() rename. Rename the member."
+                )
+            raise TypeError(f"{klass.__name__} defines {name!r}, which was removed: {advice}")
+
+
 class MeasurementInfo(str, Enum):
     """Base class for creating standardized measurement information enumerations.
 
@@ -239,15 +343,16 @@ class MeasurementInfo(str, Enum):
     conventions, descriptive metadata, and automatic documentation generation. By inheriting
     from both str and Enum, MeasurementInfo enables measurement definitions to behave as
     enumeration members while maintaining string representation. The class automatically
-    prefixes measurement labels with a category name, ensuring consistent naming across code
-    and outputs.
+    prefixes measurement labels with a metric family name, ensuring consistent naming across
+    code and outputs.
 
     **Key Purposes:**
 
-    - Standardize measurement naming conventions (category_label format) to reduce errors
+    - Standardize measurement naming conventions (family_label format) to reduce errors
     - Centralize measurement definitions with labels and descriptions in one place
     - Automatically generate RST documentation tables from measurement definitions
-    - Provide easy access to headers, labels, and category information for analysis workflows
+    - Provide easy access to headers, labels, and metric family information for analysis
+      workflows
     - Enable type-safe column names in measurement DataFrames
 
     **Usage with MeasureFeatures Subclasses:**
@@ -258,7 +363,7 @@ class MeasurementInfo(str, Enum):
     and uses the enum values as DataFrame column headers.
 
     Attributes:
-        label (str): The short label for the measurement (without category prefix). Set
+        label (str): The short label for the measurement (without metric family prefix). Set
             automatically by __new__ from the ``Entry.label`` field.
         desc (str): The technical description of what the measurement represents. Set
             automatically by __new__ from the ``Entry.desc`` field. Defaults to empty
@@ -269,8 +374,8 @@ class MeasurementInfo(str, Enum):
             illustrative figure, or ``None``. Set automatically from ``Entry.image``.
         pair (tuple[str, str]): A tuple of (label, description) for convenient access to
             both pieces of information together.
-        CATEGORY (property): The category name returned by the category() classmethod.
-            Provides instance-level access to the measurement category.
+        METRIC_FAMILY (property): The metric family name returned by the metric_family()
+            classmethod. Provides instance-level access to the measurement's metric family.
 
     Examples:
         Define a custom measurement enumeration:
@@ -278,7 +383,7 @@ class MeasurementInfo(str, Enum):
         >>> from phenotypic.schema import Entry, MeasurementInfo
         >>> class SHAPE(MeasurementInfo):
         ...     @classmethod
-        ...     def category(cls):
+        ...     def metric_family(cls):
         ...         return 'Shape'
         ...
         ...     AREA = Entry('Area', 'Total number of pixels in the detected object')
@@ -294,7 +399,7 @@ class MeasurementInfo(str, Enum):
         'Area'
         >>> SHAPE.AREA.desc
         'Total number of pixels in the detected object'
-        >>> SHAPE.AREA.CATEGORY
+        >>> SHAPE.AREA.METRIC_FAMILY
         'Shape'
         >>> SHAPE.get_labels()
         ['Area', 'Perimeter']
@@ -338,17 +443,18 @@ class MeasurementInfo(str, Enum):
     derivation_type: str | None
     derives_from: str | None
     rembi_module_override: "REMBI_MODULE | None"
+    categories: frozenset[CATEGORIES]
 
     @classmethod
-    def category(cls) -> str:
-        """Return the category name for this measurement enumeration.
+    def metric_family(cls) -> str:
+        """Return the metric family for this measurement enumeration.
 
-        Subclasses must implement this method to provide a category name that will be used
-        to prefix all measurement labels. This ensures consistent naming conventions across
-        the codebase.
+        Subclasses must implement this method to provide a metric family name that will be
+        used to prefix all measurement labels. This ensures consistent naming conventions
+        across the codebase.
 
         Returns:
-            str: The category name (e.g., 'Size', 'Color', 'Texture'). This string is
+            str: The family name (e.g., 'Size', 'Color', 'Texture'). This string is
                 prepended to each measurement label with an underscore separator to form
                 the full header name (e.g., 'Size_Area').
 
@@ -356,6 +462,10 @@ class MeasurementInfo(str, Enum):
             NotImplementedError: If not implemented by a subclass.
         """
         raise NotImplementedError
+
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        super().__init_subclass__(**kwargs)
+        _refuse_legacy_category(cls)
 
     @classmethod
     def kind(cls) -> str | None:
@@ -390,8 +500,8 @@ class MeasurementInfo(str, Enum):
     def header_scheme(cls) -> str:
         """Naming scheme for this enum's DataFrame output headers.
 
-        ``"static"`` (default) → exact ``{category}_{label}``;
-        ``"metric_qualified"`` → ``{category}_{metric}_{label}`` (growth
+        ``"static"`` (default) → exact ``{family}_{label}``;
+        ``"metric_qualified"`` → ``{family}_{metric}_{label}`` (growth
         models + model metrics, where ``{metric}`` is a runtime value);
         ``"texture"`` → TEXTURE's ``-deg/-scale`` suffix scheme.
         """
@@ -414,32 +524,33 @@ class MeasurementInfo(str, Enum):
         return cls.member_for_header(column) is not None
 
     @property
-    def CATEGORY(self) -> str:
-        """Get the category name for this measurement instance.
+    def METRIC_FAMILY(self) -> str:
+        """Get the metric family name for this measurement instance.
 
-        Provides instance-level access to the category name defined by the category()
+        Provides instance-level access to the metric family defined by the metric_family()
         classmethod. This is useful when you have a measurement instance and need to know
-        which category it belongs to without explicitly referencing the class.
+        which metric family it belongs to without explicitly referencing the class.
 
         Returns:
-            str: The category name from the enum class's category() method.
+            str: The metric family name from the enum class's metric_family() method.
         """
-        return type(self).category()
+        return type(self).metric_family()
 
     def __new__(cls, entry: "Entry"):
         """Create a member from an :class:`Entry`.
 
-        The enum value is the category-prefixed header (e.g. ``Size_Area``);
+        The enum value is the family-prefixed header (e.g. ``Size_Area``);
         ``label``/``desc``/``bio_desc``/``image`` are stored as instance
         attributes. Anything other than an ``Entry`` raises ``TypeError`` at
         class-creation time.
         """
+        _refuse_legacy_category(cls)
         if not isinstance(entry, Entry):
             raise TypeError(
                 f"{cls.__name__} members must be declared as Entry(...); "
                 f"got {entry!r}. Raw tuples/strings are not accepted."
             )
-        full = f"{cls.category()}_{entry.label}"
+        full = f"{cls.metric_family()}_{entry.label}"
         obj = str.__new__(cls, full)
         obj._value_ = full
         obj.label = entry.label
@@ -451,17 +562,18 @@ class MeasurementInfo(str, Enum):
         obj.derivation_type = entry.derivation_type
         obj.derives_from = entry.derives_from
         obj.rembi_module_override = entry.rembi_module
+        obj.categories = cast("frozenset[CATEGORIES]", entry.categories)
         return obj
 
     def __str__(self) -> str:
         """Return the string representation of this measurement as the prefixed name.
 
-        Returns the full enumeration value, which is the category-prefixed label
+        Returns the full enumeration value, which is the family-prefixed label
         (e.g., 'Size_Area'). This is used when the measurement is converted to a string
         or used in string formatting.
 
         Returns:
-            str: The full prefixed name of the measurement (e.g., '{category}_{label}').
+            str: The full prefixed name of the measurement (e.g., '{family}_{label}').
         """
         return self._value_
 
@@ -516,35 +628,46 @@ class MeasurementInfo(str, Enum):
         text, color, anchor = spec
         return f":bdg-ref-{color}:`{text} <{anchor}>`"
 
+    @property
+    def category_badges(self) -> str:
+        """RST outline badges, one per category, linking to the Categories page.
+
+        Empty when the member has no category.
+        """
+        return " ".join(
+            f":bdg-ref-{_CATEGORY_BADGE_COLOR}-line:`{c.display_name} <{c.anchor}>`"
+            for c in CATEGORIES.in_order(self.categories)
+        )
+
     @classmethod
     def get_labels(cls) -> list[str]:
-        """Get all measurement labels without category prefix.
+        """Get all measurement labels without metric family prefix.
 
-        Returns a list of the short labels (without category prefix) for all measurements
-        defined in this enumeration. These come from each member's ``Entry.label`` field.
-        Useful for creating human-readable lists or column names when the category context
-        is already established.
+        Returns a list of the short labels (without metric family prefix) for all
+        measurements defined in this enumeration. These come from each member's
+        ``Entry.label`` field. Useful for creating human-readable lists or column names
+        when the metric family context is already established.
 
         Returns:
             list[str]: List of measurement labels in enumeration order (e.g.,
-                ['Area', 'Perimeter']). Does not include the category prefix; to get
+                ['Area', 'Perimeter']). Does not include the metric family prefix; to get
                 prefixed names, use get_headers().
         """
         return [m.label for m in cls]
 
     @classmethod
     def get_headers(cls) -> list[str]:
-        """Get all measurement headers with category prefix.
+        """Get all measurement headers with metric family prefix.
 
-        Returns a list of the full enumeration values (with category prefix) for all
+        Returns a list of the full enumeration values (with metric family prefix) for all
         measurements defined in this enumeration. These strings are suitable for use as
         DataFrame column names, dictionary keys, or in any context where the full
-        categorized name is needed.
+        prefixed name is needed.
 
         Returns:
             list[str]: List of prefixed measurement names in enumeration order
                 (e.g., ['Size_Area', 'Size_Perimeter']). Each header includes the
-                category prefix separated by an underscore.
+                metric family prefix separated by an underscore.
         """
         return [m.value for m in cls]
 
@@ -558,27 +681,19 @@ class MeasurementInfo(str, Enum):
     ) -> str:
         """Render an RST list-table of this enum's members.
 
-        Adds a Biology column when any member sets ``bio_desc`` and an Image
-        column when any sets ``image`` (each suppressed otherwise).
+        Adds a Categories column when any member carries a category, a
+        Biology column when any sets ``bio_desc`` and an Image column when
+        any sets ``image`` (each suppressed otherwise).
 
         Args:
-            title: Table caption; defaults to the category name.
+            title: Table caption; defaults to the metric family name.
             header: ``(name_column_header, description_column_header)``.
             use_headers: Name cell shows the prefixed value (``Size_Area``)
                 instead of the bare label (``Area``).
         """
-        title = title or cls.category()
+        title = title or cls.metric_family()
         name_header, desc_header = header
-        rows = [
-            (
-                m.value if use_headers else m.label,
-                m.desc,
-                m.bio_desc,
-                m.image,
-                m.use_badge,
-            )
-            for m in cls
-        ]
+        rows = [_info_row(m.value if use_headers else m.label, m) for m in cls]
         return _render_info_table(
             rows, title=title, name_header=name_header, desc_header=desc_header
         )
@@ -614,13 +729,13 @@ class MeasurementInfo(str, Enum):
 
 
 def qualified_header(member: "MeasurementInfo", token: str) -> str:
-    """Runtime output header ``{Category}_{token}_{label}``.
+    """Runtime output header ``{Family}_{token}_{label}``.
 
     Embeds the fitted-metric *token* so a reader can tell which measurement a
     growth-model parameter was trained on. Inverse of
     :func:`parse_qualified_header`.
     """
-    return f"{member.CATEGORY}_{token}_{member.label}"
+    return f"{member.METRIC_FAMILY}_{token}_{member.label}"
 
 
 def parse_qualified_header(
@@ -629,11 +744,11 @@ def parse_qualified_header(
     """Inverse of :func:`qualified_header` for one enum.
 
     Returns ``(metric_token, member)`` when *column* is a metric-qualified
-    header of *info_cls* (``{cat}_{metric}_{label}`` with a non-empty metric),
+    header of *info_cls* (``{family}_{metric}_{label}`` with a non-empty metric),
     else ``None``. Anchors on the longest matching member-label suffix, so an
     underscore inside the metric token stays unambiguous.
     """
-    prefix = info_cls.category() + "_"
+    prefix = info_cls.metric_family() + "_"
     if not column.startswith(prefix):
         return None
     best: "tuple[str, MeasurementInfo] | None" = None

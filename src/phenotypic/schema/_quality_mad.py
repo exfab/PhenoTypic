@@ -16,7 +16,7 @@ class QUALITY_MAD(QualityInfo):
     """
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "QC_MAD"
 
     MEDIAN = Entry("Median", "Group median of the measurement.")

@@ -62,10 +62,10 @@ def test_all_nine_metadata_enums_use_flat_namespace_and_canonical_class_names():
         "ACQUISITION",
     }
     assert len(owners) == 9
-    assert MetadataInfo.category() == "Metadata"
+    assert MetadataInfo.metric_family() == "Metadata"
     assert all(issubclass(owner, MetadataInfo) for owner in owners)
     assert {owner.__name__ for owner in owners} == expected_names
-    assert all(owner.category() == "Metadata" for owner in owners)
+    assert all(owner.metric_family() == "Metadata" for owner in owners)
     assert all(
         member.value == f"Metadata_{member.label}"
         for owner in owners

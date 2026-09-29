@@ -9,7 +9,7 @@ class LINEAR_LAG_MODEL(DerivedMeasure):
 
     Output columns are **metric-qualified**: each header is
     ``LinearLagModel_<metric>_<parameter>``, where ``<metric>`` records the
-    measurement the model was fit on (``self.on`` with its category prefix
+    measurement the model was fit on (``self.on`` with its metric-family prefix
     stripped, e.g. ``Size_Area`` → ``Area``). For example, fitting on
     ``Size_Area`` emits ``LinearLagModel_Area_v`` (post-lag growth rate) and
     ``LinearLagModel_Area_s0`` (initial size). The labels below are the
@@ -17,7 +17,7 @@ class LINEAR_LAG_MODEL(DerivedMeasure):
     """
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "LinearLagModel"
 
     @classmethod

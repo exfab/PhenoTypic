@@ -37,7 +37,7 @@ class TEXTURE(DiscriminativeFeature):
     """
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "Texture"
 
     ANGULAR_SECOND_MOMENT = Entry(
@@ -148,7 +148,7 @@ class TEXTURE(DiscriminativeFeature):
     def member_for_header(cls, column: str):
         """Recognize TEXTURE's ``{cat}_{label}-deg###-scale##`` / ``-avg-scale##``."""
         match = _TEXTURE_HEADER_RE.match(column)
-        if match is None or match.group("cat") != cls.category():
+        if match is None or match.group("cat") != cls.metric_family():
             return None
         label = match.group("label")
         for member in cls:
@@ -165,11 +165,11 @@ class TEXTURE(DiscriminativeFeature):
         for member in cls.get_labels():
             for angle in angles:
                 labels.append(
-                        f"{cls.category()}_{member}-deg{angle:03d}-scale{scale:02d}"
+                        f"{cls.metric_family()}_{member}-deg{angle:03d}-scale{scale:02d}"
                 )
 
         for member in cls.get_labels():
             labels.append(
-                    f"{cls.category()}_{member}-avg-scale{scale:02d}"
+                    f"{cls.metric_family()}_{member}-avg-scale{scale:02d}"
             )
         return labels

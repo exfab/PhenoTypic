@@ -28,6 +28,7 @@ from ._rembi import (
     REMBI_MODULE as REMBI_MODULE,
     header_to_module as header_to_module,
 )
+from ._categories import CATEGORIES, CategoryEntry
 from ._tiers import (
     DerivedMeasure as DerivedMeasure,
     DescriptiveTrait as DescriptiveTrait,
@@ -91,6 +92,8 @@ from ._texture import TEXTURE
 
 __all__ = [
     "Entry",
+    "CATEGORIES",
+    "CategoryEntry",
     "MeasurementInfo",
     "MetadataInfo",
     "parse_qualified_header",

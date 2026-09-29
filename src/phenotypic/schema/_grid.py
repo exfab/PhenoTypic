@@ -8,7 +8,7 @@ class GRID(IdentityInfo):
     """Constants for grid structure in the PhenoTypic module."""
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "Grid"
 
     ROW_NUM = Entry("RowNum", "The row idx of the object")

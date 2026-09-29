@@ -17,7 +17,7 @@ class ColorXYZ(DiscriminativeFeature):
     """
 
     @classmethod
-    def category(cls):
+    def metric_family(cls):
         return "ColorXYZ"
 
     X_MINIMUM = Entry("CieXMin", "The minimum X value of the object in CIE XYZ color space")

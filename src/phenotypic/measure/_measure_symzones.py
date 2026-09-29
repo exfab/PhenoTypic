@@ -257,7 +257,6 @@ class MeasureSymZones(CanonicalZoneMeasure, PlotImage):
         measurements = {
             str(feature): np.full(image.num_objects, np.nan)
             for feature in SYMMETRIC_ZONES
-            if feature != SYMMETRIC_ZONES.CATEGORY
         }
 
         props = regionprops(

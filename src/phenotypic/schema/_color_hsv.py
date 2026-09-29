@@ -14,7 +14,7 @@ class ColorHSV(DescriptiveTrait):
     """
 
     @classmethod
-    def category(cls):
+    def metric_family(cls):
         return "ColorHSV"
 
     HUE_ROBUST_MEAN = Entry("HueRobustMean", "Hue of the cone-embedded geometric-median robust center (circular-correct)")

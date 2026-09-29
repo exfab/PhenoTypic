@@ -15,7 +15,7 @@ import os
 import shutil
 import uuid
 from pathlib import Path
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import (
     Any,
     Callable,
@@ -45,7 +45,7 @@ from ._metadata_join import (
     read_metadata_csv,
 )
 from phenotypic.schema import EXPERIMENT, IMAGE, METADATA_MATCH
-from phenotypic.util import split_measurements
+from phenotypic.util import split_measurements, split_measurements_by_category
 from phenotypic.sdk_ import (
     analysis_manifest_path,
     DIR_RESULTS,
@@ -56,6 +56,7 @@ from phenotypic.sdk_ import (
     dataset_overlays_dir,
     deliverables_dir,
     metadata_csv_deliverable_path,
+    measurements_by_category_dir,
     measurements_by_feature_dir,
     measurements_csv_path,
     measurements_parquet_path,
@@ -1079,11 +1080,13 @@ def finalize_post_master_outputs(
        is ``None`` or has no post ops, ``post_df`` equals the working
        frame unchanged.
     3. :func:`_seed_measurements` writes the post-applied frame.
-    4. Split ``post_df`` into per-feature spreadsheets based on the
-       ``MeasurementInfo`` columns present in the frame, so users see
-       post-derived columns (e.g. ``Metadata_Strain`` from
+    4. Split ``post_df`` into per-feature and per-category spreadsheets
+       (``measurements_by_feature/`` and ``measurements_by_category/``)
+       based on the ``MeasurementInfo`` columns present in the frame, so
+       users see post-derived columns (e.g. ``Metadata_Strain`` from
        ``ExpandMetadata``) in
-       ``measurements_by_feature/<feature>.{csv,parquet}``.
+       ``measurements_by_feature/<feature>.{csv,parquet}`` and
+       ``measurements_by_category/<label>.{csv,parquet}``.
     5. When *pipeline* is provided: persist ``pipeline.json``, run
        :func:`_emit_analysis_outputs` against ``post_df`` (so analysis
        sees both post-applied and metadata-joined data), and run QC when
@@ -1294,6 +1297,18 @@ def finalize_post_master_outputs(
         default={},
     )
 
+    # Same frame, same guard: one spreadsheet per measurement category
+    # (deliverables/measurements_by_category/). This is the only call site, so
+    # full, measure, recompile and a full-run --mode migrate all publish it (spec §5.3).
+    _guarded_terminal_best_effort(
+        commit_guard,
+        lambda: split_master_by_category(post_df, output_dir),
+        warning=(
+            "Per-category measurement split failed (master files still written)"
+        ),
+        default={},
+    )
+
     # Re-emit the durable error-triage deliverables (errors/* + error_analysis.*)
     # from the labels store, keyed off the CLEAN master (the same frame the GUI's
     # CurationLabels loads, so headless == live). No-op without a durable
@@ -1373,8 +1388,49 @@ def split_master_by_feature(
     if not split_frames:
         logger.info("No recognized MeasurementInfo columns -- skipping split")
         return {}
+    return _write_split(measurements_by_feature_dir(output_dir), split_frames)
 
-    split_dir = measurements_by_feature_dir(output_dir)
+
+def split_master_by_category(
+    master_df: "pl.DataFrame",
+    output_dir: Path,
+) -> Dict[str, Path]:
+    """Write one CSV + Parquet per measurement category into *output_dir*.
+
+    Creates ``deliverables/measurements_by_category/`` and emits
+    ``<label>.{csv,parquet}`` for every key returned by
+    :func:`phenotypic.util.split_measurements_by_category`: the feature
+    split's context columns plus that category's present columns. Called only
+    from :func:`finalize_post_master_outputs`, the finalization path shared by
+    ``full``, ``measure``, ``recompile`` and a full-run ``--mode migrate``.
+
+    Args:
+        master_df: The post-applied, metadata-joined measurements frame.
+        output_dir: Run output root.
+
+    Returns:
+        Mapping of category label → path to the emitted CSV. Empty, with no
+        directory created, when no categorized column is present.
+    """
+    master_df = normalize_measurement_metadata_columns(master_df)
+    split_frames = split_measurements_by_category(master_df)
+    if not split_frames:
+        logger.info(
+            "No categorized measurement columns -- skipping category split"
+        )
+        return {}
+    return _write_split(measurements_by_category_dir(output_dir), split_frames)
+
+
+def _write_split(
+    split_dir: Path,
+    split_frames: "Mapping[str, pd.DataFrame | pl.DataFrame]",
+) -> Dict[str, Path]:
+    """Atomically write one CSV + Parquet per split frame into *split_dir*.
+
+    A failed CSV skips that key; a failed Parquet keeps the CSV. Returns
+    key → CSV path for every key whose CSV was written.
+    """
     split_dir.mkdir(parents=True, exist_ok=True)
 
     written: Dict[str, Path] = {}

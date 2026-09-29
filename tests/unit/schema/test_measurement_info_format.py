@@ -2,7 +2,7 @@
 
 import phenotypic  # noqa: F401  (registers all enum modules)
 import phenotypic.sdk_.constants_  # noqa: F401  (GAMMA_ENCODINGS, PIPE_STATUS)
-from phenotypic.schema import MeasurementInfo
+from phenotypic.schema import CATEGORIES, MeasurementInfo
 
 
 def _all_concrete_info_classes():
@@ -31,6 +31,8 @@ def test_every_member_has_entry_attribute_surface():
             assert isinstance(member.bio_desc, str)
             assert member.image is None or isinstance(member.image, str)
             assert member.pair == (member.label, member.desc)
+            assert isinstance(member.categories, frozenset)
+            assert all(isinstance(c, CATEGORIES) for c in member.categories)
 
 
 def test_discovery_covers_known_enums():

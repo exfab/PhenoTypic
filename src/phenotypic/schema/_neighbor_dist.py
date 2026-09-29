@@ -19,7 +19,7 @@ class NEIGHBOR_DIST(QualityInfo):
     """
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "NeighborDist"
 
     LEFT_NEIGHBOR_OBJ_LABEL = Entry("LeftNeighborObjLabel",

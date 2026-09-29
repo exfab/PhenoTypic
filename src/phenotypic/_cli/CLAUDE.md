@@ -907,6 +907,9 @@ member (`sdk_/_schema_shape.py:192`).
 User-facing run outputs live under `<output>/deliverables/` (hard cutover):
 `master_measurements.parquet` (**parquet only** since D8), `measurements.{csv,parquet}`,
 `measurements_by_feature/<feature>.{csv,parquet}`,
+`measurements_by_category/<label>.{csv,parquet}` (one per `CATEGORIES` member
+with a present column; written beside the feature split by
+`finalize_post_master_outputs`),
 `<AnalysisClass>.{csv,parquet}`, `analysis_manifest.json`,
 `plots/<plot-id>/...`,
 `dashboard.html`, `processing_report.html`, `README.md`,
@@ -994,8 +997,8 @@ identity that matched no measured object survives as a phantom row with
 columns null, while a measured object whose key appears in **no** metadata row
 is dropped — an object outside the described experiment. The master keeps that
 object; the mirror does not. That asymmetry is the master/mirror distinction the
-"feed analysis and dashboards from the mirror" rule rests on. Per-feature splits
-and named analysis artifacts derive from the mirror. Analysis consumers resolve
+"feed analysis and dashboards from the mirror" rule rests on. Per-feature and per-category
+splits and named analysis artifacts derive from the mirror. Analysis consumers resolve
 tables through `analysis_manifest.json`, never by constructing filenames.
 
 **Reading a master written before the inversion.** Nothing stamps the file — a
@@ -1054,6 +1057,6 @@ file and then call `finalize_post_master_outputs` itself.
 
 Mid-run checkpoint writers (`_aggregate_chunks_locked` in
 `_cli_chunk_writer.py`) intentionally bypass it and keep their rolling state
-under `.phenotypic/progress/`; post, per-feature splits, analysis, and
+under `.phenotypic/progress/`; post, per-feature and per-category splits, analysis, and
 `pipeline.json` persistence are deferred to final aggregation. Do not add
 `finalize_post_master_outputs` to the chunk writer.

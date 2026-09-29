@@ -16,7 +16,7 @@ class QUALITY_TUKEY(QualityInfo):
     """
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "QC_Tukey"
 
     LOWER_FENCE = Entry("LowerFence", "Lower Tukey fence, Q1 - k*IQR.")

@@ -14,7 +14,7 @@ class GRID_SPREAD(QualityInfo):
     """
 
     @classmethod
-    def category(cls):
+    def metric_family(cls):
         return "GridSpread"
 
     OBJECT_SPREAD = Entry(

@@ -1,16 +1,16 @@
 """Measurement info container for the generic QualityCheck output columns."""
 
-from ._measurement_info import Entry, _render_info_table
+from ._measurement_info import Entry, _info_row, _render_info_table
 from ._tiers import QualityInfo
 
 
 class QUALITY_CHECK(QualityInfo):
     """Generic QC output columns emitted by every QualityCheck subclass.
 
-    The category convention used elsewhere in the codebase would produce
+    The metric-family convention used elsewhere in the codebase would produce
     column names ``QC_Flag``, ``QC_Metric``, ``QC_Status`` — but the
     actual emitted columns include each subclass's ``name`` between the
-    category and the label (``QC_Count_Flag``, ``QC_SE_Flag``). This
+    metric family and the label (``QC_Count_Flag``, ``QC_SE_Flag``). This
     enum overrides :meth:`append_rst_to_doc` to substitute the subclass's
     ``name`` into the RST column header, so each concrete subclass's
     docstring documents its real emitted columns.
@@ -29,7 +29,7 @@ class QUALITY_CHECK(QualityInfo):
     STATUS = Entry("Status", "Categorical: pass | warn | fail.")
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "QC"
 
     @classmethod
@@ -56,9 +56,7 @@ class QUALITY_CHECK(QualityInfo):
             Docstring with an appended RST table of output columns.
         """
         slug = check_name if check_name is not None else "<name>"
-        rows = [
-            (f"QC_{slug}_{m.label}", m.desc, m.bio_desc, m.image, m.use_badge) for m in cls
-        ]
+        rows = [_info_row(f"QC_{slug}_{m.label}", m) for m in cls]
         table = _render_info_table(rows, title=f"QC_{slug}", name_header="Name")
         base = doc if isinstance(doc, str) else (doc.__doc__ or "")
         return base + "\n\n" + table

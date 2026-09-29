@@ -17,7 +17,7 @@ class Colorxy(DiscriminativeFeature):
     """
 
     @classmethod
-    def category(cls):
+    def metric_family(cls):
         return "Colorxy"
 
     x_MINIMUM = Entry("xMin", "The minimum chromaticity x coordinate of the object")

@@ -16,7 +16,7 @@ class SHAPE(PrimaryMeasure):
     """
 
     @classmethod
-    def category(cls):
+    def metric_family(cls):
         return "Shape"
 
     @classmethod

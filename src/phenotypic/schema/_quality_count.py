@@ -15,7 +15,7 @@ class QUALITY_COUNT(QualityInfo):
     """
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "QC_Count"
 
     DETECTED = Entry("Detected", "Detected colony count in the group.")

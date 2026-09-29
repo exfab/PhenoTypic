@@ -16,7 +16,7 @@ class OBJECT(IdentityInfo):
     """
 
     @classmethod
-    def category(cls):
+    def metric_family(cls):
         return "Object"
 
     LABEL = Entry(

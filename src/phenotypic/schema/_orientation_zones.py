@@ -1,4 +1,4 @@
-"""Public header schema for MeasureOrientationZones (category ``OrientZones``).
+"""Public header schema for MeasureOrientationZones (metric family ``OrientZones``).
 
 Existing absolute-orientation headers use
 ``OrientZones_<Metric>-<Variant>-<Zone>``. Radial-relative headers use the
@@ -24,7 +24,7 @@ class ORIENTATION_ZONE_PRIMARY(DescriptiveTrait):
     """Primary outward-rotation traits over resolved branch zones."""
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "OrientZones"
 
     OUTWARD_ROTATION_SUSTAINED_PEAK_OVERALL = Entry(
@@ -149,7 +149,7 @@ class ORIENTATION_ZONE_DIAGNOSTIC(QualityInfo):
     """
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "OrientZones"
 
     OUTWARD_ROTATION_RAW_PEAK_OVERALL = Entry(

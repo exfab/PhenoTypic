@@ -6,7 +6,7 @@ from phenotypic._gui.results_viewer.colony_view._grid import _MEASUREMENT_PREFIX
 
 
 def test_texture_is_excluded_and_texturegray_is_not_invented() -> None:
-    """``TEXTURE.category()`` is ``Texture``; ``TextureGray`` is nothing."""
+    """``TEXTURE.metric_family()`` is ``Texture``; ``TextureGray`` is nothing."""
     assert "Texture_" in _MEASUREMENT_PREFIXES
     assert "TextureGray_" not in _MEASUREMENT_PREFIXES
 

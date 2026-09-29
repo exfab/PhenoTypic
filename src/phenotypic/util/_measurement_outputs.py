@@ -11,7 +11,7 @@ from typing import Iterable, Iterator, TypeAlias, TypeGuard
 import pandas as pd
 import polars as pl
 
-from phenotypic.schema import MeasurementInfo
+from phenotypic.schema import CATEGORIES, MeasurementInfo
 
 
 MeasurementFrame: TypeAlias = pd.DataFrame | pl.DataFrame
@@ -49,16 +49,38 @@ def split_measurements(df: MeasurementFrame) -> dict[str, MeasurementFrame]:
     groups = _producer_column_groups(columns)
     if not groups:
         return {}
+    return _split_by_groups(df, _context_columns(columns, groups), groups)
 
-    producer_columns = {
-        column for group_columns in groups.values() for column in group_columns
-    }
-    context_columns = [column for column in columns if column not in producer_columns]
 
-    return {
-        output_key: _select_columns(df, context_columns + group_columns)
-        for output_key, group_columns in groups.items()
-    }
+def split_measurements_by_category(df: MeasurementFrame) -> dict[str, MeasurementFrame]:
+    """Split a measurements table into one data frame per measurement category.
+
+    Context columns are the same as :func:`split_measurements`: every column
+    not owned by a producer's ``MeasurementInfo`` (metadata, object label,
+    grid, joined external metadata). Each category frame holds those context
+    columns followed by the present columns whose member carries the category
+    (see :class:`phenotypic.schema.CATEGORIES`), in input order. Measurement
+    columns outside a category are dropped from its frame. A column in several
+    categories appears in each.
+
+    Args:
+        df: A pandas or polars measurements DataFrame.
+
+    Returns:
+        Mapping of category label (e.g. ``"StartingMetrics"``) to a same-type
+        DataFrame. Categories with no present columns are omitted.
+
+    Raises:
+        TypeError: If *df* is not a pandas or polars DataFrame.
+    """
+    columns = _columns(df)
+    producer_groups = _producer_column_groups(columns)
+    if not producer_groups:
+        return {}
+    context = _context_columns(columns, producer_groups)
+    context_set = set(context)
+    measured = [column for column in columns if column not in context_set]
+    return _split_by_groups(df, context, _category_column_groups(measured))
 
 
 def generate_output_key(df: MeasurementFrame) -> pd.DataFrame:
@@ -90,8 +112,9 @@ def _columns(df: MeasurementFrame) -> list[str]:
     if isinstance(df, pl.DataFrame):
         return [str(column) for column in df.columns]
     raise TypeError(
-        "split_measurements() and generate_output_key() require a pandas "
-        f"or polars DataFrame, got {type(df).__name__}."
+        "split_measurements(), split_measurements_by_category() and "
+        "generate_output_key() require a pandas or polars DataFrame, "
+        f"got {type(df).__name__}."
     )
 
 
@@ -105,6 +128,37 @@ def _select_columns(df: MeasurementFrame, columns: list[str]) -> MeasurementFram
         "split_measurements() requires a pandas or polars DataFrame, "
         f"got {type(df).__name__}."
     )
+
+
+def _context_columns(columns: list[str], groups: dict[str, list[str]]) -> list[str]:
+    """Columns not claimed by any producer group, in input order."""
+    owned = {column for group_columns in groups.values() for column in group_columns}
+    return [column for column in columns if column not in owned]
+
+
+def _split_by_groups(
+    df: MeasurementFrame,
+    context: list[str],
+    groups: dict[str, list[str]],
+) -> dict[str, MeasurementFrame]:
+    """Select ``context + group`` columns for every group, preserving frame type."""
+    return {key: _select_columns(df, context + cols) for key, cols in groups.items()}
+
+
+def _category_column_groups(columns: Iterable[str]) -> dict[str, list[str]]:
+    """Map category labels to the *columns* whose member carries that category.
+
+    Keys follow ``CATEGORIES`` declaration order; values follow *columns* order.
+    Reads the module-level ``CATEGORIES`` at call time.
+    """
+    by_category: dict[CATEGORIES, list[str]] = {category: [] for category in CATEGORIES}
+    for column in columns:
+        member = _member_for_column(column)
+        if member is None:
+            continue
+        for category in CATEGORIES.in_order(member.categories):
+            by_category[category].append(column)
+    return {category.label: cols for category, cols in by_category.items() if cols}
 
 
 def _producer_column_groups(columns: Iterable[str]) -> dict[str, list[str]]:
@@ -241,15 +295,15 @@ def _iter_public_info_classes() -> Iterator[type[MeasurementInfo]]:
 
 
 @lru_cache(maxsize=1)
-def _known_categories() -> tuple[str, ...]:
-    """All public schema categories, sorted longest-first for prefix matching."""
-    cats: set[str] = set()
+def _known_families() -> tuple[str, ...]:
+    """All public schema metric families, sorted longest-first for prefix matching."""
+    families: set[str] = set()
     for obj in _iter_public_info_classes():
         try:
-            cats.add(obj.category())
+            families.add(obj.metric_family())
         except NotImplementedError:  # member-less classification bases
             continue
-    return tuple(sorted(cats, key=len, reverse=True))
+    return tuple(sorted(families, key=len, reverse=True))
 
 
 def _sanitize_token(token: str) -> str:
@@ -259,14 +313,14 @@ def _sanitize_token(token: str) -> str:
 def metric_token(on: str) -> str:
     """Derive the ``<metric>`` header segment from a fitter's ``on`` column.
 
-    Strips the longest known schema **category** prefix if present
+    Strips the longest known schema **metric family** prefix if present
     (``Size_Area`` → ``Area``), else returns the value verbatim
     (``x`` → ``x``); then removes whitespace.
     """
     value = str(on).strip()
-    for category in _known_categories():
-        if value.startswith(category + "_"):
-            return _sanitize_token(value[len(category) + 1:])
+    for family in _known_families():
+        if value.startswith(family + "_"):
+            return _sanitize_token(value[len(family) + 1:])
     return _sanitize_token(value)
 
 
@@ -276,13 +330,19 @@ def _public_info_classes() -> tuple[type[MeasurementInfo], ...]:
     return tuple(obj for obj in _iter_public_info_classes() if list(obj))
 
 
-def _describe_column(column: str) -> str | None:
-    """Resolve *column* to its member's ``desc`` across all schemes, or None."""
+def _member_for_column(column: str) -> MeasurementInfo | None:
+    """Resolve *column* to its public schema member across all header schemes."""
     for info in _public_info_classes():
         member = info.member_for_header(column)
         if member is not None:
-            return member.desc
+            return member
     return None
 
 
-__all__ = ["generate_output_key", "split_measurements"]
+def _describe_column(column: str) -> str | None:
+    """Resolve *column* to its member's ``desc`` across all schemes, or None."""
+    member = _member_for_column(column)
+    return member.desc if member is not None else None
+
+
+__all__ = ["generate_output_key", "split_measurements", "split_measurements_by_category"]

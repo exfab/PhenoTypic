@@ -1,5 +1,6 @@
 """Per-object grayscale intensity summary statistics."""
 
+from ._categories import CATEGORIES
 from ._measurement_info import Entry
 from ._tiers import DirectPhenotype
 
@@ -15,10 +16,14 @@ class INTENSITY(DirectPhenotype):
     """
 
     @classmethod
-    def category(cls):
+    def metric_family(cls):
         return "Intensity"
 
-    INTEGRATED_INTENSITY = Entry("IntegratedIntensity", "The sum of the object's pixels")
+    INTEGRATED_INTENSITY = Entry(
+        "IntegratedIntensity",
+        "The sum of the object's pixels",
+        categories=CATEGORIES.STARTING_METRICS,
+    )
     DENSITY = Entry("Density", "The ratio of the object's intensity to the max possible "
                           "intensity of the object")
     CONVEX_DENSITY = Entry("ConvexDensity", "The ratio of the objects intensity to the max "

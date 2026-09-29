@@ -14,7 +14,7 @@ class BBOX(IdentityInfo):
     """
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "Bbox"
 
     CENTER_RR = Entry("CenterRR", "The row coordinate of the center of the bounding box.")

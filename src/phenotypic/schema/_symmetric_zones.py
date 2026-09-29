@@ -17,7 +17,7 @@ class SYMMETRIC_ZONES(DescriptiveTrait):
     """
 
     @classmethod
-    def category(cls) -> str:
+    def metric_family(cls) -> str:
         return "SymZones"
 
     CORE_RADIUS = Entry(

@@ -1,6 +1,7 @@
 """The labels and descriptions of the size measurements."""
 
 from ._change_notes import SIZE_SHAPE_SPLIT_NOTE, append_change_note
+from ._categories import CATEGORIES
 from ._measurement_info import Entry
 from ._tiers import DirectPhenotype
 
@@ -18,7 +19,7 @@ class SIZE(DirectPhenotype):
     """
 
     @classmethod
-    def category(cls):
+    def metric_family(cls):
         return "Size"
 
     @classmethod
@@ -36,39 +37,48 @@ class SIZE(DirectPhenotype):
             "footprint, not colony height or cell density."
         ),
         image="shape/area.png",
+        categories=CATEGORIES.STARTING_METRICS,
     )
     INTEGRATED_INTENSITY = Entry(
         "IntegratedIntensity",
         r"The sum of the object's grayscale pixels. Calculated as "
         r":math:`\sum{\text{pixel values}} \times \text{area}`.",
+        categories=CATEGORIES.STARTING_METRICS,
     )
     PERIMETER = Entry(
         "Perimeter",
         "Total length of the colony's outer boundary in pixels. Measures colony edge complexity and surface irregularity. Smooth, circular colonies have shorter perimeters relative to their area compared to irregular or filamentous colonies.",
+        categories=CATEGORIES.STARTING_METRICS,
     )
     CONVEX_AREA = Entry(
         "ConvexArea",
         'Area of the smallest convex polygon that completely contains the colony, computed from the convex hull of its pixel centers. Represents the colony\'s "filled-in" appearance if all indentations and holes were removed. Because the hull passes through pixel centers it is slightly smaller than the pixel count of a convex colony. Useful for detecting colony spreading patterns or invasive growth characteristics.',
+        categories=CATEGORIES.STARTING_METRICS,
     )
     BBOX_AREA = Entry(
         "BboxArea",
         "Area of the smallest rectangle that completely contains the colony. Represents the total spatial shape of the colony including any empty space. In high-throughput assays, this helps assess colony positioning and potential interference with neighboring colonies.",
+        categories=CATEGORIES.STARTING_METRICS,
     )
     MAJOR_AXIS_LENGTH = Entry(
         "MajorAxisLength",
         "Length of the longest axis of the ellipse that best fits the colony shape. Represents the maximum colony dimension. In arrayed microbial growth, this measurement helps identify colonies that have grown beyond their intended grid positions.",
+        categories=CATEGORIES.STARTING_METRICS,
     )
     MINOR_AXIS_LENGTH = Entry(
         "MinorAxisLength",
         "Length of the shortest axis of the ellipse that best fits the colony shape. Represents the minimum colony dimension. Together with major axis length, this helps characterize colony aspect ratio and growth anisotropy.",
+        categories=CATEGORIES.STARTING_METRICS,
     )
     MIN_FERET_DIAMETER = Entry(
         "MinFeretDiameter",
         "Minimum caliper diameter - the shortest distance between two parallel tangent lines touching opposite sides of the colony. Represents the narrowest dimension of the colony regardless of orientation. Useful for detecting elongated or irregular colony morphologies and measuring colony width.",
+        categories=CATEGORIES.STARTING_METRICS,
     )
     MAX_FERET_DIAMETER = Entry(
         "MaxFeretDiameter",
         "Maximum caliper diameter - the longest distance between two parallel tangent lines touching opposite sides of the colony. Represents the maximum dimension of the colony regardless of orientation. Often exceeds major axis length for irregular shapes and helps quantify maximum colony extent.",
+        categories=CATEGORIES.STARTING_METRICS,
     )
     INSCRIBED_RADIUS = Entry(
         "InscribedRadius",
@@ -80,6 +90,7 @@ class SIZE(DirectPhenotype):
         "length (a 100 x 20 pixel colony reports 10), and a runner or spur leaves it "
         "unchanged. Use MaxRadius for overall extent. The image border counts as an "
         "edge.",
+        categories=CATEGORIES.STARTING_METRICS,
     )
     MEDIAN_RADIUS = Entry(
         "MedianRadius",
@@ -96,6 +107,7 @@ class SIZE(DirectPhenotype):
         "radius; for an ideal 100 x 20 pixel rectangle it is 14.1 pixels. This is "
         "not the value the retired Shape_MedianRadius carried (a median distance to "
         "the nearest edge, now Shape_MedianBoundaryDist).",
+        categories=CATEGORIES.STARTING_METRICS,
     )
     MEAN_RADIUS = Entry(
         "MeanRadius",
@@ -106,6 +118,7 @@ class SIZE(DirectPhenotype):
         "angular width; use RobustMeanRadius for the compact body. This is not the "
         "value the retired Shape_MeanRadius carried (a mean distance to the nearest "
         "edge, now Shape_MeanBoundaryDist).",
+        categories=CATEGORIES.STARTING_METRICS,
     )
     ROBUST_MEAN_RADIUS = Entry(
         "RobustMeanRadius",
@@ -116,6 +129,7 @@ class SIZE(DirectPhenotype):
         "treats genuine elongation the same way: an ideal 100 x 20 pixel rectangle "
         "gives 16.2 pixels against a MeanRadius of 21.0 pixels. For an ideal disk "
         "it equals the disk radius.",
+        categories=CATEGORIES.STARTING_METRICS,
     )
     MAX_RADIUS = Entry(
         "MaxRadius",
@@ -125,6 +139,7 @@ class SIZE(DirectPhenotype):
         "is 50.9 pixels. A MaxRadius far above RobustMeanRadius indicates a "
         "protrusion, spur, or runner. This is not the value the retired "
         "Shape_MaxRadius carried (the inscribed radius, now Size_InscribedRadius).",
+        categories=CATEGORIES.STARTING_METRICS,
     )
 
 

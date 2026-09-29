@@ -78,7 +78,7 @@ class LinearLagModel(_LinearSoftplusBase):
         ``LinearLagModel_<metric>_<parameter>`` (e.g. fitting ``on="Size_Area"``
         yields ``LinearLagModel_Area_v``), plus qualified fit-quality columns
         ``ModelMetrics_<metric>_<label>``. The ``<metric>`` segment is
-        ``self.on`` with a recognized measurement-category prefix stripped.
+        ``self.on`` with a recognized metric-family prefix stripped.
 
     .. note::
         **``f_scale`` is unit-sensitive only on the unweighted fit

@@ -510,7 +510,7 @@ enforces this for ruff, but the rule binds regardless of the tool.
 - **Operations are keyword-only constructed:** `OtsuDetector(ignore_zeros=True)`, not
   `OtsuDetector(True)` — pydantic models take no positional args. Unknown kwargs and
   invalid values raise `pydantic.ValidationError`.
-- **Measurement columns are category-prefixed:** `Size_Area`, `Shape_Circularity`,
+- **Measurement columns are family-prefixed:** `Size_Area`, `Shape_Circularity`,
   `Intensity_MeanIntensity`, etc. The header enums are the **public**
   `phenotypic.schema` package (`from phenotypic.schema import SHAPE, SIZE, ...`);
   the old `phenotypic.sdk_.measurement_info` path was removed.
@@ -539,6 +539,8 @@ enforces this for ruff, but the rule binds regardless of the tool.
   unset — biological-relevance claims must be written and verified by a human
   domain author, not generated. Agents may scaffold the `Entry(...)` and populate
   `label`/`desc`, but must leave `bio_desc=""`/`image=None` for human authoring.
+  Tagging a member with `categories=CATEGORIES.X` is also agent-authorable (a
+  curated grouping, not a biological claim); see `src/phenotypic/schema/CLAUDE.md`.
 - **Analysis classes use `.analyze()`:** `EdgeCorrector.analyze(df)`,
   `LogGrowthModel.analyze(df)` — not `.fit()` or `.correct()`.
 - **`num_objects` is on `Image`**, not on the `objmap` accessor: use
@@ -562,7 +564,11 @@ enforces this for ruff, but the rule binds regardless of the tool.
   `measurements.{csv,parquet}` carries the metadata join, appends
   metadata-only phantoms once, and is the post-applied mirror the GUI
   reads/curates — feed analysis and dashboards from the **mirror**, not the
-  master. Always resolve paths via the
+  master. `measurements_by_feature/` (one file per measurer) and
+  `measurements_by_category/` (one file per `CATEGORIES` member) are both
+  written from that mirror's post-applied frame by
+  `finalize_post_master_outputs`, the finalization path shared by full,
+  measure, recompile and a full-run `--mode migrate`. Always resolve paths via the
   `phenotypic.sdk_` helpers (never hand-join names), and route any FINAL master
   write through `finalize_post_master_outputs`. Full file inventory,
   master-vs-mirror rules, and the finalize/chunk-writer carve-out are in

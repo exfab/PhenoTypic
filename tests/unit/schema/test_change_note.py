@@ -20,7 +20,7 @@ def test_version_is_0_20_0():
 def test_default_change_note_is_empty_and_leaves_docs_untouched():
     class _Plain(MeasurementInfo):
         @classmethod
-        def category(cls):
+        def metric_family(cls):
             return "Plain"
 
         A = Entry("A", "alpha")
