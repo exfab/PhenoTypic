@@ -19,8 +19,8 @@ Order of operations (spec lines 1352-1356):
      a ``go.Scatter`` of `x`-markers) so curated cells render as
      muted-color exclusions rather than just NaN holes.
 
-Color choice: the single-variable navy-to-blue ramp from DESIGN.md "06 --
-Heatmap Colorscale" / "10 -- Well-Plate Grid" (``SEQUENTIAL_COLORSCALE``:
+Color choice: the single-variable navy-to-blue ramp from DESIGN.md "Data
+Visualization / Heatmap Colorscale" / "Well-Plate Grid" (``SEQUENTIAL_COLORSCALE``:
 near-transparent navy -> sky -> full navy). A plate map and a heatmap of the
 same data therefore read identically. Removed / excluded cells render in
 vermilion (the spec's failed/null color), CB-distinct from the ramp under all

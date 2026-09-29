@@ -160,7 +160,9 @@ heavy library goes into `_LAZY_ATTRS`, never into an eager import at the top of 
 - `generate_report.py` — report generation.
 - `viz/` — shared visualization layer: the centralized Plotly theme
   (`viz.figures.apply_theme`, `PHENOTYPIC_TEMPLATE_NAME`, Okabe-Ito palette),
-  the matplotlib rcParams mirror (`phenotypic_mpl_context`/`phenotypic_rc`),
+  the static-figure theme for matplotlib (`phenotypic_mpl_context`/`phenotypic_rc`,
+  `figure_size_mm` with A4 presets, and `export_figure`, which saves inside the theme
+  because matplotlib reads font embedding at save time; DESIGN.md "Figures"),
   and the ipywidgets notebook shell (`viz.notebook.build_notebook_dashboard`).
   UI toolkits stay lazily imported; the theme imports plotly but no toolkit
   (enforced by `tests/unit/viz/test_import_rules.py`).
@@ -175,6 +177,7 @@ heavy library goes into `_LAZY_ATTRS`, never into an eager import at the top of 
   enhancement and object detection remain caller responsibilities.
 - `_palette.py` — Okabe-Ito colours and `hex_to_rgba` with no third-party
   imports, so operation modules can import them at module scope;
-  `viz/figures/_theme.py` re-exports `OKABE_ITO` from here.
+  `viz/figures/_theme.py` re-exports `OKABE_ITO` (navy first, GUI and Plotly) from
+  here, and `_mpl_theme.py` uses `OKABE_ITO_PUBLISHED` (black first, static figures).
 - `_radial_geometry.py` — `distance_from_point` and the overlay `circle_xy`
   shared by the zone measures and `TrimAsymmetry`.

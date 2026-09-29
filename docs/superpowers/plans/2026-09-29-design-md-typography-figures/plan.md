@@ -30,10 +30,10 @@ migrating the existing `figsize=` call sites.
 
 ## Phase 1: Nunito Sans chrome
 
-> **Status (2026-09-29):** done, except the tutorial screenshots (Task 1.6). The
-> cloud environment's network policy blocks `cdn.jsdelivr.net`, which serves Dash
-> Bootstrap's stylesheet, so a capture there renders unstyled controls; that run
-> was discarded. Regenerate the screenshots on a machine with open network access.
+> **Status (2026-09-29):** done. The first screenshot capture ran while the cloud
+> environment blocked `cdn.jsdelivr.net` (Dash Bootstrap's stylesheet) and was
+> discarded; the regeneration after network access opened is committed, and the
+> headings-versus-UI-titles check was made on those screenshots.
 > Beyond the plan: the 600 italic is loaded too (headings are 600), five CSS blocks
 > in `DESIGN.md` split one token per line by commit `92e3dab0` were restored from
 > its parent, and the CLI dashboard and processing report were moved off the
@@ -132,7 +132,7 @@ migrating the existing `figsize=` call sites.
   `test_chart_body_font_intentionally_differs_from_gui_chrome` to expect
   `'Nunito Sans'` for the chrome, and correct the stale `#f5f7fa` in the docstring at
   `:99` to `#FBFEF8`.
-- [ ] Regenerate the tutorial screenshots with
+- [x] Regenerate the tutorial screenshots with
   `uv run python scripts/capture_gui_tutorial_screenshots.py` per the
   `gui-tutorial-capture` skill, and commit the full set.
 
@@ -142,7 +142,7 @@ migrating the existing `figsize=` call sites.
   `grep -rl "_gui._design\|_gui import _design\|from phenotypic._gui._design" tests/`
   plus `tests/unit/viz/test_theme.py` and `tests/unit/ci/test_startup_imports.py`.
   Run it once with `QT_QPA_PLATFORM=offscreen`.
-- [ ] Open the hub (`uv run phenotypic-gui --root <images>`) and look at the builder,
+- [x] Open the hub (`uv run phenotypic-gui --root <images>`) and look at the builder,
   results viewer, run console, browse and analysis pages for truncated or re-wrapped
   labels, and confirm that headings and UI titles, now both at 600, still read as
   two levels. If they do not, drop UI Title to 500 as the spec allows.
@@ -233,39 +233,44 @@ beside it), `src/phenotypic/sdk_/viz/figures/__init__.py`,
 
 ## Phase 3: DESIGN.md in the DESIGN.md format
 
+> **Status (2026-09-29):** done; `npx @google/design.md@0.4.0 lint DESIGN.md` reports
+> 0 errors and 0 warnings. Departures from the design (domain sections kept separate,
+> components modeled for every color, the WCAG AA color fixes the lint surfaced) are
+> recorded under "As built" in the format spec.
+
 ### Task 3.1: Front matter
 
 **Files:** `DESIGN.md`
 
-- [ ] Add the YAML front matter the format spec describes: `version: alpha`, `name`,
+- [x] Add the YAML front matter the format spec describes: `version: alpha`, `name`,
   `description`, and the `colors`, `typography`, `rounded`, `spacing` and
   `components` groups as tabled in the format spec, with every value copied from
   `_gui/_design.py` after Phase 1.
-- [ ] Record each badge and alert variant as a component with its text and background
+- [x] Record each badge and alert variant as a component with its text and background
   colors, so the contrast rule checks them.
 
 ### Task 3.2: Headings and section order
 
-- [ ] Apply the section map in the format spec: drop the numbers, use the canonical
+- [x] Apply the section map in the format spec: drop the numbers, use the canonical
   names for recognized sections, merge 03 with 13, 05 with 14 and 06 with 11 and 12,
   split 04 into Elevation & Depth and Shapes, and place the domain sections between
   Components and Do's and Don'ts, with Logo and Branding after the Overview.
-- [ ] Keep the Absolute Constraints as a subsection of the Overview; move 08's Do and
+- [x] Keep the Absolute Constraints as a subsection of the Overview; move 08's Do and
   Don't lists into the final `## Do's and Don'ts`.
 
 ### Task 3.3: Figures section and scoping
 
-- [ ] Insert the Figures section verbatim from the figure-defaults spec, after Data
+- [x] Insert the Figures section verbatim from the figure-defaults spec, after Data
   Visualization.
-- [ ] Remove the matplotlib `rcParams` block from Code Integration.
-- [ ] Scope the three Absolute Constraints and the matching Do and Don't lines (mono
+- [x] Remove the matplotlib `rcParams` block from Code Integration.
+- [x] Scope the three Absolute Constraints and the matching Do and Don't lines (mono
   numbers, navy-first order, navy-to-sky ramp) to "GUI chrome and on-screen charts".
 
 ### Task 3.4: Cross-references
 
-- [ ] Inside `DESIGN.md`, replace the 42 numbered references
+- [x] Inside `DESIGN.md`, replace the 42 numbered references
   (`grep -nE "section [0-9]{2}|§ ?[0-9]{2}" DESIGN.md`) with heading names.
-- [ ] Outside it, replace the 41 lines in 20 files that cite a numbered section
+- [x] Outside it, replace the 41 lines in 20 files that cite a numbered section
   (`grep -rnE "DESIGN\.md" src tests` filtered for two-digit section numbers; 14 of
   them in `_gui/_design.py`) with heading names. Comments and docstrings only; no
   behavior changes.
@@ -274,16 +279,16 @@ beside it), `src/phenotypic/sdk_/viz/figures/__init__.py`,
 
 **Files:** `CLAUDE.md`, `src/phenotypic/_gui/CLAUDE.md`
 
-- [ ] Under "Linting & Type Checking" in `CLAUDE.md`, add
+- [x] Under "Linting & Type Checking" in `CLAUDE.md`, add
   `npx @google/design.md@0.4.0 lint DESIGN.md`, described as a manual check.
-- [ ] Update the Module Guides entry for `DESIGN.md` to mention figures, and the
+- [x] Update the Module Guides entry for `DESIGN.md` to mention figures, and the
   palette-rules paragraph in `_gui/CLAUDE.md` (`:528`) if it cites a section number.
 
 ### Phase 3 gate
 
-- [ ] `npx @google/design.md@0.4.0 lint DESIGN.md` reports no errors and no warnings.
-- [ ] Both cross-reference greps return nothing.
-- [ ] Run `tests/unit/viz/test_theme.py`, `tests/unit/gui/test_config_and_design.py`
+- [x] `npx @google/design.md@0.4.0 lint DESIGN.md` reports no errors and no warnings.
+- [x] Both cross-reference greps return nothing.
+- [x] Run `tests/unit/viz/test_theme.py`, `tests/unit/gui/test_config_and_design.py`
   and `tests/unit/abc_/plotting/test_figure_backend.py`, whose docstrings cite
   `DESIGN.md`.
 

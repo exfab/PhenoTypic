@@ -533,9 +533,11 @@ but a future palette change will. The same goes for `f"1px solid #1b75bc"`
 
 `COLOR_*` (navy/blue/gold/etc.) are UI-only — never use them as data
 series colors. `OI_*` (Okabe-Ito) are data-only — never use them for UI
-chrome. Series order is fixed: navy, orange, sky, green, blue, purple
-(vermilion reserved for error / alert). Yellow may not be used as text
-on white backgrounds. See [../../../DESIGN.md](../../../DESIGN.md) for
+chrome. On-screen series order is fixed: navy, orange, sky, green, blue,
+purple (vermilion reserved for error / alert); static matplotlib figures
+follow DESIGN.md "Figures" instead. Yellow may not be used as text on white
+backgrounds, and text in a data hue uses its darkened `--oi-*-text`,
+`--color-blue-text` or `--color-gold-text` variant, which clears WCAG AA. See [../../../DESIGN.md](../../../DESIGN.md) for
 badge contrast variants and prohibited combinations.
 
 ---

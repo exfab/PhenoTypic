@@ -250,7 +250,7 @@ def build_overlay_record(
 DELTA_E_GOOD = 2.0
 DELTA_E_FAIR = 5.0
 
-#: Okabe-Ito semantic colours per tile status (DESIGN.md §01).
+#: Okabe-Ito semantic colours per tile status (DESIGN.md "Colors").
 STATUS_COLOURS: dict[str, str] = {
     "used": "#009E73", "partly_covered": "#E69F00", "rejected": "#D55E00",
     "excluded": "#BBBBBB", "empty": "#BBBBBB",

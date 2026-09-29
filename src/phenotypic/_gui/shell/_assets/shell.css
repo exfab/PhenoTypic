@@ -18,7 +18,7 @@
  *   - 8pt spacing grid, navy-tinted shadows
  *
  * Topbar note: the topbar is intentionally navy (white ink, gold active-tab
- * accent) -- a documented brand deviation from DESIGN.md §13's white topbar.
+ * accent) -- a documented brand deviation from the white topbar in DESIGN.md "Dashboard Shell & Layout".
  */
 
 /* All design tokens (--font-*, --color-*, --oi-*, --text-*, --sp-*,
@@ -599,7 +599,7 @@
 }
 
 /* ===========================================================================
- * Capability badges (DESIGN.md §05 Badges)
+ * Capability badges (DESIGN.md "Components / Badges")
  * Colored dot + uppercase mono text with darkened Okabe-Ito colours
  * to clear WCAG AA on white surfaces.
  * ========================================================================= */

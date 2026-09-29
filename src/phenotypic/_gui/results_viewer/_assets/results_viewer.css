@@ -38,7 +38,7 @@
 }
 
 /* The stage. `--color-image-stage-dark` is the one permitted dark surface
-   in this light-theme system (DESIGN.md "09 -- Image Display"); everything
+   in this light-theme system (DESIGN.md "Image Display & Viewers"); everything
    floating above it derives its own colours from the same token so a
    palette swap carries through. */
 .plate-stage {

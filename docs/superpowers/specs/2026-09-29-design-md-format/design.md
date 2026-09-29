@@ -2,8 +2,9 @@
 
 - **Date:** 2026-09-29
 - **Branch:** `claude/magical-keller-kw5lu5`
-- **Status:** design settled; C1 to C3 confirmed by the author on 2026-09-29; awaiting
-  implementation plan
+- **Status:** implemented on `claude/magical-keller-kw5lu5` (2026-09-29); C1 to C3
+  confirmed by the author; see "As built" at the end for where the build departs from
+  this design
 - **Depends on:** `2026-09-29-chrome-font-nunito-sans` (its tokens are the ones the
   front matter records) and `2026-09-29-figure-style-defaults` (its section is placed
   here)
@@ -162,3 +163,35 @@ same grep that counted the numbered references finds none left. The two tests th
   specification text from `npx @google/design.md spec`, version 0.4.0, 2026-09-29.
 - Linter output for the current `DESIGN.md` and for a probe file, both run on
   2026-09-29 with the same version.
+
+## As built (2026-09-29)
+
+**Domain sections stay separate.** The section map above merged 03 with 13, 05 with 14,
+and 06 with 11 and 12. The build keeps each as its own `##` section beside its parent
+(Layout, then Dashboard Shell & Layout; Components, then Feedback & Loading States; Data
+Visualization, then Extended Chart Types and Chart Support Elements). The linter checks
+only the relative order of its eight known sections, so the merge bought nothing for
+the lint, and it would have pushed every merged subsection one heading level deeper.
+
+**Every color is referenced by a component.** Linter v0.4.0 warns on any color token no
+component references (`orphaned-tokens`; spacing, radius and typography tokens are not
+checked). The front matter therefore models the system's real components: page, card,
+buttons and their active and hover states, the seven badges, the four alerts, tooltip,
+inline code, dividers, the image stage, and the chart-series swatches. A `primary` color
+(brand navy) is required by the `missing-primary` rule. Tinted backgrounds are written
+as `color-mix(in srgb, <hue> <n>%, #ffffff)`, because the linter reads an `rgba()`
+background as opaque and reports a meaningless 1:1 contrast.
+
+**The contrast check found real failures, and the author chose to fix them.** Modeled
+honestly, six text pairings were below WCAG AA's 4.5:1: muted `#8892a4` (3.14:1 on
+white), vermilion text `#D55E00` (3.87:1 on white, 3.51:1 on its badge tint), orange
+badge text `#9A6B00` (4.32:1), blue badge text `#1b75bc` (4.38:1), gold text `#a87a00`
+(3.85:1), and white on a vermilion danger hover (3.87:1). Each was darkened just enough
+to pass while keeping its hue: muted `#6d7684`, vermilion text `#b85100`, orange text
+`#966800`, and new `--color-blue-text` `#1b73b9` and `--color-gold-text` `#926a00`.
+Vermilion data fills and borders stay `#D55E00`. The CLI dashboard and report moved to
+the `#FBFEF8` canvas at the same time, because the new muted fails on their old
+`#f5f7fa` background (4.28:1). Two matplotlib annotation colors
+(`_calibration_overlay.py:697`, `_model_fitter.py:841`) still use the old muted; they
+fall under the Figures defaults and were left alone.
+

@@ -1,6 +1,6 @@
 """Single-source-of-truth design tokens for the GUI.
 
-Mirrors ``DESIGN.md`` v1.2. :func:`inject_design_tokens` splices four
+Mirrors ``DESIGN.md`` v2.0. :func:`inject_design_tokens` splices four
 ``<style>`` blocks into every Dash app's ``index_string``:
 
 * :data:`FONT_TOKENS_CSS` -- ``@import``s the role fonts (Nunito Sans for
@@ -14,7 +14,7 @@ Mirrors ``DESIGN.md`` v1.2. :func:`inject_design_tokens` splices four
 * :data:`BOOTSTRAP_OVERRIDE_CSS` -- remaps ``dbc.themes.BOOTSTRAP`` onto the
   brand palette so ``color="primary"`` etc. render navy, not Bootstrap blue.
 * :data:`BASE_STYLES_CSS` -- conservative element defaults plus the named
-  ``.text-*`` style classes (DESIGN.md "02.5 / 02.6").
+  ``.text-*`` style classes (DESIGN.md "Typography / Text Styles in CSS").
 
 To swap a role font: change ``_DISPLAY_PRIMARY`` / ``_BODY_PRIMARY`` /
 ``_MONO_PRIMARY`` / ``_SPECIES_PRIMARY`` and update ``_GOOGLE_FONTS_URL``.
@@ -152,7 +152,7 @@ __all__ = [
 ]
 
 # ---------------------------------------------------------------------------
-# Role fonts (Google Fonts) -- DESIGN.md "02.1 Font Families"
+# Role fonts (Google Fonts) -- DESIGN.md "Typography / Font Families"
 # ---------------------------------------------------------------------------
 #
 # Four role families (NOT one family across all roles):
@@ -238,7 +238,7 @@ FONT_TOKENS_CSS = f"""\
 # Brand / UI palette (PRIMARY -- UI only, never charts)
 # ---------------------------------------------------------------------------
 #
-# Values mirror DESIGN.md "01 -- Color Palette / Primary Colors". Used
+# Values mirror DESIGN.md "Colors / Primary Colors -- UI Only". Used
 # by ``--color-*`` CSS custom properties and importable by Python
 # inline-style callers.
 
@@ -251,7 +251,7 @@ COLOR_GOLD: str = "#febc11"
 #: Gold as text (on white, the canvas, or its own tint): 4.5:1 for WCAG AA.
 COLOR_GOLD_TEXT: str = "#926a00"
 COLOR_WHITE: str = "#ffffff"
-COLOR_BG: str = "#FBFEF8"  # near-white warm canvas (DESIGN.md "01 -- Color Palette")
+COLOR_BG: str = "#FBFEF8"  # near-white warm canvas (DESIGN.md "Colors")
 COLOR_SURFACE: str = "#ffffff"
 COLOR_BORDER: str = "#dde3ed"
 COLOR_RULE: str = "#e8ecf2"
@@ -260,7 +260,7 @@ COLOR_BODY: str = "#2e3a4e"
 COLOR_HEADING: str = COLOR_NAVY  # Same as navy; kept named for semantic call-sites.
 
 #: The one permitted dark surface in this light-theme system: the image stage
-#: where the pixels are the data (DESIGN.md "09 -- Image Display"). Use for the
+#: where the pixels are the data (DESIGN.md "Image Display & Viewers"). Use for the
 #: fluorescence/OSD canvas background; never for UI chrome.
 COLOR_IMAGE_STAGE_DARK: str = "#0e1620"
 
@@ -286,10 +286,10 @@ OI_GREY: str = "#BBBBBB"
 
 #: Series 1 of the fixed Okabe-Ito order is navy -- the same hex as the UI
 #: ``COLOR_NAVY`` but exported under a data-palette name so chart call sites
-#: read as data, not chrome. See DESIGN.md "06 -- Categorical Series Order".
+#: read as data, not chrome. See DESIGN.md "Data Visualization / Categorical Series Order".
 OI_NAVY: str = COLOR_NAVY
 
-#: Fixed categorical series order (DESIGN.md "06"). Index 0..5 are the six
+#: Fixed categorical series order (DESIGN.md "Data Visualization"). Index 0..5 are the six
 #: categorical series; index 6 (vermilion) is error/alert only; grey is for
 #: reference / control / null lines.
 OKABE_ITO: tuple[str, ...] = (
@@ -303,7 +303,7 @@ OKABE_ITO: tuple[str, ...] = (
 )
 
 #: napari label-layer color map (1-indexed) mirroring ``OKABE_ITO`` so a mask
-#: color in the dashboard matches the same label in napari (DESIGN.md "07").
+#: color in the dashboard matches the same label in napari (DESIGN.md "Code Integration").
 #: RGBA tuples normalized 0-1.
 OKABE_ITO_NAPARI: dict[int, tuple[float, float, float, float]] = {
     1: (0 / 255, 54 / 255, 96 / 255, 1.0),  # navy
@@ -366,7 +366,7 @@ COLOR_WARNING: str = OI_ORANGE
 COLOR_DANGER: str = OI_VERMILION
 
 # Darkened Okabe-Ito TEXT variants for WCAG AA (4.5:1) on white surfaces
-# (DESIGN.md "05 -- Badges"). NEVER use a raw OI_* hex as badge / alert / status
+# (DESIGN.md "Components / Badges"). NEVER use a raw OI_* hex as badge / alert / status
 # text on white; use these instead.
 OI_ORANGE_TEXT: str = "#966800"
 OI_SKY_TEXT: str = "#0B6E9E"
@@ -444,7 +444,7 @@ TEXT_4XL: str = "3.25rem"  # ~52 px -- reserve (hero display)
 #   FONT_SIZE_CAPTION   -- form labels, overlines, badge text (11 px)
 #   FONT_SIZE_MICRO     -- chart axis ticks, sparkline floor (10 px)
 #
-# NOTE (DESIGN.md "02.7"): the 13 px rung was renamed from ``FONT_SIZE_LABEL``
+# NOTE (DESIGN.md "Typography / Reconciliations & Flags"): the 13 px rung was renamed from ``FONT_SIZE_LABEL``
 # to ``FONT_SIZE_BODY_SM`` and the Label / Overline role moved down to
 # ``FONT_SIZE_CAPTION`` (11 px). ``FONT_SIZE_LABEL`` is kept as a DEPRECATED
 # alias of ``FONT_SIZE_BODY_SM``; new call sites use the new names.
@@ -490,7 +490,7 @@ SHADOW: str = "0 4px 12px rgba(0,54,96,0.08), 0 1px 3px rgba(0,54,96,0.05)"
 SHADOW_MD: str = "0 8px 24px rgba(0,54,96,0.10), 0 2px 6px rgba(0,54,96,0.06)"
 SHADOW_LG: str = "0 16px 40px rgba(0,54,96,0.12), 0 4px 12px rgba(0,54,96,0.07)"
 
-# Line-height & tracking tokens (DESIGN.md "02.3"). Python mirrors of the
+# Line-height & tracking tokens (DESIGN.md "Typography / Line-height & Tracking Tokens"). Python mirrors of the
 # injected ``--leading-*`` / ``--tracking-*`` custom properties.
 LEADING_DISPLAY: str = "1.1"
 LEADING_TIGHT: str = "1.2"
@@ -636,7 +636,7 @@ DESIGN_TOKENS_CSS = f"""\
 # etc. would otherwise render Bootstrap blue/grey/red. This single injected
 # layer points Bootstrap's CSS variables and button variants at the brand
 # palette so no per-call-site ``color=`` change is needed. Okabe-Ito is never a
-# button fill here; only the danger variant uses vermilion (DESIGN.md "05").
+# button fill here; only the danger variant uses vermilion (DESIGN.md "Components").
 
 _NAVY_HOVER = "#00284a"  # navy darkened ~8% for filled-button hover
 
@@ -692,7 +692,7 @@ BOOTSTRAP_OVERRIDE_CSS = f"""\
 """
 
 # ---------------------------------------------------------------------------
-# Base element defaults + named text-style classes (DESIGN.md "02.5 / 02.6")
+# Base element defaults + named text-style classes (DESIGN.md "Typography")
 # ---------------------------------------------------------------------------
 #
 # Element defaults are conservative -- they establish the sans/mono *identity*

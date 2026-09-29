@@ -797,8 +797,8 @@ def build_stack_popover_rows(
         )
     return rows
 
-#: Width of the legend's gradient track, in pixels. DESIGN.md "12 --
-#: Continuous Colorbar" fixes the track's height and radius but not its
+#: Width of the legend's gradient track, in pixels. DESIGN.md "Chart
+#: Support Elements / Continuous Colorbar" fixes the track's height and radius but not its
 #: length; 180px reads as a ramp without crowding the toolbar it sits under.
 _LEGEND_TRACK_WIDTH = 180
 
@@ -821,7 +821,7 @@ def build_measurement_legend(scale: MeasurementScale) -> Component:
         scale: The scale the visible cards were tinted from.
 
     Returns:
-        A DESIGN.md "12 -- Continuous Colorbar" legend: column name, the
+        A DESIGN.md "Chart Support Elements / Continuous Colorbar" legend: column name, the
         gradient track, and mono end labels.
     """
     gradient = ", ".join(
