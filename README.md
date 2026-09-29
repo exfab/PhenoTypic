@@ -12,6 +12,7 @@
 [![License](https://img.shields.io/github/license/exfab/PhenoTypic)](https://github.com/exfab/PhenoTypic/blob/main/LICENSE)
 [![GitHub release](https://img.shields.io/github/v/release/exfab/PhenoTypic)](https://github.com/exfab/PhenoTypic/releases)
 [![Pull requests](https://img.shields.io/github/issues-pr/exfab/PhenoTypic)](https://github.com/exfab/PhenoTypic/pulls)
+[![Zenodo DOI](https://zenodo.org/badge/822729486.svg)](https://doi.org/10.5281/zenodo.23026087)
 
 A modular image processing framework developed at the NSF Ex-FAB BioFoundry, focused on
 arrayed colony phenotyping on solid media.
