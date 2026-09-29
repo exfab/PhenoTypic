@@ -286,14 +286,20 @@ def test_class_section_renders_the_change_note_above_the_table(monkeypatch: Monk
     assert marker not in extension._class_section(schema.TEXTURE)
 
 
-def _category_sections(page: str) -> dict[str, str]:
-    """Split the Categories page into one text block per category anchor."""
+def _category_sections(rst: str) -> dict[str, str]:
+    """Split the Categories page into one text block per category anchor.
+
+    The parameter is not called ``page``: the CI shard guard
+    (``tests/unit/ci/test_pytest_shard_manifest.py``) reads a function
+    parameter of that name as Playwright's fixture and would demand a browser
+    shard for this module.
+    """
     from phenotypic.schema import CATEGORIES
 
-    starts = sorted((page.index(f".. _{c.anchor}:"), c.anchor) for c in CATEGORIES)
-    ends = [start for start, _anchor in starts[1:]] + [len(page)]
+    starts = sorted((rst.index(f".. _{c.anchor}:"), c.anchor) for c in CATEGORIES)
+    ends = [start for start, _anchor in starts[1:]] + [len(rst)]
     return {
-        anchor: page[start:end]
+        anchor: rst[start:end]
         for (start, anchor), end in zip(starts, ends, strict=True)
     }
 
