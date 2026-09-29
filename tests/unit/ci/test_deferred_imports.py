@@ -107,6 +107,11 @@ DEFERRED_SITES: dict[str, dict[str, tuple[str, ...]]] = {
         ),
     },
     "correction/_color_correction/_color_corrector.py": {"colour": ("_operate",)},
+    "sdk_/viz/figures/_mpl_theme.py": {
+        "mpl": ("phenotypic_mpl_context",),
+        "cycler": ("phenotypic_rc",),
+        "Figure": (),
+    },
     "correction/_color_denoise.py": {
         "bm3d": ("_build_profile", "_denoise_gat", "_denoise_plain"),
         "decode_srgb": ("_operate",),
