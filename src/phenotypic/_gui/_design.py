@@ -177,11 +177,11 @@ _SPECIES_PRIMARY = "Nunito Sans"
 # / legend names and IBM Plex Serif for donut center values (DESIGN.md
 # "Data Visualization"). Those plots render inside GUI Dash pages, so the IBM
 # Plex families stay loaded here even though no ``--font-*`` chrome token
-# references them. Nunito Sans loads 400-700 upright plus the 400 italic that
-# ``--font-species`` needs.
+# references them. Nunito Sans loads 400-700 upright plus the 400 and 600
+# italics ``--font-species`` needs in body text and in weight-600 headings.
 _GOOGLE_FONTS_URL = (
     "https://fonts.googleapis.com/css2?"
-    "family=Nunito+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400"
+    "family=Nunito+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600"
     "&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400;1,500"
     "&family=IBM+Plex+Sans:wght@400;500;600;700"
     "&family=JetBrains+Mono:wght@400;500;600"

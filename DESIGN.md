@@ -4,8 +4,8 @@
 > research & bioanalysis applications (PhenoTypic).
 >
 > **Single source of truth** for all dashboard UI and data-visualization work. Audience:
-> human designers, frontend developers, and agentic coding assistants. Fonts: Comfortaa
-> (display + body), JetBrains Mono (mono), IBM Plex Serif (italic species names only).
+> human designers, frontend developers, and agentic coding assistants. Fonts: Nunito Sans
+> (display, body and italic species names), JetBrains Mono (every data and table value).
 > Canvas: #FBFEF8.
 
 ---
@@ -41,14 +41,13 @@ chart;
 the gold accent never becomes a data series. This three-way closure is the single most
 important characteristic of the system.
 
-Type carries the second voice. Comfortaa -- a rounded geometric sans -- carries both
-content headings / large stat values (display) and body copy / UI chrome titles (body) at
-weights 400-700, giving the chrome one warm, approachable voice. Latin species names
-(e.g. *Rhodotorula toruloides*) are the one exception: because Comfortaa ships no true
-italic, they are set in IBM Plex Serif's italic cut so the binomial reads as a real
-italic, not a synthesized slant. JetBrains
-Mono
-carries every number, axis label, badge, caption, and code token. Mono-for-all-data is a
+Type carries the second voice. Nunito Sans -- a humanist sans with softly rounded
+terminals -- carries all general text and formatting: content headings and large stat
+values (display, weight 600) and body copy and UI chrome titles (body, 16px), giving the
+chrome one warm, readable voice. Latin species names (e.g. *Rhodotorula toruloides*) are
+set in Nunito Sans's own true italic, so the binomial reads as a real italic within the
+surrounding text. JetBrains Mono carries every data value and table value, and every
+number, axis label, badge, caption, and code token. Mono-for-all-data is a
 signature: it preserves optical column alignment and gives the surface a data-forward
 read.
 
@@ -79,10 +78,10 @@ construction.
 - **Mono for all data.** Every number, axis label, badge, caption, and code token
   renders
   in JetBrains Mono, for optical column alignment and a data-forward voice.
-- **Comfortaa across chrome.** A single rounded geometric sans (Comfortaa) carries both
-  content headings / stat values (weight 400) and body / component titles (500 / 600).
-  Italic species names are the lone serif exception (IBM Plex Serif italic), since
-  Comfortaa has no true italic face.
+- **Nunito Sans for text, mono for data.** Nunito Sans carries all general text and
+  formatting: content headings and stat values (weight 600), body copy (16px) and
+  component titles (500 / 600), plus italic species names in its true italic. Every data
+  value and table value is set in JetBrains Mono.
 - **Colorblind-safe by construction.** Fixed Okabe-Ito six-series order, no red-green
   colormaps, vermilion reserved for error / alert, six categorical series maximum before
   an
@@ -119,9 +118,6 @@ Agents must treat violations as hard errors.
   contrast variants listed in the Badges section.
 - **NEVER** use red-green colormaps.
 - **NEVER** use em dashes. Use double hyphens (`--`) or restructure the sentence.
-
-Add these to the existing "Absolute Constraints" block. They extend, never contradict,
-the current rules.
 
 - **NEVER** render a single fluorescence / intensity channel in a hue. Single channels
   display in grayscale. Color is reserved for multi-channel composites.
@@ -357,8 +353,7 @@ Five layers, narrowest to broadest:
 
 Call-site discipline (carried over from the original spec, unchanged):
 
-- New code references a **text style** (CSS class `.text-*`, or the matching
-  `TEXT_STYLE_*` Python constant).
+- New code references a **text style** (CSS class `.text-*`).
 - When only a size is needed, use a **semantic alias** (`--font-size-*` /
   `FONT_SIZE_*`), never a raw `--text-*` primitive.
 - Raw `--text-*` primitives are kept for back-compat and must not appear in new call
@@ -372,17 +367,22 @@ Call-site discipline (carried over from the original spec, unchanged):
 
 Four role tokens. Nothing else may declare a `font-family`.
 
+**The role rule:** Nunito Sans carries all general text and formatting -- headings,
+prose, labels on buttons and tabs, component titles. JetBrains Mono carries every data
+value and table value -- numbers, identifiers, table cells, axis labels, badges and
+captions. A table cell is data even when its content is a word, so plain `html.Table`
+cells take the mono family too.
+
 ```css
---font-display: 'Comfortaa', -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
---font-body:    'Comfortaa', -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
---font-mono:    'JetBrains Mono', ui-monospace, "SFMono-Regular", Menlo, "Liberation Mono", monospace;
---font-species: 'IBM Plex Serif', Georgia, "Times New Roman", Times, serif;
+--font-display: 'Nunito Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+--font-body:    'Nunito Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+--font-mono:    'JetBrains Mono', ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
+--font-species: 'Nunito Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 ```
 
 ```html
-
 <link
-        href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400;1,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400;1,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
         rel="stylesheet"
 />
 ```
@@ -390,51 +390,50 @@ Four role tokens. Nothing else may declare a `font-family`.
 `_gui/_design.py` constants (the Python call-site source of truth):
 
 ```python
-FONT_FAMILY_DISPLAY = "'Comfortaa', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
-FONT_FAMILY_BODY = "'Comfortaa', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
-FONT_FAMILY_MONO = "'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, 'Liberation Mono', monospace"
-FONT_FAMILY_SPECIES = "'IBM Plex Serif', Georgia, 'Times New Roman', Times, serif"
+FONT_FAMILY_DISPLAY = "'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+FONT_FAMILY_BODY = "'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+FONT_FAMILY_MONO = "'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', 'Courier New', monospace"
+FONT_FAMILY_SPECIES = "'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
 ```
 
 Role intent:
 
-| Token            | Role    | Carries                                                                      |
-|------------------|---------|------------------------------------------------------------------------------|
-| `--font-display` | Display | Content headings, large stat values                                          |
-| `--font-body`    | Body    | Prose, button / tab labels, component titles                                 |
-| `--font-mono`    | Mono    | All numeric data, axis labels, badge / overline / label text, captions, code |
-| `--font-species` | Species | **Italic** binomial species names only (the one non-Comfortaa text surface)  |
+| Token            | Role    | Carries                                                                            |
+|------------------|---------|------------------------------------------------------------------------------------|
+| `--font-display` | Display | Content headings, large stat values                                                |
+| `--font-body`    | Body    | Prose, button / tab labels, component titles                                       |
+| `--font-mono`    | Mono    | Every data and table value, axis labels, badge / overline / label text, captions, code |
+| `--font-species` | Species | **Italic** binomial species names, in Nunito Sans's true italic                    |
 
-> **The chrome runs on one family.** Comfortaa carries both the display and body roles,
-> so headings, stat values, prose, and UI titles all share a single rounded geometric
-> sans. The role tokens still exist independently, so a future split back into two
-> families is mechanical -- change `_DISPLAY_PRIMARY` / `_BODY_PRIMARY` in
-> `_gui/_design.py` and every call site inherits it with no edits.
+> **The chrome runs on one family.** Nunito Sans carries the display, body and species
+> roles, so headings, stat values, prose, UI titles and binomials share a single
+> humanist sans. The role tokens still exist independently, so a future split into two
+> families is mechanical -- change `_DISPLAY_PRIMARY` / `_BODY_PRIMARY` /
+> `_SPECIES_PRIMARY` in `_gui/_design.py` and every call site inherits it with no edits.
 
-> **Italics need a serif.** Comfortaa ships no true italic face, so `font-style: italic`
-> on a Comfortaa run would render a browser-synthesized oblique. Italic species names
-> (`.is-species`) therefore switch to `--font-species` (IBM Plex Serif italic) for a real
-> italic cut. Do not apply `--font-species` to anything but italic binomials.
+> **Species names use the family's own italic.** Nunito Sans ships a true italic, so
+> `.is-species` sets `font-style: italic` on `--font-species` and the binomial renders
+> in a designed italic cut rather than a synthesized oblique. Apply `--font-species` to
+> italic binomials only.
 
 > **Charts keep IBM Plex.** The `@import` also loads **IBM Plex Sans** and **IBM Plex
-> Serif** (regular + italic) even though no chrome `--font-*` token references IBM Plex
-> Sans. The chart subsystem (`viz/figures/_theme.py`, §06) is deliberately *not* migrated
-> to Comfortaa -- plot titles / legend names stay IBM Plex Sans and donut center values
-> stay IBM Plex Serif -- and those plots render inside GUI pages, so the families must
-> stay loaded. Chrome chooses Comfortaa; charts keep IBM Plex; the two intentionally
-> differ.
+> Serif** even though no chrome `--font-*` token references them. The chart subsystem
+> (`viz/figures/_theme.py`, §06) keeps IBM Plex Sans for plot titles / legend names and
+> IBM Plex Serif for donut center values, and those plots render inside GUI pages, so
+> the families must stay loaded. Chrome uses Nunito Sans; charts keep IBM Plex; the two
+> intentionally differ.
 
-> **Weights.** Comfortaa ships 400 / 500 / 600 / 700; JetBrains Mono ships 400 / 500 / 600;
-> IBM Plex Sans 400 / 500 / 600 / 700 and IBM Plex Serif 400 / 500 / 600 (+ italics) are
-> loaded for the chart subsystem. Display styles default to 400 to keep headings light;
-> you may raise Header / Title to 500 / 600 / 700 for heavier hierarchy. Only those
-> families and weights are loaded; do not reference a weight outside the imported set.
+> **Weights.** Nunito Sans loads 400 / 500 / 600 / 700 upright and 400 / 600 italic; JetBrains
+> Mono loads 400 / 500 / 600; IBM Plex Sans 400 / 500 / 600 / 700 and IBM Plex Serif
+> 400 / 500 / 600 (+ italics) are loaded for the chart subsystem. Display styles default
+> to 600 so headings hold their hierarchy over 16px body text. Only those families and
+> weights are loaded; do not reference a weight outside the imported set.
 
 ---
 
 ### 02.2 -- Size Primitives & Semantic Aliases
 
-The scale is rem-based, rooted on 15px body text. **New call sites use the semantic
+The scale is rem-based, rooted on 16px body text, with mono data values held at 15px. **New call sites use the semantic
 alias** (right column). The raw `--text-*` primitive is back-compat only.
 
 | Role            | Primitive     | Size             | Semantic alias         | Python const         |
@@ -443,8 +442,9 @@ alias** (right column). The raw `--text-*` primitive is back-compat only.
 | Title           | `--text-2xl`  | 1.875rem / 30px  | `--font-size-title`    | `FONT_SIZE_TITLE`    |
 | Header (h2)     | `--text-xl`   | 1.5rem / 24px    | `--font-size-header-1` | `FONT_SIZE_HEADER_1` |
 | H2 (h3)         | `--text-lg`   | 1.25rem / 20px   | `--font-size-header-2` | `FONT_SIZE_HEADER_2` |
-| H3 / Body Large | `--text-md`   | 1.0625rem / 17px | `--font-size-body-lg`  | `FONT_SIZE_BODY_LG`  |
-| Body            | `--text-base` | 0.9375rem / 15px | `--font-size-body`     | `FONT_SIZE_BODY`     |
+| H3 / Body Large | `--text-md`   | 1.125rem / 18px  | `--font-size-body-lg`  | `FONT_SIZE_BODY_LG`  |
+| Body            | `--text-base` | 1rem / 16px      | `--font-size-body`     | `FONT_SIZE_BODY`     |
+| Data (mono)     | `--text-data` | 0.9375rem / 15px | `--font-size-data`     | `FONT_SIZE_DATA`     |
 | Body Small      | `--text-sm`   | 0.8125rem / 13px | `--font-size-body-sm`  | `FONT_SIZE_BODY_SM`  |
 | Label / Caption | `--text-xs`   | 0.6875rem / 11px | `--font-size-caption`  | `FONT_SIZE_CAPTION`  |
 | Data Micro      | `--text-2xs`  | 0.625rem / 10px  | `--font-size-micro`    | `FONT_SIZE_MICRO`    |
@@ -457,6 +457,7 @@ alias** (right column). The raw `--text-*` primitive is back-compat only.
 --font-size-header-2: var(--text-lg);
 --font-size-body-lg:  var(--text-md);
 --font-size-body:     var(--text-base);
+--font-size-data:     var(--text-data);   /* mono data and table values */
 --font-size-body-sm:  var(--text-sm);   /* renamed from --font-size-label; see 02.7 */
 --font-size-caption:  var(--text-xs);
 --font-size-micro:    var(--text-2xs);  /* new: chart axis / sparkline floor */
@@ -496,11 +497,11 @@ tracking are fixed.
 
 | Style                  | Family  | Size (alias)           | Weight | Line-height         | Tracking                               | Transform | Default color     | Used for                                                |
 |------------------------|---------|------------------------|--------|---------------------|----------------------------------------|-----------|-------------------|---------------------------------------------------------|
-| **Display**            | display | `--font-size-display`  | 400    | `--leading-display` | `--tracking-tight`                     | none      | `--color-heading` | Stat-card values, hero numbers                          |
-| **Title**              | display | `--font-size-title`    | 400    | `--leading-snug`    | `--tracking-snug`                      | none      | `--color-heading` | Page / view title (h1)                                  |
-| **Header**             | display | `--font-size-header-1` | 400    | `--leading-tight`   | `--tracking-snug`                      | none      | `--color-heading` | Major section heading (h2), modal title                 |
-| **H2**                 | display | `--font-size-header-2` | 400    | `--leading-snug`    | `--tracking-normal`                    | none      | `--color-heading` | Subsection heading (h3)                                 |
-| **H3**                 | display | `--font-size-body-lg`  | 400    | `--leading-snug`    | `--tracking-normal`                    | none      | `--color-heading` | Minor heading (h4)                                      |
+| **Display**            | display | `--font-size-display`  | 600    | `--leading-display` | `--tracking-tight`                     | none      | `--color-heading` | Stat-card values, hero numbers                          |
+| **Title**              | display | `--font-size-title`    | 600    | `--leading-snug`    | `--tracking-snug`                      | none      | `--color-heading` | Page / view title (h1)                                  |
+| **Header**             | display | `--font-size-header-1` | 600    | `--leading-tight`   | `--tracking-snug`                      | none      | `--color-heading` | Major section heading (h2), modal title                 |
+| **H2**                 | display | `--font-size-header-2` | 600    | `--leading-snug`    | `--tracking-normal`                    | none      | `--color-heading` | Subsection heading (h3)                                 |
+| **H3**                 | display | `--font-size-body-lg`  | 600    | `--leading-snug`    | `--tracking-normal`                    | none      | `--color-heading` | Minor heading (h4)                                      |
 | **Body Large**         | body    | `--font-size-body-lg`  | 400    | `--leading-relaxed` | `--tracking-normal`                    | none      | `--color-body`    | Lead paragraph, intro copy                              |
 | **Body**               | body    | `--font-size-body`     | 400    | `--leading-relaxed` | `--tracking-normal`                    | none      | `--color-body`    | Default paragraph copy                                  |
 | **Body Small**         | body    | `--font-size-body-sm`  | 400    | `--leading-relaxed` | `--tracking-normal`                    | none      | `--color-body`    | Dense / secondary prose                                 |
@@ -508,8 +509,8 @@ tracking are fixed.
 | **Button**             | body    | `--font-size-body-sm`  | 500    | 1                   | `--tracking-button`                    | none      | per variant       | Button labels, nav tab labels                           |
 | **Label / Overline**   | mono    | `--font-size-caption`  | 500    | `--leading-tight`   | `--tracking-wide` / `--tracking-wider` | uppercase | `--color-muted`   | Form labels, table headers, overlines, badge text       |
 | **Caption**            | mono    | `--font-size-caption`  | 400    | `--leading-normal`  | `--tracking-normal`                    | none      | `--color-muted`   | Hints, figure captions, chart subtitle, scale-bar label |
-| **Data Value**         | mono    | `--font-size-body`     | 500    | `--leading-normal`  | `--tracking-normal`                    | none      | `--color-heading` | Numeric table cells, stat deltas, tooltip values        |
-| **Data Value (muted)** | mono    | `--font-size-body`     | 400    | `--leading-normal`  | `--tracking-normal`                    | none      | `--color-muted`   | Table secondary cells                                   |
+| **Data Value**         | mono    | `--font-size-data`     | 500    | `--leading-normal`  | `--tracking-normal`                    | none      | `--color-heading` | Table cells, stat deltas, tooltip values                |
+| **Data Value (muted)** | mono    | `--font-size-data`     | 400    | `--leading-normal`  | `--tracking-normal`                    | none      | `--color-muted`   | Table secondary cells                                   |
 | **Data Micro**         | mono    | `--font-size-micro`    | 400    | `--leading-tight`   | 0.02em                                 | none      | `--color-muted`   | Chart axis ticks, sparkline labels, dense data          |
 
 Notes:
@@ -518,15 +519,14 @@ Notes:
   (0.08em) for inline labels and table headers, `--tracking-wider` (0.12em) for
   standalone
   section overlines.
-- **Data Value** size follows its container; `--font-size-body` is the default. The
-  fixed
-  parts are mono family, weight 500, heading color. The **muted** variant (weight 400,
+- **Data Value** size follows its container; `--font-size-data` (15px) is the default,
+  one step below the 16px body so the body size never reflows tables. The fixed parts
+  are mono family, weight 500, heading color. The **muted** variant (weight 400,
   `--color-muted`) is for secondary table cells.
-- **Species names** add the `.is-species` class (italic), which also switches the run to
-  `--font-species` (IBM Plex Serif italic) -- Comfortaa has no true italic, so the
-  family swap is what makes the binomial a real italic rather than a synthesized oblique.
-  Apply it to Title / Header / H2 / H3 species runs as needed; only IBM Plex Serif italic
-  400 / 500 are loaded.
+- **Species names** add the `.is-species` class, which sets the run in Nunito Sans's true
+  italic via `--font-species`. Apply it to Title / Header / H2 / H3 species runs as
+  needed; the 400 and 600 italics are loaded, so a binomial in body text and one in a
+  heading both render in a designed cut.
 
 ---
 
@@ -705,17 +705,21 @@ the semantic aliases, not raw primitives.
 | `label`, `th` | Label                        |
 | `button`, tab | Button                       |
 | `code`, `kbd` | mono inline (see rule below) |
-| numeric `td`  | Data Value                   |
+| `td`          | Data Value                   |
 
 #### Typography rules (carried over from the original, mapped to styles)
 
-- **Headings** use the display family at weight 400. Italic cut for Latin species names
+- **Headings** use the display family at weight 600. Italic cut for Latin species names
   (e.g. *Rhodotorula toruloides*) via `.is-species`.
 - **Labels and overlines:** Label / Overline style (mono, uppercase, muted).
 - **Stat card values:** Display style.
 - **Data values** always render in the mono family to preserve optical column alignment
   (Data Value style).
-- **Table numeric cells:** Data Value style (mono, weight 500, `--color-heading`).
+- **Table cells:** Data Value style (mono, weight 500, `--color-heading`) for every
+  value, numeric or not. A table cell is data.
+- **Table headers:** Label style. When a header is a data column name (a metadata
+  field, a measurement header), keep the mono family and caption size but drop the
+  uppercase transform, so the name reads exactly as it is spelled in the data.
 - **Table secondary cells:** Data Value (muted) style (mono, `--color-muted`).
 - **Inline code:** mono family, `background: #edf2f7`, `color: #003660`,
   `padding: 1px 5px`,
@@ -739,15 +743,14 @@ Confirm before treating this as final.
    alias `--font-size-label: var(--font-size-body-sm)` during migration.
 
 2. **Heading vs. component-title weight.** Content headings (Title, Header, H2, H3) and
-   component titles (**UI Title**) now share one family -- Comfortaa -- distinguished by
-   weight (headings 400, UI Title 600) rather than the old serif-to-sans shift. Both map
-   to Comfortaa via `--font-display` / `--font-body`, which carry the same stack.
+   component titles (**UI Title**) share one family -- Nunito Sans -- and, since headings
+   moved to 600, one weight too, so they are told apart by size alone. If that stops
+   reading as two levels, UI Title may drop to 500 without touching headings.
 
-3. **Body family.** Body is Comfortaa (same family as display). The chrome runs on a
-   single rounded geometric sans; only italic species names (`--font-species`, IBM Plex
-   Serif) and mono data (`--font-mono`, JetBrains Mono) step outside it. To split display
-   and body back into two families, change `_DISPLAY_PRIMARY` / `_BODY_PRIMARY` in
-   `_gui/_design.py` and update the import.
+3. **Body family.** Body is Nunito Sans (same family as display and species). The chrome
+   runs on a single humanist sans; only mono data (`--font-mono`, JetBrains Mono) steps
+   outside it. To split display and body into two families, change `_DISPLAY_PRIMARY` /
+   `_BODY_PRIMARY` in `_gui/_design.py` and update the import.
 
 ---
 
@@ -1073,7 +1076,7 @@ Use primary colors for top-level KPIs; Okabe-Ito for categorically meaningful me
 +-- 3px accent bar (color by category) -------------------------+
 |  LABEL -- JetBrains Mono -- 11px -- uppercase -- --color-muted       |
 |                                                               |
-|  Value -- Comfortaa -- 2.5rem                               |
+|  Value -- Nunito Sans -- 2.5rem                             |
 |  Delta -- JetBrains Mono -- 11px -- #009E73 (up) / #D55E00 (down)   |
 +---------------------------------------------------------------+
 ```
@@ -1131,7 +1134,7 @@ Use Okabe-Ito series order for multi-fill progress. Track background is always
 
 Reserve `#D55E00` for error-state fills only.
 
-**Label layout:** progress name (Comfortaa 500) left, value (JetBrains Mono) right,
+**Label layout:** progress name (Nunito Sans 500) left, value (JetBrains Mono) right,
 `justify-content: space-between`. Stack items with `gap: 16px`.
 
 **CSS:**
@@ -1180,7 +1183,7 @@ reserved exclusively for data. Exception: danger variant uses `--oi-vermilion`.
 | lg      | 15px      | `0.7rem 1.5rem`                   |
 | icon    | --        | `width/height 2.25rem, padding 0` |
 
-**Shared styles:** Comfortaa, `font-weight: 500`, `letter-spacing: 0.01em`,
+**Shared styles:** Nunito Sans, `font-weight: 500`, `letter-spacing: 0.01em`,
 `border-radius: var(--radius)`, `border-width: 1.5px`,
 `transition: all 180ms cubic-bezier(0.22, 1, 0.36, 1)`.
 
@@ -1234,7 +1237,7 @@ card surfaces.
 `border-radius: var(--radius)`, `border-left: 4px solid`.
 
 **Icon:** `1rem`, `flex-shrink: 0`, `margin-top: 1px`.
-**Title:** Comfortaa, `font-weight: 600`, `font-size: 13px`.
+**Title:** Nunito Sans, `font-weight: 600`, `font-size: 13px`.
 **Body:** `opacity: 0.85`, `line-height: 1.5`.
 
 | Type    | Border    | Background              | Text      |
@@ -1267,7 +1270,7 @@ quality metrics, status badge.
 ### Form Inputs
 
 **Base styles:** `background: #ffffff`, `border: 1.5px solid --color-border`,
-`border-radius: var(--radius)`, `padding: 0.5rem 0.875rem`, Comfortaa 13px,
+`border-radius: var(--radius)`, `padding: 0.5rem 0.875rem`, Nunito Sans 13px,
 `color: --color-body`, `transition: border-color 180ms, box-shadow 180ms`.
 
 | State   | Border                       | Focus Ring                        |
@@ -1463,16 +1466,17 @@ Include this `:root` block in all generated CSS files:
     --color-danger: var(--oi-vermilion);
 
     /* Typography */
-    --font-display: 'Comfortaa', system-ui, sans-serif;
-    --font-body: 'Comfortaa', system-ui, sans-serif;
-    --font-mono: 'JetBrains Mono', 'Courier New', monospace;
-    --font-species: 'IBM Plex Serif', Georgia, serif; /* italic binomials only */
+    --font-display: 'Nunito Sans', system-ui, sans-serif;
+    --font-body: 'Nunito Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Courier New', monospace; /* every data and table value */
+    --font-species: 'Nunito Sans', system-ui, sans-serif; /* italic binomials only */
 
     /* Type scale */
     --text-xs: 0.6875rem; /*  11px */
     --text-sm: 0.8125rem; /*  13px */
-    --text-base: 0.9375rem; /*  15px */
-    --text-md: 1.0625rem; /*  17px */
+    --text-data: 0.9375rem; /*  15px, mono data */
+    --text-base: 1rem; /*  16px */
+    --text-md: 1.125rem; /*  18px */
     --text-lg: 1.25rem; /*  20px */
     --text-xl: 1.5rem; /*  24px */
     --text-2xl: 1.875rem; /*  30px */
@@ -1487,6 +1491,7 @@ Include this `:root` block in all generated CSS files:
     --font-size-header-2: var(--text-lg);
     --font-size-body-lg: var(--text-md);
     --font-size-body: var(--text-base);
+    --font-size-data: var(--text-data);
     --font-size-body-sm: var(--text-sm);
     --font-size-caption: var(--text-xs);
     --font-size-micro: var(--text-2xs);
@@ -1554,9 +1559,9 @@ Include this `:root` block in all generated CSS files:
   warning / error), in the fixed order navy, orange, sky, green, blue, purple.
 - **Render every number, axis label, badge, caption, and code token in the mono family**
   (JetBrains Mono), to keep optical column alignment and a data-forward voice.
-- **Use Comfortaa for content headings, large stat values, body, and component titles**
-  -- one rounded geometric sans across all chrome. Italic species names are the lone
-  exception (IBM Plex Serif italic, via `.is-species` / `--font-species`).
+- **Use Nunito Sans for all general text and formatting** -- content headings, large
+  stat values, body, component titles, and italic species names (via `.is-species` /
+  `--font-species`) -- and JetBrains Mono for every data value and table value.
 - **Pair color with a second signal on every status.** A dot, an icon, or a text word,
   so
   meaning survives for colorblind readers.
@@ -1616,7 +1621,7 @@ composites, and overlays that never destroy the underlying signal.
 
 ```
 +-- chart-card surface (radius-md, shadow-sm, 1px --color-border) -----+
-|  TITLE -- Comfortaa 13 600 --color-heading          [toolbar: icons right] |
+|  TITLE -- Nunito Sans 13 600 --color-heading        [toolbar: icons right] |
 |  subtitle -- JetBrains Mono 11 --color-muted                                |
 |  +-- image stage (background #0e1620 for fluor, #FBFEF8 for bright)+ |
 |  |                                                                  | |
@@ -2028,7 +2033,7 @@ Never build a sequential colorbar from categorical series colors.
   not place a logo asset (a light-background lockup on the navy bar would violate the
   section 00 "no light lockup on a dark surface" rule; a dark-background logo variant
   would be required first).
-- **Sidebar nav item:** Comfortaa 13, `--color-muted` default; active gets
+- **Sidebar nav item:** Nunito Sans 13, `--color-muted` default; active gets
   `--color-navy` text + 3px left accent bar in `--color-navy` + `rgba(0,54,96,0.05)`
   background. Reuses the active-tab logic. The sidebar itself is `--color-white`.
 
@@ -2113,7 +2118,7 @@ Never build a sequential colorbar from categorical series colors.
 
 ### Empty States
 
-- Centered, vertically generous (`--sp-12` padding). Muted icon (24px), Comfortaa 13
+- Centered, vertically generous (`--sp-12` padding). Muted icon (24px), Nunito Sans 13
   title, JetBrains Mono 11 sub-line, optional primary button to act.
 - Voice: state what is missing and the next step, not just "no data".
 
@@ -2122,7 +2127,7 @@ Never build a sequential colorbar from categorical series colors.
 - Bottom-right stack, `--color-white`, `--radius-md`, `--shadow-md`, 4px left accent in
   the semantic color (success / info / warning / error from section 01).
 - Auto-dismiss 4-6s; errors persist until dismissed.
-- Title Comfortaa 13 600; body Comfortaa 13; any code/IDs JetBrains Mono.
+- Title Nunito Sans 13 600; body Nunito Sans 13; any code/IDs JetBrains Mono.
 
 ### Modal / Dialog
 
