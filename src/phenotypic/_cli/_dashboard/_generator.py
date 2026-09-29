@@ -132,6 +132,8 @@ def regenerate_dashboard_artifacts(
 
 def _build_html(execution_mode: str) -> str:
     """Assemble the complete self-contained HTML document."""
+    from phenotypic._gui._design import GOOGLE_FONTS_URL
+
     logo_data_uri = _load_logo_data_uri()
     return (
         "<!DOCTYPE html>\n"
@@ -141,7 +143,7 @@ def _build_html(execution_mode: str) -> str:
         "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
         "  <title>PhenoTypic Dashboard</title>\n"
         "  <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n"
-        "  <link href=\"https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap\" rel=\"stylesheet\">\n"
+        f"  <link href=\"{GOOGLE_FONTS_URL}\" rel=\"stylesheet\">\n"
         f"  <style>\n{_build_css()}\n  </style>\n"
         "</head>\n"
         "<body>\n"
@@ -196,19 +198,7 @@ def _build_css() -> str:
       --color-warning: #E69F00;
       --color-danger:  #D55E00;
 
-      --font-display: 'DM Serif Display', Georgia, serif;
-      --font-body:    'DM Sans', system-ui, sans-serif;
-      --font-mono:    'DM Mono', 'Courier New', monospace;
-
-      --text-xs:   0.6875rem;
-      --text-sm:   0.8125rem;
-      --text-base: 0.9375rem;
-      --text-md:   1.0625rem;
-      --text-lg:   1.25rem;
-      --text-xl:   1.5rem;
-      --text-2xl:  1.875rem;
-      --text-3xl:  2.5rem;
-      --text-4xl:  3.25rem;
+__PHENOTYPIC_TYPE_TOKENS__
 
       --sp-1: 0.25rem;
       --sp-2: 0.5rem;
@@ -265,7 +255,7 @@ def _build_css() -> str:
     .header h1 {
       font-family: var(--font-display);
       font-size: var(--text-2xl);
-      font-weight: 400;
+      font-weight: 600;
       color: var(--color-heading);
     }
     .header-title-group {
@@ -363,7 +353,7 @@ def _build_css() -> str:
     .card-value {
       font-family: var(--font-display);
       font-size: var(--text-3xl);
-      font-weight: 400;
+      font-weight: 600;
       color: var(--color-heading);
     }
     .card-label {
@@ -437,7 +427,7 @@ def _build_css() -> str:
     .slurm-section h2 {
       font-family: var(--font-display);
       font-size: var(--text-lg);
-      font-weight: 400;
+      font-weight: 600;
       color: var(--color-heading);
       margin-bottom: var(--sp-4);
     }
@@ -487,7 +477,7 @@ def _build_css() -> str:
     .datasets-section > h2 {
       font-family: var(--font-display);
       font-size: var(--text-lg);
-      font-weight: 400;
+      font-weight: 600;
       color: var(--color-heading);
       margin-bottom: var(--sp-4);
     }
@@ -563,7 +553,7 @@ def _build_css() -> str:
     .chart-section h2 {
       font-family: var(--font-display);
       font-size: var(--text-lg);
-      font-weight: 400;
+      font-weight: 600;
       color: var(--color-heading);
       margin-bottom: var(--sp-4);
     }
@@ -623,7 +613,7 @@ def _build_css() -> str:
     .failures-section h2 {
       font-family: var(--font-display);
       font-size: var(--text-lg);
-      font-weight: 400;
+      font-weight: 600;
       color: var(--color-heading);
       margin-bottom: var(--sp-4);
     }
@@ -644,6 +634,7 @@ def _build_css() -> str:
     }
     .failures-table td {
       padding: 12px 16px;
+      font-family: var(--font-mono);
       font-size: var(--text-sm);
       border-bottom: 1px solid var(--color-rule);
       vertical-align: top;
@@ -721,7 +712,7 @@ def _build_css() -> str:
       padding: var(--sp-8) var(--sp-10);
       box-shadow: var(--shadow-sm);
     }
-    .download-container h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 400; color: var(--color-heading); margin-bottom: var(--sp-4); }
+    .download-container h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--color-heading); margin-bottom: var(--sp-4); }
     .download-note {
       display: flex;
       gap: var(--sp-4);
@@ -781,7 +772,9 @@ def _build_css() -> str:
     }
 
     """
-    return base_css
+    from phenotypic._gui._design import type_tokens_css
+
+    return base_css.replace("__PHENOTYPIC_TYPE_TOKENS__", type_tokens_css("      "))
 
 
 def _build_body(execution_mode: str, logo_data_uri: str = "") -> str:

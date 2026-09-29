@@ -139,6 +139,8 @@ __all__ = [
     "ERROR_CATEGORY_COLORS",
     "category_color",
     # ---- CSS bundles ----
+    "GOOGLE_FONTS_URL",
+    "type_tokens_css",
     "FONT_TOKENS_CSS",
     "DESIGN_TOKENS_CSS",
     "BOOTSTRAP_OVERRIDE_CSS",
@@ -214,6 +216,10 @@ FONT_FAMILY_DISPLAY: str = f"'{_DISPLAY_PRIMARY}', {_FALLBACK_DISPLAY}"
 FONT_FAMILY_BODY: str = f"'{_BODY_PRIMARY}', {_FALLBACK_BODY}"
 FONT_FAMILY_MONO: str = f"'{_MONO_PRIMARY}', {_FALLBACK_MONO}"
 FONT_FAMILY_SPECIES: str = f"'{_SPECIES_PRIMARY}', {_FALLBACK_SPECIES}"
+
+#: Public alias of the role-font stylesheet URL, for standalone HTML outputs
+#: (the CLI dashboard and processing report) that load the same faces.
+GOOGLE_FONTS_URL: str = _GOOGLE_FONTS_URL
 
 FONT_TOKENS_CSS = f"""\
 @import url("{_GOOGLE_FONTS_URL}");
@@ -729,6 +735,49 @@ code:not(pre code), kbd {
 # ---------------------------------------------------------------------------
 
 _MARKER = "<!-- phenotypic-design-tokens -->"
+
+
+def type_tokens_css(indent: str = "  ") -> str:
+    """Return the font-family and type-scale custom properties as CSS lines.
+
+    Standalone HTML outputs that cannot receive :func:`inject_design_tokens`
+    (the CLI dashboard and processing report) splice these declarations into
+    their own ``:root`` block, so their typography follows the GUI's: Nunito
+    Sans for general text and JetBrains Mono for every data and table value.
+    Pair it with a ``<link>`` to :data:`GOOGLE_FONTS_URL`.
+
+    Args:
+        indent: Prefix for every emitted line, to match the host stylesheet.
+
+    Returns:
+        Newline-joined ``--font-*``, ``--text-*`` and ``--font-size-*``
+        declarations, without a surrounding selector.
+
+    Examples:
+        >>> from phenotypic._gui._design import type_tokens_css
+        >>> "--font-size-data: 0.9375rem;" in type_tokens_css()
+        True
+    """
+    declarations = [
+        f"--font-display: {FONT_FAMILY_DISPLAY};",
+        f"--font-body:    {FONT_FAMILY_BODY};",
+        f"--font-mono:    {FONT_FAMILY_MONO};",
+        f"--font-species: {FONT_FAMILY_SPECIES};",
+        f"--text-2xs:  {TEXT_2XS};",
+        f"--text-xs:   {TEXT_XS};",
+        f"--text-sm:   {TEXT_SM};",
+        f"--text-data: {TEXT_DATA};",
+        f"--text-base: {TEXT_BASE};",
+        f"--text-md:   {TEXT_MD};",
+        f"--text-lg:   {TEXT_LG};",
+        f"--text-xl:   {TEXT_XL};",
+        f"--text-2xl:  {TEXT_2XL};",
+        f"--text-3xl:  {TEXT_3XL};",
+        f"--text-4xl:  {TEXT_4XL};",
+        f"--font-size-body: {FONT_SIZE_BODY};",
+        f"--font-size-data: {FONT_SIZE_DATA};",
+    ]
+    return "\n".join(indent + line for line in declarations)
 
 
 def inject_design_tokens(app) -> None:  # type: ignore[no-untyped-def]

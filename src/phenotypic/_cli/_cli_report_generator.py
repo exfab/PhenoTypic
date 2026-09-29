@@ -30,6 +30,8 @@ class HTMLReportGenerator:
 
     def _generate_html(self, results: ExecutionResults) -> str:
         """Generate HTML content."""
+        from phenotypic._gui._design import GOOGLE_FONTS_URL
+
         return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -37,7 +39,7 @@ class HTMLReportGenerator:
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
+    <link href="{GOOGLE_FONTS_URL}" rel="stylesheet">
     {self._get_styles()}
 </head>
 <body>
@@ -51,7 +53,11 @@ class HTMLReportGenerator:
 
     def _get_styles(self) -> str:
         """Inline CSS for self-contained report."""
-        return """<style>
+        from phenotypic._gui._design import type_tokens_css
+
+        return self._STYLES.replace("__PHENOTYPIC_TYPE_TOKENS__", type_tokens_css(" " * 12))
+
+    _STYLES = """<style>
         *, *::before, *::after {
             box-sizing: border-box;
             margin: 0;
@@ -75,17 +81,7 @@ class HTMLReportGenerator:
             --oi-vermilion: #D55E00;
             --oi-sky: #56B4E9;
 
-            --font-display: 'DM Serif Display', Georgia, serif;
-            --font-body: 'DM Sans', system-ui, sans-serif;
-            --font-mono: 'DM Mono', 'Courier New', monospace;
-
-            --text-xs: 0.6875rem;
-            --text-sm: 0.8125rem;
-            --text-base: 0.9375rem;
-            --text-lg: 1.25rem;
-            --text-xl: 1.5rem;
-            --text-2xl: 1.875rem;
-            --text-3xl: 2.5rem;
+__PHENOTYPIC_TYPE_TOKENS__
 
             --sp-1: 0.25rem;
             --sp-2: 0.5rem;
@@ -129,7 +125,7 @@ class HTMLReportGenerator:
             padding-bottom: var(--sp-4);
             margin-bottom: var(--sp-8);
             font-size: var(--text-3xl);
-            font-weight: 400;
+            font-weight: 600;
         }
 
         h2 {
@@ -138,7 +134,7 @@ class HTMLReportGenerator:
             margin-top: var(--sp-10);
             margin-bottom: var(--sp-5);
             font-size: var(--text-2xl);
-            font-weight: 400;
+            font-weight: 600;
             border-left: 4px solid var(--color-navy);
             padding-left: var(--sp-4);
         }
@@ -148,7 +144,7 @@ class HTMLReportGenerator:
             color: var(--color-heading);
             margin: var(--sp-6) 0 var(--sp-4) 0;
             font-size: var(--text-xl);
-            font-weight: 400;
+            font-weight: 600;
         }
 
         .summary {
@@ -201,7 +197,7 @@ class HTMLReportGenerator:
         .stat-value {
             font-family: var(--font-display);
             font-size: var(--text-3xl);
-            font-weight: 400;
+            font-weight: 600;
             color: var(--color-heading);
             margin-bottom: var(--sp-1);
         }
@@ -323,6 +319,11 @@ class HTMLReportGenerator:
             padding: 12px 16px;
             text-align: left;
             border-bottom: 1px solid var(--color-rule);
+        }
+
+        /* A table cell is data: mono (DESIGN.md Typography). */
+        td {
+            font-family: var(--font-mono);
         }
 
         th {
