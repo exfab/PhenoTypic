@@ -50,6 +50,51 @@ Public, blessed API for PhenoTypic's measurement naming conventions.
   (`rembi_module()` / `header_to_module`) is a *separate* provenance axis and does
   not drive column order.
 
+## Importing schema classes: public interface only
+
+Code outside this package reaches schema classes only through `phenotypic.schema`:
+
+```python
+from phenotypic.schema import SIZE, QUALITY_ICC, IdentityInfo  # correct
+from phenotypic.schema._size import SIZE                        # wrong
+from phenotypic.schema._tiers import IdentityInfo               # wrong
+```
+
+Every module file here is private (underscore-prefixed), and the layout is expected
+to move, for example into per-operation subfolders. A private import couples the
+caller to a file path; the package namespace survives a move. This applies to
+`src/`, `tests/` and `docs/` (including Sphinx extensions).
+
+"Public interface" means **what the package namespace exposes, which is wider than
+`__all__`**. The tier bases (`IdentityInfo`, `QualityInfo`, `PrimaryMeasure`,
+`DirectPhenotype`, …) are importable from `phenotypic.schema` but kept out of
+`__all__`, so that `__all__`-driven discovery (the docs and README generators)
+does not treat member-less bases as measurement families. Import them from the
+package anyway. If something you need is not importable from the package, export
+it from `__init__.py`; do not reach into the module.
+
+Exceptions, and only these:
+
+1. **Imports inside this package** (`from ._tiers import …`) are normal.
+2. **A test that pins a private helper the package does not export** (`_classify`,
+   `_BADGE_SPECS`, `_CATEGORY_BADGE_COLOR`, `_rst_cell_text`, `_VALID_KINDS`,
+   `_CAMEL_BOUNDARY_RE`) may import that helper from its module. Only the helper:
+   any public class the same test uses still comes from `phenotypic.schema`.
+3. **A test whose subject is a private path**, such as
+   `test_direct_experimental_tags_package_imports_have_the_same_transition_aliases`,
+   which checks the deprecation alias on `phenotypic.schema._experimental_tags`.
+4. **Historical module-path strings in
+   `_BackCompatUnpickler._MOVED_CLASSES`** (`_core/_image_parts/_image_io_handler.py`,
+   mirrored in `tests/unit/sdk_/test_metadata_io.py`). These record where a class
+   lived when an old pickle was written. They are persisted data, not imports:
+   never update one to a current path and never delete one.
+
+**Moving a schema file is a data-compatibility change.** Enum members pickle by
+their class's `__module__`, and today that is the private module (a pickled
+`image.metadata` key refers to `phenotypic.schema._metadata.IMAGE`). A change that
+moves any class that can end up in a pickle must add a `_MOVED_CLASSES` row from
+the old `(module, name)` to `("phenotypic.schema", name)` in the same commit.
+
 ## Measurement classification (kind + tier)
 
 Every member resolves to a coarse **kind** and, for primary/derived measurements,

@@ -1,6 +1,6 @@
 import pytest
 from phenotypic.schema import Entry
-from phenotypic.schema._tiers import (
+from phenotypic.schema import (
     DirectPhenotype, DescriptiveTrait, DiscriminativeFeature,
     IdentityInfo, QualityInfo, DerivedMeasure, PrimaryMeasure,
 )

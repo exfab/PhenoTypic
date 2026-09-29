@@ -516,6 +516,17 @@ enforces this for ruff, but the rule binds regardless of the tool.
   the old `phenotypic.sdk_.measurement_info` path was removed.
   `MeasurementInfo.get_labels()` returns unprefixed names; `get_headers()` returns the
   prefixed column names used in DataFrames.
+- **Import schema classes from `phenotypic.schema`, never from its private
+  modules.** Write `from phenotypic.schema import SIZE, QUALITY_ICC, IdentityInfo`,
+  not `from phenotypic.schema._size import SIZE` or
+  `from phenotypic.schema._tiers import IdentityInfo`. The file layout under
+  `schema/` is private and free to change; the package namespace is the contract.
+  The rule binds `src/`, `tests/` and `docs/` alike. If a class you need is not
+  importable from the package, export it from `schema/__init__.py` instead of
+  reaching into the module. The narrow exceptions (private *helpers* pinned by
+  schema tests, and the historical module-path strings in
+  `_BackCompatUnpickler._MOVED_CLASSES`, which describe old pickles and must never
+  be "corrected") are listed in [schema/CLAUDE.md](src/phenotypic/schema/CLAUDE.md).
 - **Ask the schema for the spelling, then assert the column is in the frame.** A
   header the schema defines may belong to a measurer a given run never
   configured — `SIZE.AREA` is a real member and `Size_Area` is this file's own
