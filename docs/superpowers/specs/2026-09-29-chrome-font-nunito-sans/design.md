@@ -2,8 +2,8 @@
 
 - **Date:** 2026-09-29
 - **Branch:** `claude/magical-keller-kw5lu5`
-- **Status:** design settled; N1 to N3 were decided on 2026-09-29 in the artifact at
-  `docs/superpowers/artifacts/2026-09-29-figure-typography/`; awaiting implementation plan
+- **Status:** implemented on `claude/magical-keller-kw5lu5` (2026-09-29); N1 to N3 were decided
+  in the artifact at `docs/superpowers/artifacts/2026-09-29-figure-typography/`
 - **Follow-on:** the figure-typography spec (same artifact) and the move of `DESIGN.md`
   to the Google DESIGN.md token format (option C of the 2026-09-29 brainstorm) both
   build on the font roles this spec settles, so this change lands first.
@@ -64,8 +64,9 @@ two edits in that file:
 
 1. `_DISPLAY_PRIMARY` and `_BODY_PRIMARY` (`:168`, `:169`) become `"Nunito Sans"`.
 2. `_GOOGLE_FONTS_URL` (`:181`) replaces `family=Comfortaa:wght@400;500;600;700` with a
-   Nunito Sans request covering weights 400, 500, 600 and 700 plus the 400 italic that
-   N1 needs; 500 italic is added only if a species run inside a UI Title needs it.
+   Nunito Sans request covering weights 400, 500, 600 and 700 plus the 400 and 600
+   italics, so a binomial in body text and one in a weight-600 heading (N2) both use a
+   designed cut rather than a synthesized bold.
 
 The sans fallback stack stays as it is. `_FALLBACK_SANS` already covers macOS, Windows,
 Linux and Android system sans faces, and those are a closer offline stand-in for Nunito
